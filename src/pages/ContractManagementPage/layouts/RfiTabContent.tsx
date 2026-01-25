@@ -9,34 +9,36 @@ const RfiTabContent: React.FC = () => {
   return (
     <TabsContent value="rfi" className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-gray-600">RFI</h3>
-        <div className="flex items-center gap-2">
-          <Button variant="outline">
+        <h3 className="text-base font-semibold text-slate-900">RFI</h3>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" className="h-10 rounded-xl px-4">
             <Share2 className="mr-2 h-4 w-4" /> Export Report
           </Button>
-          <Button>Issue RFI</Button>
+          <Button variant="secondary" className="h-10 rounded-xl px-4">
+            Issue RFI
+          </Button>
         </div>
       </div>
 
       <RfiStatsCards />
 
       <Tabs defaultValue="all" className="w-full bg-transparent">
-        <TabsList className="h-auto rounded-none border-b border-[#E9E9EB] dark:border-slate-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
+        <TabsList className="bg-[#F2F4F7] p-1 rounded-full w-fit">
           <TabsTrigger
             value="all"
-            className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+            className="rounded-full px-4 py-2 text-sm font-medium text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             All RFI
           </TabsTrigger>
           <TabsTrigger
             value="issued"
-            className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+            className="rounded-full px-4 py-2 text-sm font-medium text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             Issued
           </TabsTrigger>
           <TabsTrigger
             value="received"
-            className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+            className="rounded-full px-4 py-2 text-sm font-medium text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             Received
           </TabsTrigger>
