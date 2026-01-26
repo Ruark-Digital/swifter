@@ -62,6 +62,7 @@ type ClassNames = {
   tHeader?: string;
   tRow?: string;
   tHeadRow?: string;
+  header?: string;
   tBody?: string;
   tCell?: string;
   tHead?: string;
@@ -241,7 +242,7 @@ export function DataTable<T = unknown>({
     <div className={cn("w-full", classNames?.container ?? "")}>
       <div className="">
         {header && (
-          <div className="flex items-center py-4">{header?.(table)}</div>
+          <div className={cn("flex items-center py-4", classNames?.header)}>{header?.(table)}</div>
         )}
 
         {data.length > 0 && !options?.isLoading

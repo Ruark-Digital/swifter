@@ -13,16 +13,23 @@ import {
 } from "@/components/ui/breadcrumb";
 import AnalyticsTabContent from "./layouts/AnalyticsTabContent";
 import ApproversTabContent from "./layouts/ApproversTabContent";
+import ActionLogTabContent from "./layouts/ActionLogTabContent";
 import ChangeTabContent from "./layouts/ChangeTabContent";
 import ClaimsTabContent from "./layouts/ClaimsTabContent";
 import ComplianceTabContent from "./layouts/ComplianceTabContent";
+import ClauseLibraryTabContent from "./layouts/ClauseLibraryTabContent";
 import DeliverablesTabContent from "./layouts/DeliverablesTabContent";
 import DocumentsTabContent from "./layouts/DocumentsTabContent";
 import InvoiceTabContent from "./layouts/InvoiceTabContent";
 import LemTabContent from "./layouts/LemTabContent";
+import AmendmentsTabContent from "./layouts/AmendmentsTabContent";
+import NcrLogTabContent from "./layouts/NcrLogTabContent";
+import PaymentSummaryTabContent from "./layouts/PaymentSummaryTabContent";
+import KpiTabContent from "./layouts/KpiTabContent";
 import OverviewTab from "./layouts/OverviewTab";
 import RfiTabContent from "./layouts/RfiTabContent";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import VendorReportsTabContent from "./layouts/VendorReportsTabContent";
 
 const ContractDetailPage: React.FC = () => {
   return (
@@ -177,7 +184,7 @@ const ContractDetailPage: React.FC = () => {
               value="reports"
               className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
             >
-              Reports
+              Vendor’s Reports
             </TabsTrigger>
             <TabsTrigger
               value="clause-library"
@@ -199,6 +206,8 @@ const ContractDetailPage: React.FC = () => {
 
         <AnalyticsTabContent />
 
+        <KpiTabContent />
+
         <ComplianceTabContent />
 
         <ChangeTabContent />
@@ -215,7 +224,19 @@ const ContractDetailPage: React.FC = () => {
 
         <RfiTabContent />
 
+        <NcrLogTabContent />
+
         <DocumentsTabContent />
+
+        <AmendmentsTabContent />
+
+        <PaymentSummaryTabContent />
+
+        <ClauseLibraryTabContent />
+
+        <VendorReportsTabContent />
+
+        <ActionLogTabContent />
       </Tabs>
     </div>
   );
