@@ -32,6 +32,8 @@ export const Header = () => {
         return "Profile";
       case "/dashboard/user-management":
         return "User Management";
+      case "/dashboard/business-divisions":
+        return "Business Divisions";
       case "/dashboard/subscription":
         return "Subscription Management";
       case "/dashboard/companies":

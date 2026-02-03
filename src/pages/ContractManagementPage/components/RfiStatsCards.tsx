@@ -38,15 +38,22 @@ const StatCard: React.FC<StatProps> = ({ title, value, tone, testId }) => {
   );
 };
 
-const RfiStatsCards: React.FC = () => {
+type Props = {
+  all?: number;
+  issued?: number;
+  received?: number;
+  isLoading?: boolean;
+};
+
+const RfiStatsCards: React.FC<Props> = ({ all, issued, received, isLoading }) => {
+  void isLoading;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <StatCard title="All RFI" value={8} tone="gray" testId="rfi-stats-all" />
-      <StatCard title="Issued" value={4} tone="green" testId="rfi-stats-issued" />
-      <StatCard title="Received" value={5} tone="yellow" testId="rfi-stats-received" />
+      <StatCard title="All RFI" value={all ?? 0} tone="gray" testId="rfi-stats-all" />
+      <StatCard title="Issued" value={issued ?? 0} tone="green" testId="rfi-stats-issued" />
+      <StatCard title="Received" value={received ?? 0} tone="yellow" testId="rfi-stats-received" />
     </div>
   );
 };
 
 export default RfiStatsCards;
-

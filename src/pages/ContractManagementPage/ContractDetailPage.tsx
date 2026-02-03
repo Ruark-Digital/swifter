@@ -1,6 +1,7 @@
 import React from "react";
+import { useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { SEOWrapper } from "@/components/SEO";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -11,6 +12,11 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
+import { PageLoader } from "@/components/ui/PageLoader";
+import { useToastHandler } from "@/hooks/useToaster";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import type { ApiResponseError } from "@/types";
+import { contractManagerApi, type Contract } from "./api/contractManagerApi";
 import AnalyticsTabContent from "./layouts/AnalyticsTabContent";
 import ApproversTabContent from "./layouts/ApproversTabContent";
 import ActionLogTabContent from "./layouts/ActionLogTabContent";
@@ -31,13 +37,99 @@ import RfiTabContent from "./layouts/RfiTabContent";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import VendorReportsTabContent from "./layouts/VendorReportsTabContent";
 
+const formatContractStatus = (status?: Contract["status"]) => {
+  if (status === "active") return { label: "Active", className: "bg-green-100 text-green-700" };
+  if (status === "draft") return { label: "Draft", className: "bg-slate-100 text-slate-700" };
+  if (status === "pending_approval") return { label: "Pending Approval", className: "bg-yellow-100 text-yellow-700" };
+  if (status === "completed") return { label: "Completed", className: "bg-blue-100 text-blue-700" };
+  if (status === "cancelled") return { label: "Cancelled", className: "bg-red-100 text-red-700" };
+  if (status === "expired") return { label: "Expired", className: "bg-orange-100 text-orange-700" };
+  if (status === "terminated") return { label: "Terminated", className: "bg-red-100 text-red-700" };
+  return { label: "Unknown", className: "bg-slate-100 text-slate-700" };
+};
+
 const ContractDetailPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const toastHandler = useToastHandler();
+  const toastErrorRef = React.useRef(toastHandler.error);
+  const lastErrorRef = React.useRef<unknown>(null);
+  const queryKey = useUserQueryKey(["contract-manager-contracts"]);
+
+  const {
+    data: contractsResponse,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey,
+    queryFn: () => contractManagerApi.listContracts(),
+    enabled: !!id,
+    staleTime: 60000,
+    retry: false,
+  });
+
+  React.useEffect(() => {
+    toastErrorRef.current = toastHandler.error;
+  }, [toastHandler.error]);
+
+  React.useEffect(() => {
+    if (!error) return;
+    if (lastErrorRef.current === error) return;
+    lastErrorRef.current = error;
+    toastErrorRef.current("Contract Details", error as ApiResponseError);
+  }, [error]);
+
+  if (isLoading) {
+    return (
+      <PageLoader
+        title="Contract Details"
+        message="Loading contract details..."
+        className="space-y-8"
+      />
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-8">
+        <SEOWrapper
+          title="Contract Details - SwiftPro eProcurement Portal"
+          description="View contract overview, team, and key information."
+          canonical={`/dashboard/contract-management/${id ?? ""}`}
+          robots="noindex, nofollow"
+        />
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          Failed to load contract details.
+        </div>
+      </div>
+    );
+  }
+
+  const contracts = contractsResponse?.data ?? [];
+  const contract = contracts?.find?.((c) => c?._id === id);
+  const status = formatContractStatus(contract?.status);
+
+  if (!contract) {
+    return (
+      <div className="space-y-8">
+        <SEOWrapper
+          title="Contract Details - SwiftPro eProcurement Portal"
+          description="View contract overview, team, and key information."
+          canonical={`/dashboard/contract-management/${id ?? ""}`}
+          robots="noindex, nofollow"
+        />
+        <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-700">
+          Contract not found.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <SEOWrapper
         title="Contract Details - SwiftPro eProcurement Portal"
         description="View contract overview, team, and key information."
-        canonical="/dashboard/contract-management/:id"
+        canonical={`/dashboard/contract-management/${contract?._id ?? ""}`}
         robots="noindex, nofollow"
       />
 
@@ -54,7 +146,7 @@ const ContractDetailPage: React.FC = () => {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>Construction Services Agreement</BreadcrumbPage>
+            <BreadcrumbPage>{contract?.title ?? "Contract Details"}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -62,29 +154,11 @@ const ContractDetailPage: React.FC = () => {
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold text-slate-900">
-            Construction Services Agreement
+            {contract?.title}
           </h1>
-          <p className="text-sm text-slate-500">CON-2025-10</p>
-          <Button variant="secondary" className="mt-4">
-            Approval Settings
-          </Button>
+          <p className="text-sm text-slate-500">{contract?._id}</p>
         </div>
-        <Badge className="bg-green-100 text-green-700">Active</Badge>
-      </div>
-
-      <div className="flex w-fit items-center gap-1 rounded-full bg-[#F2F4F7] p-1">
-        <button
-          type="button"
-          className="rounded-full bg-[#2A4467] px-4 py-2 text-sm font-medium text-white"
-        >
-          MSA Details
-        </button>
-        <button
-          type="button"
-          className="rounded-full px-4 py-2 text-sm font-medium text-[#6B6B6B]"
-        >
-          Linked Contract
-        </button>
+        <Badge className={status?.className}>{status?.label}</Badge>
       </div>
 
       <Tabs defaultValue="overview" className="w-full bg-transparent space-y-4">
@@ -210,27 +284,27 @@ const ContractDetailPage: React.FC = () => {
 
         <ComplianceTabContent />
 
-        <ChangeTabContent />
+        <ChangeTabContent contractId={contract?._id ?? ""} />
 
-        <ClaimsTabContent />
+        <ClaimsTabContent contractId={contract?._id ?? ""} />
 
         <ApproversTabContent />
 
-        <InvoiceTabContent />
+        <InvoiceTabContent contractId={contract?._id ?? ""} />
 
         <DeliverablesTabContent />
 
         <LemTabContent />
 
-        <RfiTabContent />
+        <RfiTabContent contractId={contract?._id ?? ""} />
 
         <NcrLogTabContent />
 
         <DocumentsTabContent />
 
-        <AmendmentsTabContent />
+        <AmendmentsTabContent contractId={contract?._id ?? ""} />
 
-        <PaymentSummaryTabContent />
+        <PaymentSummaryTabContent contractId={contract?._id ?? ""} />
 
         <ClauseLibraryTabContent />
 

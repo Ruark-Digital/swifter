@@ -5,8 +5,47 @@ import { Share2 } from "lucide-react";
 import ClaimsStatsCards from "../components/ClaimsStatsCards";
 import ClaimsTable from "../components/ClaimsTable";
 import RequestClaimDialog from "../components/RequestClaimDialog";
+import { useQuery } from "@tanstack/react-query";
+import type { PaginationState } from "@tanstack/react-table";
+import { contractManagerApi, type ManagerListClaimsQuery } from "../api/contractManagerApi";
 
-const ClaimsTabContent: React.FC = () => {
+type Props = {
+  contractId: string;
+};
+
+const ClaimsTabContent: React.FC<Props> = ({ contractId }) => {
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  const { data: statsRes, isLoading: isStatsLoading } = useQuery({
+    queryKey: ["contractManager", "contractClaims", "stats", contractId],
+    queryFn: async () => await contractManagerApi.getClaimStats(contractId),
+    enabled: Boolean(contractId),
+  });
+
+  const { data: claimsRes, isLoading: isClaimsLoading } = useQuery({
+    queryKey: [
+      "contractManager",
+      "contractClaims",
+      contractId,
+      pagination.pageIndex,
+      pagination.pageSize,
+    ],
+    queryFn: async () => {
+      const query: ManagerListClaimsQuery = {
+        page: pagination.pageIndex + 1,
+        limit: pagination.pageSize,
+      };
+      return await contractManagerApi.listClaims(contractId, query);
+    },
+    enabled: Boolean(contractId),
+  });
+
+  const claimRows = claimsRes?.data?.changes ?? [];
+  const totalCount = claimsRes?.data?.total ?? claimRows.length;
+
   return (
     <TabsContent value="claims" className="space-y-6">
       <div className="flex items-center justify-between">
@@ -28,9 +67,15 @@ const ClaimsTabContent: React.FC = () => {
         </div>
       </div>
 
-      <ClaimsStatsCards />
+      <ClaimsStatsCards stats={statsRes?.data} isLoading={isStatsLoading} />
 
-      <ClaimsTable />
+      <ClaimsTable
+        rows={claimRows}
+        isLoading={isClaimsLoading}
+        totalCount={totalCount}
+        pagination={pagination}
+        setPagination={setPagination}
+      />
     </TabsContent>
   );
 };

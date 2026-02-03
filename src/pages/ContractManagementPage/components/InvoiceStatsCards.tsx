@@ -1,6 +1,7 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText } from "lucide-react";
+import type { ContractInvoiceStatsDTO } from "../api/contractManagerApi";
 
 type StatProps = {
   title: string;
@@ -39,30 +40,36 @@ const StatCard: React.FC<StatProps> = ({ title, value, tone, testId }) => {
   );
 };
 
-const InvoiceStatsCards: React.FC = () => {
+type Props = {
+  stats?: ContractInvoiceStatsDTO;
+  isLoading?: boolean;
+};
+
+const InvoiceStatsCards: React.FC<Props> = ({ stats, isLoading }) => {
+  void isLoading;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <StatCard
         title="All Invoices"
-        value={8}
+        value={stats?.all ?? 0}
         tone="gray"
         testId="invoice-stats-all"
       />
       <StatCard
         title="Approved Invoices"
-        value={4}
+        value={stats?.accepted ?? 0}
         tone="green"
         testId="invoice-stats-approved"
       />
       <StatCard
         title="Pending Invoices"
-        value={5}
+        value={stats?.pending ?? 0}
         tone="yellow"
         testId="invoice-stats-pending"
       />
       <StatCard
         title="Rejected Invoices"
-        value={5}
+        value={stats?.rejected ?? 0}
         tone="red"
         testId="invoice-stats-rejected"
       />

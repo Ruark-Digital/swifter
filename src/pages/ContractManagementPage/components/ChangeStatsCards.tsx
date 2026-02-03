@@ -1,6 +1,7 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText } from "lucide-react";
+import type { ContractChangeStatsDTO } from "../api/contractManagerApi";
 
 type StatProps = {
   title: string;
@@ -38,32 +39,44 @@ const StatCard: React.FC<StatProps> = ({ title, value, tone, testId }) => {
   );
 };
 
-const ChangeStatsCards: React.FC = () => {
+type Props = {
+  stats?: ContractChangeStatsDTO;
+  isLoading?: boolean;
+};
+
+const ChangeStatsCards: React.FC<Props> = ({ stats, isLoading }) => {
+  void isLoading;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       <StatCard
         title="All Changes"
-        value={8}
+        value={stats?.all ?? 0}
         tone="gray"
         testId="change-stats-all"
       />
       <StatCard
-        title="Approved Changes"
-        value={4}
+        title="Change Requests"
+        value={stats?.request ?? 0}
         tone="green"
-        testId="change-stats-approved"
+        testId="change-stats-request"
       />
       <StatCard
-        title="Pending Changes"
-        value={5}
+        title="Change Orders"
+        value={stats?.order ?? 0}
         tone="yellow"
-        testId="change-stats-pending"
+        testId="change-stats-order"
       />
       <StatCard
-        title="Rejected Changes"
-        value={5}
+        title="Change Directives"
+        value={stats?.directive ?? 0}
         tone="red"
-        testId="change-stats-rejected"
+        testId="change-stats-directive"
+      />
+      <StatCard
+        title="Change Proposals"
+        value={stats?.proposal ?? 0}
+        tone="gray"
+        testId="change-stats-proposal"
       />
     </div>
   );

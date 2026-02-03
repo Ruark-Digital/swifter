@@ -1,11 +1,277 @@
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Share2 } from "lucide-react";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Forge, Forger, useForge } from "@/lib/forge";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { PaginationState } from "@tanstack/react-table";
+import { postRequest } from "@/lib/axiosInstance";
+import type { ApiResponse, ApiResponseError } from "@/types";
+import {
+  TextArea,
+  TextDatePicker,
+  TextFileUploader,
+  TextInput,
+} from "@/components/layouts/FormInputs";
+import { Check, CloudUpload, Share2, X } from "lucide-react";
 import RfiStatsCards from "../components/RfiStatsCards";
 import RfiTable from "../components/RfiTable";
+import { contractManagerApi, type ContractRfiDTO, type ManagerListRfisQuery } from "../api/contractManagerApi";
+import type { UploadURLs } from "../lib/contractChanges";
 
-const RfiTabContent: React.FC = () => {
+type IssueRfiDialogProps = {
+  trigger: React.ReactNode;
+  contractId: string;
+};
+
+const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({ trigger, contractId }) => {
+  const queryClient = useQueryClient();
+  const { control } = useForge({
+    defaultValues: {
+      rfiTitle: "",
+      responseDeadline: undefined,
+      question: "",
+      files: null,
+    },
+  });
+  const [isSuccess, setIsSuccess] = React.useState(false);
+
+  const { mutateAsync: uploadFile } = useMutation<ApiResponse<UploadURLs[]>, ApiResponseError, { file: File }>({
+    mutationKey: ["uploadContractRfiFile"],
+    mutationFn: async ({ file }) => {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      return await postRequest({
+        url: "/upload",
+        payload: formData,
+        config: {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      });
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationKey: ["contractManager", "contractRfis", "create", contractId],
+    mutationFn: async (payload: ContractRfiDTO) => await contractManagerApi.createRfi(contractId, "Contract", payload),
+    onSuccess: async () => {
+      setIsSuccess(true);
+      await queryClient.invalidateQueries({
+        queryKey: ["contractManager", "contractRfis", contractId],
+      });
+    },
+  });
+
+  const handleSubmit = async (data: {
+    rfiTitle: string;
+    responseDeadline?: Date;
+    question: string;
+    files: File[] | null;
+  }) => {
+    const payload: ContractRfiDTO = {
+      title: data.rfiTitle,
+      description: data.question,
+      deadline: data.responseDeadline ? data.responseDeadline.toISOString() : undefined,
+    };
+
+    if (data.files?.length) {
+      const uploadedItems = await Promise.all(
+        data.files.map(async (file) => {
+          const res = await uploadFile({ file });
+          const firstUploaded = res.data?.data?.[0];
+          if (!firstUploaded?.url) return undefined;
+          return {
+            name: firstUploaded.name || file.name,
+            url: firstUploaded.url,
+            type: firstUploaded.type || file.type,
+            size: firstUploaded.size || file.size.toString(),
+          };
+        })
+      );
+
+      const filesPayload = uploadedItems.filter(
+        (item): item is { name: string; url: string; type: string; size: string } => Boolean(item)
+      );
+      if (filesPayload.length) {
+        payload.files = filesPayload;
+      }
+    }
+
+    await createMutation.mutateAsync(payload);
+  };
+
+  const FileListItem = ({ file, control }: { file: File; control: unknown }) => {
+    void control;
+    return <div className="hidden">{file.name}</div>;
+  };
+
+  return (
+    <Dialog
+      onOpenChange={(open) => {
+        if (!open) setIsSuccess(false);
+      }}
+    >
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
+        {isSuccess ? (
+          <div className="flex flex-col items-center gap-6 px-8 py-10">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#22C55E] text-[#22C55E]">
+              <Check className="h-8 w-8" />
+            </div>
+            <div className="text-base font-semibold text-[#0F0F0F]">
+              RFI Issued Successfully
+            </div>
+            <div className="flex w-full items-center gap-4">
+              <DialogClose asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F]"
+                >
+                  Close
+                </button>
+              </DialogClose>
+              <DialogClose asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-11 flex-1 items-center justify-center rounded-xl bg-[#2A4467] text-base font-semibold text-white"
+                >
+                  Done
+                </button>
+              </DialogClose>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between px-8 pt-8">
+              <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
+                Issue RFI
+              </DialogTitle>
+              <DialogClose asChild>
+                <button
+                  type="button"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#FCA5A5] text-[#EF4444]"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </DialogClose>
+            </div>
+            <div className="px-8 pb-8 pt-6">
+              <Forge control={control} onSubmit={handleSubmit} className="space-y-5">
+                <Forger
+                  name="rfiTitle"
+                  label="RFI Title"
+                  placeholder="Enter Title"
+                  component={TextInput}
+                />
+                <Forger
+                  name="responseDeadline"
+                  label="Response Deadline"
+                  placeholder="Enter Title"
+                  component={TextDatePicker}
+                />
+                <Forger
+                  name="question"
+                  label="Question / Description"
+                  placeholder="Enter Detail"
+                  component={TextArea}
+                  rows={5}
+                />
+                <Forger
+                  name="files"
+                  label="Upload Files"
+                  component={TextFileUploader}
+                  element={
+                    <div className="flex flex-col items-center gap-3 py-6">
+                      <CloudUpload className="h-12 w-12 text-[#2A4467]" />
+                      <div className="space-y-1 text-center">
+                        <p className="text-base font-semibold text-[#2A4467]">
+                          Drag & Drop or Click to choose files
+                        </p>
+                        <p className="text-sm text-[#6B7280]">
+                          Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
+                        </p>
+                      </div>
+                    </div>
+                  }
+                  List={FileListItem}
+                  className="rounded-xl border border-dashed border-[#2A4467]"
+                  accept={
+                    {
+                      "application/pdf": [".pdf"],
+                      "application/msword": [".doc"],
+                      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+                        ".docx",
+                      ],
+                      "application/vnd.ms-excel": [".xls"],
+                      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+                        ".xlsx",
+                      ],
+                      "application/zip": [".zip"],
+                      "image/png": [".png"],
+                      "image/jpeg": [".jpeg", ".jpg"],
+                    } as any
+                  }
+                />
+                <div className="flex items-center gap-4 pt-2">
+                  <DialogClose asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-12 flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB]"
+                    >
+                      Cancel
+                    </Button>
+                  </DialogClose>
+                  <Button
+                    type="submit"
+                    className="h-12 flex-1 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
+                  >
+                    Issue RFI
+                  </Button>
+                </div>
+              </Forge>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+type Props = {
+  contractId: string;
+};
+
+const RfiTabContent: React.FC<Props> = ({ contractId }) => {
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  const { data: rfisRes, isLoading: isRfisLoading } = useQuery({
+    queryKey: ["contractManager", "contractRfis", contractId, pagination.pageIndex, pagination.pageSize],
+    queryFn: async () => {
+      const query: ManagerListRfisQuery = {
+        page: pagination.pageIndex + 1,
+        limit: pagination.pageSize,
+      };
+      return await contractManagerApi.listRfis(contractId, query);
+    },
+    enabled: Boolean(contractId),
+  });
+
+  const rfiRows = rfisRes?.data?.contractRfis ?? [];
+  const totalCount = rfisRes?.data?.total ?? rfiRows.length;
+
   return (
     <TabsContent value="rfi" className="space-y-6">
       <div className="flex items-center justify-between">
@@ -14,13 +280,18 @@ const RfiTabContent: React.FC = () => {
           <Button variant="outline" className="h-10 rounded-xl px-4">
             <Share2 className="mr-2 h-4 w-4" /> Export Report
           </Button>
-          <Button variant="secondary" className="h-10 rounded-xl px-4">
-            Issue RFI
-          </Button>
+          <IssueRfiDialog
+            contractId={contractId}
+            trigger={
+              <Button variant="secondary" className="h-10 rounded-xl px-4">
+                Issue RFI
+              </Button>
+            }
+          />
         </div>
       </div>
 
-      <RfiStatsCards />
+      <RfiStatsCards all={totalCount} issued={0} received={0} isLoading={isRfisLoading} />
 
       <Tabs defaultValue="all" className="w-full bg-transparent">
         <TabsList className="bg-[#F2F4F7] p-1 rounded-full w-fit">
@@ -44,13 +315,31 @@ const RfiTabContent: React.FC = () => {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="all">
-          <RfiTable />
+          <RfiTable
+            rows={rfiRows}
+            isLoading={isRfisLoading}
+            totalCount={totalCount}
+            pagination={pagination}
+            setPagination={setPagination}
+          />
         </TabsContent>
         <TabsContent value="issued">
-          <RfiTable />
+          <RfiTable
+            rows={rfiRows}
+            isLoading={isRfisLoading}
+            totalCount={totalCount}
+            pagination={pagination}
+            setPagination={setPagination}
+          />
         </TabsContent>
         <TabsContent value="received">
-          <RfiTable />
+          <RfiTable
+            rows={rfiRows}
+            isLoading={isRfisLoading}
+            totalCount={totalCount}
+            pagination={pagination}
+            setPagination={setPagination}
+          />
         </TabsContent>
       </Tabs>
     </TabsContent>

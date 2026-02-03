@@ -8,6 +8,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Forge, Forger, useForge } from "@/lib/forge";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { postRequest } from "@/lib/axiosInstance";
+import type { ApiResponse, ApiResponseError } from "@/types";
 import {
   TextArea,
   TextFileUploader,
@@ -15,12 +18,18 @@ import {
   TextSelect,
 } from "@/components/layouts/FormInputs";
 import { CloudUpload } from "lucide-react";
+import { contractManagerApi, type ContractChangeManagerDTO } from "../api/contractManagerApi";
+import { toContractChangeFileItem, toManagerCreateChangePayload, type UploadURLs } from "../lib/contractChanges";
 
 type Props = {
   trigger: React.ReactNode;
+  contractId: string;
 };
 
-const CreateChangeDialog: React.FC<Props> = ({ trigger }) => {
+const CreateChangeDialog: React.FC<Props> = ({ trigger, contractId }) => {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = React.useState(false);
+
   const { control } = useForge({
     defaultValues: {
       changeName: "",
@@ -32,7 +41,43 @@ const CreateChangeDialog: React.FC<Props> = ({ trigger }) => {
     },
   });
 
-  const handleSubmit = (data: {
+  const { mutateAsync: uploadFile, isPending: isUploadingFiles } = useMutation<
+    ApiResponse<UploadURLs[]>,
+    ApiResponseError,
+    { file: File }
+  >({
+    mutationKey: ["uploadContractChangeFile"],
+    mutationFn: async ({ file }) => {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      return await postRequest({
+        url: "/upload",
+        payload: formData,
+        config: {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      });
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationKey: ["contractManager", "contractChanges", "create", contractId],
+    mutationFn: async (payload: ContractChangeManagerDTO) => {
+      const res = await contractManagerApi.createChangeRequest(contractId, "Contract", payload);
+      return res;
+    },
+    onSuccess: async () => {
+      setOpen(false);
+      await queryClient.invalidateQueries({
+        queryKey: ["contractManager", "contractChanges"],
+      });
+    },
+  });
+
+  const handleSubmit = async (data: {
     changeName: string;
     changeType: string;
     amount: string;
@@ -40,7 +85,34 @@ const CreateChangeDialog: React.FC<Props> = ({ trigger }) => {
     description: string;
     files: File[] | null;
   }) => {
-    void data;
+    void data.amount;
+
+    const payload: ContractChangeManagerDTO = toManagerCreateChangePayload({
+      changeName: data.changeName,
+      changeType: data.changeType,
+      urgency: data.urgency,
+      description: data.description,
+    });
+
+    if (data.files?.length) {
+      const uploadedItems = await Promise.all(
+        data.files.map(async (file) => {
+          const res = await uploadFile({ file });
+          const firstUploaded = res.data.data?.[0];
+          if (!firstUploaded?.url) return undefined;
+          return toContractChangeFileItem(file, firstUploaded);
+        })
+      );
+
+      const filesPayload = uploadedItems.filter(
+        (item): item is { name: string; url: string; type: string; size: number } => Boolean(item)
+      );
+      if (filesPayload.length) {
+        payload.files = filesPayload;
+      }
+    }
+
+    await createMutation.mutateAsync(payload);
   };
 
   const FileListItem = ({ file, control }: { file: File; control: unknown }) => {
@@ -49,7 +121,7 @@ const CreateChangeDialog: React.FC<Props> = ({ trigger }) => {
   };
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-8 pt-8">
@@ -151,6 +223,7 @@ const CreateChangeDialog: React.FC<Props> = ({ trigger }) => {
               </DialogClose>
               <Button
                 type="submit"
+                disabled={createMutation.isPending || isUploadingFiles}
                 className="h-12 flex-1 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
               >
                 Send Request

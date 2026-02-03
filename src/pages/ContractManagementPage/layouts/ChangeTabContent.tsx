@@ -5,8 +5,54 @@ import { Share2 } from "lucide-react";
 import ChangeStatsCards from "../components/ChangeStatsCards";
 import ChangeTable from "../components/ChangeTable";
 import CreateChangeDialog from "../components/CreateChangeDialog";
+import { useQuery } from "@tanstack/react-query";
+import type { PaginationState } from "@tanstack/react-table";
+import { contractManagerApi, type ManagerListChangesQuery } from "../api/contractManagerApi";
+import { changeTabToApiType, type ChangeTabValue } from "@/pages/ContractManagementPage/lib/contractChanges";
 
-const ChangeTabContent: React.FC = () => {
+type Props = {
+  contractId: string;
+};
+
+const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
+  const [activeTab, setActiveTab] = React.useState<ChangeTabValue>("all");
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  const { data: statsRes, isLoading: isStatsLoading } = useQuery({
+    queryKey: ["contractManager", "contractChanges", "stats", contractId],
+    queryFn: async () => await contractManagerApi.getChangeStats(contractId),
+    enabled: Boolean(contractId),
+  });
+
+  const { data: changesRes, isLoading: isChangesLoading } = useQuery({
+    queryKey: [
+      "contractManager",
+      "contractChanges",
+      contractId,
+      activeTab,
+      pagination.pageIndex,
+      pagination.pageSize,
+    ],
+    queryFn: async () => {
+      const type = changeTabToApiType(activeTab);
+      const query: ManagerListChangesQuery = {
+        page: pagination.pageIndex + 1,
+        limit: pagination.pageSize,
+      };
+      if (type) {
+        query.type = type;
+      }
+      return await contractManagerApi.listChanges(contractId, query);
+    },
+    enabled: Boolean(contractId),
+  });
+
+  const changeRows = changesRes?.data?.changes ?? [];
+  const totalCount = changesRes?.data?.total ?? changeRows.length;
+
   return (
     <TabsContent value="change" className="space-y-6">
       <div className="flex items-center justify-between">
@@ -24,13 +70,21 @@ const ChangeTabContent: React.FC = () => {
                 Create Change
               </Button>
             }
+            contractId={contractId}
           />
         </div>
       </div>
 
-      <ChangeStatsCards />
+      <ChangeStatsCards stats={statsRes?.data} isLoading={isStatsLoading} />
 
-      <Tabs defaultValue="all" className="w-full bg-transparent">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          setActiveTab(value as ChangeTabValue);
+          setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+        }}
+        className="w-full bg-transparent"
+      >
         <TabsList className="inline-flex w-fit items-center gap-1 rounded-full bg-[#EEF1F4] p-1 mb-3">
           <TabsTrigger
             value="all"
@@ -65,19 +119,49 @@ const ChangeTabContent: React.FC = () => {
         </TabsList>
 
         <TabsContent value="all">
-          <ChangeTable />
+          <ChangeTable
+            rows={changeRows}
+            isLoading={isChangesLoading}
+            totalCount={totalCount}
+            pagination={pagination}
+            setPagination={setPagination}
+          />
         </TabsContent>
         <TabsContent value="requests">
-          <ChangeTable />
+          <ChangeTable
+            rows={changeRows.filter((row) => row.type === "request")}
+            isLoading={isChangesLoading}
+            totalCount={totalCount}
+            pagination={pagination}
+            setPagination={setPagination}
+          />
         </TabsContent>
         <TabsContent value="orders">
-          <ChangeTable />
+          <ChangeTable
+            rows={changeRows.filter((row) => row.type === "order")}
+            isLoading={isChangesLoading}
+            totalCount={totalCount}
+            pagination={pagination}
+            setPagination={setPagination}
+          />
         </TabsContent>
         <TabsContent value="directive">
-          <ChangeTable />
+          <ChangeTable
+            rows={changeRows.filter((row) => row.type === "directive")}
+            isLoading={isChangesLoading}
+            totalCount={totalCount}
+            pagination={pagination}
+            setPagination={setPagination}
+          />
         </TabsContent>
         <TabsContent value="proposal">
-          <ChangeTable />
+          <ChangeTable
+            rows={changeRows.filter((row) => row.type === "proposal")}
+            isLoading={isChangesLoading}
+            totalCount={totalCount}
+            pagination={pagination}
+            setPagination={setPagination}
+          />
         </TabsContent>
       </Tabs>
     </TabsContent>

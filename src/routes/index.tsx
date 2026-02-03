@@ -19,6 +19,7 @@ import InvitationsPage from "@/pages/InvitationsPage";
 import AssignedEvaluationDetailPage from "@/pages/EvaluationManagementPage/AssignedEvaluationDetailPage";
 import SubmittedDocumentPage from "@/pages/EvaluationManagementPage/SubmittedDocumentPage";
 import UserManagementPage from "@/pages/UserManagementPage/UserManagementPage";
+import BusinessDivisionsPage from "@/pages/BusinessDivisionsPage";
 import CompaniesPage from "@/pages/CompaniesPage";
 import CompanyDetailPage from "@/pages/CompaniesPage/CompanyDetailPage";
 import SubscriptionsPage from "@/pages/SubscriptionsPage";
@@ -278,6 +279,14 @@ export const routes = [
         element: (
           <ProtectedRoute>
             <UserManagementPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/dashboard/business-divisions",
+        element: (
+          <ProtectedRoute>
+            <BusinessDivisionsPage />
           </ProtectedRoute>
         ),
       },

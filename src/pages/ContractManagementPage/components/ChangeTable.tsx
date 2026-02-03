@@ -1,6 +1,6 @@
 import React from "react";
 import { DataTable } from "@/components/layouts/DataTable";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,44 +10,49 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import ChangeDetailsSheet from "./ChangeDetailsSheet";
+import type { ContractChangeDTO } from "../api/contractManagerApi";
+import { formatChangeTypeLabel } from "../lib/contractChanges";
 
-export type ChangeRow = {
-  id: string;
-  title: string;
-  type: "Request" | "Order" | "Directive" | "Proposal";
-  value: string;
-  submitted: string;
-  status: "Approved" | "Pending" | "Rejected";
-};
-
-const columns: ColumnDef<ChangeRow>[] = [
-  { accessorKey: "id", header: "Change ID" },
-  { accessorKey: "title", header: "Change Title" },
-  { accessorKey: "type", header: "Type" },
+const columns: ColumnDef<ContractChangeDTO>[] = [
   {
-    accessorKey: "value",
-    header: "Value",
-    cell: ({ getValue }) => (
-      <span className="font-semibold">{getValue<string>()}</span>
-    ),
-  },
-  { accessorKey: "submitted", header: "Submitted" },
-  {
-    accessorKey: "status",
-    header: "Status",
+    accessorKey: "title",
+    header: "Change Title",
     cell: ({ getValue }) => {
-      const s = getValue<ChangeRow["status"]>();
-      const tone =
-        s === "Approved"
-          ? "bg-green-100 text-green-700"
-          : s === "Pending"
-            ? "bg-yellow-100 text-yellow-700"
-            : "bg-red-100 text-red-700";
-      return (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${tone}`}>
-          {s}
-        </span>
-      );
+      const title = getValue<string | undefined>();
+      return <span className="font-medium text-slate-900">{title ?? "-"}</span>;
+    },
+  },
+  {
+    accessorKey: "type",
+    header: "Type",
+    cell: ({ getValue }) => {
+      const type = getValue<ContractChangeDTO["type"] | undefined>();
+      return <span>{type ? formatChangeTypeLabel(type) : "-"}</span>;
+    },
+  },
+  {
+    accessorKey: "urgency",
+    header: "Urgency",
+    cell: ({ getValue }) => {
+      const urgency = getValue<ContractChangeDTO["urgency"] | undefined>();
+      if (!urgency) return "-";
+      return urgency.charAt(0).toUpperCase() + urgency.slice(1);
+    },
+  },
+  {
+    accessorKey: "proposalCategory",
+    header: "Proposal Category",
+    cell: ({ getValue }) => {
+      const category = getValue<string | undefined>();
+      return category ?? "-";
+    },
+  },
+  {
+    id: "files",
+    header: "Files",
+    cell: ({ row }) => {
+      const count = row.original.files?.length ?? 0;
+      return <span className="font-semibold text-slate-900">{count}</span>;
     },
   },
   {
@@ -76,71 +81,40 @@ const columns: ColumnDef<ChangeRow>[] = [
   },
 ];
 
-const sampleRows: ChangeRow[] = [
-  {
-    id: "CD-2025-10",
-    title: "Additional structural reinforcement",
-    type: "Request",
-    value: "$2.50M",
-    submitted: "2025-03-25",
-    status: "Approved",
-  },
-  {
-    id: "CD-2025-10",
-    title: "Additional structural reinforcement",
-    type: "Order",
-    value: "$2.50M",
-    submitted: "2025-03-25",
-    status: "Pending",
-  },
-  {
-    id: "CD-2025-10",
-    title: "Additional structural reinforcement",
-    type: "Directive",
-    value: "$2.50M",
-    submitted: "2025-03-25",
-    status: "Approved",
-  },
-  {
-    id: "CD-2025-10",
-    title: "Additional structural reinforcement",
-    type: "Proposal",
-    value: "$2.50M",
-    submitted: "2025-03-25",
-    status: "Rejected",
-  },
-  {
-    id: "CD-2025-10",
-    title: "Additional structural reinforcement",
-    type: "Request",
-    value: "$2.50M",
-    submitted: "2025-03-25",
-    status: "Approved",
-  },
-  {
-    id: "CD-2025-10",
-    title: "Additional structural reinforcement",
-    type: "Request",
-    value: "$2.50M",
-    submitted: "2025-03-25",
-    status: "Approved",
-  },
-  {
-    id: "CD-2025-10",
-    title: "Additional structural reinforcement",
-    type: "Request",
-    value: "$2.50M",
-    submitted: "2025-03-25",
-    status: "Approved",
-  },
-];
+type ChangeTableProps = {
+  rows?: ContractChangeDTO[];
+  isLoading?: boolean;
+  totalCount?: number;
+  pagination: PaginationState;
+  setPagination: React.Dispatch<React.SetStateAction<PaginationState>>;
+};
 
-const ChangeTable: React.FC = () => {
+const ChangeTable: React.FC<ChangeTableProps> = ({
+  rows = [],
+  isLoading,
+  totalCount,
+  pagination,
+  setPagination,
+}) => {
   const [search, setSearch] = React.useState("");
+
+  const filteredRows = React.useMemo(() => {
+    if (!search) return rows;
+    const query = search.toLowerCase();
+    return rows.filter((row) => {
+      return (
+        (row.title ?? "").toLowerCase().includes(query) ||
+        (row.description ?? "").toLowerCase().includes(query) ||
+        (row.type ?? "").toLowerCase().includes(query) ||
+        (row.urgency ?? "").toLowerCase().includes(query) ||
+        (row.proposalCategory ?? "").toLowerCase().includes(query)
+      );
+    });
+  }, [rows, search]);
 
   return (
     <div className="space-y-4" data-testid="changes-table ">
-      <DataTable<ChangeRow>
+      <DataTable<ContractChangeDTO>
         header={() => (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -157,14 +131,26 @@ const ChangeTable: React.FC = () => {
             </div>
           </div>
         )}
-        data={sampleRows}
+        emptyPlaceholder={
+          <div className="rounded-xl border border-slate-200 p-6 text-sm text-slate-600">
+            No changes found.
+          </div>
+        }
+        data={filteredRows}
         classNames={{
           container:
             "bg-white dark:bg-slate-950 rounded-xl px-3 border border-gray-300 dark:border-slate-600",
           expandedCell: "px-5",
         }}
         columns={columns}
-        options={{ disableSelection: true }}
+        options={{
+          disableSelection: true,
+          isLoading,
+          totalCounts: totalCount ?? filteredRows.length,
+          manualPagination: true,
+          pagination,
+          setPagination,
+        }}
       />
     </div>
   );

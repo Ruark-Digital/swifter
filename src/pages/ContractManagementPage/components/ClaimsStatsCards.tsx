@@ -1,6 +1,7 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText } from "lucide-react";
+import type { ContractClaimStatsDTO } from "../api/contractManagerApi";
 
 type StatProps = {
   title: string;
@@ -35,13 +36,39 @@ const StatCard: React.FC<StatProps> = ({ title, value, tone, testId }) => {
   );
 };
 
-const ClaimsStatsCards: React.FC = () => {
+type Props = {
+  stats?: ContractClaimStatsDTO;
+  isLoading?: boolean;
+};
+
+const ClaimsStatsCards: React.FC<Props> = ({ stats, isLoading }) => {
+  void isLoading;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      <StatCard title="All Claims" value={8} tone="gray" testId="claims-stats-all" />
-      <StatCard title="Approved Claims" value={4} tone="green" testId="claims-stats-approved" />
-      <StatCard title="Under Review Claims" value={5} tone="yellow" testId="claims-stats-review" />
-      <StatCard title="Rejected Claims" value={5} tone="red" testId="claims-stats-rejected" />
+      <StatCard
+        title="All Claims"
+        value={stats?.total ?? 0}
+        tone="gray"
+        testId="claims-stats-all"
+      />
+      <StatCard
+        title="Approved Claims"
+        value={stats?.approved ?? 0}
+        tone="green"
+        testId="claims-stats-approved"
+      />
+      <StatCard
+        title="Under Review Claims"
+        value={stats?.pending ?? 0}
+        tone="yellow"
+        testId="claims-stats-review"
+      />
+      <StatCard
+        title="Rejected Claims"
+        value={stats?.rejected ?? 0}
+        tone="red"
+        testId="claims-stats-rejected"
+      />
     </div>
   );
 };
