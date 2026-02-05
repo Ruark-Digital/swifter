@@ -10,6 +10,9 @@ import CreateContractSheet from "./components/CreateContractSheet";
 import { getRequest } from "@/lib/axiosInstance";
 import type { ApiResponseError } from "@/types";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import { useUserRole } from "@/hooks/useUserRole";
+import VendorStatsCards from "./components/VendorStatsCards";
+import VendorContractsTable from "./components/VendorContractsTable";
 
 type ContractApi = {
   _id: string;
@@ -53,7 +56,7 @@ type ContractListResponse = {
   data: { contracts: ContractApi[], totalContracts: 0 };
 };
 
-const useContractsStats = () => {
+const useContractsStats = (enabled = true) => {
   const queryKey = useUserQueryKey(["contracts-stats"]);
   return useQuery<ContractStatsResponse, ApiResponseError>({
     queryKey,
@@ -61,11 +64,12 @@ const useContractsStats = () => {
       const res = await getRequest({ url: "/contract/manager/contracts/stats" });
       return res.data as ContractStatsResponse;
     },
+    enabled,
     staleTime: 60000,
   });
 };
 
-const useAllContracts = () => {
+const useAllContracts = (enabled = true) => {
   const queryKey = useUserQueryKey(["contracts-all"]);
   return useQuery<ContractListResponse, ApiResponseError>({
     queryKey,
@@ -73,11 +77,12 @@ const useAllContracts = () => {
       const res = await getRequest({ url: "/contract/manager/contracts" });
       return res.data as ContractListResponse;
     },
+    enabled,
     staleTime: 60000,
   });
 };
 
-const useMyContracts = () => {
+const useMyContracts = (enabled = true) => {
   const queryKey = useUserQueryKey(["contracts-me"]);
   return useQuery<ContractListResponse, ApiResponseError>({
     queryKey,
@@ -85,6 +90,7 @@ const useMyContracts = () => {
       const res = await getRequest({ url: "/contract/manager/contracts/me" });
       return res.data as ContractListResponse;
     },
+    enabled,
     staleTime: 60000,
   });
 };
@@ -124,11 +130,13 @@ const mapContractsToRows = (contracts?: ContractApi[]): ContractRow[] => {
 };
 
 const ContractManagementPage: React.FC = () => {
-  const { data: statsData } = useContractsStats();
+  const { isVendor } = useUserRole();
+  const managerQueriesEnabled = !isVendor;
+  const { data: statsData } = useContractsStats(managerQueriesEnabled);
   const { data: allContractsData, isLoading: isAllContractsLoading } =
-    useAllContracts();
+    useAllContracts(managerQueriesEnabled);
   const { data: myContractsData, isLoading: isMyContractsLoading } =
-    useMyContracts();
+    useMyContracts(managerQueriesEnabled);
 
   const stats = statsData?.data;
   const statsCounts = stats
@@ -143,27 +151,8 @@ const ContractManagementPage: React.FC = () => {
       }
     : undefined;
 
-  const demoContracts: ContractApi[] = [
-    {
-      _id: "demo-1",
-      title: "Demo Contract 1",
-      status: "draft",
-      totalAmount: 5000,
-      currency: "$",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      _id: "demo-2",
-      title: "Demo Contract 2",
-      status: "active",
-      totalAmount: 12000,
-      currency: "$",
-      createdAt: new Date().toISOString(),
-    },
-  ];
-
-  const allContractsRows = mapContractsToRows(allContractsData?.data.contracts ?? demoContracts);
-  const myContractsRows = mapContractsToRows(myContractsData?.data.contracts ?? demoContracts);
+  const allContractsRows = mapContractsToRows(allContractsData?.data.contracts);
+  const myContractsRows = mapContractsToRows(myContractsData?.data.contracts);
 
   return (
     <div className="space-y-8 pt-10">
@@ -174,58 +163,69 @@ const ContractManagementPage: React.FC = () => {
         robots="noindex, nofollow"
       />
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-slate-900">Contracts</h2>
-        <div className="flex items-center gap-4">
-          <Button variant="outline" className="rounded-xl">
-            <Share2 className="mr-2 h-4 w-4" /> Export
-          </Button>
-          <CreateContractSheet
-            trigger={
-              <Button
-                className="rounded-xl"
-                data-testid="create-contracts-button"
-              >
-                <Plus className="mr-2 h-4 w-4" /> Create Contracts
+      {isVendor ? (
+        <>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-slate-900">Contracts</h2>
+          </div>
+
+          <VendorStatsCards />
+
+          <VendorContractsTable rows={[]} isLoading={false} totalCount={0} />
+        </>
+      ) : (
+        <>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-slate-900">Contracts</h2>
+            <div className="flex items-center gap-4">
+              <Button variant="outline" className="rounded-xl">
+                <Share2 className="mr-2 h-4 w-4" /> Export
               </Button>
-            }
-          />
-        </div>
-      </div>
+              <CreateContractSheet
+                trigger={
+                  <Button className="rounded-xl" data-testid="create-contracts-button">
+                    <Plus className="mr-2 h-4 w-4" /> Create Contracts
+                  </Button>
+                }
+              />
+            </div>
+          </div>
 
-      <StatsCards counts={statsCounts} />
+          <StatsCards counts={statsCounts} />
 
-      <Tabs defaultValue="all" className="w-full bg-transparent space-y-4">
-        <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
-          <TabsTrigger
-            value="all"
-            className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-          >
-            All Contracts
-          </TabsTrigger>
-          <TabsTrigger
-            value="mine"
-            className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-          >
-            My Contracts
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="all">
-          <ContractsTable
-            rows={allContractsRows}
-            isLoading={isAllContractsLoading}
-            totalCount={allContractsRows.length}
-          />
-        </TabsContent>
-        <TabsContent value="mine">
-          <ContractsTable
-            rows={myContractsRows}
-            isLoading={isMyContractsLoading}
-            totalCount={myContractsRows.length}
-          />
-        </TabsContent>
-      </Tabs>
+          <Tabs defaultValue="all" className="w-full bg-transparent space-y-4">
+            <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
+              <TabsTrigger
+                value="all"
+                className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+              >
+                All Contracts
+              </TabsTrigger>
+              <TabsTrigger
+                value="mine"
+                className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+              >
+                My Contracts
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="all">
+              <ContractsTable
+                rows={allContractsRows}
+                isLoading={isAllContractsLoading}
+                totalCount={allContractsRows.length}
+              />
+            </TabsContent>
+            <TabsContent value="mine">
+              <ContractsTable
+                rows={myContractsRows}
+                isLoading={isMyContractsLoading}
+                totalCount={myContractsRows.length}
+              />
+            </TabsContent>
+          </Tabs>
+        </>
+      )}
     </div>
   );
 };
