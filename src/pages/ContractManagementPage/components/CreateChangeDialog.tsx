@@ -129,8 +129,6 @@ const CreateChangeDialog: React.FC<Props> = ({ trigger, contractId }) => {
       }
     }
 
-    console.log({ payload })
-
     try {
       await createMutation.mutateAsync(payload);
     } catch {

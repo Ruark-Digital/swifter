@@ -29,6 +29,7 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { useWatch } from "react-hook-form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X } from "lucide-react";
+import { format } from "date-fns";
 
 type Props = {
   trigger: React.ReactNode;
@@ -57,7 +58,7 @@ const schema = yup.object({
         email: yup.string().optional(),
         role: yup.string().optional(),
         phone: yup.string().optional(),
-      })
+      }),
     )
     .optional(),
   internalTeamMeta: yup
@@ -68,7 +69,7 @@ const schema = yup.object({
         email: yup.string().optional(),
         role: yup.string().optional(),
         phone: yup.string().optional(),
-      })
+      }),
     )
     .optional(),
   visibility: yup.string().optional(),
@@ -84,7 +85,7 @@ const schema = yup.object({
         amount: yup.mixed().optional(),
         dueDate: yup.date().optional(),
         deliverable: yup.string().optional(),
-      })
+      }),
     )
     .optional(),
   effectiveDate: yup
@@ -102,7 +103,7 @@ const schema = yup.object({
         const { effectiveDate } = this.parent as { effectiveDate?: Date };
         if (!value || !effectiveDate) return true;
         return value >= effectiveDate;
-      }
+      },
     ),
   duration: yup.string().optional(),
   termType: yup.string().optional(),
@@ -112,7 +113,7 @@ const schema = yup.object({
       yup.object({
         name: yup.string().optional(),
         dueDate: yup.date().optional(),
-      })
+      }),
     )
     .optional(),
   draftStartDate: yup.date().optional(),
@@ -130,7 +131,7 @@ const schema = yup.object({
         approvers: yup.array().optional(),
         approvalLevel: yup.string().optional(),
         amount: yup.mixed().optional(),
-      })
+      }),
     )
     .optional(),
   insuranceExpiryDate: yup.date().optional(),
@@ -145,7 +146,7 @@ const schema = yup.object({
       yup.object({
         name: yup.string().optional(),
         limit: yup.string().optional(),
-      })
+      }),
     )
     .optional(),
   securities: yup
@@ -154,7 +155,7 @@ const schema = yup.object({
         type: yup.string().optional(),
         amount: yup.mixed().optional(),
         dueDate: yup.date().optional(),
-      })
+      }),
     )
     .optional(),
 });
@@ -301,10 +302,14 @@ const toPersonnelOrUndefined = (value: unknown) => {
     typeof direct === "object" &&
     (typeof direct.name === "string" || typeof direct.email === "string")
   ) {
-    const name = typeof direct.name === "string" ? direct.name.trim() : undefined;
-    const email = typeof direct.email === "string" ? direct.email.trim() : undefined;
-    const role = typeof direct.role === "string" ? direct.role.trim() : undefined;
-    const phone = typeof direct.phone === "string" ? direct.phone.trim() : undefined;
+    const name =
+      typeof direct.name === "string" ? direct.name.trim() : undefined;
+    const email =
+      typeof direct.email === "string" ? direct.email.trim() : undefined;
+    const role =
+      typeof direct.role === "string" ? direct.role.trim() : undefined;
+    const phone =
+      typeof direct.phone === "string" ? direct.phone.trim() : undefined;
     if (!name && !email) return undefined;
     return {
       ...(name ? { name } : {}),
@@ -365,7 +370,12 @@ type SendForApprovalDialogProps = {
 };
 
 const SendForApprovalDialog = React.memo(
-  ({ control, open, onOpenChange, onSendForApproval }: SendForApprovalDialogProps) => {
+  ({
+    control,
+    open,
+    onOpenChange,
+    onSendForApproval,
+  }: SendForApprovalDialogProps) => {
     const approvalGroups = useWatch({ control, name: "approvalGroups" }) as
       | {
           name?: string | null;
@@ -389,7 +399,7 @@ const SendForApprovalDialog = React.memo(
           }`,
           value: String(index),
         })),
-      [approvalGroups]
+      [approvalGroups],
     );
 
     const selectedGroupIndex =
@@ -401,7 +411,7 @@ const SendForApprovalDialog = React.memo(
 
     const selectedApprovers = React.useMemo(
       () => (selectedGroup?.approvers ?? []) as any[],
-      [selectedGroup?.approvers]
+      [selectedGroup?.approvers],
     );
 
     const getApproverKey = React.useCallback(
@@ -411,24 +421,26 @@ const SendForApprovalDialog = React.memo(
         approver?.value ||
         approver?.text ||
         String(index),
-      []
+      [],
     );
 
     const toggleApprover = React.useCallback(
       (approverId: string, checked: boolean) => {
         setAssignedApproverIds((prev) =>
-          checked ? [...prev, approverId] : prev.filter((id) => id !== approverId)
+          checked
+            ? [...prev, approverId]
+            : prev.filter((id) => id !== approverId),
         );
       },
-      []
+      [],
     );
 
     const assignedApprovers = React.useMemo(
       () =>
         selectedApprovers.filter((approver, index) =>
-          assignedApproverIds.includes(getApproverKey(approver, index))
+          assignedApproverIds.includes(getApproverKey(approver, index)),
         ),
-      [assignedApproverIds, getApproverKey, selectedApprovers]
+      [assignedApproverIds, getApproverKey, selectedApprovers],
     );
 
     return (
@@ -449,7 +461,9 @@ const SendForApprovalDialog = React.memo(
                 <select
                   className="w-full h-12 border border-gray-300 rounded-lg px-4 pr-10 text-sm text-slate-700 focus:border-[#2A4467] focus:ring-[#2A4467]"
                   value={selectedApprovalGroup}
-                  onChange={(event) => setSelectedApprovalGroup(event.target.value)}
+                  onChange={(event) =>
+                    setSelectedApprovalGroup(event.target.value)
+                  }
                 >
                   <option value="">Select Group</option>
                   {approvalGroupOptions.map((option) => (
@@ -476,7 +490,10 @@ const SendForApprovalDialog = React.memo(
                 {selectedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
                   const name =
-                    approver?.text || approver?.name || approver?.label || "Unnamed";
+                    approver?.text ||
+                    approver?.name ||
+                    approver?.label ||
+                    "Unnamed";
                   const email = approver?.id || approver?.email || "";
                   const role = approver?.meta?.role
                     ? approver.meta.role
@@ -489,10 +506,16 @@ const SendForApprovalDialog = React.memo(
                       className="grid grid-cols-[1fr_160px_140px] items-center px-6 py-4"
                     >
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold text-slate-700">{name}</p>
-                        {email && <p className="text-xs text-blue-600 ">{email}</p>}
+                        <p className="text-sm font-semibold text-slate-700">
+                          {name}
+                        </p>
+                        {email && (
+                          <p className="text-xs text-blue-600 ">{email}</p>
+                        )}
                       </div>
-                      <p className="text-sm text-slate-600 text-center">{role}</p>
+                      <p className="text-sm text-slate-600 text-center">
+                        {role}
+                      </p>
                       <div className="flex items-center justify-center gap-2">
                         <Checkbox
                           checked={assignedApproverIds.includes(approverId)}
@@ -509,7 +532,9 @@ const SendForApprovalDialog = React.memo(
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-900">Assigned Approvers</p>
+              <p className="text-sm font-medium text-slate-900">
+                Assigned Approvers
+              </p>
               <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-slate-50 px-4 py-4">
                 {assignedApprovers.length === 0 && (
                   <p className="text-sm text-slate-500">Search</p>
@@ -517,7 +542,10 @@ const SendForApprovalDialog = React.memo(
                 {assignedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
                   const name =
-                    approver?.text || approver?.name || approver?.label || "Unnamed";
+                    approver?.text ||
+                    approver?.name ||
+                    approver?.label ||
+                    "Unnamed";
                   return (
                     <div
                       key={approverId}
@@ -561,7 +589,7 @@ const SendForApprovalDialog = React.memo(
         </DialogContent>
       </Dialog>
     );
-  }
+  },
 );
 
 const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
@@ -634,7 +662,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       Array.isArray(typesQuery.data?.data)
         ? typesQuery.data.data.map((t) => ({ label: t.name, value: t._id }))
         : [],
-    [typesQuery.data?.data]
+    [typesQuery.data?.data],
   );
   const paymentTermOptions = React.useMemo(
     () =>
@@ -644,14 +672,14 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
             value: t._id,
           }))
         : [],
-    [paymentTermsQuery.data?.data]
+    [paymentTermsQuery.data?.data],
   );
   const termTypeOptions = React.useMemo(
     () =>
       Array.isArray(termTypesQuery.data?.data)
         ? termTypesQuery.data.data.map((t) => ({ label: t.name, value: t._id }))
         : [],
-    [termTypesQuery.data?.data]
+    [termTypesQuery.data?.data],
   );
   const internalStakeholderOptions = React.useMemo(
     () =>
@@ -661,14 +689,14 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
             value: p.email || p._id,
           }))
         : [],
-    [personnelQuery.data?.data]
+    [personnelQuery.data?.data],
   );
   const projectOptions = React.useMemo(
     () =>
       Array.isArray(projectsData?.data)
         ? projectsData.data.map((p) => ({ label: p.name, value: p._id }))
         : [],
-    [projectsData?.data]
+    [projectsData?.data],
   );
   const awardedOptions = React.useMemo(
     () =>
@@ -680,12 +708,15 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
             vendorId: a.vendor._id,
           }))
         : [],
-    [awardedQuery.data?.data]
+    [awardedQuery.data?.data],
   );
 
   const mutation = useMutation({
     mutationFn: async (payload: any) => {
-      const res = await postRequest({ url: "/contract/manager/contracts", payload });
+      const res = await postRequest({
+        url: "/contract/manager/contracts",
+        payload,
+      });
       return res.data as {
         status: number;
         message: string;
@@ -705,245 +736,264 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     },
   });
 
-  const buildPayload = React.useCallback((
-    data: CreateContractFormData,
-    status: "draft" | "publish"
-  ) => {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-    console.log({ data })
+  const buildPayload = React.useCallback(
+    (data: CreateContractFormData, status: "draft" | "publish") => {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+      console.log({ data });
 
-    const relationship =
-      data.relationship === "msa"
-        ? "msa_project"
-        : data.relationship === "standalone"
-        ? "standalone"
-        : "project";
+      const relationship =
+        data.relationship === "msa"
+          ? "msa_project"
+          : data.relationship === "standalone"
+            ? "standalone"
+            : "project";
 
-    const holdBackRaw =
-      typeof data.holdback === "string" && data.holdback.trim().endsWith("%")
-        ? data.holdback.replace("%", "")
-        : data.holdback;
-    const holdBack = toNumberOrUndefined(holdBackRaw);
+      const holdBackRaw =
+        typeof data.holdback === "string" && data.holdback.trim().endsWith("%")
+          ? data.holdback.replace("%", "")
+          : data.holdback;
+      const holdBack = toNumberOrUndefined(holdBackRaw);
 
-    const paymentStructureIsMilestone = data.paymentStructure === "milestone";
+      const paymentStructureIsMilestone = data.paymentStructure === "milestone";
 
-    // Map internal payment structure to API enum
-    let paymentStructureEnum = undefined;
-    if (data.paymentStructure === "monthly") paymentStructureEnum = "Monthly";
-    if (data.paymentStructure === "milestone") paymentStructureEnum = "Milestone";
-    if (data.paymentStructure === "lump_sum") paymentStructureEnum = "Progress Draw";
+      // Map internal payment structure to API enum
+      let paymentStructureEnum = undefined;
+      if (data.paymentStructure === "monthly") paymentStructureEnum = "Monthly";
+      if (data.paymentStructure === "milestone")
+        paymentStructureEnum = "Milestone";
+      if (data.paymentStructure === "lump_sum")
+        paymentStructureEnum = "Progress Draw";
 
-    const approvers =
-      (data.approvalGroups ?? []).flatMap((g) => {
-        const lvl = g.approvalLevel ? Number(g.approvalLevel) : undefined;
-        const amountValue = toNumberOrUndefined(g.amount);
-        // API expects user as array of strings
-        const userIds = (g.approvers ?? [])
-          .map((u: any) => u?.value ?? u)
-          .filter(Boolean);
-        return {
-          user: userIds,
-          groupName: g.name,
-          level: lvl,
-          amount: amountValue,
-        };
-      }) ?? [];
-
-    const milestone = paymentStructureIsMilestone
-      ? (data.milestones ?? []).map((m) => {
-          const amount = toNumberOrUndefined(m.amount);
-          const dueDate = m.dueDate
-            ? new Date(m.dueDate as unknown as Date).toISOString().slice(0, 10)
-            : undefined;
-          const deliverableName =
-            typeof m.deliverable === "string" ? m.deliverable.trim() : "";
+      const approvers =
+        (data.approvalGroups ?? []).flatMap((g) => {
+          const lvl = g.approvalLevel ? Number(g.approvalLevel) : undefined;
+          const amountValue = toNumberOrUndefined(g.amount);
+          // API expects user as array of strings
+          const userIds = (g.approvers ?? [])
+            .map((u: any) => u?.value ?? u)
+            .filter(Boolean);
           return {
-            ...(amount !== undefined ? { amount } : {}),
-            dueDate,
-            name: m.name,
-            ...(deliverableName
-              ? { deliverable: { name: deliverableName, ...(dueDate ? { dueDate } : {}) } }
-              : {}),
+            user: userIds,
+            groupName: g.name,
+            level: lvl,
+            amount: amountValue,
           };
-        })
-      : undefined;
+        }) ?? [];
 
-    const deliverables =
-      (data.deliverables ?? []).map((d) => ({
-        name: d.name,
-        dueDate: d.dueDate
-          ? new Date(d.dueDate as unknown as Date).toISOString().slice(0, 10)
+      const milestone = paymentStructureIsMilestone
+        ? (data.milestones ?? []).map((m) => {
+            const amount = toNumberOrUndefined(m.amount);
+            const dueDate = m.dueDate
+              ? format(m.dueDate, "yyyy-MM-dd'T'HH:mm:ss")
+              : undefined;
+            const deliverableName =
+              typeof m.deliverable === "string" ? m.deliverable.trim() : "";
+            return {
+              ...(amount !== undefined ? { amount } : {}),
+              dueDate,
+              name: m.name,
+              ...(deliverableName
+                ? {
+                    deliverable: {
+                      name: deliverableName,
+                      ...(dueDate ? { dueDate } : {}),
+                    },
+                  }
+                : {}),
+            };
+          })
+        : undefined;
+
+      const deliverables =
+        (data.deliverables ?? []).map((d) => ({
+          name: d.name,
+          dueDate: d.dueDate
+            ? format(d.dueDate, "yyyy-MM-dd'T'HH:mm:ss")
+            : undefined,
+        })) ?? [];
+
+      const paymentTermName = paymentTermsQuery.data?.data?.find(
+        (t) => t._id === data.paymentTerm,
+      )?.name;
+      const termTypeName = termTypesQuery.data?.data?.find(
+        (t) => t._id === data.termType,
+      )?.name;
+
+      const files =
+        (data.documents ?? [])
+          .map((f: any) => ({
+            name: typeof f?.name === "string" ? f.name : undefined,
+            url: typeof f?.url === "string" ? f.url : undefined,
+            type: typeof f?.type === "string" ? f.type : undefined,
+            size:
+              typeof f?.size === "number"
+                ? f.size
+                : toNumberOrUndefined(f?.size),
+          }))
+          .filter((f) => Boolean(f?.name && f?.url && f?.type)) ?? [];
+
+      const awardedMatch = awardedQuery.data?.data?.find(
+        (a) => a._id === data.awardedSolicitation,
+      );
+
+      const vendorRaw =
+        typeof data.vendor === "string" ? data.vendor.trim() : "";
+      const vendor =
+        (vendorRaw && (isEmailLike(vendorRaw) || isObjectIdLike(vendorRaw))
+          ? vendorRaw
+          : undefined) ||
+        awardedMatch?.vendor?.email ||
+        undefined;
+
+      // Insurance Construction
+      const mainSecurityAmount = toNumberOrUndefined(data.securityAmount);
+      const mainSecurityDueDate = data.securityDueDate
+        ? format(data.securityDueDate, "yyyy-MM-dd'T'HH:mm:ss")
+        : undefined;
+      const mainSecurity = data.securityType
+        ? [
+            {
+              securityType: data.securityType,
+              ...(mainSecurityAmount !== undefined
+                ? { amount: mainSecurityAmount }
+                : {}),
+              dueDate: mainSecurityDueDate,
+            },
+          ]
+        : [];
+      const extraSecurities = (data.securities || []).map((s) => {
+        const amount = toNumberOrUndefined(s.amount);
+        return {
+          securityType: s.type,
+          ...(amount !== undefined ? { amount } : {}),
+          dueDate: s.dueDate
+            ? format(s.dueDate, "yyyy-MM-dd'T'HH:mm:ss")
+            : undefined,
+        };
+      });
+
+      const insurancePayload = {
+        insurance: data.contractSecurity === "yes" ? "Yes" : "No",
+        contractSecurity: data.contractSecurity === "yes",
+        expiryDate: data.insuranceExpiryDate
+          ? format(data.insuranceExpiryDate, "yyyy-MM-dd'T'HH:mm:ss")
           : undefined,
-      })) ?? [];
-
-    const paymentTermName = paymentTermsQuery.data?.data?.find(
-      (t) => t._id === data.paymentTerm
-    )?.name;
-    const termTypeName = termTypesQuery.data?.data?.find(
-      (t) => t._id === data.termType
-    )?.name;
-
-    const files = 
-      (data.documents ?? [])
-        .map((f: any) => ({
-          name: typeof f?.name === "string" ? f.name : undefined,
-          url: typeof f?.url === "string" ? f.url : undefined,
-          type: typeof f?.type === "string" ? f.type : undefined,
-          size: typeof f?.size === "number" ? f.size : toNumberOrUndefined(f?.size),
-        }))
-        .filter((f) => Boolean(f?.name && f?.url && f?.type)) ?? [];
-
-    const awardedMatch = awardedQuery.data?.data?.find(
-      (a) => a._id === data.awardedSolicitation
-    );
-
-    const vendorRaw = typeof data.vendor === "string" ? data.vendor.trim() : "";
-    const vendor =
-      (vendorRaw && (isEmailLike(vendorRaw) || isObjectIdLike(vendorRaw))
-        ? vendorRaw
-        : undefined) ||
-      awardedMatch?.vendor?.email ||
-      undefined;
-
-    // Insurance Construction
-    const mainSecurityAmount = toNumberOrUndefined(data.securityAmount);
-    const mainSecurityDueDate = data.securityDueDate
-      ? new Date(data.securityDueDate as unknown as Date).toISOString().slice(0, 10)
-      : undefined;
-    const mainSecurity = data.securityType
-      ? [
-          {
-            securityType: data.securityType,
-            ...(mainSecurityAmount !== undefined ? { amount: mainSecurityAmount } : {}),
-            dueDate: mainSecurityDueDate,
-          },
-        ]
-      : [];
-    const extraSecurities = (data.securities || []).map((s) => {
-      const amount = toNumberOrUndefined(s.amount);
-      return {
-        securityType: s.type,
-        ...(amount !== undefined ? { amount } : {}),
-        dueDate: s.dueDate
-          ? new Date(s.dueDate as unknown as Date).toISOString().slice(0, 10)
-          : undefined,
+        contractSecurityType: [...mainSecurity, ...extraSecurities],
+        policy: (data.insurancePolicies || []).map((p) => ({
+          policyName: p.name,
+          limit: p.limit,
+        })),
       };
-    });
 
-    const insurancePayload = {
-      insurance: data.contractSecurity === "yes" ? "Yes" : "No",
-      contractSecurity: data.contractSecurity === "yes",
-      expiryDate: data.insuranceExpiryDate
-        ? new Date(data.insuranceExpiryDate as unknown as Date)
-            .toISOString()
-            .slice(0, 10)
-        : undefined,
-      contractSecurityType: [...mainSecurity, ...extraSecurities],
-      policy: (data.insurancePolicies || []).map((p) => ({
-        policyName: p.name,
-        limit: p.limit,
-      })),
-    };
+      // Dates Construction
+      const formatDate = (d: any) =>
+        d ? format(d, "yyyy-MM-dd'T'HH:mm:ss") : undefined;
 
-    // Dates Construction
-    const formatDate = (d: any) =>
-      d ? new Date(d as unknown as Date).toISOString().slice(0, 10) : undefined;
+      const contractFormationStage = {
+        draft: {
+          startDate: formatDate(data.draftStartDate),
+          endDate: formatDate(data.draftEndDate),
+        },
+        review: {
+          startDate: formatDate(data.reviewStartDate),
+          endDate: formatDate(data.reviewEndDate),
+        },
+        approval: {
+          startDate: formatDate(data.approvalStartDate),
+          endDate: formatDate(data.approvalEndDate),
+        },
+        execution: {
+          startDate: formatDate(data.executionStartDate),
+          endDate: formatDate(data.executionEndDate),
+        },
+      };
 
-    const contractFormationStage = {
-      draft: {
-        startDate: formatDate(data.draftStartDate),
-        endDate: formatDate(data.draftEndDate),
-      },
-      review: {
-        startDate: formatDate(data.reviewStartDate),
-        endDate: formatDate(data.reviewEndDate),
-      },
-      approval: {
-        startDate: formatDate(data.approvalStartDate),
-        endDate: formatDate(data.approvalEndDate),
-      },
-      execution: {
-        startDate: formatDate(data.executionStartDate),
-        endDate: formatDate(data.executionEndDate),
-      },
-    };
+      const payload = {
+        title: data.name,
+        description: data.description,
+        category: data.category,
+        timezone: tz,
+        contractType: data.type,
+        contractRelationship: relationship,
+        businessDivision: data.businessDivision,
+        projectId:
+          relationship === "project" ? data.project || undefined : undefined,
+        msaContractId:
+          relationship === "msa_project"
+            ? data.project || undefined
+            : undefined,
+        solicitationId: data.awardedSolicitation || undefined,
+        contractId: data.contractId || undefined,
+        jobTitle: data.jobTitle || undefined,
+        vendor,
+        personnel:
+          (data.personnelMeta && data.personnelMeta.length > 0
+            ? (data.personnelMeta ?? [])
+                .map((p: any) => toPersonnelOrUndefined(p))
+                .filter(Boolean)
+            : (data.personnel ?? [])
+                .map((t: any) => toPersonnelOrUndefined(t))
+                .filter(Boolean)) ?? undefined,
+        internalTeam:
+          (data.internalTeamMeta && data.internalTeamMeta.length > 0
+            ? (data.internalTeamMeta ?? [])
+                .map((p: any) => toIdStringOrUndefined(p))
+                .filter(Boolean)
+            : (data.internalTeam ?? [])
+                .map((t: any) => toIdStringOrUndefined(t?.value ?? t))
+                .filter(Boolean)) ?? undefined,
+        visibility: data.visibility || "private",
+        contractAmount:
+          typeof data.contractValue === "number"
+            ? Number.isFinite(data.contractValue)
+              ? data.contractValue
+              : undefined
+            : toNumberOrUndefined(data.contractValue),
+        contigency: data.contingency || undefined,
+        holdBack,
+        contractPaymentTerm: data.paymentTerm || undefined,
+        paymentTerm: paymentTermName || undefined,
+        paymentStructure: paymentStructureEnum,
+        startDate: formatDate(data.effectiveDate),
+        endDate: formatDate(data.endDate),
+        duration: data.duration ? Number(data.duration) : undefined,
+        contractTermType: data.termType || undefined,
+        termType: termTypeName || undefined,
+        deliverables,
+        milestone,
+        files,
+        approvers,
+        insurance: insurancePayload,
+        contractFormationStage,
+        rating: data.rating || 5,
+        status: status,
+      };
 
-    const payload = {
-      title: data.name,
-      description: data.description,
-      category: data.category,
-      timezone: tz,
-      contractType: data.type,
-      contractRelationship: relationship,
-      businessDivision: data.businessDivision,
-      projectId:
-        relationship === "project" ? data.project || undefined : undefined,
-      msaContractId:
-        relationship === "msa_project" ? data.project || undefined : undefined,
-      solicitationId: data.awardedSolicitation || undefined,
-      contractId: data.contractId || undefined,
-      jobTitle: data.jobTitle || undefined,
-      vendor,
-      personnel:
-        (data.personnelMeta && data.personnelMeta.length > 0
-          ? (data.personnelMeta ?? [])
-              .map((p: any) => toPersonnelOrUndefined(p))
-              .filter(Boolean)
-          : (data.personnel ?? [])
-              .map((t: any) => toPersonnelOrUndefined(t))
-              .filter(Boolean)) ?? undefined,
-      internalTeam:
-        (data.internalTeamMeta && data.internalTeamMeta.length > 0
-          ? (data.internalTeamMeta ?? [])
-              .map((p: any) => toIdStringOrUndefined(p))
-              .filter(Boolean)
-          : (data.internalTeam ?? [])
-              .map((t: any) => toIdStringOrUndefined(t?.value ?? t))
-              .filter(Boolean)) ?? undefined,
-      visibility: data.visibility || "private",
-      contractAmount:
-        typeof data.contractValue === "number"
-          ? (Number.isFinite(data.contractValue) ? data.contractValue : undefined)
-          : toNumberOrUndefined(data.contractValue),
-      contigency: data.contingency || undefined,
-      holdBack,
-      contractPaymentTerm: data.paymentTerm || undefined,
-      paymentTerm: paymentTermName || undefined,
-      paymentStructure: paymentStructureEnum,
-      startDate: formatDate(data.effectiveDate),
-      endDate: formatDate(data.endDate),
-      duration: data.duration ? Number(data.duration) : undefined,
-      contractTermType: data.termType || undefined,
-      termType: termTypeName || undefined,
-      deliverables,
-      milestone,
-      files,
-      approvers,
-      insurance: insurancePayload,
-      contractFormationStage,
-      rating: data.rating || 5,
-      status: status,
-    };
+      // Remove undefined fields to avoid sending undeclared values
+      Object.keys(payload).forEach((k) => {
+        if ((payload as any)[k] === undefined) {
+          delete (payload as any)[k];
+        }
+      });
 
-    // Remove undefined fields to avoid sending undeclared values
-    Object.keys(payload).forEach((k) => {
-      if ((payload as any)[k] === undefined) {
-        delete (payload as any)[k];
-      }
-    });
-
-    return payload;
-  }, [awardedQuery.data?.data, paymentTermsQuery.data?.data, termTypesQuery.data?.data]);
+      return payload;
+    },
+    [
+      awardedQuery.data?.data,
+      paymentTermsQuery.data?.data,
+      termTypesQuery.data?.data,
+    ],
+  );
 
   const submit = React.useCallback(
     (
       formData: CreateContractFormData,
-      status: "draft" | "publish" = "publish"
+      status: "draft" | "publish" = "publish",
     ) => {
       const payload = buildPayload(formData, status);
       mutation.mutate(payload);
     },
-    [buildPayload, mutation]
+    [buildPayload, mutation],
   );
 
   return (
@@ -952,7 +1002,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       <DialogContent
         className={cn(
           "rounded-2xl p-0 max-h-[90vh] overflow-y-auto",
-          step === 8 ? "sm:max-w-5xl" : "sm:max-w-xl"
+          step === 8 ? "sm:max-w-5xl" : "sm:max-w-xl",
         )}
       >
         <div data-testid="create-contract-sheet" className="space-y-6">
