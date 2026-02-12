@@ -4,8 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Share2 } from "lucide-react";
 import DocumentsStatsCard from "../components/DocumentsStatsCard";
 import DocumentsList from "../components/DocumentsList";
+import type { ContractDetail } from "@/types";
 
-const DocumentsTabContent: React.FC = () => {
+type Props = {
+  files?: ContractDetail["files"];
+};
+
+const DocumentsTabContent: React.FC<Props> = ({ files }) => {
   return (
     <TabsContent value="documents" className="space-y-6">
       <div className="flex items-center justify-between">
@@ -18,9 +23,9 @@ const DocumentsTabContent: React.FC = () => {
         </div>
       </div>
 
-      <DocumentsStatsCard />
+      <DocumentsStatsCard count={files?.length ?? 0} />
 
-      <DocumentsList />
+      <DocumentsList files={files} />
     </TabsContent>
   );
 };

@@ -17,7 +17,7 @@ import Step2ContractTeam from "./Step2ContractTeam";
 import Step3ValuePayments from "./Step3ValuePayments";
 import Step4Timeline from "./Step4Timeline";
 import Step5Deliverables from "./Step5Deliverables";
-import Step6Documents from "./Step5Documents";
+import Step4Form from "@/pages/SolicitationManagementPage/components/Step4Form";
 import Step7ApprovalLevel from "./Step7ApprovalLevel";
 import Step8ReviewPublish from "./Step6ReviewPublish";
 import Step6ComplianceSecurity from "./Step6ComplianceSecurity";
@@ -28,7 +28,7 @@ import { useProjectsList } from "@/pages/ProjectManagementPage/services/useProje
 import { useToastHandler } from "@/hooks/useToaster";
 import { useWatch } from "react-hook-form";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronDown, X } from "lucide-react";
+import { X } from "lucide-react";
 
 type Props = {
   trigger: React.ReactNode;
@@ -41,8 +41,9 @@ const schema = yup.object({
   awardedSolicitation: yup.string().optional(),
   type: yup.string().required("Contract type is required"),
   category: yup.string().required("Category is required"),
-  // manager: yup.string().optional(),
-  // jobTitle: yup.string().optional(),
+  manager: yup.string().optional(),
+  jobTitle: yup.string().optional(),
+  businessDivision: yup.string().required("Business Division is required"),
   contractId: yup.string().optional(),
   description: yup.string().required("Description is required"),
   vendor: yup.string().optional(),
@@ -167,8 +168,9 @@ const defaultValues = {
   awardedSolicitation: "",
   type: "",
   category: "",
-  // manager: "",
-  // jobTitle: "",
+  manager: "",
+  jobTitle: "",
+  businessDivision: "",
   contractId: "",
   description: "",
   vendor: "",
@@ -224,6 +226,344 @@ type AwardedVendorItem = {
   vendor: { _id: string; name: string; email: string };
 };
 
+const STEP_TITLES = [
+  "Step 1 of 8: Basic Information",
+  "Step 2 of 8: Contract Team",
+  "Step 3 of 8: Timeline",
+  "Step 4 of 8: Deliverables",
+  "Step 5 of 9: Contract Value & Payments",
+  "Step 6 of 9: Compliance & Security",
+  "Step 7 of 9: Documents",
+  "Step 8 of 9: Configure Approval Level",
+  "Step 9 of 9: Review & Publish",
+];
+
+const toNumberOrUndefined = (value: unknown) => {
+  if (value === null || value === undefined) return undefined;
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+
+    const match = trimmed.match(/^(-?\d+(?:\.\d+)?)\s*([a-zA-Z]+)?$/);
+    if (!match) return undefined;
+
+    const numeric = Number(match[1]);
+    if (!Number.isFinite(numeric)) return undefined;
+
+    const unit = match[2]?.toLowerCase();
+    if (!unit) return numeric;
+
+    const factors: Record<string, number> = {
+      b: 1,
+      byte: 1,
+      bytes: 1,
+      kb: 1024,
+      mb: 1024 ** 2,
+      gb: 1024 ** 3,
+      tb: 1024 ** 4,
+    };
+
+    const factor = factors[unit];
+    if (!factor) return undefined;
+    return Math.round(numeric * factor);
+  }
+
+  const num = Number(value as any);
+  return Number.isFinite(num) ? num : undefined;
+};
+
+const isEmailLike = (value: string) => /.+@.+\..+/.test(value);
+
+const isObjectIdLike = (value: string) => /^[a-f\d]{24}$/i.test(value);
+
+const toIdStringOrUndefined = (value: unknown) => {
+  const raw =
+    typeof value === "string"
+      ? value
+      : (value as any)?.id || (value as any)?.email || (value as any)?._id;
+  if (typeof raw !== "string") return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  if (isEmailLike(trimmed) || isObjectIdLike(trimmed)) return trimmed;
+  return undefined;
+};
+
+const toPersonnelOrUndefined = (value: unknown) => {
+  if (!value) return undefined;
+
+  const direct = value as any;
+  if (
+    typeof direct === "object" &&
+    (typeof direct.name === "string" || typeof direct.email === "string")
+  ) {
+    const name = typeof direct.name === "string" ? direct.name.trim() : undefined;
+    const email = typeof direct.email === "string" ? direct.email.trim() : undefined;
+    const role = typeof direct.role === "string" ? direct.role.trim() : undefined;
+    const phone = typeof direct.phone === "string" ? direct.phone.trim() : undefined;
+    if (!name && !email) return undefined;
+    return {
+      ...(name ? { name } : {}),
+      ...(email ? { email } : {}),
+      ...(role ? { role } : {}),
+      ...(phone ? { phone } : {}),
+    };
+  }
+
+  const normalized = (direct?.value ?? direct) as any;
+  if (typeof normalized === "string") {
+    const trimmed = normalized.trim();
+    if (!trimmed) return undefined;
+    if (isEmailLike(trimmed)) return { email: trimmed };
+    return { name: trimmed };
+  }
+
+  if (typeof normalized === "object" && normalized) {
+    const name =
+      typeof normalized.text === "string"
+        ? normalized.text.trim()
+        : typeof normalized.name === "string"
+          ? normalized.name.trim()
+          : typeof normalized.label === "string"
+            ? normalized.label.trim()
+            : undefined;
+    const email =
+      typeof normalized.email === "string"
+        ? normalized.email.trim()
+        : typeof normalized.id === "string"
+          ? normalized.id.trim()
+          : undefined;
+    const role =
+      typeof normalized?.meta?.role === "string"
+        ? normalized.meta.role.trim()
+        : undefined;
+    const phone =
+      typeof normalized?.meta?.phone === "string"
+        ? normalized.meta.phone.trim()
+        : undefined;
+    if (!name && !email) return undefined;
+    return {
+      ...(name ? { name } : {}),
+      ...(email ? { email } : {}),
+      ...(role ? { role } : {}),
+      ...(phone ? { phone } : {}),
+    };
+  }
+
+  return undefined;
+};
+
+type SendForApprovalDialogProps = {
+  control: any;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSendForApproval: () => void;
+};
+
+const SendForApprovalDialog = React.memo(
+  ({ control, open, onOpenChange, onSendForApproval }: SendForApprovalDialogProps) => {
+    const approvalGroups = useWatch({ control, name: "approvalGroups" }) as
+      | {
+          name?: string | null;
+          approvers?: any[];
+          approvalLevel?: string;
+          amount?: unknown;
+        }[]
+      | undefined;
+
+    const [selectedApprovalGroup, setSelectedApprovalGroup] =
+      React.useState("");
+    const [assignedApproverIds, setAssignedApproverIds] = React.useState<
+      string[]
+    >([]);
+
+    const approvalGroupOptions = React.useMemo(
+      () =>
+        (approvalGroups ?? []).map((group, index) => ({
+          label: `${group?.name || `Group ${index + 1}`} - Approval Level ${
+            group?.approvalLevel || "-"
+          }`,
+          value: String(index),
+        })),
+      [approvalGroups]
+    );
+
+    const selectedGroupIndex =
+      selectedApprovalGroup === "" ? -1 : Number(selectedApprovalGroup);
+    const selectedGroup =
+      selectedGroupIndex >= 0 && approvalGroups?.length
+        ? approvalGroups?.[selectedGroupIndex]
+        : undefined;
+
+    const selectedApprovers = React.useMemo(
+      () => (selectedGroup?.approvers ?? []) as any[],
+      [selectedGroup?.approvers]
+    );
+
+    const getApproverKey = React.useCallback(
+      (approver: any, index: number) =>
+        approver?.id ||
+        approver?.email ||
+        approver?.value ||
+        approver?.text ||
+        String(index),
+      []
+    );
+
+    const toggleApprover = React.useCallback(
+      (approverId: string, checked: boolean) => {
+        setAssignedApproverIds((prev) =>
+          checked ? [...prev, approverId] : prev.filter((id) => id !== approverId)
+        );
+      },
+      []
+    );
+
+    const assignedApprovers = React.useMemo(
+      () =>
+        selectedApprovers.filter((approver, index) =>
+          assignedApproverIds.includes(getApproverKey(approver, index))
+        ),
+      [assignedApproverIds, getApproverKey, selectedApprovers]
+    );
+
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-xl">
+          <div className=" space-y-6">
+            <div className="flex items-center justify-between">
+              <p className="text-xl font-semibold text-slate-900">
+                Send for Approval
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-slate-900">
+                Select Approvers For Contract Execution
+              </p>
+              <div className="relative">
+                <select
+                  className="w-full h-12 border border-gray-300 rounded-lg px-4 pr-10 text-sm text-slate-700 focus:border-[#2A4467] focus:ring-[#2A4467]"
+                  value={selectedApprovalGroup}
+                  onChange={(event) => setSelectedApprovalGroup(event.target.value)}
+                >
+                  <option value="">Select Group</option>
+                  {approvalGroupOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <div className="grid grid-cols-[1fr_160px_140px] bg-slate-50 px-6 py-2 text-sm font-semibold text-[#2A4467]">
+                <p>Group</p>
+                <p className="text-center">Role</p>
+                <p className="text-center">Action</p>
+              </div>
+              <div className="divide-y divide-gray-300">
+                {selectedApprovers.length === 0 && (
+                  <div className="px-6 py-6 text-sm text-slate-500">
+                    No approvers added for this group
+                  </div>
+                )}
+                {selectedApprovers.map((approver, index) => {
+                  const approverId = getApproverKey(approver, index);
+                  const name =
+                    approver?.text || approver?.name || approver?.label || "Unnamed";
+                  const email = approver?.id || approver?.email || "";
+                  const role = approver?.meta?.role
+                    ? approver.meta.role
+                    : selectedGroup?.approvalLevel
+                      ? `Approval Level ${selectedGroup.approvalLevel}`
+                      : "Approval";
+                  return (
+                    <div
+                      key={approverId}
+                      className="grid grid-cols-[1fr_160px_140px] items-center px-6 py-4"
+                    >
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-slate-700">{name}</p>
+                        {email && <p className="text-xs text-blue-600 ">{email}</p>}
+                      </div>
+                      <p className="text-sm text-slate-600 text-center">{role}</p>
+                      <div className="flex items-center justify-center gap-2">
+                        <Checkbox
+                          checked={assignedApproverIds.includes(approverId)}
+                          onCheckedChange={(checked) =>
+                            toggleApprover(approverId, Boolean(checked))
+                          }
+                        />
+                        <span className="text-sm text-slate-700">Assign</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-slate-900">Assigned Approvers</p>
+              <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-slate-50 px-4 py-4">
+                {assignedApprovers.length === 0 && (
+                  <p className="text-sm text-slate-500">Search</p>
+                )}
+                {assignedApprovers.map((approver, index) => {
+                  const approverId = getApproverKey(approver, index);
+                  const name =
+                    approver?.text || approver?.name || approver?.label || "Unnamed";
+                  return (
+                    <div
+                      key={approverId}
+                      className="flex items-center gap-2 rounded-md bg-[#2A44671A] px-2 py-1 text-xs font-semibold text-[#2A4467]"
+                    >
+                      <span>{name}</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleApprover(approverId, false)}
+                        className="text-[#2A4467]"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-6 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-12 px-8 rounded-xl"
+                onClick={() => onOpenChange(false)}
+              >
+                Back
+              </Button>
+              <Button
+                type="button"
+                className="h-12 px-8 rounded-xl bg-[#2A4467] hover:bg-[#1e3252] text-white"
+                onClick={() => {
+                  onOpenChange(false);
+                  onSendForApproval();
+                }}
+              >
+                Send for Approval
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+);
+
 const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
   const { control, getValues, reset } = useForge<CreateContractFormData>({
     resolver: yupResolver(schema),
@@ -233,71 +573,11 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
   const [step, setStep] = React.useState(1);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
-  const [selectedApprovalGroup, setSelectedApprovalGroup] = React.useState("");
-  const [assignedApproverIds, setAssignedApproverIds] = React.useState<string[]>(
-    []
-  );
-  const stepTitles = [
-    "Step 1 of 8: Basic Information",
-    "Step 2 of 8: Contract Team",
-    "Step 3 of 8: Timeline",
-    "Step 4 of 8: Deliverables",
-    "Step 5 of 9: Contract Value & Payments",
-    "Step 6 of 9: Compliance & Security",
-    "Step 7 of 9: Documents",
-    "Step 8 of 9: Configure Approval Level",
-    "Step 9 of 9: Review & Publish",
-  ];
-  const totalSteps = stepTitles.length;
+  const totalSteps = STEP_TITLES.length;
+  const handleSendForApproval = React.useCallback(() => setStep(9), []);
 
   const { success, error } = useToastHandler();
   const qc = useQueryClient();
-  const approvalGroups = useWatch({ control, name: "approvalGroups" }) as
-    | {
-        name?: string | null;
-        approvers?: any[];
-        approvalLevel?: string;
-        amount?: unknown;
-      }[]
-    | undefined;
-
-  const approvalGroupOptions = React.useMemo(
-    () =>
-      (approvalGroups ?? []).map((group, index) => ({
-        label: `${group?.name || `Group ${index + 1}`} - Approval Level ${
-          group?.approvalLevel || "-"
-        }`,
-        value: String(index),
-      })),
-    [approvalGroups]
-  );
-
-  const selectedGroupIndex = selectedApprovalGroup
-    ? Number(selectedApprovalGroup)
-    : 0;
-  const selectedGroup = approvalGroupOptions.length
-    ? approvalGroups?.[selectedGroupIndex]
-    : undefined;
-  const selectedApprovers = (selectedGroup?.approvers ?? []) as any[];
-
-  React.useEffect(() => {
-    if (!selectedApprovalGroup && approvalGroupOptions.length > 0) {
-      setSelectedApprovalGroup(approvalGroupOptions[0].value);
-    }
-  }, [approvalGroupOptions, selectedApprovalGroup]);
-
-  React.useEffect(() => {
-    const ids = selectedApprovers.map((approver, index) => {
-      return (
-        approver?.id ||
-        approver?.email ||
-        approver?.value ||
-        approver?.text ||
-        String(index)
-      );
-    });
-    setAssignedApproverIds(ids);
-  }, [selectedApprovers]);
 
   const typesQuery = useQuery<ApiListResponse<ContractType>>({
     queryKey: useUserQueryKey(["contract-types"]),
@@ -349,36 +629,63 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
   // Projects list (reuse existing service)
   const { data: projectsData } = useProjectsList({ limit: 50, page: 1 });
 
-  const typeOptions =
-    typesQuery.data?.data?.map((t) => ({ label: t.name, value: t._id })) ?? [];
-  const paymentTermOptions =
-    paymentTermsQuery.data?.data?.map((t) => ({
-      label: t.name,
-      value: t._id,
-    })) ?? [];
-  const termTypeOptions =
-    termTypesQuery.data?.data?.map((t) => ({ label: t.name, value: t._id })) ??
-    [];
-  const internalStakeholderOptions =
-    personnelQuery.data?.data?.map((p) => ({
-      label: p.email || p.name,
-      value: p.email || p._id,
-    })) ?? [];
-  const projectOptions =
-    projectsData?.data?.map((p) => ({ label: p.name, value: p._id })) ?? [];
-
-  const awardedOptions =
-    awardedQuery.data?.data?.map((a) => ({
-      label: `${a.name} — ${a.vendor.name}`,
-      value: a._id,
-      // carry vendor info for mapping
-      vendorEmail: a.vendor.email,
-      vendorId: a.vendor._id,
-    })) ?? [];
+  const typeOptions = React.useMemo(
+    () =>
+      Array.isArray(typesQuery.data?.data)
+        ? typesQuery.data.data.map((t) => ({ label: t.name, value: t._id }))
+        : [],
+    [typesQuery.data?.data]
+  );
+  const paymentTermOptions = React.useMemo(
+    () =>
+      Array.isArray(paymentTermsQuery.data?.data)
+        ? paymentTermsQuery.data.data.map((t) => ({
+            label: t.name,
+            value: t._id,
+          }))
+        : [],
+    [paymentTermsQuery.data?.data]
+  );
+  const termTypeOptions = React.useMemo(
+    () =>
+      Array.isArray(termTypesQuery.data?.data)
+        ? termTypesQuery.data.data.map((t) => ({ label: t.name, value: t._id }))
+        : [],
+    [termTypesQuery.data?.data]
+  );
+  const internalStakeholderOptions = React.useMemo(
+    () =>
+      Array.isArray(personnelQuery.data?.data)
+        ? personnelQuery.data.data.map((p) => ({
+            label: p.email || p.name,
+            value: p.email || p._id,
+          }))
+        : [],
+    [personnelQuery.data?.data]
+  );
+  const projectOptions = React.useMemo(
+    () =>
+      Array.isArray(projectsData?.data)
+        ? projectsData.data.map((p) => ({ label: p.name, value: p._id }))
+        : [],
+    [projectsData?.data]
+  );
+  const awardedOptions = React.useMemo(
+    () =>
+      Array.isArray(awardedQuery.data?.data)
+        ? awardedQuery.data.data.map((a) => ({
+            label: `${a.name} — ${a.vendor.name}`,
+            value: a._id,
+            vendorEmail: a.vendor.email,
+            vendorId: a.vendor._id,
+          }))
+        : [],
+    [awardedQuery.data?.data]
+  );
 
   const mutation = useMutation({
     mutationFn: async (payload: any) => {
-      const res = await postRequest({ url: "/contracts", payload });
+      const res = await postRequest({ url: "/contract/manager/contracts", payload });
       return res.data as {
         status: number;
         message: string;
@@ -398,11 +705,12 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     },
   });
 
-  const buildPayload = (
+  const buildPayload = React.useCallback((
     data: CreateContractFormData,
     status: "draft" | "publish"
   ) => {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    console.log({ data })
 
     const relationship =
       data.relationship === "msa"
@@ -411,12 +719,11 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         ? "standalone"
         : "project";
 
-    const holdBack =
-      typeof data.holdback === "string" && data.holdback.endsWith("%")
-        ? parseFloat(data.holdback.replace("%", ""))
-        : typeof data.holdback === "string"
-        ? parseFloat(data.holdback)
-        : Number(data.holdback ?? 0);
+    const holdBackRaw =
+      typeof data.holdback === "string" && data.holdback.trim().endsWith("%")
+        ? data.holdback.replace("%", "")
+        : data.holdback;
+    const holdBack = toNumberOrUndefined(holdBackRaw);
 
     const paymentStructureIsMilestone = data.paymentStructure === "milestone";
 
@@ -426,34 +733,39 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     if (data.paymentStructure === "milestone") paymentStructureEnum = "Milestone";
     if (data.paymentStructure === "lump_sum") paymentStructureEnum = "Progress Draw";
 
-    const approvaers =
+    const approvers =
       (data.approvalGroups ?? []).flatMap((g) => {
         const lvl = g.approvalLevel ? Number(g.approvalLevel) : undefined;
-        const amountValue =
-          typeof g.amount === "string"
-            ? parseFloat(g.amount)
-            : Number(g.amount ?? 0);
+        const amountValue = toNumberOrUndefined(g.amount);
         // API expects user as array of strings
-        const userIds = (g.approvers ?? []).map((u: any) => u?.value ?? u);
+        const userIds = (g.approvers ?? [])
+          .map((u: any) => u?.value ?? u)
+          .filter(Boolean);
         return {
           user: userIds,
           groupName: g.name,
-          levelName: lvl,
+          level: lvl,
           amount: amountValue,
         };
       }) ?? [];
 
     const milestone = paymentStructureIsMilestone
-      ? (data.milestones ?? []).map((m) => ({
-          amount:
-            typeof m.amount === "string"
-              ? parseFloat(m.amount)
-              : Number(m.amount ?? 0),
-          dueDate: m.dueDate
+      ? (data.milestones ?? []).map((m) => {
+          const amount = toNumberOrUndefined(m.amount);
+          const dueDate = m.dueDate
             ? new Date(m.dueDate as unknown as Date).toISOString().slice(0, 10)
-            : undefined,
-          name: m.name,
-        }))
+            : undefined;
+          const deliverableName =
+            typeof m.deliverable === "string" ? m.deliverable.trim() : "";
+          return {
+            ...(amount !== undefined ? { amount } : {}),
+            dueDate,
+            name: m.name,
+            ...(deliverableName
+              ? { deliverable: { name: deliverableName, ...(dueDate ? { dueDate } : {}) } }
+              : {}),
+          };
+        })
       : undefined;
 
     const deliverables =
@@ -464,39 +776,59 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
           : undefined,
       })) ?? [];
 
-    const files =
-      (data.documents ?? []).map((f: any) => ({
-        name: f?.name,
-        url: f?.url,
-        type: f?.type,
-        size: f?.size,
-      })) ?? [];
+    const paymentTermName = paymentTermsQuery.data?.data?.find(
+      (t) => t._id === data.paymentTerm
+    )?.name;
+    const termTypeName = termTypesQuery.data?.data?.find(
+      (t) => t._id === data.termType
+    )?.name;
+
+    const files = 
+      (data.documents ?? [])
+        .map((f: any) => ({
+          name: typeof f?.name === "string" ? f.name : undefined,
+          url: typeof f?.url === "string" ? f.url : undefined,
+          type: typeof f?.type === "string" ? f.type : undefined,
+          size: typeof f?.size === "number" ? f.size : toNumberOrUndefined(f?.size),
+        }))
+        .filter((f) => Boolean(f?.name && f?.url && f?.type)) ?? [];
 
     const awardedMatch = awardedQuery.data?.data?.find(
       (a) => a._id === data.awardedSolicitation
     );
 
+    const vendorRaw = typeof data.vendor === "string" ? data.vendor.trim() : "";
+    const vendor =
+      (vendorRaw && (isEmailLike(vendorRaw) || isObjectIdLike(vendorRaw))
+        ? vendorRaw
+        : undefined) ||
+      awardedMatch?.vendor?.email ||
+      undefined;
+
     // Insurance Construction
+    const mainSecurityAmount = toNumberOrUndefined(data.securityAmount);
+    const mainSecurityDueDate = data.securityDueDate
+      ? new Date(data.securityDueDate as unknown as Date).toISOString().slice(0, 10)
+      : undefined;
     const mainSecurity = data.securityType
       ? [
           {
             securityType: data.securityType,
-            amount: Number(data.securityAmount ?? 0),
-            dueDate: data.securityDueDate
-              ? new Date(data.securityDueDate as unknown as Date)
-                  .toISOString()
-                  .slice(0, 10)
-              : undefined,
+            ...(mainSecurityAmount !== undefined ? { amount: mainSecurityAmount } : {}),
+            dueDate: mainSecurityDueDate,
           },
         ]
       : [];
-    const extraSecurities = (data.securities || []).map((s) => ({
-      securityType: s.type,
-      amount: Number(s.amount ?? 0),
-      dueDate: s.dueDate
-        ? new Date(s.dueDate as unknown as Date).toISOString().slice(0, 10)
-        : undefined,
-    }));
+    const extraSecurities = (data.securities || []).map((s) => {
+      const amount = toNumberOrUndefined(s.amount);
+      return {
+        securityType: s.type,
+        ...(amount !== undefined ? { amount } : {}),
+        dueDate: s.dueDate
+          ? new Date(s.dueDate as unknown as Date).toISOString().slice(0, 10)
+          : undefined,
+      };
+    });
 
     const insurancePayload = {
       insurance: data.contractSecurity === "yes" ? "Yes" : "No",
@@ -543,57 +875,50 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       timezone: tz,
       contractType: data.type,
       contractRelationship: relationship,
+      businessDivision: data.businessDivision,
       projectId:
         relationship === "project" ? data.project || undefined : undefined,
       msaContractId:
         relationship === "msa_project" ? data.project || undefined : undefined,
       solicitationId: data.awardedSolicitation || undefined,
       contractId: data.contractId || undefined,
-      // jobTitle: data.jobTitle || undefined,
-      vendor: data.vendor || awardedMatch?.vendor?.email || undefined,
+      jobTitle: data.jobTitle || undefined,
+      vendor,
       personnel:
         (data.personnelMeta && data.personnelMeta.length > 0
-          ? (data.personnelMeta ?? []).map((p: any) => ({
-              name: p?.name || undefined,
-              email: p?.email || undefined,
-              ...(p?.role ? { role: p.role } : {}),
-              ...(p?.phone ? { phone: p.phone } : {}),
-            }))
-          : (data.personnel ?? []).map((t: any) => {
-              const val = t?.value ?? t;
-              const isEmail = typeof val === "string" && val.includes("@");
-              return isEmail ? { email: val } : { name: val };
-            })) ?? undefined,
+          ? (data.personnelMeta ?? [])
+              .map((p: any) => toPersonnelOrUndefined(p))
+              .filter(Boolean)
+          : (data.personnel ?? [])
+              .map((t: any) => toPersonnelOrUndefined(t))
+              .filter(Boolean)) ?? undefined,
       internalTeam:
-        (data.internalTeamMeta &&
-        data.internalTeamMeta.length > 0
-          ? (data.internalTeamMeta ?? []).map((p: any) => ({
-              name: p?.name || undefined,
-              email: p?.email || undefined,
-              ...(p?.role ? { role: p.role } : {}),
-              ...(p?.phone ? { phone: p.phone } : {}),
-            }))
-          : (data.internalTeam ?? []).map((t: any) => t?.value ?? t)) ??
-        undefined,
+        (data.internalTeamMeta && data.internalTeamMeta.length > 0
+          ? (data.internalTeamMeta ?? [])
+              .map((p: any) => toIdStringOrUndefined(p))
+              .filter(Boolean)
+          : (data.internalTeam ?? [])
+              .map((t: any) => toIdStringOrUndefined(t?.value ?? t))
+              .filter(Boolean)) ?? undefined,
       visibility: data.visibility || "private",
       contractAmount:
-        typeof data.contractValue === "string"
-          ? parseFloat(data.contractValue)
-          : typeof data.contractValue === "number"
-          ? data.contractValue
-          : undefined,
+        typeof data.contractValue === "number"
+          ? (Number.isFinite(data.contractValue) ? data.contractValue : undefined)
+          : toNumberOrUndefined(data.contractValue),
       contigency: data.contingency || undefined,
       holdBack,
       contractPaymentTerm: data.paymentTerm || undefined,
+      paymentTerm: paymentTermName || undefined,
       paymentStructure: paymentStructureEnum,
       startDate: formatDate(data.effectiveDate),
       endDate: formatDate(data.endDate),
       duration: data.duration ? Number(data.duration) : undefined,
       contractTermType: data.termType || undefined,
+      termType: termTypeName || undefined,
       deliverables,
       milestone,
       files,
-      approvaers,
+      approvers,
       insurance: insurancePayload,
       contractFormationStage,
       rating: data.rating || 5,
@@ -608,32 +933,18 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     });
 
     return payload;
-  };
+  }, [awardedQuery.data?.data, paymentTermsQuery.data?.data, termTypesQuery.data?.data]);
 
-  const submit = (
-    formData: CreateContractFormData,
-    status: "draft" | "publish" = "publish"
-  ) => {
-    const payload = buildPayload(formData, status);
-    mutation.mutate(payload);
-  };
-
-  const getApproverKey = (approver: any, index: number) =>
-    approver?.id ||
-    approver?.email ||
-    approver?.value ||
-    approver?.text ||
-    String(index);
-
-  const assignedApprovers = selectedApprovers.filter((approver, index) =>
-    assignedApproverIds.includes(getApproverKey(approver, index))
+  const submit = React.useCallback(
+    (
+      formData: CreateContractFormData,
+      status: "draft" | "publish" = "publish"
+    ) => {
+      const payload = buildPayload(formData, status);
+      mutation.mutate(payload);
+    },
+    [buildPayload, mutation]
   );
-
-  const toggleApprover = (approverId: string, checked: boolean) => {
-    setAssignedApproverIds((prev) =>
-      checked ? [...prev, approverId] : prev.filter((id) => id !== approverId)
-    );
-  };
 
   return (
     <Dialog>
@@ -651,13 +962,14 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
           <div className="px-4 pb-8">
             <p className="text-sm font-medium text-slate-700">
-              {stepTitles[step - 1]}
+              {STEP_TITLES[step - 1]}
             </p>
 
             <Forge
               control={control}
               onSubmit={submit}
               className="mt-4 space-y-6"
+              // debug
             >
               {step === 1 && (
                 <Step1BasicInfo
@@ -691,7 +1003,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
               {step === 6 && <Step6ComplianceSecurity control={control} />}
 
-              {step === 7 && <Step6Documents />}
+              {step === 7 && <Step4Form control={control} documents={[]} />}
 
               {step === 8 && <Step7ApprovalLevel control={control} />}
 
@@ -770,175 +1082,12 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
               )}
             </Forge>
 
-            <Dialog
+            <SendForApprovalDialog
+              control={control}
               open={isApprovalDialogOpen}
               onOpenChange={setIsApprovalDialogOpen}
-            >
-              <DialogContent className="sm:max-w-xl p-0">
-                <div className="p-8 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xl font-semibold text-slate-900">
-                      Send for Approval
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setIsApprovalDialogOpen(false)}
-                      className="text-slate-500 hover:text-slate-700"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
-                  </div>
-
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium text-slate-900">
-                      Select Approvers For Contract Execution
-                    </p>
-                    <div className="relative">
-                      <select
-                        className="w-full h-12 border border-gray-300 rounded-lg px-4 pr-10 text-sm text-slate-700 focus:border-[#2A4467] focus:ring-[#2A4467]"
-                        value={
-                          approvalGroupOptions.length
-                            ? String(selectedGroupIndex)
-                            : ""
-                        }
-                        onChange={(event) =>
-                          setSelectedApprovalGroup(event.target.value)
-                        }
-                      >
-                        {approvalGroupOptions.length === 0 && (
-                          <option value="">Select Group</option>
-                        )}
-                        {approvalGroupOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    </div>
-                  </div>
-
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
-                    <div className="grid grid-cols-[1fr_160px_140px] bg-slate-50 px-6 py-2 text-sm font-semibold text-[#2A4467]">
-                      <p>Group</p>
-                      <p className="text-center">Role</p>
-                      <p className="text-center">Action</p>
-                    </div>
-                    <div className="divide-y">
-                      {selectedApprovers.length === 0 && (
-                        <div className="px-6 py-6 text-sm text-slate-500">
-                          No approvers added for this group
-                        </div>
-                      )}
-                      {selectedApprovers.map((approver, index) => {
-                        const approverId = getApproverKey(approver, index);
-                        const name =
-                          approver?.text ||
-                          approver?.name ||
-                          approver?.label ||
-                          "Unnamed";
-                        const email = approver?.id || approver?.email || "";
-                        const role = approver?.meta?.role
-                          ? approver.meta.role
-                          : selectedGroup?.approvalLevel
-                          ? `Approval Level ${selectedGroup.approvalLevel}`
-                          : "Approval";
-                        return (
-                          <div
-                            key={approverId}
-                            className="grid grid-cols-[1fr_160px_140px] items-center px-6 py-4"
-                          >
-                            <div className="space-y-1">
-                              <p className="text-sm font-semibold text-slate-700">
-                                {name}
-                              </p>
-                              {email && (
-                                <p className="text-xs text-blue-600 underline">
-                                  {email}
-                                </p>
-                              )}
-                            </div>
-                            <p className="text-sm text-slate-600 text-center">
-                              {role}
-                            </p>
-                            <div className="flex items-center justify-center gap-2">
-                              <Checkbox
-                                checked={assignedApproverIds.includes(
-                                  approverId
-                                )}
-                                onCheckedChange={(checked) =>
-                                  toggleApprover(approverId, Boolean(checked))
-                                }
-                              />
-                              <span className="text-sm text-slate-700">
-                                Assign
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium text-slate-900">
-                      Assigned Approvers
-                    </p>
-                    <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-slate-50 px-4 py-4">
-                      {assignedApprovers.length === 0 && (
-                        <p className="text-sm text-slate-500">Search</p>
-                      )}
-                      {assignedApprovers.map((approver, index) => {
-                        const approverId = getApproverKey(approver, index);
-                        const name =
-                          approver?.text ||
-                          approver?.name ||
-                          approver?.label ||
-                          "Unnamed";
-                        return (
-                          <div
-                            key={approverId}
-                            className="flex items-center gap-2 rounded-md bg-[#2A44671A] px-2 py-1 text-xs font-semibold text-[#2A4467]"
-                          >
-                            <span>{name}</span>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                toggleApprover(approverId, false)
-                              }
-                              className="text-[#2A4467]"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-6 justify-end">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-12 px-8 rounded-xl"
-                      onClick={() => setIsApprovalDialogOpen(false)}
-                    >
-                      Back
-                    </Button>
-                    <Button
-                      type="button"
-                      className="h-12 px-8 rounded-xl bg-[#2A4467] hover:bg-[#1e3252] text-white"
-                      onClick={() => {
-                        setIsApprovalDialogOpen(false);
-                        setStep(9);
-                      }}
-                    >
-                      Send for Approval
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+              onSendForApproval={handleSendForApproval}
+            />
           </div>
         </div>
       </DialogContent>

@@ -40,7 +40,7 @@ const EmployeeCardPopover: React.FC<Props> = ({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-[342px] p-5 rounded-2xl border border-slate-200"
+        className="w-[342px] p-5 rounded-2xl border border-slate-200 bg-white"
         data-testid="employee-card-popover"
       >
         <div className="flex items-center gap-2">

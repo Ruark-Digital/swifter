@@ -1,6 +1,7 @@
 import React from "react";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetFooter,
   SheetHeader,
@@ -40,18 +40,33 @@ import {
   TextFileUploader,
   TextInput,
 } from "@/components/layouts/FormInputs";
-import { ArrowLeft, Check, CloudUpload, Download, Eye, Search, X } from "lucide-react";
-import type { ContractRfiDTO } from "../api/contractManagerApi";
+import { ArrowLeft, Check, CloudUpload, Download, Eye, Search } from "lucide-react";
+import { ContractRfis, type ApiResponseError } from "@/types";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import {
+  contractManagerApi,
+  type ContractChangeCommentDTO,
+  type ContractCommentDTO,
+  type ContractRfiDTO,
+} from "../api/contractManagerApi";
+import { formatDateTZ } from "@/lib/utils";
+import { formatFileSize, getFileExtension } from "@/lib/fileUtils";
+import { useToastHandler } from "@/hooks/useToaster";
 
 export type RfiRow = {
   id: string;
   title: string;
-  type: "Issued" | "Received" | "-";
-  status: "Closed" | "Open" | "-";
+  type: "issue" | "received" | "-";
+  status: "closed" | "open" | "-";
+  rfi?: ContractRfis;
+  contractId?: string;
 };
 
 type RfiDetailsSheetProps = {
   trigger: React.ReactNode;
+  rfiId: string;
+  contractId: string;
+  rfi?: ContractRfis;
 };
 
 type RespondToRfiDialogProps = {
@@ -77,7 +92,7 @@ const DocCard = ({
   size,
 }: {
   name: string;
-  type: "DOC" | "PDF";
+  type: string;
   size: string;
 }) => (
   <div className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-white p-3">
@@ -107,11 +122,137 @@ const DocCard = ({
   </div>
 );
 
-const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({ trigger }) => {
-  const [isSending, setIsSending] = React.useState(false);
+const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
+  trigger,
+  rfiId,
+  contractId,
+  rfi,
+}) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const queryClient = useQueryClient();
+  const toastHandler = useToastHandler();
+  const queryKey = useUserQueryKey([
+    "contractManager",
+    "contractRfis",
+    "detail",
+    rfiId,
+  ]);
+  const commentsQueryKey = useUserQueryKey([
+    "contractManager",
+    "contractRfis",
+    "comments",
+    contractId,
+    rfiId,
+  ]);
+
+  const { data: rfiDetailRes } = useQuery<
+    { message?: string; data?: ContractRfiDTO },
+    ApiResponseError
+  >({
+    queryKey,
+    queryFn: async () => await contractManagerApi.getRfiDetail(rfiId),
+    enabled: Boolean(rfiId) && isOpen,
+    staleTime: 60000,
+  });
+
+  const { data: rfiCommentsRes, isLoading: isCommentsLoading } = useQuery<
+    {
+      message?: string;
+      data?: { data?: ContractCommentDTO[]; page?: number; limit?: number };
+    },
+    ApiResponseError
+  >({
+    queryKey: commentsQueryKey,
+    queryFn: async () =>
+      await contractManagerApi.listRfiComments(contractId, rfiId),
+    enabled: Boolean(contractId) && Boolean(rfiId) && isOpen,
+    staleTime: 60000,
+  });
+
+  const addCommentMutation = useMutation<
+    { message?: string; data?: ContractCommentDTO },
+    ApiResponseError,
+    ContractChangeCommentDTO
+  >({
+    mutationKey: [
+      "contractManager",
+      "contractRfis",
+      "comments",
+      "add",
+      contractId,
+      rfiId,
+    ],
+    mutationFn: async (payload) =>
+      await contractManagerApi.addRfiComment(contractId, rfiId, payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: commentsQueryKey });
+    },
+    onError: (error) => {
+      toastHandler.error("RFI Comment", error);
+    },
+  });
+
+  const rfiDetail = rfiDetailRes?.data;
+  const rfiTitle = rfiDetail?.title ?? rfi?.title ?? "-";
+  const rfiDescription = rfiDetail?.description ?? rfi?.description ?? "-";
+  const rfiStatus = rfi?.status ?? "-";
+  const rfiSubmittedBy = rfi?.submittedBy ?? "-";
+  const rfiIdentifier = rfi?.rfiId ?? rfi?._id ?? "-";
+  const formatDate = (value?: string | Date) =>
+    formatDateTZ(value, "MMMM dd, yyyy");
+  const submissionDate = formatDate(rfi?.createdAt);
+  const responseDeadline = formatDate(rfiDetail?.deadline ?? rfi?.deadline);
+
+  const statusTone =
+    rfiStatus?.toLowerCase() === "open"
+      ? "bg-[#DCFCE7] text-[#16A34A]"
+      : rfiStatus?.toLowerCase() === "closed"
+        ? "bg-red-100 text-red-600"
+        : "bg-slate-100 text-slate-700";
+
+  const files =
+    (rfiDetail?.files ?? rfi?.files ?? []) as Array<{
+      name?: string;
+      type?: string;
+      size?: string | number;
+    }>;
+  const comments = (rfiCommentsRes?.data?.data ?? []) as Array<
+    ContractCommentDTO & {
+      createdBy?: { name?: string; email?: string };
+    }
+  >;
+
+  const getSizeLabel = (size?: string | number) => {
+    if (size === undefined || size === null) return "N/A";
+    if (typeof size === "number") return formatFileSize(size);
+    const numeric = Number(size);
+    return Number.isFinite(numeric) ? formatFileSize(numeric) : size;
+  };
+
+  const getCommentAuthor = (comment: ContractCommentDTO) =>
+    comment.user?.name ??
+    (comment as { createdBy?: { name?: string } }).createdBy?.name ??
+    comment.replyTo?.name ??
+    "Unknown";
+
+  const getCommentEmail = (comment: ContractCommentDTO) =>
+    comment.user?.email ??
+    (comment as { createdBy?: { email?: string } }).createdBy?.email ??
+    comment.replyTo?.email ??
+    "";
+
+  const handleSendComment = async (content: string) => {
+    if (!content.trim()) return;
+    if (!contractId || !rfiId) return;
+    try {
+      await addCommentMutation.mutateAsync({ content });
+    } catch {
+      return;
+    }
+  };
 
   return (
-    <Sheet>
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="right"
@@ -131,21 +272,14 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({ trigger }) => {
                   RFI Details
                 </SheetTitle>
               </div>
-              <SheetClose asChild>
-                <button
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#FCA5A5] text-[#EF4444]"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </SheetClose>
+              
             </div>
           </SheetHeader>
 
           <div className="space-y-6">
             <div className="flex items-start justify-between">
               <div className="text-base font-semibold text-[#0F0F0F]">
-                Additional structural reinforcement
+                {rfiTitle}
               </div>
               <Button
                 variant="outline"
@@ -156,16 +290,16 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({ trigger }) => {
             </div>
 
             <Tabs defaultValue="overview" className="space-y-6">
-              <TabsList className="h-auto w-full justify-start gap-6 rounded-none border-b border-[#E5E7EB] bg-transparent p-0">
+              <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
                 <TabsTrigger
                   value="overview"
-                  className="rounded-none border-b-2 border-transparent px-0 pb-2 text-xs font-semibold text-[#6B7280] data-[state=active]:border-[#2A4467] data-[state=active]:text-[#2A4467]"
+                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                 >
                   Overview
                 </TabsTrigger>
                 <TabsTrigger
                   value="comments"
-                  className="rounded-none border-b-2 border-transparent px-0 pb-2 text-xs font-semibold text-[#6B7280] data-[state=active]:border-[#2A4467] data-[state=active]:text-[#2A4467]"
+                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                 >
                   Comments
                 </TabsTrigger>
@@ -175,24 +309,29 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({ trigger }) => {
                 <div className="grid gap-6 sm:grid-cols-2">
                   <LabelRow
                     label="RFI Title"
-                    value="Additional structural reinforcement"
+                    value={rfiTitle}
                   />
                   <LabelRow
                     label="Submitted by"
                     value={
                       <a className="text-[#2563EB] underline">
-                        Olamide Oladehinde
+                        {rfiSubmittedBy}
                       </a>
                     }
                   />
-                  <LabelRow label="RFI ID" value="RFI-2025-10" />
-                  <LabelRow label="Submission Date" value="April 30, 2025" />
-                  <LabelRow label="Response Deadline" value="April 30, 2025" />
+                  <LabelRow label="RFI ID" value={rfiIdentifier} />
+                  <LabelRow label="Submission Date" value={submissionDate} />
+                  <LabelRow
+                    label="Response Deadline"
+                    value={responseDeadline}
+                  />
                   <LabelRow
                     label="Status"
                     value={
-                      <span className="inline-flex rounded-full bg-[#DCFCE7] px-3 py-1 text-xs font-semibold text-[#16A34A]">
-                        Open
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusTone}`}
+                      >
+                        {rfiStatus || "-"}
                       </span>
                     }
                   />
@@ -203,11 +342,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({ trigger }) => {
                     Description
                   </div>
                   <div className="text-sm text-[#374151]">
-                    Lorem ipsum dolor sit amet consectetur. Volutpat quis egestas
-                    nunc egestas ut sed accumsan commodo vitae. Ullamcorper
-                    feugiat pulvinar consectetur vel natoque amet enim ac sed.
-                    Laoreet fringilla sollicitudin pharetra sit proin dictum. Sit
-                    sed lorem mauris.
+                    {rfiDescription}
                   </div>
                 </div>
 
@@ -216,10 +351,18 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({ trigger }) => {
                     Attached Documents
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <DocCard name="RFP_HRSoftware" type="DOC" size="25KB" />
-                    <DocCard name="RFP_HRSoftware" type="PDF" size="1MB" />
-                    <DocCard name="RFP_HRSoftware" type="DOC" size="25KB" />
-                    <DocCard name="RFP_HRSoftware" type="PDF" size="1MB" />
+                    {files.map((file, index) => {
+                      const name = file.name ?? "Untitled";
+                      const type = getFileExtension(name, file.type ?? "");
+                      return (
+                        <DocCard
+                          key={`${name}-${index}`}
+                          name={name}
+                          type={type || "FILE"}
+                          size={getSizeLabel(file.size)}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               </TabsContent>
@@ -242,16 +385,52 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({ trigger }) => {
 
                 <Separator />
 
-                <div className="rounded-xl border border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
-                  No comments yet.
-                </div>
+                {isCommentsLoading ? (
+                  <div className="rounded-xl border border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+                    Loading comments...
+                  </div>
+                ) : comments.length ? (
+                  <div className="space-y-4">
+                    {comments.map((comment, index) => (
+                      <div
+                        key={comment._id ?? `${index}`}
+                        className="rounded-xl border border-[#E5E7EB] p-4"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-sm font-semibold text-[#111827]">
+                              {getCommentAuthor(comment)}
+                            </div>
+                            {getCommentEmail(comment) ? (
+                              <div className="text-xs text-[#6B7280]">
+                                {getCommentEmail(comment)}
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="text-xs text-[#6B7280]">
+                            {formatDateTZ(comment.createdAt, "MMM dd, yyyy")}
+                          </div>
+                        </div>
+                        <div
+                          className="text-sm text-[#374151] mt-3 prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{
+                            __html: comment.content ?? "",
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+                    No comments yet.
+                  </div>
+                )}
 
                 <MessageComposer
-                  onSend={() => {
-                    setIsSending(true);
-                    setTimeout(() => setIsSending(false), 600);
+                  onSend={(content) => {
+                    void handleSendComment(content);
                   }}
-                  isLoading={isSending}
+                  isLoading={addCommentMutation.isPending}
                   replyToUser={{ name: "Zenith Solution" }}
                   currentUser={{ name: "You" }}
                   sendType="reply"
@@ -448,9 +627,9 @@ const columns: ColumnDef<RfiRow>[] = [
     cell: ({ getValue }) => {
       const s = getValue<RfiRow["status"]>();
       const tone =
-        s === "Open"
+        s === "open"
           ? "bg-green-100 text-green-700"
-          : s === "Closed"
+          : s === "closed"
             ? "bg-red-100 text-red-600"
             : "bg-slate-100 text-slate-700";
       return (
@@ -465,7 +644,7 @@ const columns: ColumnDef<RfiRow>[] = [
     header: () => <div className="text-right">Actions</div>,
     cell: ({ row }) => (
       <div className="text-right">
-        {row.original.type === "Received" ? (
+        {row.original.type === "received" ? (
           <RespondToRfiDialog
             trigger={
               <button
@@ -479,6 +658,9 @@ const columns: ColumnDef<RfiRow>[] = [
           />
         ) : (
           <RfiDetailsSheet
+            rfiId={row.original.id}
+            contractId={row.original.contractId ?? ""}
+            rfi={row.original.rfi}
             trigger={
               <button
                 type="button"
@@ -496,7 +678,7 @@ const columns: ColumnDef<RfiRow>[] = [
 ];
 
 type Props = {
-  rows?: ContractRfiDTO[];
+  rows?: ContractRfis[];
   isLoading?: boolean;
   totalCount?: number;
   pagination: PaginationState;
@@ -514,10 +696,12 @@ const RfiTable: React.FC<Props> = ({
 
   const tableRows: RfiRow[] = React.useMemo(() => {
     return rows.map((rfi) => ({
-      id: "-",
+      id: rfi._id ?? "-",
       title: rfi.title ?? "-",
-      type: "-",
-      status: "-",
+      type: rfi.type as unknown as RfiRow["type"] ?? "-",
+      status: rfi.status as unknown as RfiRow["status"] ?? "-",
+      rfi,
+      contractId: rfi.contractRef ?? "",
     }));
   }, [rows]);
 
@@ -530,6 +714,8 @@ const RfiTable: React.FC<Props> = ({
       )
     );
   }, [search, tableRows]);
+
+
   return (
     <div className="space-y-4" data-testid="rfi-table">
       <DataTable<RfiRow>

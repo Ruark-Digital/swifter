@@ -107,18 +107,25 @@ type VendorContractsTableProps = {
   rows?: VendorContractRow[];
   isLoading?: boolean;
   totalCount?: number;
+  isReadOnly?: boolean;
 };
 
 const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
   rows = [],
   isLoading,
   totalCount,
+  isReadOnly,
 }) => {
   const [search, setSearch] = React.useState("");
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
+
+  const tableColumns = React.useMemo(() => {
+    if (!isReadOnly) return columns;
+    return columns.filter((column) => column.id !== "actions");
+  }, [isReadOnly]);
 
   const filteredRows = React.useMemo(() => {
     if (!search) return rows;
@@ -144,9 +151,17 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
                   onChange={(e) => setSearch(e.target.value)}
                   data-testid="vendor-search-input"
                   className="h-10 w-[260px]"
+                  disabled={isReadOnly}
                 />
               </div>
-              <div className="ml-auto flex items-center gap-2">
+              <div
+                className={
+                  isReadOnly
+                    ? "ml-auto flex items-center gap-2 pointer-events-none opacity-60"
+                    : "ml-auto flex items-center gap-2"
+                }
+                aria-disabled={isReadOnly}
+              >
                 <DropdownFilters
                   filters={[
                     {
@@ -196,7 +211,7 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
             "bg-white dark:bg-slate-950 rounded-xl px-3 border border-gray-300 dark:border-slate-600",
         }}
         data={filteredRows}
-        columns={columns}
+        columns={tableColumns}
         options={{
           disableSelection: true,
           isLoading,

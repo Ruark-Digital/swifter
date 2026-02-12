@@ -220,6 +220,12 @@ const UserDetailsSheet: React.FC<UserDetailsSheetProps> = ({
         return "Procurement Lead";
       case "evaluator":
         return "Evaluator";
+      case "contract_manager":
+        return "Contract Manager";
+      case "view_only":
+        return "View Only";
+      case "approver":
+        return "Approver";
       case "super_admin":
         return "Super Admin";
       default:

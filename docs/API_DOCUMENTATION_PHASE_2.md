@@ -563,6 +563,295 @@
           }
         }
       },
+      "ContractApproverSummary": {
+        "type": "object",
+        "properties": {
+          "approverId": {
+            "type": "string",
+            "example": "66d21a05b3f6cd1a4b0e1122"
+          },
+          "name": {
+            "type": "string",
+            "example": "Alex Manager"
+          },
+          "email": {
+            "type": "string",
+            "example": "alex.manager@example.com"
+          },
+          "role": {
+            "type": "string",
+            "example": "contract_manager"
+          },
+          "approvalLevel": {
+            "type": "number",
+            "example": 2
+          },
+          "assignedApprovals": {
+            "type": "string",
+            "example": "2/3"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Completed",
+              "Pending"
+            ],
+            "example": "Pending"
+          }
+        }
+      },
+      "ContractApproverAction": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "66e1a4a2b1c6c9b0d7f1a001"
+          },
+          "company": {
+            "type": "string",
+            "example": "66c2f22e9f4e2b0012345678"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "example": "approved"
+          },
+          "title": {
+            "type": "string",
+            "enum": [
+              "change",
+              "invoice",
+              "lem",
+              "claim"
+            ],
+            "example": "change"
+          },
+          "comment": {
+            "type": "string",
+            "example": "Reviewed and approved"
+          },
+          "contractDetailRef": {
+            "type": "string",
+            "example": "66e1a4a2b1c6c9b0d7f1a0a1"
+          },
+          "contractDetailRefModel": {
+            "type": "string",
+            "enum": [
+              "ContractClaim",
+              "ContractChange",
+              "ContractRfi",
+              "ContractInvoice",
+              "ContractLem",
+              "ContractAmendment"
+            ],
+            "example": "ContractChange"
+          },
+          "approvedDate": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-02-06T10:25:00.000Z"
+          }
+        }
+      },
+      "ContractApproverDetail": {
+        "type": "object",
+        "properties": {
+          "approver": {
+            "type": "object",
+            "properties": {
+              "_id": {
+                "type": "string",
+                "example": "66d21a05b3f6cd1a4b0e1122"
+              },
+              "firstName": {
+                "type": "string",
+                "example": "Alex"
+              },
+              "lastName": {
+                "type": "string",
+                "example": "Manager"
+              },
+              "email": {
+                "type": "string",
+                "example": "alex.manager@example.com"
+              }
+            }
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContractApproverAction"
+            }
+          }
+        }
+      },
+      "ContractNcrSummary": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "66fbd4c09f4e2b0012345678"
+          },
+          "ncrId": {
+            "type": "string",
+            "example": "NCR-1738741200000"
+          },
+          "title": {
+            "type": "string",
+            "example": "Concrete surface cracks"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "example": "pending"
+          }
+        }
+      },
+      "ContractNcrResponder": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "example": "66d21a05b3f6cd1a4b0e1122"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "replied"
+            ],
+            "example": "pending"
+          },
+          "actionedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-02-08T12:00:00.000Z"
+          }
+        }
+      },
+      "ContractNcrDetail": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "66fbd4c09f4e2b0012345678"
+          },
+          "ncrId": {
+            "type": "string",
+            "example": "NCR-1738741200000"
+          },
+          "title": {
+            "type": "string",
+            "example": "Concrete surface cracks"
+          },
+          "description": {
+            "type": "string",
+            "example": "Observed hairline cracks in slab section A."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "example": "pending"
+          },
+          "submittedBy": {
+            "type": "object",
+            "properties": {
+              "_id": {
+                "type": "string",
+                "example": "66d21a05b3f6cd1a4b0e1122"
+              },
+              "name": {
+                "type": "string",
+                "example": "Alex Manager"
+              },
+              "email": {
+                "type": "string",
+                "example": "alex.manager@example.com"
+              }
+            }
+          },
+          "responders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContractNcrResponder"
+            }
+          },
+          "capa": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string",
+                  "example": "66fbd4c09f4e2b0012345699"
+                },
+                "capaId": {
+                  "type": "string",
+                  "example": "NCR-CAPA-1738741300000"
+                },
+                "title": {
+                  "type": "string",
+                  "example": "Surface repair plan"
+                },
+                "user": {
+                  "type": "object",
+                  "properties": {
+                    "_id": {
+                      "type": "string",
+                      "example": "66d21a05b3f6cd1a4b0e1122"
+                    },
+                    "name": {
+                      "type": "string",
+                      "example": "Alex Manager"
+                    },
+                    "email": {
+                      "type": "string",
+                      "example": "alex.manager@example.com"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "example": "photo.png"
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri",
+                  "example": "https://example.com/photo.png"
+                },
+                "type": {
+                  "type": "string",
+                  "example": "image/png"
+                },
+                "size": {
+                  "type": "number",
+                  "example": 123456
+                }
+              }
+            }
+          }
+        }
+      },
       "CreateProjectInput": {
         "type": "object",
         "required": [
@@ -1070,6 +1359,10 @@
           },
           "description": {
             "type": "string"
+          },
+          "issueRfi": {
+            "type": "string",
+            "example": "The RFI issue Mongo ObjectId"
           },
           "deadline": {
             "type": "string",
@@ -1988,22 +2281,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "action"
-                ],
-                "properties": {
-                  "action": {
-                    "type": "string",
-                    "enum": [
-                      "approved",
-                      "rejected"
-                    ]
-                  },
-                  "comment": {
-                    "type": "string"
-                  }
-                }
+                "$ref": "#/components/schemas/ApprovalActionDTO"
               }
             }
           }
@@ -2320,35 +2598,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "content"
-                ],
-                "properties": {
-                  "content": {
-                    "type": "string"
-                  },
-                  "files": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "name": {
-                          "type": "string"
-                        },
-                        "url": {
-                          "type": "string"
-                        },
-                        "type": {
-                          "type": "string"
-                        },
-                        "size": {
-                          "type": "string"
-                        }
-                      }
-                    }
-                  }
-                }
+                "$ref": "#/components/schemas/ContractChangeCommentDTO"
               }
             }
           }
@@ -2412,39 +2662,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "content",
-                  "parentCommentId"
-                ],
-                "properties": {
-                  "content": {
-                    "type": "string"
-                  },
-                  "parentCommentId": {
-                    "type": "string"
-                  },
-                  "files": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "name": {
-                          "type": "string"
-                        },
-                        "url": {
-                          "type": "string"
-                        },
-                        "type": {
-                          "type": "string"
-                        },
-                        "size": {
-                          "type": "string"
-                        }
-                      }
-                    }
-                  }
-                }
+                "$ref": "#/components/schemas/ContractChangeReplyDTO"
               }
             }
           }
@@ -2567,22 +2785,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "action"
-                ],
-                "properties": {
-                  "action": {
-                    "type": "string",
-                    "enum": [
-                      "approved",
-                      "rejected"
-                    ]
-                  },
-                  "comment": {
-                    "type": "string"
-                  }
-                }
+                "$ref": "#/components/schemas/ApprovalActionDTO"
               }
             }
           }
@@ -2605,6 +2808,1456 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/approver/contract/{contractId}/rfi/stats": {
+      "get": {
+        "summary": "Get contract RFI statistics",
+        "description": "Returns RFI counts (all, issue, receive) for a specific contract.",
+        "tags": [
+          "Approver - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI stats fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "all": {
+                          "type": "integer",
+                          "example": 14
+                        },
+                        "issue": {
+                          "type": "integer",
+                          "example": 9
+                        },
+                        "receive": {
+                          "type": "integer",
+                          "example": 5
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contract/{dataId}/rfi": {
+      "post": {
+        "summary": "Create a new RFI issue",
+        "description": "Creates a new RFI issue for a contract.",
+        "tags": [
+          "Approver - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractRfiDTO"
+              },
+              "example": {
+                "title": "RFI: Clarify foundation depth",
+                "description": "Please confirm the revised footing depth for Zone B.",
+                "deadline": "2026-03-01T00:00:00.000Z",
+                "issueRfi": "66e0b3a8c1b2e930f1f4a123",
+                "files": [
+                  {
+                    "name": "footing-details.pdf",
+                    "url": "https://files.example.com/footing-details.pdf",
+                    "type": "application/pdf",
+                    "size": "204800"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI created successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractRfiDTO"
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Contract RFI created successfully",
+                  "data": {
+                    "title": "RFI: Clarify foundation depth",
+                    "description": "Please confirm the revised footing depth for Zone B.",
+                    "deadline": "2026-03-01T00:00:00.000Z",
+                    "issueRfi": "66e0b3a8c1b2e930f1f4a123",
+                    "files": [
+                      {
+                        "name": "footing-details.pdf",
+                        "url": "https://files.example.com/footing-details.pdf",
+                        "type": "application/pdf",
+                        "size": "204800"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contract/{contractId}/rfi": {
+      "get": {
+        "summary": "List contract RFIs",
+        "description": "Returns a paginated list of RFIs for a specific contract.",
+        "tags": [
+          "Approver - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by RFI title"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by RFI status"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFIs fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFIs fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "contractRfis": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractRfiDTO"
+                          }
+                        },
+                        "total": {
+                          "type": "integer",
+                          "example": 24
+                        },
+                        "page": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "skip": {
+                          "type": "integer",
+                          "example": 0
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Contract RFIs fetched successfully",
+                  "data": {
+                    "contractRfis": [
+                      {
+                        "title": "RFI: Confirm finish schedule",
+                        "description": "Please confirm the updated finish sequence.",
+                        "deadline": "2026-02-20T00:00:00.000Z"
+                      }
+                    ],
+                    "total": 24,
+                    "page": 1,
+                    "skip": 0
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contract/rfi/{rfiId}": {
+      "get": {
+        "summary": "Get a specific RFI",
+        "description": "Returns details for a specific RFI.",
+        "tags": [
+          "Approver - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "contractRfi": {
+                          "$ref": "#/components/schemas/ContractRfiDTO"
+                        },
+                        "isResponse": {
+                          "type": "boolean",
+                          "example": false
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Contract RFI fetched successfully",
+                  "data": {
+                    "contractRfi": {
+                      "title": "RFI: Confirm finish schedule",
+                      "description": "Please confirm the updated finish sequence.",
+                      "deadline": "2026-02-20T00:00:00.000Z"
+                    },
+                    "isResponse": false
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contract/rfi/{rfiId}/response": {
+      "get": {
+        "summary": "Get RFI responses",
+        "description": "Returns responses for a specific RFI.",
+        "tags": [
+          "Approver - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI responses fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI response fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractRfiResponseDTO"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Contract RFI response fetched successfully",
+                  "data": [
+                    {
+                      "description": "We will proceed with the revised finish order.",
+                      "files": [
+                        {
+                          "name": "finish-order.pdf",
+                          "url": "https://files.example.com/finish-order.pdf",
+                          "type": "application/pdf",
+                          "size": "178245"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI response not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contract/{contractId}/rfi/{rfiId}/comment": {
+      "get": {
+        "summary": "Get contract RFI comments",
+        "description": "Returns comments for a specific contract RFI.",
+        "tags": [
+          "Approver - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI comments fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI comments fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractCommentDTO"
+                          }
+                        },
+                        "page": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "example": 10
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Contract RFI comments fetched successfully",
+                  "data": {
+                    "data": [
+                      {
+                        "content": "Please clarify the revised deadline.",
+                        "createdAt": "2026-02-05T14:22:30.000Z",
+                        "createdBy": {
+                          "name": "Alex Approver",
+                          "email": "alex.approver@example.com"
+                        }
+                      }
+                    ],
+                    "page": 1,
+                    "limit": 10
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a comment to a contract RFI",
+        "description": "Adds a new comment to a specific contract RFI.",
+        "tags": [
+          "Approver - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeCommentDTO"
+              },
+              "example": {
+                "content": "Please confirm the revised footing depth for Zone B.",
+                "files": [
+                  {
+                    "name": "footing-details.pdf",
+                    "url": "https://files.example.com/footing-details.pdf",
+                    "type": "application/pdf",
+                    "size": "204800"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI comment added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI comment added successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractCommentDTO"
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Contract RFI comment added successfully",
+                  "data": {
+                    "content": "Please confirm the revised footing depth for Zone B.",
+                    "createdAt": "2026-02-05T14:22:30.000Z",
+                    "createdBy": {
+                      "name": "Alex Approver",
+                      "email": "alex.approver@example.com"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contract/rfi/{rfiId}/comment/{commentId}/reply": {
+      "post": {
+        "summary": "Reply to a contract RFI comment",
+        "description": "Adds a reply to a specific comment on a contract RFI.",
+        "tags": [
+          "Approver - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          },
+          {
+            "in": "path",
+            "name": "commentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The comment ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeReplyDTO"
+              },
+              "example": {
+                "parentCommentId": "66e0b3a8c1b2e930f1f4a123",
+                "content": "Confirmed. The revised depth is 1.2m for Zone B.",
+                "files": [
+                  {
+                    "name": "depth-confirmation.pdf",
+                    "url": "https://files.example.com/depth-confirmation.pdf",
+                    "type": "application/pdf",
+                    "size": "156000"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI reply added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI reply added successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractCommentDTO"
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Contract RFI reply added successfully",
+                  "data": {
+                    "content": "Confirmed. The revised depth is 1.2m for Zone B.",
+                    "createdAt": "2026-02-05T15:10:05.000Z",
+                    "createdBy": {
+                      "name": "Alex Approver",
+                      "email": "alex.approver@example.com"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Comment or RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contract/{contractId}/ncrs/stats": {
+      "get": {
+        "summary": "Get contract NCR statistics",
+        "description": "Returns statistics of NCRs for a specific contract",
+        "tags": [
+          "Approver - Contract NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract NCR stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCR stats fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "pending": {
+                          "type": "integer"
+                        },
+                        "approved": {
+                          "type": "integer"
+                        },
+                        "rejected": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contract/{contractId}/ncrs": {
+      "get": {
+        "summary": "List contract NCRs",
+        "description": "Returns a paginated list of NCRs for a specific contract.",
+        "tags": [
+          "Approver - Contract NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by NCR title"
+          },
+          {
+            "in": "query",
+            "name": "ncrId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by NCR ID"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "issue",
+                "receive"
+              ]
+            },
+            "description": "Filter by NCR direction (issue or receive)"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract NCRs fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCRs fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ncrs": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractNcrDetail"
+                          }
+                        },
+                        "total": {
+                          "type": "integer",
+                          "example": 24
+                        },
+                        "page": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "example": 10
+                        }
+                      }
+                    }
+                  }
+                },
+                "examples": {
+                  "list": {
+                    "value": {
+                      "success": true,
+                      "message": "Contract NCRs fetched successfully",
+                      "data": {
+                        "ncrs": [
+                          {
+                            "_id": "66fbd4c09f4e2b0012345678",
+                            "ncrId": "NCR-1738741200000",
+                            "title": "Concrete surface cracks",
+                            "description": "Observed hairline cracks in slab section A.",
+                            "status": "pending"
+                          }
+                        ],
+                        "total": 24,
+                        "page": 1,
+                        "limit": 10
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a contract NCR",
+        "description": "Creates a new NCR for a specific contract.",
+        "tags": [
+          "Approver - Contract NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractNCRDTO"
+              },
+              "example": {
+                "title": "Concrete surface cracks",
+                "description": "Observed hairline cracks in slab section A.",
+                "responders": [
+                  "66d21a05b3f6cd1a4b0e1122"
+                ],
+                "files": [
+                  {
+                    "name": "photo.png",
+                    "url": "https://example.com/photo.png",
+                    "type": "image/png",
+                    "size": 123456
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract NCR created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCR created successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "66fbd4c09f4e2b0012345678"
+                        },
+                        "ncrId": {
+                          "type": "string",
+                          "example": "NCR-1738741200000"
+                        },
+                        "title": {
+                          "type": "string",
+                          "example": "Concrete surface cracks"
+                        },
+                        "description": {
+                          "type": "string",
+                          "example": "Observed hairline cracks in slab section A."
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "Contract NCR created successfully",
+                  "data": {
+                    "_id": "66fbd4c09f4e2b0012345678",
+                    "ncrId": "NCR-1738741200000",
+                    "title": "Concrete surface cracks",
+                    "description": "Observed hairline cracks in slab section A."
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contract/{contractId}/ncrs/{ncrId}": {
+      "get": {
+        "summary": "Get contract NCR detail",
+        "description": "Returns a specific NCR by ID for a contract.",
+        "tags": [
+          "Approver - Contract NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "ncrId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The NCR ID or NCR object ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract NCR fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCR fetched successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractNcrDetail"
+                    }
+                  }
+                },
+                "examples": {
+                  "detail": {
+                    "value": {
+                      "success": true,
+                      "message": "Contract NCR fetched successfully",
+                      "data": {
+                        "_id": "66fbd4c09f4e2b0012345678",
+                        "ncrId": "NCR-1738741200000",
+                        "title": "Concrete surface cracks",
+                        "description": "Observed hairline cracks in slab section A.",
+                        "status": "pending"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "NCR not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contract/{contractId}/ncrs/{ncrId}/capa": {
+      "post": {
+        "summary": "Create NCR CAPA",
+        "description": "Creates a CAPA record linked to a specific NCR.",
+        "tags": [
+          "Approver - Contract NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "ncrId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The NCR ID or NCR object ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractNCRCAPADTO"
+              },
+              "example": {
+                "title": "Surface repair plan",
+                "timeline": "2026-03-15",
+                "description": "Patch and seal cracks with epoxy filler.",
+                "files": [
+                  {
+                    "name": "repair-plan.pdf",
+                    "url": "https://example.com/repair-plan.pdf",
+                    "type": "application/pdf",
+                    "size": 204800
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract NCR CAPA created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCR CAPA created successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "66fbd4c09f4e2b0012345678"
+                        },
+                        "ncrId": {
+                          "type": "string",
+                          "example": "NCR-1738741200000"
+                        },
+                        "capa": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "Contract NCR CAPA created successfully",
+                  "data": {
+                    "_id": "66fbd4c09f4e2b0012345678",
+                    "ncrId": "NCR-1738741200000",
+                    "capa": [
+                      "66fbd4c09f4e2b0012345699"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "NCR not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contract/{contractId}/ncrs/{ncrId}/capa/{capaId}/approve": {
+      "patch": {
+        "summary": "Approve NCR CAPA",
+        "description": "Approves a CAPA record for a specific NCR.",
+        "tags": [
+          "Approver - Contract NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "ncrId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The NCR ID or NCR object ID"
+          },
+          {
+            "in": "path",
+            "name": "capaId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The CAPA ID or CAPA object ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract NCR CAPA approved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCR CAPA approved successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "NCR-CAPA approved"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "NCR or CAPA not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contract/{contractId}/ncrs/{ncrId}/close": {
+      "patch": {
+        "summary": "Close NCR",
+        "description": "Closes a specific NCR with a reason.",
+        "tags": [
+          "Approver - Contract NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "ncrId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The NCR ID or NCR object ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "reason": "Issue resolved and documented."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract NCR closed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCR closed successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "NCR closed"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "NCR not found"
+          },
+          "500": {
+            "description": "Server error"
           }
         }
       }
@@ -2902,35 +4555,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "content"
-                ],
-                "properties": {
-                  "content": {
-                    "type": "string"
-                  },
-                  "files": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "name": {
-                          "type": "string"
-                        },
-                        "url": {
-                          "type": "string"
-                        },
-                        "type": {
-                          "type": "string"
-                        },
-                        "size": {
-                          "type": "string"
-                        }
-                      }
-                    }
-                  }
-                }
+                "$ref": "#/components/schemas/ContractChangeCommentDTO"
               }
             }
           }
@@ -2994,35 +4619,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "content"
-                ],
-                "properties": {
-                  "content": {
-                    "type": "string"
-                  },
-                  "files": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "name": {
-                          "type": "string"
-                        },
-                        "url": {
-                          "type": "string"
-                        },
-                        "type": {
-                          "type": "string"
-                        },
-                        "size": {
-                          "type": "string"
-                        }
-                      }
-                    }
-                  }
-                }
+                "$ref": "#/components/schemas/ContractChangeReplyDTO"
               }
             }
           }
@@ -3086,22 +4683,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "action"
-                ],
-                "properties": {
-                  "action": {
-                    "type": "string",
-                    "enum": [
-                      "approved",
-                      "rejected"
-                    ]
-                  },
-                  "comment": {
-                    "type": "string"
-                  }
-                }
+                "$ref": "#/components/schemas/ApprovalActionDTO"
               }
             }
           }
@@ -3405,22 +4987,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "action"
-                ],
-                "properties": {
-                  "action": {
-                    "type": "string",
-                    "enum": [
-                      "approved",
-                      "rejected"
-                    ]
-                  },
-                  "comment": {
-                    "type": "string"
-                  }
-                }
+                "$ref": "#/components/schemas/ApprovalActionDTO"
               }
             }
           }
@@ -3679,22 +5246,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "action"
-                ],
-                "properties": {
-                  "action": {
-                    "type": "string",
-                    "enum": [
-                      "approved",
-                      "rejected"
-                    ]
-                  },
-                  "comment": {
-                    "type": "string"
-                  }
-                }
+                "$ref": "#/components/schemas/ApprovalActionDTO"
               }
             }
           }
@@ -4020,24 +5572,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "action"
-                ],
-                "properties": {
-                  "action": {
-                    "type": "string",
-                    "enum": [
-                      "approved",
-                      "rejected"
-                    ],
-                    "description": "Approval action"
-                  },
-                  "comment": {
-                    "type": "string",
-                    "description": "Optional comment"
-                  }
-                }
+                "$ref": "#/components/schemas/ApprovalActionDTO"
               }
             }
           }
@@ -5096,6 +6631,104 @@
         }
       }
     },
+    "/manager/contracts/stats": {
+      "get": {
+        "summary": "Get contract statistics",
+        "description": "Returns aggregate counts of contracts for the authenticated user's company.",
+        "tags": [
+          "ContractManager - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "view_only",
+          "approver",
+          "company_admin",
+          "contract_manager",
+          "procurement"
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract stats fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "all": {
+                          "type": "integer"
+                        },
+                        "active": {
+                          "type": "integer"
+                        },
+                        "draft": {
+                          "type": "integer"
+                        },
+                        "completed": {
+                          "type": "integer"
+                        },
+                        "pending": {
+                          "type": "integer"
+                        },
+                        "cancelled": {
+                          "type": "integer"
+                        },
+                        "suspended": {
+                          "type": "integer"
+                        },
+                        "expired": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/manager/contracts": {
       "post": {
         "summary": "Create a new contract",
@@ -5507,6 +7140,114 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}": {
+      "get": {
+        "summary": "Get contract details",
+        "description": "Returns detailed information for a specific contract.",
+        "tags": [
+          "ContractManager - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "view_only",
+          "approver",
+          "company_admin",
+          "contract_manager",
+          "procurement"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseContract"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Contract with holdback and savings totals",
+                    "value": {
+                      "status": 200,
+                      "message": "Contract fetched successfully",
+                      "data": {
+                        "_id": "66c2f22e9f4e2b0012345678",
+                        "contractId": "CTR-2026-001",
+                        "company": "66b1a11e9f4e2b0012340001",
+                        "title": "Bridge Inspection",
+                        "status": "active",
+                        "vendor": "66b1a11e9f4e2b0012340002",
+                        "contractType": "671c2f0d9f4e2b0012345678",
+                        "startDate": "2026-01-15T00:00:00.000Z",
+                        "endDate": "2026-06-15T00:00:00.000Z",
+                        "holdBackReleased": 15000,
+                        "savingAmount": 4500,
+                        "createdAt": "2026-01-10T10:30:00.000Z",
+                        "updatedAt": "2026-02-05T08:22:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             }
@@ -6120,6 +7861,241 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/approvers": {
+      "get": {
+        "summary": "Get contract approvers",
+        "description": "Returns approval summary per approver for a contract.",
+        "tags": [
+          "ContractManager - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "view_only",
+          "approver",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract approvers fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract approvers fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractApproverSummary"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Contract approvers fetched successfully",
+                  "data": [
+                    {
+                      "approverId": "66d21a05b3f6cd1a4b0e1122",
+                      "name": "Alex Manager",
+                      "email": "alex.manager@example.com",
+                      "role": "contract_manager",
+                      "approvalLevel": 2,
+                      "assignedApprovals": "2/3",
+                      "status": "Pending"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/approvers/{approverId}": {
+      "get": {
+        "summary": "Get contract approver details",
+        "description": "Returns approver details and approval actions for a contract.",
+        "tags": [
+          "ContractManager - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "view_only",
+          "approver",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "approverId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The approver user ID or email"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract approver details fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract approver details fetched successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractApproverDetail"
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Contract approver details fetched successfully",
+                  "data": {
+                    "approver": {
+                      "_id": "66d21a05b3f6cd1a4b0e1122",
+                      "firstName": "Alex",
+                      "lastName": "Manager",
+                      "email": "alex.manager@example.com"
+                    },
+                    "details": [
+                      {
+                        "_id": "66e1a4a2b1c6c9b0d7f1a001",
+                        "company": "66c2f22e9f4e2b0012345678",
+                        "status": "approved",
+                        "title": "change",
+                        "comment": "Reviewed and approved",
+                        "contractDetailRef": "66e1a4a2b1c6c9b0d7f1a0a1",
+                        "contractDetailRefModel": "ContractChange",
+                        "approvedDate": "2026-02-06T10:25:00.000Z"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract or approver not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             }
@@ -8793,7 +10769,7 @@
         }
       }
     },
-    "/manager/contracts/{dataId}/rfi/{type}": {
+    "/manager/contracts/{dataId}/rfi": {
       "post": {
         "summary": "Create a new RFI issue",
         "description": "Creates a new RFI issue for a contract or MSA contract.",
@@ -8818,19 +10794,6 @@
               "type": "string"
             },
             "description": "The contract or MSA contract ID"
-          },
-          {
-            "in": "path",
-            "name": "type",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "Contract",
-                "MsaContract"
-              ]
-            },
-            "description": "The type of data (Contract or MsaContract)"
           }
         ],
         "requestBody": {
@@ -8857,6 +10820,485 @@
                     },
                     "data": {
                       "$ref": "#/components/schemas/ContractRfiDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/ncrs/stats": {
+      "get": {
+        "summary": "Get contract NCR statistics",
+        "description": "Returns counts of total, issue, and receive NCRs for a specific contract.",
+        "tags": [
+          "ContractManager - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "view_only",
+          "approver",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract NCR stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCR stats fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "example": 5
+                        },
+                        "issue": {
+                          "type": "integer",
+                          "example": 2
+                        },
+                        "receive": {
+                          "type": "integer",
+                          "example": 3
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/ncrs": {
+      "get": {
+        "summary": "List contract NCRs",
+        "description": "Returns a paginated list of NCRs for a specific contract.",
+        "tags": [
+          "ContractManager - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "view_only",
+          "approver",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by NCR title"
+          },
+          {
+            "in": "query",
+            "name": "ncrId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by NCR ID"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract NCRs fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCRs fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractNcrSummary"
+                      }
+                    }
+                  }
+                },
+                "examples": {
+                  "list": {
+                    "value": {
+                      "message": "Contract NCRs fetched successfully",
+                      "data": [
+                        {
+                          "_id": "66fbd4c09f4e2b0012345678",
+                          "ncrId": "NCR-1738741200000",
+                          "title": "Concrete surface cracks",
+                          "status": "pending"
+                        },
+                        {
+                          "_id": "66fbd4c09f4e2b0012345679",
+                          "ncrId": "NCR-1738741205000",
+                          "title": "Rebar spacing issue",
+                          "status": "approved"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/ncrs/{ncrId}": {
+      "get": {
+        "summary": "Get contract NCR detail",
+        "description": "Returns a specific NCR for a contract.",
+        "tags": [
+          "ContractManager - Contract",
+          "View Only - NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "view_only",
+          "approver",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "ncrId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The NCR ID or NCR object ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract NCR fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCR fetched successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractNcrDetail"
+                    }
+                  }
+                },
+                "examples": {
+                  "detail": {
+                    "value": {
+                      "message": "Contract NCR fetched successfully",
+                      "data": {
+                        "_id": "66fbd4c09f4e2b0012345678",
+                        "ncrId": "NCR-1738741200000",
+                        "title": "Concrete surface cracks",
+                        "description": "Observed hairline cracks in slab section A.",
+                        "status": "pending",
+                        "submittedBy": {
+                          "_id": "66d21a05b3f6cd1a4b0e1122",
+                          "name": "Alex Manager",
+                          "email": "alex.manager@example.com"
+                        },
+                        "responders": [
+                          {
+                            "user": "66d21a05b3f6cd1a4b0e1122",
+                            "status": "pending",
+                            "actionedAt": "2026-02-08T12:00:00.000Z"
+                          }
+                        ],
+                        "capa": [
+                          {
+                            "_id": "66fbd4c09f4e2b0012345699",
+                            "capaId": "NCR-CAPA-1738741300000",
+                            "title": "Surface repair plan",
+                            "user": {
+                              "_id": "66d21a05b3f6cd1a4b0e1122",
+                              "name": "Alex Manager",
+                              "email": "alex.manager@example.com"
+                            }
+                          }
+                        ],
+                        "files": [
+                          {
+                            "name": "photo.png",
+                            "url": "https://example.com/photo.png",
+                            "type": "image/png",
+                            "size": 123456
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NCR not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/rfis/stats": {
+      "get": {
+        "summary": "Get contract RFI statistics",
+        "description": "Returns counts of all, issue, and receive RFIs for a specific contract.",
+        "tags": [
+          "ContractManager - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI stats fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "all": {
+                          "type": "integer"
+                        },
+                        "issue": {
+                          "type": "integer"
+                        },
+                        "receive": {
+                          "type": "integer"
+                        }
+                      }
                     }
                   }
                 }
@@ -9114,94 +11556,6 @@
       }
     },
     "/manager/contracts/rfis/{rfiId}/response": {
-      "post": {
-        "summary": "Add response to RFI",
-        "description": "Adds a response to a specific RFI.",
-        "tags": [
-          "ContractManager - Contract"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-roles": [
-          "contract_manager",
-          "procurement"
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "rfiId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "The RFI ID"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ContractRfiResponseDTO"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Contract RFI response added successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Contract RFI response added successfully"
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/ContractRfiResponseDTO"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated user",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthenticatedError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden – user lacks required role",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthorizeError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerError"
-                }
-              }
-            }
-          }
-        }
-      },
       "get": {
         "summary": "Get RFI response",
         "description": "Returns the response for a specific RFI.",
@@ -9267,6 +11621,422 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/rfis/{rfiId}/comment": {
+      "get": {
+        "summary": "Get contract RFI comments",
+        "description": "Returns comments for a specific contract RFI.",
+        "tags": [
+          "ContractManager - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "view_only",
+          "approver",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI comments fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI comments fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractCommentDTO"
+                          }
+                        },
+                        "page": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "example": 10
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Contract RFI comments fetched successfully",
+                  "data": {
+                    "data": [
+                      {
+                        "content": "Please confirm the revised deadline.",
+                        "createdAt": "2026-02-05T14:22:30.000Z",
+                        "createdBy": {
+                          "name": "Alex Manager",
+                          "email": "alex.manager@example.com"
+                        }
+                      }
+                    ],
+                    "page": 1,
+                    "limit": 10
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract RFI not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a comment to a contract RFI",
+        "description": "Adds a new comment to a specific contract RFI.",
+        "tags": [
+          "ContractManager - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeCommentDTO"
+              },
+              "example": {
+                "content": "Please confirm the revised footing depth for Zone B.",
+                "files": [
+                  {
+                    "name": "footing-details.pdf",
+                    "url": "https://files.example.com/footing-details.pdf",
+                    "type": "application/pdf",
+                    "size": "204800"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI comment added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI comment added successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractCommentDTO"
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Contract RFI comment added successfully",
+                  "data": {
+                    "content": "Please confirm the revised footing depth for Zone B.",
+                    "createdAt": "2026-02-05T14:22:30.000Z",
+                    "createdBy": {
+                      "name": "Alex Manager",
+                      "email": "alex.manager@example.com"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract RFI not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/rfis/{rfiId}/comment/{commentId}/reply": {
+      "post": {
+        "summary": "Reply to a contract RFI comment",
+        "description": "Adds a reply to a specific comment on a contract RFI.",
+        "tags": [
+          "ContractManager - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          },
+          {
+            "in": "path",
+            "name": "commentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The comment ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeReplyDTO"
+              },
+              "example": {
+                "parentCommentId": "66e0b3a8c1b2e930f1f4a123",
+                "content": "Confirmed. The revised depth is 1.2m for Zone B.",
+                "files": [
+                  {
+                    "name": "depth-confirmation.pdf",
+                    "url": "https://files.example.com/depth-confirmation.pdf",
+                    "type": "application/pdf",
+                    "size": "156000"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI reply added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI reply added successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractCommentDTO"
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Contract RFI reply added successfully",
+                  "data": {
+                    "content": "Confirmed. The revised depth is 1.2m for Zone B.",
+                    "createdAt": "2026-02-05T15:10:05.000Z",
+                    "createdBy": {
+                      "name": "Alex Manager",
+                      "email": "alex.manager@example.com"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Comment or RFI not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             }
@@ -9615,7 +12385,7 @@
         "summary": "Get contract statistics",
         "description": "Returns statistics of contracts for the authenticated user's company (view_only role context).",
         "tags": [
-          "User - Contract"
+          "View Only User - Contract"
         ],
         "security": [
           {
@@ -9686,7 +12456,7 @@
         "summary": "List contracts",
         "description": "Returns a paginated list of contracts for the authenticated user's company.",
         "tags": [
-          "User - Contract"
+          "View Only User - Contract"
         ],
         "security": [
           {
@@ -9769,7 +12539,7 @@
                         "contracts": {
                           "type": "array",
                           "items": {
-                            "type": "object"
+                            "$ref": "#/components/schemas/ContractDTO"
                           }
                         },
                         "totalContracts": {
@@ -9796,7 +12566,7 @@
         "summary": "Get contract change statistics",
         "description": "Returns statistics for changes associated with a specific contract.",
         "tags": [
-          "User - Contract Change"
+          "View Only User - Contract Change"
         ],
         "security": [
           {
@@ -9831,7 +12601,24 @@
                       "example": "Contract change stats fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "all": {
+                          "type": "integer"
+                        },
+                        "request": {
+                          "type": "integer"
+                        },
+                        "order": {
+                          "type": "integer"
+                        },
+                        "directive": {
+                          "type": "integer"
+                        },
+                        "proposal": {
+                          "type": "integer"
+                        }
+                      }
                     }
                   }
                 }
@@ -9855,7 +12642,7 @@
         "summary": "List contract changes",
         "description": "Returns a paginated list of changes for a specific contract.",
         "tags": [
-          "User - Contract Change"
+          "View Only User - Contract Change"
         ],
         "security": [
           {
@@ -9926,22 +12713,13 @@
                     "data": {
                       "type": "object",
                       "properties": {
-                        "docs": {
+                        "changes": {
                           "type": "array",
                           "items": {
-                            "type": "object"
+                            "$ref": "#/components/schemas/ContractChangeDTO"
                           }
                         },
-                        "totalDocs": {
-                          "type": "integer"
-                        },
-                        "limit": {
-                          "type": "integer"
-                        },
-                        "page": {
-                          "type": "integer"
-                        },
-                        "totalPages": {
+                        "total": {
                           "type": "integer"
                         }
                       }
@@ -9968,7 +12746,7 @@
         "summary": "Get contract change details",
         "description": "Returns detailed information for a specific contract change.",
         "tags": [
-          "User - Contract Change"
+          "View Only User - Contract Change"
         ],
         "security": [
           {
@@ -10012,7 +12790,7 @@
                       "example": "Contract change fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractChangeDTO"
                     }
                   }
                 }
@@ -10036,7 +12814,7 @@
         "summary": "Get contract change comments",
         "description": "Returns comments for a specific contract change.",
         "tags": [
-          "User - Contract Change"
+          "View Only User - Contract Change"
         ],
         "security": [
           {
@@ -10080,9 +12858,20 @@
                       "example": "Contract change comments fetched successfully"
                     },
                     "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractCommentDTO"
+                          }
+                        },
+                        "page": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        }
                       }
                     }
                   }
@@ -10102,12 +12891,396 @@
         }
       }
     },
+    "/user/contract/{contractId}/rfi/stats": {
+      "get": {
+        "summary": "Get contract RFI statistics",
+        "description": "Returns RFI counts (all, issue, receive) for a specific contract.",
+        "tags": [
+          "View Only User - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI stats fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "all": {
+                          "type": "integer",
+                          "example": 14
+                        },
+                        "issue": {
+                          "type": "integer",
+                          "example": 9
+                        },
+                        "receive": {
+                          "type": "integer",
+                          "example": 5
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/contract/{contractId}/rfi": {
+      "get": {
+        "summary": "List contract RFIs",
+        "description": "Returns a paginated list of RFIs for a specific contract.",
+        "tags": [
+          "View Only User - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by RFI title"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by RFI status"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFIs fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFIs fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "contractRfis": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractRfiDTO"
+                          }
+                        },
+                        "total": {
+                          "type": "integer",
+                          "example": 24
+                        },
+                        "page": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "skip": {
+                          "type": "integer",
+                          "example": 0
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "Contract RFIs fetched successfully",
+                  "data": {
+                    "contractRfis": [
+                      {
+                        "title": "RFI: Confirm finish schedule",
+                        "description": "Please confirm the updated finish sequence.",
+                        "deadline": "2026-02-20T00:00:00.000Z"
+                      }
+                    ],
+                    "total": 24,
+                    "page": 1,
+                    "skip": 0
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/contract/rfi/{rfiId}": {
+      "get": {
+        "summary": "Get a specific RFI",
+        "description": "Returns details for a specific RFI.",
+        "tags": [
+          "View Only User - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "contractRfi": {
+                          "$ref": "#/components/schemas/ContractRfiDTO"
+                        },
+                        "isResponse": {
+                          "type": "boolean",
+                          "example": false
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "Contract RFI fetched successfully",
+                  "data": {
+                    "contractRfi": {
+                      "title": "RFI: Confirm finish schedule",
+                      "description": "Please confirm the updated finish sequence.",
+                      "deadline": "2026-02-20T00:00:00.000Z"
+                    },
+                    "isResponse": false
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/contract/{contractId}/rfi/{rfiId}/comment": {
+      "get": {
+        "summary": "Get contract RFI comments",
+        "description": "Returns comments for a specific contract RFI.",
+        "tags": [
+          "View Only User - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI comments fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI comments fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractCommentDTO"
+                          }
+                        },
+                        "page": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "example": 10
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "Contract RFI comments fetched successfully",
+                  "data": {
+                    "data": [
+                      {
+                        "content": "Please clarify the revised deadline.",
+                        "createdAt": "2026-02-05T14:22:30.000Z",
+                        "createdBy": {
+                          "name": "Jane Viewer",
+                          "email": "jane.viewer@example.com"
+                        }
+                      }
+                    ],
+                    "page": 1,
+                    "limit": 10
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
     "/user/contract/{contractId}": {
       "get": {
         "summary": "Get contract details",
         "description": "Returns detailed information for a specific contract.",
         "tags": [
-          "User - Contract"
+          "View Only User - Contract"
         ],
         "security": [
           {
@@ -10142,8 +13315,7 @@
                       "example": "Contract fetched successfully"
                     },
                     "data": {
-                      "type": "object",
-                      "description": "Contract object"
+                      "$ref": "#/components/schemas/ContractDTO"
                     }
                   }
                 }
@@ -10167,7 +13339,7 @@
         "summary": "Get contract claim statistics",
         "description": "Returns statistics for claims associated with a specific contract.",
         "tags": [
-          "User - Contract Claim"
+          "View Only User - Contract Claim"
         ],
         "security": [
           {
@@ -10202,7 +13374,24 @@
                       "example": "Contract claim stats fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "pending": {
+                          "type": "integer"
+                        },
+                        "approved": {
+                          "type": "integer"
+                        },
+                        "rejected": {
+                          "type": "integer"
+                        },
+                        "dispute": {
+                          "type": "integer"
+                        }
+                      }
                     }
                   }
                 }
@@ -10226,7 +13415,7 @@
         "summary": "List contract claims",
         "description": "Returns a paginated list of claims for a specific contract.",
         "tags": [
-          "User - Contract Claim"
+          "View Only User - Contract Claim"
         ],
         "security": [
           {
@@ -10297,22 +13486,13 @@
                     "data": {
                       "type": "object",
                       "properties": {
-                        "docs": {
+                        "changes": {
                           "type": "array",
                           "items": {
-                            "type": "object"
+                            "$ref": "#/components/schemas/ContractClaimDTO"
                           }
                         },
-                        "totalDocs": {
-                          "type": "integer"
-                        },
-                        "limit": {
-                          "type": "integer"
-                        },
-                        "page": {
-                          "type": "integer"
-                        },
-                        "totalPages": {
+                        "total": {
                           "type": "integer"
                         }
                       }
@@ -10339,7 +13519,7 @@
         "summary": "Get contract claim details",
         "description": "Returns detailed information for a specific contract claim.",
         "tags": [
-          "User - Contract Claim"
+          "View Only User - Contract Claim"
         ],
         "security": [
           {
@@ -10383,7 +13563,7 @@
                       "example": "Contract claim fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractClaimDTO"
                     }
                   }
                 }
@@ -10407,7 +13587,7 @@
         "summary": "Get contract claim comments",
         "description": "Returns comments for a specific contract claim.",
         "tags": [
-          "User - Contract Claim"
+          "View Only User - Contract Claim"
         ],
         "security": [
           {
@@ -10451,9 +13631,20 @@
                       "example": "Contract claim comments fetched successfully"
                     },
                     "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractCommentDTO"
+                          }
+                        },
+                        "page": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        }
                       }
                     }
                   }
@@ -10473,12 +13664,484 @@
         }
       }
     },
+    "/user/contract/{contractId}/ncrs/stats": {
+      "get": {
+        "summary": "Get contract NCR statistics",
+        "description": "Returns counts of total, issue, and receive NCRs for a specific contract.",
+        "tags": [
+          "View Only User - Contract NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract NCR stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCR stats fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "example": 5
+                        },
+                        "issue": {
+                          "type": "integer",
+                          "example": 2
+                        },
+                        "receive": {
+                          "type": "integer",
+                          "example": 3
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/contract/{contractId}/ncrs": {
+      "get": {
+        "summary": "List contract NCRs",
+        "description": "Returns a paginated list of NCRs for a specific contract.",
+        "tags": [
+          "View Only User - Contract NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by NCR title"
+          },
+          {
+            "in": "query",
+            "name": "ncrId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by NCR ID"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "issue",
+                "receive"
+              ]
+            },
+            "description": "Filter by NCR direction (issue or receive)"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract NCRs fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCRs fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "_id": {
+                            "type": "string",
+                            "example": "66fbd4c09f4e2b0012345678"
+                          },
+                          "ncrId": {
+                            "type": "string",
+                            "example": "NCR-1738741200000"
+                          },
+                          "title": {
+                            "type": "string",
+                            "example": "Concrete surface cracks"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "approved",
+                              "rejected"
+                            ],
+                            "example": "pending"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "examples": {
+                  "list": {
+                    "value": {
+                      "success": true,
+                      "message": "Contract NCRs fetched successfully",
+                      "data": [
+                        {
+                          "_id": "66fbd4c09f4e2b0012345678",
+                          "ncrId": "NCR-1738741200000",
+                          "title": "Concrete surface cracks",
+                          "status": "pending"
+                        },
+                        {
+                          "_id": "66fbd4c09f4e2b0012345679",
+                          "ncrId": "NCR-1738741205000",
+                          "title": "Rebar spacing issue",
+                          "status": "approved"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/contract/{contractId}/ncrs/{ncrId}": {
+      "get": {
+        "summary": "Get contract NCR details",
+        "description": "Returns detailed information for a specific NCR.",
+        "tags": [
+          "View Only User - Contract NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "ncrId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The NCR ID or NCR object ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract NCR fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCR fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "66fbd4c09f4e2b0012345678"
+                        },
+                        "ncrId": {
+                          "type": "string",
+                          "example": "NCR-1738741200000"
+                        },
+                        "title": {
+                          "type": "string",
+                          "example": "Concrete surface cracks"
+                        },
+                        "description": {
+                          "type": "string",
+                          "example": "Observed hairline cracks in slab section A."
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected"
+                          ],
+                          "example": "pending"
+                        },
+                        "submittedBy": {
+                          "type": "object",
+                          "properties": {
+                            "_id": {
+                              "type": "string",
+                              "example": "66d21a05b3f6cd1a4b0e1122"
+                            },
+                            "name": {
+                              "type": "string",
+                              "example": "Alex Manager"
+                            },
+                            "email": {
+                              "type": "string",
+                              "example": "alex.manager@example.com"
+                            }
+                          }
+                        },
+                        "responders": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "user": {
+                                "type": "string",
+                                "example": "66d21a05b3f6cd1a4b0e1122"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "replied"
+                                ],
+                                "example": "pending"
+                              },
+                              "actionedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "example": "2026-02-08T12:00:00.000Z"
+                              }
+                            }
+                          }
+                        },
+                        "capa": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "_id": {
+                                "type": "string",
+                                "example": "66fbd4c09f4e2b0012345699"
+                              },
+                              "capaId": {
+                                "type": "string",
+                                "example": "NCR-CAPA-1738741300000"
+                              },
+                              "title": {
+                                "type": "string",
+                                "example": "Surface repair plan"
+                              },
+                              "user": {
+                                "type": "object",
+                                "properties": {
+                                  "_id": {
+                                    "type": "string",
+                                    "example": "66d21a05b3f6cd1a4b0e1122"
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "example": "Alex Manager"
+                                  },
+                                  "email": {
+                                    "type": "string",
+                                    "example": "alex.manager@example.com"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "files": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "example": "photo.png"
+                              },
+                              "url": {
+                                "type": "string",
+                                "format": "uri",
+                                "example": "https://example.com/photo.png"
+                              },
+                              "type": {
+                                "type": "string",
+                                "example": "image/png"
+                              },
+                              "size": {
+                                "type": "number",
+                                "example": 123456
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "examples": {
+                  "detail": {
+                    "value": {
+                      "success": true,
+                      "message": "Contract NCR fetched successfully",
+                      "data": {
+                        "_id": "66fbd4c09f4e2b0012345678",
+                        "ncrId": "NCR-1738741200000",
+                        "title": "Concrete surface cracks",
+                        "description": "Observed hairline cracks in slab section A.",
+                        "status": "pending",
+                        "submittedBy": {
+                          "_id": "66d21a05b3f6cd1a4b0e1122",
+                          "name": "Alex Manager",
+                          "email": "alex.manager@example.com"
+                        },
+                        "responders": [
+                          {
+                            "user": "66d21a05b3f6cd1a4b0e1122",
+                            "status": "pending",
+                            "actionedAt": "2026-02-08T12:00:00.000Z"
+                          }
+                        ],
+                        "capa": [
+                          {
+                            "_id": "66fbd4c09f4e2b0012345699",
+                            "capaId": "NCR-CAPA-1738741300000",
+                            "title": "Surface repair plan",
+                            "user": {
+                              "_id": "66d21a05b3f6cd1a4b0e1122",
+                              "name": "Alex Manager",
+                              "email": "alex.manager@example.com"
+                            }
+                          }
+                        ],
+                        "files": [
+                          {
+                            "name": "photo.png",
+                            "url": "https://example.com/photo.png",
+                            "type": "image/png",
+                            "size": 123456
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "NCR not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
     "/user/contract/{contractId}/invoice/stats": {
       "get": {
         "summary": "Get contract invoice statistics",
         "description": "Returns statistics for invoices associated with a specific contract.",
         "tags": [
-          "User - Contract Invoice"
+          "View Only User - Contract Invoice"
         ],
         "security": [
           {
@@ -10513,7 +14176,21 @@
                       "example": "Contract invoice stats fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "all": {
+                          "type": "integer"
+                        },
+                        "pending": {
+                          "type": "integer"
+                        },
+                        "accepted": {
+                          "type": "integer"
+                        },
+                        "rejected": {
+                          "type": "integer"
+                        }
+                      }
                     }
                   }
                 }
@@ -10537,7 +14214,7 @@
         "summary": "List contract invoices",
         "description": "Returns a paginated list of invoices for a specific contract.",
         "tags": [
-          "User - Contract Invoice"
+          "View Only User - Contract Invoice"
         ],
         "security": [
           {
@@ -10611,7 +14288,7 @@
                         "invoices": {
                           "type": "array",
                           "items": {
-                            "type": "object"
+                            "$ref": "#/components/schemas/ContractInvoiceDTO"
                           }
                         },
                         "total": {
@@ -10641,7 +14318,7 @@
         "summary": "Get contract invoice details",
         "description": "Returns detailed information for a specific contract invoice.",
         "tags": [
-          "User - Contract Invoice"
+          "View Only User - Contract Invoice"
         ],
         "security": [
           {
@@ -10685,7 +14362,7 @@
                       "example": "Contract invoice fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractInvoiceDTO"
                     }
                   }
                 }
@@ -10709,7 +14386,7 @@
         "summary": "List contract LEMs",
         "description": "Returns a paginated list of LEMs for a specific contract.",
         "tags": [
-          "User - Contract LEM"
+          "View Only User - Contract LEM"
         ],
         "security": [
           {
@@ -10778,7 +14455,24 @@
                       "example": "Contract LEMs fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "resp": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractLemDTO"
+                          }
+                        },
+                        "count": {
+                          "type": "integer"
+                        }
+                      }
                     }
                   }
                 }
@@ -10802,7 +14496,7 @@
         "summary": "Get contract LEM details",
         "description": "Returns detailed information for a specific contract LEM.",
         "tags": [
-          "User - Contract LEM"
+          "View Only User - Contract LEM"
         ],
         "security": [
           {
@@ -10846,7 +14540,7 @@
                       "example": "Contract LEM fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractLemDTO"
                     }
                   }
                 }
@@ -10870,7 +14564,7 @@
         "summary": "Get contract amendment statistics",
         "description": "Returns statistics for amendments associated with a specific contract.",
         "tags": [
-          "User - Contract Amendment"
+          "View Only User - Contract Amendment"
         ],
         "security": [
           {
@@ -10905,7 +14599,18 @@
                       "example": "Contract amendment stats fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "accepted": {
+                          "type": "integer"
+                        },
+                        "all": {
+                          "type": "integer"
+                        },
+                        "rejected": {
+                          "type": "integer"
+                        }
+                      }
                     }
                   }
                 }
@@ -10929,7 +14634,7 @@
         "summary": "List contract amendments",
         "description": "Returns a list of amendments for a specific contract.",
         "tags": [
-          "User - Contract Amendment"
+          "View Only User - Contract Amendment"
         ],
         "security": [
           {
@@ -10966,7 +14671,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "type": "object"
+                        "$ref": "#/components/schemas/ContractAmendmentDTO"
                       }
                     }
                   }
@@ -10991,7 +14696,7 @@
         "summary": "Get contract amendment details",
         "description": "Returns detailed information for a specific contract amendment.",
         "tags": [
-          "User - Contract Amendment"
+          "View Only User - Contract Amendment"
         ],
         "security": [
           {
@@ -11035,7 +14740,7 @@
                       "example": "Contract amendment fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractAmendmentDTO"
                     }
                   }
                 }
@@ -11205,44 +14910,7 @@
                         "contracts": {
                           "type": "array",
                           "items": {
-                            "type": "object",
-                            "properties": {
-                              "_id": {
-                                "type": "string"
-                              },
-                              "title": {
-                                "type": "string"
-                              },
-                              "contractId": {
-                                "type": "string"
-                              },
-                              "contractValue": {
-                                "type": "number"
-                              },
-                              "status": {
-                                "type": "string"
-                              },
-                              "startDate": {
-                                "type": "string",
-                                "format": "date-time"
-                              },
-                              "endDate": {
-                                "type": "string",
-                                "format": "date-time"
-                              },
-                              "createdAt": {
-                                "type": "string",
-                                "format": "date-time"
-                              },
-                              "vendor": {
-                                "type": "object",
-                                "properties": {
-                                  "name": {
-                                    "type": "string"
-                                  }
-                                }
-                              }
-                            }
+                            "$ref": "#/components/schemas/ContractDTO"
                           }
                         },
                         "totalContracts": {
@@ -11357,7 +15025,7 @@
                       "example": "Contract change reply added successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractCommentDTO"
                     }
                   }
                 }
@@ -11419,7 +15087,24 @@
                       "example": "Contract change stats fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "all": {
+                          "type": "integer"
+                        },
+                        "request": {
+                          "type": "integer"
+                        },
+                        "order": {
+                          "type": "integer"
+                        },
+                        "directive": {
+                          "type": "integer"
+                        },
+                        "proposal": {
+                          "type": "integer"
+                        }
+                      }
                     }
                   }
                 }
@@ -11514,22 +15199,13 @@
                     "data": {
                       "type": "object",
                       "properties": {
-                        "docs": {
+                        "changes": {
                           "type": "array",
                           "items": {
-                            "type": "object"
+                            "$ref": "#/components/schemas/ContractChangeDTO"
                           }
                         },
-                        "totalDocs": {
-                          "type": "integer"
-                        },
-                        "limit": {
-                          "type": "integer"
-                        },
-                        "page": {
-                          "type": "integer"
-                        },
-                        "totalPages": {
+                        "total": {
                           "type": "integer"
                         }
                       }
@@ -11651,7 +15327,7 @@
                       "example": "Contract change requested successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractChangeDTO"
                     }
                   }
                 }
@@ -11722,7 +15398,7 @@
                       "example": "Contract change fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractChangeDTO"
                     }
                   }
                 }
@@ -11790,9 +15466,20 @@
                       "example": "Contract change comments fetched successfully"
                     },
                     "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractCommentDTO"
+                          }
+                        },
+                        "page": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        }
                       }
                     }
                   }
@@ -11898,7 +15585,7 @@
                       "example": "Contract change comment added successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractCommentDTO"
                     }
                   }
                 }
@@ -11913,6 +15600,843 @@
           },
           "404": {
             "description": "Contract change not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contract/{contractId}/rfi/stats": {
+      "get": {
+        "summary": "Get contract RFI statistics",
+        "description": "Returns RFI counts (all, issue, receive) for a specific contract.",
+        "tags": [
+          "Vendor - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI stats fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "all": {
+                          "type": "integer",
+                          "example": 14
+                        },
+                        "issue": {
+                          "type": "integer",
+                          "example": 9
+                        },
+                        "receive": {
+                          "type": "integer",
+                          "example": 5
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contract/{dataId}/rfi": {
+      "post": {
+        "summary": "Create a new RFI issue",
+        "description": "Creates a new RFI issue for a contract.",
+        "tags": [
+          "Vendor - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractRfiDTO"
+              },
+              "example": {
+                "title": "RFI: Clarify foundation depth",
+                "description": "Please confirm the revised footing depth for Zone B.",
+                "deadline": "2026-03-01T00:00:00.000Z",
+                "issueRfi": "66e0b3a8c1b2e930f1f4a123",
+                "files": [
+                  {
+                    "name": "footing-details.pdf",
+                    "url": "https://files.example.com/footing-details.pdf",
+                    "type": "application/pdf",
+                    "size": "204800"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI created successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractRfiDTO"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "Contract RFI created successfully",
+                  "data": {
+                    "title": "RFI: Clarify foundation depth",
+                    "description": "Please confirm the revised footing depth for Zone B.",
+                    "deadline": "2026-03-01T00:00:00.000Z",
+                    "issueRfi": "66e0b3a8c1b2e930f1f4a123",
+                    "files": [
+                      {
+                        "name": "footing-details.pdf",
+                        "url": "https://files.example.com/footing-details.pdf",
+                        "type": "application/pdf",
+                        "size": "204800"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contract/{contractId}/rfi": {
+      "get": {
+        "summary": "List contract RFIs",
+        "description": "Returns a paginated list of RFIs for a specific contract.",
+        "tags": [
+          "Vendor - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by RFI title"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by RFI status"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFIs fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFIs fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "contractRfis": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractRfiDTO"
+                          }
+                        },
+                        "total": {
+                          "type": "integer",
+                          "example": 24
+                        },
+                        "page": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "skip": {
+                          "type": "integer",
+                          "example": 0
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "Contract RFIs fetched successfully",
+                  "data": {
+                    "contractRfis": [
+                      {
+                        "title": "RFI: Confirm finish schedule",
+                        "description": "Please confirm the updated finish sequence.",
+                        "deadline": "2026-02-20T00:00:00.000Z"
+                      }
+                    ],
+                    "total": 24,
+                    "page": 1,
+                    "skip": 0
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contract/rfi/{rfiId}": {
+      "get": {
+        "summary": "Get a specific RFI",
+        "description": "Returns details for a specific RFI.",
+        "tags": [
+          "Vendor - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "contractRfi": {
+                          "$ref": "#/components/schemas/ContractRfiDTO"
+                        },
+                        "isResponse": {
+                          "type": "boolean",
+                          "example": false
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "Contract RFI fetched successfully",
+                  "data": {
+                    "contractRfi": {
+                      "title": "RFI: Confirm finish schedule",
+                      "description": "Please confirm the updated finish sequence.",
+                      "deadline": "2026-02-20T00:00:00.000Z"
+                    },
+                    "isResponse": false
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contract/rfi/{rfiId}/response": {
+      "get": {
+        "summary": "Get RFI responses",
+        "description": "Returns responses for a specific RFI.",
+        "tags": [
+          "Vendor - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI responses fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI response fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractRfiResponseDTO"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "Contract RFI response fetched successfully",
+                  "data": [
+                    {
+                      "description": "We will proceed with the revised finish order.",
+                      "files": [
+                        {
+                          "name": "finish-order.pdf",
+                          "url": "https://files.example.com/finish-order.pdf",
+                          "type": "application/pdf",
+                          "size": "178245"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI response not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contract/{contractId}/rfi/{rfiId}/comment": {
+      "get": {
+        "summary": "Get contract RFI comments",
+        "description": "Returns comments for a specific contract RFI.",
+        "tags": [
+          "Vendor - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI comments fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI comments fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractCommentDTO"
+                          }
+                        },
+                        "page": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "example": 10
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "Contract RFI comments fetched successfully",
+                  "data": {
+                    "data": [
+                      {
+                        "content": "Please clarify the revised deadline.",
+                        "createdAt": "2026-02-05T14:22:30.000Z",
+                        "createdBy": {
+                          "name": "Jane Vendor",
+                          "email": "jane.vendor@example.com"
+                        }
+                      }
+                    ],
+                    "page": 1,
+                    "limit": 10
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a comment to a contract RFI",
+        "description": "Adds a new comment to a specific contract RFI.",
+        "tags": [
+          "Vendor - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "content"
+                ],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "description": "The comment content"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        },
+                        "size": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "example": {
+                "content": "Please confirm the revised footing depth for Zone B.",
+                "files": [
+                  {
+                    "name": "footing-details.pdf",
+                    "url": "https://files.example.com/footing-details.pdf",
+                    "type": "application/pdf",
+                    "size": "204800"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI comment added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI comment added successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractCommentDTO"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "Contract RFI comment added successfully",
+                  "data": {
+                    "content": "Please confirm the revised footing depth for Zone B.",
+                    "createdAt": "2026-02-05T14:22:30.000Z",
+                    "createdBy": {
+                      "name": "Jane Vendor",
+                      "email": "jane.vendor@example.com"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contract/rfi/{rfiId}/comment/{commentId}/reply": {
+      "post": {
+        "summary": "Reply to a contract RFI comment",
+        "description": "Adds a reply to a specific comment on a contract RFI.",
+        "tags": [
+          "Vendor - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          },
+          {
+            "in": "path",
+            "name": "commentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The comment ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "parentCommentId",
+                  "content"
+                ],
+                "properties": {
+                  "parentCommentId": {
+                    "type": "string",
+                    "description": "The ID of the parent comment"
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "The reply content"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        },
+                        "size": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "example": {
+                "parentCommentId": "66e0b3a8c1b2e930f1f4a123",
+                "content": "Confirmed. The revised depth is 1.2m for Zone B.",
+                "files": [
+                  {
+                    "name": "depth-confirmation.pdf",
+                    "url": "https://files.example.com/depth-confirmation.pdf",
+                    "type": "application/pdf",
+                    "size": "156000"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI reply added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI reply added successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractCommentDTO"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "Contract RFI reply added successfully",
+                  "data": {
+                    "content": "Confirmed. The revised depth is 1.2m for Zone B.",
+                    "createdAt": "2026-02-05T15:10:05.000Z",
+                    "createdBy": {
+                      "name": "Jane Vendor",
+                      "email": "jane.vendor@example.com"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Comment or RFI not found"
           },
           "500": {
             "description": "Server error"
@@ -11960,8 +16484,7 @@
                       "example": "Contract fetched successfully"
                     },
                     "data": {
-                      "type": "object",
-                      "description": "Contract object"
+                      "$ref": "#/components/schemas/ContractDTO"
                     }
                   }
                 }
@@ -11973,6 +16496,890 @@
           },
           "404": {
             "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contract/{contractId}/ncrs/stats": {
+      "get": {
+        "summary": "Get contract NCR statistics",
+        "description": "Returns counts of total, issue, and receive NCRs for a specific contract.",
+        "tags": [
+          "Vendor - Contract NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract NCR stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCR stats fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "example": 5
+                        },
+                        "issue": {
+                          "type": "integer",
+                          "example": 2
+                        },
+                        "receive": {
+                          "type": "integer",
+                          "example": 3
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contract/{contractId}/ncrs": {
+      "get": {
+        "summary": "List contract NCRs",
+        "description": "Returns a paginated list of NCRs for a specific contract.",
+        "tags": [
+          "Vendor - Contract NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by NCR title"
+          },
+          {
+            "in": "query",
+            "name": "ncrId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by NCR ID"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "issue",
+                "receive"
+              ]
+            },
+            "description": "Filter by NCR direction (issue or receive)"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract NCRs fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCRs fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "_id": {
+                            "type": "string",
+                            "example": "66fbd4c09f4e2b0012345678"
+                          },
+                          "ncrId": {
+                            "type": "string",
+                            "example": "NCR-1738741200000"
+                          },
+                          "title": {
+                            "type": "string",
+                            "example": "Concrete surface cracks"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "approved",
+                              "rejected"
+                            ],
+                            "example": "pending"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "examples": {
+                  "list": {
+                    "value": {
+                      "success": true,
+                      "message": "Contract NCRs fetched successfully",
+                      "data": [
+                        {
+                          "_id": "66fbd4c09f4e2b0012345678",
+                          "ncrId": "NCR-1738741200000",
+                          "title": "Concrete surface cracks",
+                          "status": "pending"
+                        },
+                        {
+                          "_id": "66fbd4c09f4e2b0012345679",
+                          "ncrId": "NCR-1738741205000",
+                          "title": "Rebar spacing issue",
+                          "status": "approved"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a contract NCR",
+        "description": "Creates a new NCR for a specific contract.",
+        "tags": [
+          "Vendor - Contract NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractNCRDTO"
+              },
+              "example": {
+                "title": "Concrete surface cracks",
+                "description": "Observed hairline cracks in slab section A.",
+                "responders": [
+                  "66d21a05b3f6cd1a4b0e1122"
+                ],
+                "files": [
+                  {
+                    "name": "photo.png",
+                    "url": "https://example.com/photo.png",
+                    "type": "image/png",
+                    "size": 123456
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract NCR created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCR created successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "66fbd4c09f4e2b0012345678"
+                        },
+                        "ncrId": {
+                          "type": "string",
+                          "example": "NCR-1738741200000"
+                        },
+                        "title": {
+                          "type": "string",
+                          "example": "Concrete surface cracks"
+                        },
+                        "description": {
+                          "type": "string",
+                          "example": "Observed hairline cracks in slab section A."
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "Contract NCR created successfully",
+                  "data": {
+                    "_id": "66fbd4c09f4e2b0012345678",
+                    "ncrId": "NCR-1738741200000",
+                    "title": "Concrete surface cracks",
+                    "description": "Observed hairline cracks in slab section A."
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contract/{contractId}/ncrs/{ncrId}": {
+      "get": {
+        "summary": "Get contract NCR details",
+        "description": "Returns detailed information for a specific NCR.",
+        "tags": [
+          "Vendor - Contract NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "ncrId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The NCR ID or NCR object ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract NCR fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCR fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "66fbd4c09f4e2b0012345678"
+                        },
+                        "ncrId": {
+                          "type": "string",
+                          "example": "NCR-1738741200000"
+                        },
+                        "title": {
+                          "type": "string",
+                          "example": "Concrete surface cracks"
+                        },
+                        "description": {
+                          "type": "string",
+                          "example": "Observed hairline cracks in slab section A."
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected"
+                          ],
+                          "example": "pending"
+                        },
+                        "submittedBy": {
+                          "type": "object",
+                          "properties": {
+                            "_id": {
+                              "type": "string",
+                              "example": "66d21a05b3f6cd1a4b0e1122"
+                            },
+                            "name": {
+                              "type": "string",
+                              "example": "Alex Manager"
+                            },
+                            "email": {
+                              "type": "string",
+                              "example": "alex.manager@example.com"
+                            }
+                          }
+                        },
+                        "responders": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "user": {
+                                "type": "string",
+                                "example": "66d21a05b3f6cd1a4b0e1122"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "replied"
+                                ],
+                                "example": "pending"
+                              },
+                              "actionedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "example": "2026-02-08T12:00:00.000Z"
+                              }
+                            }
+                          }
+                        },
+                        "capa": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "_id": {
+                                "type": "string",
+                                "example": "66fbd4c09f4e2b0012345699"
+                              },
+                              "capaId": {
+                                "type": "string",
+                                "example": "NCR-CAPA-1738741300000"
+                              },
+                              "title": {
+                                "type": "string",
+                                "example": "Surface repair plan"
+                              },
+                              "user": {
+                                "type": "object",
+                                "properties": {
+                                  "_id": {
+                                    "type": "string",
+                                    "example": "66d21a05b3f6cd1a4b0e1122"
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "example": "Alex Manager"
+                                  },
+                                  "email": {
+                                    "type": "string",
+                                    "example": "alex.manager@example.com"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "files": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "example": "photo.png"
+                              },
+                              "url": {
+                                "type": "string",
+                                "format": "uri",
+                                "example": "https://example.com/photo.png"
+                              },
+                              "type": {
+                                "type": "string",
+                                "example": "image/png"
+                              },
+                              "size": {
+                                "type": "number",
+                                "example": 123456
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "examples": {
+                  "detail": {
+                    "value": {
+                      "success": true,
+                      "message": "Contract NCR fetched successfully",
+                      "data": {
+                        "_id": "66fbd4c09f4e2b0012345678",
+                        "ncrId": "NCR-1738741200000",
+                        "title": "Concrete surface cracks",
+                        "description": "Observed hairline cracks in slab section A.",
+                        "status": "pending",
+                        "submittedBy": {
+                          "_id": "66d21a05b3f6cd1a4b0e1122",
+                          "name": "Alex Manager",
+                          "email": "alex.manager@example.com"
+                        },
+                        "responders": [
+                          {
+                            "user": "66d21a05b3f6cd1a4b0e1122",
+                            "status": "pending",
+                            "actionedAt": "2026-02-08T12:00:00.000Z"
+                          }
+                        ],
+                        "capa": [
+                          {
+                            "_id": "66fbd4c09f4e2b0012345699",
+                            "capaId": "NCR-CAPA-1738741300000",
+                            "title": "Surface repair plan",
+                            "user": {
+                              "_id": "66d21a05b3f6cd1a4b0e1122",
+                              "name": "Alex Manager",
+                              "email": "alex.manager@example.com"
+                            }
+                          }
+                        ],
+                        "files": [
+                          {
+                            "name": "photo.png",
+                            "url": "https://example.com/photo.png",
+                            "type": "image/png",
+                            "size": 123456
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "NCR not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contract/{contractId}/ncrs/{ncrId}/capa": {
+      "post": {
+        "summary": "Create NCR CAPA",
+        "description": "Creates a CAPA record linked to a specific NCR.",
+        "tags": [
+          "Vendor - Contract NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "ncrId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The NCR ID or NCR object ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractNCRCAPADTO"
+              },
+              "example": {
+                "title": "Surface repair plan",
+                "timeline": "2026-03-15",
+                "description": "Patch and seal cracks with epoxy filler.",
+                "files": [
+                  {
+                    "name": "repair-plan.pdf",
+                    "url": "https://example.com/repair-plan.pdf",
+                    "type": "application/pdf",
+                    "size": 204800
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract NCR CAPA created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCR CAPA created successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "66fbd4c09f4e2b0012345678"
+                        },
+                        "ncrId": {
+                          "type": "string",
+                          "example": "NCR-1738741200000"
+                        },
+                        "capa": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "Contract NCR CAPA created successfully",
+                  "data": {
+                    "_id": "66fbd4c09f4e2b0012345678",
+                    "ncrId": "NCR-1738741200000",
+                    "capa": [
+                      "66fbd4c09f4e2b0012345699"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "NCR not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contract/{contractId}/ncrs/{ncrId}/capa/{capaId}/approve": {
+      "patch": {
+        "summary": "Approve NCR CAPA",
+        "description": "Approves a CAPA record for a specific NCR.",
+        "tags": [
+          "Vendor - Contract NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "ncrId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The NCR ID or NCR object ID"
+          },
+          {
+            "in": "path",
+            "name": "capaId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The CAPA ID or CAPA object ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract NCR CAPA approved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCR CAPA approved successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "NCR-CAPA approved"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "NCR or CAPA not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contract/{contractId}/ncrs/{ncrId}/close": {
+      "patch": {
+        "summary": "Close NCR",
+        "description": "Closes a specific NCR with a reason.",
+        "tags": [
+          "Vendor - Contract NCR"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "ncrId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The NCR ID or NCR object ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "reason": "Issue resolved and documented."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract NCR closed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract NCR closed successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "NCR closed"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "NCR not found"
           },
           "500": {
             "description": "Server error"
@@ -12020,7 +17427,24 @@
                       "example": "Contract claim stats fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "pending": {
+                          "type": "integer"
+                        },
+                        "approved": {
+                          "type": "integer"
+                        },
+                        "rejected": {
+                          "type": "integer"
+                        },
+                        "dispute": {
+                          "type": "integer"
+                        }
+                      }
                     }
                   }
                 }
@@ -12115,22 +17539,13 @@
                     "data": {
                       "type": "object",
                       "properties": {
-                        "docs": {
+                        "changes": {
                           "type": "array",
                           "items": {
-                            "type": "object"
+                            "$ref": "#/components/schemas/ContractClaimDTO"
                           }
                         },
-                        "totalDocs": {
-                          "type": "integer"
-                        },
-                        "limit": {
-                          "type": "integer"
-                        },
-                        "page": {
-                          "type": "integer"
-                        },
-                        "totalPages": {
+                        "total": {
                           "type": "integer"
                         }
                       }
@@ -12251,7 +17666,7 @@
                       "example": "Contract claim created successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractClaimDTO"
                     }
                   }
                 }
@@ -12322,7 +17737,7 @@
                       "example": "Contract claim fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractClaimDTO"
                     }
                   }
                 }
@@ -12390,9 +17805,20 @@
                       "example": "Contract claim comments fetched successfully"
                     },
                     "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractCommentDTO"
+                          }
+                        },
+                        "page": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        }
                       }
                     }
                   }
@@ -12498,7 +17924,7 @@
                       "example": "Contract claim comment added successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractCommentDTO"
                     }
                   }
                 }
@@ -12613,7 +18039,7 @@
                       "example": "Contract claim reply added successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractCommentDTO"
                     }
                   }
                 }
@@ -12666,11 +18092,30 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
                     "message": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "Contract invoice statistics fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "all": {
+                          "type": "integer"
+                        },
+                        "pending": {
+                          "type": "integer"
+                        },
+                        "accepted": {
+                          "type": "integer"
+                        },
+                        "rejected": {
+                          "type": "integer"
+                        }
+                      }
                     }
                   }
                 }
@@ -12721,11 +18166,16 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
                     "message": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "Contract invoice created successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractInvoiceDTO"
                     }
                   }
                 }
@@ -12798,11 +18248,27 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
                     "message": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "Contract invoices fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "invoices": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractInvoiceDTO"
+                          }
+                        },
+                        "total": {
+                          "type": "integer"
+                        }
+                      }
                     }
                   }
                 }
@@ -12852,11 +18318,16 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
                     "message": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "Contract invoice fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractInvoiceDTO"
                     }
                   }
                 }
@@ -12910,11 +18381,16 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
                     "message": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "Contract LEM created successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractLemDTO"
                     }
                   }
                 }
@@ -12987,11 +18463,33 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
                     "message": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "Contract LEMs fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "resp": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractLemDTO"
+                          }
+                        },
+                        "count": {
+                          "type": "integer"
+                        }
+                      }
                     }
                   }
                 }
@@ -13041,11 +18539,16 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
                     "message": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "Contract LEM fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractLemDTO"
                     }
                   }
                 }
@@ -13098,7 +18601,18 @@
                       "example": "Contract amendment stats fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "accepted": {
+                          "type": "integer"
+                        },
+                        "all": {
+                          "type": "integer"
+                        },
+                        "rejected": {
+                          "type": "integer"
+                        }
+                      }
                     }
                   }
                 }
@@ -13159,7 +18673,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "type": "object"
+                        "$ref": "#/components/schemas/ContractAmendmentDTO"
                       }
                     }
                   }
@@ -13228,7 +18742,7 @@
                       "example": "Contract amendment fetched successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractAmendmentDTO"
                     }
                   }
                 }
@@ -13319,7 +18833,7 @@
                       "example": "Contract amendment vendor status updated successfully"
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/ContractAmendmentDTO"
                     }
                   }
                 }
@@ -13353,6 +18867,14 @@
     {
       "name": "Approver - Contract Change",
       "description": "Contract change management for approvers"
+    },
+    {
+      "name": "Approver - Contract RFI",
+      "description": "Contract RFI management for approvers"
+    },
+    {
+      "name": "Approver - Contract NCR",
+      "description": "Contract NCR management for approvers"
     },
     {
       "name": "Approver - Contract LEM",

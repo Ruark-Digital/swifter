@@ -51,7 +51,6 @@ export const TextSelect = (props: TextSelectProps & Partial<ForgerSlotProps>) =>
     value,
     onChange,
     onBlur,
-    control,
     ...selectProps
   } = props;
 

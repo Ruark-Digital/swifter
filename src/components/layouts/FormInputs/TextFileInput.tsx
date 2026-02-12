@@ -20,7 +20,15 @@ export type TextFileProps = {
   value?: File[] | null;
   onChange?: (value: File[] | null) => void;
   element: JSX.Element;
-  List: ({ file, control }: { file: File, control: any }) => JSX.Element;
+  List: ({
+    file,
+    control,
+    index,
+  }: {
+    file: File;
+    control: any;
+    index?: number;
+  }) => JSX.Element;
   accept?: Accept;
   control?: any,
   dropzoneOptions?: Record<string, any>
@@ -95,7 +103,9 @@ export const TextFileUploader = ({
         <FileUploaderContent>
           {value &&
             value.length > 0 &&
-            value?.map?.((file, i) => <List key={i} {...{ file, control: props.control }} />)}
+            value?.map?.((file, i) => (
+              <List key={i} file={file} control={props.control} index={i} />
+            ))}
         </FileUploaderContent>
       </SafeFileUploader>
     </div>

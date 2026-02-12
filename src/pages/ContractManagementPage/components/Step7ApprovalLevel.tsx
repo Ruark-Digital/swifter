@@ -14,17 +14,73 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { InfoIcon } from "lucide-react";
-import { Control } from "react-hook-form";
+import { Control, useWatch } from "react-hook-form";
 import { CreateContractFormData } from "./CreateContractSheet";
+import { useQuery } from "@tanstack/react-query";
+import { getRequest } from "@/lib/axiosInstance";
+import { ApiResponseError } from "@/types";
+import { Button } from "@/components/ui/button";
 
 type Props = { control: Control<CreateContractFormData> };
 
+type ApiListResponse<T> = { status: number; message: string; data: T[] };
+type Personnel = { _id: string; name: string; email: string };
+
+type ApproverTag = {
+  id?: string;
+  text?: string;
+  value?: string;
+  email?: string;
+  meta?: Record<string, unknown>;
+};
+
+const defaultApprovalGroup = {
+  name: "",
+  approvers: [],
+  amount: "",
+  approvalLevel: "",
+};
 const Step7ApprovalLevel: React.FC<Props> = ({ control }) => {
-  const { fields } = useFieldArray({
+  const { fields, append } = useFieldArray({
     control,
     name: "approvalGroups",
     inputProps: [],
   });
+
+  const approvalGroups = useWatch({
+    control,
+    name: "approvalGroups",
+  }) as { approvers?: ApproverTag[] }[] | undefined;
+  console.log({ approvalGroups });
+
+  const { data: personnelData, isLoading: isLoadingUsers } = useQuery<
+    ApiListResponse<Personnel>,
+    ApiResponseError
+  >({
+    queryKey: ["contract-personnel"],
+    queryFn: async () => {
+      const res = await getRequest({ url: "/contract/manager/personnel" });
+      return res.data as ApiListResponse<Personnel>;
+    },
+    staleTime: 60_000,
+  });
+
+  const approverTags = React.useMemo<ApproverTag[]>(() => {
+    const people = personnelData?.data ?? [];
+    return people.map((p) => {
+      const email = p.email ?? "";
+      const name = p.name || email || p._id;
+      const label =
+        email && name && email !== name ? `${name} (${email})` : name;
+      const value = p._id || email;
+      return {
+        id: value,
+        value,
+        text: label,
+        meta: { email },
+      };
+    });
+  }, [personnelData]);
 
   return (
     <div className="space-y-6">
@@ -78,8 +134,26 @@ const Step7ApprovalLevel: React.FC<Props> = ({ control }) => {
             <Forger
               name={`approvalGroups.${index}.approvers`}
               component={TextTagInput}
-              placeholder="Add Approvers"
-              containerClass="min-h-[7rem] border rounded-lg cursor-pointer"
+              placeholder={isLoadingUsers ? "Loading..." : "Add Approvers"}
+              enableAutocomplete
+              autocompleteOptions={approverTags.filter((tag) => {
+                const selected = approvalGroups?.[index]?.approvers ?? [];
+                const selectedIds = new Set(
+                  selected.map(
+                    (approver, idx) =>
+                      approver?.value ||
+                      approver?.id ||
+                      approver?.email ||
+                      approver?.text ||
+                      String(idx),
+                  ),
+                );
+                const tagKey = tag.value || tag.id || tag.text;
+                return tagKey ? !selectedIds.has(tagKey) : true;
+              })}
+              inputProps={{ autoComplete: "off" }}
+              // containerClass="min-h-[7rem] border rounded-lg cursor-pointer"
+              inputClassName="border-0"
               inlineTagsContainerClassName="border-0 outline-0 hover:border-0 focus:border-0 focus-within:ring-0"
             />
 
@@ -137,6 +211,13 @@ const Step7ApprovalLevel: React.FC<Props> = ({ control }) => {
           </div>
         ))}
       </div>
+
+      <Button
+        onClick={() => append(defaultApprovalGroup)}
+        className="w-fit  bg-[#2A4467] text-white text-xs font-semibold py-2 rounded-lg"
+      >
+        Add Approval Group
+      </Button>
     </div>
   );
 };

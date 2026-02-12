@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Forge, Forger, useForge } from "@/lib/forge";
 import { TextArea, TextInput, TextSelect } from "@/components/layouts/FormInputs";
-import { X } from "lucide-react";
 
 type Props = {
   trigger: React.ReactNode;
@@ -45,19 +44,11 @@ const RequestClaimDialog: React.FC<Props> = ({ trigger }) => {
   return (
     <Dialog>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-8 pt-8">
           <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
             Request Claim
           </DialogTitle>
-          <DialogClose asChild>
-            <button
-              type="button"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-[#EF4444] hover:bg-[#FEE2E2]"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </DialogClose>
         </div>
         <div className="px-8 pb-8 pt-6">
           <Forge<ClaimFormValues>

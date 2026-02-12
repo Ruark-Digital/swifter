@@ -10,11 +10,12 @@ import { ApiResponse, ApiResponseError, User } from "@/types";
 import { useMutation } from "@tanstack/react-query";
 import { postRequest } from "@/lib/axiosInstance";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useSetToken, useSetUser } from "@/store/authSlice";
 import { SEOWrapper } from "@/components/SEO";
 import { useRef } from "react";
-// import { getUser } from "@/demo";
+import { getFirstAccessibleRoute } from "@/lib/navigation";
+import { UserRole } from "@/types";
 
 type FormState = {
   email: string;
@@ -29,7 +30,7 @@ const schema = yup.object().shape({
 const Login = () => {
   const toast = useToastHandler();
   const formRef = useRef<FormPropsRef>(null)
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const setToken = useSetToken();
   const setUser = useSetUser();
@@ -60,7 +61,11 @@ const Login = () => {
         });
         setToken(response.data.data.token);
         toast.success("Login Successful", "Welcome back!");
-        // navigate("/dashboard");
+        
+        const userRole = response.data.data.user.role.name as UserRole;
+        const modules = response.data.data.user.module;
+        const targetRoute = getFirstAccessibleRoute(userRole, modules);
+        navigate(targetRoute);
       }
     } catch (error) {
       console.log(error);

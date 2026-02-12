@@ -23,6 +23,7 @@ export type ContractRow = {
   endDate?: string;
   status:
     | "Active"
+    | "Publish"
     | "Draft"
     | "Expired"
     | "Terminated"
@@ -66,9 +67,11 @@ const columns: ColumnDef<ContractRow>[] = [
     cell: ({ row }) => (
       <div className="text-xs text-slate-500">
         {row.original.published && (
-          <div>Published: {row.original.published}</div>
+          <div><span className="text-black font-bold">Published:</span> {row.original.published}</div>
         )}
-        {row.original.endDate && <div>End Date: {row.original.endDate}</div>}
+        {row.original.endDate && (
+          <div><span className="text-black font-bold">End Date:</span> {row.original.endDate}</div>
+        )}
       </div>
     ),
   },
@@ -78,7 +81,7 @@ const columns: ColumnDef<ContractRow>[] = [
     cell: ({ getValue }) => {
       const s = getValue<ContractRow["status"]>();
       const tone =
-        s === "Active" || s === "Completed"
+        s === "Active" || s === "Publish"
           ? "bg-green-100 text-green-700"
           : s === "Draft"
           ? "bg-slate-100 text-slate-700"
@@ -122,19 +125,26 @@ type ContractsTableProps = {
   rows?: ContractRow[];
   isLoading?: boolean;
   totalCount?: number;
+  isReadOnly?: boolean;
 };
 
 const ContractsTable: React.FC<ContractsTableProps> = ({
   rows = [],
   isLoading,
   totalCount,
+  isReadOnly,
 }) => {
   const [search, setSearch] = React.useState("");
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
-  
+
+  const tableColumns = React.useMemo(() => {
+    if (!isReadOnly) return columns;
+    return columns.filter((column) => column.id !== "actions");
+  }, [isReadOnly]);
+
   const filteredRows = React.useMemo(() => {
     if (!search) return rows;
     const query = search.toLowerCase();
@@ -162,9 +172,17 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                   onChange={(e) => setSearch(e.target.value)}
                   data-testid="search-input"
                   className="h-10 w-[260px]"
+                  disabled={isReadOnly}
                 />
               </div>
-              <div className="ml-auto flex items-center gap-2">
+              <div
+                className={
+                  isReadOnly
+                    ? "ml-auto flex items-center gap-2 pointer-events-none opacity-60"
+                    : "ml-auto flex items-center gap-2"
+                }
+                aria-disabled={isReadOnly}
+              >
                 <DropdownFilters
                   filters={[
                     {
@@ -206,13 +224,13 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
             </div>
           </div>
         )}
-        emptyPlaceholder={<EmptyState />}
+        emptyPlaceholder={<EmptyState isReadOnly={isReadOnly} />}
         classNames={{
           container:
             "bg-white dark:bg-slate-950 rounded-xl px-3 border border-gray-300 dark:border-slate-600",
         }}
         data={filteredRows}
-        columns={columns}
+        columns={tableColumns}
         options={{
           disableSelection: true,
           isLoading,

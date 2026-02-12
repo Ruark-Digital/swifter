@@ -740,10 +740,15 @@ const contractManagerConfig: DashboardConfig = {
   ],
 };
 
+const approverConfig: DashboardConfig = contractManagerConfig;
+const viewOnlyConfig: DashboardConfig = contractManagerConfig;
+
 // Export dashboard configurations
 export const dashboardConfigs: Record<UserRole, DashboardConfig> = {
   evaluator: evaluatorConfig,
   vendor: vendorConfig,
+  approver: approverConfig,
+  view_only: viewOnlyConfig,
   company_admin: companyAdminConfig,
   super_admin: superAdminConfig,
   procurement: procurementConfig,

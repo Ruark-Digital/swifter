@@ -8,12 +8,14 @@ import {
 import { useWatch } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { Info } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { businessDivisionApi } from "@/pages/BusinessDivisionsPage/api/businessDivisionApi";
 
 type Props = {
   typeOptions: Array<{ label: string; value: string }>;
@@ -90,6 +92,21 @@ const Step1BasicInfo: React.FC<Props> = ({
   awardedOptions,
 }) => {
   const relationship = useWatch({ name: "relationship" });
+  const { data: divisionsRes, isLoading: isLoadingDivisions } = useQuery<
+    Awaited<ReturnType<typeof businessDivisionApi.listDivisions>>
+  >({
+    queryKey: ["businessDivisions", "list", "all"],
+    queryFn: async () =>
+      await businessDivisionApi.listDivisions({ page: 1, limit: 1000 }),
+  });
+
+  const businessDivisionOptions = React.useMemo(() => {
+    const divisions = divisionsRes?.data?.docs ?? [];
+    return divisions.map((division) => ({
+      label: division.name || division._id,
+      value: division._id,
+    }));
+  }, [divisionsRes]);
 
   return (
     <div className="mt-4 space-y-4">
@@ -220,12 +237,13 @@ const Step1BasicInfo: React.FC<Props> = ({
         />
       </div>
 
-      {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Forger
           name="manager"
           label="Contract Manger"
           placeholder="Enter Title"
           component={TextInput}
+          className="bg-[#2A44670D]"
           data-testid="contract-manager-input"
         />
         <Forger
@@ -233,10 +251,11 @@ const Step1BasicInfo: React.FC<Props> = ({
           label="Job Title"
           placeholder="Enter Title"
           component={TextInput}
+          className="bg-[#2A44670D]"
           data-testid="job-title-input"
         />
-      </div> */}
-      
+      </div>
+
       <Forger
         name="contractId"
         label="Contract ID/Number (Optional)"
@@ -256,6 +275,15 @@ const Step1BasicInfo: React.FC<Props> = ({
         placeholder="Enter Detail"
         component={TextArea}
         data-testid="description-input"
+      />
+
+      <Forger
+        name="businessDivision"
+        label="Business Division"
+        placeholder={isLoadingDivisions ? "Loading..." : "Select Division"}
+        component={TextSelect}
+        options={businessDivisionOptions}
+        data-testid="business-division-select"
       />
     </div>
   );

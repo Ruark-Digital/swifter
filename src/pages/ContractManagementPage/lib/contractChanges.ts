@@ -48,14 +48,14 @@ export const toManagerCreateChangePayload = (
 ): {
   title?: string;
   description?: string;
-  type?: "directive" | "proposal";
+  type?: "directive" | "proposal" | "request";
   urgency?: "low" | "medium" | "high";
   files?: Array<{ name: string; url: string; type: string; size: number }>;
 } => {
   const payload: {
     title?: string;
     description?: string;
-    type?: "directive" | "proposal";
+    type?: "directive" | "proposal" | "request";
     urgency?: "low" | "medium" | "high";
     files?: Array<{ name: string; url: string; type: string; size: number }>;
   } = {
@@ -63,7 +63,7 @@ export const toManagerCreateChangePayload = (
     description: values.description,
   };
 
-  if (values.changeType === "directive" || values.changeType === "proposal") {
+  if (values.changeType === "request") {
     payload.type = values.changeType;
   }
 

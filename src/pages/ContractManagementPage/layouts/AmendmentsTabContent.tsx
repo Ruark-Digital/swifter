@@ -16,9 +16,16 @@ import { AlertTriangle, Check, CloudUpload, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useWatch } from "react-hook-form";
 import AmendmentsStatsCards from "../components/AmendmentsStatsCards";
-import AmendmentsTable from "../components/AmendmentsTable";
+import AmendmentsTable, {
+  type AmendmentRow,
+} from "../components/AmendmentsTable";
 import { useQuery } from "@tanstack/react-query";
-import { contractManagerApi } from "../api/contractManagerApi";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import type { ApiResponseError } from "@/types";
+import {
+  contractManagerApi,
+  type ContractAmendmentDTO,
+} from "../api/contractManagerApi";
 
 type CreateAmendmentFormValues = {
   amendmentTitle: string;
@@ -429,11 +436,62 @@ type Props = {
 };
 
 const AmendmentsTabContent: React.FC<Props> = ({ contractId }) => {
-  const { data: statsRes, isLoading: isStatsLoading } = useQuery({
-    queryKey: ["contractManager", "contractAmendments", "stats", contractId],
+  const statsQueryKey = useUserQueryKey([
+    "contract-amendments-stats",
+    contractId,
+  ]);
+  const amendmentsQueryKey = useUserQueryKey([
+    "contract-amendments",
+    contractId,
+  ]);
+
+  const {
+    data: statsRes,
+    isLoading: isStatsLoading,
+  } = useQuery<{ message?: string; data?: { accepted?: number; all?: number; rejected?: number } }, ApiResponseError>({
+    queryKey: statsQueryKey,
     queryFn: async () => await contractManagerApi.getAmendmentStats(contractId),
     enabled: Boolean(contractId),
+    staleTime: 60000,
+    retry: false,
   });
+
+  const {
+    data: amendmentsRes,
+    isLoading: isAmendmentsLoading,
+  } = useQuery<{ message?: string; data?: ContractAmendmentDTO[] }, ApiResponseError>({
+    queryKey: amendmentsQueryKey,
+    queryFn: async () => await contractManagerApi.listAmendments(contractId),
+    enabled: Boolean(contractId),
+  });
+
+  const amendmentsRows = React.useMemo<AmendmentRow[]>(() => {
+    const amendments = amendmentsRes?.data ?? [];
+    const normalizeVendorStatus = (value?: string): AmendmentRow["vendorStatus"] => {
+      const normalized = value?.toLowerCase();
+      if (normalized === "accepted" || normalized === "approved") return "Accepted";
+      if (normalized === "rejected") return "Rejected";
+      return "Pending";
+    };
+    const normalizeStatus = (value?: string): AmendmentRow["status"] => {
+      const normalized = value?.toLowerCase();
+      if (normalized === "approved" || normalized === "accepted") return "Approved";
+      if (normalized === "rejected") return "Rejected";
+      return "Pending";
+    };
+    return amendments.map((amendment, index) => {
+      const amendmentId =
+        amendment.amendmentId || amendment._id || `AM-${index + 1}`;
+      const amendmentTitle =
+        amendment.title || amendment.amendmentTitle || "-";
+      return {
+        amendmentId,
+        amendmentTitle,
+        vendorStatus: normalizeVendorStatus(amendment.vendorStatus),
+        status: normalizeStatus(amendment.status),
+      };
+    });
+  }, [amendmentsRes?.data]);
 
   return (
     <TabsContent value="amendments" className="space-y-8">
@@ -467,7 +525,10 @@ const AmendmentsTabContent: React.FC<Props> = ({ contractId }) => {
 
       <AmendmentsStatsCards stats={statsRes?.data} isLoading={isStatsLoading} />
 
-      <AmendmentsTable rows={[]} isLoading={false} />
+      <AmendmentsTable
+        rows={amendmentsRows}
+        isLoading={isAmendmentsLoading}
+      />
     </TabsContent>
   );
 };

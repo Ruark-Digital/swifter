@@ -1,6 +1,6 @@
 import React from "react";
 import { DataTable } from "@/components/layouts/DataTable";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, OnChangeFn, PaginationState } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,11 +18,20 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { ArrowLeft, Download, Eye, Search, X } from "lucide-react";
+import type { ContractNcrSummary } from "../api/contractManagerApi";
 
 export type NcrRow = {
   id: string;
   title: string;
-  status: "Approved" | "Pending";
+  status: "Approved" | "Pending" | "Rejected";
+};
+
+type Props = {
+  rows: ContractNcrSummary[];
+  isLoading?: boolean;
+  totalCount?: number;
+  pagination: PaginationState;
+  setPagination: OnChangeFn<PaginationState>;
 };
 
 type NcrDetailsSheetProps = {
@@ -217,7 +226,9 @@ const columns: ColumnDef<NcrRow>[] = [
       const tone =
         s === "Approved"
           ? "bg-green-100 text-green-700"
-          : "bg-yellow-100 text-yellow-700";
+          : s === "Rejected"
+            ? "bg-red-100 text-red-700"
+            : "bg-yellow-100 text-yellow-700";
       return (
         <span className={`px-4 py-1 rounded-full text-xs font-medium ${tone}`}>
           {s}
@@ -245,26 +256,41 @@ const columns: ColumnDef<NcrRow>[] = [
   },
 ];
 
-const sampleRows: NcrRow[] = [
-  { id: "NCR-2025-10", title: "Progress Draw", status: "Approved" },
-  { id: "NCR-2025-10", title: "Progress Draw", status: "Pending" },
-  { id: "NCR-2025-10", title: "Progress Draw", status: "Pending" },
-  { id: "NCR-2025-10", title: "Progress Draw", status: "Approved" },
-  { id: "NCR-2025-10", title: "Progress Draw", status: "Approved" },
-];
+const formatNcrStatus = (status?: string): NcrRow["status"] => {
+  const normalized = status?.toLowerCase();
+  if (normalized === "approved") return "Approved";
+  if (normalized === "rejected") return "Rejected";
+  return "Pending";
+};
 
-const NcrTable: React.FC = () => {
+const NcrTable: React.FC<Props> = ({
+  rows,
+  isLoading,
+  totalCount,
+  pagination,
+  setPagination,
+}) => {
   const [search, setSearch] = React.useState("");
 
+  const tableRows = React.useMemo<NcrRow[]>(
+    () =>
+      rows.map((row) => ({
+        id: row.ncrId ?? row._id ?? "-",
+        title: row.title ?? "-",
+        status: formatNcrStatus(row.status),
+      })),
+    [rows],
+  );
+
   const filteredRows = React.useMemo(() => {
-    if (!search) return sampleRows;
+    if (!search) return tableRows;
     const query = search.toLowerCase();
-    return sampleRows.filter((row) =>
+    return tableRows.filter((row) =>
       [row.id, row.title, row.status].some((value) =>
         value.toLowerCase().includes(query)
       )
     );
-  }, [search]);
+  }, [search, tableRows]);
 
   return (
     <div className="space-y-4" data-testid="ncr-table">
@@ -287,11 +313,11 @@ const NcrTable: React.FC = () => {
         )}
         options={{
           disableSelection: true,
-          disablePagination: true,
-          manualPagination: false,
-          totalCounts: filteredRows.length,
-          setPagination: () => {},
-          pagination: { pageIndex: 0, pageSize: 10 },
+          isLoading,
+          manualPagination: true,
+          totalCounts: totalCount ?? filteredRows.length,
+          setPagination,
+          pagination,
         }}
         classNames={{
           container: "border border-[#E5E7EB] rounded-xl bg-white",

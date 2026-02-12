@@ -15,8 +15,8 @@ import {
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
-import type { ApiResponseError } from "@/types";
-import { contractManagerApi, type Contract } from "./api/contractManagerApi";
+import type { ApiResponseError, ContractDetail } from "@/types";
+import { contractManagerApi } from "./api/contractManagerApi";
 import AnalyticsTabContent from "./layouts/AnalyticsTabContent";
 import ApproversTabContent from "./layouts/ApproversTabContent";
 import ActionLogTabContent from "./layouts/ActionLogTabContent";
@@ -37,14 +37,26 @@ import RfiTabContent from "./layouts/RfiTabContent";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import VendorReportsTabContent from "./layouts/VendorReportsTabContent";
 
-const formatContractStatus = (status?: Contract["status"]) => {
-  if (status === "active") return { label: "Active", className: "bg-green-100 text-green-700" };
-  if (status === "draft") return { label: "Draft", className: "bg-slate-100 text-slate-700" };
-  if (status === "pending_approval") return { label: "Pending Approval", className: "bg-yellow-100 text-yellow-700" };
-  if (status === "completed") return { label: "Completed", className: "bg-blue-100 text-blue-700" };
-  if (status === "cancelled") return { label: "Cancelled", className: "bg-red-100 text-red-700" };
-  if (status === "expired") return { label: "Expired", className: "bg-orange-100 text-orange-700" };
-  if (status === "terminated") return { label: "Terminated", className: "bg-red-100 text-red-700" };
+const formatContractStatus = (status?: ContractDetail["status"]) => {
+  if (status === "active")
+    return { label: "Active", className: "bg-green-100 text-green-700" };
+  if (status === "publish")
+    return { label: "Published", className: "bg-green-100 text-green-700" };
+  if (status === "draft")
+    return { label: "Draft", className: "bg-slate-100 text-slate-700" };
+  if (status === "pending_approval")
+    return {
+      label: "Pending Approval",
+      className: "bg-yellow-100 text-yellow-700",
+    };
+  if (status === "completed")
+    return { label: "Completed", className: "bg-blue-100 text-blue-700" };
+  if (status === "cancelled")
+    return { label: "Cancelled", className: "bg-red-100 text-red-700" };
+  if (status === "expired")
+    return { label: "Expired", className: "bg-orange-100 text-orange-700" };
+  if (status === "terminated")
+    return { label: "Terminated", className: "bg-red-100 text-red-700" };
   return { label: "Unknown", className: "bg-slate-100 text-slate-700" };
 };
 
@@ -61,7 +73,7 @@ const ContractDetailPage: React.FC = () => {
     error,
   } = useQuery({
     queryKey,
-    queryFn: () => contractManagerApi.listContracts(),
+    queryFn: () => contractManagerApi.getContract(id ?? ""),
     enabled: !!id,
     staleTime: 60000,
     retry: false,
@@ -104,9 +116,7 @@ const ContractDetailPage: React.FC = () => {
     );
   }
 
-  const contracts = contractsResponse?.data ?? [];
-  const contract = contracts?.find?.((c) => c?._id === id);
-  const status = formatContractStatus(contract?.status);
+  const contract = contractsResponse?.data?.data;
 
   if (!contract) {
     return (
@@ -123,6 +133,8 @@ const ContractDetailPage: React.FC = () => {
       </div>
     );
   }
+
+  const status = formatContractStatus(contract?.status);
 
   return (
     <div className="space-y-8">
@@ -146,7 +158,9 @@ const ContractDetailPage: React.FC = () => {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>{contract?.title ?? "Contract Details"}</BreadcrumbPage>
+            <BreadcrumbPage>
+              {contract?.title ?? "Contract Details"}
+            </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -276,7 +290,7 @@ const ContractDetailPage: React.FC = () => {
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
-        <OverviewTab />
+        <OverviewTab contract={contract} status={status} />
 
         <AnalyticsTabContent />
 
@@ -288,7 +302,7 @@ const ContractDetailPage: React.FC = () => {
 
         <ClaimsTabContent contractId={contract?._id ?? ""} />
 
-        <ApproversTabContent />
+        <ApproversTabContent contractId={contract?._id ?? ""} />
 
         <InvoiceTabContent contractId={contract?._id ?? ""} />
 
@@ -298,13 +312,16 @@ const ContractDetailPage: React.FC = () => {
 
         <RfiTabContent contractId={contract?._id ?? ""} />
 
-        <NcrLogTabContent />
+        <NcrLogTabContent contractId={contract?._id ?? ""} />
 
-        <DocumentsTabContent />
+        <DocumentsTabContent files={contract?.files} />
 
         <AmendmentsTabContent contractId={contract?._id ?? ""} />
 
-        <PaymentSummaryTabContent contractId={contract?._id ?? ""} />
+        <PaymentSummaryTabContent
+          contractId={contract?._id ?? ""}
+          contract={contract}
+        />
 
         <ClauseLibraryTabContent />
 

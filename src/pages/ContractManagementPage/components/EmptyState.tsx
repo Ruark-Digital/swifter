@@ -3,7 +3,11 @@ import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { FolderOffIcon, Add01Icon } from "@hugeicons/core-free-icons";
 
-const EmptyState: React.FC = () => {
+type EmptyStateProps = {
+  isReadOnly?: boolean;
+};
+
+const EmptyState: React.FC<EmptyStateProps> = ({ isReadOnly }) => {
   return (
     <div
       className="flex flex-col items-center justify-center h-[520px] space-y-4"
@@ -23,10 +27,12 @@ const EmptyState: React.FC = () => {
           below to create your first one and start receiving proposals.
         </p>
       </div>
-      <Button className="h-12 rounded-xl" data-testid="create-contract-cta">
-        <HugeiconsIcon icon={Add01Icon} className="mr-2 h-4 w-4" /> Create
-        Contract
-      </Button>
+      {!isReadOnly && (
+        <Button className="h-12 rounded-xl" data-testid="create-contract-cta">
+          <HugeiconsIcon icon={Add01Icon} className="mr-2 h-4 w-4" /> Create
+          Contract
+        </Button>
+      )}
     </div>
   );
 };

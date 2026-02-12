@@ -1,10 +1,66 @@
 import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Share2 } from "lucide-react";
-import ApproversTable from "../components/ApproversTable";
+import { useToastHandler } from "@/hooks/useToaster";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import type { ApiResponseError } from "@/types";
+import ApproversTable, { type ApproverRow } from "../components/ApproversTable";
+import { contractManagerApi } from "../api/contractManagerApi";
 
-const ApproversTabContent: React.FC = () => {
+type Props = {
+  contractId: string;
+};
+
+const ApproversTabContent: React.FC<Props> = ({ contractId }) => {
+  const toastHandler = useToastHandler();
+  const toastErrorRef = React.useRef(toastHandler.error);
+  const lastErrorRef = React.useRef<unknown>(null);
+  const queryKey = useUserQueryKey(["contract-approvers", contractId]);
+
+  const {
+    data: approversResponse,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey,
+    queryFn: () => contractManagerApi.listContractApprovers(contractId),
+    enabled: Boolean(contractId),
+    staleTime: 60000,
+    retry: false,
+  });
+
+  React.useEffect(() => {
+    toastErrorRef.current = toastHandler.error;
+  }, [toastHandler.error]);
+
+  React.useEffect(() => {
+    if (!error) return;
+    if (lastErrorRef.current === error) return;
+    lastErrorRef.current = error;
+    toastErrorRef.current("Contract Approvers", error as ApiResponseError);
+  }, [error]);
+
+  const rows = React.useMemo<ApproverRow[]>(() => {
+    const approvers = approversResponse?.data ?? [];
+    return approvers.map((approver, index) => {
+      const status = approver.status === "Completed" ? "Completed" : "Pending";
+      return {
+        id: approver.approverId ?? `approver-${index}`,
+        name: approver.name?.trim() || "Unknown",
+        email: approver.email?.trim() || "-",
+        role: approver.role?.trim() || "N/A",
+        approvalLevel:
+          typeof approver.approvalLevel === "number"
+            ? `${approver.approvalLevel}`
+            : "-",
+        assignedApprovals: approver.assignedApprovals ?? "-",
+        status,
+      };
+    });
+  }, [approversResponse?.data]);
+
   return (
     <TabsContent value="approvers" className="space-y-6">
       <div className="flex items-center justify-between">
@@ -14,7 +70,7 @@ const ApproversTabContent: React.FC = () => {
         </Button>
       </div>
 
-      <ApproversTable />
+      <ApproversTable rows={rows} isLoading={isLoading} contractId={contractId} />
     </TabsContent>
   );
 };

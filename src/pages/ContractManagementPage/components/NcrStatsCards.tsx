@@ -38,12 +38,20 @@ const StatCard: React.FC<StatProps> = ({ title, value, tone, testId }) => {
   );
 };
 
-const NcrStatsCards: React.FC = () => {
+type Props = {
+  all?: number;
+  issued?: number;
+  received?: number;
+  isLoading?: boolean;
+};
+
+const NcrStatsCards: React.FC<Props> = ({ all, issued, received, isLoading }) => {
+  void isLoading;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <StatCard title="All NCR" value={8} tone="gray" testId="ncr-stats-all" />
-      <StatCard title="Issued" value={4} tone="green" testId="ncr-stats-issued" />
-      <StatCard title="Received" value={5} tone="yellow" testId="ncr-stats-received" />
+      <StatCard title="All NCR" value={all ?? 0} tone="gray" testId="ncr-stats-all" />
+      <StatCard title="Issued" value={issued ?? 0} tone="green" testId="ncr-stats-issued" />
+      <StatCard title="Received" value={received ?? 0} tone="yellow" testId="ncr-stats-received" />
     </div>
   );
 };

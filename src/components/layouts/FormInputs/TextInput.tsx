@@ -9,7 +9,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ReactNode, useState, useId, useEffect } from "react";
+import {
+  ReactNode,
+  useState,
+  useId,
+  useEffect,
+  InputHTMLAttributes,
+} from "react";
 import { ForgerSlotProps } from "@/lib/forge/types";
 import { Tag, TagInput } from "emblor";
 import { format } from "date-fns";
@@ -54,6 +60,13 @@ export type TextTagInputProps = {
   placeholder?: string;
   inlineTagsContainerClassName?: string;
   enableDetailsPopover?: boolean;
+  enableAutocomplete?: boolean;
+  autocompleteOptions?: CustomTag[];
+  inputProps?: InputHTMLAttributes<HTMLInputElement>;
+  inputClassName?: string;
+  tagClassName?: string;
+  closeButtonClassName?: string;
+  restrictTagsToAutocompleteOptions?: boolean;
 };
 
 export type TextDatePickerProps = {
@@ -208,9 +221,23 @@ export const TextTagInput = (
     placeholder,
     inlineTagsContainerClassName,
     enableDetailsPopover,
+    enableAutocomplete,
+    autocompleteOptions,
+    inputProps,
+    restrictTagsToAutocompleteOptions,
+    inputClassName,
+    tagClassName,
+    closeButtonClassName,
   } = props;
   const [activeTagIndex, setActiveTagIndex] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
+  const safeValue = Array.isArray(value) ? value : [];
+  const safeTags = Array.isArray(tags) ? tags : safeValue;
+  const safeAutocompleteOptions = Array.isArray(autocompleteOptions)
+    ? autocompleteOptions
+    : [];
+  const shouldEnableAutocomplete =
+    Boolean(enableAutocomplete) && safeAutocompleteOptions.length > 0;
 
   const [formData, setFormData] = useState({
     name: "",
@@ -331,24 +358,37 @@ export const TextTagInput = (
             >
               <TagInput
                 name={name}
-                value={value}
+                value={safeValue}
                 ref={ref}
-                tags={tags ?? value}
+                tags={safeTags}
+                enableAutocomplete={shouldEnableAutocomplete}
+                autocompleteOptions={safeAutocompleteOptions}
+                restrictTagsToAutocompleteOptions={
+                  restrictTagsToAutocompleteOptions
+                }
                 setTags={(newTags) => {
                   onChange?.(newTags);
                 }}
                 placeholder={placeholder ?? "Add a tag"}
+                inputProps={inputProps}
                 styleClasses={{
                   inlineTagsContainer: cn(
                     "border-input rounded-lg bg-background shadow-xs transition-[color,box-shadow] focus-within:border-ring outline-none focus-within:ring-[3px] focus-within:ring-ring/50 p-1 gap-1 dark:border-slate-800 dark:bg-slate-950",
                     inlineTagsContainerClassName,
                   ),
-                  input:
+                  input: cn(
                     "w-full min-w-[80px] shadow-none px-2 h-10 dark:text-slate-50 dark:placeholder:text-slate-400",
+                    inputClassName,
+                  ),
                   tag: {
-                    body: "h-7 relative bg-background border border-input hover:bg-background !rounded-lg font-medium text-xs ps-3 pe-7 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-50",
-                    closeButton:
+                    body: cn(
+                      "h-7 relative bg-background border border-input hover:bg-background !rounded-lg font-medium text-xs ps-3 pe-7 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-50",
+                      tagClassName,
+                    ),
+                    closeButton: cn(
                       "absolute -inset-y-px -end-px p-0 rounded-e-md flex size-7 transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] text-muted-foreground/80 hover:text-foreground dark:text-slate-400 dark:hover:text-slate-50 dark:focus-visible:border-slate-300 dark:focus-visible:ring-slate-300/50",
+                      closeButtonClassName,
+                    ),
                   },
                 }}
                 activeTagIndex={activeTagIndex}
@@ -450,24 +490,42 @@ export const TextTagInput = (
       ) : (
         <TagInput
           name={name}
-          value={value}
+          value={safeValue}
           ref={ref}
-          tags={tags ?? value}
+          tags={safeTags ?? safeValue}
+          enableAutocomplete={enableAutocomplete}
+          // className="bg-purple-600"
+          autocompleteOptions={autocompleteOptions}
+          restrictTagsToAutocompleteOptions={restrictTagsToAutocompleteOptions}
           setTags={(newTags) => {
             onChange?.(newTags);
           }}
           placeholder={placeholder ?? "Add a tag"}
+          inputProps={inputProps}
           styleClasses={{
             inlineTagsContainer: cn(
               "border-input rounded-lg bg-background shadow-xs transition-[color,box-shadow] focus-within:border-ring outline-none focus-within:ring-[3px] focus-within:ring-ring/50 p-1 gap-1 dark:border-slate-800 dark:bg-slate-950",
               inlineTagsContainerClassName,
             ),
-            input:
+
+            input: cn(
               "w-full min-w-[80px] shadow-none px-2 h-10 dark:text-slate-50 dark:placeholder:text-slate-400",
+              inputClassName,
+            ),
+
+            autoComplete: {
+              popoverContent: "bg-white"
+            },
+
             tag: {
-              body: "h-7 relative bg-background border border-input hover:bg-background !rounded-lg font-medium text-xs ps-3 pe-7 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-50",
-              closeButton:
+              body: cn(
+                "h-7 relative bg-background border border-input hover:bg-background !rounded-lg font-medium text-xs ps-3 pe-7 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-50",
+                tagClassName,
+              ),
+              closeButton: cn(
                 "absolute -inset-y-px -end-px p-0 rounded-e-md flex size-7 transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] text-muted-foreground/80 hover:text-foreground dark:text-slate-400 dark:hover:text-slate-50 dark:focus-visible:border-slate-300 dark:focus-visible:ring-slate-300/50",
+                closeButtonClassName,
+              ),
             },
           }}
           activeTagIndex={activeTagIndex}
@@ -506,11 +564,11 @@ export const TextDatePicker = (
   useEffect(() => {
     if (value) {
       const val =
-      typeof value === "string"
-      ? value?.includes("T")
-      ? value?.split("T")?.[1]?.split?.('.')?.[0]
-      : ""
-      : format(value, "HH:mm");
+        typeof value === "string"
+          ? value?.includes("T")
+            ? value?.split("T")?.[1]?.split?.(".")?.[0]
+            : ""
+          : format(value, "HH:mm");
 
       setTimeValue(val);
     } else {

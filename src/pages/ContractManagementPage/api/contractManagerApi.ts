@@ -1,4 +1,10 @@
-import { deleteRequest, getRequest, postRequest, putRequest } from "@/lib/axiosInstance";
+import {
+  deleteRequest,
+  getRequest,
+  postRequest,
+  putRequest,
+} from "@/lib/axiosInstance";
+import { ApiResponse, ContractDetail, ContractRfis } from "@/types";
 import type { AxiosRequestConfig } from "axios";
 import * as yup from "yup";
 
@@ -59,7 +65,7 @@ const createContractInputSchema: yup.ObjectSchema<CreateContractInput> = yup
         yup.object<NonNullable<CreateContractInput["deliverables"]>[number]>({
           name: yup.string().optional(),
           dueDate: yup.string().optional(),
-        })
+        }),
       )
       .optional(),
   })
@@ -67,7 +73,10 @@ const createContractInputSchema: yup.ObjectSchema<CreateContractInput> = yup
 
 const approvalActionSchema: yup.ObjectSchema<ApprovalActionDTO> = yup
   .object({
-    action: yup.mixed<NonNullable<ApprovalActionDTO["action"]>>().oneOf(["approved", "rejected"] as const).required(),
+    action: yup
+      .mixed<NonNullable<ApprovalActionDTO["action"]>>()
+      .oneOf(["approved", "rejected"] as const)
+      .required(),
     comment: yup.string().optional(),
   })
   .required();
@@ -79,7 +88,7 @@ const toValidationMessage = (err: unknown) => {
   return "Validation failed";
 };
 
-const assertValid = async <T,>(schema: yup.Schema<T>, value: unknown) => {
+const assertValid = async <T>(schema: yup.Schema<T>, value: unknown) => {
   try {
     await schema.validate(value, { abortEarly: false });
   } catch (err) {
@@ -155,6 +164,7 @@ export type ApiResponseContractList = {
 export type ContractRfiDTO = {
   title?: string;
   description?: string;
+  issueRfi?: string;
   deadline?: string;
   files?: Array<{
     name?: string;
@@ -172,6 +182,19 @@ export type ContractRfiResponseDTO = {
     type?: string;
     size?: string;
   }>;
+};
+
+export type ContractNcrSummary = {
+  _id?: string;
+  ncrId?: string;
+  title?: string;
+  status?: "pending" | "approved" | "rejected";
+};
+
+export type ContractNcrStatsDTO = {
+  total?: number;
+  issue?: number;
+  receive?: number;
 };
 
 export type ContractChangeApprover = {
@@ -227,7 +250,7 @@ export type ContractChangeManagerDTO = {
     type?: string;
     size?: number;
   }>;
-  type?: "directive" | "proposal";
+  type?: "directive" | "proposal" | "request";
 };
 
 export type ContractChangeDTO = {
@@ -361,10 +384,56 @@ export type ContractInvoiceStatsDTO = {
   rejected?: number;
 };
 
+export type ContractApproverSummary = {
+  approverId?: string;
+  name?: string;
+  email?: string;
+  role?: string;
+  approvalLevel?: number;
+  assignedApprovals?: string;
+  status?: "Completed" | "Pending";
+};
+
+export type ContractApproverAction = {
+  _id?: string;
+  company?: string;
+  status?: "pending" | "approved" | "rejected";
+  title?: "change" | "invoice" | "lem" | "claim";
+  comment?: string;
+  contractDetailRef?: string;
+  contractDetailRefModel?:
+    | "ContractClaim"
+    | "ContractChange"
+    | "ContractRfi"
+    | "ContractInvoice"
+    | "ContractLem"
+    | "ContractAmendment";
+  approvedDate?: string;
+};
+
+export type ContractApproverDetail = {
+  approver?: {
+    _id?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  };
+  details?: ContractApproverAction[];
+};
+
 export type ContractAmendmentStatsDTO = {
   accepted?: number;
   all?: number;
   rejected?: number;
+};
+
+export type ContractAmendmentDTO = {
+  _id?: string;
+  amendmentId?: string;
+  title?: string;
+  amendmentTitle?: string;
+  status?: string;
+  vendorStatus?: string;
 };
 
 export type CreateContractInput = {
@@ -385,7 +454,12 @@ export type CreateContractInput = {
   contractId?: string;
   jobTitle?: string;
   vendor?: string;
-  personnel?: Array<{ name?: string; role?: string; email?: string; phone?: string }>;
+  personnel?: Array<{
+    name?: string;
+    role?: string;
+    email?: string;
+    phone?: string;
+  }>;
   internalTeam?: string[];
   visibility?: "public" | "private";
   contractAmount?: number;
@@ -428,10 +502,32 @@ export type ManagerListRfisQuery = {
   limit?: number;
 };
 
-type HttpGet = (args: { url: string; config?: AxiosRequestConfig }) => Promise<{ data: unknown }>;
-type HttpPost = (args: { url: string; payload: unknown; config?: AxiosRequestConfig }) => Promise<{ data: unknown }>;
-type HttpPut = (args: { url: string; payload: unknown; config?: AxiosRequestConfig }) => Promise<{ data: unknown }>;
-type HttpDelete = (args: { url: string; payload?: unknown; config?: AxiosRequestConfig }) => Promise<{ data: unknown }>;
+export type ManagerListNcrsQuery = {
+  title?: string;
+  ncrId?: string;
+  page?: number;
+  limit?: number;
+};
+
+type HttpGet = (args: {
+  url: string;
+  config?: AxiosRequestConfig;
+}) => Promise<{ data: unknown }>;
+type HttpPost = (args: {
+  url: string;
+  payload: unknown;
+  config?: AxiosRequestConfig;
+}) => Promise<{ data: unknown }>;
+type HttpPut = (args: {
+  url: string;
+  payload: unknown;
+  config?: AxiosRequestConfig;
+}) => Promise<{ data: unknown }>;
+type HttpDelete = (args: {
+  url: string;
+  payload?: unknown;
+  config?: AxiosRequestConfig;
+}) => Promise<{ data: unknown }>;
 
 export type ContractManagerHttpClient = {
   get: HttpGet;
@@ -450,16 +546,41 @@ const defaultContractManagerHttpClient: ContractManagerHttpClient = {
   delete: ({ url, payload, config }) => deleteRequest({ url, payload, config }),
 };
 
-export const createContractManagerApi = (client: ContractManagerHttpClient = defaultContractManagerHttpClient) => {
+export const createContractManagerApi = (
+  client: ContractManagerHttpClient = defaultContractManagerHttpClient,
+) => {
   return {
     listContracts: async (): Promise<ApiResponseContractList> => {
       const res = await client.get({ url: `${MANAGER_CONTRACTS_PREFIX}` });
       return res.data as ApiResponseContractList;
     },
-    createContract: async (payload: CreateContractInput): Promise<ApiResponseContract> => {
+    createContract: async (
+      payload: CreateContractInput,
+    ): Promise<ApiResponseContract> => {
       await assertValid(createContractInputSchema, payload);
-      const res = await client.post({ url: `${MANAGER_CONTRACTS_PREFIX}`, payload });
+      const res = await client.post({
+        url: `${MANAGER_CONTRACTS_PREFIX}`,
+        payload,
+      });
       return res.data as ApiResponseContract;
+    },
+    getContract: async (contractId: string) => {
+      const res = await client.get({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}`,
+      });
+      return res as ApiResponse<ContractDetail>;
+    },
+    listContractApprovers: async (contractId: string) => {
+      const res = await client.get({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/approvers`,
+      });
+      return res.data as { message?: string; data?: ContractApproverSummary[] };
+    },
+    getContractApproverDetails: async (contractId: string, approverId: string) => {
+      const res = await client.get({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/approvers/${approverId}`,
+      });
+      return res.data as { message?: string; data?: ContractApproverDetail };
     },
     listPaymentHoldbacks: async (contractId: string) => {
       const res = await client.get({
@@ -467,7 +588,10 @@ export const createContractManagerApi = (client: ContractManagerHttpClient = def
       });
       return res.data as { message?: string; data?: ContractHoldBackDTO[] };
     },
-    createPaymentHoldback: async (contractId: string, payload: ContractHoldBackDTO) => {
+    createPaymentHoldback: async (
+      contractId: string,
+      payload: ContractHoldBackDTO,
+    ) => {
       const res = await client.post({
         url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/payment-holdbacks`,
         payload,
@@ -486,7 +610,10 @@ export const createContractManagerApi = (client: ContractManagerHttpClient = def
       });
       return res.data as { message?: string; data?: ContractSavingDTO[] };
     },
-    createPaymentSaving: async (contractId: string, payload: ContractSavingDTO) => {
+    createPaymentSaving: async (
+      contractId: string,
+      payload: ContractSavingDTO,
+    ) => {
       const res = await client.post({
         url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/payment-savings`,
         payload,
@@ -505,12 +632,18 @@ export const createContractManagerApi = (client: ContractManagerHttpClient = def
       });
       return res.data as { message?: string; data?: ContractChangeStatsDTO };
     },
-    listChanges: async (contractId: string, query?: ManagerListChangesQuery) => {
+    listChanges: async (
+      contractId: string,
+      query?: ManagerListChangesQuery,
+    ) => {
       const res = await client.get({
         url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/changes`,
         config: query ? { params: query } : undefined,
       });
-      return res.data as { message?: string; data?: { changes?: ContractChangeDTO[]; total?: number } };
+      return res.data as {
+        message?: string;
+        data?: { changes?: ContractChangeDTO[]; total?: number };
+      };
     },
     getChangeDetail: async (changeId: string) => {
       const res = await client.get({
@@ -521,7 +654,7 @@ export const createContractManagerApi = (client: ContractManagerHttpClient = def
     createChangeRequest: async (
       dataId: string,
       type: "Contract" | "MsaContract",
-      payload: ContractChangeManagerDTO
+      payload: ContractChangeManagerDTO,
     ) => {
       const res = await client.post({
         url: `${MANAGER_CONTRACTS_PREFIX}/${dataId}/change/${type}`,
@@ -553,16 +686,27 @@ export const createContractManagerApi = (client: ContractManagerHttpClient = def
       const res = await client.get({
         url: `${MANAGER_CONTRACTS_PREFIX}/changes/${changeId}/comments`,
       });
-      return res.data as { message?: string; data?: { data?: ContractCommentDTO[]; page?: number; limit?: number } };
+      return res.data as {
+        message?: string;
+        data?: { data?: ContractCommentDTO[]; page?: number; limit?: number };
+      };
     },
-    addChangeComment: async (changeId: string, contractId: string, payload: ContractChangeCommentDTO) => {
+    addChangeComment: async (
+      changeId: string,
+      contractId: string,
+      payload: ContractChangeCommentDTO,
+    ) => {
       const res = await client.post({
         url: `${MANAGER_CONTRACTS_PREFIX}/changes/${changeId}/comments/${contractId}`,
         payload,
       });
       return res.data as { message?: string; data?: ContractCommentDTO };
     },
-    replyChangeComment: async (changeId: string, commentId: string, payload: ContractChangeReplyDTO) => {
+    replyChangeComment: async (
+      changeId: string,
+      commentId: string,
+      payload: ContractChangeReplyDTO,
+    ) => {
       const res = await client.post({
         url: `${MANAGER_CONTRACTS_PREFIX}/changes/${changeId}/comments/${commentId}/reply`,
         payload,
@@ -580,7 +724,10 @@ export const createContractManagerApi = (client: ContractManagerHttpClient = def
         url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/claims`,
         config: query ? { params: query } : undefined,
       });
-      return res.data as { message?: string; data?: { changes?: ContractClaimDTO[]; total?: number } };
+      return res.data as {
+        message?: string;
+        data?: { changes?: ContractClaimDTO[]; total?: number };
+      };
     },
     getClaimDetail: async (claimId: string) => {
       const res = await client.get({
@@ -606,16 +753,27 @@ export const createContractManagerApi = (client: ContractManagerHttpClient = def
       const res = await client.get({
         url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/comments`,
       });
-      return res.data as { message?: string; data?: { data?: ContractCommentDTO[]; page?: number; limit?: number } };
+      return res.data as {
+        message?: string;
+        data?: { data?: ContractCommentDTO[]; page?: number; limit?: number };
+      };
     },
-    addClaimComment: async (claimId: string, contractId: string, payload: ContractChangeCommentDTO) => {
+    addClaimComment: async (
+      claimId: string,
+      contractId: string,
+      payload: ContractChangeCommentDTO,
+    ) => {
       const res = await client.post({
         url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/comments/${contractId}`,
         payload,
       });
       return res.data as { message?: string; data?: ContractCommentDTO };
     },
-    replyClaimComment: async (claimId: string, commentId: string, payload: ContractChangeReplyDTO) => {
+    replyClaimComment: async (
+      claimId: string,
+      commentId: string,
+      payload: ContractChangeReplyDTO,
+    ) => {
       const res = await client.post({
         url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/comments/${commentId}/reply`,
         payload,
@@ -628,7 +786,10 @@ export const createContractManagerApi = (client: ContractManagerHttpClient = def
       });
       return res.data as { message?: string; data?: ContractChangeApprover[] };
     },
-    sendClaimToApprovers: async (claimId: string, payload: { userIds: string[] }) => {
+    sendClaimToApprovers: async (
+      claimId: string,
+      payload: { userIds: string[] },
+    ) => {
       const res = await client.post({
         url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/approvers`,
         payload,
@@ -641,12 +802,18 @@ export const createContractManagerApi = (client: ContractManagerHttpClient = def
       });
       return res.data as { message?: string; data?: ContractInvoiceStatsDTO };
     },
-    listInvoices: async (contractId: string, query?: ManagerListInvoicesQuery) => {
+    listInvoices: async (
+      contractId: string,
+      query?: ManagerListInvoicesQuery,
+    ) => {
       const res = await client.get({
         url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/invoice`,
         config: query ? { params: query } : undefined,
       });
-      return res.data as { message?: string; data?: { invoices?: ContractInvoiceDTO[]; total?: number } };
+      return res.data as {
+        message?: string;
+        data?: { invoices?: ContractInvoiceDTO[]; total?: number };
+      };
     },
     getInvoiceDetail: async (invoiceId: string) => {
       const res = await client.get({
@@ -664,7 +831,7 @@ export const createContractManagerApi = (client: ContractManagerHttpClient = def
       const res = await client.get({
         url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/amendments`,
       });
-      return res.data as { message?: string; data?: unknown[] };
+      return res.data as { message?: string; data?: ContractAmendmentDTO[] };
     },
     createAmendment: async (contractId: string, payload: unknown) => {
       const res = await client.post({
@@ -686,7 +853,10 @@ export const createContractManagerApi = (client: ContractManagerHttpClient = def
       });
       return res.data as { message?: string; data?: unknown };
     },
-    approveAmendment: async (amendmentId: string, payload: ApprovalActionDTO) => {
+    approveAmendment: async (
+      amendmentId: string,
+      payload: ApprovalActionDTO,
+    ) => {
       await assertValid(approvalActionSchema, payload);
       const res = await client.post({
         url: `${MANAGER_CONTRACTS_PREFIX}/amendments/${amendmentId}/approve`,
@@ -694,9 +864,25 @@ export const createContractManagerApi = (client: ContractManagerHttpClient = def
       });
       return res.data as { message?: string; data?: unknown };
     },
-    createRfi: async (dataId: string, type: "Contract" | "MsaContract", payload: ContractRfiDTO) => {
+    getNcrStats: async (contractId: string) => {
+      const res = await client.get({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/ncrs/stats`,
+      });
+      return res.data as { message?: string; data?: ContractNcrStatsDTO };
+    },
+    listNcrs: async (contractId: string, query?: ManagerListNcrsQuery) => {
+      const res = await client.get({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/ncrs`,
+        config: query ? { params: query } : undefined,
+      });
+      return res.data as { message?: string; data?: ContractNcrSummary[] };
+    },
+    createRfi: async (
+      dataId: string,
+      payload: ContractRfiDTO,
+    ) => {
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/${dataId}/rfi/${type}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${dataId}/rfi`,
         payload,
       });
       return res.data as { message?: string; data?: ContractRfiDTO };
@@ -708,7 +894,12 @@ export const createContractManagerApi = (client: ContractManagerHttpClient = def
       });
       return res.data as {
         message?: string;
-        data?: { contractRfis?: ContractRfiDTO[]; total?: number; page?: number; skip?: number };
+        data?: {
+          contractRfis?: ContractRfis[];
+          total?: number;
+          page?: number;
+          skip?: number;
+        };
       };
     },
     getRfiDetail: async (rfiId: string) => {
@@ -717,7 +908,10 @@ export const createContractManagerApi = (client: ContractManagerHttpClient = def
       });
       return res.data as { message?: string; data?: ContractRfiDTO };
     },
-    createRfiResponse: async (rfiId: string, payload: ContractRfiResponseDTO) => {
+    createRfiResponse: async (
+      rfiId: string,
+      payload: ContractRfiResponseDTO,
+    ) => {
       const res = await client.post({
         url: `${MANAGER_CONTRACTS_PREFIX}/rfis/${rfiId}/response`,
         payload,
@@ -730,8 +924,38 @@ export const createContractManagerApi = (client: ContractManagerHttpClient = def
       });
       return res.data as { message?: string; data?: ContractRfiResponseDTO };
     },
+    listRfiComments: async (contractId: string, rfiId: string) => {
+      const res = await client.get({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/rfis/${rfiId}/comment`,
+      });
+      return res.data as {
+        message?: string;
+        data?: { data?: ContractCommentDTO[]; page?: number; limit?: number };
+      };
+    },
+    addRfiComment: async (
+      contractId: string,
+      rfiId: string,
+      payload: ContractChangeCommentDTO,
+    ) => {
+      const res = await client.post({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/rfis/${rfiId}/comment`,
+        payload,
+      });
+      return res.data as { message?: string; data?: ContractCommentDTO };
+    },
+    replyRfiComment: async (
+      rfiId: string,
+      commentId: string,
+      payload: ContractChangeReplyDTO,
+    ) => {
+      const res = await client.post({
+        url: `${MANAGER_CONTRACTS_PREFIX}/rfis/${rfiId}/comment/${commentId}/reply`,
+        payload,
+      });
+      return res.data as { message?: string; data?: ContractCommentDTO };
+    },
   };
 };
 
 export const contractManagerApi = createContractManagerApi();
-

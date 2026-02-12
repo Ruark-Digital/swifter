@@ -1,4 +1,5 @@
 import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import PaymentSummaryMilestonesTable from "../components/PaymentSummaryMilestonesTable";
@@ -14,12 +15,17 @@ import {
   TextSelect,
 } from "@/components/layouts/FormInputs";
 import { Check, CloudUpload, X } from "lucide-react";
+import type { ContractDetail } from "@/types";
+import { useToastHandler } from "@/hooks/useToaster";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import { contractManagerApi } from "../api/contractManagerApi";
+import { formatDateTZ } from "@/lib/utils";
 
 type HoldbackReleaseRow = {
   releaseId: string;
   releasedType: string;
   releasedAmount: string;
-  status: "Approved" | "Pending";
+  status: string;
   dueDate: string;
 };
 
@@ -63,17 +69,21 @@ const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
     accessorKey: "status",
     header: () => <div className="w-[120px] text-center">Status</div>,
     cell: ({ getValue }) => {
-      const value = getValue<HoldbackReleaseRow["status"]>();
+      const value = getValue<string>();
+      const normalized = value?.toLowerCase();
       const styles =
-        value === "Approved"
+        normalized === "approved"
           ? "bg-[#EAF7EE] text-[#16A34A]"
-          : "bg-[#FEF9C3] text-[#CA8A04]";
+          : normalized === "pending"
+            ? "bg-[#FEF9C3] text-[#CA8A04]"
+            : "bg-[#F3F4F6] text-[#6B7280]";
+      const label = value || "-";
       return (
         <div className="flex w-[120px] justify-center py-4">
           <div
             className={`inline-flex items-center justify-center rounded-full px-4 py-1 text-sm font-semibold ${styles}`}
           >
-            {value}
+            {label}
           </div>
         </div>
       );
@@ -108,22 +118,6 @@ const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
   },
 ];
 
-const holdbackReleaseRows: HoldbackReleaseRow[] = [
-  {
-    releaseId: "HB-2025-10",
-    releasedType: "Partial",
-    releasedAmount: "$2.5M",
-    status: "Approved",
-    dueDate: "12-65-2025",
-  },
-  {
-    releaseId: "HB-2025-10",
-    releasedType: "Full",
-    releasedAmount: "$2.5M",
-    status: "Pending",
-    dueDate: "12-65-2025",
-  },
-];
 
 const savingsRealizedColumns: ColumnDef<SavingsRealizedRow>[] = [
   {
@@ -191,36 +185,6 @@ const savingsRealizedColumns: ColumnDef<SavingsRealizedRow>[] = [
   },
 ];
 
-const savingsRealizedRows: SavingsRealizedRow[] = [
-  {
-    savingsId: "SR-2025-10",
-    savingsTitle: "Additional structural reinforcement",
-    category: "Direct Negotiations",
-    amount: "$2.5M",
-    dateSubmitted: "12-65-2025",
-  },
-  {
-    savingsId: "SR-2025-10",
-    savingsTitle: "Additional structural reinforcement",
-    category: "Indirect Savings",
-    amount: "$2.5M",
-    dateSubmitted: "12-65-2025",
-  },
-  {
-    savingsId: "SR-2025-10",
-    savingsTitle: "Additional structural reinforcement",
-    category: "Cost Avoidance",
-    amount: "$2.5M",
-    dateSubmitted: "12-65-2025",
-  },
-  {
-    savingsId: "SR-2025-10",
-    savingsTitle: "Additional structural reinforcement",
-    category: "Working Capital Optimization",
-    amount: "$2.5M",
-    dateSubmitted: "12-65-2025",
-  },
-];
 
 type UpdateSavingsFormValues = {
   title: string;
@@ -438,10 +402,134 @@ const UpdateSavingsDialog: React.FC<{ trigger: React.ReactElement }> = ({
 
 type Props = {
   contractId: string;
+  contract?: ContractDetail | null;
 };
 
-const PaymentSummaryTabContent: React.FC<Props> = ({ contractId }) => {
-  void contractId;
+const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract }) => {
+  const toastHandler = useToastHandler();
+  const toastErrorRef = React.useRef(toastHandler.error);
+  const lastErrorRef = React.useRef<{ holdbacks?: unknown; savings?: unknown }>(
+    {},
+  );
+  const holdbacksQueryKey = useUserQueryKey([
+    "contract-payment-holdbacks",
+    contractId,
+  ]);
+  const savingsQueryKey = useUserQueryKey([
+    "contract-payment-savings",
+    contractId,
+  ]);
+
+  const { data: holdbacksResponse, error: holdbacksError } = useQuery({
+    queryKey: holdbacksQueryKey,
+    queryFn: () => contractManagerApi.listPaymentHoldbacks(contractId),
+    enabled: Boolean(contractId),
+    staleTime: 60000,
+    retry: false,
+  });
+
+  const { data: savingsResponse, error: savingsError } = useQuery({
+    queryKey: savingsQueryKey,
+    queryFn: () => contractManagerApi.listPaymentSavings(contractId),
+    enabled: Boolean(contractId),
+    staleTime: 60000,
+    retry: false,
+  });
+
+  React.useEffect(() => {
+    toastErrorRef.current = toastHandler.error;
+  }, [toastHandler.error]);
+
+  React.useEffect(() => {
+    if (!holdbacksError) return;
+    if (lastErrorRef.current.holdbacks === holdbacksError) return;
+    lastErrorRef.current.holdbacks = holdbacksError;
+    toastErrorRef.current("Payment Holdbacks", holdbacksError as any);
+  }, [holdbacksError]);
+
+  React.useEffect(() => {
+    if (!savingsError) return;
+    if (lastErrorRef.current.savings === savingsError) return;
+    lastErrorRef.current.savings = savingsError;
+    toastErrorRef.current("Payment Savings", savingsError as any);
+  }, [savingsError]);
+
+  const currency = contract?.currency || "USD";
+  const formatMoney = React.useCallback(
+    (value?: number) => {
+      if (value == null || !Number.isFinite(value)) return "-";
+      try {
+        return new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency,
+          maximumFractionDigits: 0,
+        }).format(value);
+      } catch {
+        return `${value}`;
+      }
+    },
+    [currency],
+  );
+
+  const holdbackRows = React.useMemo<HoldbackReleaseRow[]>(() => {
+    const holdbacks = holdbacksResponse?.data ?? [];
+    return holdbacks.map((holdback, index) => ({
+      releaseId: holdback.invoiceId ?? `holdback-${index + 1}`,
+      releasedType:
+        holdback.type === "full"
+          ? "Full"
+          : holdback.type === "partial"
+            ? "Partial"
+            : "-",
+      releasedAmount: formatMoney(holdback.amount),
+      status: "-",
+      dueDate: "-",
+    }));
+  }, [formatMoney, holdbacksResponse?.data]);
+
+  const savingsRows = React.useMemo<SavingsRealizedRow[]>(() => {
+    const savings = savingsResponse?.data ?? [];
+    return savings.map((saving, index) => ({
+      savingsId: `saving-${index + 1}`,
+      savingsTitle: saving.title ?? "-",
+      category: saving.category ?? "-",
+      amount: formatMoney(saving.amount),
+      dateSubmitted: "-",
+    }));
+  }, [formatMoney, savingsResponse?.data]);
+
+  const milestoneRows = React.useMemo(() => {
+    const milestones = Array.isArray(contract?.milestone)
+      ? contract?.milestone
+      : [];
+    return milestones.map((milestone: any, index: number) => {
+      const dueDate = milestone?.dueDate
+        ? formatDateTZ(milestone?.dueDate, "MMM d, yyyy")
+        : "-";
+      return {
+        milestoneId: milestone?.milestoneId ?? `milestone-${index + 1}`,
+        milestoneTitle: milestone?.name ?? "-",
+        deliverable:
+          milestone?.deliverable?.name ?? milestone?.name ?? "-",
+        amount: formatMoney(milestone?.amount),
+        dueDate,
+      };
+    });
+  }, [contract?.milestone, formatMoney]);
+
+  const contractValue = formatMoney(contract?.contractValue);
+  const holdbackReleased = formatMoney(contract?.holdBackReleased);
+  const savingAmount = formatMoney(contract?.savingAmount);
+  const holdbackValue =
+    contract?.holdBack != null ? String(contract?.holdBack) : "-";
+  const holdbackAmount =
+    contract?.holdBackBank != null
+      ? formatMoney(contract?.holdBackBank)
+      : "-";
+  const contigency = contract?.contigency ?? "-";
+  const paymentStructure = contract?.paymentStructure ?? "-";
+  const paymentTerm = contract?.paymentTerms ?? "-";
+
   return (
     <TabsContent value="payment-summary" className="space-y-8">
       <div className="flex items-center justify-between">
@@ -494,7 +582,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId }) => {
               Contract Value
             </div>
             <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-              $2,500,000
+              {contractValue}
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
@@ -502,13 +590,13 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId }) => {
               Contigency
             </div>
             <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-              $1000
+              {contigency}
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
             <div className="text-[18px] leading-7 text-[#6B6B6B]">Holdback</div>
             <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-              10%
+              {holdbackValue}
             </div>
           </div>
 
@@ -517,7 +605,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId }) => {
               Holdback Amount
             </div>
             <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-              $250,000
+              {holdbackAmount}
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
@@ -525,7 +613,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId }) => {
               Holdback Released
             </div>
             <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-              $10M
+              {holdbackReleased}
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
@@ -533,7 +621,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId }) => {
               Saving Realized
             </div>
             <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-              $0
+              {savingAmount}
             </div>
           </div>
 
@@ -542,7 +630,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId }) => {
               Payment Structure
             </div>
             <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-              Milestone
+              {paymentStructure}
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
@@ -550,7 +638,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId }) => {
               Payment Term
             </div>
             <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-              NET 30
+              {paymentTerm}
             </div>
           </div>
           <div />
@@ -583,13 +671,22 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId }) => {
         </TabsList>
 
         <TabsContent value="milestones">
-          <PaymentSummaryMilestonesTable />
+          <PaymentSummaryMilestonesTable
+            rows={milestoneRows}
+            getRowSearchValues={(row) => [
+              row.milestoneId,
+              row.milestoneTitle,
+              row.deliverable,
+              row.amount,
+              row.dueDate,
+            ]}
+          />
         </TabsContent>
 
         <TabsContent value="holdback-release">
           <PaymentSummaryMilestonesTable
             title="Holdback Release"
-            rows={holdbackReleaseRows}
+            rows={holdbackRows}
             columns={holdbackReleaseColumns}
             getRowSearchValues={(row) => [
               row.releaseId,
@@ -604,7 +701,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId }) => {
         <TabsContent value="saving-realized">
           <PaymentSummaryMilestonesTable<SavingsRealizedRow>
             title="Savings"
-            rows={savingsRealizedRows}
+            rows={savingsRows}
             columns={savingsRealizedColumns}
             getRowSearchValues={(row) => [
               row.savingsId,

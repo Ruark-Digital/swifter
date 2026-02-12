@@ -22,17 +22,29 @@ import {
 import { Check, CloudUpload, Share2, X } from "lucide-react";
 import RfiStatsCards from "../components/RfiStatsCards";
 import RfiTable from "../components/RfiTable";
-import { contractManagerApi, type ContractRfiDTO, type ManagerListRfisQuery } from "../api/contractManagerApi";
+import {
+  contractManagerApi,
+  type ContractRfiDTO,
+  type ManagerListRfisQuery,
+} from "../api/contractManagerApi";
 import type { UploadURLs } from "../lib/contractChanges";
+import { useToastHandler } from "@/hooks/useToaster";
+import { FileUploaderItem } from "@/components/ui/file-upload";
+import { formatFileSize, getFileIcon, getSimpleFileExtension } from "@/lib/fileUtils";
+import { useWatch } from "react-hook-form";
 
 type IssueRfiDialogProps = {
   trigger: React.ReactNode;
   contractId: string;
 };
 
-const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({ trigger, contractId }) => {
+const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
+  trigger,
+  contractId,
+}) => {
   const queryClient = useQueryClient();
-  const { control } = useForge({
+  const toastHandler = useToastHandler();
+  const { control, reset } = useForge({
     defaultValues: {
       rfiTitle: "",
       responseDeadline: undefined,
@@ -42,7 +54,13 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({ trigger, contractId }) 
   });
   const [isSuccess, setIsSuccess] = React.useState(false);
 
-  const { mutateAsync: uploadFile } = useMutation<ApiResponse<UploadURLs[]>, ApiResponseError, { file: File }>({
+  const files = useWatch({ control, name: "files" }) as File[] | null;
+
+  const { mutateAsync: uploadFile, isPending: isUploadingFiles } = useMutation<
+    ApiResponse<UploadURLs[]>,
+    ApiResponseError,
+    { file: File }
+  >({
     mutationKey: ["uploadContractRfiFile"],
     mutationFn: async ({ file }) => {
       const formData = new FormData();
@@ -62,12 +80,18 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({ trigger, contractId }) 
 
   const createMutation = useMutation({
     mutationKey: ["contractManager", "contractRfis", "create", contractId],
-    mutationFn: async (payload: ContractRfiDTO) => await contractManagerApi.createRfi(contractId, "Contract", payload),
+    mutationFn: async (payload: ContractRfiDTO) =>
+      await contractManagerApi.createRfi(contractId, payload),
     onSuccess: async () => {
       setIsSuccess(true);
+      reset();
+      toastHandler.success("RFI", "RFI issued successfully");
       await queryClient.invalidateQueries({
         queryKey: ["contractManager", "contractRfis", contractId],
       });
+    },
+    onError: (error: ApiResponseError) => {
+      toastHandler.error("RFI", error);
     },
   });
 
@@ -80,48 +104,87 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({ trigger, contractId }) 
     const payload: ContractRfiDTO = {
       title: data.rfiTitle,
       description: data.question,
-      deadline: data.responseDeadline ? data.responseDeadline.toISOString() : undefined,
+      deadline: data.responseDeadline
+        ? data.responseDeadline.toISOString()
+        : undefined,
     };
 
     if (data.files?.length) {
-      const uploadedItems = await Promise.all(
-        data.files.map(async (file) => {
-          const res = await uploadFile({ file });
-          const firstUploaded = res.data?.data?.[0];
-          if (!firstUploaded?.url) return undefined;
-          return {
-            name: firstUploaded.name || file.name,
-            url: firstUploaded.url,
-            type: firstUploaded.type || file.type,
-            size: firstUploaded.size || file.size.toString(),
-          };
-        })
-      );
+      try {
+        const uploadedItems = await Promise.all(
+          data.files.map(async (file) => {
+            const res = await uploadFile({ file });
+            const firstUploaded = res.data?.data?.[0];
+            if (!firstUploaded?.url) return undefined;
+            return {
+              name: firstUploaded.name || file.name,
+              url: firstUploaded.url,
+              type: firstUploaded.type || file.type,
+              size: firstUploaded.size || file.size.toString(),
+            };
+          }),
+        );
 
-      const filesPayload = uploadedItems.filter(
-        (item): item is { name: string; url: string; type: string; size: string } => Boolean(item)
-      );
-      if (filesPayload.length) {
-        payload.files = filesPayload;
+        const filesPayload = uploadedItems.filter(
+          (
+            item,
+          ): item is { name: string; url: string; type: string; size: string } =>
+            Boolean(item),
+        );
+        if (filesPayload.length) {
+          payload.files = filesPayload;
+        }
+      } catch (error) {
+        toastHandler.error("Upload Failed", error as ApiResponseError);
+        return;
       }
     }
 
-    await createMutation.mutateAsync(payload);
+    try {
+      await createMutation.mutateAsync(payload);
+    } catch {
+      return;
+    }
   };
 
-  const FileListItem = ({ file, control }: { file: File; control: unknown }) => {
-    void control;
-    return <div className="hidden">{file.name}</div>;
+  const FileListItem = ({ file, index }: { file: File; index?: number }) => {
+    const extension = getSimpleFileExtension(file.name).toUpperCase();
+    return (
+      <FileUploaderItem
+        index={index ?? 0}
+        className="h-auto w-full rounded-xl border border-slate-200 bg-slate-50 p-3"
+      >
+        <div className="flex items-center gap-3 w-full">
+          <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
+            {getFileIcon(extension)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-slate-900 truncate">
+              {file.name}
+            </p>
+            <p className="text-xs text-slate-500">
+              {extension || "FILE"} • {formatFileSize(file.size)}
+            </p>
+          </div>
+        </div>
+      </FileUploaderItem>
+    );
   };
+
+  const isSubmitting = createMutation.isPending || isUploadingFiles;
+  const fileCount = files?.length ?? 0;
 
   return (
     <Dialog
       onOpenChange={(open) => {
-        if (!open) setIsSuccess(false);
+        if (!open) {
+          setIsSuccess(false);
+          reset();
+        }
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         {isSuccess ? (
           <div className="flex flex-col items-center gap-6 px-8 py-10">
             <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#22C55E] text-[#22C55E]">
@@ -165,7 +228,11 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({ trigger, contractId }) 
               </DialogClose>
             </div>
             <div className="px-8 pb-8 pt-6">
-              <Forge control={control} onSubmit={handleSubmit} className="space-y-5">
+              <Forge
+                control={control}
+                onSubmit={handleSubmit}
+                className="space-y-5"
+              >
                 <Forger
                   name="rfiTitle"
                   label="RFI Title"
@@ -185,48 +252,58 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({ trigger, contractId }) 
                   component={TextArea}
                   rows={5}
                 />
-                <Forger
-                  name="files"
-                  label="Upload Files"
-                  component={TextFileUploader}
-                  element={
-                    <div className="flex flex-col items-center gap-3 py-6">
-                      <CloudUpload className="h-12 w-12 text-[#2A4467]" />
-                      <div className="space-y-1 text-center">
-                        <p className="text-base font-semibold text-[#2A4467]">
-                          Drag & Drop or Click to choose files
-                        </p>
-                        <p className="text-sm text-[#6B7280]">
-                          Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
-                        </p>
+                <div className="space-y-2">
+                  <Forger
+                    name="files"
+                    label="Upload Files"
+                    component={TextFileUploader}
+                    element={
+                      <div className="flex flex-col items-center gap-3 py-6">
+                        <CloudUpload className="h-12 w-12 text-[#2A4467]" />
+                        <div className="space-y-1 text-center">
+                          <p className="text-base font-semibold text-[#2A4467]">
+                            Drag & Drop or Click to choose files
+                          </p>
+                          <p className="text-sm text-[#6B7280]">
+                            Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG,
+                            JPEG
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  }
-                  List={FileListItem}
-                  className="rounded-xl border border-dashed border-[#2A4467]"
-                  accept={
-                    {
-                      "application/pdf": [".pdf"],
-                      "application/msword": [".doc"],
-                      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
-                        ".docx",
-                      ],
-                      "application/vnd.ms-excel": [".xls"],
-                      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
-                        ".xlsx",
-                      ],
-                      "application/zip": [".zip"],
-                      "image/png": [".png"],
-                      "image/jpeg": [".jpeg", ".jpg"],
-                    } as any
-                  }
-                />
+                    }
+                    List={FileListItem}
+                    className="rounded-xl border border-dashed border-[#2A4467]"
+                    accept={
+                      {
+                        "application/pdf": [".pdf"],
+                        "application/msword": [".doc"],
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                          [".docx"],
+                        "application/vnd.ms-excel": [".xls"],
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                          [".xlsx"],
+                        "application/zip": [".zip"],
+                        "image/png": [".png"],
+                        "image/jpeg": [".jpeg", ".jpg"],
+                      } as any
+                    }
+                  />
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span>
+                      {fileCount > 0
+                        ? `${fileCount} file${fileCount === 1 ? "" : "s"} ready to upload`
+                        : "Files will upload when you submit"}
+                    </span>
+                    {isUploadingFiles ? <span>Uploading...</span> : null}
+                  </div>
+                </div>
                 <div className="flex items-center gap-4 pt-2">
                   <DialogClose asChild>
                     <Button
                       type="button"
                       variant="outline"
                       className="h-12 flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB]"
+                      disabled={isSubmitting}
                     >
                       Cancel
                     </Button>
@@ -234,8 +311,9 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({ trigger, contractId }) 
                   <Button
                     type="submit"
                     className="h-12 flex-1 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
+                    disabled={isSubmitting}
                   >
-                    Issue RFI
+                    {isSubmitting ? "Issuing..." : "Issue RFI"}
                   </Button>
                 </div>
               </Forge>
@@ -258,7 +336,13 @@ const RfiTabContent: React.FC<Props> = ({ contractId }) => {
   });
 
   const { data: rfisRes, isLoading: isRfisLoading } = useQuery({
-    queryKey: ["contractManager", "contractRfis", contractId, pagination.pageIndex, pagination.pageSize],
+    queryKey: [
+      "contractManager",
+      "contractRfis",
+      contractId,
+      pagination.pageIndex,
+      pagination.pageSize,
+    ],
     queryFn: async () => {
       const query: ManagerListRfisQuery = {
         page: pagination.pageIndex + 1,
@@ -291,7 +375,12 @@ const RfiTabContent: React.FC<Props> = ({ contractId }) => {
         </div>
       </div>
 
-      <RfiStatsCards all={totalCount} issued={0} received={0} isLoading={isRfisLoading} />
+      <RfiStatsCards
+        all={totalCount}
+        issued={0}
+        received={0}
+        isLoading={isRfisLoading}
+      />
 
       <Tabs defaultValue="all" className="w-full bg-transparent">
         <TabsList className="bg-[#F2F4F7] p-1 rounded-full w-fit">
@@ -325,7 +414,7 @@ const RfiTabContent: React.FC<Props> = ({ contractId }) => {
         </TabsContent>
         <TabsContent value="issued">
           <RfiTable
-            rows={rfiRows}
+            rows={rfiRows.filter(item => item.type === "issue")}
             isLoading={isRfisLoading}
             totalCount={totalCount}
             pagination={pagination}
@@ -334,7 +423,7 @@ const RfiTabContent: React.FC<Props> = ({ contractId }) => {
         </TabsContent>
         <TabsContent value="received">
           <RfiTable
-            rows={rfiRows}
+            rows={rfiRows.filter(item => item.type === "received")}
             isLoading={isRfisLoading}
             totalCount={totalCount}
             pagination={pagination}

@@ -280,9 +280,9 @@ test.describe("contractManagerApi (unit)", () => {
     });
 
     const rfiPayload = { title: "rfi" };
-    await api.createRfi("d2", "Contract", rfiPayload as never);
+    await api.createRfi("d2", rfiPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/d2/rfi/Contract",
+      url: "/contract/manager/contracts/d2/rfi",
       payload: rfiPayload,
     });
 
@@ -307,6 +307,25 @@ test.describe("contractManagerApi (unit)", () => {
     await api.getRfiResponse("rfi1");
     expect(getSpy.calls.at(-1)).toEqual({
       url: "/contract/manager/contracts/rfis/rfi1/response",
+    });
+
+    await api.listRfiComments("c8", "rfi1");
+    expect(getSpy.calls.at(-1)).toEqual({
+      url: "/contract/manager/contracts/c8/rfis/rfi1/comment",
+    });
+
+    const rfiCommentPayload = { content: "c" };
+    await api.addRfiComment("c8", "rfi1", rfiCommentPayload as never);
+    expect(postSpy.calls.at(-1)).toEqual({
+      url: "/contract/manager/contracts/c8/rfis/rfi1/comment",
+      payload: rfiCommentPayload,
+    });
+
+    const rfiReplyPayload = { content: "r" };
+    await api.replyRfiComment("rfi1", "cm1", rfiReplyPayload as never);
+    expect(postSpy.calls.at(-1)).toEqual({
+      url: "/contract/manager/contracts/rfis/rfi1/comment/cm1/reply",
+      payload: rfiReplyPayload,
     });
   });
 });

@@ -345,6 +345,7 @@ export const EvaluationManagementPage = () => {
     // }
     if (!myEvaluationsResponse?.data) return [];
     return transformEvaluationData(myEvaluationsResponse.data);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myEvaluationsResponse, assignedEvaluationsResponse, isEvaluator]);
 
   // Statistics with fallback to default values
