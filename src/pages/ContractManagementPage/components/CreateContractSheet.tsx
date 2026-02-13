@@ -35,7 +35,7 @@ type Props = {
   trigger: React.ReactNode;
 };
 
-const schema = yup.object({
+export const schema = yup.object({
   name: yup.string().required("Contract name is required"),
   relationship: yup.string().required("Relationship is required"),
   project: yup.string().optional(),
@@ -162,7 +162,7 @@ const schema = yup.object({
 
 export type CreateContractFormData = yup.InferType<typeof schema>;
 
-const defaultValues = {
+export const defaultValues = {
   name: "",
   relationship: "",
   project: "",
@@ -739,7 +739,6 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
   const buildPayload = React.useCallback(
     (data: CreateContractFormData, status: "draft" | "publish") => {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-      console.log({ data });
 
       const relationship =
         data.relationship === "msa"

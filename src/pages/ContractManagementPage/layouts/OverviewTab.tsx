@@ -6,6 +6,9 @@ import { Share2 } from "lucide-react";
 import EmployeeCardPopover from "../components/EmployeeCardPopover";
 import type { ContractDetail } from "@/types";
 import { cn, formatDateTZ } from "@/lib/utils";
+import EditContract from "../components/EditContract";
+import { useToastHandler } from "@/hooks/useToaster";
+import { useQueryClient } from "@tanstack/react-query";
 
 type Props = {
   contract: ContractDetail;
@@ -13,6 +16,10 @@ type Props = {
 };
 
 const OverviewTab: React.FC<Props> = ({ contract, status }) => {
+  const [editingContractId, setEditingContractId] = React.useState<string | null>(null);
+  const { success } = useToastHandler();
+  const qc = useQueryClient();
+
   const projectName =
     typeof contract.project === "string"
       ? contract.project
@@ -56,7 +63,11 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
           <Button variant="outline">
             <Share2 className="mr-2 h-4 w-4" /> Export Report
           </Button>
-          <Button>Edit Contract</Button>
+          <Button
+            onClick={() => setEditingContractId(contract?._id ?? null)}
+          >
+            Edit Contract
+          </Button>
         </div>
       </div>
 
@@ -183,6 +194,21 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
           </div>
         </div>
       </div>
+      
+      {editingContractId !== null && (
+        <EditContract
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) setEditingContractId(null);
+          }}
+          contractId={editingContractId}
+          onUpdated={() => {
+            success("Contract updated successfully", "Changes saved");
+            qc.invalidateQueries({ queryKey: ["contract-manager-contracts"] });
+            setEditingContractId(null);
+          }}
+        />
+      )}
     </TabsContent>
   );
 };

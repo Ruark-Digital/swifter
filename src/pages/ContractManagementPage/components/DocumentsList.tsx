@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Eye, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { File as ContractDocument } from "@/types";
+import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 
 type Doc = {
   id: string;
@@ -10,31 +11,11 @@ type Doc = {
   type: string;
   size: string;
   url?: string;
-};
-
-const typeColor: Record<string, string> = {
-  DOC: "bg-blue-100 text-blue-700",
-  PDF: "bg-red-100 text-red-700",
-  XLS: "bg-green-100 text-green-700",
-  ZIP: "bg-emerald-100 text-emerald-700",
+  icon: React.ReactNode;
 };
 
 type Props = {
   files?: ContractDocument[];
-};
-
-const normalizeType = (file: ContractDocument) => {
-  if (typeof file.type === "string" && file.type.trim()) {
-    const normalized = file.type.includes("/")
-      ? file.type.split("/").pop()
-      : file.type;
-    return normalized?.toUpperCase() ?? "FILE";
-  }
-
-  const source = file.name || file.url;
-  if (!source) return "FILE";
-  const ext = source.split(".").pop();
-  return ext ? ext.toUpperCase() : "FILE";
 };
 
 const DocumentsList: React.FC<Props> = ({ files }) => {
@@ -42,10 +23,13 @@ const DocumentsList: React.FC<Props> = ({ files }) => {
     if (!files?.length) return [];
     return files.map((file, index) => {
       const size = typeof file.size === "string" ? file.size : "-";
+      const fileExtension = getFileExtension(file.name, file.type);
+
       return {
         id: file._id ?? `${file.name ?? "file"}-${index}`,
         name: file.name ?? "Untitled",
-        type: normalizeType(file),
+        icon: getFileIcon(fileExtension),
+        type: fileExtension?.toUpperCase() ?? "FILE",
         size,
         url: file.url,
       };
@@ -65,14 +49,16 @@ const DocumentsList: React.FC<Props> = ({ files }) => {
           <Card key={d.id} className="border-slate-200">
             <CardContent className="p-4 flex items-center gap-4">
               <div
-                className={`h-10 w-10 rounded-md flex items-center justify-center ${typeColor[d.type] ?? "bg-slate-100 text-slate-700"}`}
+                className={`h-10 w-10`}
               >
-                {d.type}
+                {d.icon}
               </div>
+
               <div className="flex-1">
                 <p className="text-sm font-medium text-slate-900">{d.name}</p>
                 <p className="text-xs text-slate-500">{d.type} • {d.size}</p>
               </div>
+
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" aria-label="Preview"><Eye className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="icon" aria-label="Download"><Download className="h-4 w-4" /></Button>

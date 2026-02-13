@@ -249,7 +249,7 @@ const UpdateSavingsDialog: React.FC<{ trigger: React.ReactElement }> = ({
         <DialogTrigger asChild>{trigger}</DialogTrigger>
         <DialogContent
           showCloseButton={false}
-          className="max-h-[90vh] w-full max-w-[760px] gap-0 overflow-hidden rounded-2xl border-0 p-0"
+          className="max-h-[90vh] w-full max-w-xl gap-0 overflow-hidden rounded-2xl border-0 p-0"
         >
           <Forge
             control={control}

@@ -314,7 +314,7 @@ const ContractDetailPage: React.FC = () => {
 
         <NcrLogTabContent contractId={contract?._id ?? ""} />
 
-        <DocumentsTabContent files={contract?.files} />
+        <DocumentsTabContent files={contract?.files} contractId={contract?._id ?? ""} />
 
         <AmendmentsTabContent contractId={contract?._id ?? ""} />
 
