@@ -171,6 +171,7 @@ export interface ContractDetail {
   __v:                    number;
   holdBackReleased:       number;
   savingAmount:           number;
+  deviationScale?:        number;
 }
  
 export interface Approver {

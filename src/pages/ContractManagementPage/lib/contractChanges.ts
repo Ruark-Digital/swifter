@@ -63,8 +63,13 @@ export const toManagerCreateChangePayload = (
     description: values.description,
   };
 
-  if (values.changeType === "request") {
-    payload.type = values.changeType;
+  if (
+    values.changeType === "request" ||
+    values.changeType === "directive" ||
+    values.changeType === "proposal" ||
+    values.changeType === "order"
+  ) {
+    payload.type = values.changeType as "directive" | "proposal" | "request";
   }
 
   if (values.urgency === "low" || values.urgency === "medium" || values.urgency === "high") {

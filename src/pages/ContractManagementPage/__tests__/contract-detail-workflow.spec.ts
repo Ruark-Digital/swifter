@@ -66,14 +66,14 @@ test.describe("Contract Detail (workflow)", () => {
   test("renders contract header from Contract Manager list endpoint", async ({ page }) => {
     const contractId = "c-123";
 
-    await page.route("**/contract/manager/contracts**", async (route) => {
+    await page.route("**/contract/manager/contracts/*", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
           status: 200,
-          message: "Project contracts fetched successfully",
-          data: [{ _id: contractId, title: "Unit Test Contract", status: "active" }],
+          message: "Contract fetched successfully",
+          data: { _id: contractId, title: "Unit Test Contract", status: "active" },
         }),
       });
     });
@@ -85,14 +85,14 @@ test.describe("Contract Detail (workflow)", () => {
   });
 
   test("shows not-found state when contract is missing from list", async ({ page }) => {
-    await page.route("**/contract/manager/contracts**", async (route) => {
+    await page.route("**/contract/manager/contracts/missing-id", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
           status: 200,
-          message: "Project contracts fetched successfully",
-          data: [{ _id: "other", title: "Other", status: "draft" }],
+          message: "Contract not found",
+          data: null,
         }),
       });
     });

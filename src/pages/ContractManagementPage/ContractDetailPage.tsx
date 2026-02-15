@@ -1,8 +1,9 @@
 import React from "react";
 import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SEOWrapper } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Breadcrumb,
@@ -16,7 +17,11 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import type { ApiResponseError, ContractDetail } from "@/types";
+import { useUserRole } from "@/hooks/useUserRole";
+import { vendorApi } from "./api/vendorApi";
 import { contractManagerApi } from "./api/contractManagerApi";
+import { approverApi } from "./api/approverApi";
+import { viewOnlyApi } from "./api/viewOnlyApi";
 import AnalyticsTabContent from "./layouts/AnalyticsTabContent";
 import ApproversTabContent from "./layouts/ApproversTabContent";
 import ActionLogTabContent from "./layouts/ActionLogTabContent";
@@ -36,6 +41,15 @@ import OverviewTab from "./layouts/OverviewTab";
 import RfiTabContent from "./layouts/RfiTabContent";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import VendorReportsTabContent from "./layouts/VendorReportsTabContent";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 const formatContractStatus = (status?: ContractDetail["status"]) => {
   if (status === "active")
@@ -65,7 +79,15 @@ const ContractDetailPage: React.FC = () => {
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
+  const { isVendor, isApprover, isViewOnly } = useUserRole();
   const queryKey = useUserQueryKey(["contract-manager-contracts"]);
+  const queryClient = useQueryClient();
+
+  const [approvalDialogOpen, setApprovalDialogOpen] = React.useState(false);
+  const [approvalAction, setApprovalAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [comment, setComment] = React.useState("");
 
   const {
     data: contractsResponse,
@@ -73,11 +95,49 @@ const ContractDetailPage: React.FC = () => {
     error,
   } = useQuery({
     queryKey,
-    queryFn: () => contractManagerApi.getContract(id ?? ""),
+    queryFn: () => {
+      if (isVendor) return vendorApi.getContract(id ?? "");
+      if (isApprover) return approverApi.getContract(id ?? "");
+      if (isViewOnly) return viewOnlyApi.getContract(id ?? "");
+      return contractManagerApi.getContract(id ?? "");
+    },
     enabled: !!id,
     staleTime: 60000,
     retry: false,
   });
+
+  const approvalMutation = useMutation({
+    mutationFn: async (action: "approved" | "rejected") => {
+      return approverApi.approveContract(id ?? "", {
+        action,
+        comment,
+      });
+    },
+    onSuccess: (res, action) => {
+      toastHandler.success(
+        `Contract ${action === "approved" ? "approved" : "rejected"} successfully`,
+        res.data.message,
+      );
+      queryClient.invalidateQueries({ queryKey });
+      setApprovalDialogOpen(false);
+      setApprovalAction(null);
+      setComment("");
+    },
+    onError: (err: ApiResponseError) => {
+      toastHandler.error("Failed to update contract status", err);
+    },
+  });
+
+  const handleApprovalAction = (action: "approved" | "rejected") => {
+    setApprovalAction(action);
+    setApprovalDialogOpen(true);
+  };
+
+  const submitApproval = () => {
+    if (approvalAction) {
+      approvalMutation.mutate(approvalAction);
+    }
+  };
 
   React.useEffect(() => {
     toastErrorRef.current = toastHandler.error;
@@ -174,6 +234,25 @@ const ContractDetailPage: React.FC = () => {
         </div>
         <Badge className={status?.className}>{status?.label}</Badge>
       </div>
+
+      {isApprover && (
+        <div className="flex items-center gap-4">
+          <Button
+            variant="default"
+            className="bg-[#2A4467] hover:bg-[#2A4467]/90"
+            onClick={() => handleApprovalAction("approved")}
+          >
+            Approve Contract
+          </Button>
+          <Button
+            variant="outline"
+            className="bg-[#F3F4F6] border-[#E5E7EB]"
+            onClick={() => handleApprovalAction("rejected")}
+          >
+            Reject Contract
+          </Button>
+        </div>
+      )}
 
       <Tabs defaultValue="overview" className="w-full bg-transparent space-y-4">
         <ScrollArea className="pb-4 w-[75vw]">
@@ -314,7 +393,10 @@ const ContractDetailPage: React.FC = () => {
 
         <NcrLogTabContent contractId={contract?._id ?? ""} />
 
-        <DocumentsTabContent files={contract?.files} contractId={contract?._id ?? ""} />
+        <DocumentsTabContent
+          files={contract?.files}
+          contractId={contract?._id ?? ""}
+        />
 
         <AmendmentsTabContent contractId={contract?._id ?? ""} />
 
@@ -329,6 +411,54 @@ const ContractDetailPage: React.FC = () => {
 
         <ActionLogTabContent />
       </Tabs>
+
+      <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {approvalAction === "approved"
+                ? "Approve Contract"
+                : "Reject Contract"}
+            </DialogTitle>
+            <DialogDescription>
+              {approvalAction === "approved"
+                ? "Are you sure you want to approve this contract? This action cannot be undone."
+                : "Please provide a reason for rejecting this contract."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <Textarea
+              placeholder="Add a comment (optional)"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              className="resize-none"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setApprovalDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={submitApproval}
+              disabled={approvalMutation.isPending}
+              variant={
+                approvalAction === "rejected" ? "destructive" : "default"
+              }
+            >
+              {approvalMutation.isPending
+                ? "Processing..."
+                : approvalAction === "approved"
+                  ? "Approve"
+                  : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

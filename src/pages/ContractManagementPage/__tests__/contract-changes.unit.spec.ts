@@ -47,6 +47,7 @@ test.describe("contractChanges helpers (unit)", () => {
     ).toEqual({
       title: "Title",
       description: "Desc",
+      type: "request",
     });
   });
 
