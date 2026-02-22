@@ -3,6 +3,22 @@ import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getRequest } from "@/lib/axiosInstance";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Forge, Forger, useForge } from "@/lib/forge";
+import * as yup from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { TextArea } from "@/components/layouts/FormInputs";
+import { postRequest } from "@/lib/axiosInstance";
+import { getFileIcon } from "@/lib/fileUtils";
 import {
   Sheet,
   SheetClose,
@@ -12,7 +28,16 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Download, Eye, Search, Share2, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  Eye,
+  Search,
+  Share2,
+  X,
+} from "lucide-react";
+import { useToastHandler } from "@/hooks/useToaster";
+import { ApiResponse, ApiResponseError } from "@/types";
 
 export type LemRow = {
   id: string;
@@ -24,6 +49,8 @@ export type LemRow = {
 
 type LemDetailsSheetProps = {
   trigger: React.ReactNode;
+  contractId: string;
+  lemId: string;
 };
 
 const LabelRow = ({
@@ -49,8 +76,8 @@ const DocCard = ({
   size: string;
 }) => (
   <div className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-white p-3">
-    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EEF2FF] text-xs font-semibold text-[#3B82F6]">
-      {type}
+    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EEF2FF]">
+      {getFileIcon(type)}
     </div>
     <div className="flex-1">
       <div className="text-sm font-medium text-[#111827]">{name}</div>
@@ -75,7 +102,33 @@ const DocCard = ({
   </div>
 );
 
-const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({ trigger }) => {
+const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
+  trigger,
+  contractId,
+  lemId,
+}) => {
+  const { data: lemDetail, isLoading: detailLoading } = useQuery({
+    queryKey: ["lem-detail", contractId, lemId],
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `/contract/approver/contract/${contractId}/lems/${lemId}`,
+      });
+      return (res as any)?.data?.data;
+    },
+    enabled: !!contractId && !!lemId,
+  });
+
+  const { data: rateSheet, isLoading: sheetLoading } = useQuery({
+    queryKey: ["lem-rate-sheet", contractId, lemId],
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `/contract/user/contracts/${contractId}/lems/${lemId}/ratesheet`,
+      });
+      return (res as any)?.data?.data?.sheet;
+    },
+    enabled: !!contractId && !!lemId,
+  });
+
   return (
     <Sheet>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
@@ -111,7 +164,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({ trigger }) => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="text-base font-semibold text-[#0F0F0F]">
-                Additional structural reinforcement
+                {detailLoading ? "Loading..." : lemDetail?.title || "—"}
               </div>
               <Button
                 variant="outline"
@@ -141,7 +194,9 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({ trigger }) => {
                 <div className="grid gap-6 sm:grid-cols-2">
                   <LabelRow
                     label="Deliverable Title"
-                    value="Additional structural reinforcement"
+                    value={
+                      detailLoading ? "Loading..." : lemDetail?.title || "—"
+                    }
                   />
                   <LabelRow
                     label="Submitted By"
@@ -151,7 +206,14 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({ trigger }) => {
                       </a>
                     }
                   />
-                  <LabelRow label="Amount" value="$500,000.00" />
+                  <LabelRow
+                    label="Amount"
+                    value={
+                      detailLoading || typeof lemDetail?.amount !== "number"
+                        ? "—"
+                        : `$${lemDetail.amount.toLocaleString()}`
+                    }
+                  />
                   <LabelRow
                     label="Status"
                     value={
@@ -168,11 +230,9 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({ trigger }) => {
                     Description
                   </div>
                   <div className="text-sm text-[#374151]">
-                    Lorem ipsum dolor sit amet consectetur. Volutpat quis egestas
-                    nunc egestas ut sed accumsan commodo vitae. Ullamcorper
-                    feugiat pulvinar consectetur vel natoque amet enim ac sed.
-                    Laoreet fringilla sollicitudin pharetra sit proin dictum. Sit
-                    sed lorem mauris.
+                    {detailLoading
+                      ? "Loading..."
+                      : lemDetail?.description || "—"}
                   </div>
                 </div>
 
@@ -185,23 +245,207 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({ trigger }) => {
               </TabsContent>
 
               <TabsContent value="summary" className="space-y-4">
-                <div className="rounded-xl border border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
-                  No summary available.
-                </div>
+                <Tabs defaultValue="labor" className="space-y-4">
+                  <TabsList className="h-auto w-full justify-start gap-3 rounded-full bg-[#F3F4F6] p-1">
+                    <TabsTrigger
+                      value="labor"
+                      className="rounded-full px-4 py-2 text-xs font-semibold text-[#6B7280] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+                    >
+                      Labor (Timesheet)
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="equipment"
+                      className="rounded-full px-4 py-2 text-xs font-semibold text-[#6B7280] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+                    >
+                      Equipment Rent
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="material"
+                      className="rounded-full px-4 py-2 text-xs font-semibold text-[#6B7280] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+                    >
+                      Material
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="labor">
+                    <DataTable<any>
+                      data={
+                        Array.isArray(rateSheet?.labor) ? rateSheet.labor : []
+                      }
+                      columns={[
+                        { accessorKey: "row", header: "#" },
+                        { accessorKey: "label", header: "Row Label" },
+                        { accessorKey: "avgRate", header: "Avg. Rate (CAD)" },
+                        { accessorKey: "manHour", header: "Man Hour" },
+                        { accessorKey: "cost", header: "Cost (CAD)" },
+                        { accessorKey: "feePercent", header: "Fee(%)" },
+                        { accessorKey: "fee", header: "Fee (CAD)" },
+                        { accessorKey: "price", header: "Price (CAD)" },
+                        {
+                          accessorKey: "rateSheetPrice",
+                          header: "Rate Sheet Price (CAD)",
+                        },
+                        { accessorKey: "variance", header: "Variance (CAD)" },
+                        { accessorKey: "status", header: "Status" },
+                      ]}
+                      options={{
+                        disableSelection: true,
+                        disablePagination: true,
+                        manualPagination: false,
+                        totalCounts: Array.isArray(rateSheet?.labor)
+                          ? rateSheet.labor.length
+                          : 0,
+                        setPagination: () => {},
+                        pagination: { pageIndex: 0, pageSize: 10 },
+                        isLoading: !!sheetLoading,
+                      }}
+                      classNames={{
+                        container:
+                          "border border-[#E5E7EB] rounded-xl bg-white",
+                        tHeader: "bg-[#F9FAFB]",
+                        tHeadRow: "border-b border-[#E5E7EB]",
+                        tBody: "bg-white",
+                        tRow: "border-b border-[#E5E7EB]",
+                        tHead: "px-6 py-3 text-xs font-semibold text-[#6B7280]",
+                        tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+                      }}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="equipment">
+                    <DataTable<any>
+                      data={
+                        Array.isArray(rateSheet?.equipment)
+                          ? rateSheet.equipment
+                          : []
+                      }
+                      columns={[
+                        { accessorKey: "row", header: "#" },
+                        { accessorKey: "label", header: "Row Label" },
+                        { accessorKey: "avgUnits", header: "Avg. of Units" },
+                        {
+                          accessorKey: "monthlyRateUnit",
+                          header: "Mthly Rental Rate per Unit (w/o Markup)",
+                        },
+                        {
+                          accessorKey: "monthlyRate",
+                          header: "Mthly Rental Rate (w/o Markup)",
+                        },
+                        {
+                          accessorKey: "rentalCost",
+                          header: "Rental Cost (Period)",
+                        },
+                        { accessorKey: "feePercent", header: "Fee (%)" },
+                        { accessorKey: "fee", header: "Fee $ (Period)" },
+                        {
+                          accessorKey: "rentalPrice",
+                          header: "Rental Price (Period)",
+                        },
+                      ]}
+                      options={{
+                        disableSelection: true,
+                        disablePagination: true,
+                        manualPagination: false,
+                        totalCounts: Array.isArray(rateSheet?.equipment)
+                          ? rateSheet.equipment.length
+                          : 0,
+                        setPagination: () => {},
+                        pagination: { pageIndex: 0, pageSize: 10 },
+                        isLoading: !!sheetLoading,
+                      }}
+                      classNames={{
+                        container:
+                          "border border-[#E5E7EB] rounded-xl bg-white",
+                        tHeader: "bg-[#F9FAFB]",
+                        tHeadRow: "border-b border-[#E5E7EB]",
+                        tBody: "bg-white",
+                        tRow: "border-b border-[#E5E7EB]",
+                        tHead: "px-6 py-3 text-xs font-semibold text-[#6B7280]",
+                        tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+                      }}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="material">
+                    <DataTable<any>
+                      data={
+                        Array.isArray(rateSheet?.material)
+                          ? rateSheet.material
+                          : []
+                      }
+                      columns={[
+                        { accessorKey: "row", header: "#" },
+                        { accessorKey: "label", header: "Row Label" },
+                        { accessorKey: "unitRate", header: "Unit Rate (CAD)" },
+                        { accessorKey: "units", header: "Units" },
+                        { accessorKey: "cost", header: "Cost (CAD)" },
+                        { accessorKey: "feePercent", header: "Fee(%)" },
+                        { accessorKey: "fee", header: "Fee (CAD)" },
+                        { accessorKey: "price", header: "Price (CAD)" },
+                      ]}
+                      options={{
+                        disableSelection: true,
+                        disablePagination: true,
+                        manualPagination: false,
+                        totalCounts: Array.isArray(rateSheet?.material)
+                          ? rateSheet.material.length
+                          : 0,
+                        setPagination: () => {},
+                        pagination: { pageIndex: 0, pageSize: 10 },
+                        isLoading: !!sheetLoading,
+                      }}
+                      classNames={{
+                        container:
+                          "border border-[#E5E7EB] rounded-xl bg-white",
+                        tHeader: "bg-[#F9FAFB]",
+                        tHeadRow: "border-b border-[#E5E7EB]",
+                        tBody: "bg-white",
+                        tRow: "border-b border-[#E5E7EB]",
+                        tHead: "px-6 py-3 text-xs font-semibold text-[#6B7280]",
+                        tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+                      }}
+                    />
+                  </TabsContent>
+                </Tabs>
               </TabsContent>
             </Tabs>
           </div>
 
           <div className="flex gap-3 pt-6">
-            <Button
-              variant="outline"
-              className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
-            >
-              Reject Change
-            </Button>
-            <Button className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
-              Approve
-            </Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                >
+                  Reject Change
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md rounded-2xl">
+                <DialogHeader>
+                  <DialogTitle className="text-base font-semibold text-[#0F0F0F]">
+                    Reject LEM
+                  </DialogTitle>
+                </DialogHeader>
+                <RejectLemForm contractId={contractId} lemId={lemId} />
+              </DialogContent>
+            </Dialog>
+
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
+                  Approve
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md rounded-2xl">
+                <DialogHeader>
+                  <DialogTitle className="text-base font-semibold text-[#0F0F0F]">
+                    Approve LEM
+                  </DialogTitle>
+                </DialogHeader>
+                <ApproveLemForm contractId={contractId} lemId={lemId} />
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </SheetContent>
@@ -209,7 +453,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({ trigger }) => {
   );
 };
 
-const columns: ColumnDef<LemRow>[] = [
+const createColumns = (contractId: string): ColumnDef<LemRow>[] => [
   { accessorKey: "id", header: "LEM ID" },
   {
     accessorKey: "title",
@@ -224,9 +468,7 @@ const columns: ColumnDef<LemRow>[] = [
     accessorKey: "amount",
     header: "Amount",
     cell: ({ getValue }) => (
-      <span className="font-medium text-slate-900">
-        {getValue<string>()}
-      </span>
+      <span className="font-medium text-slate-900">{getValue<string>()}</span>
     ),
   },
   { accessorKey: "submissionDate", header: "Submission Date" },
@@ -251,63 +493,50 @@ const columns: ColumnDef<LemRow>[] = [
   {
     id: "actions",
     header: () => <div className="text-right">Actions</div>,
-    cell: () => (
-      <div className="text-right">
-        <LemDetailsSheet
-          trigger={
-            <button
-              type="button"
-              className="text-sm font-medium text-green-700 hover:underline"
-            >
-              View
-            </button>
-          }
-        />
-      </div>
-    ),
+    cell: ({ row }) => {
+      return (
+        <div className="text-right">
+          <LemDetailsSheet
+            contractId={contractId}
+            lemId={row.original.id}
+            trigger={
+              <button
+                type="button"
+                className="text-sm font-medium text-green-700 hover:underline"
+              >
+                View
+              </button>
+            }
+          />
+        </div>
+      );
+    },
   },
 ];
 
-const sampleRows: LemRow[] = [
-  {
-    id: "LEM-2025-10",
-    title: "Additional structural reinforcement",
-    amount: "$2.5m",
-    submissionDate: "22-12-2025",
-    status: "Approved",
-  },
-  {
-    id: "LEM-2025-10",
-    title: "Additional structural reinforcement",
-    amount: "$2.5m",
-    submissionDate: "22-12-2025",
-    status: "Rejected",
-  },
-  {
-    id: "LEM-2025-10",
-    title: "Additional structural reinforcement",
-    amount: "$2.5m",
-    submissionDate: "22-12-2025",
-    status: "Pending",
-  },
-];
 
-const LemTable: React.FC = () => {
-  const [search, setSearch] = React.useState("");
+const LemTable: React.FC<{
+  contractId: string;
+  rows: LemRow[];
+  isLoading?: boolean;
+  searchValue?: string;
+  onSearchChange?: (val: string) => void;
+}> = ({ contractId, rows, isLoading, searchValue, onSearchChange }) => {
+
   const filteredRows = React.useMemo(() => {
-    if (!search) return sampleRows;
-    const query = search.toLowerCase();
-    return sampleRows.filter((row) =>
-      [row.id, row.title].some((value) =>
-        value.toLowerCase().includes(query)
-      )
+    const source = rows || [];
+    const query = (searchValue || "").toLowerCase();
+    if (!query) return source;
+    return source.filter((row) =>
+      [row.id, row.title].some((value) => value.toLowerCase().includes(query)),
     );
-  }, [search]);
+  }, [searchValue, rows]);
+
   return (
     <div className="space-y-4" data-testid="lem-table">
       <DataTable<LemRow>
         data={filteredRows}
-        columns={columns}
+        columns={createColumns(contractId)}
         header={() => (
           <div className="flex items-center gap-3 border-b border-[#E5E7EB] px-5 py-4">
             <span className="text-sm font-medium text-slate-900">LEM</span>
@@ -315,8 +544,8 @@ const LemTable: React.FC = () => {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
                 placeholder="Search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={searchValue ?? ""}
+                onChange={(e) => onSearchChange?.(e.target.value)}
                 className="h-10 w-[260px] pl-9"
               />
             </div>
@@ -329,6 +558,7 @@ const LemTable: React.FC = () => {
           totalCounts: filteredRows.length,
           setPagination: () => {},
           pagination: { pageIndex: 0, pageSize: 10 },
+          isLoading: !!isLoading,
         }}
         classNames={{
           container: "border border-[#E5E7EB] rounded-xl bg-white",
@@ -345,3 +575,123 @@ const LemTable: React.FC = () => {
 };
 
 export default LemTable;
+
+const RejectLemForm: React.FC<{ contractId: string; lemId: string }> = ({
+  contractId,
+  lemId,
+}) => {
+  const toast = useToastHandler();
+
+  const schema = yup.object().shape({
+    comment: yup.string().required("Reason is required"),
+  });
+  const { control } = useForge({
+    resolver: yupResolver(schema),
+    defaultValues: { comment: "" },
+  });
+
+  const queryClient = useQueryClient();
+  const rejectMutation = useMutation<ApiResponse, ApiResponseError, { comment: string }>({
+    mutationKey: ["reject-lem", contractId, lemId],
+    mutationFn: async (data: { comment: string }) =>
+      await postRequest({
+        url: `/contract/approver/contract/${contractId}/lems/${lemId}/approve`,
+        payload: { action: "rejected", comment: data.comment },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lems", contractId] });
+      queryClient.invalidateQueries({ queryKey: ["lem-detail", contractId, lemId] });
+    },
+    onError(error) {
+      toast.error("Failed to reject LEM", error);
+    },
+  });
+
+
+
+  const onSubmit = async (data: { comment: string }) => {
+    await rejectMutation.mutateAsync(data);
+  };
+
+  return (
+    <Forge control={control} onSubmit={onSubmit}>
+      <Forger
+        name="comment"
+        component={TextArea}
+        placeholder="Enter rejection reason..."
+        rows={4}
+      />
+      <DialogFooter>
+        <Button
+          type="submit"
+          className="rounded-lg bg-[#EF4444]"
+          disabled={rejectMutation.isPending}
+          aria-busy={rejectMutation.isPending}
+        >
+          {rejectMutation.isPending ? "Rejecting..." : "Reject"}
+        </Button>
+      </DialogFooter>
+      {rejectMutation.isError && (
+        <div className="px-2 pt-2 text-sm text-[#EF4444]">Failed to reject LEM</div>
+      )}
+    </Forge>
+  );
+};
+
+const ApproveLemForm: React.FC<{ contractId: string; lemId: string }> = ({
+  contractId,
+  lemId,
+}) => {
+  const toast = useToastHandler();
+  
+  const schema = yup.object().shape({
+    note: yup.string().optional(),
+  });
+  const { control } = useForge({
+    resolver: yupResolver(schema),
+    defaultValues: { note: "" },
+  });
+
+  const queryClient = useQueryClient();
+
+  const approveMutation = useMutation<ApiResponse, ApiResponseError, { note?: string }>({
+    mutationKey: ["approve-lem", contractId, lemId],
+    mutationFn: async (data: { note?: string }) =>
+      await postRequest({
+        url: `/contract/approver/contract/${contractId}/lems/${lemId}/approve`,
+        payload: { action: "approved", comment: data.note },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lems", contractId] });
+      queryClient.invalidateQueries({ queryKey: ["lem-detail", contractId, lemId] });
+    },
+    onError(error) {
+      toast.error("Failed to approve LEM", error);
+    },
+  });
+
+  const onSubmit = async (data: { note?: string }) => {
+    await approveMutation.mutateAsync(data);
+  };
+
+  return (
+    <Forge control={control} onSubmit={onSubmit}>
+      <Forger
+        name="note"
+        component={TextArea}
+        placeholder="Optional note..."
+        rows={3}
+      />
+      <DialogFooter>
+        <Button
+          type="submit"
+          className="rounded-lg bg-[#1F3B63]"
+          disabled={approveMutation.isPending}
+          aria-busy={approveMutation.isPending}
+        >
+          {approveMutation.isPending ? "Approving..." : "Approve"}
+        </Button>
+      </DialogFooter>
+    </Forge>
+  );
+};

@@ -15,18 +15,18 @@ import { differenceInDays, parseISO } from "date-fns";
 /**
  * Conditional Rendering Matrix
  *
- * | Element               | Vendor | Contract Manager | Approver | View Only |
- * |-----------------------|--------|------------------|----------|-----------|
- * | Export Report Button  | ✅     | ✅               | ❌       | ❌        |
- * | Edit Contract Button  | ❌     | ✅               | ❌       | ❌        |
- * | Project Name          | ❌     | ✅               | ❌       | ✅        |
- * | Deviation Scale       | ✅     | ✅               | ✅       | ✅        |
- * | Business Division     | ✅     | ✅               | ✅       | ✅        |
- * | Contract Type         | ✅     | ✅               | ✅       | ✅        |
- * | Durations (Draft etc) | ✅     | ✅               | ✅       | ✅        |
- * | Internal Stakeholder  | ✅     | ✅               | ✅       | ✅        |
- * | Approve/Reject Btns   | ❌     | ❌               | ✅       | ❌        |
- * | View Layout           | 3-Col  | 2-Col            | 3-Col    | 2-Col     |
+ * | Element               | Vendor | Contract Manager | Approver | View Only | Company Admin |
+ * |-----------------------|--------|------------------|----------|-----------|---------------|
+ * | Export Report Button  | ✅     | ✅               | ❌       | ❌        | ✅            |
+ * | Edit Contract Button  | ❌     | ✅               | ❌       | ❌        | ❌            |
+ * | Project Name          | ❌     | ✅               | ❌       | ✅        | ❌            |
+ * | Deviation Scale       | ✅     | ❌               | ✅       | ❌        | ✅            |
+ * | Business Division     | ✅     | ❌               | ✅       | ❌        | ✅            |
+ * | Contract Type         | ✅     | ❌               | ✅       | ❌        | ✅            |
+ * | Durations (Draft etc) | ✅     | ❌               | ✅       | ❌        | ✅            |
+ * | Internal Stakeholder  | ✅     | ✅               | ✅       | ✅        | ✅            |
+ * | Approve/Reject Btns   | ❌     | ❌               | ✅       | ❌        | ❌            |
+ * | View Layout           | 3-Col  | 2-Col            | 3-Col    | 2-Col     | 3-Col         |
  */
 
 type ViewProps = {
@@ -406,7 +406,7 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
   
   const qc = useQueryClient();
   const { success } = useToastHandler();
-  const { isVendor, isApprover, isViewOnly } = useUserRole();
+  const { isVendor, isApprover, isViewOnly, isCompanyAdmin } = useUserRole();
 
 
   const projectName =
@@ -488,6 +488,7 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
   const renderView = () => {
     if (isVendor) return <VendorView {...viewProps} />;
     if (isApprover) return <ApproverView {...viewProps} />;
+    if (isCompanyAdmin) return <VendorView {...viewProps} />;
     if (isViewOnly) return <ManagerView {...viewProps} />;
     return <ManagerView {...viewProps} />;
   };
@@ -505,7 +506,7 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
             </Button>
           )}
           
-          {!isVendor && !isApprover && !isViewOnly && (
+          {!isVendor && !isApprover && !isViewOnly && !isCompanyAdmin && (
             <Button
               onClick={() => setEditingContractId(contract?._id ?? null)}
             >

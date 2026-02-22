@@ -45,6 +45,8 @@ type DataTableOptions<T = unknown> = {
   manualPagination: boolean;
   setPagination: OnChangeFn<PaginationState>;
   pagination: PaginationState;
+  // Custom metadata to pass into TanStack Table
+  meta?: any;
   // Expansion-related options
   enableExpanding?: boolean;
   getSubRows?: (originalRow: T, index: number) => T[] | undefined;
@@ -121,6 +123,7 @@ export function DataTable<T = unknown>({
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    meta: options?.meta,
     // Expansion configuration
     enableExpanding: options?.enableExpanding ?? false,
     getExpandedRowModel: options?.enableExpanding ? getExpandedRowModel() : undefined,

@@ -1,8 +1,35 @@
 import React from "react";
 import { TabsContent } from "@/components/ui/tabs";
-import KpiTable from "../components/KpiTable";
+import KpiTable, { type KpiRow } from "../components/KpiTable";
+import { useQuery } from "@tanstack/react-query";
+import { getRequest } from "@/lib/axiosInstance";
+import { format } from "date-fns";
 
-const KpiTabContent: React.FC = () => {
+type Props = {
+  contractId: string;
+};
+
+const KpiTabContent: React.FC<Props> = ({ contractId }) => {
+  const { data, isLoading } = useQuery({
+    queryKey: ["contract-kpis", contractId],
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `/contract/manager/contracts/${contractId}/kpis`,
+      });
+      return res.data?.data ?? [];
+    },
+    enabled: !!contractId,
+  });
+
+  const rows: KpiRow[] = (data ?? []).map((item: any) => ({
+    kpiId: item.kpiId ?? item.id ?? "",
+    category: item.category ?? "",
+    currentAvgScore: typeof item.currentAvgScore === "number" ? `${item.currentAvgScore}%` : `${item.currentAvgScore ?? ""}`,
+    allTimeAvgScore: typeof item.allTimeAvgScore === "number" ? `${item.allTimeAvgScore}%` : `${item.allTimeAvgScore ?? ""}`,
+    lastUpdated: item.lastUpdated ? format(new Date(item.lastUpdated), "dd-MM-yyyy") : "",
+    actions: ["Update", "View"],
+  }));
+
   return (
     <TabsContent value="kpi" className="space-y-8">
       <div className="flex items-center justify-between">
@@ -21,7 +48,13 @@ const KpiTabContent: React.FC = () => {
         </button>
       </div>
 
-      <KpiTable />
+      {isLoading ? (
+        <div className="flex items-center justify-center h-20">
+          Loading...
+        </div>
+      ) : (
+        <KpiTable rows={rows} contractId={contractId} />
+      )}
     </TabsContent>
   );
 };

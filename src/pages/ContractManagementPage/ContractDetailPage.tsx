@@ -22,6 +22,7 @@ import { vendorApi } from "./api/vendorApi";
 import { contractManagerApi } from "./api/contractManagerApi";
 import { approverApi } from "./api/approverApi";
 import { viewOnlyApi } from "./api/viewOnlyApi";
+import { companyAdminApi } from "./api/companyAdminApi";
 import AnalyticsTabContent from "./layouts/AnalyticsTabContent";
 import ApproversTabContent from "./layouts/ApproversTabContent";
 import ActionLogTabContent from "./layouts/ActionLogTabContent";
@@ -36,6 +37,7 @@ import LemTabContent from "./layouts/LemTabContent";
 import AmendmentsTabContent from "./layouts/AmendmentsTabContent";
 import NcrLogTabContent from "./layouts/NcrLogTabContent";
 import PaymentSummaryTabContent from "./layouts/PaymentSummaryTabContent";
+import RateSheetsTabContent from "./layouts/RateSheetsTabContent";
 import KpiTabContent from "./layouts/KpiTabContent";
 import OverviewTab from "./layouts/OverviewTab";
 import RfiTabContent from "./layouts/RfiTabContent";
@@ -79,7 +81,7 @@ const ContractDetailPage: React.FC = () => {
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
-  const { isVendor, isApprover, isViewOnly } = useUserRole();
+  const { isVendor, isApprover, isViewOnly, isCompanyAdmin } = useUserRole();
   const queryKey = useUserQueryKey(["contract-manager-contracts"]);
   const queryClient = useQueryClient();
 
@@ -98,6 +100,7 @@ const ContractDetailPage: React.FC = () => {
     queryFn: () => {
       if (isVendor) return vendorApi.getContract(id ?? "");
       if (isApprover) return approverApi.getContract(id ?? "");
+      if (isCompanyAdmin) return companyAdminApi.getContract(id ?? "");
       if (isViewOnly) return viewOnlyApi.getContract(id ?? "");
       return contractManagerApi.getContract(id ?? "");
     },
@@ -256,7 +259,7 @@ const ContractDetailPage: React.FC = () => {
 
       <Tabs defaultValue="overview" className="w-full bg-transparent space-y-4">
         <ScrollArea className="pb-4 w-[75vw]">
-          <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0  justify-start bg-transparent">
+          <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
             <TabsTrigger
               value="overview"
               className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
@@ -304,6 +307,12 @@ const ContractDetailPage: React.FC = () => {
               className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
             >
               Payment Summary
+            </TabsTrigger>
+            <TabsTrigger
+              value="rate-sheets"
+              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+            >
+              Rate Sheets
             </TabsTrigger>
             <TabsTrigger
               value="lem"
@@ -373,7 +382,7 @@ const ContractDetailPage: React.FC = () => {
 
         <AnalyticsTabContent />
 
-        <KpiTabContent />
+        <KpiTabContent contractId={contract?._id ?? ""} />
 
         <ComplianceTabContent />
 
@@ -387,7 +396,9 @@ const ContractDetailPage: React.FC = () => {
 
         <DeliverablesTabContent />
 
-        <LemTabContent />
+        <RateSheetsTabContent contractId={contract?._id ?? ""} />
+
+        <LemTabContent contractId={contract?._id ?? ""} />
 
         <RfiTabContent contractId={contract?._id ?? ""} />
 
@@ -407,7 +418,7 @@ const ContractDetailPage: React.FC = () => {
 
         <ClauseLibraryTabContent />
 
-        <VendorReportsTabContent />
+        <VendorReportsTabContent contractId={contract?._id ?? ""} />
 
         <ActionLogTabContent />
       </Tabs>

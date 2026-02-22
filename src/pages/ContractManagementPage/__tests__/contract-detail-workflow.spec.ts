@@ -1,14 +1,16 @@
 import { test, expect, Page } from "@playwright/test";
 
-async function seedAuth(page: Page) {
-  await page.addInitScript(() => {
+type SeedRole = "contract_manager" | "company_admin";
+
+async function seedAuth(page: Page, role: SeedRole = "contract_manager") {
+  await page.addInitScript((roleName) => {
     const auth = {
       state: {
         user: {
           _id: "test-user",
           email: "admin@swiftpro.com",
           name: "Test User",
-          role: { _id: "role-1", name: "contract_manager", __v: 0 },
+          role: { _id: "role-1", name: roleName, __v: 0 },
           companyId: { name: "Test Co", _id: "company-1" },
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -41,12 +43,12 @@ async function seedAuth(page: Page) {
     };
 
     window.localStorage.setItem("auth", JSON.stringify(auth));
-  });
+  }, role);
 }
 
 test.describe("Contract Detail (workflow)", () => {
   test.beforeEach(async ({ page }) => {
-    await seedAuth(page);
+    await seedAuth(page, "contract_manager");
 
     await page.route("**/api/v1/**", async (route) => {
       const url = route.request().url();
@@ -118,6 +120,72 @@ test.describe("Contract Detail (workflow)", () => {
     expect(res.status()).toBe(500);
     await expect(page).toHaveURL(/\/dashboard\/contract-management\/c-err/);
     await expect(page.locator("text=Failed to load contract details.")).toBeVisible({ timeout: 15000 });
+  });
+
+  test("renders company admin overview with view-only contract endpoint", async ({ page }) => {
+    await seedAuth(page, "company_admin");
+    const contractId = "c-admin";
+
+    let managerDetailRequests = 0;
+    await page.route(
+      `**/contract/manager/contracts/${contractId}`,
+      async (route) => {
+        managerDetailRequests += 1;
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: 200,
+            message: "ok",
+            data: { _id: contractId, title: "Manager Contract", status: "active" },
+          }),
+        });
+      }
+    );
+
+    let viewOnlyRequests = 0;
+    await page.route(`**/user/contract/${contractId}`, async (route) => {
+      viewOnlyRequests += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: {
+            _id: contractId,
+            title: "Company Admin Contract",
+            contractId: "CA-001",
+            contractRelationship: "standalone",
+            deviationScale: 4,
+            businessDivision: "Ontario",
+            status: "active",
+            startDate: "2025-01-01T00:00:00Z",
+            endDate: "2025-12-31T00:00:00Z",
+            datePublished: "2024-12-01T00:00:00Z",
+            contractType: { name: "Fixed Price", _id: "ct1" },
+            contractFormationStage: {
+              draft: { startDate: "2024-11-01", endDate: "2024-11-10" },
+              review: { startDate: "2024-11-11", endDate: "2024-11-20" },
+              approval: { startDate: "2024-11-21", endDate: "2024-11-30" },
+              execution: { startDate: "2024-12-01", endDate: "2024-12-05" },
+            },
+            creator: { name: "Manager Bob", email: "bob@example.com", _id: "m1" },
+            description: "Company admin overview contract",
+          },
+        }),
+      });
+    });
+
+    await page.goto(`/dashboard/contract-management/${contractId}`);
+
+    await expect(page.getByRole("heading", { name: "Company Admin Contract" })).toBeVisible();
+    await expect(page.getByText("Export")).toBeVisible();
+    await expect(page.getByText("Edit Contract")).toHaveCount(0);
+    await expect(page.getByText("Deviation Scale")).toBeVisible();
+    await expect(page.getByText("Project Name")).toHaveCount(0);
+    expect(viewOnlyRequests).toBe(1);
+    expect(managerDetailRequests).toBe(0);
   });
 });
 

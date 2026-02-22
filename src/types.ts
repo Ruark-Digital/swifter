@@ -270,3 +270,53 @@ export interface ContractRfis {
   updatedAt:        Date;
   __v:              number;
 }
+
+export interface VendorReportRow {
+  _id: string;
+  reportId: string;
+  title: string;
+  submittedBy: string;
+  submissionDate: string;
+  status?: string;
+  description?: string;
+  files?: Array<{
+    name: string;
+    type: string;
+    size: number;
+    url: string;
+  }>;
+}
+
+export interface ReportDetails {
+  _id: string;
+  reportId: string;
+  title: string;
+  description: string;
+  status: string;
+  submittedBy: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  submissionDate: string;
+  responseDeadline?: string;
+  files: Array<{
+    name: string;
+    type: string;
+    size: number;
+    url: string;
+  }>;
+  comments?: Array<{
+    _id: string;
+    comment: string;
+    createdBy: {
+      _id: string;
+      name: string;
+    };
+    createdAt: string;
+  }>;
+}
+
+export interface ReportDetailsSheetProps {
+  trigger: React.ReactNode;
+}

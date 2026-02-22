@@ -12,6 +12,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { ArrowLeft, Download, Eye, Search, Share2, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { getRequest } from "@/lib/axiosInstance";
+import { getFileIcon } from "@/lib/fileUtils";
 
 export type DeliverableRow = {
   id: string;
@@ -25,6 +28,8 @@ export type DeliverableRow = {
 
 type DeliverableDetailsSheetProps = {
   trigger: React.ReactNode;
+  contractId: string;
+  deliverableId: string;
 };
 
 const LabelRow = ({
@@ -46,29 +51,29 @@ const DocCard = ({
   size,
 }: {
   name: string;
-  type: "DOC" | "PDF";
+  type: string;
   size: string;
 }) => (
   <div className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-white p-3">
-    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EEF2FF] text-xs font-semibold text-[#3B82F6]">
-      {type}
+    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EEF2FF]">
+      {getFileIcon(type)}
     </div>
     <div className="flex-1">
       <div className="text-sm font-medium text-[#111827]">{name}</div>
       <div className="text-xs text-[#9CA3AF]">
-        {type} • {size}
+        {type.toUpperCase()} • {size}
       </div>
     </div>
     <div className="flex items-center gap-2">
       <button
         type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F3F4F6] text-[#6B7280]"
+        className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
       >
         <Eye className="h-4 w-4" />
       </button>
       <button
         type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E6F0FF] text-[#2563EB]"
+        className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
       >
         <Download className="h-4 w-4" />
       </button>
@@ -78,9 +83,27 @@ const DocCard = ({
 
 const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   trigger,
+  contractId,
+  deliverableId,
 }) => {
+  const [open, setOpen] = React.useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["contract-manager-deliverable-detail", contractId, deliverableId, open],
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `/contract/manager/contracts/${contractId}/deliverables/${deliverableId}`,
+      });
+      return res as any;
+    },
+    enabled: open && !!contractId && !!deliverableId,
+    staleTime: 60000,
+  });
+
+  const detail = data?.data?.data;
+
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="right"
@@ -114,7 +137,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="text-base font-semibold text-[#0F0F0F]">
-                Additional structural reinforcement
+                {detail?.name ?? "Deliverable Details"}
               </div>
               <Button
                 variant="outline"
@@ -124,40 +147,49 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
               </Button>
             </div>
 
-            <div className="grid gap-6 sm:grid-cols-2">
-              <LabelRow
-                label="Deliverable Title"
-                value="Additional structural reinforcement"
-              />
-              <LabelRow
-                label="Vendor/Contractor"
-                value={
-                  <a className="text-[#2563EB] underline">
-                    Olamide Oladehinde
-                  </a>
-                }
-              />
-              <LabelRow label="Due Date" value="April 30, 2025" />
-              <LabelRow label="Submission Date" value="-" />
-              <LabelRow label="Submission Status" value="Pending" />
-              <LabelRow label="Submission KPI" value="Due in 4 days" />
-            </div>
+            {isLoading ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="h-3 w-24 rounded bg-slate-200" />
+                    <div className="h-4 w-40 rounded bg-slate-200" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-6 sm:grid-cols-2">
+                <LabelRow label="Deliverable Title" value={detail?.name ?? "-"} />
+                <LabelRow
+                  label="Amount"
+                  value={
+                    typeof detail?.amount === "number"
+                      ? `$${detail.amount.toLocaleString()}`
+                      : detail?.amount ?? "-"
+                  }
+                />
+                <LabelRow label="Due Date" value={detail?.dueDate ?? "-"} />
+                <LabelRow
+                  label="Submission Date"
+                  value={detail?.submissionDate ?? "-"}
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <div className="text-xs font-medium text-[#9CA3AF]">Status</div>
               <div className="inline-flex rounded-full bg-[#FEF3C7] px-3 py-1 text-xs font-semibold text-[#F59E0B]">
-                Under Review
+                {detail?.status
+                  ? detail.status
+                      .replace(/_/g, " ")
+                      .replace(/\b\w/g, (c: string) => c.toUpperCase())
+                  : "Under Review"}
               </div>
             </div>
 
             <div className="space-y-2">
               <div className="text-xs font-medium text-[#9CA3AF]">Description</div>
               <div className="text-sm text-[#374151]">
-                Lorem ipsum dolor sit amet consectetur. Volutpat quis egestas
-                nunc egestas ut sed accumsan commodo vitae. Ullamcorper feugiat
-                pulvinar consectetur vel natoque amet enim ac sed. Laoreet
-                fringilla sollicitudin pharetra sit proin dictum. Sit sed lorem
-                mauris.
+                {detail?.description ?? "-"}
               </div>
             </div>
           </div>
@@ -167,10 +199,14 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
               Attached Documents
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <DocCard name="RFP_HRSoftware" type="DOC" size="25KB" />
-              <DocCard name="RFP_HRSoftware" type="PDF" size="1MB" />
-              <DocCard name="RFP_HRSoftware" type="DOC" size="25KB" />
-              <DocCard name="RFP_HRSoftware" type="PDF" size="1MB" />
+              {(detail?.files ?? []).map((f: any, idx: number) => (
+                <DocCard
+                  key={idx}
+                  name={f?.name ?? "File"}
+                  type={f?.type ?? "DOC"}
+                  size={typeof f?.size === "string" ? f.size : String(f?.size ?? "")}
+                />
+              ))}
             </div>
           </div>
 
@@ -245,86 +281,58 @@ const columns: ColumnDef<DeliverableRow>[] = [
   {
     id: "actions",
     header: () => <div className="text-right">Actions</div>,
-    cell: () => (
-      <div className="text-right">
-        <DeliverableDetailsSheet
-          trigger={
-            <button
-              type="button"
-              className="text-sm font-medium text-green-700 hover:underline"
-            >
-              View
-            </button>
-          }
-        />
-      </div>
-    ),
+    cell: ({ row, table }) => {
+      const contractId: string = (table.options.meta as any)?.contractId ?? "";
+      return (
+        <div className="text-right">
+          <DeliverableDetailsSheet
+            contractId={contractId}
+            deliverableId={row.original.id}
+            trigger={
+              <button
+                type="button"
+                className="text-sm font-medium text-green-700 hover:underline"
+              >
+                View
+              </button>
+            }
+          />
+        </div>
+      );
+    },
   },
 ];
 
-const sampleRows: DeliverableRow[] = [
-  {
-    id: "DEL-2025-10",
-    title: "Additional structural reinforcement",
-    dueDate: "2025-03-25",
-    submissionDate: "2025-03-25",
-    submissionStatus: "Submitted",
-    kpi: "4 days early",
-    status: "Approved",
-  },
-  {
-    id: "DEL-2025-10",
-    title: "Additional structural reinforcement",
-    dueDate: "2025-03-25",
-    submissionDate: "2025-03-25",
-    submissionStatus: "Submitted",
-    kpi: "4 days late",
-    status: "Approved",
-  },
-  {
-    id: "DEL-2025-10",
-    title: "Additional structural reinforcement",
-    dueDate: "2025-03-25",
-    submissionDate: "-",
-    submissionStatus: "Late",
-    kpi: "7 days late",
-    status: "Rejected",
-  },
-  {
-    id: "DEL-2025-10",
-    title: "Additional structural reinforcement",
-    dueDate: "2025-03-25",
-    submissionDate: "-",
-    submissionStatus: "Pending",
-    kpi: "Due in 4 days",
-    status: "Under Review",
-  },
-];
+type DeliverablesTableProps = {
+  rows: DeliverableRow[];
+  isLoading: boolean;
+  contractId: string;
+};
 
-const DeliverablesTable: React.FC = () => {
+const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
+  rows,
+  isLoading,
+  contractId,
+}) => {
   const [search, setSearch] = React.useState("");
   const filteredRows = React.useMemo(() => {
-    if (!search) return sampleRows;
-    const query = search.toLowerCase();
-    return sampleRows.filter((row) =>
-      [
-        row.id,
-        row.title,
-        row.submissionStatus,
-        row.status,
-        row.kpi,
-      ].some((value) => value.toLowerCase().includes(query))
+    const src = Array.isArray(rows) ? rows : [];
+    const q = search.trim().toLowerCase();
+    if (!q) return src;
+    return src.filter((row) =>
+      [row.id, row.title, row.submissionStatus, row.status, row.kpi]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q)),
     );
-  }, [search]);
+  }, [search, rows]);
 
-  
   return (
     <div className="space-y-4" data-testid="deliverables-table">
       <DataTable<DeliverableRow>
         data={filteredRows}
         columns={columns}
         header={() => (
-          <div className="flex items-center gap-3 border-b border-[#E5E7EB] px-5 py-4">
+          <div className="flex items-center w-full gap-3 border-b border-[#E5E7EB] px-5 py-4">
             <span className="text-sm font-medium text-slate-900">
               Deliverables
             </span>
@@ -335,6 +343,7 @@ const DeliverablesTable: React.FC = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-10 w-[260px] pl-9"
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -346,6 +355,8 @@ const DeliverablesTable: React.FC = () => {
           totalCounts: filteredRows.length,
           setPagination: () => {},
           pagination: { pageIndex: 0, pageSize: 10 },
+          isLoading: !!isLoading,
+          meta: { contractId },
         }}
         classNames={{
           container: "border border-[#E5E7EB] rounded-xl bg-white",

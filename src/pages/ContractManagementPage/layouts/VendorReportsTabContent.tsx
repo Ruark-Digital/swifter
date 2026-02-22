@@ -1,10 +1,6 @@
-import React from "react";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/layouts/DataTable";
@@ -18,18 +14,20 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import type { ColumnDef } from "@tanstack/react-table";
-import { ArrowLeft, Download, Eye, FileText, Search, Share2, X } from "lucide-react";
-
-type VendorReportRow = {
-  reportId: string;
-  title: string;
-  submittedBy: string;
-  submissionDate: string;
-};
-
-type ReportDetailsSheetProps = {
-  trigger: React.ReactNode;
-};
+import {
+  ArrowLeft,
+  Download,
+  Eye,
+  FileText,
+  Search,
+  Share2,
+  X,
+} from "lucide-react";
+import { getRequest } from "@/lib/axiosInstance";
+import { getFileIcon } from "@/lib/fileUtils";
+import { useDebounceValue } from "usehooks-ts";
+import { format } from "date-fns";
+import type { VendorReportRow, ReportDetails } from "@/types";
 
 const LabelRow = ({
   label,
@@ -50,12 +48,12 @@ const DocCard = ({
   size,
 }: {
   name: string;
-  type: "DOC" | "PDF";
+  type: string;
   size: string;
 }) => (
   <div className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-white p-3">
     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EEF2FF] text-xs font-semibold text-[#3B82F6]">
-      {type}
+      {getFileIcon(type)}
     </div>
     <div className="flex-1">
       <div className="text-sm font-medium text-[#111827]">{name}</div>
@@ -80,7 +78,13 @@ const DocCard = ({
   </div>
 );
 
-const ReportDetailsSheet: React.FC<ReportDetailsSheetProps> = ({ trigger }) => {
+const ReportDetailsSheet: React.FC<{
+  reportId: string;
+  reportDetails: ReportDetails | null;
+  isLoading: boolean;
+  error: any;
+  trigger: React.ReactNode;
+}> = ({ reportDetails, isLoading, error, trigger }) => {
   return (
     <Sheet>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
@@ -130,69 +134,113 @@ const ReportDetailsSheet: React.FC<ReportDetailsSheetProps> = ({ trigger }) => {
               <TabsList className="h-auto w-full justify-start gap-6 rounded-none border-b border-[#E5E7EB] bg-transparent p-0">
                 <TabsTrigger
                   value="overview"
-                  className="rounded-none border-b-2 border-transparent px-0 pb-2 text-xs font-semibold text-[#6B7280] data-[state=active]:border-[#2A4467] data-[state=active]:text-[#2A4467]"
+                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                 >
                   Overview
                 </TabsTrigger>
                 <TabsTrigger
                   value="comments"
-                  className="rounded-none border-b-2 border-transparent px-0 pb-2 text-xs font-semibold text-[#6B7280] data-[state=active]:border-[#2A4467] data-[state=active]:text-[#2A4467]"
+                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                 >
                   Comments
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
-                <div className="grid gap-6 sm:grid-cols-2">
-                  <LabelRow
-                    label="NCR Title"
-                    value="Additional structural reinforcement"
-                  />
-                  <LabelRow
-                    label="Submitted by"
-                    value={
-                      <a className="text-[#2563EB] underline">
-                        Olamide Oladehinde
-                      </a>
-                    }
-                  />
-                  <LabelRow label="NCR ID" value="NCI-2025-10" />
-                  <LabelRow label="Submission Date" value="April 30, 2025" />
-                  <LabelRow label="Response Deadline" value="April 30, 2025" />
-                  <LabelRow
-                    label="Status"
-                    value={
-                      <span className="inline-flex rounded-full bg-[#DCFCE7] px-3 py-1 text-xs font-semibold text-[#16A34A]">
-                        Open
-                      </span>
-                    }
-                  />
-                </div>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                      <p className="text-gray-500">Loading report details...</p>
+                    </div>
+                  </div>
+                ) : error ? (
+                  <div className="text-center py-8">
+                    <p className="text-red-500">
+                      Error loading report details. Please try again.
+                    </p>
+                  </div>
+                ) : reportDetails ? (
+                  <>
+                    <div className="grid gap-6 sm:grid-cols-2">
+                      <LabelRow label="NCR Title" value={reportDetails.title} />
+                      <LabelRow
+                        label="Submitted by"
+                        value={
+                          <a className="text-[#2563EB] underline">
+                            {reportDetails.submittedBy?.name || "Unknown"}
+                          </a>
+                        }
+                      />
+                      <LabelRow label="NCR ID" value={reportDetails.reportId} />
+                      <LabelRow
+                        label="Submission Date"
+                        value={
+                          reportDetails.submissionDate
+                            ? format(
+                                new Date(reportDetails.submissionDate),
+                                "MMMM dd, yyyy",
+                              )
+                            : "N/A"
+                        }
+                      />
+                      <LabelRow
+                        label="Response Deadline"
+                        value={
+                          reportDetails.responseDeadline
+                            ? format(
+                                new Date(reportDetails.responseDeadline),
+                                "MMMM dd, yyyy",
+                              )
+                            : "N/A"
+                        }
+                      />
+                      <LabelRow
+                        label="Status"
+                        value={
+                          <span className="inline-flex rounded-full bg-[#DCFCE7] px-3 py-1 text-xs font-semibold text-[#16A34A]">
+                            {reportDetails.status}
+                          </span>
+                        }
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <div className="text-xs font-medium text-[#9CA3AF]">
-                    Description
-                  </div>
-                  <div className="text-sm text-[#374151]">
-                    Lorem ipsum dolor sit amet consectetur. Volutpat quis egestas
-                    nunc egestas ut sed accumsan commodo vitae. Ullamcorper
-                    feugiat pulvinar consectetur vel natoque amet enim ac sed.
-                    Laoreet fringilla sollicitudin pharetra sit proin dictum. Sit
-                    sed lorem mauris.
-                  </div>
-                </div>
+                    {reportDetails.description && (
+                      <div className="space-y-2">
+                        <div className="text-xs font-medium text-[#9CA3AF]">
+                          Description
+                        </div>
+                        <div className="text-sm text-[#374151]">
+                          {reportDetails.description}
+                        </div>
+                      </div>
+                    )}
 
-                <div className="space-y-3">
-                  <div className="text-base font-semibold text-[#0F0F0F]">
-                    Attached Documents
+                    {reportDetails.files && reportDetails.files.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="text-base font-semibold text-[#0F0F0F]">
+                          Attached Documents
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {reportDetails.files.map((file, index) => (
+                            <DocCard
+                              key={index}
+                              name={file.name}
+                              type={file.type}
+                              size={`${(file.size / 1024).toFixed(0)}KB`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">
+                      No report details available.
+                    </p>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <DocCard name="RFP_HRSoftware" type="DOC" size="25KB" />
-                    <DocCard name="RFP_HRSoftware" type="PDF" size="1MB" />
-                    <DocCard name="RFP_HRSoftware" type="DOC" size="25KB" />
-                    <DocCard name="RFP_HRSoftware" type="PDF" size="1MB" />
-                  </div>
-                </div>
+                )}
               </TabsContent>
 
               <TabsContent value="comments" className="space-y-4">
@@ -208,39 +256,76 @@ const ReportDetailsSheet: React.FC<ReportDetailsSheetProps> = ({ trigger }) => {
   );
 };
 
-const VendorReportsTabContent: React.FC = () => {
-  const rows: VendorReportRow[] = [
-    {
-      reportId: "RPT-2025-10",
-      title: "Progress Draw",
-      submittedBy: "Olamide Oladehinde",
-      submissionDate: "12-02-2026",
+function VendorReportsTabContent({ contractId }: { contractId: string }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [debouncedSearchQuery] = useDebounceValue(searchQuery, 300);
+
+  // Fetch vendor reports
+  const {
+    data: reportsData,
+    isLoading: reportsLoading,
+    error: reportsError,
+  } = useQuery({
+    queryKey: ["vendor-reports", contractId, debouncedSearchQuery],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (debouncedSearchQuery) params.append("title", debouncedSearchQuery);
+
+      const response = await getRequest({
+        url: `/contract/manager/contracts/${contractId}/reports?${params.toString()}`,
+      });
+      return response.data?.data?.reports || [];
     },
-    {
-      reportId: "RPT-2025-10",
-      title: "Progress Draw",
-      submittedBy: "Olamide Oladehinde",
-      submissionDate: "12-02-2026",
+    enabled: !!contractId,
+  });
+
+  // Fetch reports stats
+  const {
+    data: reportsStats,
+    isLoading: statsLoading,
+  } = useQuery({
+    queryKey: ["vendor-reports-stats", contractId],
+    queryFn: async () => {
+      const response = await getRequest({
+        url: `/contract/manager/contracts/${contractId}/reports/stats`,
+      });
+      return response.data?.data;
     },
-    {
-      reportId: "RPT-2025-10",
-      title: "Progress Draw",
-      submittedBy: "Olamide Oladehinde",
-      submissionDate: "12-02-2026",
+    enabled: !!contractId,
+    staleTime: 60_000,
+  });
+
+  // Fetch report details when a report is selected
+  const {
+    data: reportDetails,
+    isLoading: detailsLoading,
+    error: detailsError,
+  } = useQuery({
+    queryKey: ["report-details", selectedReportId],
+    queryFn: async () => {
+      if (!selectedReportId) return null;
+      const response = await getRequest(
+        { url: `/contract/manager/contracts/${contractId}/reports/${selectedReportId}` }
+      );
+      return response.data?.data;
     },
-    {
-      reportId: "RPT-2025-10",
-      title: "Progress Draw",
-      submittedBy: "Olamide Oladehinde",
-      submissionDate: "12-02-2026",
-    },
-    {
-      reportId: "RPT-2025-10",
-      title: "Progress Draw",
-      submittedBy: "Olamide Oladehinde",
-      submissionDate: "12-02-2026",
-    },
-  ];
+    enabled: !!selectedReportId && !!contractId,
+  });
+
+  const rows: VendorReportRow[] =
+    reportsData?.map((report: any) => ({
+      _id: report._id,
+      reportId: report.reportId,
+      title: report.title,
+      submittedBy: report.submittedBy?.name || "Unknown",
+      submissionDate: report.submissionDate
+        ? format(report.submissionDate, "dd-MM-yyyy")
+        : "",
+      status: report.status,
+      description: report.description,
+      files: report.files || [],
+    })) || [];
 
   const columns: ColumnDef<VendorReportRow>[] = [
     { accessorKey: "reportId", header: "Report ID" },
@@ -250,16 +335,21 @@ const VendorReportsTabContent: React.FC = () => {
     {
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
-      cell: () => (
-        <div className="text-right">
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
           <ReportDetailsSheet
+            reportId={row.original._id}
+            reportDetails={reportDetails}
+            isLoading={detailsLoading}
+            error={detailsError}
             trigger={
-              <button
-                type="button"
-                className="font-medium text-green-600 hover:underline"
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => setSelectedReportId(row.original._id)}
               >
-                View
-              </button>
+                view
+              </Button>
             }
           />
         </div>
@@ -275,7 +365,9 @@ const VendorReportsTabContent: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <div className="text-xs text-slate-500">All Report</div>
-            <div className="text-lg font-semibold text-slate-900">8</div>
+            <div className="text-lg font-semibold text-slate-900">
+              {statsLoading ? "—" : (reportsStats?.total ?? rows.length)}
+            </div>
           </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
             <FileText className="h-5 w-5 text-slate-700" />
@@ -292,34 +384,54 @@ const VendorReportsTabContent: React.FC = () => {
             <Input
               placeholder="Search changes"
               className="h-10 pl-9 text-sm placeholder:text-slate-400"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
 
         <div className="p-0">
-          <DataTable<VendorReportRow>
-            data={rows}
-            columns={columns}
-            classNames={{
-              container: "[&>div:last-child]:hidden",
-              table: "border-collapse border-spacing-0",
-              tHeader: "bg-transparent",
-              tHeadRow: "bg-white",
-              tHead: "text-[#2A4467] font-medium",
-              tCell: "p-4 text-slate-700",
-            }}
-            options={{
-              disablePagination: true,
-              disableSelection: true,
-              isLoading: false,
-              totalCounts: rows.length,
-            }}
-          />
+          {reportsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                <p className="text-gray-500">Loading reports...</p>
+              </div>
+            </div>
+          ) : reportsError ? (
+            <div className="text-center py-8">
+              <p className="text-red-500">
+                Error loading reports. Please try again.
+              </p>
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No reports found.</p>
+            </div>
+          ) : (
+            <DataTable<VendorReportRow>
+              data={rows}
+              columns={columns}
+              classNames={{
+                container: "[&>div:last-child]:hidden",
+                table: "border-collapse border-spacing-0",
+                tHeader: "bg-transparent",
+                tHeadRow: "bg-white",
+                tHead: "text-[#2A4467] font-medium",
+                tCell: "p-4 text-slate-700",
+              }}
+              options={{
+                disablePagination: true,
+                disableSelection: true,
+                isLoading: false,
+                totalCounts: rows.length,
+              }}
+            />
+          )}
         </div>
       </Card>
     </TabsContent>
   );
-};
+}
 
 export default VendorReportsTabContent;
-

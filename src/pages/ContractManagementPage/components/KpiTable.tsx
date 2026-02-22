@@ -4,11 +4,26 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/layouts/DataTable";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useQuery } from "@tanstack/react-query";
+import { getRequest } from "@/lib/axiosInstance";
+import { Forge, Forger, useForge } from "@/lib/forge";
+import * as yup from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { postRequest } from "@/lib/axiosInstance";
+import { DropdownFilters } from "@/components/layouts/SolicitationFilters";
 
 export type KpiRow = {
   kpiId: string;
@@ -19,160 +34,216 @@ export type KpiRow = {
   actions: Array<"Update" | "View">;
 };
 
-const columns: ColumnDef<KpiRow>[] = [
-  {
-    accessorKey: "kpiId",
-    header: "KPI ID",
-    cell: ({ getValue }) => (
-      <div className="w-[100px] py-2 text-sm font-semibold text-[#374151]">
-        {getValue<string>()}
+type Props = {
+  rows: KpiRow[];
+  contractId: string;
+};
+
+/* columns moved inside KpiTable component to capture props safely */
+const schema = yup.object().shape({
+  value: yup.number().required("Value is required"),
+  note: yup.string().optional(),
+});
+
+const KpiUpdateDialogForm: React.FC<{ contractId: string; kpiId: string }> = ({
+  contractId,
+  kpiId,
+}) => {
+  const { control } = useForge({
+    resolver: yupResolver(schema) as any,
+    // defaultValue: {},
+  });
+
+  const onSubmit = async (payload: any) => {
+    await postRequest({
+      url: `/contract/manager/contracts/${contractId}/kpis/${kpiId}`,
+      payload,
+    });
+  };
+
+  return (
+    <Forge control={control} onSubmit={onSubmit}>
+      <div className="space-y-4">
+        <Forger name="value" type="number" component="input" />
+        <Forger name="note" type="text" component="input" />
+        <button
+          type="submit"
+          className="h-10 rounded-md bg-[#2A4467] px-4 text-white"
+        >
+          Submit
+        </button>
       </div>
-    ),
-  },
-  {
-    accessorKey: "category",
-    header: "Category",
-    cell: ({ getValue }) => (
-      <div className="w-[160px] overflow-hidden py-2 text-sm font-medium text-[#374151]">
-        {getValue<string>()}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "currentAvgScore",
-    header: () => (
-      <div className="w-[160px] overflow-hidden">Current Avg. Score</div>
-    ),
-    cell: ({ getValue }) => (
-      <div className="w-[160px] py-2 text-sm font-medium text-[#374151]">
-        {getValue<string>()}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "allTimeAvgScore",
-    header: () => (
-      <div className="w-[160px] overflow-hidden">All Time Avg. Score</div>
-    ),
-    cell: ({ getValue }) => (
-      <div className="w-[160px] py-2 text-sm font-medium text-[#374151]">
-        {getValue<string>()}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "lastUpdated",
-    header: () => <div className="w-[160px] overflow-hidden">Last Updated</div>,
-    cell: ({ getValue }) => (
-      <div className="w-[160px] py-2 text-sm font-medium text-[#374151]">
-        {getValue<string>()}
-      </div>
-    ),
-  },
-  {
-    id: "actions",
-    header: () => <div className="w-[80px]">Action</div>,
-    cell: ({ row }) => {
-      const actions = row.original.actions;
-      return (
-        <div className="flex w-[80px] items-center justify-center gap-[10px] py-2">
-          {actions.includes("Update") && (
-            <a
-              href="#"
-              className="text-sm font-bold text-[#286EE0] underline"
-            >
-              Update
-            </a>
-          )}
-          {actions.includes("View") && (
-            <a
-              href="#"
-              className="text-sm font-bold text-[#43A047] underline"
-            >
-              View
-            </a>
-          )}
-        </div>
-      );
+    </Forge>
+  );
+};
+
+const KpiDetailSheet: React.FC<{ contractId: string; kpiId: string }> = ({
+  contractId,
+  kpiId,
+}) => {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["contract-kpi-detail", kpiId],
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `/contract/manager/contracts/${contractId}/kpis/${kpiId}`,
+      });
+      return res.data?.data;
     },
-  },
-];
+    enabled: !!kpiId,
+  });
 
-const sampleRows: KpiRow[] = [
-  {
-    kpiId: "KPI-1",
-    category: "On‑Time Delivery/Schedule Compliance",
-    currentAvgScore: "70%",
-    allTimeAvgScore: "70%",
-    lastUpdated: "12-02-2025",
-    actions: ["Update", "View"],
-  },
-  {
-    kpiId: "KPI-2",
-    category: "Quality & Specification Compliance",
-    currentAvgScore: "70%",
-    allTimeAvgScore: "70%",
-    lastUpdated: "12-02-2025",
-    actions: ["Update"],
-  },
-  {
-    kpiId: "KPI-3",
-    category: "Responsiveness",
-    currentAvgScore: "70%",
-    allTimeAvgScore: "70%",
-    lastUpdated: "12-02-2025",
-    actions: ["Update", "View"],
-  },
-  {
-    kpiId: "KPI-4",
-    category: "Contractual Compliance",
-    currentAvgScore: "70%",
-    allTimeAvgScore: "70%",
-    lastUpdated: "12-02-2025",
-    actions: ["Update", "View"],
-  },
-  {
-    kpiId: "KPI-4",
-    category: "Cost Variance",
-    currentAvgScore: "70%",
-    allTimeAvgScore: "70%",
-    lastUpdated: "12-02-2025",
-    actions: ["Update", "View"],
-  },
-  {
-    kpiId: "KPI-4",
-    category: "Invoice Accuracy",
-    currentAvgScore: "70%",
-    allTimeAvgScore: "70%",
-    lastUpdated: "12-02-2025",
-    actions: ["Update", "View"],
-  },
-  {
-    kpiId: "KPI-4",
-    category: "Issue Resolution",
-    currentAvgScore: "70%",
-    allTimeAvgScore: "70%",
-    lastUpdated: "12-02-2025",
-    actions: ["Update", "View"],
-  },
-];
+  return (
+    <SheetContent side="right" className="sm:max-w-[680px]">
+      <SheetHeader>
+        <SheetTitle>KPI Details</SheetTitle>
+      </SheetHeader>
+      <div className="mt-4 space-y-4">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-24">
+            Loading...
+          </div>
+        ) : error ? (
+          <div className="text-red-600 text-sm">Failed to load KPI</div>
+        ) : data ? (
+          <div className="space-y-2 text-sm">
+            <div className="font-semibold text-slate-900">{data.category}</div>
+            <div className="text-slate-700">Target: {data.target ?? "N/A"}</div>
+            <div className="text-slate-700">
+              Non-Compliance: {data.nonCompliance ?? "N/A"}
+            </div>
+            <div className="text-slate-700">
+              Current Avg: {data.currentAvgScore ?? "N/A"}
+            </div>
+            <div className="text-slate-700">
+              All Time Avg: {data.allTimeAvgScore ?? "N/A"}
+            </div>
+          </div>
+        ) : (
+          <div className="text-slate-600 text-sm">No KPI data</div>
+        )}
+      </div>
+    </SheetContent>
+  );
+};
 
-const KpiTable: React.FC = () => {
+const KpiTable: React.FC<Props> = ({ rows, contractId }) => {
   const [search, setSearch] = React.useState("");
 
+  const columns: ColumnDef<KpiRow>[] = [
+    {
+      accessorKey: "kpiId",
+      header: "KPI ID",
+      cell: ({ getValue }) => (
+        <div className="w-[100px] py-2 text-sm font-semibold text-[#374151]">
+          {getValue<string>()}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "category",
+      header: "Category",
+      cell: ({ getValue }) => (
+        <div className="w-[160px] overflow-hidden py-2 text-sm font-medium text-[#374151]">
+          {getValue<string>()}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "currentAvgScore",
+      header: () => (
+        <div className="w-[160px] overflow-hidden">Current Avg. Score</div>
+      ),
+      cell: ({ getValue }) => (
+        <div className="w-[160px] py-2 text-sm font-medium text-[#374151]">
+          {getValue<string>()}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "allTimeAvgScore",
+      header: () => (
+        <div className="w-[160px] overflow-hidden">All Time Avg. Score</div>
+      ),
+      cell: ({ getValue }) => (
+        <div className="w-[160px] py-2 text-sm font-medium text-[#374151]">
+          {getValue<string>()}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "lastUpdated",
+      header: () => <div className="w-[160px] overflow-hidden">Last Updated</div>,
+      cell: ({ getValue }) => (
+        <div className="w-[160px] py-2 text-sm font-medium text-[#374151]">
+          {getValue<string>()}
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      header: () => <div className="w-[80px]">Action</div>,
+      cell: ({ row }) => {
+        const actions = row.original.actions;
+        return (
+          <div className="flex w-[80px] items-center justify-center gap-[10px] py-2">
+            {actions.includes("Update") && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <a
+                    href="#"
+                    className="text-sm font-bold text-[#286EE0] underline"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    Update
+                  </a>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[520px]">
+                  <DialogHeader>
+                    <DialogTitle>Update KPI</DialogTitle>
+                  </DialogHeader>
+                  <KpiUpdateDialogForm
+                    contractId={contractId}
+                    kpiId={row.original.kpiId}
+                  />
+                </DialogContent>
+              </Dialog>
+            )}
+            {actions.includes("View") && (
+              <Sheet>
+                <SheetTrigger asChild>
+                  <a
+                    href="#"
+                    className="text-sm font-bold text-[#43A047] underline"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    View
+                  </a>
+                </SheetTrigger>
+                <KpiDetailSheet
+                  contractId={contractId}
+                  kpiId={row.original.kpiId}
+                />
+              </Sheet>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
   const filteredRows = React.useMemo(() => {
-    if (!search) return sampleRows;
+    if (!search) return rows;
     const query = search.toLowerCase();
-    return sampleRows.filter((row) =>
+    return rows.filter((row) =>
       [
         row.kpiId,
         row.category,
         row.currentAvgScore,
         row.allTimeAvgScore,
         row.lastUpdated,
-      ].some((value) => value.toLowerCase().includes(query))
+      ].some((value) => value.toLowerCase().includes(query)),
     );
-  }, [search]);
+  }, [search, rows]);
 
   return (
     <div className="relative flex flex-col gap-8">
@@ -191,40 +262,48 @@ const KpiTable: React.FC = () => {
             </div>
           </div>
 
-          <DropdownMenu defaultOpen>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-[#E5E7EB] px-[15px] py-[7px]"
-              >
-                <img
-                  src="/assets/contract-management/kpi/calendar.svg"
-                  className="h-5 w-5"
-                />
-                <span className="text-sm font-semibold text-[#6B6B6B]">
-                  Date
-                </span>
-                <img
-                  src="/assets/contract-management/kpi/chevron-down.svg"
-                  className="h-5 w-5"
-                />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              sideOffset={12}
-              className="w-[160px] rounded-xl border border-[#E5E7EB] p-0 shadow-[2px_-2px_4px_0px_#2A44671A]"
-            >
-              {["All", "Today", "Last 7 Days", "Last 30 Days", "Custom"].map((label) => (
-                <DropdownMenuItem
-                  key={label}
-                  className="cursor-pointer rounded-none px-4 py-3 text-sm font-medium text-[#181818]"
-                >
-                  {label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <DropdownFilters
+            filters={[
+              {
+                title: "Date",
+                options: [
+                  {
+                    hasOptions: true,
+                    value: "date",
+                    label: "Date Published",
+                    subOptions: [
+                      {
+                        title: "All",
+                        value: "all",
+                      },
+                      {
+                        title: "Today",
+                        value: "today",
+                      },
+                      {
+                        title: "Last 7 Days",
+                        value: "7_days",
+                      },
+                      {
+                        title: "Last 30 Days",
+                        value: "30_days",
+                      },
+                      {
+                        title: "Custom",
+                        value: "custom",
+                      },
+                    ],
+                  },
+                ],
+              },
+              // {
+              //   title: "Status",
+              //   showIcon: true,
+              //   options: statusOptions,
+              // },
+            ]}
+            onFilterChange={() => {}}
+          />
         </div>
 
         <DataTable<KpiRow>
@@ -255,4 +334,3 @@ const KpiTable: React.FC = () => {
 };
 
 export default KpiTable;
-
