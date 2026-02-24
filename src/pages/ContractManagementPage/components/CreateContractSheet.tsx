@@ -30,6 +30,7 @@ import { useWatch } from "react-hook-form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X } from "lucide-react";
 import { format } from "date-fns";
+import { useClearSession } from "@/store/solicitationFileSlice";
 
 type Props = {
   trigger: React.ReactNode;
@@ -140,7 +141,7 @@ export const schema = yup.object({
   securityAmount: yup.string().optional(),
   securityDueDate: yup.date().optional(),
   securityExpiryDate: yup.date().optional(),
-  rating: yup.number().min(1).max(5).optional(),
+  rating: yup.number().min(1).max(5).required(),
   insurancePolicies: yup
     .array(
       yup.object({
@@ -220,7 +221,7 @@ export const defaultValues = {
 type ApiListResponse<T> = { status: number; message: string; data: T[] };
 type ContractType = { _id: string; name: string; description?: string };
 type ContractTerm = { _id: string; name: string; description?: string };
-type Personnel = { _id: string; name: string; email: string };
+// type Personnel = { _id: string; name: string; email: string };
 type AwardedVendorItem = {
   _id: string;
   name: string;
@@ -228,10 +229,10 @@ type AwardedVendorItem = {
 };
 
 const STEP_TITLES = [
-  "Step 1 of 8: Basic Information",
-  "Step 2 of 8: Contract Team",
-  "Step 3 of 8: Timeline",
-  "Step 4 of 8: Deliverables",
+  "Step 1 of 9: Basic Information",
+  "Step 2 of 9: Contract Team",
+  "Step 3 of 9: Timeline",
+  "Step 4 of 9: Deliverables",
   "Step 5 of 9: Contract Value & Payments",
   "Step 6 of 9: Compliance & Security",
   "Step 7 of 9: Documents",
@@ -435,17 +436,33 @@ const SendForApprovalDialog = React.memo(
       [],
     );
 
+    const allApprovers = React.useMemo(() => {
+      const list = (approvalGroups ?? []).flatMap((group) =>
+        (group?.approvers ?? []).map((approver, idx) => ({
+          approver,
+          key: getApproverKey(approver, idx),
+        })),
+      );
+      // Deduplicate by key
+      const seen = new Set<string>();
+      return list.filter(({ key }) => {
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }, [approvalGroups, getApproverKey]);
+
     const assignedApprovers = React.useMemo(
       () =>
-        selectedApprovers.filter((approver, index) =>
-          assignedApproverIds.includes(getApproverKey(approver, index)),
-        ),
-      [assignedApproverIds, getApproverKey, selectedApprovers],
+        allApprovers
+          .filter(({ key }) => assignedApproverIds.includes(key))
+          .map(({ approver }) => approver),
+      [allApprovers, assignedApproverIds],
     );
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-2xl">
           <div className=" space-y-6">
             <div className="flex items-center justify-between">
               <p className="text-xl font-semibold text-slate-900">
@@ -599,6 +616,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     mode: "onChange",
   });
 
+  const [open, setOpen] = React.useState(false);
   const [step, setStep] = React.useState(1);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
   const totalSteps = STEP_TITLES.length;
@@ -606,6 +624,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
   const { success, error } = useToastHandler();
   const qc = useQueryClient();
+  const clearSession = useClearSession();
 
   const typesQuery = useQuery<ApiListResponse<ContractType>>({
     queryKey: useUserQueryKey(["contract-types"]),
@@ -630,15 +649,6 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     queryFn: async () => {
       const res = await getRequest({ url: "/contract/manager/terms" });
       return res.data as ApiListResponse<ContractTerm>;
-    },
-    staleTime: 60_000,
-  });
-
-  const personnelQuery = useQuery<ApiListResponse<Personnel>>({
-    queryKey: useUserQueryKey(["contract-personnel"]),
-    queryFn: async () => {
-      const res = await getRequest({ url: "/contract/manager/personnel" });
-      return res.data as ApiListResponse<Personnel>;
     },
     staleTime: 60_000,
   });
@@ -681,16 +691,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         : [],
     [termTypesQuery.data?.data],
   );
-  const internalStakeholderOptions = React.useMemo(
-    () =>
-      Array.isArray(personnelQuery.data?.data)
-        ? personnelQuery.data.data.map((p) => ({
-            label: p.email || p.name,
-            value: p.email || p._id,
-          }))
-        : [],
-    [personnelQuery.data?.data],
-  );
+
   const projectOptions = React.useMemo(
     () =>
       Array.isArray(projectsData?.data)
@@ -730,6 +731,8 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       qc.invalidateQueries({ queryKey: ["contracts-stats"] });
       reset(defaultValues);
       setStep(1);
+      clearSession();
+      setOpen(false);
     },
     onError: (e: any) => {
       error("Failed to create contract", e);
@@ -764,8 +767,8 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         paymentStructureEnum = "Progress Draw";
 
       const approvers =
-        (data.approvalGroups ?? []).flatMap((g) => {
-          const lvl = g.approvalLevel ? Number(g.approvalLevel) : undefined;
+        (data.approvalGroups ?? []).flatMap((g, i) => {
+          const lvl = g.approvalLevel ? Number(g.approvalLevel) : i + 1;
           const amountValue = toNumberOrUndefined(g.amount);
           // API expects user as array of strings
           const userIds = (g.approvers ?? [])
@@ -996,7 +999,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
   );
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
         className={cn(
@@ -1028,11 +1031,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
                 />
               )}
 
-              {step === 2 && (
-                <Step2ContractTeam
-                  internalStakeholderOptions={internalStakeholderOptions}
-                />
-              )}
+              {step === 2 && <Step2ContractTeam />}
 
               {step === 5 && (
                 <Step3ValuePayments
@@ -1072,7 +1071,12 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
                   <Button
                     type="button"
                     className="w-full h-12 rounded-xl"
-                    onClick={() => setStep(2)}
+                    onClick={() =>
+                      (control as any)?.handleSubmit?.(
+                        () => setStep(2),
+                        () => {},
+                      )()
+                    }
                   >
                     Continue
                   </Button>
@@ -1104,13 +1108,18 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
                       <Button
                         type="button"
                         className="w-32 h-12 rounded-xl"
-                        onClick={() => {
-                          if (step === 8) {
-                            setIsApprovalDialogOpen(true);
-                            return;
-                          }
-                          setStep(Math.min(totalSteps, step + 1));
-                        }}
+                        onClick={() =>
+                          (control as any)?.handleSubmit?.(
+                            () => {
+                              if (step === 8) {
+                                setIsApprovalDialogOpen(true);
+                                return;
+                              }
+                              setStep(Math.min(totalSteps, step + 1));
+                            },
+                            () => {},
+                          )()
+                        }
                       >
                         Continue
                       </Button>

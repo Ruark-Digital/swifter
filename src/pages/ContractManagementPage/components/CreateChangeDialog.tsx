@@ -19,6 +19,7 @@ import {
 } from "@/components/layouts/FormInputs";
 import { CloudUpload } from "lucide-react";
 import { contractManagerApi, type ContractChangeManagerDTO } from "../api/contractManagerApi";
+import { vendorApi } from "../api/vendorApi";
 import { toContractChangeFileItem, toManagerCreateChangePayload, type UploadURLs } from "../lib/contractChanges";
 import { useToastHandler } from "@/hooks/useToaster";
 import { FileUploaderItem } from "@/components/ui/file-upload";
@@ -28,9 +29,10 @@ import { useWatch } from "react-hook-form";
 type Props = {
   trigger: React.ReactNode;
   contractId: string;
+  isManager?: boolean;
 };
 
-const CreateChangeDialog: React.FC<Props> = ({ trigger, contractId }) => {
+const CreateChangeDialog: React.FC<Props> = ({ trigger, contractId, isManager = true }) => {
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
   const toastHandler = useToastHandler();
@@ -71,9 +73,13 @@ const CreateChangeDialog: React.FC<Props> = ({ trigger, contractId }) => {
   });
 
   const createMutation = useMutation({
-    mutationKey: ["contractManager", "contractChanges", "create", contractId],
+    mutationKey: [isManager ? "contractManager" : "vendor", "contractChanges", "create", contractId],
     mutationFn: async (payload: ContractChangeManagerDTO) => {
-      const res = await contractManagerApi.createChangeRequest(contractId, "Contract", payload);
+      if (isManager) {
+        const res = await contractManagerApi.createChangeRequest(contractId, "Contract", payload);
+        return res;
+      }
+      const res = await vendorApi.createChange(contractId, payload as any);
       return res;
     },
     onSuccess: async () => {
@@ -81,7 +87,7 @@ const CreateChangeDialog: React.FC<Props> = ({ trigger, contractId }) => {
       setOpen(false);
       reset();
       await queryClient.invalidateQueries({
-        queryKey: ["contractManager", "contractChanges"],
+        queryKey: [isManager ? "contractManager" : "vendor", "contractChanges"],
       });
     },
     onError: (error: ApiResponseError) => {
@@ -185,12 +191,20 @@ const CreateChangeDialog: React.FC<Props> = ({ trigger, contractId }) => {
               label="Change Type"
               placeholder="Change Proposal"
               component={TextSelect}
-              options={[
-                { label: "Change Request", value: "request" },
-                { label: "Change Order", value: "order" },
-                { label: "Change Directive", value: "directive" },
-                { label: "Change Proposal", value: "proposal" },
-              ]}
+              options={
+                isManager
+                  ? [
+                      { label: "Change Request", value: "request" },
+                      { label: "Change Order", value: "order" },
+                      { label: "Change Directive", value: "directive" },
+                      { label: "Change Proposal", value: "proposal" },
+                    ]
+                  : [
+                      { label: "Change Request", value: "request" },
+                      { label: "Change Directive", value: "directive" },
+                      { label: "Change Proposal", value: "proposal" },
+                    ]
+              }
             />
             <div className="grid grid-cols-2 gap-4">
               <Forger

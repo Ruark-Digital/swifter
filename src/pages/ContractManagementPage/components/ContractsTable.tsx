@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import EmptyState from "./EmptyState";
+import { Link } from "react-router-dom";
 
 export type ContractRow = {
   id: string;
@@ -108,12 +109,12 @@ const columns: ColumnDef<ContractRow>[] = [
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem asChild>
-            <a
-              href={`/dashboard/contract-management/${row.original.id}`}
+            <Link
+              to={`/dashboard/contract-management/${row.original.id}`}
               data-testid="view-contract-detail"
             >
               View Details
-            </a>
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -126,6 +127,7 @@ type ContractsTableProps = {
   isLoading?: boolean;
   totalCount?: number;
   isReadOnly?: boolean;
+  disableActions?: boolean;
 };
 
 const ContractsTable: React.FC<ContractsTableProps> = ({
@@ -133,6 +135,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
   isLoading,
   totalCount,
   isReadOnly,
+  disableActions,
 }) => {
   const [search, setSearch] = React.useState("");
   const [pagination, setPagination] = React.useState<PaginationState>({
@@ -224,7 +227,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
             </div>
           </div>
         )}
-        emptyPlaceholder={<EmptyState isReadOnly={isReadOnly} />}
+        emptyPlaceholder={<EmptyState isReadOnly={isReadOnly || disableActions} />}
         classNames={{
           container:
             "bg-white dark:bg-slate-950 rounded-xl px-3 border border-gray-300 dark:border-slate-600",

@@ -3,6 +3,7 @@ import { Forger } from "@/lib/forge";
 import {
   TextInput,
   TextSelect,
+  TextSelectWithSearch,
   TextArea,
 } from "@/components/layouts/FormInputs";
 import { useWatch } from "react-hook-form";
@@ -16,6 +17,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { businessDivisionApi } from "@/pages/BusinessDivisionsPage/api/businessDivisionApi";
+import { getRequest } from "@/lib/axiosInstance";
 
 type Props = {
   typeOptions: Array<{ label: string; value: string }>;
@@ -31,9 +33,13 @@ type Props = {
 const ComplexityRating = ({
   value,
   onChange,
+  error,
+  helperText
 }: {
   value: number;
   onChange: (val: number) => void;
+  error: string;
+  helperText: string;
 }) => {
   return (
     <div className="space-y-3">
@@ -82,6 +88,10 @@ const ComplexityRating = ({
           </div>
         ))}
       </div>
+      {error && <span className="text-xs text-red-500 mt-1">{error}</span>}
+      {!error && helperText && (
+        <span className="text-xs text-gray-500 mt-1">{helperText}</span>
+      )}
     </div>
   );
 };
@@ -107,6 +117,23 @@ const Step1BasicInfo: React.FC<Props> = ({
       value: division._id,
     }));
   }, [divisionsRes]);
+
+  const { data: categoriesData } = useQuery({
+    queryKey: ["contractCategories"],
+    queryFn: async () => await getRequest({ url: "/procurement/solicitations/meta/categories" }),
+    staleTime: 60000,
+  });
+
+  const categoryOptions = React.useMemo(
+    () =>
+      Array.isArray(categoriesData?.data?.data)
+        ? categoriesData.data.data.map((c: { _id?: string; name: string }) => ({
+            label: c.name,
+            value: c._id ?? c.name,
+          }))
+        : [],
+    [categoriesData?.data?.data],
+  );
 
   return (
     <div className="mt-4 space-y-4">
@@ -227,12 +254,8 @@ const Step1BasicInfo: React.FC<Props> = ({
           name="category"
           label="Category"
           placeholder="Legal"
-          component={TextSelect}
-          options={[
-            { label: "Legal", value: "legal" },
-            { label: "IT Operations", value: "it_ops" },
-            { label: "Office Supplies", value: "office_supplies" },
-          ]}
+          component={TextSelectWithSearch}
+          options={categoryOptions}
           data-testid="contract-category-select"
         />
       </div>

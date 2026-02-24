@@ -146,7 +146,7 @@ const ContractDetailPage: React.FC = () => {
     toastErrorRef.current = toastHandler.error;
   }, [toastHandler.error]);
 
-  React.useEffect(() => {
+  React.useEffect(()   => {
     if (!error) return;
     if (lastErrorRef.current === error) return;
     lastErrorRef.current = error;
@@ -238,7 +238,7 @@ const ContractDetailPage: React.FC = () => {
         <Badge className={status?.className}>{status?.label}</Badge>
       </div>
 
-      {isApprover && (
+      {isApprover && contract?.status === "pending_approval" && (
         <div className="flex items-center gap-4">
           <Button
             variant="default"

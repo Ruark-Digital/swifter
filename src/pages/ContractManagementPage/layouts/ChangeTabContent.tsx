@@ -9,12 +9,15 @@ import { useQuery } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
 import { contractManagerApi, type ManagerListChangesQuery } from "../api/contractManagerApi";
 import { changeTabToApiType, type ChangeTabValue } from "@/pages/ContractManagementPage/lib/contractChanges";
+import { useUserRole } from "@/hooks/useUserRole";
+import { vendorApi } from "../api/vendorApi";
 
 type Props = {
   contractId: string;
 };
 
 const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
+  const { isVendor, isManager } = useUserRole();
   const [activeTab, setActiveTab] = React.useState<ChangeTabValue>("all");
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -22,14 +25,20 @@ const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
   });
 
   const { data: statsRes, isLoading: isStatsLoading } = useQuery({
-    queryKey: ["contractManager", "contractChanges", "stats", contractId],
-    queryFn: async () => await contractManagerApi.getChangeStats(contractId),
+    queryKey: [isManager ? "contractManager" : "vendor", "contractChanges", "stats", contractId],
+    queryFn: async () => {
+      if (isManager) {
+        return await contractManagerApi.getChangeStats(contractId);
+      }
+      return await vendorApi.getChangeStats(contractId);
+    },
     enabled: Boolean(contractId),
+    staleTime: 60000,
   });
 
   const { data: changesRes, isLoading: isChangesLoading } = useQuery({
     queryKey: [
-      "contractManager",
+      isManager ? "contractManager" : "vendor",
       "contractChanges",
       contractId,
       activeTab,
@@ -38,16 +47,20 @@ const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
     ],
     queryFn: async () => {
       const type = changeTabToApiType(activeTab);
-      const query: ManagerListChangesQuery = {
+      const baseQuery = {
         page: pagination.pageIndex + 1,
         limit: pagination.pageSize,
-      };
+      } as ManagerListChangesQuery;
       if (type) {
-        query.type = type;
+        baseQuery.type = type;
       }
-      return await contractManagerApi.listChanges(contractId, query);
+      if (isManager) {
+        return await contractManagerApi.listChanges(contractId, baseQuery);
+      }
+      return await vendorApi.listChanges(contractId, baseQuery);
     },
     enabled: Boolean(contractId),
+    staleTime: 60000,
   });
 
   const changeRows = changesRes?.data?.changes ?? [];
@@ -64,14 +77,17 @@ const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
           >
             <Share2 className="mr-2 h-4 w-4" /> Export Report
           </Button>
-          <CreateChangeDialog
-            trigger={
-              <Button className="h-10 rounded-xl bg-[#F3F4F6] px-4 text-sm font-medium text-[#111827] hover:bg-[#E5E7EB]">
-                Create Change
-              </Button>
-            }
-            contractId={contractId}
-          />
+          {(isManager || isVendor) && (
+            <CreateChangeDialog
+              trigger={
+                <Button className="h-10 rounded-xl bg-[#F3F4F6] px-4 text-sm font-medium text-[#111827] hover:bg-[#E5E7EB]">
+                  Create Change
+                </Button>
+              }
+              contractId={contractId}
+              isManager={isManager}
+            />
+          )}
         </div>
       </div>
 

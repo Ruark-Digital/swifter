@@ -96,8 +96,8 @@ const ManagerView: React.FC<ViewProps> = ({
           <span className="text-slate-500">Contract Manager</span>
           {contractManager ? (
             <EmployeeCardPopover
-              triggerLabel={contractManager.name}
-              name={contractManager.name}
+              triggerLabel={contractManager.name || "N/A"}
+              name={contractManager.name || "N/A"}
               email={contractManager.email || "N/A"}
               role={contractManager.role?.name || "N/A"}
               phone="N/A"

@@ -24,7 +24,22 @@ import { Button } from "@/components/ui/button";
 type Props = { control: Control<CreateContractFormData> };
 
 type ApiListResponse<T> = { status: number; message: string; data: T[] };
-type Personnel = { _id: string; name: string; email: string };
+export interface Personnel {
+  _id:         string;
+  email:       string;
+  role:        Role[];
+  firstName:   string;
+  lastName:    string;
+  status:      string;
+  statusOrder: string;
+}
+
+export interface Role {
+  _id:  string;
+  name: string;
+  __v:  number;
+}
+
 
 type ApproverTag = {
   id?: string;
@@ -51,7 +66,6 @@ const Step7ApprovalLevel: React.FC<Props> = ({ control }) => {
     control,
     name: "approvalGroups",
   }) as { approvers?: ApproverTag[] }[] | undefined;
-  console.log({ approvalGroups });
 
   const { data: personnelData, isLoading: isLoadingUsers } = useQuery<
     ApiListResponse<Personnel>,
@@ -66,10 +80,11 @@ const Step7ApprovalLevel: React.FC<Props> = ({ control }) => {
   });
 
   const approverTags = React.useMemo<ApproverTag[]>(() => {
-    const people = personnelData?.data ?? [];
+    const people = personnelData?.data?.filter?.(item => item.role.some(role => role.name === "approver")) ?? [];
+
     return people.map((p) => {
       const email = p.email ?? "";
-      const name = p.name || email || p._id;
+      const name = p.firstName || email || p._id;
       const label =
         email && name && email !== name ? `${name} (${email})` : name;
       const value = p._id || email;

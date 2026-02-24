@@ -20,6 +20,7 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { contractManagerApi } from "../api/contractManagerApi";
 import { formatDateTZ } from "@/lib/utils";
+import { useUserRole } from "@/hooks/useUserRole";
 
 type HoldbackReleaseRow = {
   releaseId: string;
@@ -406,6 +407,9 @@ type Props = {
 };
 
 const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract }) => {
+  const { isVendor, isProcurement, isCompanyAdmin, isSuperAdmin } = useUserRole();
+  const isManager = isProcurement || isCompanyAdmin || isSuperAdmin;
+
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ holdbacks?: unknown; savings?: unknown }>(
@@ -420,18 +424,26 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract }) => 
     contractId,
   ]);
 
-  const { data: holdbacksResponse, error: holdbacksError } = useQuery({
+  const {
+    data: holdbacksResponse,
+    error: holdbacksError,
+    isLoading: holdbacksLoading,
+  } = useQuery({
     queryKey: holdbacksQueryKey,
     queryFn: () => contractManagerApi.listPaymentHoldbacks(contractId),
-    enabled: Boolean(contractId),
+    enabled: Boolean(contractId) && isManager,
     staleTime: 60000,
     retry: false,
   });
 
-  const { data: savingsResponse, error: savingsError } = useQuery({
+  const {
+    data: savingsResponse,
+    error: savingsError,
+    isLoading: savingsLoading,
+  } = useQuery({
     queryKey: savingsQueryKey,
     queryFn: () => contractManagerApi.listPaymentSavings(contractId),
-    enabled: Boolean(contractId),
+    enabled: Boolean(contractId) && isManager,
     staleTime: 60000,
     retry: false,
   });
@@ -549,31 +561,39 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract }) => 
             Export Report
           </button>
 
-          <div className="inline-flex items-start gap-6">
-            <UpdateSavingsDialog
-              trigger={
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] px-[15px] py-2 text-base font-semibold text-[#0F0F0F]"
-                >
-                  Update Saving
-                </button>
-              }
-            />
+          {isManager && (
+            <div className="inline-flex items-start gap-6">
+              <UpdateSavingsDialog
+                trigger={
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] px-[15px] py-2 text-base font-semibold text-[#0F0F0F]"
+                  >
+                    Update Saving
+                  </button>
+                }
+              />
 
-            <ReleaseHoldbackDialog
-              trigger={
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center rounded-xl bg-[#2A4467] px-4 py-2 text-base font-semibold text-white"
-                >
-                  Release Holdback
-                </button>
-              }
-            />
-          </div>
+              <ReleaseHoldbackDialog
+                trigger={
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center rounded-xl bg-[#2A4467] px-4 py-2 text-base font-semibold text-white"
+                  >
+                    Release Holdback
+                  </button>
+                }
+              />
+            </div>
+          )}
         </div>
       </div>
+
+      {(holdbacksLoading || savingsLoading) && (
+        <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+          Loading payment data…
+        </div>
+      )}
 
       <div className="space-y-6">
         <div className="grid grid-cols-3 gap-x-6 gap-y-6">
@@ -616,14 +636,16 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract }) => 
               {holdbackReleased}
             </div>
           </div>
-          <div className="flex flex-col justify-center gap-4">
-            <div className="text-[18px] leading-7 text-[#6B6B6B]">
-              Saving Realized
+          {isManager && (
+            <div className="flex flex-col justify-center gap-4">
+              <div className="text-[18px] leading-7 text-[#6B6B6B]">
+                Saving Realized
+              </div>
+              <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
+                {savingAmount}
+              </div>
             </div>
-            <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-              {savingAmount}
-            </div>
-          </div>
+          )}
 
           <div className="flex flex-col justify-center gap-4">
             <div className="text-[18px] leading-7 text-[#6B6B6B]">
@@ -662,12 +684,14 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract }) => 
           >
             Holdback Release
           </TabsTrigger>
-          <TabsTrigger
-            value="saving-realized"
-            className="rounded-full px-5 py-1.5 text-base font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
-          >
-            Saving Realized
-          </TabsTrigger>
+          {isManager && (
+            <TabsTrigger
+              value="saving-realized"
+              className="rounded-full px-5 py-1.5 text-base font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            >
+              Saving Realized
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="milestones">
@@ -681,6 +705,14 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract }) => 
               row.dueDate,
             ]}
           />
+          {!holdbacksLoading &&
+            !savingsLoading &&
+            isVendor &&
+            milestoneRows.length === 0 && (
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+                No milestones found.
+              </div>
+            )}
         </TabsContent>
 
         <TabsContent value="holdback-release">
@@ -696,22 +728,34 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract }) => 
               row.dueDate,
             ]}
           />
+          {!holdbacksLoading && isVendor && holdbackRows.length === 0 && (
+            <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+              No holdback releases available.
+            </div>
+          )}
         </TabsContent>
 
-        <TabsContent value="saving-realized">
-          <PaymentSummaryMilestonesTable<SavingsRealizedRow>
-            title="Savings"
-            rows={savingsRows}
-            columns={savingsRealizedColumns}
-            getRowSearchValues={(row) => [
-              row.savingsId,
-              row.savingsTitle,
-              row.category,
-              row.amount,
-              row.dateSubmitted,
-            ]}
-          />
-        </TabsContent>
+        {isManager && (
+          <TabsContent value="saving-realized">
+            <PaymentSummaryMilestonesTable<SavingsRealizedRow>
+              title="Savings"
+              rows={savingsRows}
+              columns={savingsRealizedColumns}
+              getRowSearchValues={(row) => [
+                row.savingsId,
+                row.savingsTitle,
+                row.category,
+                row.amount,
+                row.dateSubmitted,
+              ]}
+            />
+            {!savingsLoading && savingsRows.length === 0 && (
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+                No savings records found.
+              </div>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
     </TabsContent>
   );

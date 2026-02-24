@@ -151,7 +151,7 @@ const useApproverContractsStats = (enabled = true) => {
   return useQuery<ContractStatsResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
-      const res = await getRequest({ url: "/approver/contract/stats" });
+      const res = await getRequest({ url: "/contract/approver/contracts/stats" });
       return res.data as ContractStatsResponse;
     },
     enabled,
@@ -164,7 +164,7 @@ const useApproverContracts = (enabled = true) => {
   return useQuery<ApproverContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
-      const res = await getRequest({ url: "/approver/contract" });
+      const res = await getRequest({ url: "/contract/approver/contracts" });
       return res.data as ApproverContractListResponse;
     },
     enabled,
@@ -396,6 +396,7 @@ const ContractManagementPage: React.FC = () => {
               isLoading={isApproverContractsLoading}
               totalCount={approverContractsData?.data.totalDocs}
               isReadOnly={isViewOnly}
+              disableActions={isApprover}
             />
           ) : (
             <Tabs
