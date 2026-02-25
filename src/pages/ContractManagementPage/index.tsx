@@ -66,11 +66,8 @@ type ApproverContractListResponse = {
   status: number;
   message: string;
   data: {
-    docs: ContractApi[];
-    totalDocs: number;
-    page: number;
-    limit: number;
-    totalPages: number;
+    contracts: ContractApi[];
+    totalContracts: number;
   };
 };
 
@@ -226,10 +223,10 @@ const mapContractsToRows = (contracts?: ContractApi[]): ContractRow[] => {
       title: c.title,
       code: c._id,
       vendor: c.vendor?.name ?? "-",
-      value,
+      value: `$${value}`,
       owner: c.creator?.name ?? "-",
       published: c.createdAt
-        ? formatDate(c.createdAt, "yyyy-MM-dd")
+        ? formatDate(c.createdAt, "dd MMM yyyy")
         : undefined,
       endDate: c.endDate ? formatDate(c.endDate, "dd MMM yyyy") : undefined,
       status: mapStatusToLabel(c.status),
@@ -308,7 +305,7 @@ const ContractManagementPage: React.FC = () => {
   const allContractsRows = mapContractsToRows(allContractsData?.data.contracts);
   const myContractsRows = mapContractsToRows(myContractsData?.data.contracts);
   const approverContractsRows = mapContractsToRows(
-    approverContractsData?.data.docs,
+    approverContractsData?.data.contracts,
   );
   const vendorContractsRows = mapVendorContractsToRows(
     vendorContractsData?.data.contracts,
@@ -394,7 +391,7 @@ const ContractManagementPage: React.FC = () => {
             <ContractsTable
               rows={approverContractsRows}
               isLoading={isApproverContractsLoading}
-              totalCount={approverContractsData?.data.totalDocs}
+              totalCount={approverContractsData?.data.totalContracts}
               isReadOnly={isViewOnly}
               disableActions={isApprover}
             />

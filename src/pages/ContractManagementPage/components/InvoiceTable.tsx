@@ -24,6 +24,7 @@ export type InvoiceRow = {
 
 type InvoiceDetailsSheetProps = {
   trigger: React.ReactNode;
+  variant?: "manager" | "approver";
 };
 
 const LabelRow = ({
@@ -77,6 +78,7 @@ const DocCard = ({
 
 const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   trigger,
+  variant,
 }) => {
   return (
     <Sheet>
@@ -162,86 +164,24 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
             </div>
           </div>
 
-          <div className="flex gap-3 pt-6">
-            <Button
-              variant="outline"
-              className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
-            >
-              Reject
-            </Button>
-            <Button className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
-              Approve
-            </Button>
-          </div>
+          {variant === "approver" && (
+            <div className="flex gap-3 pt-6">
+              <Button
+                variant="outline"
+                className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+              >
+                Reject
+              </Button>
+              <Button className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
+                Approve
+              </Button>
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>
   );
 };
-
-const columns: ColumnDef<InvoiceRow>[] = [
-  { accessorKey: "id", header: "Invoice ID" },
-  { accessorKey: "type", header: "Type" },
-  {
-    id: "amountBilled",
-    header: "Amount/Billed",
-    cell: ({ row }) => (
-      <div className="text-xs text-slate-600">
-        <p>
-          <span className="text-slate-500">Billed:&nbsp;</span>
-          <span className="text-slate-900 font-medium">
-            {row.original.billed}
-          </span>
-        </p>
-        <p>
-          <span className="text-slate-500">Remaining:&nbsp;</span>
-          <span className="text-slate-900 font-medium">
-            {row.original.remaining}
-          </span>
-        </p>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ getValue }) => {
-      const s = getValue<InvoiceRow["status"]>();
-      const tone =
-        s === "Approved"
-          ? "bg-green-100 text-green-700"
-          : s === "Pending"
-            ? "bg-yellow-100 text-yellow-700"
-            : s === "Draft"
-              ? "bg-slate-100 text-slate-700"
-              : "bg-red-100 text-red-700";
-      return (
-        <span className={`px-3 py-1 rounded-full text-xs font-medium ${tone}`}>
-          {s}
-        </span>
-      );
-    },
-  },
-  {
-    id: "actions",
-    header: () => <div className="text-right">Actions</div>,
-    cell: () => (
-      <div className="text-right">
-        <InvoiceDetailsSheet
-          trigger={
-            <button
-              type="button"
-              data-testid="view-invoice-detail"
-              className="text-sm font-medium text-green-700 hover:underline"
-            >
-              View
-            </button>
-          }
-        />
-      </div>
-    ),
-  },
-];
 
 type InvoiceTableProps = {
   rows?: ContractInvoiceDTO[];
@@ -249,6 +189,7 @@ type InvoiceTableProps = {
   totalCount?: number;
   pagination: PaginationState;
   setPagination: React.Dispatch<React.SetStateAction<PaginationState>>;
+  variant?: "manager" | "approver";
 };
 
 const InvoiceTable: React.FC<InvoiceTableProps> = ({
@@ -257,8 +198,78 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
   totalCount,
   pagination,
   setPagination,
+  variant = "manager",
 }) => {
   const [search, setSearch] = React.useState("");
+
+  const columns = React.useMemo<ColumnDef<InvoiceRow>[]>(() => {
+    return [
+      { accessorKey: "id", header: "Invoice ID" },
+      { accessorKey: "type", header: "Type" },
+      {
+        id: "amountBilled",
+        header: "Amount/Billed",
+        cell: ({ row }) => (
+          <div className="text-xs text-slate-600">
+            <p>
+              <span className="text-slate-500">Billed:&nbsp;</span>
+              <span className="text-slate-900 font-medium">
+                {row.original.billed}
+              </span>
+            </p>
+            <p>
+              <span className="text-slate-500">Remaining:&nbsp;</span>
+              <span className="text-slate-900 font-medium">
+                {row.original.remaining}
+              </span>
+            </p>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ getValue }) => {
+          const s = getValue<InvoiceRow["status"]>();
+          const tone =
+            s === "Approved"
+              ? "bg-green-100 text-green-700"
+              : s === "Pending"
+                ? "bg-yellow-100 text-yellow-700"
+                : s === "Draft"
+                  ? "bg-slate-100 text-slate-700"
+                  : "bg-red-100 text-red-700";
+          return (
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-medium ${tone}`}
+            >
+              {s}
+            </span>
+          );
+        },
+      },
+      {
+        id: "actions",
+        header: () => <div className="text-right">Actions</div>,
+        cell: () => (
+          <div className="text-right">
+            <InvoiceDetailsSheet
+              variant={variant}
+              trigger={
+                <button
+                  type="button"
+                  data-testid="view-invoice-detail"
+                  className="text-sm font-medium text-green-700 hover:underline"
+                >
+                  View
+                </button>
+              }
+            />
+          </div>
+        ),
+      },
+    ];
+  }, [variant]);
 
   const invoiceRows: InvoiceRow[] = React.useMemo(() => {
     const currencyFormatter = new Intl.NumberFormat(undefined, {
@@ -303,13 +314,15 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
       )
     );
   }, [invoiceRows, search]);
+
+
   return (
     <div className="space-y-4" data-testid="invoice-table">
       <DataTable<InvoiceRow>
         data={filteredRows}
         columns={columns}
         header={() => (
-          <div className="flex items-center gap-3 border-b border-[#E5E7EB] px-5 py-4">
+          <div className="flex items-center gap-3 w-full border-b border-[#E5E7EB] px-5 py-4">
             <span className="text-sm font-medium text-slate-900">
               Invoices
             </span>

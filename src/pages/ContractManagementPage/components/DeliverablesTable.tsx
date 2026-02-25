@@ -30,6 +30,7 @@ type DeliverableDetailsSheetProps = {
   trigger: React.ReactNode;
   contractId: string;
   deliverableId: string;
+  isApprover?: boolean;
 };
 
 const LabelRow = ({
@@ -85,14 +86,21 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   trigger,
   contractId,
   deliverableId,
+  isApprover = false,
 }) => {
   const [open, setOpen] = React.useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["contract-manager-deliverable-detail", contractId, deliverableId, open],
+    queryKey: [
+      isApprover ? "approver" : "contract-manager",
+      "deliverable-detail",
+      contractId,
+      deliverableId,
+      open,
+    ],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/contracts/${contractId}/deliverables/${deliverableId}`,
+        url: `${isApprover ? "/contract/approver/contracts" : "/contract/manager/contracts"}/${contractId}/deliverables/${deliverableId}`,
       });
       return res as any;
     },
@@ -288,6 +296,7 @@ const columns: ColumnDef<DeliverableRow>[] = [
           <DeliverableDetailsSheet
             contractId={contractId}
             deliverableId={row.original.id}
+            isApprover={(table.options.meta as any)?.isApprover}
             trigger={
               <button
                 type="button"
@@ -307,12 +316,14 @@ type DeliverablesTableProps = {
   rows: DeliverableRow[];
   isLoading: boolean;
   contractId: string;
+  isApprover?: boolean;
 };
 
 const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
   rows,
   isLoading,
   contractId,
+  isApprover = false,
 }) => {
   const [search, setSearch] = React.useState("");
   const filteredRows = React.useMemo(() => {
@@ -356,7 +367,7 @@ const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
           setPagination: () => {},
           pagination: { pageIndex: 0, pageSize: 10 },
           isLoading: !!isLoading,
-          meta: { contractId },
+          meta: { contractId, isApprover },
         }}
         classNames={{
           container: "border border-[#E5E7EB] rounded-xl bg-white",

@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileText } from "lucide-react";
+import { FileText, FileCheck, FileClock, FileX } from "lucide-react";
 import type { ContractChangeStatsDTO } from "../api/contractManagerApi";
 
 type StatProps = {
@@ -8,6 +8,7 @@ type StatProps = {
   value: number | string;
   tone: "gray" | "green" | "yellow" | "red";
   testId: string;
+  icon?: React.ElementType;
 };
 
 const toneClasses: Record<StatProps["tone"], { wrap: string; icon: string }> = {
@@ -17,7 +18,7 @@ const toneClasses: Record<StatProps["tone"], { wrap: string; icon: string }> = {
   red: { wrap: "bg-red-50", icon: "text-red-500" },
 };
 
-const StatCard: React.FC<StatProps> = ({ title, value, tone, testId }) => {
+const StatCard: React.FC<StatProps> = ({ title, value, tone, testId, icon: Icon = FileText }) => {
   const c = toneClasses[tone];
   return (
     <Card data-testid={testId} className="border-slate-200">
@@ -31,7 +32,7 @@ const StatCard: React.FC<StatProps> = ({ title, value, tone, testId }) => {
           aria-hidden
         >
           <div className="rounded-full bg-white/70 h-8 w-8 flex items-center justify-center shadow-sm">
-            <FileText className={`h-5 w-5 ${c.icon}`} />
+            <Icon className={`h-5 w-5 ${c.icon}`} />
           </div>
         </div>
       </CardContent>
@@ -42,10 +43,47 @@ const StatCard: React.FC<StatProps> = ({ title, value, tone, testId }) => {
 type Props = {
   stats?: ContractChangeStatsDTO;
   isLoading?: boolean;
+  variant?: "manager" | "approver";
 };
 
-const ChangeStatsCards: React.FC<Props> = ({ stats, isLoading }) => {
+const ChangeStatsCards: React.FC<Props> = ({ stats, isLoading, variant = "manager" }) => {
   void isLoading;
+
+  if (variant === "approver") {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          title="All Changes"
+          value={stats?.all ?? 0}
+          tone="gray"
+          testId="change-stats-all"
+          icon={FileText}
+        />
+        <StatCard
+          title="Approved Changes"
+          value={stats?.approved ?? 0}
+          tone="green"
+          testId="change-stats-approved"
+          icon={FileCheck}
+        />
+        <StatCard
+          title="Pending Changes"
+          value={stats?.pending ?? 0}
+          tone="yellow"
+          testId="change-stats-pending"
+          icon={FileClock}
+        />
+        <StatCard
+          title="Rejected Changes"
+          value={stats?.rejected ?? 0}
+          tone="red"
+          testId="change-stats-rejected"
+          icon={FileX}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       <StatCard

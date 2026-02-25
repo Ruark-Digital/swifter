@@ -1,13 +1,14 @@
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ContractDetail } from "@/types";
 import { AxiosRequestConfig } from "axios";
+import { ContractChangeDTO } from "./contractManagerApi";
 
 type GetParams = { url: string; config?: AxiosRequestConfig };
 
 export const createVendorApi = (
   client = {
     get: (params: GetParams) => getRequest(params),
-  }
+  },
 ) => ({
   getContract: async (contractId: string) => {
     const res = await client.get({
@@ -29,7 +30,7 @@ export const createVendorApi = (
   },
   listChanges: async (
     contractId: string,
-    query?: { title?: string; type?: string; page?: number; limit?: number }
+    query?: { title?: string; type?: string; page?: number; limit?: number },
   ) => {
     const qs = new URLSearchParams();
     if (query?.title) qs.set("title", query.title);
@@ -41,10 +42,7 @@ export const createVendorApi = (
         ? `/vendor/contracts/${contractId}/change?${qs.toString()}`
         : `/vendor/contracts/${contractId}/change`;
     const res = await client.get({ url });
-    return res as ApiResponse<{
-      changes: any[];
-      total: number;
-    }>;
+    return res as ApiResponse<{ changes?: ContractChangeDTO[]; total?: number }>;
   },
   createChange: async (
     contractId: string,
@@ -55,7 +53,7 @@ export const createVendorApi = (
       proposalCategory?: string;
       urgency?: "low" | "medium" | "high";
       files?: { name: string; url: string; type: string; size: number }[];
-    }
+    },
   ) => {
     const res = await postRequest({
       url: `/vendor/contracts/${contractId}/change`,

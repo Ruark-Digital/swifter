@@ -5,26 +5,39 @@ import InvoiceTable from "../components/InvoiceTable";
 import { useQuery } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
 import { contractManagerApi, type ManagerListInvoicesQuery } from "../api/contractManagerApi";
+import { useUserRole } from "@/hooks/useUserRole";
+import { approverApi } from "../api/approverApi";
 
 type Props = {
   contractId: string;
 };
 
 const InvoiceTabContent: React.FC<Props> = ({ contractId }) => {
+  const { isApprover } = useUserRole();
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
 
   const { data: statsRes, isLoading: isStatsLoading } = useQuery({
-    queryKey: ["contractManager", "contractInvoices", "stats", contractId],
-    queryFn: async () => await contractManagerApi.getInvoiceStats(contractId),
+    queryKey: [
+      isApprover ? "approver" : "contractManager",
+      "contractInvoices",
+      "stats",
+      contractId,
+    ],
+    queryFn: async () => {
+      if (isApprover) {
+        return await approverApi.getInvoiceStats(contractId);
+      }
+      return await contractManagerApi.getInvoiceStats(contractId);
+    },
     enabled: Boolean(contractId),
   });
 
   const { data: invoicesRes, isLoading: isInvoicesLoading } = useQuery({
     queryKey: [
-      "contractManager",
+      isApprover ? "approver" : "contractManager",
       "contractInvoices",
       contractId,
       pagination.pageIndex,
@@ -35,6 +48,9 @@ const InvoiceTabContent: React.FC<Props> = ({ contractId }) => {
         page: pagination.pageIndex + 1,
         limit: pagination.pageSize,
       };
+      if (isApprover) {
+        return await approverApi.listInvoices(contractId, query);
+      }
       return await contractManagerApi.listInvoices(contractId, query);
     },
     enabled: Boolean(contractId),
@@ -57,6 +73,7 @@ const InvoiceTabContent: React.FC<Props> = ({ contractId }) => {
         totalCount={totalCount}
         pagination={pagination}
         setPagination={setPagination}
+        variant={isApprover ? "approver" : "manager"}
       />
     </TabsContent>
   );

@@ -2022,7 +2022,7 @@
     }
   ],
   "paths": {
-    "/approver/contract/stats": {
+    "/approver/contracts/stats": {
       "get": {
         "summary": "Get contract statistics",
         "description": "Returns statistics of contracts for the authenticated approver's company",
@@ -2056,7 +2056,7 @@
         }
       }
     },
-    "/approver/contract": {
+    "/approver/contracts": {
       "get": {
         "summary": "List contracts",
         "description": "Returns a list of contracts with pagination and filtering options",
@@ -2155,7 +2155,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}": {
+    "/approver/contracts/{contractId}": {
       "get": {
         "summary": "Get a contract by ID",
         "description": "Returns details of a specific contract",
@@ -2203,7 +2203,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/approve/status": {
+    "/approver/contracts/{contractId}/approve/status": {
       "get": {
         "summary": "Check if contract can be approved",
         "description": "Checks if the current user can approve the contract at the current level",
@@ -2253,7 +2253,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/approve": {
+    "/approver/contracts/{contractId}/approve": {
       "post": {
         "summary": "Approve or reject a contract",
         "description": "Submit an approval action (approve/reject) for the contract",
@@ -2308,7 +2308,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/lems": {
+    "/approver/contracts/{contractId}/lems": {
       "get": {
         "summary": "List contract LEMs",
         "description": "Returns a paginated list of LEMs for a specific contract.",
@@ -2404,7 +2404,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/lems/{lemId}": {
+    "/approver/contracts/{contractId}/lems/{lemId}": {
       "get": {
         "summary": "Get contract LEM details",
         "description": "Returns detailed information for a specific LEM.",
@@ -2461,7 +2461,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/lems/{lemId}/approve/status": {
+    "/approver/contracts/{contractId}/lems/{lemId}/approve/status": {
       "get": {
         "summary": "Check LEM approval status",
         "description": "Checks if the current approver can approve the LEM.",
@@ -2520,7 +2520,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/lems/{lemId}/approve": {
+    "/approver/contracts/{contractId}/lems/{lemId}/approve": {
       "post": {
         "summary": "Approve or reject a LEM",
         "description": "Submit an approval action (approve/reject) for the LEM.",
@@ -2584,7 +2584,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/ratesheets": {
+    "/approver/contracts/{contractId}/ratesheets": {
       "get": {
         "summary": "List contract rate sheets",
         "description": "Returns rate sheets for a specific contract.",
@@ -2632,7 +2632,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/lems/{lemId}/ratesheet": {
+    "/approver/contracts/{contractId}/lems/{lemId}/ratesheet": {
       "get": {
         "summary": "Get rate sheet for a LEM",
         "description": "Returns the rate sheet associated with a specific LEM.",
@@ -2691,7 +2691,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/change/stats": {
+    "/approver/contracts/{contractId}/change/stats": {
       "get": {
         "summary": "Get contract change statistics",
         "description": "Returns statistics of changes for a specific contract",
@@ -2736,7 +2736,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/change": {
+    "/approver/contracts/{contractId}/change": {
       "get": {
         "summary": "List contract changes",
         "description": "Returns a list of changes for a specific contract with pagination and filtering",
@@ -2835,7 +2835,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/change/{changeId}": {
+    "/approver/contracts/{contractId}/change/{changeId}": {
       "get": {
         "summary": "Get a contract change by ID",
         "description": "Returns details of a specific contract change",
@@ -2889,7 +2889,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/change/{changeId}/comment": {
+    "/approver/contracts/{contractId}/change/{changeId}/comment": {
       "get": {
         "summary": "Get comments for a contract change",
         "description": "Returns a list of comments for a specific contract change",
@@ -3008,7 +3008,7 @@
         }
       }
     },
-    "/approver/contract/change/{changeId}/comment/{commentId}/reply": {
+    "/approver/contracts/change/{changeId}/comment/{commentId}/reply": {
       "post": {
         "summary": "Reply to a contract change comment",
         "description": "Adds a reply to a specific comment on a contract change",
@@ -3072,7 +3072,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/change/{changeId}/approve/status": {
+    "/approver/contracts/{contractId}/change/{changeId}/approve/status": {
       "get": {
         "summary": "Check if contract change can be approved",
         "description": "Checks if the current user can approve the contract change at the current level",
@@ -3131,7 +3131,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/change/{changeId}/approve": {
+    "/approver/contracts/{contractId}/change/{changeId}/approve": {
       "post": {
         "summary": "Approve or reject a contract change",
         "description": "Submit an approval action (approve/reject) for the contract change",
@@ -3195,7 +3195,235 @@
         }
       }
     },
-    "/approver/contract/{contractId}/deliverables/{deliverableId}": {
+    "/approver/contracts/{contractId}/deliverables/stats": {
+      "get": {
+        "summary": "Get contract deliverable statistics",
+        "description": "Returns status counts for deliverables in a contract.",
+        "tags": [
+          "Approver - Contract Deliverable"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract deliverable stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract deliverable stats fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "submitted": {
+                          "type": "integer"
+                        },
+                        "pending": {
+                          "type": "integer"
+                        },
+                        "late": {
+                          "type": "integer"
+                        },
+                        "approved": {
+                          "type": "integer"
+                        },
+                        "rejected": {
+                          "type": "integer"
+                        },
+                        "under_review": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Contract deliverable stats fetched successfully",
+                  "data": {
+                    "total": 8,
+                    "submitted": 4,
+                    "pending": 2,
+                    "late": 1,
+                    "approved": 3,
+                    "rejected": 1,
+                    "under_review": 1
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract or deliverables not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contracts/{contractId}/deliverables": {
+      "get": {
+        "summary": "List contract deliverables",
+        "description": "Returns deliverables for a contract. Optionally filter by deliverableId.",
+        "tags": [
+          "Approver - Contract Deliverable"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          },
+          {
+            "in": "query",
+            "name": "deliverableId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by deliverable ID (partial match)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract deliverables fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract deliverables fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "deliverableId": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "approved",
+                              "rejected",
+                              "under_review",
+                              "late"
+                            ]
+                          },
+                          "date": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "submissionStatus": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "late",
+                              "submitted"
+                            ]
+                          },
+                          "kpi": {
+                            "type": "object",
+                            "properties": {
+                              "kpi": {
+                                "type": "number"
+                              },
+                              "kpiDays": {
+                                "type": "number"
+                              },
+                              "kpiText": {
+                                "type": "string"
+                              },
+                              "kpiStatus": {
+                                "type": "string",
+                                "enum": [
+                                  "due_in",
+                                  "late",
+                                  "early",
+                                  "none"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Contract deliverables fetched successfully",
+                  "data": [
+                    {
+                      "deliverableId": "DEL-2026-001",
+                      "title": "Initial Report",
+                      "status": "under_review",
+                      "date": "2026-02-15T00:00:00.000Z",
+                      "submissionStatus": "submitted",
+                      "kpi": {
+                        "kpi": 3,
+                        "kpiDays": 3,
+                        "kpiText": "3 days early",
+                        "kpiStatus": "early"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract or deliverables not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contracts/{contractId}/deliverables/{deliverableId}": {
       "get": {
         "summary": "Get contract deliverable details",
         "description": "Returns detailed information for a specific deliverable.",
@@ -3408,7 +3636,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/deliverables/{deliverableId}/approve/status": {
+    "/approver/contracts/{contractId}/deliverables/{deliverableId}/approve/status": {
       "get": {
         "summary": "Check deliverable approval status",
         "description": "Checks if the current user can approve the deliverable at the current level.",
@@ -3476,7 +3704,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/deliverables/{deliverableId}/approve": {
+    "/approver/contracts/{contractId}/deliverables/{deliverableId}/approve": {
       "post": {
         "summary": "Approve or reject a contract deliverable",
         "description": "Submit an approval action (approve/reject) for the contract deliverable.",
@@ -3552,7 +3780,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/rfi/stats": {
+    "/approver/contracts/{contractId}/rfi/stats": {
       "get": {
         "summary": "Get contract RFI statistics",
         "description": "Returns RFI counts (all, issue, receive) for a specific contract.",
@@ -3621,7 +3849,7 @@
         }
       }
     },
-    "/approver/contract/{dataId}/rfi": {
+    "/approver/contracts/{dataId}/rfi": {
       "post": {
         "summary": "Create a new RFI issue",
         "description": "Creates a new RFI issue for a contract.",
@@ -3720,7 +3948,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/rfi": {
+    "/approver/contracts/{contractId}/rfi": {
       "get": {
         "summary": "List contract RFIs",
         "description": "Returns a paginated list of RFIs for a specific contract.",
@@ -3844,7 +4072,7 @@
         }
       }
     },
-    "/approver/contract/rfi/{rfiId}": {
+    "/approver/contracts/rfi/{rfiId}": {
       "get": {
         "summary": "Get a specific RFI",
         "description": "Returns details for a specific RFI.",
@@ -3919,7 +4147,7 @@
         }
       }
     },
-    "/approver/contract/rfi/{rfiId}/response": {
+    "/approver/contracts/rfi/{rfiId}/response": {
       "get": {
         "summary": "Get RFI responses",
         "description": "Returns responses for a specific RFI.",
@@ -3993,7 +4221,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/rfi/{rfiId}/comment": {
+    "/approver/contracts/{contractId}/rfi/{rfiId}/comment": {
       "get": {
         "summary": "Get contract RFI comments",
         "description": "Returns comments for a specific contract RFI.",
@@ -4187,7 +4415,7 @@
         }
       }
     },
-    "/approver/contract/rfi/{rfiId}/comment/{commentId}/reply": {
+    "/approver/contracts/rfi/{rfiId}/comment/{commentId}/reply": {
       "post": {
         "summary": "Reply to a contract RFI comment",
         "description": "Adds a reply to a specific comment on a contract RFI.",
@@ -4287,7 +4515,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/ncrs/stats": {
+    "/approver/contracts/{contractId}/ncrs/stats": {
       "get": {
         "summary": "Get contract NCR statistics",
         "description": "Returns statistics of NCRs for a specific contract",
@@ -4360,7 +4588,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/ncrs": {
+    "/approver/contracts/{contractId}/ncrs": {
       "get": {
         "summary": "List contract NCRs",
         "description": "Returns a paginated list of NCRs for a specific contract.",
@@ -4620,7 +4848,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/ncrs/{ncrId}": {
+    "/approver/contracts/{contractId}/ncrs/{ncrId}": {
       "get": {
         "summary": "Get contract NCR detail",
         "description": "Returns a specific NCR by ID for a contract.",
@@ -4703,7 +4931,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/ncrs/{ncrId}/capa": {
+    "/approver/contracts/{contractId}/ncrs/{ncrId}/capa": {
       "post": {
         "summary": "Create NCR CAPA",
         "description": "Creates a CAPA record linked to a specific NCR.",
@@ -4824,7 +5052,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/ncrs/{ncrId}/capa/{capaId}/approve": {
+    "/approver/contracts/{contractId}/ncrs/{ncrId}/capa/{capaId}/approve": {
       "patch": {
         "summary": "Approve NCR CAPA",
         "description": "Approves a CAPA record for a specific NCR.",
@@ -4907,7 +5135,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/ncrs/{ncrId}/close": {
+    "/approver/contracts/{contractId}/ncrs/{ncrId}/close": {
       "patch": {
         "summary": "Close NCR",
         "description": "Closes a specific NCR with a reason.",
@@ -5002,7 +5230,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/claim/stats": {
+    "/approver/contracts/{contractId}/claim/stats": {
       "get": {
         "summary": "Get contract claim statistics",
         "description": "Returns statistics of claims for a specific contract",
@@ -5047,7 +5275,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/claim": {
+    "/approver/contracts/{contractId}/claim": {
       "get": {
         "summary": "List contract claims",
         "description": "Returns a list of claims for a specific contract with pagination and filtering",
@@ -5146,7 +5374,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/claim/{claimId}": {
+    "/approver/contracts/{contractId}/claim/{claimId}": {
       "get": {
         "summary": "Get a contract claim by ID",
         "description": "Returns details of a specific contract claim",
@@ -5203,7 +5431,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/claim/{claimId}/comment": {
+    "/approver/contracts/{contractId}/claim/{claimId}/comment": {
       "get": {
         "summary": "Get comments for a contract claim",
         "description": "Returns a list of comments for a specific contract claim",
@@ -5322,7 +5550,7 @@
         }
       }
     },
-    "/approver/contract/claim/{claimId}/comment/{commentId}/reply": {
+    "/approver/contracts/claim/{claimId}/comment/{commentId}/reply": {
       "post": {
         "summary": "Reply to a contract claim comment",
         "description": "Adds a reply to a specific comment on a contract claim",
@@ -5386,7 +5614,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/claim/{claimId}/approve": {
+    "/approver/contracts/{contractId}/claim/{claimId}/approve": {
       "post": {
         "summary": "Approve or reject a contract claim",
         "description": "Submit an approval action (approve/reject) for the contract claim",
@@ -5450,7 +5678,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/invoice/stats": {
+    "/approver/contracts/{contractId}/invoice/stats": {
       "get": {
         "summary": "Get contract invoice statistics",
         "description": "Returns statistics for invoices associated with a specific contract",
@@ -5495,7 +5723,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/invoice": {
+    "/approver/contracts/{contractId}/invoice": {
       "get": {
         "summary": "List contract invoices",
         "description": "Returns a paginated list of invoices for a specific contract",
@@ -5574,7 +5802,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/invoice/{invoiceId}": {
+    "/approver/contracts/{contractId}/invoice/{invoiceId}": {
       "get": {
         "summary": "Get contract invoice details",
         "description": "Returns detailed information for a specific contract invoice",
@@ -5631,7 +5859,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/invoice/{invoiceId}/approve/status": {
+    "/approver/contracts/{contractId}/invoice/{invoiceId}/approve/status": {
       "get": {
         "summary": "Check if contract invoice can be approved",
         "description": "Checks if the current user can approve the contract invoice at the current level",
@@ -5690,7 +5918,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/invoice/{invoiceId}/approve": {
+    "/approver/contracts/{contractId}/invoice/{invoiceId}/approve": {
       "post": {
         "summary": "Approve or reject a contract invoice",
         "description": "Submit an approval action (approve/reject) for the contract invoice",
@@ -5754,7 +5982,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/reports/stats": {
+    "/approver/contracts/{contractId}/reports/stats": {
       "get": {
         "summary": "Get contract report count",
         "description": "Returns total number of vendor reports for a contract.",
@@ -5804,7 +6032,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/reports": {
+    "/approver/contracts/{contractId}/reports": {
       "get": {
         "summary": "List contract vendor reports",
         "description": "Returns vendor reports for a contract.",
@@ -5913,7 +6141,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/reports/{reportId}": {
+    "/approver/contracts/{contractId}/reports/{reportId}": {
       "get": {
         "summary": "Get contract report detail",
         "description": "Returns vendor report details for a contract.",
@@ -6024,7 +6252,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/amendment/stats": {
+    "/approver/contracts/{contractId}/amendment/stats": {
       "get": {
         "summary": "Get contract amendment statistics",
         "description": "Returns statistics for amendments associated with a specific contract.",
@@ -6083,7 +6311,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/amendment": {
+    "/approver/contracts/{contractId}/amendment": {
       "get": {
         "summary": "List contract amendments",
         "description": "Returns a list of amendments for a specific contract.",
@@ -6145,7 +6373,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/amendment/{amendmentId}": {
+    "/approver/contracts/{contractId}/amendment/{amendmentId}": {
       "get": {
         "summary": "Get contract amendment details",
         "description": "Returns detailed information for a specific contract amendment.",
@@ -6213,7 +6441,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/amendment/{amendmentId}/approve/status": {
+    "/approver/contracts/{contractId}/amendment/{amendmentId}/approve/status": {
       "get": {
         "summary": "Check if contract amendment can be approved",
         "description": "Checks if the current user can approve the contract amendment at the current level.",
@@ -6286,7 +6514,7 @@
         }
       }
     },
-    "/approver/contract/{contractId}/amendment/{amendmentId}/approve": {
+    "/approver/contracts/{contractId}/amendment/{amendmentId}/approve": {
       "post": {
         "summary": "Approve or reject a contract amendment",
         "description": "Submit an approval action (approve/reject) for the contract amendment.",
@@ -6360,6 +6588,63 @@
           },
           "404": {
             "description": "Contract amendment not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contracts/{contractId}/compliance": {
+      "get": {
+        "summary": "Get contract compliance details",
+        "description": "Returns compliance summary, policy list, and security list for a contract.",
+        "tags": [
+          "Approver - Contract Compliance"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract compliance fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract or compliance not found"
           },
           "500": {
             "description": "Server error"
@@ -8016,6 +8301,287 @@
         }
       }
     },
+    "/manager/contracts/{contractId}/compliance": {
+      "get": {
+        "summary": "Get contract compliance details",
+        "description": "Returns compliance summary, policy list, and security list for a contract.",
+        "tags": [
+          "ContractManager - Contract Compliance"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "view_only",
+          "approver",
+          "company_admin",
+          "contract_manager",
+          "procurement"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract compliance fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "coverage": {
+                              "type": "number"
+                            },
+                            "security": {
+                              "type": "boolean"
+                            },
+                            "expDate": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "securityType": {
+                              "type": "array",
+                              "items": {
+                                "type": "object"
+                              }
+                            },
+                            "insuranceStatus": {
+                              "type": "string",
+                              "enum": [
+                                "pending",
+                                "approved",
+                                "rejected"
+                              ]
+                            },
+                            "securityStatus": {
+                              "type": "string",
+                              "enum": [
+                                "pending",
+                                "approved",
+                                "rejected"
+                              ]
+                            }
+                          }
+                        },
+                        "policy": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "security": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract or compliance not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/compliance/{type}/{typeId}/approve": {
+      "post": {
+        "summary": "Approve or reject a contract compliance item",
+        "description": "Submit an approval action for a policy or security compliance entry.",
+        "tags": [
+          "ContractManager - Contract Compliance"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "policy",
+                "security"
+              ]
+            },
+            "description": "Compliance item type"
+          },
+          {
+            "in": "path",
+            "name": "typeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Policy ID or security type ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalActionDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract compliance approval processed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract or compliance item not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/manager/contracts/{contractId}/kpis": {
       "get": {
         "summary": "List contract KPI dashboard rows",
@@ -8177,7 +8743,7 @@
         "summary": "Get KPI detail",
         "description": "Returns KPI detail with metric breakdown and history.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Kpis"
         ],
         "security": [
           {
@@ -8338,7 +8904,7 @@
         "summary": "Submit KPI values",
         "description": "Adds a KPI history entry for a contract KPI.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Kpis"
         ],
         "security": [
           {
@@ -8471,7 +9037,7 @@
         "summary": "Get contract report count",
         "description": "Returns total number of vendor reports for a contract.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Report"
         ],
         "security": [
           {
@@ -8568,7 +9134,7 @@
         "summary": "List contract vendor reports",
         "description": "Returns vendor reports for a contract.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Report"
         ],
         "security": [
           {
@@ -8724,7 +9290,7 @@
         "summary": "Get contract report detail",
         "description": "Returns vendor report details for a contract.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Report"
         ],
         "security": [
           {
@@ -8872,6 +9438,847 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/lems": {
+      "get": {
+        "summary": "List contract LEMs",
+        "description": "Returns a paginated list of LEMs for a specific contract.",
+        "tags": [
+          "ContractManager - Contract Lem"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "view_only",
+          "approver",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          },
+          {
+            "in": "query",
+            "name": "lemId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by LEM ID"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by LEM title"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract LEMs fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "resp": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractLemDTO"
+                          }
+                        },
+                        "count": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/lems/{lemId}": {
+      "get": {
+        "summary": "Get contract LEM details",
+        "description": "Returns detailed information for a specific LEM.",
+        "tags": [
+          "ContractManager - Contract Lem"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "view_only",
+          "approver",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "lemId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "LEM ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract LEM fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractLemDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "LEM not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/lems/{lemId}/approve/status": {
+      "get": {
+        "summary": "Check manager approval status for a contract LEM",
+        "description": "Returns the current manager approval status for a specific LEM.",
+        "tags": [
+          "ContractManager - Contract Lem"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "lemId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "LEM ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Manager LEM status fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/lems/{lemId}/approve": {
+      "post": {
+        "summary": "Approve or reject a contract LEM",
+        "description": "Submit an approval action (approve/reject) for the LEM.",
+        "tags": [
+          "ContractManager - Contract Lem"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "lemId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "LEM ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalActionDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract LEM approval processed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/ratesheets": {
+      "get": {
+        "summary": "List contract rate sheets",
+        "description": "Returns rate sheets for a specific contract.",
+        "tags": [
+          "ContractManager - Contract Ratesheet"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "view_only",
+          "approver",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rate sheets fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RateSheetDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/lems/{lemId}/ratesheet": {
+      "get": {
+        "summary": "Get rate sheet for a LEM",
+        "description": "Returns the rate sheet associated with a specific LEM.",
+        "tags": [
+          "ContractManager - Contract Ratesheet"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "view_only",
+          "approver",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "lemId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "LEM ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rate sheet fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "sheet": {
+                          "$ref": "#/components/schemas/RateSheetDTO"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rate sheet not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/ratesheets/{rateSheetId}/approve/status": {
+      "get": {
+        "summary": "Check manager approval status for a rate sheet",
+        "description": "Returns the current manager approval status for a specific rate sheet.",
+        "tags": [
+          "ContractManager - Contract Ratesheet"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rateSheetId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Rate sheet ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Manager rate sheet status fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/ratesheets/{rateSheetId}/approve": {
+      "post": {
+        "summary": "Approve or reject a rate sheet",
+        "description": "Submit an approval action (approve/reject) for the rate sheet.",
+        "tags": [
+          "ContractManager - Contract Ratesheet"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rateSheetId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Rate sheet ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalActionDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rate sheet approval processed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
                 }
               }
             }
@@ -9407,7 +10814,7 @@
         "summary": "Get contract change statistics",
         "description": "Returns statistics about changes for a specific contract.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Change"
         ],
         "security": [
           {
@@ -9507,7 +10914,7 @@
         "summary": "Get contract approvers",
         "description": "Returns approval summary per approver for a contract.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Approvers"
         ],
         "security": [
           {
@@ -9617,7 +11024,7 @@
         "summary": "Get contract approver details",
         "description": "Returns approver details and approval actions for a contract.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Approvers"
         ],
         "security": [
           {
@@ -9742,7 +11149,7 @@
         "summary": "List contract changes",
         "description": "Returns a list of changes for a specific contract with filtering options.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Change"
         ],
         "security": [
           {
@@ -9870,7 +11277,7 @@
         "summary": "Get a contract change",
         "description": "Returns details of a specific contract change.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Change"
         ],
         "security": [
           {
@@ -9953,7 +11360,7 @@
         "summary": "Request a contract change",
         "description": "Creates a new contract change request.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Change"
         ],
         "security": [
           {
@@ -10056,7 +11463,7 @@
         "summary": "Approve or reject a contract change (Manager)",
         "description": "Allows a manager or creator to approve/reject a contract change.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Change"
         ],
         "security": [
           {
@@ -10153,7 +11560,7 @@
         "summary": "Check manager approval status for a contract change",
         "description": "Returns the current manager approval status for a specific contract change.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Change"
         ],
         "security": [
           {
@@ -10239,7 +11646,7 @@
         "summary": "Get contract change approvers",
         "description": "Returns the list of approvers for a specific contract change.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Change"
         ],
         "security": [
           {
@@ -10325,7 +11732,7 @@
         "summary": "Approve or reject a contract claim (Manager)",
         "description": "Allows a manager or creator to approve/reject a contract claim.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Claim"
         ],
         "security": [
           {
@@ -10412,7 +11819,7 @@
         "summary": "Check manager approval status for a contract claim",
         "description": "Returns the current manager approval status for a specific contract claim.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Claim"
         ],
         "security": [
           {
@@ -10498,7 +11905,7 @@
         "summary": "Get contract change comments",
         "description": "Returns comments for a specific contract change.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Change"
         ],
         "security": [
           {
@@ -10595,7 +12002,7 @@
         "summary": "Add a comment to a contract change",
         "description": "Adds a new comment to a specific contract change.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Change"
         ],
         "security": [
           {
@@ -10694,7 +12101,7 @@
         "summary": "Reply to a contract change comment",
         "description": "Adds a reply to a specific comment on a contract change.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Change"
         ],
         "security": [
           {
@@ -10793,7 +12200,7 @@
         "summary": "Get contract claim statistics",
         "description": "Returns statistics about claims for a specific contract.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Claim"
         ],
         "security": [
           {
@@ -10893,7 +12300,7 @@
         "summary": "List contract claims",
         "description": "Returns a list of claims for a specific contract with filtering options.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Claim"
         ],
         "security": [
           {
@@ -11021,7 +12428,7 @@
         "summary": "Get a contract claim",
         "description": "Returns details of a specific contract claim.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Claim"
         ],
         "security": [
           {
@@ -11113,7 +12520,7 @@
         "summary": "Get contract claim comments",
         "description": "Returns comments for a specific contract claim.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Claim"
         ],
         "security": [
           {
@@ -11217,7 +12624,7 @@
         "summary": "Add a comment to a contract claim",
         "description": "Adds a new comment to a specific contract claim.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Claim"
         ],
         "security": [
           {
@@ -11316,7 +12723,7 @@
         "summary": "Reply to a contract claim comment",
         "description": "Adds a reply to a specific comment on a contract claim.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Claim"
         ],
         "security": [
           {
@@ -11424,7 +12831,7 @@
         "summary": "Get contract claim approvers",
         "description": "Returns the list of approvers for a specific contract claim.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Claim"
         ],
         "security": [
           {
@@ -11517,7 +12924,7 @@
         "summary": "Send contract claim to approvers",
         "description": "Sends the contract claim to the specified approvers.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Claim"
         ],
         "security": [
           {
@@ -11628,7 +13035,7 @@
         "summary": "Get contract deliverable statistics",
         "description": "Returns status counts for deliverables in a contract.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Claim"
         ],
         "security": [
           {
@@ -11756,7 +13163,7 @@
         "summary": "List contract deliverables",
         "description": "Returns deliverables for a contract. Optionally filter by deliverableId.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Deliverable"
         ],
         "security": [
           {
@@ -11932,7 +13339,7 @@
         "summary": "Get contract deliverable details",
         "description": "Returns detailed information for a deliverable, including submission and approval info.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Deliverable"
         ],
         "security": [
           {
@@ -12228,7 +13635,7 @@
         "summary": "Approve or reject a contract deliverable (Manager)",
         "description": "Allows a manager or creator to approve/reject a deliverable and route it to approvers.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Deliverable"
         ],
         "security": [
           {
@@ -12344,7 +13751,7 @@
         "summary": "Check manager approval status for a deliverable",
         "description": "Returns the manager approval status for a deliverable.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Deliverable"
         ],
         "security": [
           {
@@ -12459,7 +13866,7 @@
         "summary": "Get contract invoice statistics",
         "description": "Returns statistics for invoices associated with a specific contract",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Invoice"
         ],
         "security": [
           {
@@ -12555,7 +13962,7 @@
         "summary": "List contract invoices",
         "description": "Returns a paginated list of invoices for a specific contract",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Invoice"
         ],
         "security": [
           {
@@ -12674,7 +14081,7 @@
         "summary": "Get contract invoice details",
         "description": "Returns detailed information for a specific contract invoice",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Invoice"
         ],
         "security": [
           {
@@ -12756,7 +14163,7 @@
         "summary": "Get amendment statistics",
         "description": "Returns statistics for contract amendments.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Amendment"
         ],
         "security": [
           {
@@ -12846,7 +14253,7 @@
         "summary": "List amendments",
         "description": "List all amendments for a contract.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Amendment"
         ],
         "security": [
           {
@@ -12926,7 +14333,7 @@
         "summary": "Create amendment",
         "description": "Create a new amendment for a contract.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Amendment"
         ],
         "security": [
           {
@@ -13015,7 +14422,7 @@
         "summary": "Get amendment details",
         "description": "Returns details of a specific amendment.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Amendment"
         ],
         "security": [
           {
@@ -13103,7 +14510,7 @@
         "summary": "Add approvers to amendment",
         "description": "Manually add approvers to a contract amendment.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Amendment"
         ],
         "security": [
           {
@@ -13201,7 +14608,7 @@
         "summary": "Approve/Reject amendment",
         "description": "Approve or reject a contract amendment.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Amendment"
         ],
         "security": [
           {
@@ -13299,7 +14706,7 @@
         "summary": "Approve or reject a contract claim (Manager)",
         "description": "Allows a manager or creator to approve/reject a contract claim.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Claim"
         ],
         "security": [
           {
@@ -13395,7 +14802,7 @@
         "summary": "Create a new RFI issue",
         "description": "Creates a new RFI issue for a contract or MSA contract.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract RFI"
         ],
         "security": [
           {
@@ -13485,7 +14892,7 @@
         "summary": "Get contract NCR statistics",
         "description": "Returns counts of total, issue, and receive NCRs for a specific contract.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract NCR"
         ],
         "security": [
           {
@@ -13582,7 +14989,7 @@
         "summary": "List contract NCRs",
         "description": "Returns a paginated list of NCRs for a specific contract.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract NCR"
         ],
         "security": [
           {
@@ -13723,8 +15130,7 @@
         "summary": "Get contract NCR detail",
         "description": "Returns a specific NCR for a contract.",
         "tags": [
-          "ContractManager - Contract",
-          "View Only - NCR"
+          "ContractManager - Contract NCR"
         ],
         "security": [
           {
@@ -13872,7 +15278,7 @@
         "summary": "Get contract RFI statistics",
         "description": "Returns counts of all, issue, and receive RFIs for a specific contract.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract RFI"
         ],
         "security": [
           {
@@ -13964,7 +15370,7 @@
         "summary": "List contract RFIs",
         "description": "Returns a paginated list of RFIs for a specific contract.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract RFI"
         ],
         "security": [
           {
@@ -14098,7 +15504,7 @@
         "summary": "Get a specific RFI",
         "description": "Returns details of a specific RFI.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract RFI"
         ],
         "security": [
           {
@@ -14190,7 +15596,7 @@
         "summary": "Get RFI response",
         "description": "Returns the response for a specific RFI.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract RFI"
         ],
         "security": [
           {
@@ -14282,7 +15688,7 @@
         "summary": "Get contract RFI comments",
         "description": "Returns comments for a specific contract RFI.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract RFI"
         ],
         "security": [
           {
@@ -14556,7 +15962,7 @@
         "summary": "Reply to a contract RFI comment",
         "description": "Adds a reply to a specific comment on a contract RFI.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract RFI"
         ],
         "security": [
           {
@@ -18355,6 +19761,63 @@
         }
       }
     },
+    "/user/contracts/{contractId}/compliance": {
+      "get": {
+        "summary": "Get contract compliance details",
+        "description": "Returns compliance summary, policy list, and security list for a contract.",
+        "tags": [
+          "User - Contract Compliance"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract compliance fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract or compliance not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
     "/vendor/contracts/stats": {
       "get": {
         "summary": "Get vendor contract statistics",
@@ -18521,6 +19984,142 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contracts/{contractId}/compliance": {
+      "get": {
+        "summary": "Get contract compliance details",
+        "description": "Returns compliance summary, policy list, and security list for a contract.",
+        "tags": [
+          "Vendor - Contract Compliance"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract compliance fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract or compliance not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contracts/{contractId}/compliance/{typeId}": {
+      "patch": {
+        "summary": "Update a contract compliance item",
+        "description": "Updates compliance files and description for a policy or security item.",
+        "tags": [
+          "Vendor - Contract Compliance"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "typeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Policy ID or security type ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractComplianceDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Compliance updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract or compliance item not found"
           },
           "500": {
             "description": "Server error"
@@ -23425,6 +25024,10 @@
     {
       "name": "Vendor - Rate Sheet",
       "description": "Rate sheet management for vendors"
+    },
+    {
+      "name": "Vendor - Contract Compliance",
+      "description": "Contract compliance management for vendors"
     }
   ]
 }

@@ -254,6 +254,8 @@ export type ContractChangeManagerDTO = {
 };
 
 export type ContractChangeDTO = {
+  id?: string;
+  changeId?: string;
   title?: string;
   description?: string;
   proposalCategory?: string;
@@ -265,6 +267,9 @@ export type ContractChangeDTO = {
     size?: number;
   }>;
   type?: "request" | "directive" | "proposal" | "order";
+  value?: number;
+  submittedAt?: string;
+  status?: "pending" | "approved" | "rejected";
 };
 
 export type ContractChangeStatsDTO = {
@@ -273,6 +278,9 @@ export type ContractChangeStatsDTO = {
   order?: number;
   directive?: number;
   proposal?: number;
+  approved?: number;
+  pending?: number;
+  rejected?: number;
 };
 
 export type ApprovalActionDTO = {
@@ -640,10 +648,7 @@ export const createContractManagerApi = (
         url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/changes`,
         config: query ? { params: query } : undefined,
       });
-      return res.data as {
-        message?: string;
-        data?: { changes?: ContractChangeDTO[]; total?: number };
-      };
+      return res as ApiResponse<{ changes?: ContractChangeDTO[]; total?: number }>;
     },
     getChangeDetail: async (changeId: string) => {
       const res = await client.get({

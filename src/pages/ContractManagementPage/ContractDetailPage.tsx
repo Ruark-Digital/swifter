@@ -199,6 +199,72 @@ const ContractDetailPage: React.FC = () => {
 
   const status = formatContractStatus(contract?.status);
 
+  type TabKey =
+    | "overview"
+    | "analytics"
+    | "kpi"
+    | "compliance"
+    | "documents"
+    | "amendments"
+    | "deliverables"
+    | "payment-summary"
+    | "rate-sheets"
+    | "lem"
+    | "invoice"
+    | "change"
+    | "claims"
+    | "rfi"
+    | "ncr-log"
+    | "approvers"
+    | "reports"
+    | "clause-library"
+    | "action-log";
+
+  const ALL_TABS: Array<{ key: TabKey; label: string }> = [
+    { key: "overview", label: "Overview" },
+    { key: "analytics", label: "Analytics" },
+    { key: "kpi", label: "KPI" },
+    { key: "compliance", label: "Compliance & Security" },
+    { key: "documents", label: "Documents" },
+    { key: "amendments", label: "Amendments" },
+    { key: "deliverables", label: "Deliverables" },
+    { key: "payment-summary", label: "Payment Summary" },
+    { key: "rate-sheets", label: "Rate Sheets" },
+    { key: "lem", label: "LEM" },
+    { key: "invoice", label: "Invoice" },
+    { key: "change", label: "Change Management" },
+    { key: "claims", label: "Claims" },
+    { key: "rfi", label: "RFI" },
+    { key: "ncr-log", label: "NCR Log" },
+    { key: "approvers", label: "Approvers" },
+    { key: "reports", label: "Vendor’s Reports" },
+    { key: "clause-library", label: "Clause Library" },
+    { key: "action-log", label: "Action Log" },
+  ];
+
+  const ROLE_TAB_WHITELIST: Record<"approver", TabKey[]> = {
+    approver: [
+      "overview",
+      "payment-summary",
+      "documents",
+      "amendments",
+      "change",
+      "claims",
+      "invoice",
+      "rfi",
+      "lem",
+      "deliverables",
+      "ncr-log",
+    ],
+  };
+
+  const visibleTabs =
+    isApprover
+      ? ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.approver.includes(t.key))
+      : ALL_TABS;
+  const triggerClass =
+    "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3";
+
   return (
     <div className="space-y-8">
       <SEOWrapper
@@ -260,120 +326,11 @@ const ContractDetailPage: React.FC = () => {
       <Tabs defaultValue="overview" className="w-full bg-transparent space-y-4">
         <ScrollArea className="pb-4 w-[75vw]">
           <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
-            <TabsTrigger
-              value="overview"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              Overview
-            </TabsTrigger>
-            <TabsTrigger
-              value="analytics"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              Analytics
-            </TabsTrigger>
-            <TabsTrigger
-              value="kpi"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              KPI
-            </TabsTrigger>
-            <TabsTrigger
-              value="compliance"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              Compliance & Security
-            </TabsTrigger>
-            <TabsTrigger
-              value="documents"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              Documents
-            </TabsTrigger>
-            <TabsTrigger
-              value="amendments"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              Amendments
-            </TabsTrigger>
-            <TabsTrigger
-              value="deliverables"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              Deliverables
-            </TabsTrigger>
-            <TabsTrigger
-              value="payment-summary"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              Payment Summary
-            </TabsTrigger>
-            <TabsTrigger
-              value="rate-sheets"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              Rate Sheets
-            </TabsTrigger>
-            <TabsTrigger
-              value="lem"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              LEM
-            </TabsTrigger>
-            <TabsTrigger
-              value="invoice"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              Invoice
-            </TabsTrigger>
-            <TabsTrigger
-              value="change"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              Change Management
-            </TabsTrigger>
-            <TabsTrigger
-              value="claims"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              Claims
-            </TabsTrigger>
-            <TabsTrigger
-              value="rfi"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              RFI
-            </TabsTrigger>
-            <TabsTrigger
-              value="ncr-log"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              NCR Log
-            </TabsTrigger>
-            <TabsTrigger
-              value="approvers"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              Approvers
-            </TabsTrigger>
-            <TabsTrigger
-              value="reports"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              Vendor’s Reports
-            </TabsTrigger>
-            <TabsTrigger
-              value="clause-library"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              Clause Library
-            </TabsTrigger>
-            <TabsTrigger
-              value="action-log"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              Action Log
-            </TabsTrigger>
+            {visibleTabs.map((t) => (
+              <TabsTrigger key={t.key} value={t.key} className={triggerClass}>
+                {t.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
@@ -402,7 +359,7 @@ const ContractDetailPage: React.FC = () => {
 
         <RfiTabContent contractId={contract?._id ?? ""} />
 
-        <NcrLogTabContent contractId={contract?._id ?? ""} />
+        <NcrLogTabContent contractId={contract?._id ?? ""} contract={contract} />
 
         <DocumentsTabContent
           files={contract?.files}

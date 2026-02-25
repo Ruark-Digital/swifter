@@ -49,9 +49,11 @@ import {
   type ContractCommentDTO,
   type ContractRfiDTO,
 } from "../api/contractManagerApi";
+import { approverApi } from "../api/approverApi";
 import { formatDateTZ } from "@/lib/utils";
 import { formatFileSize, getFileExtension } from "@/lib/fileUtils";
 import { useToastHandler } from "@/hooks/useToaster";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export type RfiRow = {
   id: string;
@@ -131,14 +133,15 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   const [isOpen, setIsOpen] = React.useState(false);
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
+  const { isApprover } = useUserRole();
   const queryKey = useUserQueryKey([
-    "contractManager",
+    isApprover ? "approver" : "contractManager",
     "contractRfis",
     "detail",
     rfiId,
   ]);
   const commentsQueryKey = useUserQueryKey([
-    "contractManager",
+    isApprover ? "approver" : "contractManager",
     "contractRfis",
     "comments",
     contractId,
@@ -150,7 +153,10 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     ApiResponseError
   >({
     queryKey,
-    queryFn: async () => await contractManagerApi.getRfiDetail(rfiId),
+    queryFn: async () =>
+      isApprover
+        ? await approverApi.getRfiDetail(rfiId)
+        : await contractManagerApi.getRfiDetail(rfiId),
     enabled: Boolean(rfiId) && isOpen,
     staleTime: 60000,
   });
@@ -164,7 +170,9 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   >({
     queryKey: commentsQueryKey,
     queryFn: async () =>
-      await contractManagerApi.listRfiComments(contractId, rfiId),
+      isApprover
+        ? await approverApi.listRfiComments(contractId, rfiId)
+        : await contractManagerApi.listRfiComments(contractId, rfiId),
     enabled: Boolean(contractId) && Boolean(rfiId) && isOpen,
     staleTime: 60000,
   });
@@ -175,7 +183,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     ContractChangeCommentDTO
   >({
     mutationKey: [
-      "contractManager",
+      isApprover ? "approver" : "contractManager",
       "contractRfis",
       "comments",
       "add",
@@ -183,7 +191,9 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
       rfiId,
     ],
     mutationFn: async (payload) =>
-      await contractManagerApi.addRfiComment(contractId, rfiId, payload),
+      isApprover
+        ? await approverApi.addRfiComment(contractId, rfiId, payload)
+        : await contractManagerApi.addRfiComment(contractId, rfiId, payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: commentsQueryKey });
     },
@@ -459,6 +469,8 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
 };
 
 const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({ trigger }) => {
+  const { isApprover } = useUserRole();
+  const toastHandler = useToastHandler();
   const { control } = useForge({
     defaultValues: {
       rfiTitle: "",
@@ -476,6 +488,12 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({ trigger }) => {
     files: File[] | null;
   }) => {
     void data;
+    if (!isApprover) {
+      toastHandler.error("RFI Response", {
+        message: "Only approvers can respond to RFIs.",
+      } as ApiResponseError);
+      return;
+    }
     setIsSuccess(true);
   };
 
@@ -722,7 +740,7 @@ const RfiTable: React.FC<Props> = ({
         data={filteredRows}
         columns={columns}
         header={() => (
-          <div className="flex items-center gap-3 border-b border-[#E5E7EB] px-5 py-4">
+          <div className="flex items-center gap-3 w-full border-b border-[#E5E7EB] px-5 py-4">
             <span className="text-sm font-medium text-slate-900">RFI</span>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />

@@ -126,17 +126,17 @@ export interface Vendor {
 export interface ContractDetail {
   contractFormationStage: ContractFormationStage;
   _id:                    string;
-  company:                string;
-  project:                ContractType;
-  solicitation:           string;
-  vendor:                 ContractType;
+  company:                Company;
+  project:                Company;
+  solicitation:           Company;
+  vendor:                 Company;
   vendorPersonnel:        VendorPersonnel[];
   creator:                Creator;
-  contractType:           ContractType;
-  contractTerm:           string;
-  internalTeam:           Creator[];
+  contractType:           Company;
+  contractTerm:           Company;
+  internalTeam:           Approver[];
   managers:               any[];
-  businessDivision:       string;
+  businessDivision:       BusinessDivision;
   rating:                 number;
   title:                  string;
   contractRelationship:   string;
@@ -150,43 +150,44 @@ export interface ContractDetail {
   contigency:             string;
   holdBack:               number;
   holdBackBank:           number;
-  paymentTerms:           string;
+  paymentTerms:           Company;
   paymentStructure:       string;
-  insurance:              Insurance;
-  startDate:              string;
-  endDate:                string;
+  deliverables:           string[];
+  insurance:              string;
+  startDate:              Date;
+  endDate:                Date;
   duration:               number;
-  deliverables:           Deliverable[];
   files:                  File[];
   currentApprovalLevel:   number;
   approvers:              Approver[];
   status:                 string;
-  datePublished:          string;
   timezone:               string;
   isDeleted:              boolean;
   milestone:              any[];
   signatories:            any[];
-  createdAt:              string;
-  updatedAt:              string;
+  createdAt:              Date;
+  updatedAt:              Date;
   __v:                    number;
   holdBackReleased:       number;
   savingAmount:           number;
-  deviationScale?:        number;
-}
- 
-export interface Approver {
-  user:        ContractUser[];
-  level:       number;
-  amount:      number;
-  group:       string;
-  levelStatus: string;
-  _id:         string;
 }
 
-export interface ContractUser {
-  user:    string;
-  userRef: string;
-  _id:     string;
+export interface Approver {
+  id:    string;
+  name:  string;
+  email: string;
+  role?: string;
+}
+
+export interface BusinessDivision {
+  _id:      string;
+  name:     string;
+  location: string;
+}
+
+export interface Company {
+  _id:  string;
+  name: string;
 }
 
 export interface ContractFormationStage {
@@ -201,22 +202,11 @@ export interface Approval {
   endDate:   Date;
 }
 
-export interface ContractType {
-  _id:  string;
-  name: string;
-}
-
 export interface Creator {
   _id:   string;
   name:  string;
   email: string;
-  role?: ContractType;
-}
-
-export interface Deliverable {
-  dueDate: Date;
-  name:    string;
-  _id:     string;
+  role: string
 }
 
 export interface File {
@@ -228,23 +218,6 @@ export interface File {
   uploadedAt: Date;
 }
 
-export interface Insurance {
-  _id:                  string;
-  contract:             string;
-  contractSecurity:     boolean;
-  contractSecurityType: any[];
-  expiryDate:           Date;
-  policy:               Policy[];
-  __v:                  number;
-}
-
-export interface Policy {
-  policyId:   string;
-  policyName: string;
-  value:      number;
-  _id:        string;
-}
-
 export interface VendorPersonnel {
   name:  string;
   email: string;
@@ -252,6 +225,9 @@ export interface VendorPersonnel {
   role:  string;
   _id:   string;
 }
+
+
+
 
 export interface ContractRfis {
   _id:              string;

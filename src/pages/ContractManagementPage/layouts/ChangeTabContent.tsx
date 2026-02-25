@@ -7,17 +7,24 @@ import ChangeTable from "../components/ChangeTable";
 import CreateChangeDialog from "../components/CreateChangeDialog";
 import { useQuery } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
-import { contractManagerApi, type ManagerListChangesQuery } from "../api/contractManagerApi";
-import { changeTabToApiType, type ChangeTabValue } from "@/pages/ContractManagementPage/lib/contractChanges";
+import {
+  contractManagerApi,
+  type ManagerListChangesQuery,
+} from "../api/contractManagerApi";
+import {
+  changeTabToApiType,
+  type ChangeTabValue,
+} from "@/pages/ContractManagementPage/lib/contractChanges";
 import { useUserRole } from "@/hooks/useUserRole";
 import { vendorApi } from "../api/vendorApi";
+import { approverApi } from "../api/approverApi";
 
 type Props = {
   contractId: string;
 };
 
 const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
-  const { isVendor, isManager } = useUserRole();
+  const { isVendor, isManager, isApprover } = useUserRole();
   const [activeTab, setActiveTab] = React.useState<ChangeTabValue>("all");
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -25,12 +32,20 @@ const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
   });
 
   const { data: statsRes, isLoading: isStatsLoading } = useQuery({
-    queryKey: [isManager ? "contractManager" : "vendor", "contractChanges", "stats", contractId],
+    queryKey: [
+      isManager ? "contractManager" : isVendor ? "vendor" : "approver",
+      "contractChanges",
+      "stats",
+      contractId,
+    ],
     queryFn: async () => {
       if (isManager) {
         return await contractManagerApi.getChangeStats(contractId);
       }
-      return await vendorApi.getChangeStats(contractId);
+      if (isVendor) {
+        return await vendorApi.getChangeStats(contractId);
+      }
+      return await approverApi.getChangeStats(contractId);
     },
     enabled: Boolean(contractId),
     staleTime: 60000,
@@ -38,7 +53,7 @@ const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
 
   const { data: changesRes, isLoading: isChangesLoading } = useQuery({
     queryKey: [
-      isManager ? "contractManager" : "vendor",
+      isManager ? "contractManager" : isVendor ? "vendor" : "approver",
       "contractChanges",
       contractId,
       activeTab,
@@ -57,19 +72,24 @@ const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
       if (isManager) {
         return await contractManagerApi.listChanges(contractId, baseQuery);
       }
-      return await vendorApi.listChanges(contractId, baseQuery);
+      if (isVendor) {
+        return await vendorApi.listChanges(contractId, baseQuery);
+      }
+      return await approverApi.listChanges(contractId, baseQuery);
     },
     enabled: Boolean(contractId),
     staleTime: 60000,
   });
 
-  const changeRows = changesRes?.data?.changes ?? [];
-  const totalCount = changesRes?.data?.total ?? changeRows.length;
+  const changeRows = (changesRes)?.data?.data?.changes ?? [];
+  const totalCount = (changesRes)?.data?.data?.total ?? changeRows.length;
 
   return (
     <TabsContent value="change" className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-[#1F2937]">Change Management</h3>
+        <h3 className="text-lg font-semibold text-[#1F2937]">
+          Change Management
+        </h3>
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
@@ -91,7 +111,10 @@ const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
         </div>
       </div>
 
-      <ChangeStatsCards stats={statsRes?.data} isLoading={isStatsLoading} />
+      {(() => {
+        const stats = (statsRes as any)?.data?.data ?? (statsRes as any)?.data;
+        return <ChangeStatsCards stats={stats} isLoading={isStatsLoading} variant={isApprover ? "approver" : "manager"} />;
+      })()}
 
       <Tabs
         value={activeTab}
@@ -136,6 +159,7 @@ const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
 
         <TabsContent value="all">
           <ChangeTable
+            variant={isApprover ? "approver" : "manager"}
             rows={changeRows}
             isLoading={isChangesLoading}
             totalCount={totalCount}
@@ -145,7 +169,8 @@ const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
         </TabsContent>
         <TabsContent value="requests">
           <ChangeTable
-            rows={changeRows.filter((row) => row.type === "request")}
+            variant={isApprover ? "approver" : "manager"}
+            rows={changeRows.filter((row: any) => row.type === "request")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
@@ -154,7 +179,7 @@ const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
         </TabsContent>
         <TabsContent value="orders">
           <ChangeTable
-            rows={changeRows.filter((row) => row.type === "order")}
+            rows={changeRows.filter((row: any) => row.type === "order")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
@@ -163,7 +188,7 @@ const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
         </TabsContent>
         <TabsContent value="directive">
           <ChangeTable
-            rows={changeRows.filter((row) => row.type === "directive")}
+            rows={changeRows.filter((row: any) => row.type === "directive")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
@@ -172,7 +197,8 @@ const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
         </TabsContent>
         <TabsContent value="proposal">
           <ChangeTable
-            rows={changeRows.filter((row) => row.type === "proposal")}
+            variant={isApprover ? "approver" : "manager"}
+            rows={changeRows.filter((row: any) => row.type === "proposal")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}

@@ -9,18 +9,25 @@ import DeliverablesTable, {
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { useParams } from "react-router-dom";
+import { useUserRole } from "@/hooks/useUserRole";
+import type { DeliverablesStats } from "../components/DeliverablesStatsCards";
 
 const DeliverablesTabContent: React.FC = () => {
   const { id: contractId } = useParams<{ id: string }>();
+  const { isApprover } = useUserRole();
 
   const {
     data: listRes,
     isLoading: listLoading,
   } = useQuery({
-    queryKey: ["contract-manager-deliverables", contractId],
+    queryKey: [
+      isApprover ? "approver" : "contract-manager",
+      "deliverables",
+      contractId,
+    ],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/contracts/${contractId}/deliverables`,
+        url: `${isApprover ? "/contract/approver/contracts" : "/contract/manager/contracts"}/${contractId}/deliverables`,
       });
       return res as any;
     },
@@ -33,7 +40,6 @@ const DeliverablesTabContent: React.FC = () => {
     return items.map((it) => ({
       id: it?.deliverableId ?? "",
       title: it?.title ?? "",
-      // The list schema provides a single 'date' field; display it as Due Date
       dueDate: it?.date ?? "-",
       submissionDate: "-",
       submissionStatus:
@@ -52,6 +58,17 @@ const DeliverablesTabContent: React.FC = () => {
     }));
   }, [listRes]);
 
+  const stats: DeliverablesStats = React.useMemo(() => {
+    const src = Array.isArray(listRes?.data?.data) ? listRes.data.data : [];
+    const all = src.length;
+    const submitted = src.filter((it: any) => it?.submissionStatus === "submitted").length;
+    const late = src.filter((it: any) => it?.submissionStatus === "late").length;
+    const pending = src.filter(
+      (it: any) => !["submitted", "late"].includes(String(it?.submissionStatus ?? "").toLowerCase()),
+    ).length;
+    return { all, submitted, pending, late };
+  }, [listRes]);
+
   return (
     <TabsContent value="deliverables" className="space-y-6">
       <div className="flex items-center justify-between">
@@ -61,12 +78,13 @@ const DeliverablesTabContent: React.FC = () => {
         </Button>
       </div>
 
-      <DeliverablesStatsCards />
+      <DeliverablesStatsCards stats={stats} isLoading={!!listLoading} />
 
       <DeliverablesTable
         contractId={contractId ?? ""}
         rows={rows}
         isLoading={!!listLoading}
+        isApprover={isApprover}
       />
     </TabsContent>
   );

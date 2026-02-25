@@ -27,11 +27,13 @@ import {
   type ContractRfiDTO,
   type ManagerListRfisQuery,
 } from "../api/contractManagerApi";
+import { approverApi } from "../api/approverApi";
 import type { UploadURLs } from "../lib/contractChanges";
 import { useToastHandler } from "@/hooks/useToaster";
 import { FileUploaderItem } from "@/components/ui/file-upload";
 import { formatFileSize, getFileIcon, getSimpleFileExtension } from "@/lib/fileUtils";
 import { useWatch } from "react-hook-form";
+import { useUserRole } from "@/hooks/useUserRole";
 
 type IssueRfiDialogProps = {
   trigger: React.ReactNode;
@@ -44,6 +46,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
+  const { isApprover } = useUserRole();
   const { control, reset } = useForge({
     defaultValues: {
       rfiTitle: "",
@@ -79,15 +82,17 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
   });
 
   const createMutation = useMutation({
-    mutationKey: ["contractManager", "contractRfis", "create", contractId],
+    mutationKey: [isApprover ? "approver" : "contractManager", "contractRfis", "create", contractId],
     mutationFn: async (payload: ContractRfiDTO) =>
-      await contractManagerApi.createRfi(contractId, payload),
+      isApprover
+        ? await approverApi.createRfi(contractId, payload)
+        : await contractManagerApi.createRfi(contractId, payload),
     onSuccess: async () => {
       setIsSuccess(true);
       reset();
       toastHandler.success("RFI", "RFI issued successfully");
       await queryClient.invalidateQueries({
-        queryKey: ["contractManager", "contractRfis", contractId],
+        queryKey: [isApprover ? "approver" : "contractManager", "contractRfis", contractId],
       });
     },
     onError: (error: ApiResponseError) => {
@@ -334,10 +339,11 @@ const RfiTabContent: React.FC<Props> = ({ contractId }) => {
     pageIndex: 0,
     pageSize: 10,
   });
+  const { isApprover } = useUserRole();
 
   const { data: rfisRes, isLoading: isRfisLoading } = useQuery({
     queryKey: [
-      "contractManager",
+      isApprover ? "approver" : "contractManager",
       "contractRfis",
       contractId,
       pagination.pageIndex,
@@ -348,7 +354,9 @@ const RfiTabContent: React.FC<Props> = ({ contractId }) => {
         page: pagination.pageIndex + 1,
         limit: pagination.pageSize,
       };
-      return await contractManagerApi.listRfis(contractId, query);
+      return isApprover
+        ? await approverApi.listRfis(contractId, query)
+        : await contractManagerApi.listRfis(contractId, query);
     },
     enabled: Boolean(contractId),
   });

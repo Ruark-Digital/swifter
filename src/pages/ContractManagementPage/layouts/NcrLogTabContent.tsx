@@ -8,26 +8,38 @@ import {
   contractManagerApi,
   type ManagerListNcrsQuery,
 } from "../api/contractManagerApi";
+import { approverApi } from "../api/approverApi";
+import { useUserRole } from "@/hooks/useUserRole";
+import CreateNcrDialog from "../components/CreateNcrDialog";
+import type { ContractDetail } from "@/types";
 
 type Props = {
   contractId: string;
+  contract: ContractDetail
 };
 
-const NcrLogTabContent: React.FC<Props> = ({ contractId }) => {
+const NcrLogTabContent: React.FC<Props> = ({ contractId, contract }) => {
+  const { isApprover } = useUserRole();
+  const api = isApprover ? approverApi : contractManagerApi;
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
 
   const { data: statsRes, isLoading: isStatsLoading } = useQuery({
-    queryKey: ["contractManager", "contractNcrs", "stats", contractId],
-    queryFn: async () => await contractManagerApi.getNcrStats(contractId),
+    queryKey: [
+      isApprover ? "approver" : "contractManager",
+      "contractNcrs",
+      "stats",
+      contractId,
+    ],
+    queryFn: async () => await api.getNcrStats(contractId),
     enabled: Boolean(contractId),
   });
 
   const { data: ncrsRes, isLoading: isNcrsLoading } = useQuery({
     queryKey: [
-      "contractManager",
+      isApprover ? "approver" : "contractManager",
       "contractNcrs",
       contractId,
       pagination.pageIndex,
@@ -38,7 +50,7 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId }) => {
         page: pagination.pageIndex + 1,
         limit: pagination.pageSize,
       };
-      return await contractManagerApi.listNcrs(contractId, query);
+      return await api.listNcrs(contractId, query);
     },
     enabled: Boolean(contractId),
   });
@@ -48,9 +60,25 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId }) => {
 
   return (
     <TabsContent value="ncr-log" className="space-y-6">
-      <h3 className="text-base font-semibold text-slate-900">
-        Non-Compliance Report
-      </h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-semibold text-slate-900">
+          Non-Compliance Report
+        </h3>
+        {isApprover && (
+          <CreateNcrDialog
+            contractId={contractId}
+            contract={contract}
+            trigger={
+              <button
+                type="button"
+                className="inline-flex h-10 items-center justify-center rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white"
+              >
+                Create NCR
+              </button>
+            }
+          />
+        )}
+      </div>
 
       <NcrStatsCards
         all={stats?.total}
@@ -71,4 +99,3 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId }) => {
 };
 
 export default NcrLogTabContent;
-

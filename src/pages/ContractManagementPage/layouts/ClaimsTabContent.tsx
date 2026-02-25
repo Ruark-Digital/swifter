@@ -8,26 +8,39 @@ import RequestClaimDialog from "../components/RequestClaimDialog";
 import { useQuery } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
 import { contractManagerApi, type ManagerListClaimsQuery } from "../api/contractManagerApi";
+import { useUserRole } from "@/hooks/useUserRole";
+import { approverApi } from "../api/approverApi";
 
 type Props = {
   contractId: string;
 };
 
 const ClaimsTabContent: React.FC<Props> = ({ contractId }) => {
+  const { isApprover } = useUserRole();
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
 
   const { data: statsRes, isLoading: isStatsLoading } = useQuery({
-    queryKey: ["contractManager", "contractClaims", "stats", contractId],
-    queryFn: async () => await contractManagerApi.getClaimStats(contractId),
+    queryKey: [
+      isApprover ? "approver" : "contractManager",
+      "contractClaims",
+      "stats",
+      contractId,
+    ],
+    queryFn: async () => {
+      if (isApprover) {
+        return await approverApi.getClaimStats(contractId);
+      }
+      return await contractManagerApi.getClaimStats(contractId);
+    },
     enabled: Boolean(contractId),
   });
 
   const { data: claimsRes, isLoading: isClaimsLoading } = useQuery({
     queryKey: [
-      "contractManager",
+      isApprover ? "approver" : "contractManager",
       "contractClaims",
       contractId,
       pagination.pageIndex,
@@ -38,6 +51,9 @@ const ClaimsTabContent: React.FC<Props> = ({ contractId }) => {
         page: pagination.pageIndex + 1,
         limit: pagination.pageSize,
       };
+      if (isApprover) {
+        return await approverApi.listClaims(contractId, query);
+      }
       return await contractManagerApi.listClaims(contractId, query);
     },
     enabled: Boolean(contractId),
@@ -57,13 +73,15 @@ const ClaimsTabContent: React.FC<Props> = ({ contractId }) => {
           >
             <Share2 className="mr-2 h-4 w-4" /> Export Report
           </Button>
-          <RequestClaimDialog
-            trigger={
-              <Button className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-medium text-white hover:bg-[#1f3552]">
-                Request Claim
-              </Button>
-            }
-          />
+          {!isApprover && (
+            <RequestClaimDialog
+              trigger={
+                <Button className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-medium text-white hover:bg-[#1f3552]">
+                  Create Claim
+                </Button>
+              }
+            />
+          )}
         </div>
       </div>
 
