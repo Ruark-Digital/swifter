@@ -327,6 +327,27 @@ test.describe("contractManagerApi (unit)", () => {
       url: "/contract/manager/contracts/rfis/rfi1/comment/cm1/reply",
       payload: rfiReplyPayload,
     });
+
+    await api.getContractCompliance("c9");
+    expect(getSpy.calls.at(-1)).toEqual({
+      url: "/contract/manager/contracts/c9/compliance",
+    });
+
+    const complianceApprovalPayload = { action: "approved", comment: "Looks good" };
+    await api.approveComplianceItem("c9", "policy", "pol1", complianceApprovalPayload as never);
+    expect(postSpy.calls.at(-1)).toEqual({
+      url: "/contract/manager/contracts/c9/compliance/policy/pol1/approve",
+      payload: complianceApprovalPayload,
+    });
+
+    // Test validation failure for approveComplianceItem
+    let complianceApproveFailed = false;
+    try {
+      await api.approveComplianceItem("c9", "policy", "pol1", {} as never);
+    } catch {
+      complianceApproveFailed = true;
+    }
+    expect(complianceApproveFailed).toBe(true);
   });
 });
 

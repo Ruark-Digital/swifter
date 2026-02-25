@@ -510,6 +510,31 @@ export type ManagerListRfisQuery = {
   limit?: number;
 };
 
+export type ContractComplianceDTO = {
+  details?: {
+    coverage?: number;
+    security?: boolean;
+    expDate?: string;
+    securityType?: Array<{ id?: string; name?: string }>;
+    insuranceStatus?: "pending" | "approved" | "rejected";
+    securityStatus?: "pending" | "approved" | "rejected";
+  };
+  policy?: Array<{
+    id?: string;
+    policyId?: string;
+    policyName?: string;
+    limit?: string;
+    status?: string;
+  }>;
+  security?: Array<{
+    id?: string;
+    securityType?: string;
+    amount?: string;
+    expiryDate?: string;
+    status?: string;
+  }>;
+};
+
 export type ManagerListNcrsQuery = {
   title?: string;
   ncrId?: string;
@@ -959,6 +984,25 @@ export const createContractManagerApi = (
         payload,
       });
       return res.data as { message?: string; data?: ContractCommentDTO };
+    },
+    getContractCompliance: async (contractId: string) => {
+      const res = await client.get({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/compliance`,
+      });
+      return res.data as { message?: string; data?: ContractComplianceDTO };
+    },
+    approveComplianceItem: async (
+      contractId: string,
+      type: "policy" | "security",
+      typeId: string,
+      payload: ApprovalActionDTO,
+    ) => {
+      await assertValid(approvalActionSchema, payload);
+      const res = await client.post({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/compliance/${type}/${typeId}/approve`,
+        payload,
+      });
+      return res.data as { message?: string; success?: boolean };
     },
   };
 };

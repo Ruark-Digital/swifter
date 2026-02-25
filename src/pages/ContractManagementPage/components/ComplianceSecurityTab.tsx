@@ -1,18 +1,24 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Share2, Search } from "lucide-react";
+import { Share2, Search, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ContractComplianceDTO, contractManagerApi, ApprovalActionDTO } from "../api/contractManagerApi";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useToast } from "@/components/ui/use-toast";
+import { differenceInDays } from "date-fns";
 
 export type PolicyRow = {
   id: string;
   policyId: string;
   policyName: string;
   limit: string;
-  status: "Submitted" | "Pending Submission";
+  status: string;
 };
 
 export type SecurityRow = {
@@ -22,110 +28,265 @@ export type SecurityRow = {
   amount: string;
   dueDate: string;
   dueIn: string;
-  status: "Submitted" | "Pending Submission";
+  status: string;
 };
 
-const columns: ColumnDef<PolicyRow>[] = [
-  { accessorKey: "policyId", header: "Policy ID" },
-  { 
-    accessorKey: "policyName", 
-    header: "Policy Name",
-    cell: ({ getValue }) => <span className="text-slate-700">{getValue<string>()}</span>,
-  },
-  { 
-    accessorKey: "limit", 
-    header: "Limit",
-    cell: ({ getValue }) => <span className="font-semibold">{getValue<string>()}</span>,
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ getValue }) => {
-      const s = getValue<PolicyRow["status"]>();
-      const tone = s === "Submitted" 
-        ? "bg-green-100 text-green-700" 
-        : "bg-yellow-100 text-yellow-700";
-      return <Badge variant="secondary" className={`font-medium ${tone}`}>{s}</Badge>;
-    },
-  },
-  {
-    id: "actions",
-    header: "Action",
-    cell: () => (
-      <Button variant="link" className="text-green-600 font-semibold p-0 h-auto">
-        View
-      </Button>
-    ),
-  },
-];
+interface ComplianceSecurityTabProps {
+  isLoading?: boolean;
+  data?: ContractComplianceDTO;
+}
 
-const securityColumns: ColumnDef<SecurityRow>[] = [
-  { accessorKey: "securityId", header: "Security ID" },
-  { 
-    accessorKey: "securityType", 
-    header: "Security Type",
-    cell: ({ getValue }) => <span className="text-slate-700">{getValue<string>()}</span>,
-  },
-  { 
-    accessorKey: "amount", 
-    header: "Amount",
-    cell: ({ getValue }) => <span className="font-semibold">{getValue<string>()}</span>,
-  },
-  {
-    accessorKey: "dueDate",
-    header: "Date",
-    cell: ({ row }) => (
-      <div className="flex flex-col text-sm">
-        <div>
-          <span className="text-slate-500 mr-1">Due Date:</span>
-          <span className="font-medium text-slate-900">{row.original.dueDate}</span>
-        </div>
-        <div>
-          <span className="text-slate-500 mr-1">Due in:</span>
-          <span className="text-slate-900">{row.original.dueIn}</span>
-        </div>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ getValue }) => {
-      const s = getValue<SecurityRow["status"]>();
-      const tone = s === "Submitted" 
-        ? "bg-green-100 text-green-700" 
-        : "bg-yellow-100 text-yellow-700";
-      return <Badge variant="secondary" className={`font-medium ${tone}`}>{s}</Badge>;
-    },
-  },
-  {
-    id: "actions",
-    header: "Action",
-    cell: () => (
-      <Button variant="link" className="text-green-600 font-semibold p-0 h-auto">
-        View
-      </Button>
-    ),
-  },
-];
-
-const sampleRows: PolicyRow[] = [
-  { id: "1", policyId: "PL-2025-10", policyName: "Additional structural reinforcement", limit: "$2.5M", status: "Submitted" },
-  { id: "2", policyId: "PL-2025-10", policyName: "Additional structural reinforcement", limit: "$2.5M", status: "Pending Submission" },
-  { id: "3", policyId: "PL-2025-10", policyName: "Additional structural reinforcement", limit: "$2.5M", status: "Submitted" },
-  { id: "4", policyId: "PL-2025-10", policyName: "Additional structural reinforcement", limit: "$2.5M", status: "Submitted" },
-];
-
-const securitySampleRows: SecurityRow[] = [
-  { id: "1", securityId: "SC-2025-10", securityType: "Additional structural reinforcement", amount: "$2.5M", dueDate: "2025-03-25", dueIn: "-", status: "Submitted" },
-  { id: "2", securityId: "SC-2025-10", securityType: "Additional structural reinforcement", amount: "$2.5M", dueDate: "2025-03-25", dueIn: "5 days", status: "Pending Submission" },
-  { id: "3", securityId: "SC-2025-10", securityType: "Additional structural reinforcement", amount: "$2.5M", dueDate: "2025-03-25", dueIn: "-", status: "Submitted" },
-  { id: "4", securityId: "SC-2025-10", securityType: "Additional structural reinforcement", amount: "$2.5M", dueDate: "2025-03-25", dueIn: "5 days", status: "Pending Submission" },
-];
-
-const ComplianceSecurityTab: React.FC = () => {
+const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({ isLoading, data }) => {
   const [search, setSearch] = React.useState("");
-  const [activeView, setActiveView] = React.useState<"insurance" | "security">("insurance");
+  const [activeView, setActiveView] = React.useState<"policy" | "security">("policy");
+  const { id: contractId } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
+  const { isManager } = useUserRole();
+  const { toast } = useToast();
+
+  const { mutate: approveItem, isPending: isApproving } = useMutation({
+    mutationFn: async ({
+      type,
+      typeId,
+      payload,
+    }: {
+      type: "policy" | "security";
+      typeId: string;
+      payload: ApprovalActionDTO;
+    }) => {
+      if (!contractId) return;
+      return await contractManagerApi.approveComplianceItem(
+        contractId,
+        type,
+        typeId,
+        payload
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contract-compliance", contractId] });
+      toast({
+        title: "Success",
+        description: "Compliance item updated successfully",
+      });
+    },
+    onError: () => {
+      // error toast handled by toaster hook or global handler if desired
+    },
+  });
+
+  const handleApprove = (type: "policy" | "security", id: string) => {
+    approveItem({ type, typeId: id, payload: { action: "approved" } });
+  };
+
+  const handleReject = (type: "policy" | "security", id: string) => {
+    // For now, rejecting without comment. 
+    // In a real scenario, we might want to prompt for a comment.
+    approveItem({ type, typeId: id, payload: { action: "rejected" } });
+  };
+
+  const columns = useMemo<ColumnDef<PolicyRow>[]>(() => [
+    { accessorKey: "policyId", header: "Policy ID" },
+    { 
+      accessorKey: "policyName", 
+      header: "Policy Name",
+      cell: ({ getValue }) => <span className="text-slate-700">{getValue<string>()}</span>,
+    },
+    { 
+      accessorKey: "limit", 
+      header: "Limit",
+      cell: ({ getValue }) => <span className="font-semibold">{getValue<string>()}</span>,
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ getValue }) => {
+        const s = getValue<string>();
+        let tone = "bg-gray-100 text-gray-700";
+        if (s?.toLowerCase() === "approved" || s?.toLowerCase() === "submitted") tone = "bg-green-100 text-green-700";
+        if (s?.toLowerCase() === "pending") tone = "bg-yellow-100 text-yellow-700";
+        if (s?.toLowerCase() === "rejected") tone = "bg-red-100 text-red-700";
+        
+        return <Badge variant="secondary" className={`font-medium ${tone}`}>{s}</Badge>;
+      },
+    },
+    {
+      id: "actions",
+      header: "Action",
+      cell: ({ row }) => {
+        const status = row.original.status?.toLowerCase();
+        const showActions = isManager && (status === "pending" || status === "pending submission");
+        
+        return (
+          <div className="flex items-center gap-2">
+            <Button variant="link" className="text-green-600 font-semibold p-0 h-auto">
+              View
+            </Button>
+            {showActions && (
+              <>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
+                  onClick={() => handleApprove("policy", row.original.id)}
+                  disabled={isApproving}
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => handleReject("policy", row.original.id)}
+                  disabled={isApproving}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
+        );
+      },
+    },
+  ], [isManager, isApproving]);
+
+  const securityColumns = useMemo<ColumnDef<SecurityRow>[]>(() => [
+    { accessorKey: "securityId", header: "Security ID" },
+    { 
+      accessorKey: "securityType", 
+      header: "Security Type",
+      cell: ({ getValue }) => <span className="text-slate-700">{getValue<string>()}</span>,
+    },
+    { 
+      accessorKey: "amount", 
+      header: "Amount",
+      cell: ({ getValue }) => <span className="font-semibold">{getValue<string>()}</span>,
+    },
+    {
+      accessorKey: "dueDate",
+      header: "Date",
+      cell: ({ row }) => (
+        <div className="flex flex-col text-sm">
+          <div>
+            <span className="text-slate-500 mr-1">Due Date:</span>
+            <span className="font-medium text-slate-900">{row.original.dueDate}</span>
+          </div>
+          {row.original.dueIn && row.original.dueIn !== "-" && (
+            <div>
+              <span className="text-slate-500 mr-1">Due in:</span>
+              <span className="text-slate-900">{row.original.dueIn}</span>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ getValue }) => {
+        const s = getValue<string>();
+        let tone = "bg-gray-100 text-gray-700";
+        if (s?.toLowerCase() === "approved" || s?.toLowerCase() === "submitted") tone = "bg-green-100 text-green-700";
+        if (s?.toLowerCase() === "pending") tone = "bg-yellow-100 text-yellow-700";
+        if (s?.toLowerCase() === "rejected") tone = "bg-red-100 text-red-700";
+        return <Badge variant="secondary" className={`font-medium ${tone}`}>{s}</Badge>;
+      },
+    },
+    {
+      id: "actions",
+      header: "Action",
+      cell: ({ row }) => {
+        const status = row.original.status?.toLowerCase();
+        const showActions = isManager && (status === "pending" || status === "pending submission");
+        
+        return (
+          <div className="flex items-center gap-2">
+            <Button variant="link" className="text-green-600 font-semibold p-0 h-auto">
+              View
+            </Button>
+            {showActions && (
+              <>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
+                  onClick={() => handleApprove("security", row.original.id)}
+                  disabled={isApproving}
+                  aria-label="Approve security"
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => handleReject("security", row.original.id)}
+                  disabled={isApproving}
+                  aria-label="Reject security"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
+        );
+      },
+    },
+  ], [isManager, isApproving]);
+
+  const policyRows: PolicyRow[] = useMemo(() => {
+    if (!data?.policy) return [];
+    return data.policy.map(p => ({
+      id: p.id || "",
+      policyId: p.policyId || p.id || "-",
+      policyName: p.policyName || "-",
+      limit: p.limit || "-",
+      status: p.status || "Pending",
+    }));
+  }, [data?.policy]);
+
+  const securityRows: SecurityRow[] = useMemo(() => {
+    if (!data?.security) return [];
+    return data.security.map(s => {
+      const dueDate = s.expiryDate ? new Date(s.expiryDate).toLocaleDateString() : "-";
+      let dueIn = "-";
+      if (s.expiryDate) {
+        const days = differenceInDays(new Date(s.expiryDate), new Date());
+        if (days > 0) dueIn = `${days} days`;
+        else if (days === 0) dueIn = "Today";
+        else dueIn = "Overdue";
+      }
+
+      return {
+        id: s.id || "",
+        securityId: s.id || "-", // Using id as securityId if not provided
+        securityType: s.securityType || "-",
+        amount: s.amount || "-",
+        dueDate,
+        dueIn,
+        status: s.status || "Pending",
+      };
+    });
+  }, [data?.security]);
+
+  const filteredPolicyRows = useMemo(() => {
+    if (!search) return policyRows;
+    return policyRows.filter(row => 
+      row.policyName.toLowerCase().includes(search.toLowerCase()) ||
+      row.policyId.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [policyRows, search]);
+
+  const filteredSecurityRows = useMemo(() => {
+    if (!search) return securityRows;
+    return securityRows.filter(row => 
+      row.securityType.toLowerCase().includes(search.toLowerCase()) ||
+      row.securityId.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [securityRows, search]);
+
+  if (isLoading) {
+    return <div className="p-8 text-center text-slate-500">Loading compliance data...</div>;
+  }
 
   return (
     <div className="space-y-8">
@@ -142,21 +303,29 @@ const ComplianceSecurityTab: React.FC = () => {
         <div className="space-y-8">
           <div className="space-y-1">
             <p className="text-sm text-slate-500">Insurance Coverage</p>
-            <p className="text-base font-semibold text-slate-900">5 Coverages</p>
+            <p className="text-base font-semibold text-slate-900">
+              {data?.details?.coverage ? `${data.details.coverage} Coverages` : "-"}
+            </p>
           </div>
           <div className="space-y-1">
             <p className="text-sm text-slate-500">Contract Security</p>
-            <p className="text-base font-semibold text-slate-900">Yes</p>
+            <p className="text-base font-semibold text-slate-900">
+              {data?.details?.security ? "Yes" : "No"}
+            </p>
           </div>
         </div>
         <div className="space-y-8">
           <div className="space-y-1">
             <p className="text-sm text-slate-500">Insurance Expiry Date</p>
-            <p className="text-base font-semibold text-slate-900">April 30, 2025</p>
+            <p className="text-base font-semibold text-slate-900">
+              {data?.details?.expDate ? new Date(data.details.expDate).toLocaleDateString() : "-"}
+            </p>
           </div>
           <div className="space-y-1">
             <p className="text-sm text-slate-500">Security Type</p>
-            <p className="text-base font-semibold text-slate-900">5</p>
+            <p className="text-base font-semibold text-slate-900">
+              {data?.details?.securityType?.map((t) => t.name).join(", ") || "-"}
+            </p>
           </div>
         </div>
       </div>
@@ -167,10 +336,10 @@ const ComplianceSecurityTab: React.FC = () => {
         <div className="flex items-center gap-4">
           <div className="bg-slate-100 p-1 rounded-full inline-flex">
             <button
-              onClick={() => setActiveView("insurance")}
+              onClick={() => setActiveView("policy")}
               className={cn(
                 "px-4 py-2 rounded-full text-sm font-medium transition-colors",
-                activeView === "insurance"
+                activeView === "policy"
                   ? "bg-[#1E293B] text-white"
                   : "text-slate-500 hover:text-slate-900"
               )}
@@ -195,7 +364,7 @@ const ComplianceSecurityTab: React.FC = () => {
         <div className="space-y-4">
           <div className="flex items-center gap-4">
             <div className="font-medium text-slate-700 w-20">
-              {activeView === "insurance" ? "Policy" : "Security"}
+              {activeView === "policy" ? "Policy" : "Security"}
             </div>
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -209,15 +378,15 @@ const ComplianceSecurityTab: React.FC = () => {
           </div>
 
           <div className="border rounded-md bg-white">
-            {activeView === "insurance" ? (
+            {activeView === "policy" ? (
               <DataTable<PolicyRow> 
-                data={sampleRows} 
+                data={filteredPolicyRows} 
                 columns={columns} 
                 options={{ disableSelection: true, disablePagination: true }} 
               />
             ) : (
               <DataTable<SecurityRow> 
-                data={securitySampleRows} 
+                data={filteredSecurityRows} 
                 columns={securityColumns} 
                 options={{ disableSelection: true, disablePagination: true }} 
               />

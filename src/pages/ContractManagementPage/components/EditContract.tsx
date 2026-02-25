@@ -118,15 +118,6 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
     staleTime: 60_000,
   });
 
-  const personnelQuery = useQuery({
-    queryKey: useUserQueryKey(["contract-personnel"]),
-    queryFn: async () => {
-      const res = await getRequest({ url: "/contract/manager/personnel" });
-      return res.data as { status: number; message: string; data: { _id: string; name: string; email: string }[] };
-    },
-    staleTime: 60_000,
-  });
-
   const awardedQuery = useQuery({
     queryKey: useUserQueryKey(["awarded-solicitations"]),
     queryFn: async () => {
@@ -152,10 +143,8 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       contract.contractRelationship === "msa_project" ? "msa" :
       contract.contractRelationship === "standalone" ? "standalone" : "project";
 
-    const paymentTermId =
-      paymentTermsQuery.data?.data?.find((t) => t.name === contract.paymentTerms)?._id ?? "";
-    const termTypeId =
-      termTypesQuery.data?.data?.find((t) => t.name === contract.contractTerm)?._id ?? "";
+    const paymentTermId = contract.paymentTerms?._id ?? "";
+    const termTypeId = contract.contractTerm?._id ?? "";
 
     const documents =
       (contract.files ?? []).map((f) => ({
@@ -191,7 +180,7 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       ? new Date(contract.insurance.contractSecurityType[0].dueDate as unknown as string)
       : undefined;
     const securities =
-      (contract.insurance?.contractSecurityType ?? []).slice(1).map((s: any) => ({
+      (contract.insurance?.contractSecurityType ?? []).slice(1).map((s) => ({
         type: s.securityType,
         amount: s.amount,
         dueDate: s.dueDate ? new Date(s.dueDate) : undefined,
@@ -202,11 +191,11 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       name: contract.title ?? "",
       relationship,
       project: contract.project?._id ?? "",
-      awardedSolicitation: contract.solicitation ?? "",
+      awardedSolicitation: contract.solicitation?._id ?? "",
       type: contract.contractType?._id ?? "",
       category: contract.category ?? "",
       jobTitle: contract.jobTitle ?? "",
-      businessDivision: contract.businessDivision ?? "",
+      businessDivision: contract.businessDivision?._id ?? "",
       contractId: contract.contractId ?? "",
       description: contract.description ?? "",
       visibility: contract.visibility ?? "",
@@ -560,22 +549,15 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
               )}
               {step === 2 && (
                 <Step2ContractTeam
-                  internalStakeholderOptions={
-                    Array.isArray(personnelQuery.data?.data)
-                      ? personnelQuery.data.data.map((p) => ({
-                          label: p.email || p.name,
-                          value: p.email || p._id,
-                        }))
-                      : []
-                  }
+                  
                 />
               )}
               {step === 5 && (
-                <Step3ValuePayments
-                  control={control}
-                  paymentTermOptions={paymentTermOptions}
-                />
-              )}
+                  <Step3ValuePayments
+                    control={control}
+                    paymentTermOptions={paymentTermOptions}
+                  />
+                )}
               {step === 3 && (
                 <Step4Timeline
                   control={control}

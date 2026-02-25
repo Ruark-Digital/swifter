@@ -3,14 +3,14 @@ import { createCompanyAdminApi } from "../api/companyAdminApi";
 
 type Spy<TArgs> = {
   calls: TArgs[];
-  fn: (args: TArgs) => Promise<{ data: unknown }>;
+  fn: (args: TArgs) => Promise<any>;
 };
 
 const createAsyncSpy = <TArgs,>(impl?: (args: TArgs) => unknown): Spy<TArgs> => {
   const calls: TArgs[] = [];
   const fn = async (args: TArgs) => {
     calls.push(args);
-    return { data: impl ? impl(args) : {} };
+    return { data: impl ? impl(args) : {} } as any;
   };
   return { calls, fn };
 };
@@ -37,7 +37,7 @@ test.describe("companyAdminApi (unit)", () => {
         if (attempts === 1) {
           throw new Error("network");
         }
-        return { data: { data: { _id: "c-2", title: "Retry Contract" } } };
+        return { data: { data: { _id: "c-2", title: "Retry Contract" } } } as any;
       },
     });
 

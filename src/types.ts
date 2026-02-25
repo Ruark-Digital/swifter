@@ -152,14 +152,14 @@ export interface ContractDetail {
   holdBackBank:           number;
   paymentTerms:           Company;
   paymentStructure:       string;
-  deliverables:           string[];
-  insurance:              string;
+  deliverables:           ContractDeliverable[];
+  insurance:              ContractInsurance;
   startDate:              Date;
   endDate:                Date;
   duration:               number;
   files:                  File[];
   currentApprovalLevel:   number;
-  approvers:              Approver[];
+  approvers:              ContractApprover[];
   status:                 string;
   timezone:               string;
   isDeleted:              boolean;
@@ -170,6 +170,41 @@ export interface ContractDetail {
   __v:                    number;
   holdBackReleased:       number;
   savingAmount:           number;
+}
+
+export interface ContractDeliverable {
+  name: string;
+  dueDate?: Date | string;
+  _id?: string;
+}
+
+export interface ContractInsurance {
+  policy: {
+    policyName: string;
+    value?: string | number;
+    limit?: string | number;
+    _id?: string;
+  }[];
+  contractSecurityType: {
+    securityType: string;
+    amount?: string | number;
+    dueDate?: Date | string;
+    _id?: string;
+  }[];
+  expiryDate?: Date | string;
+  contractSecurity?: boolean;
+}
+
+export interface ContractApprover {
+  group: string;
+  user: {
+    user: string;
+    userRef?: string;
+    email?: string;
+  }[];
+  level: number;
+  amount?: number;
+  _id?: string;
 }
 
 export interface Approver {

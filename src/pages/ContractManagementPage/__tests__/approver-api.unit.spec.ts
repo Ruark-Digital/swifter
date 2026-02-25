@@ -1,6 +1,5 @@
 import { test, expect } from "@playwright/test";
 import { createApproverApi } from "../api/approverApi";
-import { ApiResponse, ContractDetail } from "@/types";
 
 type Spy<TArgs> = {
   calls: TArgs[];
