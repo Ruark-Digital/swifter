@@ -20,6 +20,8 @@ import type {
   ContractClaimStatsDTO,
   ContractClaimDTO,
   ManagerListClaimsQuery,
+  ContractAmendmentStatsDTO,
+  ContractAmendmentDTO,
 } from "./contractManagerApi";
 
 export interface ApprovalActionDTO {
@@ -297,6 +299,46 @@ export const createApproverApi = (
       payload,
     });
     return res.data as { message?: string; data?: ContractClaimDTO };
+  },
+
+  getAmendmentStats: async (contractId: string) => {
+    const res = await client.get({
+      url: `/contract/approver/contracts/${contractId}/amendment/stats`,
+    });
+    return res.data as { message?: string; data?: ContractAmendmentStatsDTO };
+  },
+
+  listAmendments: async (contractId: string) => {
+    const res = await client.get({
+      url: `/contract/approver/contracts/${contractId}/amendment`,
+    });
+    return res.data as { message?: string; data?: ContractAmendmentDTO[] };
+  },
+
+  getAmendmentDetail: async (contractId: string, amendmentId: string) => {
+    const res = await client.get({
+      url: `/contract/approver/contracts/${contractId}/amendment/${amendmentId}`,
+    });
+    return res.data as { message?: string; data?: ContractAmendmentDTO };
+  },
+
+  getAmendmentApproveStatus: async (contractId: string, amendmentId: string) => {
+    const res = await client.get({
+      url: `/contract/approver/contracts/${contractId}/amendment/${amendmentId}/approve/status`,
+    });
+    return res.data as { message?: string; data?: { status?: boolean } };
+  },
+
+  approveAmendment: async (
+    contractId: string,
+    amendmentId: string,
+    payload: ApprovalActionDTO
+  ) => {
+    const res = await client.post({
+      url: `/contract/approver/contracts/${contractId}/amendment/${amendmentId}/approve`,
+      payload,
+    });
+    return res.data as { message?: string; data?: ContractAmendmentDTO };
   },
 });
 

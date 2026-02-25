@@ -540,7 +540,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract }) => 
       : "-";
   const contigency = contract?.contigency ?? "-";
   const paymentStructure = contract?.paymentStructure ?? "-";
-  const paymentTerm = contract?.paymentTerms ?? "-";
+  const paymentTerm = contract?.paymentTerms?.name ?? "-";
 
   return (
     <TabsContent value="payment-summary" className="space-y-8">

@@ -1,11 +1,7 @@
 import React from "react";
 import { TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Forge, Forger, useForge } from "@/lib/forge";
 import {
   TextArea,
@@ -25,7 +21,10 @@ import type { ApiResponseError } from "@/types";
 import {
   contractManagerApi,
   type ContractAmendmentDTO,
+  type ContractAmendmentStatsDTO,
 } from "../api/contractManagerApi";
+import { useUserRole } from "@/hooks/useUserRole";
+import { approverApi } from "../api/approverApi";
 
 type CreateAmendmentFormValues = {
   amendmentTitle: string;
@@ -148,13 +147,35 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
 
               <Forger
                 name="impactType"
-                component={({ value, onChange }: { value?: string; onChange: (val: string) => void }) => (
+                component={({
+                  value,
+                  onChange,
+                }: {
+                  value?: string;
+                  onChange: (val: string) => void;
+                }) => (
                   <div className="flex flex-wrap gap-6">
                     {[
-                      { id: "impact-time", value: "time", label: "Time Impact" },
-                      { id: "impact-cost", value: "cost", label: "Cost Impact" },
-                      { id: "impact-time-cost", value: "time_cost", label: "Time & Cost Impact" },
-                      { id: "impact-other", value: "other", label: "Other Combinations" },
+                      {
+                        id: "impact-time",
+                        value: "time",
+                        label: "Time Impact",
+                      },
+                      {
+                        id: "impact-cost",
+                        value: "cost",
+                        label: "Cost Impact",
+                      },
+                      {
+                        id: "impact-time-cost",
+                        value: "time_cost",
+                        label: "Time & Cost Impact",
+                      },
+                      {
+                        id: "impact-other",
+                        value: "other",
+                        label: "Other Combinations",
+                      },
                     ].map((option) => {
                       const isSelected = value === option.value;
                       return (
@@ -222,10 +243,18 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
                 <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4 shadow-[0_-1px_4px_0px_rgba(0,26,43,0.05)] space-y-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium text-[#0F0F0F]">Scope</div>
+                      <div className="text-sm font-medium text-[#0F0F0F]">
+                        Scope
+                      </div>
                       <Forger
                         name="scopeEnabled"
-                        component={({ value, onChange }: { value?: boolean; onChange: (val: boolean) => void }) => (
+                        component={({
+                          value,
+                          onChange,
+                        }: {
+                          value?: boolean;
+                          onChange: (val: boolean) => void;
+                        }) => (
                           <Checkbox
                             checked={!!value}
                             onCheckedChange={(checked) => onChange(!!checked)}
@@ -249,7 +278,13 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
                       </div>
                       <Forger
                         name="expiryEnabled"
-                        component={({ value, onChange }: { value?: boolean; onChange: (val: boolean) => void }) => (
+                        component={({
+                          value,
+                          onChange,
+                        }: {
+                          value?: boolean;
+                          onChange: (val: boolean) => void;
+                        }) => (
                           <Checkbox
                             checked={!!value}
                             onCheckedChange={(checked) => onChange(!!checked)}
@@ -268,10 +303,18 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium text-[#0F0F0F]">Cost</div>
+                      <div className="text-sm font-medium text-[#0F0F0F]">
+                        Cost
+                      </div>
                       <Forger
                         name="costEnabled"
-                        component={({ value, onChange }: { value?: boolean; onChange: (val: boolean) => void }) => (
+                        component={({
+                          value,
+                          onChange,
+                        }: {
+                          value?: boolean;
+                          onChange: (val: boolean) => void;
+                        }) => (
                           <Checkbox
                             checked={!!value}
                             onCheckedChange={(checked) => onChange(!!checked)}
@@ -290,10 +333,18 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium text-[#0F0F0F]">Clause</div>
+                      <div className="text-sm font-medium text-[#0F0F0F]">
+                        Clause
+                      </div>
                       <Forger
                         name="clauseEnabled"
-                        component={({ value, onChange }: { value?: boolean; onChange: (val: boolean) => void }) => (
+                        component={({
+                          value,
+                          onChange,
+                        }: {
+                          value?: boolean;
+                          onChange: (val: boolean) => void;
+                        }) => (
                           <Checkbox
                             checked={!!value}
                             onCheckedChange={(checked) => onChange(!!checked)}
@@ -312,10 +363,18 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium text-[#0F0F0F]">Others</div>
+                      <div className="text-sm font-medium text-[#0F0F0F]">
+                        Others
+                      </div>
                       <Forger
                         name="othersEnabled"
-                        component={({ value, onChange }: { value?: boolean; onChange: (val: boolean) => void }) => (
+                        component={({
+                          value,
+                          onChange,
+                        }: {
+                          value?: boolean;
+                          onChange: (val: boolean) => void;
+                        }) => (
                           <Checkbox
                             checked={!!value}
                             onCheckedChange={(checked) => onChange(!!checked)}
@@ -355,13 +414,11 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
                     {
                       "application/pdf": [".pdf"],
                       "application/msword": [".doc"],
-                      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
-                        ".docx",
-                      ],
+                      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                        [".docx"],
                       "application/vnd.ms-excel": [".xls"],
-                      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
-                        ".xlsx",
-                      ],
+                      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                        [".xlsx"],
                       "application/zip": [".zip"],
                       "image/png": [".png"],
                       "image/jpeg": [".jpeg", ".jpg"],
@@ -436,54 +493,73 @@ type Props = {
 };
 
 const AmendmentsTabContent: React.FC<Props> = ({ contractId }) => {
+  const { isApprover } = useUserRole();
   const statsQueryKey = useUserQueryKey([
     "contract-amendments-stats",
     contractId,
+    isApprover ? "approver" : "manager",
   ]);
   const amendmentsQueryKey = useUserQueryKey([
     "contract-amendments",
     contractId,
+    isApprover ? "approver" : "manager",
   ]);
 
-  const {
-    data: statsRes,
-    isLoading: isStatsLoading,
-  } = useQuery<{ message?: string; data?: { accepted?: number; all?: number; rejected?: number } }, ApiResponseError>({
+  const { data: statsRes, isLoading: isStatsLoading } = useQuery<
+    {
+      message?: string;
+      data?: ContractAmendmentStatsDTO;
+    },
+    ApiResponseError
+  >({
     queryKey: statsQueryKey,
-    queryFn: async () => await contractManagerApi.getAmendmentStats(contractId),
+    queryFn: async () => {
+      if (isApprover) {
+        return await approverApi.getAmendmentStats(contractId);
+      }
+      return await contractManagerApi.getAmendmentStats(contractId);
+    },
     enabled: Boolean(contractId),
     staleTime: 60000,
     retry: false,
   });
 
-  const {
-    data: amendmentsRes,
-    isLoading: isAmendmentsLoading,
-  } = useQuery<{ message?: string; data?: ContractAmendmentDTO[] }, ApiResponseError>({
+  const { data: amendmentsRes, isLoading: isAmendmentsLoading } = useQuery<
+    { message?: string; data?: ContractAmendmentDTO[] },
+    ApiResponseError
+  >({
     queryKey: amendmentsQueryKey,
-    queryFn: async () => await contractManagerApi.listAmendments(contractId),
+    queryFn: async () => {
+      if (isApprover) {
+        return await approverApi.listAmendments(contractId);
+      }
+      return await contractManagerApi.listAmendments(contractId);
+    },
     enabled: Boolean(contractId),
   });
 
   const amendmentsRows = React.useMemo<AmendmentRow[]>(() => {
     const amendments = amendmentsRes?.data ?? [];
-    const normalizeVendorStatus = (value?: string): AmendmentRow["vendorStatus"] => {
+    const normalizeVendorStatus = (
+      value?: string,
+    ): AmendmentRow["vendorStatus"] => {
       const normalized = value?.toLowerCase();
-      if (normalized === "accepted" || normalized === "approved") return "Accepted";
+      if (normalized === "accepted" || normalized === "approved")
+        return "Accepted";
       if (normalized === "rejected") return "Rejected";
       return "Pending";
     };
     const normalizeStatus = (value?: string): AmendmentRow["status"] => {
       const normalized = value?.toLowerCase();
-      if (normalized === "approved" || normalized === "accepted") return "Approved";
+      if (normalized === "approved" || normalized === "accepted")
+        return "Approved";
       if (normalized === "rejected") return "Rejected";
       return "Pending";
     };
     return amendments.map((amendment, index) => {
       const amendmentId =
         amendment.amendmentId || amendment._id || `AM-${index + 1}`;
-      const amendmentTitle =
-        amendment.title || amendment.amendmentTitle || "-";
+      const amendmentTitle = amendment.title || amendment.amendmentTitle || "-";
       return {
         amendmentId,
         amendmentTitle,
@@ -508,27 +584,26 @@ const AmendmentsTabContent: React.FC<Props> = ({ contractId }) => {
             />
             Export Report
           </Button>
-          
-          <CreateAmendmentDialog
-            trigger={
-              <Button className="rounded-xl bg-[#2A4467] px-4 text-base font-semibold text-white hover:bg-[#2A4467]/90">
-                <img
-                  src="/assets/contract-management/amendments/plus.svg"
-                  className="mr-2 h-5 w-5"
-                />
-                Create Amendment
-              </Button>
-            }
-          />
+
+          {!isApprover && (
+            <CreateAmendmentDialog
+              trigger={
+                <Button className="rounded-xl bg-[#2A4467] px-4 text-base font-semibold text-white hover:bg-[#2A4467]/90">
+                  <img
+                    src="/assets/contract-management/amendments/plus.svg"
+                    className="mr-2 h-5 w-5"
+                  />
+                  Create Amendment
+                </Button>
+              }
+            />
+          )}
         </div>
       </div>
 
       <AmendmentsStatsCards stats={statsRes?.data} isLoading={isStatsLoading} />
 
-      <AmendmentsTable
-        rows={amendmentsRows}
-        isLoading={isAmendmentsLoading}
-      />
+      <AmendmentsTable rows={amendmentsRows} isLoading={isAmendmentsLoading} />
     </TabsContent>
   );
 };
