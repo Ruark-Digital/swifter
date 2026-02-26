@@ -19,6 +19,7 @@ import { getFileIcon } from "@/lib/fileUtils";
 
 type Props = {
   contractId: string;
+  isActive?: boolean;
 };
 
 type RateSheetRow = {
@@ -204,7 +205,7 @@ const RateSheetDetailsSheet: React.FC<{
   );
 };
 
-const RateSheetsTabContent: React.FC<Props> = ({ contractId }) => {
+const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   const [search, setSearch] = React.useState("");
   const { data, isLoading } = useQuery({
     queryKey: ["rate-sheets", contractId],
@@ -225,7 +226,7 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId }) => {
       }));
       return rows;
     },
-    enabled: !!contractId,
+    enabled: !!contractId && !!isActive,
   });
 
   const filtered = React.useMemo(() => {

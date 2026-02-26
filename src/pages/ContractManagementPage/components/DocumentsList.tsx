@@ -4,6 +4,7 @@ import { Eye, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { File as ContractDocument } from "@/types";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
+import { DocumentViewer } from "@/components/ui/DocumentViewer";
 
 type Doc = {
   id: string;
@@ -19,6 +20,8 @@ type Props = {
 };
 
 const DocumentsList: React.FC<Props> = ({ files }) => {
+  const [viewerOpen, setViewerOpen] = React.useState(false);
+  const [selectedDoc, setSelectedDoc] = React.useState<Doc | null>(null);
   const docs = React.useMemo<Doc[]>(() => {
     if (!files?.length) return [];
     return files.map((file, index) => {
@@ -35,6 +38,22 @@ const DocumentsList: React.FC<Props> = ({ files }) => {
       };
     });
   }, [files]);
+
+  const handlePreview = (doc: Doc) => {
+    if (!doc.url) return;
+    setSelectedDoc(doc);
+    setViewerOpen(true);
+  };
+
+  const handleDownload = (doc: Doc) => {
+    if (!doc.url) return;
+    const a = window.document.createElement("a");
+    a.href = doc.url;
+    a.download = doc.name;
+    window.document.body.appendChild(a);
+    a.click();
+    window.document.body.removeChild(a);
+  };
 
   return (
     <div className="space-y-4">
@@ -60,17 +79,28 @@ const DocumentsList: React.FC<Props> = ({ files }) => {
               </div>
 
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" aria-label="Preview"><Eye className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" aria-label="Download"><Download className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" aria-label="Preview" onClick={() => handlePreview(d)}><Eye className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" aria-label="Download" onClick={() => handleDownload(d)}><Download className="h-4 w-4" /></Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
       )}
+      {selectedDoc && (
+        <DocumentViewer
+          isOpen={viewerOpen}
+          onClose={() => {
+            setViewerOpen(false);
+            setSelectedDoc(null);
+          }}
+          fileUrl={selectedDoc.url as string}
+          fileName={selectedDoc.name}
+          fileType={getFileExtension(selectedDoc.name, selectedDoc.type)}
+        />
+      )}
     </div>
   );
 };
 
 export default DocumentsList;
-

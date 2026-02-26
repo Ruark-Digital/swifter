@@ -21,9 +21,10 @@ import { approverApi } from "../api/approverApi";
 
 type Props = {
   contractId: string;
+  isActive?: boolean;
 };
 
-const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
+const ChangeTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   const { isVendor, isManager, isApprover } = useUserRole();
   const [activeTab, setActiveTab] = React.useState<ChangeTabValue>("all");
   const [pagination, setPagination] = React.useState<PaginationState>({
@@ -47,7 +48,7 @@ const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
       }
       return await approverApi.getChangeStats(contractId);
     },
-    enabled: Boolean(contractId),
+    enabled: Boolean(contractId) && !!isActive,
     staleTime: 60000,
   });
 
@@ -77,7 +78,7 @@ const ChangeTabContent: React.FC<Props> = ({ contractId }) => {
       }
       return await approverApi.listChanges(contractId, baseQuery);
     },
-    enabled: Boolean(contractId),
+    enabled: Boolean(contractId) && !!isActive,
     staleTime: 60000,
   });
 

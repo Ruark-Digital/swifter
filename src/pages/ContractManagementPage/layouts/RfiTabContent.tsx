@@ -332,9 +332,10 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
 
 type Props = {
   contractId: string;
+  isActive?: boolean;
 };
 
-const RfiTabContent: React.FC<Props> = ({ contractId }) => {
+const RfiTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -358,7 +359,7 @@ const RfiTabContent: React.FC<Props> = ({ contractId }) => {
         ? await approverApi.listRfis(contractId, query)
         : await contractManagerApi.listRfis(contractId, query);
     },
-    enabled: Boolean(contractId),
+    enabled: Boolean(contractId) && !!isActive,
   });
 
   const rfiRows = rfisRes?.data?.contractRfis ?? [];

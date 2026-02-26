@@ -404,9 +404,10 @@ const UpdateSavingsDialog: React.FC<{ trigger: React.ReactElement }> = ({
 type Props = {
   contractId: string;
   contract?: ContractDetail | null;
+  isActive?: boolean;
 };
 
-const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract }) => {
+const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract, isActive }) => {
   const { isVendor, isProcurement, isCompanyAdmin, isSuperAdmin } = useUserRole();
   const isManager = isProcurement || isCompanyAdmin || isSuperAdmin;
 
@@ -431,7 +432,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract }) => 
   } = useQuery({
     queryKey: holdbacksQueryKey,
     queryFn: () => contractManagerApi.listPaymentHoldbacks(contractId),
-    enabled: Boolean(contractId) && isManager,
+    enabled: Boolean(contractId) && isManager && !!isActive,
     staleTime: 60000,
     retry: false,
   });
@@ -443,7 +444,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract }) => 
   } = useQuery({
     queryKey: savingsQueryKey,
     queryFn: () => contractManagerApi.listPaymentSavings(contractId),
-    enabled: Boolean(contractId) && isManager,
+    enabled: Boolean(contractId) && isManager && !!isActive,
     staleTime: 60000,
     retry: false,
   });

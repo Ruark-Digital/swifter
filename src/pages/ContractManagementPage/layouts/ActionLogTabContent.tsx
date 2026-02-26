@@ -6,7 +6,9 @@ import { Search } from "lucide-react";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 
-const ActionLogTabContent: React.FC = () => {
+type Props = { isActive?: boolean };
+
+const ActionLogTabContent: React.FC<Props> = () => {
   type ActionLogRow = {
     actionId: string;
     module: string;
@@ -149,4 +151,3 @@ const ActionLogTabContent: React.FC = () => {
 };
 
 export default ActionLogTabContent;
-

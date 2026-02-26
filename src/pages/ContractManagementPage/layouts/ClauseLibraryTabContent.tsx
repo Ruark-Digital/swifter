@@ -145,7 +145,9 @@ function ClauseCard({ title, risk, riskTone, summary, fullDetails, ratesValues }
   );
 }
 
-const ClauseLibraryTabContent: React.FC = () => {
+type Props = { isActive?: boolean };
+
+const ClauseLibraryTabContent: React.FC<Props> = () => {
   return (
     <TabsContent value="clause-library" className="space-y-6 pb-8">
       <div className="flex max-w-[1152px] flex-col gap-4 bg-white px-6 py-4">

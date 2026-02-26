@@ -392,6 +392,25 @@ export type ContractInvoiceStatsDTO = {
   rejected?: number;
 };
 
+export type ContractLemDTO = {
+  title?: string;
+  description?: string;
+  amount?: number;
+  files?: Array<{
+    name?: string;
+    url?: string;
+    type?: string;
+    size?: string;
+  }>;
+};
+
+export type ManagerListLemsQuery = {
+  lemId?: string;
+  title?: string;
+  page?: number;
+  limit?: number;
+};
+
 export type ContractApproverSummary = {
   approverId?: string;
   name?: string;
@@ -850,6 +869,51 @@ export const createContractManagerApi = (
         url: `${MANAGER_CONTRACTS_PREFIX}/invoice/${invoiceId}`,
       });
       return res.data as { message?: string; data?: ContractInvoiceDTO };
+    },
+    listLems: async (contractId: string, query?: ManagerListLemsQuery) => {
+      const res = await client.get({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/lems`,
+        config: query ? { params: query } : undefined,
+      });
+      return res.data as {
+        message?: string;
+        data?: {
+          page?: number;
+          limit?: number;
+          resp?: ContractLemDTO[];
+          count?: number;
+        };
+      };
+    },
+    getLemDetail: async (contractId: string, lemId: string) => {
+      const res = await client.get({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/lems/${lemId}`,
+      });
+      return res.data as { message?: string; data?: ContractLemDTO };
+    },
+    getLemApproveStatus: async (contractId: string, lemId: string) => {
+      const res = await client.get({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/lems/${lemId}/approve/status`,
+      });
+      return res.data as { message?: string; data?: { status?: string } };
+    },
+    approveLem: async (
+      contractId: string,
+      lemId: string,
+      payload: ApprovalActionDTO,
+    ) => {
+      await assertValid(approvalActionSchema, payload);
+      const res = await client.post({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/lems/${lemId}/approve`,
+        payload,
+      });
+      return res.data as { message?: string; data?: unknown };
+    },
+    getLemRateSheet: async (contractId: string, lemId: string) => {
+      const res = await client.get({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/lems/${lemId}/ratesheet`,
+      });
+      return res.data as { message?: string; data?: { sheet?: unknown } };
     },
     getAmendmentStats: async (contractId: string) => {
       const res = await client.get({

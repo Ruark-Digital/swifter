@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React from "react";
 import {
   Dialog,
@@ -367,7 +368,7 @@ type SendForApprovalDialogProps = {
   control: any;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSendForApproval: () => void;
+  onSendForApproval: (signatories: string[]) => void;
 };
 
 const SendForApprovalDialog = React.memo(
@@ -595,8 +596,18 @@ const SendForApprovalDialog = React.memo(
                 type="button"
                 className="h-12 px-8 rounded-xl bg-[#2A4467] hover:bg-[#1e3252] text-white"
                 onClick={() => {
+                  const sigs = assignedApprovers
+                    .map((approver, index) => {
+                      return (
+                        approver?.value ||
+                        approver?.id ||
+                        approver?.email ||
+                        getApproverKey(approver, index)
+                      );
+                    })
+                    .filter(Boolean) as string[];
                   onOpenChange(false);
-                  onSendForApproval();
+                  onSendForApproval(sigs);
                 }}
               >
                 Send for Approval
@@ -610,7 +621,7 @@ const SendForApprovalDialog = React.memo(
 );
 
 const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
-  const { control, getValues, reset } = useForge<CreateContractFormData>({
+  const { control, getValues, reset, trigger: formTrigger } = useForge<CreateContractFormData>({
     resolver: yupResolver(schema),
     defaultValues,
     mode: "onChange",
@@ -619,8 +630,12 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
   const [open, setOpen] = React.useState(false);
   const [step, setStep] = React.useState(1);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
+  const [signatories, setSignatories] = React.useState<string[]>([]);
   const totalSteps = STEP_TITLES.length;
-  const handleSendForApproval = React.useCallback(() => setStep(9), []);
+  const handleSendForApproval = React.useCallback((sigs: string[]) => {
+    setSignatories(sigs);
+    setStep(9);
+  }, []);
 
   const { success, error } = useToastHandler();
   const qc = useQueryClient();
@@ -738,6 +753,69 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       error("Failed to create contract", e);
     },
   });
+
+  const STEP_FIELDS: Record<number, Array<keyof CreateContractFormData>> = {
+    1: [
+      "name",
+      "relationship",
+      "project",
+      "awardedSolicitation",
+      "type",
+      "category",
+      "manager",
+      "jobTitle",
+      "contractId",
+      "rating",
+      "description",
+      "businessDivision",
+    ],
+    2: ["manager", "jobTitle", "vendor", "personnel", "internalTeam", "visibility"],
+    3: [
+      "effectiveDate",
+      "endDate",
+      "duration",
+      "termType",
+      "draftStartDate",
+      "draftEndDate",
+      "reviewStartDate",
+      "reviewEndDate",
+      "approvalStartDate",
+      "approvalEndDate",
+      "executionStartDate",
+      "executionEndDate",
+    ],
+    4: ["deliverables"],
+    5: [
+      "contractValue",
+      "contingency",
+      "holdback",
+      "paymentStructure",
+      "milestones",
+      "paymentTerm",
+    ],
+    6: [
+      "insuranceExpiryDate",
+      "insurancePolicies",
+      "contractSecurity",
+      "securityType",
+      "securityAmount",
+      "securityDueDate",
+      "securityExpiryDate",
+      "securities",
+    ],
+    7: ["documents"],
+    8: ["approvalGroups"],
+  };
+
+  const validateStep = React.useCallback(
+    async (currentStep: number) => {
+      const fields = STEP_FIELDS[currentStep] ?? [];
+      if (!fields.length) return true;
+      const ok = await formTrigger(fields as any, { shouldFocus: true });
+      return ok;
+    },
+    [formTrigger],
+  );
 
   const buildPayload = React.useCallback(
     (data: CreateContractFormData, status: "draft" | "publish") => {
@@ -969,6 +1047,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         contractFormationStage,
         rating: data.rating || 5,
         status: status,
+        signatories: signatories && signatories.length > 0 ? signatories : undefined,
       };
 
       // Remove undefined fields to avoid sending undeclared values
@@ -984,6 +1063,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       awardedQuery.data?.data,
       paymentTermsQuery.data?.data,
       termTypesQuery.data?.data,
+      signatories,
     ],
   );
 
@@ -1071,12 +1151,12 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
                   <Button
                     type="button"
                     className="w-full h-12 rounded-xl"
-                    onClick={() =>
-                      (control as any)?.handleSubmit?.(
-                        () => setStep(2),
-                        () => {},
-                      )()
-                    }
+                    onClick={async () => {
+                      const ok = await validateStep(1);
+                      if (ok) {
+                        setStep(2);
+                      }
+                    }}
                   >
                     Continue
                   </Button>
@@ -1108,18 +1188,15 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
                       <Button
                         type="button"
                         className="w-32 h-12 rounded-xl"
-                        onClick={() =>
-                          (control as any)?.handleSubmit?.(
-                            () => {
-                              if (step === 8) {
-                                setIsApprovalDialogOpen(true);
-                                return;
-                              }
-                              setStep(Math.min(totalSteps, step + 1));
-                            },
-                            () => {},
-                          )()
-                        }
+                        onClick={async () => {
+                          const ok = await validateStep(step);
+                          if (!ok) return;
+                          if (step === 8) {
+                            setIsApprovalDialogOpen(true);
+                            return;
+                          }
+                          setStep(Math.min(totalSteps, step + 1));
+                        }}
                       >
                         Continue
                       </Button>

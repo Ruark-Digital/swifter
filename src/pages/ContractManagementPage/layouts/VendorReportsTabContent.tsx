@@ -256,7 +256,7 @@ const ReportDetailsSheet: React.FC<{
   );
 };
 
-function VendorReportsTabContent({ contractId }: { contractId: string }) {
+function VendorReportsTabContent({ contractId, isActive }: { contractId: string; isActive?: boolean }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 300);
@@ -277,7 +277,7 @@ function VendorReportsTabContent({ contractId }: { contractId: string }) {
       });
       return response.data?.data?.reports || [];
     },
-    enabled: !!contractId,
+    enabled: !!contractId && !!isActive,
   });
 
   // Fetch reports stats
@@ -292,7 +292,7 @@ function VendorReportsTabContent({ contractId }: { contractId: string }) {
       });
       return response.data?.data;
     },
-    enabled: !!contractId,
+    enabled: !!contractId && !!isActive,
     staleTime: 60_000,
   });
 

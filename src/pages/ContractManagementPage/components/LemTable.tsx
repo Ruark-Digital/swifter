@@ -38,6 +38,8 @@ import {
 } from "lucide-react";
 import { useToastHandler } from "@/hooks/useToaster";
 import { ApiResponse, ApiResponseError } from "@/types";
+import { useUserRole } from "@/hooks/useUserRole";
+import { contractManagerApi } from "../api/contractManagerApi";
 
 export type LemRow = {
   id: string;
@@ -107,9 +109,14 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   contractId,
   lemId,
 }) => {
+  const { isApprover, isManager } = useUserRole();
   const { data: lemDetail, isLoading: detailLoading } = useQuery({
     queryKey: ["lem-detail", contractId, lemId],
     queryFn: async () => {
+      if (isManager && !isApprover) {
+        const res = await contractManagerApi.getLemDetail(contractId, lemId);
+        return res?.data;
+      }
       const res = await getRequest({
         url: `/contract/approver/contract/${contractId}/lems/${lemId}`,
       });
@@ -121,6 +128,10 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   const { data: rateSheet, isLoading: sheetLoading } = useQuery({
     queryKey: ["lem-rate-sheet", contractId, lemId],
     queryFn: async () => {
+      if (isManager && !isApprover) {
+        const res = await contractManagerApi.getLemRateSheet(contractId, lemId);
+        return res?.data?.sheet;
+      }
       const res = await getRequest({
         url: `/contract/user/contracts/${contractId}/lems/${lemId}/ratesheet`,
       });
@@ -643,6 +654,7 @@ const ApproveLemForm: React.FC<{ contractId: string; lemId: string }> = ({
   lemId,
 }) => {
   const toast = useToastHandler();
+  const { isApprover, isManager } = useUserRole();
   
   const schema = yup.object().shape({
     note: yup.string().optional(),
@@ -657,10 +669,15 @@ const ApproveLemForm: React.FC<{ contractId: string; lemId: string }> = ({
   const approveMutation = useMutation<ApiResponse, ApiResponseError, { note?: string }>({
     mutationKey: ["approve-lem", contractId, lemId],
     mutationFn: async (data: { note?: string }) =>
-      await postRequest({
-        url: `/contract/approver/contract/${contractId}/lems/${lemId}/approve`,
-        payload: { action: "approved", comment: data.note },
-      }),
+      isManager && !isApprover
+        ? (await contractManagerApi.approveLem(contractId, lemId, {
+            action: "approved",
+            comment: data.note,
+          })) as unknown as ApiResponse
+        : await postRequest({
+            url: `/contract/approver/contract/${contractId}/lems/${lemId}/approve`,
+            payload: { action: "approved", comment: data.note },
+          }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lems", contractId] });
       queryClient.invalidateQueries({ queryKey: ["lem-detail", contractId, lemId] });

@@ -490,9 +490,10 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
 
 type Props = {
   contractId: string;
+  isActive?: boolean;
 };
 
-const AmendmentsTabContent: React.FC<Props> = ({ contractId }) => {
+const AmendmentsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   const { isApprover } = useUserRole();
   const statsQueryKey = useUserQueryKey([
     "contract-amendments-stats",
@@ -519,7 +520,7 @@ const AmendmentsTabContent: React.FC<Props> = ({ contractId }) => {
       }
       return await contractManagerApi.getAmendmentStats(contractId);
     },
-    enabled: Boolean(contractId),
+    enabled: Boolean(contractId) && !!isActive,
     staleTime: 60000,
     retry: false,
   });
@@ -535,7 +536,7 @@ const AmendmentsTabContent: React.FC<Props> = ({ contractId }) => {
       }
       return await contractManagerApi.listAmendments(contractId);
     },
-    enabled: Boolean(contractId),
+    enabled: Boolean(contractId) && !!isActive,
   });
 
   const amendmentsRows = React.useMemo<AmendmentRow[]>(() => {

@@ -52,6 +52,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 const formatContractStatus = (status?: ContractDetail["status"]) => {
   if (status === "active")
@@ -83,6 +84,10 @@ const ContractDetailPage: React.FC = () => {
   const lastErrorRef = React.useRef<unknown>(null);
   const { isVendor, isApprover, isViewOnly, isCompanyAdmin } = useUserRole();
   const queryKey = useUserQueryKey(["contract-manager-contracts"]);
+  const approveStatusQueryKey = useUserQueryKey([
+    "contract-approver-approve-status",
+    undefined,
+  ]);
   const queryClient = useQueryClient();
 
   const [approvalDialogOpen, setApprovalDialogOpen] = React.useState(false);
@@ -90,6 +95,7 @@ const ContractDetailPage: React.FC = () => {
     "approved" | "rejected" | null
   >(null);
   const [comment, setComment] = React.useState("");
+  const [activeTab, setActiveTab] = React.useState<TabKey>("overview");
 
   const {
     data: contractsResponse,
@@ -109,6 +115,18 @@ const ContractDetailPage: React.FC = () => {
     retry: false,
   });
 
+  const { data: approveStatusResponse } = useQuery({
+    queryKey: [
+      approveStatusQueryKey[0],
+      contractsResponse?.data?.data?._id,
+    ],
+    queryFn: () => approverApi.getApproveStatus(contract?._id ?? ""),
+    enabled:
+      !!contractsResponse?.data?.data?._id && isApprover && contractsResponse?.data?.data?.status === "pending_approval",
+    staleTime: 60000,
+    retry: false,
+  });
+
   const approvalMutation = useMutation({
     mutationFn: async (action: "approved" | "rejected") => {
       return approverApi.approveContract(id ?? "", {
@@ -122,6 +140,12 @@ const ContractDetailPage: React.FC = () => {
         res.data.message,
       );
       queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({
+        queryKey: [
+          approveStatusQueryKey[0],
+          contractsResponse?.data?.data?._id,
+        ],
+      });
       setApprovalDialogOpen(false);
       setApprovalAction(null);
       setComment("");
@@ -146,7 +170,7 @@ const ContractDetailPage: React.FC = () => {
     toastErrorRef.current = toastHandler.error;
   }, [toastHandler.error]);
 
-  React.useEffect(()   => {
+  React.useEffect(() => {
     if (!error) return;
     if (lastErrorRef.current === error) return;
     lastErrorRef.current = error;
@@ -198,6 +222,10 @@ const ContractDetailPage: React.FC = () => {
   }
 
   const status = formatContractStatus(contract?.status);
+
+  const canApprove = approveStatusResponse?.data?.data?.status === "pending";
+  const hasAprovedorRejected = approveStatusResponse?.data?.data?.status === "approved" || approveStatusResponse?.data?.data?.status === "rejected";
+  const hasNoAuthorization = approveStatusResponse?.data?.data?.status === "N/A";
 
   type TabKey =
     | "overview"
@@ -258,10 +286,9 @@ const ContractDetailPage: React.FC = () => {
     ],
   };
 
-  const visibleTabs =
-    isApprover
-      ? ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.approver.includes(t.key))
-      : ALL_TABS;
+  const visibleTabs = isApprover
+    ? ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.approver.includes(t.key))
+    : ALL_TABS;
   const triggerClass =
     "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3";
 
@@ -304,8 +331,8 @@ const ContractDetailPage: React.FC = () => {
         <Badge className={status?.className}>{status?.label}</Badge>
       </div>
 
-      {isApprover && contract?.status === "pending_approval" && (
-        <div className="flex items-center gap-4">
+       {isApprover && canApprove && !hasAprovedorRejected && (
+        <div className={cn("flex items-center gap-4", { "hidden": hasNoAuthorization })}>
           <Button
             variant="default"
             className="bg-[#2A4467] hover:bg-[#2A4467]/90"
@@ -323,7 +350,11 @@ const ContractDetailPage: React.FC = () => {
         </div>
       )}
 
-      <Tabs defaultValue="overview" className="w-full bg-transparent space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as TabKey)}
+        className="w-full bg-transparent space-y-4"
+      >
         <ScrollArea className="pb-4 w-[75vw]">
           <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
             {visibleTabs.map((t) => (
@@ -337,47 +368,82 @@ const ContractDetailPage: React.FC = () => {
 
         <OverviewTab contract={contract} status={status} />
 
-        <AnalyticsTabContent />
+        <AnalyticsTabContent isActive={activeTab === "analytics"} />
 
-        <KpiTabContent contractId={contract?._id ?? ""} />
+        <KpiTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "kpi"}
+        />
 
-        <ComplianceTabContent />
+        <ComplianceTabContent isActive={activeTab === "compliance"} />
 
-        <ChangeTabContent contractId={contract?._id ?? ""} />
+        <ChangeTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "change"}
+        />
 
-        <ClaimsTabContent contractId={contract?._id ?? ""} />
+        <ClaimsTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "claims"}
+        />
 
-        <ApproversTabContent contractId={contract?._id ?? ""} />
+        <ApproversTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "approvers"}
+        />
 
-        <InvoiceTabContent contractId={contract?._id ?? ""} />
+        <InvoiceTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "invoice"}
+        />
 
         <DeliverablesTabContent />
 
-        <RateSheetsTabContent contractId={contract?._id ?? ""} />
+        <RateSheetsTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "rate-sheets"}
+        />
 
-        <LemTabContent contractId={contract?._id ?? ""} />
+        <LemTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "lem"}
+        />
 
-        <RfiTabContent contractId={contract?._id ?? ""} />
+        <RfiTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "rfi"}
+        />
 
-        <NcrLogTabContent contractId={contract?._id ?? ""} contract={contract} />
+        <NcrLogTabContent
+          contractId={contract?._id ?? ""}
+          contract={contract}
+          isActive={activeTab === "ncr-log"}
+        />
 
         <DocumentsTabContent
           files={contract?.files}
           contractId={contract?._id ?? ""}
         />
 
-        <AmendmentsTabContent contractId={contract?._id ?? ""} />
+        <AmendmentsTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "amendments"}
+        />
 
         <PaymentSummaryTabContent
           contractId={contract?._id ?? ""}
           contract={contract}
+          isActive={activeTab === "payment-summary"}
         />
 
-        <ClauseLibraryTabContent />
+        <ClauseLibraryTabContent isActive={activeTab === "clause-library"} />
 
-        <VendorReportsTabContent contractId={contract?._id ?? ""} />
+        <VendorReportsTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "reports"}
+        />
 
-        <ActionLogTabContent />
+        <ActionLogTabContent isActive={activeTab === "action-log"} />
       </Tabs>
 
       <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>

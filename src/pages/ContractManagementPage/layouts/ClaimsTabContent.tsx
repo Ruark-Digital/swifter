@@ -13,9 +13,10 @@ import { approverApi } from "../api/approverApi";
 
 type Props = {
   contractId: string;
+  isActive?: boolean;
 };
 
-const ClaimsTabContent: React.FC<Props> = ({ contractId }) => {
+const ClaimsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   const { isApprover } = useUserRole();
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -35,7 +36,7 @@ const ClaimsTabContent: React.FC<Props> = ({ contractId }) => {
       }
       return await contractManagerApi.getClaimStats(contractId);
     },
-    enabled: Boolean(contractId),
+    enabled: Boolean(contractId) && !!isActive,
   });
 
   const { data: claimsRes, isLoading: isClaimsLoading } = useQuery({
@@ -56,7 +57,7 @@ const ClaimsTabContent: React.FC<Props> = ({ contractId }) => {
       }
       return await contractManagerApi.listClaims(contractId, query);
     },
-    enabled: Boolean(contractId),
+    enabled: Boolean(contractId) && !!isActive,
   });
 
   const claimRows = claimsRes?.data?.changes ?? [];

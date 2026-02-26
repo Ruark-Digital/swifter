@@ -11,9 +11,10 @@ import { contractManagerApi } from "../api/contractManagerApi";
 
 type Props = {
   contractId: string;
+  isActive?: boolean;
 };
 
-const ApproversTabContent: React.FC<Props> = ({ contractId }) => {
+const ApproversTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
@@ -26,7 +27,7 @@ const ApproversTabContent: React.FC<Props> = ({ contractId }) => {
   } = useQuery({
     queryKey,
     queryFn: () => contractManagerApi.listContractApprovers(contractId),
-    enabled: Boolean(contractId),
+    enabled: Boolean(contractId) && !!isActive,
     staleTime: 60000,
     retry: false,
   });

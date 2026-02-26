@@ -7,9 +7,10 @@ import { format } from "date-fns";
 
 type Props = {
   contractId: string;
+  isActive?: boolean;
 };
 
-const KpiTabContent: React.FC<Props> = ({ contractId }) => {
+const KpiTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   const { data, isLoading } = useQuery({
     queryKey: ["contract-kpis", contractId],
     queryFn: async () => {
@@ -18,7 +19,7 @@ const KpiTabContent: React.FC<Props> = ({ contractId }) => {
       });
       return res.data?.data ?? [];
     },
-    enabled: !!contractId,
+    enabled: !!contractId && !!isActive,
   });
 
   const rows: KpiRow[] = (data ?? []).map((item: any) => ({

@@ -10,9 +10,10 @@ import { approverApi } from "../api/approverApi";
 
 type Props = {
   contractId: string;
+  isActive?: boolean;
 };
 
-const InvoiceTabContent: React.FC<Props> = ({ contractId }) => {
+const InvoiceTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   const { isApprover } = useUserRole();
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -32,7 +33,7 @@ const InvoiceTabContent: React.FC<Props> = ({ contractId }) => {
       }
       return await contractManagerApi.getInvoiceStats(contractId);
     },
-    enabled: Boolean(contractId),
+    enabled: Boolean(contractId) && !!isActive,
   });
 
   const { data: invoicesRes, isLoading: isInvoicesLoading } = useQuery({
@@ -53,7 +54,7 @@ const InvoiceTabContent: React.FC<Props> = ({ contractId }) => {
       }
       return await contractManagerApi.listInvoices(contractId, query);
     },
-    enabled: Boolean(contractId),
+    enabled: Boolean(contractId) && !!isActive,
   });
 
   const invoiceRows = invoicesRes?.data?.invoices ?? [];

@@ -59,7 +59,7 @@ export const createApproverApi = (
   getApproveStatus: async (contractId: string) => {
     return client.get({
       url: `/contract/approver/contracts/${contractId}/approve/status`,
-    }) as Promise<ApiResponse<{ status: boolean }>>;
+    }) as Promise<ApiResponse<{ status:  "N/A" | "pending" | "approved" | "rejected" }>>;
   },
 
   approveContract: async (contractId: string, payload: ApprovalActionDTO) => {

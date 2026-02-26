@@ -6,13 +6,15 @@ import { useParams } from "react-router-dom";
 import { contractManagerApi } from "../api/contractManagerApi";
 import { SEOWrapper } from "@/components/SEO";
 
-const ComplianceTabContent: React.FC = () => {
+type Props = { isActive?: boolean };
+
+const ComplianceTabContent: React.FC<Props> = ({ isActive }) => {
   const { id: contractId } = useParams<{ id: string }>();
 
   const { data: complianceData, isLoading } = useQuery({
     queryKey: ["contract-compliance", contractId],
     queryFn: () => contractManagerApi.getContractCompliance(contractId!),
-    enabled: !!contractId,
+    enabled: !!contractId && !!isActive,
   });
 
   return (

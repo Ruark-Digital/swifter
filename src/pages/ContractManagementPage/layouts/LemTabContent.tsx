@@ -4,12 +4,16 @@ import { Button } from "@/components/ui/button";
 import LemTable, { type LemRow } from "../components/LemTable";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
+import { useUserRole } from "@/hooks/useUserRole";
+import { contractManagerApi } from "../api/contractManagerApi";
 
 type Props = {
   contractId: string;
+  isActive?: boolean;
 };
 
-const LemTabContent: React.FC<Props> = ({ contractId }) => {
+const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
+  const { isApprover, isManager } = useUserRole();
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
   React.useEffect(() => {
@@ -18,12 +22,36 @@ const LemTabContent: React.FC<Props> = ({ contractId }) => {
   }, [search]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["lem-list", contractId, debounced],
+    queryKey: [
+      isApprover ? "approver" : "contractManager",
+      "lem-list",
+      contractId,
+      debounced,
+    ],
     queryFn: async () => {
+      if (isManager && !isApprover) {
+        const res = await contractManagerApi.listLems(contractId, {
+          title: debounced || undefined,
+          page: 1,
+          limit: 10,
+        });
+        const items = res?.data?.resp || [];
+        const rows: LemRow[] = items.map((it) => ({
+          id: "",
+          title: it?.title || "",
+          amount:
+            typeof it?.amount === "number"
+              ? `$${it.amount.toLocaleString()}`
+              : `${it?.amount ?? ""}`,
+          submissionDate: "",
+          status: "Pending",
+        }));
+        return rows;
+      }
       const params = new URLSearchParams();
       if (debounced) params.append("title", debounced);
       const res = await getRequest({
-        url: `/contract/approver/contract/${contractId}/lems?${params.toString()}`,
+        url: `/contract/approver/contracts/${contractId}/lems?${params.toString()}`,
       });
       const payload = (res as any)?.data?.data;
       const items = payload?.resp || [];
@@ -39,7 +67,7 @@ const LemTabContent: React.FC<Props> = ({ contractId }) => {
       }));
       return rows;
     },
-    enabled: !!contractId,
+    enabled: !!contractId && !!isActive,
   });
 
   return (

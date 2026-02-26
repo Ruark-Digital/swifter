@@ -16,9 +16,10 @@ import type { ContractDetail } from "@/types";
 type Props = {
   contractId: string;
   contract: ContractDetail
+  isActive?: boolean;
 };
 
-const NcrLogTabContent: React.FC<Props> = ({ contractId, contract }) => {
+const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive }) => {
   const { isApprover } = useUserRole();
   const api = isApprover ? approverApi : contractManagerApi;
   const [pagination, setPagination] = React.useState<PaginationState>({
@@ -34,7 +35,7 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract }) => {
       contractId,
     ],
     queryFn: async () => await api.getNcrStats(contractId),
-    enabled: Boolean(contractId),
+    enabled: Boolean(contractId) && !!isActive,
   });
 
   const { data: ncrsRes, isLoading: isNcrsLoading } = useQuery({
@@ -52,7 +53,7 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract }) => {
       };
       return await api.listNcrs(contractId, query);
     },
-    enabled: Boolean(contractId),
+    enabled: Boolean(contractId) && !!isActive,
   });
 
   const ncrRows = ncrsRes?.data ?? [];
