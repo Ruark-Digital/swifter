@@ -271,7 +271,7 @@ const mapVendorContractsToRows = (
 };
 
 const ContractManagementPage: React.FC = () => {
-  const { isVendor, isApprover, isViewOnly } = useUserRole();
+  const { isVendor, isApprover, isViewOnly, isCompanyAdmin } = useUserRole();
   const managerQueriesEnabled = !isVendor && !isApprover;
   const approverQueriesEnabled = isApprover;
 
@@ -370,7 +370,7 @@ const ContractManagementPage: React.FC = () => {
                   <Share2 className="mr-2 h-4 w-4" /> Export
                 </Button>
               )}
-              {!isApprover && !isViewOnly && (
+              {!isApprover && !isViewOnly && !isCompanyAdmin && (
                 <CreateContractSheet
                   trigger={
                     <Button
@@ -393,7 +393,7 @@ const ContractManagementPage: React.FC = () => {
               isLoading={isApproverContractsLoading}
               totalCount={approverContractsData?.data.totalContracts}
               isReadOnly={isViewOnly}
-              disableActions={isApprover}
+                disableActions={isApprover}
             />
           ) : (
             <Tabs
@@ -421,6 +421,7 @@ const ContractManagementPage: React.FC = () => {
                   isLoading={isAllContractsLoading}
                   totalCount={allContractsRows.length}
                   isReadOnly={isViewOnly}
+                  disableActions={isCompanyAdmin}
                 />
               </TabsContent>
               <TabsContent value="mine">
@@ -429,6 +430,7 @@ const ContractManagementPage: React.FC = () => {
                   isLoading={isMyContractsLoading}
                   totalCount={myContractsRows.length}
                   isReadOnly={isViewOnly}
+                  disableActions={isCompanyAdmin}
                 />
               </TabsContent>
             </Tabs>

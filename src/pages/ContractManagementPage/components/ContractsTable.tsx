@@ -144,9 +144,9 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
   });
 
   const tableColumns = React.useMemo(() => {
-    if (!isReadOnly) return columns;
+    if (!isReadOnly && !disableActions) return columns;
     return columns.filter((column) => column.id !== "actions");
-  }, [isReadOnly]);
+  }, [isReadOnly, disableActions]);
 
   const filteredRows = React.useMemo(() => {
     if (!search) return rows;
