@@ -412,6 +412,7 @@ const RfiTabContent: React.FC<Props> = ({ contractId, isActive }) => {
             Received
           </TabsTrigger>
         </TabsList>
+
         <TabsContent value="all">
           <RfiTable
             rows={rfiRows}

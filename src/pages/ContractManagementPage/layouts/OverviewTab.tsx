@@ -870,7 +870,10 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
           ) : null}
 
           {!isVendor && !isApprover && !isViewOnly && !isCompanyAdmin && (
-            <Button onClick={() => setEditingContractId(contract?._id ?? null)}>
+            <Button
+              onClick={() => setEditingContractId(contract?._id ?? null)}
+              disabled={contract?.status === "publish"}
+            >
               Edit Contract
             </Button>
           )}

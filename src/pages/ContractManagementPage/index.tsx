@@ -174,7 +174,7 @@ const useVendorContractsStats = (enabled = true) => {
   return useQuery<VendorStatsResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
-      const res = await getRequest({ url: "/vendor/contract/stats" });
+      const res = await getRequest({ url: "/contract/vendor/contracts/stats" });
       return res.data as VendorStatsResponse;
     },
     enabled,
@@ -187,7 +187,7 @@ const useVendorContracts = (enabled = true) => {
   return useQuery<VendorContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
-      const res = await getRequest({ url: "/vendor/contract" });
+      const res = await getRequest({ url: "/contract/vendor/contracts" });
       return res.data as VendorContractListResponse;
     },
     enabled,
@@ -393,7 +393,7 @@ const ContractManagementPage: React.FC = () => {
               isLoading={isApproverContractsLoading}
               totalCount={approverContractsData?.data.totalContracts}
               isReadOnly={isViewOnly}
-                disableActions={isApprover}
+                // disableActions={isApprover}
             />
           ) : (
             <Tabs
@@ -421,7 +421,7 @@ const ContractManagementPage: React.FC = () => {
                   isLoading={isAllContractsLoading}
                   totalCount={allContractsRows.length}
                   isReadOnly={isViewOnly}
-                  disableActions={isCompanyAdmin}
+                  // disableActions={isCompanyAdmin}
                 />
               </TabsContent>
               <TabsContent value="mine">
@@ -430,7 +430,7 @@ const ContractManagementPage: React.FC = () => {
                   isLoading={isMyContractsLoading}
                   totalCount={myContractsRows.length}
                   isReadOnly={isViewOnly}
-                  disableActions={isCompanyAdmin}
+                  // disableActions={isCompanyAdmin}
                 />
               </TabsContent>
             </Tabs>

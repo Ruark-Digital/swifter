@@ -25,9 +25,17 @@ const KpiTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   const rows: KpiRow[] = (data ?? []).map((item: any) => ({
     kpiId: item.kpiId ?? item.id ?? "",
     category: item.category ?? "",
-    currentAvgScore: typeof item.currentAvgScore === "number" ? `${item.currentAvgScore}%` : `${item.currentAvgScore ?? ""}`,
-    allTimeAvgScore: typeof item.allTimeAvgScore === "number" ? `${item.allTimeAvgScore}%` : `${item.allTimeAvgScore ?? ""}`,
-    lastUpdated: item.lastUpdated ? format(new Date(item.lastUpdated), "dd-MM-yyyy") : "",
+    currentAvgScore:
+      typeof item.currentAvgScore === "number"
+        ? `${item.currentAvgScore}%`
+        : `${item.currentAvgScore ?? ""}`,
+    allTimeAvgScore:
+      typeof item.allTimeAvgScore === "number"
+        ? `${item.allTimeAvgScore}%`
+        : `${item.allTimeAvgScore ?? ""}`,
+    lastUpdated: item.lastUpdated
+      ? format(new Date(item.lastUpdated), "dd-MM-yyyy")
+      : "",
     actions: ["Update", "View"],
   }));
 
@@ -50,9 +58,7 @@ const KpiTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center h-20">
-          Loading...
-        </div>
+        <div className="flex items-center justify-center h-20">Loading...</div>
       ) : (
         <KpiTable rows={rows} contractId={contractId} />
       )}
@@ -61,4 +67,3 @@ const KpiTabContent: React.FC<Props> = ({ contractId, isActive }) => {
 };
 
 export default KpiTabContent;
-

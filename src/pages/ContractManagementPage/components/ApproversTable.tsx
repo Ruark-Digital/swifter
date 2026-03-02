@@ -350,7 +350,7 @@ const ApproversTable: React.FC<Props> = ({ rows, isLoading, contractId }) => {
         data={rows}
         columns={columns}
         header={() => (
-          <div className="flex items-center justify-between border-b border-[#E5E7EB] px-5 py-4">
+          <div className="flex items-center justify-between w-full border-b border-[#E5E7EB] px-5 py-4">
             <span className="text-sm font-medium text-slate-900">
               Approvers
             </span>

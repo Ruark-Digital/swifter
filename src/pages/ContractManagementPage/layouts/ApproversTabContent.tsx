@@ -53,8 +53,8 @@ const ApproversTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         email: approver.email?.trim() || "-",
         role: approver.role?.trim() || "N/A",
         approvalLevel:
-          typeof approver.approvalLevel === "number"
-            ? `${approver.approvalLevel}`
+          Array.isArray(approver.approvalLevels) && approver.approvalLevels.length > 0
+            ? approver.approvalLevels.join(", ")
             : "-",
         assignedApprovals: approver.assignedApprovals ?? "-",
         status,

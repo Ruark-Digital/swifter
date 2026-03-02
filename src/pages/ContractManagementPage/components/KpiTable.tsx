@@ -1,15 +1,9 @@
 import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Search } from "lucide-react";
+import { Search, ArrowLeft, Share2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/layouts/DataTable";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +18,9 @@ import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { postRequest } from "@/lib/axiosInstance";
 import { DropdownFilters } from "@/components/layouts/SolicitationFilters";
+import { Button } from "@/components/ui/button";
+import { useToastHandler } from "@/hooks/useToaster";
+import type { ApiResponseError } from "@/types";
 
 export type KpiRow = {
   kpiId: string;
@@ -94,35 +91,309 @@ const KpiDetailSheet: React.FC<{ contractId: string; kpiId: string }> = ({
 
   return (
     <SheetContent side="right" className="sm:max-w-[680px]">
-      <SheetHeader>
-        <SheetTitle>KPI Details</SheetTitle>
-      </SheetHeader>
-      <div className="mt-4 space-y-4">
+      <div className="rounded-t-xl bg-[#F9FAFB] px-6 py-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <ArrowLeft className="h-5 w-5 text-[#2A4467]" />
+            <span className="text-xl font-semibold text-[#2A4467]">
+              KPI Details
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 py-8 space-y-8">
         {isLoading ? (
-          <div className="flex items-center justify-center h-24">
+          <div className="flex h-24 items-center justify-center">
             Loading...
           </div>
         ) : error ? (
-          <div className="text-red-600 text-sm">Failed to load KPI</div>
+          <div className="text-sm text-red-600">Failed to load KPI</div>
         ) : data ? (
-          <div className="space-y-2 text-sm">
-            <div className="font-semibold text-slate-900">{data.category}</div>
-            <div className="text-slate-700">Target: {data.target ?? "N/A"}</div>
-            <div className="text-slate-700">
-              Non-Compliance: {data.nonCompliance ?? "N/A"}
+          <>
+            <div className="flex items-center justify-between">
+              <p className="text-base font-semibold text-[#0F0F0F]">
+                {data.category || "N/A"}
+              </p>
+              <div className="inline-flex h-12 items-center gap-2 rounded-xl border border-[#E5E7EB] px-4">
+                <Share2 className="h-5 w-5 text-[#6B6B6B]" />
+                <span className="text-sm font-semibold text-[#6B6B6B]">
+                  Export
+                </span>
+              </div>
             </div>
-            <div className="text-slate-700">
-              Current Avg: {data.currentAvgScore ?? "N/A"}
+
+            <div className="grid grid-cols-2 gap-x-8 gap-y-6 h-full">
+              <div className="space-y-1">
+                <span className="text-slate-500">Category</span>
+                <span className="block text-[#0F0F0F]">
+                  {data.category || "N/A"}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <span className="text-slate-500">KPI ID</span>
+                <span className="block text-[#0F0F0F]">
+                  {(data.kpiId as string) || "N/A"}
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-slate-500">Submission Date</span>
+                <span className="block font-semibold text-[#0F0F0F]">
+                  {(data.submissionDate as string) || "N/A"}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <span className="text-slate-500">Time-Stamp Delivery</span>
+                <span className="block font-semibold text-[#0F0F0F]">
+                  {(data.target as string) ?? "N/A"}
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-slate-500">Scheduled Confirmation</span>
+                <span className="block font-semibold text-[#0F0F0F]">
+                  {(data.scheduledConfirmation as string) || "N/A"}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <span className="text-slate-500">Milestone Logs</span>
+                <span className="block font-semibold text-[#0F0F0F]">
+                  {(data.milestoneLogs as string) || "N/A"}
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-slate-500">Avg. Score</span>
+                <span className="block text-[#0F0F0F]">
+                  {(data.currentAvgScore as string) ?? "N/A"}
+                </span>
+              </div>
             </div>
-            <div className="text-slate-700">
-              All Time Avg: {data.allTimeAvgScore ?? "N/A"}
+
+            <div className="flex justify-end pt-6">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="h-12 rounded-xl bg-[#2A4467] px-6 text-white hover:bg-[#2A4467]/90">
+                    Update Score
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[700px] p-0 rounded-2xl">
+                  <div className="max-h-[80vh] overflow-y-auto">
+                    <UpdateVendorPerformanceDialog
+                      contractId={contractId}
+                      kpiId={kpiId}
+                      category={(data.category as string) || ""}
+                      target={(data.target as string) || ""}
+                      nonCompliance={(data.nonCompliance as string) || ""}
+                    />
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
-          </div>
+          </>
         ) : (
-          <div className="text-slate-600 text-sm">No KPI data</div>
+          <div className="text-sm text-slate-600">No KPI data</div>
         )}
       </div>
     </SheetContent>
+  );
+};
+
+type MetricConfig = {
+  key: string;
+  label: string;
+};
+
+const CATEGORY_METRICS: Record<string, MetricConfig[]> = {
+  "On‑Time Delivery/Schedule Compliance": [
+    { key: "timestampedDelivery", label: "Timestamped delivery (Optional)" },
+    { key: "scheduleConfirmations", label: "Schedule confirmations" },
+    { key: "milestoneLogs", label: "Milestone logs" },
+  ],
+  "Quality & Specification Compliance": [
+    { key: "inspectionReports", label: "Inspection reports" },
+    { key: "ncrLogs", label: "NCR logs" },
+    { key: "qaDocumentation", label: "QA documentation" },
+  ],
+  Responsiveness: [
+    { key: "timestampedCommunicationLogs", label: "Timestamped communication logs" },
+  ],
+  "Contractual Compliance": [
+    { key: "complianceTracking", label: "Compliance Tracking" },
+  ],
+  "Cost Variance": [
+    { key: "automatedRateMatching", label: "Automated invoice-to-contract rate matching. (Auto check of contract rates and Invoice rates or Milestone amount in contract Vs Invoice )" },
+  ],
+  "Invoice Accuracy": [
+    { key: "matchingResults", label: "2‑way/3‑way matching results. (Auto check of contract rates and Invoice rates or Milestone amount in contract Vs Invoice)" },
+  ],
+  "Issue Resolution": [
+    { key: "issueResolution", label: "Issue Resolution" },
+  ],
+};
+
+const MetricScale: React.FC<{
+  label: string;
+  onChange: (v: number) => void;
+  value: string;
+}> = ({ label, onChange, value }) => {
+  const current = Number(value);
+  return (
+    <div className="space-y-2">
+      <p className="text-[#0F0F0F] text-sm">{label}</p>
+      <div className="space-y-3">
+        <div className="flex items-center gap-8">
+          {[1, 2, 3, 4, 5].map((v) => {
+            const active = current === v;
+            return (
+              <div key={v} className="flex flex-col items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onChange(v)}
+                  aria-pressed={active}
+                  className={
+                    active
+                      ? "flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#2A4467] bg-[#F9F5FF]"
+                      : "h-6 w-6 rounded-full border-2 border-[#E5E7EB] bg-white"
+                  }
+                >
+                  {active && (
+                    <span className="block h-2.5 w-2.5 rounded-full bg-[#2A4467]" />
+                  )}
+                </button>
+                <span className="text-[#374151] text-sm font-semibold">{v}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex w-[160px] justify-between text-xs font-semibold text-[#286EE0]">
+          <span>Low</span>
+          <span>High</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const UpdateVendorPerformanceDialog: React.FC<{
+  contractId: string;
+  kpiId: string;
+  category: string;
+  target: string;
+  nonCompliance: string;
+}> = ({ contractId, kpiId, category, target, nonCompliance }) => {
+  const { control, reset } = useForge({
+    defaultValues: {
+      category,
+      target,
+      nonCompliance,
+    },
+    mode: "onChange",
+  });
+  const { success, error } = useToastHandler();
+  const [successOpen, setSuccessOpen] = React.useState(false);
+
+  const metrics = CATEGORY_METRICS[category] ?? [];
+
+  const onSubmit = async (payload: any) => {
+    try {
+      const metricsPayload: Record<string, number> = {};
+      for (const m of metrics) {
+        const v = Number(payload[m.key]);
+        if (Number.isFinite(v)) metricsPayload[m.key] = v;
+      }
+      await postRequest({
+        url: `/contract/manager/contracts/${contractId}/kpis/${kpiId}`,
+        payload: { metrics: metricsPayload },
+      });
+      success("KPI updated", "Values submitted successfully");
+      reset();
+      setSuccessOpen(true);
+    } catch (e) {
+      error("Failed to update KPI", e as ApiResponseError);
+    }
+  };
+
+  return (
+    <div className="flex flex-col rounded-2xl bg-white p-8">
+      <div className="flex items-center justify-between">
+        <p className="text-xl font-semibold text-[#0F0F0F]">
+          Update Vendor Performance
+        </p>
+      </div>
+
+      <Forge control={control} onSubmit={onSubmit} className="mt-6 space-y-6">
+        <div className="space-y-2">
+          <p className="text-sm text-[#0F0F0F]">Category</p>
+          <div className="h-12 rounded-lg border border-[#E5E7EB] bg-[#2A4467]/5 px-4 flex items-center text-sm text-[#6B6B6B]">
+            {category || "N/A"}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-sm text-[#0F0F0F]">Target</p>
+          <div className="h-12 rounded-lg border border-[#E5E7EB] bg-[#2A4467]/5 px-4 flex items-center text-sm text-[#6B6B6B]">
+            {target || "N/A"}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-sm text-[#0F0F0F]">Non-Compliance</p>
+          <div className="h-12 rounded-lg border border-[#E5E7EB] bg-[#2A4467]/5 px-4 flex items-center text-sm text-[#6B6B6B]">
+            {nonCompliance || "N/A"}
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          {metrics.map((m) => (
+            <Forger
+              key={m.key}
+              name={m.key}
+              component={MetricScale}
+              label={m.label}
+            />
+          ))}
+        </div>
+
+        <div className="mt-4 flex items-center gap-6">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-12 flex-1 rounded-xl bg-[#F3F4F6]"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            className="h-12 flex-1 rounded-xl bg-[#2A4467] text-white hover:bg-[#2A4467]/90"
+          >
+            Update KPI
+          </Button>
+        </div>
+      </Forge>
+
+      <Dialog open={successOpen} onOpenChange={setSuccessOpen}>
+        <DialogContent className="sm:max-w-[500px] p-8 rounded-2xl">
+          <div className="flex flex-col items-center gap-6">
+            <div className="h-16 w-16 rounded-full bg-[#EAF7EE] grid place-items-center">
+              <span className="h-8 w-8 rounded-full bg-[#16A34A] grid place-items-center">
+                <span className="block h-4 w-2 rotate-45 border-b-2 border-r-2 border-white" />
+              </span>
+            </div>
+            <p className="text-center text-xl font-semibold text-[#0F0F0F]">
+              KPI Updated Successfully
+            </p>
+            <Button
+              className="h-12 w-full rounded-xl bg-[#2A4467] text-white hover:bg-[#2A4467]/90"
+              onClick={() => setSuccessOpen(false)}
+            >
+              Done
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 
@@ -172,7 +443,9 @@ const KpiTable: React.FC<Props> = ({ rows, contractId }) => {
     },
     {
       accessorKey: "lastUpdated",
-      header: () => <div className="w-[160px] overflow-hidden">Last Updated</div>,
+      header: () => (
+        <div className="w-[160px] overflow-hidden">Last Updated</div>
+      ),
       cell: ({ getValue }) => (
         <div className="w-[160px] py-2 text-sm font-medium text-[#374151]">
           {getValue<string>()}
@@ -189,15 +462,14 @@ const KpiTable: React.FC<Props> = ({ rows, contractId }) => {
             {actions.includes("Update") && (
               <Dialog>
                 <DialogTrigger asChild>
-                  <a
-                    href="#"
+                  <Button
+                    variant={"link"}
                     className="text-sm font-bold text-[#286EE0] underline"
-                    onClick={(e) => e.preventDefault()}
                   >
                     Update
-                  </a>
+                  </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[520px]">
+                <DialogContent className="sm:">
                   <DialogHeader>
                     <DialogTitle>Update KPI</DialogTitle>
                   </DialogHeader>
@@ -211,13 +483,12 @@ const KpiTable: React.FC<Props> = ({ rows, contractId }) => {
             {actions.includes("View") && (
               <Sheet>
                 <SheetTrigger asChild>
-                  <a
-                    href="#"
+                  <Button
+                    variant={"link"}
                     className="text-sm font-bold text-[#43A047] underline"
-                    onClick={(e) => e.preventDefault()}
                   >
                     View
-                  </a>
+                  </Button>
                 </SheetTrigger>
                 <KpiDetailSheet
                   contractId={contractId}

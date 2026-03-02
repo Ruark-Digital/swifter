@@ -20,7 +20,7 @@ import type { ApiResponse } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { cn } from "@/lib/utils";
 import { approverApi } from "../api/approverApi";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ContractDetail } from "@/types";
 import { memo, useCallback, useMemo } from "react";
 
@@ -122,7 +122,7 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract }) => 
   const uploadFiles = useCallback(async (files: File[] | null) => {
     if (!files || files.length === 0) return [];
     const formData = new FormData();
-    files.forEach((file) => formData.append("files", file));
+    files.forEach((file) => formData.append("file", file));
     const res = (await postRequest({
       url: "/upload",
       payload: formData,
@@ -139,10 +139,14 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract }) => 
     return res?.data?.data ?? [];
   }, []);
 
-  const onSubmit = useCallback(async (data: CreateNcrFormValues) => {
-    try {
+  const createNcrMutation = useMutation({
+    mutationKey: ["approver", "contractNcrs", "create", contractId],
+    mutationFn: async (data: CreateNcrFormValues) => {
       const uploaded = await uploadFiles(data.files);
-      const payload = {
+      const sizeMap = new Map<string, number>(
+        (data.files ?? []).map((f) => [f.name, f.size]),
+      );
+      const payload: any = {
         title: data.title,
         description: data.description,
         responders: data.responderId ? [data.responderId] : undefined,
@@ -152,11 +156,13 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract }) => 
                 name: f.name,
                 url: f.url,
                 type: f.type,
-                size: f.size,
+                size: String(sizeMap.get(f.name) ?? 0),
               }))
             : undefined,
       };
-      await approverApi.createNcr(contractId, payload);
+      return await approverApi.createNcr(contractId, payload);
+    },
+    onSuccess: () => {
       toast.success("Success", "NCR created successfully");
       queryClient.invalidateQueries({
         queryKey: ["approver", "contractNcrs", contractId],
@@ -166,10 +172,18 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract }) => 
       });
       setOpen(false);
       reset();
-    } catch (error) {
+    },
+    onError: () => {
       toast.error("Error", "Failed to process files");
-    }
-  }, [contractId, queryClient, reset, toast, uploadFiles]);
+    },
+  });
+
+  const onSubmit = useCallback(
+    (data: CreateNcrFormValues) => {
+      createNcrMutation.mutate(data);
+    },
+    [createNcrMutation],
+  );
 
   const responderOptions = useMemo(() => {
     const a = Array.isArray(contract?.approvers) ? contract?.approvers : [];
@@ -277,9 +291,10 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract }) => 
             </button>
             <button
               type="submit"
+              disabled={createNcrMutation.isPending}
               className="inline-flex h-10 min-w-[170px] items-center justify-center rounded-xl bg-[#2A4467] px-6 text-sm font-semibold text-white"
             >
-              Create NCR
+              {createNcrMutation.isPending ? "Submitting..." : "Create NCR"}
             </button>
           </div>
         </Forge>

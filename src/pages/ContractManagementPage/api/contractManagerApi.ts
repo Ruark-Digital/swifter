@@ -174,6 +174,50 @@ export type ContractRfiDTO = {
   }>;
 };
 
+export interface ContractRFIDetailDTO {
+  contractRfi: ContractRFI;
+  isResponse?:  IsResponse;
+}
+
+export interface ContractRFI {
+  _id:              string;
+  contractRef:      string;
+  contractRefModel: string;
+  company:          string;
+  rfiId:            string;
+  title:            string;
+  issueRfi:         string;
+  type:             string;
+  submittedBy:      SubmittedBy;
+  description:      string;
+  deadline:         Date;
+  status:           string;
+  files:            File[];
+  createdAt:        Date;
+  updatedAt:        Date;
+  __v:              number;
+}
+
+export interface File {
+  name:       string;
+  url:        string;
+  type:       string;
+  size:       string;
+  _id:        string;
+  uploadedAt: Date;
+}
+
+export interface SubmittedBy {
+  _id:   string;
+  name:  string;
+  email: string;
+}
+
+export interface IsResponse {
+  _id: string;
+}
+
+
 export type ContractRfiResponseDTO = {
   description?: string;
   files?: Array<{
@@ -416,7 +460,7 @@ export type ContractApproverSummary = {
   name?: string;
   email?: string;
   role?: string;
-  approvalLevel?: number;
+  approvalLevels?: number[];
   assignedApprovals?: string;
   status?: "Completed" | "Pending";
 };
@@ -542,7 +586,7 @@ export type ContractComplianceDTO = {
     id?: string;
     policyId?: string;
     policyName?: string;
-    limit?: string;
+    value?: string;
     status?: string;
   }>;
   security?: Array<{
@@ -996,11 +1040,11 @@ export const createContractManagerApi = (
         };
       };
     },
-    getRfiDetail: async (rfiId: string) => {
+    getRfiDetail: async (contractId: string, rfiId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/rfis/${rfiId}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/rfis/${rfiId}`,
       });
-      return res.data as { message?: string; data?: ContractRfiDTO };
+      return res.data as { message?: string; data?: ContractRFIDetailDTO };
     },
     createRfiResponse: async (
       rfiId: string,
@@ -1012,9 +1056,9 @@ export const createContractManagerApi = (
       });
       return res.data as { message?: string; data?: ContractRfiResponseDTO };
     },
-    getRfiResponse: async (rfiId: string) => {
+    getRfiResponse: async (contractId: string, rfiId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/rfis/${rfiId}/response`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/rfis/${rfiId}/response`,
       });
       return res.data as { message?: string; data?: ContractRfiResponseDTO };
     },

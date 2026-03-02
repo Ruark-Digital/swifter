@@ -2308,6 +2308,232 @@
         }
       }
     },
+    "/approver/contracts/{contractId}/payment-holdbacks": {
+      "get": {
+        "summary": "List holdbacks",
+        "description": "List all holdbacks for a contract.",
+        "tags": [
+          "Approver - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Holdbacks fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Holdbacks fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractHoldBackDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contracts/payment-holdbacks/{holdBackId}": {
+      "get": {
+        "summary": "Get holdback details",
+        "description": "Get details of a specific holdback.",
+        "tags": [
+          "Approver - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "holdBackId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Holdback ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Holdback fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Holdback fetched successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractHoldBackDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Holdback not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contracts/{contractId}/payment-savings": {
+      "get": {
+        "summary": "List savings",
+        "description": "List all savings for a contract.",
+        "tags": [
+          "Approver - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Savings fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Savings fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractSavingDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contracts/payment-savings/{savingId}": {
+      "get": {
+        "summary": "Get saving details",
+        "description": "Get details of a specific saving.",
+        "tags": [
+          "Approver - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "savingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Saving ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saving fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Saving fetched successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractSavingDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Saving not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
     "/approver/contracts/{contractId}/lems": {
       "get": {
         "summary": "List contract LEMs",
@@ -4072,7 +4298,7 @@
         }
       }
     },
-    "/approver/contracts/rfi/{rfiId}": {
+    "/approver/contracts/{contractId}/rfi/{rfiId}": {
       "get": {
         "summary": "Get a specific RFI",
         "description": "Returns details for a specific RFI.",
@@ -4085,6 +4311,15 @@
           }
         ],
         "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
           {
             "in": "path",
             "name": "rfiId",
@@ -4147,7 +4382,7 @@
         }
       }
     },
-    "/approver/contracts/rfi/{rfiId}/response": {
+    "/approver/contracts/{contractId}/rfi/{rfiId}/response": {
       "get": {
         "summary": "Get RFI responses",
         "description": "Returns responses for a specific RFI.",
@@ -4160,6 +4395,15 @@
           }
         ],
         "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
           {
             "in": "path",
             "name": "rfiId",
@@ -4214,6 +4458,80 @@
           },
           "404": {
             "description": "Contract RFI response not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/contracts/{dataId}/rfi/{rfiId}/response": {
+      "post": {
+        "summary": "Create RFI response",
+        "description": "Creates a response for a specific RFI.",
+        "tags": [
+          "Approver - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractRfiResponseDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI response created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI created successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractRfiResponseDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
           },
           "500": {
             "description": "Server error"
@@ -6652,6 +6970,453 @@
         }
       }
     },
+    "/approver/msa-contract/stats": {
+      "get": {
+        "summary": "Get MSA contract statistics",
+        "description": "Returns statistics of MSA contracts for the authenticated approver's company.",
+        "tags": [
+          "Approver - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MSA contract statistics fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/msa-contract": {
+      "get": {
+        "summary": "List MSA contracts",
+        "description": "Returns a list of MSA contracts with pagination and filters.",
+        "tags": [
+          "Approver - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Number of items per page"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by contract status"
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by contract category"
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Filter by date (YYYY-MM-DD)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MSA contracts fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}": {
+      "get": {
+        "summary": "Get MSA contract details",
+        "description": "Returns details for a specific MSA contract.",
+        "tags": [
+          "Approver - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MSA contract fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract not found"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/approve/status": {
+      "get": {
+        "summary": "Check approver status for MSA contract",
+        "description": "Returns whether the current approver can approve the MSA contract.",
+        "tags": [
+          "Approver - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MSA contract approve status fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/approve": {
+      "post": {
+        "summary": "Approve or reject MSA contract",
+        "description": "Approve or reject a specific MSA contract.",
+        "tags": [
+          "Approver - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalActionDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MSA contract approve status updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/payment-holdbacks": {
+      "get": {
+        "summary": "List holdbacks",
+        "description": "List all holdbacks for a specific MSA contract.",
+        "tags": [
+          "Approver - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Holdbacks fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractHoldBackDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/payment-holdbacks/{holdBackId}": {
+      "get": {
+        "summary": "Get holdback details",
+        "description": "Get details of a specific holdback.",
+        "tags": [
+          "Approver - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "holdBackId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Holdback ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Holdback fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractHoldBackDTO"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/payment-savings": {
+      "get": {
+        "summary": "List savings",
+        "description": "List all savings for a specific MSA contract.",
+        "tags": [
+          "Approver - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Savings fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractSavingDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/payment-savings/{savingId}": {
+      "get": {
+        "summary": "Get saving details",
+        "description": "Get details of a specific saving.",
+        "tags": [
+          "Approver - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "savingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Saving ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saving fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractSavingDTO"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/manager/business-division": {
       "post": {
         "summary": "Create a new business division",
@@ -7612,9 +8377,9 @@
     "/manager/msa-contract": {
       "get": {
         "summary": "List MSA contracts",
-        "description": "Returns all MSA contracts for the company.",
+        "description": "Returns a paginated list of MSA contracts for the authenticated manager.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - MSA Contract"
         ],
         "security": [
           {
@@ -7622,8 +8387,9 @@
           }
         ],
         "x-roles": [
+          "contract_manager",
           "procurement",
-          "contract_manager"
+          "company_admin"
         ],
         "responses": {
           "200": {
@@ -7634,10 +8400,11 @@
                   "type": "object",
                   "properties": {
                     "message": {
-                      "type": "string"
+                      "type": "string",
+                      "example": "MSA contracts fetched successfully"
                     },
                     "data": {
-                      "type": "array",
+                      "type": "object",
                       "items": {
                         "$ref": "#/components/schemas/ContractChangeApprover",
                         "properties": {
@@ -7664,7 +8431,52 @@
           "500": {
             "description": "Server error"
           }
-        }
+        },
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by contract status"
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by contract category"
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Filter by date (YYYY-MM-DD)"
+          }
+        ]
       }
     },
     "/manager/contracts/stats": {
@@ -15683,6 +16495,108 @@
         }
       }
     },
+    "/manager/contracts/{dataId}/rfis/{rfiId}/response": {
+      "post": {
+        "summary": "Create RFI response",
+        "description": "Creates a response for a specific RFI.",
+        "tags": [
+          "ContractManager - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "view_only",
+          "approver",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractRfiResponseDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI response created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI created successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractRfiResponseDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/manager/contracts/{contractId}/rfis/{rfiId}/comment": {
       "get": {
         "summary": "Get contract RFI comments",
@@ -16104,6 +17018,657 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/stats": {
+      "get": {
+        "summary": "Get MSA contract statistics",
+        "description": "Returns statistics of MSA contracts for the authenticated manager.",
+        "tags": [
+          "ContractManager - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "MSA contract stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "MSA contract stats fetched successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/me": {
+      "get": {
+        "summary": "List MSA contracts assigned to current user",
+        "description": "Returns a paginated list of MSA contracts where the user is creator or manager.",
+        "tags": [
+          "ContractManager - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by contract status"
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by contract category"
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Filter by date (YYYY-MM-DD)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MSA contracts fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "MSA contracts fetched successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}": {
+      "get": {
+        "summary": "Get MSA contract details",
+        "description": "Returns details of a specific MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MSA contract fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "MSA contract fetched successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/linked-contract": {
+      "get": {
+        "summary": "Get linked contract for an MSA contract",
+        "description": "Returns the linked contract details for a specific MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Linked contract fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Linked contract fetched successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/payment-holdbacks": {
+      "post": {
+        "summary": "Create a new holdback",
+        "description": "Creates a new holdback for a specific MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractHoldBackDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Holdback created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Holdback created successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractHoldBackDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "get": {
+        "summary": "List holdbacks",
+        "description": "List all holdbacks for an MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Holdbacks fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Holdbacks fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractHoldBackDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/payment-holdbacks/{holdBackId}": {
+      "get": {
+        "summary": "Get holdback details",
+        "description": "Get details of a specific holdback for MSA contracts.",
+        "tags": [
+          "ContractManager - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "holdBackId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Holdback ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Holdback fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Holdback fetched successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractHoldBackDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/payment-savings": {
+      "post": {
+        "summary": "Create a new saving",
+        "description": "Creates a new saving for a specific MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractSavingDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Savings created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Savings created successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractSavingDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "get": {
+        "summary": "List savings",
+        "description": "List all savings for an MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Savings fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Savings fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractSavingDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/payment-savings/{savingId}": {
+      "get": {
+        "summary": "Get saving details",
+        "description": "Get details of a specific saving for MSA contracts.",
+        "tags": [
+          "ContractManager - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "savingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Saving ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saving fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Saving fetched successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractSavingDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
           }
         }
       }
@@ -19818,6 +21383,442 @@
         }
       }
     },
+    "/user/msa-contract/stats": {
+      "get": {
+        "summary": "Get MSA contract statistics",
+        "description": "Returns statistics of MSA contracts for the authenticated user's company (view_only role context).",
+        "tags": [
+          "View Only User - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MSA contract stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "MSA contract stats fetched successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract": {
+      "get": {
+        "summary": "List MSA contracts",
+        "description": "Returns a paginated list of MSA contracts for the authenticated user's company.",
+        "tags": [
+          "View Only User - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by contract status"
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by contract category"
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Filter by date (YYYY-MM-DD)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MSA contracts fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "MSA contracts fetched successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}": {
+      "get": {
+        "summary": "Get MSA contract details",
+        "description": "Returns details of a specific MSA contract.",
+        "tags": [
+          "View Only User - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MSA contract fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "MSA contract fetched successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/payment-holdbacks": {
+      "get": {
+        "summary": "List holdbacks",
+        "description": "List all holdbacks for a specific MSA contract.",
+        "tags": [
+          "View Only User - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Holdbacks fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Holdbacks fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractHoldBackDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/payment-holdbacks/{holdBackId}": {
+      "get": {
+        "summary": "Get holdback details",
+        "description": "Get details of a specific holdback.",
+        "tags": [
+          "View Only User - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "holdBackId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Holdback ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Holdback fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Holdback fetched successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractHoldBackDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Holdback not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/payment-savings": {
+      "get": {
+        "summary": "List savings",
+        "description": "List all savings for a specific MSA contract.",
+        "tags": [
+          "View Only User - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Savings fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Savings fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractSavingDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/payment-savings/{savingId}": {
+      "get": {
+        "summary": "Get saving details",
+        "description": "Get details of a specific saving.",
+        "tags": [
+          "View Only User - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "savingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Saving ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saving fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Saving fetched successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractSavingDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Saving not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
     "/vendor/contracts/stats": {
       "get": {
         "summary": "Get vendor contract statistics",
@@ -20120,6 +22121,232 @@
           },
           "404": {
             "description": "Contract or compliance item not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contracts/{contractId}/payment-holdbacks": {
+      "get": {
+        "summary": "List holdbacks",
+        "description": "List all holdbacks for a contract.",
+        "tags": [
+          "Vendor - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Holdbacks fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Holdbacks fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractHoldBackDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contracts/payment-holdbacks/{holdBackId}": {
+      "get": {
+        "summary": "Get holdback details",
+        "description": "Get details of a specific holdback.",
+        "tags": [
+          "Vendor - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "holdBackId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Holdback ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Holdback fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Holdback fetched successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractHoldBackDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Holdback not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contracts/{contractId}/payment-savings": {
+      "get": {
+        "summary": "List savings",
+        "description": "List all savings for a contract.",
+        "tags": [
+          "Vendor - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Savings fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Savings fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractSavingDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contracts/payment-savings/{savingId}": {
+      "get": {
+        "summary": "Get saving details",
+        "description": "Get details of a specific saving.",
+        "tags": [
+          "Vendor - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "savingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Saving ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saving fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Saving fetched successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractSavingDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Saving not found"
           },
           "500": {
             "description": "Server error"
@@ -21494,6 +23721,80 @@
           },
           "404": {
             "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contracts/{dataId}/rfi/{rfiId}/response": {
+      "post": {
+        "summary": "Create RFI response",
+        "description": "Creates a response for a specific RFI.",
+        "tags": [
+          "Vendor - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractRfiResponseDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI response created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI created successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractRfiResponseDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
           },
           "500": {
             "description": "Server error"
@@ -24966,6 +27267,414 @@
           }
         }
       }
+    },
+    "/vendor/msa-contract/stats": {
+      "get": {
+        "summary": "Vendor MSA contract stats",
+        "description": "Returns MSA contract statistics for the authenticated vendor.",
+        "tags": [
+          "Vendor - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vendor MSA stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Vendor MSA stats fetched successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract": {
+      "get": {
+        "summary": "List vendor MSA contracts",
+        "description": "Returns a paginated list of MSA contracts for the authenticated vendor.",
+        "tags": [
+          "Vendor - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by contract status"
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by contract category"
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Filter by date (YYYY-MM-DD)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MSA contracts fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "MSA contracts fetched successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}": {
+      "get": {
+        "summary": "Get vendor MSA contract",
+        "description": "Returns details of a specific MSA contract for a vendor.",
+        "tags": [
+          "Vendor - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MSA contract fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "MSA contract fetched successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/payment-holdbacks": {
+      "get": {
+        "summary": "List holdbacks",
+        "description": "List all holdbacks for a vendor MSA contract.",
+        "tags": [
+          "Vendor - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Holdbacks fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Holdbacks fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractHoldBackDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/payment-holdbacks/{holdBackId}": {
+      "get": {
+        "summary": "Get holdback details",
+        "description": "Get details of a specific holdback for vendor MSA contracts.",
+        "tags": [
+          "Vendor - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "holdBackId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Holdback ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Holdback fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Holdback fetched successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractHoldBackDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Holdback not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/payment-savings": {
+      "get": {
+        "summary": "List savings",
+        "description": "List all savings for a vendor MSA contract.",
+        "tags": [
+          "Vendor - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Savings fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Savings fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractSavingDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/payment-savings/{savingId}": {
+      "get": {
+        "summary": "Get saving details",
+        "description": "Get details of a specific saving for vendor MSA contracts.",
+        "tags": [
+          "Vendor - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "savingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Saving ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saving fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Saving fetched successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractSavingDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Saving not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
     }
   },
   "tags": [
@@ -25002,6 +27711,10 @@
       "description": "Contract report management for approvers"
     },
     {
+      "name": "Approver - MSA Contract",
+      "description": "MSA contract management for approvers"
+    },
+    {
       "name": "Business Division",
       "description": "Business Division management"
     },
@@ -25014,8 +27727,16 @@
       "description": "API endpoint for managing contract"
     },
     {
+      "name": "ContractManager - MSA Contract",
+      "description": "MSA contract management for managers"
+    },
+    {
       "name": "Vendor-Contract",
       "description": "API endpoint for managing vendor contract"
+    },
+    {
+      "name": "View Only User - MSA Contract",
+      "description": "View-only MSA contract endpoints"
     },
     {
       "name": "Vendor - Contract LEM",
@@ -25028,6 +27749,10 @@
     {
       "name": "Vendor - Contract Compliance",
       "description": "Contract compliance management for vendors"
+    },
+    {
+      "name": "Vendor - MSA Contract",
+      "description": "Vendor MSA contract endpoints"
     }
   ]
 }

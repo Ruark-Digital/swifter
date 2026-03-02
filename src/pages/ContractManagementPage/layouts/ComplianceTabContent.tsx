@@ -24,6 +24,7 @@ const ComplianceTabContent: React.FC<Props> = ({ isActive }) => {
         description="Manage contract compliance, insurance coverage, and security requirements."
         robots="noindex, nofollow"
       />
+      
       <ComplianceSecurityTab 
         isLoading={isLoading}
         data={complianceData?.data}

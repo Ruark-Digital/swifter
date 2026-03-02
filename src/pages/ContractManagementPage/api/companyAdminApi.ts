@@ -73,7 +73,7 @@ export const createCompanyAdminApi = (
     const res = await requestWithRetry(
       () =>
         client.get({
-          url: `/user/contract/${contractId}`,
+          url: `/contract/manager/contracts/${contractId}`,
           config: options?.config,
         }),
       options?.retry ?? 0,

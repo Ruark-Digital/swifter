@@ -20,7 +20,7 @@ type Props = {
 };
 
 const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive }) => {
-  const { isApprover } = useUserRole();
+  const { isApprover, isVendor } = useUserRole();
   const api = isApprover ? approverApi : contractManagerApi;
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -65,7 +65,7 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive }) =
         <h3 className="text-base font-semibold text-slate-900">
           Non-Compliance Report
         </h3>
-        {isApprover && (
+        {(isApprover || isVendor) && (
           <CreateNcrDialog
             contractId={contractId}
             contract={contract}
@@ -94,6 +94,7 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive }) =
         totalCount={ncrRows.length}
         pagination={pagination}
         setPagination={setPagination}
+        contractId={contractId}
       />
     </TabsContent>
   );

@@ -19,11 +19,17 @@ import {
 } from "@/components/ui/tabs";
 import { ArrowLeft, Download, Eye, Search, X } from "lucide-react";
 import type { ContractNcrSummary } from "../api/contractManagerApi";
+import { useQuery } from "@tanstack/react-query";
+import { approverApi } from "../api/approverApi";
+import { useUserRole } from "@/hooks/useUserRole";
+import { formatDateTZ } from "@/lib/utils";
+import SubmitCapaDialog from "./SubmitCapaDialog";
 
 export type NcrRow = {
   id: string;
   title: string;
   status: "Approved" | "Pending" | "Rejected";
+  contractId: string;
 };
 
 type Props = {
@@ -32,10 +38,13 @@ type Props = {
   totalCount?: number;
   pagination: PaginationState;
   setPagination: OnChangeFn<PaginationState>;
+  contractId: string;
 };
 
 type NcrDetailsSheetProps = {
   trigger: React.ReactNode;
+  contractId: string;
+  ncrId: string;
 };
 
 const LabelRow = ({
@@ -87,9 +96,33 @@ const DocCard = ({
   </div>
 );
 
-const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger }) => {
+const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger, contractId, ncrId }) => {
+  const [open, setOpen] = React.useState(false);
+  const { isApprover } = useUserRole();
+
+  const { data: detailRes } = useQuery({
+    queryKey: ["approver", "contractNcrs", "detail", contractId, ncrId],
+    queryFn: async () => await approverApi.getNcrDetail(contractId, ncrId),
+    enabled: Boolean(contractId) && Boolean(ncrId) && !!isApprover && open,
+    staleTime: 60000,
+  });
+
+  const detail = detailRes?.data;
+  const title = detail?.title ?? "-";
+  const description = detail?.description ?? "-";
+  const status = detail?.status ?? "-";
+  const ncrIdentifier = detail?.ncrId ?? detail?._id ?? ncrId;
+  const submittedBy = detail?.submittedBy?.name ?? "-";
+
+  const submissionDate = formatDateTZ(detail?.createdAt, "MMMM dd, yyyy");
+  const responseDeadline = formatDateTZ(detail?.updatedAt, "MMMM dd, yyyy");
+
+  const files = (detail?.files ?? []) as Array<{ name?: string; type?: string; size?: string | number }>;
+
+
+
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="right"
@@ -123,7 +156,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger }) => {
           <div className="space-y-6">
             <div className="flex items-start justify-between">
               <div className="text-base font-semibold text-[#0F0F0F]">
-                Additional structural reinforcement
+                {title}
               </div>
               <Button
                 variant="outline"
@@ -153,24 +186,24 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger }) => {
                 <div className="grid gap-6 sm:grid-cols-2">
                   <LabelRow
                     label="NCR Title"
-                    value="Additional structural reinforcement"
+                    value={title}
                   />
                   <LabelRow
                     label="Submitted by"
                     value={
                       <a className="text-[#2563EB] underline">
-                        Olamide Oladehinde
+                        {submittedBy}
                       </a>
                     }
                   />
-                  <LabelRow label="NCR ID" value="NCI-2025-10" />
-                  <LabelRow label="Submission Date" value="April 30, 2025" />
-                  <LabelRow label="Response Deadline" value="April 30, 2025" />
+                  <LabelRow label="NCR ID" value={ncrIdentifier} />
+                  <LabelRow label="Submission Date" value={submissionDate} />
+                  <LabelRow label="Response Deadline" value={responseDeadline} />
                   <LabelRow
                     label="Status"
                     value={
                       <span className="inline-flex rounded-full bg-[#DCFCE7] px-3 py-1 text-xs font-semibold text-[#16A34A]">
-                        Open
+                        {String(status || "-")}
                       </span>
                     }
                   />
@@ -181,11 +214,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger }) => {
                     Description
                   </div>
                   <div className="text-sm text-[#374151]">
-                    Lorem ipsum dolor sit amet consectetur. Volutpat quis egestas
-                    nunc egestas ut sed accumsan commodo vitae. Ullamcorper
-                    feugiat pulvinar consectetur vel natoque amet enim ac sed.
-                    Laoreet fringilla sollicitudin pharetra sit proin dictum. Sit
-                    sed lorem mauris.
+                    {description}
                   </div>
                 </div>
 
@@ -194,10 +223,17 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger }) => {
                     Attached Documents
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <DocCard name="RFP_HRSoftware" type="DOC" size="25KB" />
-                    <DocCard name="RFP_HRSoftware" type="PDF" size="1MB" />
-                    <DocCard name="RFP_HRSoftware" type="DOC" size="25KB" />
-                    <DocCard name="RFP_HRSoftware" type="PDF" size="1MB" />
+                    {(files ?? []).map((f, i) => (
+                      <DocCard
+                        key={`${f?.name ?? ""}-${i}`}
+                        name={f?.name ?? "Untitled"}
+                        type={
+                          ((f?.name ?? "").toLowerCase().endsWith(".pdf") ? "PDF" : "DOC") as
+                            "DOC" | "PDF"
+                        }
+                        size={typeof f?.size === "number" ? `${f.size}B` : String(f?.size ?? "N/A")}
+                      />
+                    ))}
                   </div>
                 </div>
               </TabsContent>
@@ -209,6 +245,27 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger }) => {
               </TabsContent>
             </Tabs>
           </div>
+          {isApprover ? (
+            <div className="flex w-full gap-3 pt-2">
+              <Button
+                variant="outline"
+                className="flex-1 h-12 rounded-xl"
+                onClick={() => setOpen(false)}
+              >
+                Cancel
+              </Button>
+              <SubmitCapaDialog
+                contractId={contractId}
+                ncrId={ncrId}
+                ncrTitle={title}
+                trigger={
+                  <Button className="flex-1 h-12 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]">
+                    Submit CAPA
+                  </Button>
+                }
+              />
+            </div>
+          ) : null}
         </div>
       </SheetContent>
     </Sheet>
@@ -239,9 +296,11 @@ const columns: ColumnDef<NcrRow>[] = [
   {
     id: "actions",
     header: () => <div className="text-right">Actions</div>,
-    cell: () => (
+    cell: ({ row }) => (
       <div className="text-right">
         <NcrDetailsSheet
+          contractId={row.original.contractId}
+          ncrId={row.original.id}
           trigger={
             <button
               type="button"
@@ -269,6 +328,7 @@ const NcrTable: React.FC<Props> = ({
   totalCount,
   pagination,
   setPagination,
+  contractId,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -278,8 +338,9 @@ const NcrTable: React.FC<Props> = ({
         id: row.ncrId ?? row._id ?? "-",
         title: row.title ?? "-",
         status: formatNcrStatus(row.status),
+        contractId,
       })),
-    [rows],
+    [rows, contractId],
   );
 
   const filteredRows = React.useMemo(() => {

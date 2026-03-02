@@ -292,9 +292,9 @@ test.describe("contractManagerApi (unit)", () => {
       config: { params: { title: "q", status: "open", page: 1, limit: 10 } },
     });
 
-    await api.getRfiDetail("rfi1");
+    await api.getRfiDetail("c7", "rfi1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/rfis/rfi1",
+      url: "/contract/manager/contracts/c7/rfis/rfi1",
     });
 
     const rfiRespPayload = { response: "ok" };
@@ -304,9 +304,9 @@ test.describe("contractManagerApi (unit)", () => {
       payload: rfiRespPayload,
     });
 
-    await api.getRfiResponse("rfi1");
+    await api.getRfiResponse("c7", "rfi1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/rfis/rfi1/response",
+      url: "/contract/manager/contracts/c7/rfis/rfi1/response",
     });
 
     await api.listRfiComments("c8", "rfi1");
@@ -350,4 +350,3 @@ test.describe("contractManagerApi (unit)", () => {
     expect(complianceApproveFailed).toBe(true);
   });
 });
-

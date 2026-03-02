@@ -80,6 +80,7 @@ export type TextDatePickerProps = {
   showTime?: boolean;
   maxDate?: Date;
   helperText?: string;
+  disabled?: boolean;
 };
 
 export type TextTimeInputProps = {
@@ -557,6 +558,7 @@ export const TextDatePicker = (
     maxDate,
     showTime,
     helperText,
+    disabled
   } = props;
   const id = useId();
   const [timeValue, setTimeValue] = useState<string>("");
@@ -614,6 +616,7 @@ export const TextDatePicker = (
             className={`group bg-background hover:bg-background border-gray-300 w-full h-12 justify-between px-4 font-normal outline-offset-0 outline-none focus-visible:outline-[3px] focus:border-[#2A4467] focus:ring-[#2A4467] rounded-lg ${
               error ? "border-red-500" : ""
             }`}
+            disabled={disabled}
           >
             <span className={cn("truncate", !value && "text-muted-foreground")}>
               {value

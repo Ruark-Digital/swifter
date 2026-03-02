@@ -1,6 +1,5 @@
 import React from "react";
 import { TabsContent } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import LemTable, { type LemRow } from "../components/LemTable";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
@@ -16,6 +15,7 @@ const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   const { isApprover, isManager } = useUserRole();
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
+  
   React.useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 400);
     return () => clearTimeout(t);
@@ -76,9 +76,6 @@ const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         <h3 className="text-base font-semibold text-slate-900">
           Labor, Equipment & Material Reports
         </h3>
-        <Button variant="outline" className="h-10 rounded-xl px-4">
-          Upload Rate Sheet
-        </Button>
       </div>
 
       <LemTable

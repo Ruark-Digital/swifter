@@ -4,13 +4,16 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Share2, Search, Check, X } from "lucide-react";
+import { Share2, Search, } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ContractComplianceDTO, contractManagerApi, ApprovalActionDTO } from "../api/contractManagerApi";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { ContractComplianceDTO
+  // contractManagerApi, 
+  // ApprovalActionDTO 
+} from "../api/contractManagerApi";
+// import { useMutation, useQueryClient } from "@tanstack/react-query";
+// import { useParams } from "react-router-dom";
 import { useUserRole } from "@/hooks/useUserRole";
-import { useToast } from "@/components/ui/use-toast";
+// import { useToast } from "@/components/ui/use-toast";
 import { differenceInDays } from "date-fns";
 
 export type PolicyRow = {
@@ -39,50 +42,56 @@ interface ComplianceSecurityTabProps {
 const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({ isLoading, data }) => {
   const [search, setSearch] = React.useState("");
   const [activeView, setActiveView] = React.useState<"policy" | "security">("policy");
-  const { id: contractId } = useParams<{ id: string }>();
-  const queryClient = useQueryClient();
+  // const { id: contractId } = useParams<{ id: string }>();
+  // const queryClient = useQueryClient();
   const { isManager } = useUserRole();
-  const { toast } = useToast();
+  // const { toast } = useToast();
 
-  const { mutate: approveItem, isPending: isApproving } = useMutation({
-    mutationFn: async ({
-      type,
-      typeId,
-      payload,
-    }: {
-      type: "policy" | "security";
-      typeId: string;
-      payload: ApprovalActionDTO;
-    }) => {
-      if (!contractId) return;
-      return await contractManagerApi.approveComplianceItem(
-        contractId,
-        type,
-        typeId,
-        payload
-      );
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["contract-compliance", contractId] });
-      toast({
-        title: "Success",
-        description: "Compliance item updated successfully",
-      });
-    },
-    onError: () => {
-      // error toast handled by toaster hook or global handler if desired
-    },
-  });
-
-  const handleApprove = (type: "policy" | "security", id: string) => {
-    approveItem({ type, typeId: id, payload: { action: "approved" } });
+  const formatMoneyNoSymbol = (value: unknown) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return "-";
+    return num.toLocaleString("en-US", { maximumFractionDigits: 0 });
   };
 
-  const handleReject = (type: "policy" | "security", id: string) => {
-    // For now, rejecting without comment. 
-    // In a real scenario, we might want to prompt for a comment.
-    approveItem({ type, typeId: id, payload: { action: "rejected" } });
-  };
+  // const { mutate: approveItem, isPending: isApproving } = useMutation({
+  //   mutationFn: async ({
+  //     type,
+  //     typeId,
+  //     payload,
+  //   }: {
+  //     type: "policy" | "security";
+  //     typeId: string;
+  //     payload: ApprovalActionDTO;
+  //   }) => {
+  //     if (!contractId) return;
+  //     return await contractManagerApi.approveComplianceItem(
+  //       contractId,
+  //       type,
+  //       typeId,
+  //       payload
+  //     );
+  //   },
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries({ queryKey: ["contract-compliance", contractId] });
+  //     toast({
+  //       title: "Success",
+  //       description: "Compliance item updated successfully",
+  //     });
+  //   },
+  //   onError: () => {
+  //     // error toast handled by toaster hook or global handler if desired
+  //   },
+  // });
+
+  // const handleApprove = (type: "policy" | "security", id: string) => {
+  //   approveItem({ type, typeId: id, payload: { action: "approved" } });
+  // };
+
+  // const handleReject = (type: "policy" | "security", id: string) => {
+  //   // For now, rejecting without comment. 
+  //   // In a real scenario, we might want to prompt for a comment.
+  //   approveItem({ type, typeId: id, payload: { action: "rejected" } });
+  // };
 
   const columns = useMemo<ColumnDef<PolicyRow>[]>(() => [
     { accessorKey: "policyId", header: "Policy ID" },
@@ -112,16 +121,16 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({ isLoading
     {
       id: "actions",
       header: "Action",
-      cell: ({ row }) => {
-        const status = row.original.status?.toLowerCase();
-        const showActions = isManager && (status === "pending" || status === "pending submission");
+      cell: () => {
+        // const status = row.original.status?.toLowerCase();
+        // const showActions = isManager && (status === "pending" || status === "pending submission");
         
         return (
           <div className="flex items-center gap-2">
             <Button variant="link" className="text-green-600 font-semibold p-0 h-auto">
               View
             </Button>
-            {showActions && (
+            {/* {showActions && (
               <>
                 <Button 
                   variant="ghost" 
@@ -142,12 +151,14 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({ isLoading
                   <X className="h-4 w-4" />
                 </Button>
               </>
-            )}
+            )} */}
           </div>
         );
       },
     },
-  ], [isManager, isApproving]);
+  ], [isManager, 
+    // isApproving
+  ]);
 
   const securityColumns = useMemo<ColumnDef<SecurityRow>[]>(() => [
     { accessorKey: "securityId", header: "Security ID" },
@@ -194,16 +205,16 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({ isLoading
     {
       id: "actions",
       header: "Action",
-      cell: ({ row }) => {
-        const status = row.original.status?.toLowerCase();
-        const showActions = isManager && (status === "pending" || status === "pending submission");
+      cell: () => {
+      //    const status = row.original.status?.toLowerCase();
+      //  const showActions = isManager && (status === "pending" || status === "pending submission");
         
         return (
           <div className="flex items-center gap-2">
             <Button variant="link" className="text-green-600 font-semibold p-0 h-auto">
               View
             </Button>
-            {showActions && (
+            {/* {showActions && (
               <>
                 <Button 
                   variant="ghost" 
@@ -226,12 +237,12 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({ isLoading
                   <X className="h-4 w-4" />
                 </Button>
               </>
-            )}
+            )} */}
           </div>
         );
       },
     },
-  ], [isManager, isApproving]);
+  ], [isManager]);
 
   const policyRows: PolicyRow[] = useMemo(() => {
     if (!data?.policy) return [];
@@ -239,7 +250,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({ isLoading
       id: p.id || "",
       policyId: p.policyId || p.id || "-",
       policyName: p.policyName || "-",
-      limit: p.limit || "-",
+      limit: formatMoneyNoSymbol(p.value),
       status: p.status || "Pending",
     }));
   }, [data?.policy]);
@@ -260,7 +271,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({ isLoading
         id: s.id || "",
         securityId: s.id || "-", // Using id as securityId if not provided
         securityType: s.securityType || "-",
-        amount: s.amount || "-",
+        amount: formatMoneyNoSymbol(s.amount),
         dueDate,
         dueIn,
         status: s.status || "Pending",
