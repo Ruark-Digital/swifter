@@ -28,18 +28,11 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  ArrowLeft,
-  Download,
-  Eye,
-  Search,
-  Share2,
-  X,
-} from "lucide-react";
+import { ArrowLeft, Download, Eye, Search, Share2, X } from "lucide-react";
 import { useToastHandler } from "@/hooks/useToaster";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useUserRole } from "@/hooks/useUserRole";
-import { contractManagerApi } from "../api/contractManagerApi";
+import { formatDate } from "date-fns";
 
 export type LemRow = {
   id: string;
@@ -53,6 +46,7 @@ type LemDetailsSheetProps = {
   trigger: React.ReactNode;
   contractId: string;
   lemId: string;
+  basePath: string;
 };
 
 const LabelRow = ({
@@ -108,34 +102,27 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   trigger,
   contractId,
   lemId,
+  basePath,
 }) => {
-  const { isApprover, isManager } = useUserRole();
+  const { isVendor } = useUserRole();
   const { data: lemDetail, isLoading: detailLoading } = useQuery({
-    queryKey: ["lem-detail", contractId, lemId],
+    queryKey: ["lem-detail", contractId, lemId, basePath],
     queryFn: async () => {
-      if (isManager && !isApprover) {
-        const res = await contractManagerApi.getLemDetail(contractId, lemId);
-        return res?.data;
-      }
       const res = await getRequest({
-        url: `/contract/approver/contract/${contractId}/lems/${lemId}`,
+        url: `${basePath}/${lemId}`,
       });
-      return (res as any)?.data?.data;
+      return (res as any)?.data?.data || (res as any)?.data;
     },
     enabled: !!contractId && !!lemId,
   });
 
   const { data: rateSheet, isLoading: sheetLoading } = useQuery({
-    queryKey: ["lem-rate-sheet", contractId, lemId],
+    queryKey: ["lem-rate-sheet", contractId, lemId, basePath],
     queryFn: async () => {
-      if (isManager && !isApprover) {
-        const res = await contractManagerApi.getLemRateSheet(contractId, lemId);
-        return res?.data?.sheet;
-      }
       const res = await getRequest({
-        url: `/contract/user/contracts/${contractId}/lems/${lemId}/ratesheet`,
+        url: `${basePath}/${lemId}/ratesheet`,
       });
-      return (res as any)?.data?.data?.sheet;
+      return (res as any)?.data?.data?.sheet || (res as any)?.data?.sheet;
     },
     enabled: !!contractId && !!lemId,
   });
@@ -186,16 +173,16 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
             </div>
 
             <Tabs defaultValue="overview" className="space-y-4">
-              <TabsList className="h-auto w-full justify-start gap-6 rounded-none border-b border-[#E5E7EB] bg-transparent p-0">
+              <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
                 <TabsTrigger
                   value="overview"
-                  className="rounded-none border-b-2 border-transparent px-0 pb-2 text-xs font-semibold text-[#6B7280] data-[state=active]:border-[#2A4467] data-[state=active]:text-[#2A4467]"
+                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                 >
                   Overview
                 </TabsTrigger>
                 <TabsTrigger
                   value="summary"
-                  className="rounded-none border-b-2 border-transparent px-0 pb-2 text-xs font-semibold text-[#6B7280] data-[state=active]:border-[#2A4467] data-[state=active]:text-[#2A4467]"
+                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                 >
                   LEM Summary
                 </TabsTrigger>
@@ -213,7 +200,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                     label="Submitted By"
                     value={
                       <a className="text-[#2563EB] underline">
-                        Olamide Oladehinde
+                        {lemDetail?.submittedBy?.name || "Olamide Oladehinde"}
                       </a>
                     }
                   />
@@ -229,11 +216,23 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                     label="Status"
                     value={
                       <span className="inline-flex rounded-full bg-[#FEF3C7] px-3 py-1 text-xs font-semibold text-[#F59E0B]">
-                        Pending
+                        {lemDetail?.status || "Pending"}
                       </span>
                     }
                   />
-                  <LabelRow label="Submission Date" value="April 30, 2025" />
+                  <LabelRow
+                    label="Submission Date"
+                    value={
+                      lemDetail?.submissionDate || lemDetail?.createdAt
+                        ? formatDate(
+                            lemDetail?.submissionDate ||
+                              lemDetail?.createdAt ||
+                              "",
+                            "yyyy MMMM dd",
+                          )
+                        : "-"
+                    }
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -247,12 +246,21 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="text-base font-semibold text-[#0F0F0F]">
-                    Attachment
+                {lemDetail?.files && lemDetail.files.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="text-base font-semibold text-[#0F0F0F]">
+                      Attachment
+                    </div>
+                    {lemDetail.files.map((file: any, index: number) => (
+                      <DocCard
+                        key={index}
+                        name={file.name || "Attachment"}
+                        type={file.type || "PDF"}
+                        size={file.size || "—"}
+                      />
+                    ))}
                   </div>
-                  <DocCard name="RFP_HRSoftware" type="DOC" size="25KB" />
-                </div>
+                )}
               </TabsContent>
 
               <TabsContent value="summary" className="space-y-4">
@@ -422,49 +430,62 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
             </Tabs>
           </div>
 
-          <div className="flex gap-3 pt-6">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
-                >
-                  Reject Change
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md rounded-2xl">
-                <DialogHeader>
-                  <DialogTitle className="text-base font-semibold text-[#0F0F0F]">
-                    Reject LEM
-                  </DialogTitle>
-                </DialogHeader>
-                <RejectLemForm contractId={contractId} lemId={lemId} />
-              </DialogContent>
-            </Dialog>
+          {!isVendor && (
+            <div className="flex gap-3 pt-6">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                  >
+                    Reject Change
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md rounded-2xl">
+                  <DialogHeader>
+                    <DialogTitle className="text-base font-semibold text-[#0F0F0F]">
+                      Reject LEM
+                    </DialogTitle>
+                  </DialogHeader>
+                  <RejectLemForm
+                    contractId={contractId}
+                    lemId={lemId}
+                    basePath={basePath}
+                  />
+                </DialogContent>
+              </Dialog>
 
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
-                  Approve
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md rounded-2xl">
-                <DialogHeader>
-                  <DialogTitle className="text-base font-semibold text-[#0F0F0F]">
-                    Approve LEM
-                  </DialogTitle>
-                </DialogHeader>
-                <ApproveLemForm contractId={contractId} lemId={lemId} />
-              </DialogContent>
-            </Dialog>
-          </div>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
+                    Approve
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md rounded-2xl">
+                  <DialogHeader>
+                    <DialogTitle className="text-base font-semibold text-[#0F0F0F]">
+                      Approve LEM
+                    </DialogTitle>
+                  </DialogHeader>
+                  <ApproveLemForm
+                    contractId={contractId}
+                    lemId={lemId}
+                    basePath={basePath}
+                  />
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>
   );
 };
 
-const createColumns = (contractId: string): ColumnDef<LemRow>[] => [
+const createColumns = (
+  contractId: string,
+  basePath: string,
+): ColumnDef<LemRow>[] => [
   { accessorKey: "id", header: "LEM ID" },
   {
     accessorKey: "title",
@@ -482,7 +503,15 @@ const createColumns = (contractId: string): ColumnDef<LemRow>[] => [
       <span className="font-medium text-slate-900">{getValue<string>()}</span>
     ),
   },
-  { accessorKey: "submissionDate", header: "Submission Date" },
+  {
+    accessorKey: "submissionDate",
+    header: "Submission Date",
+    cell: ({ getValue }) => (
+      <span className="text-sm text-slate-700">
+        {formatDate(getValue<string>(), "yyyy-MMM-dd")}
+      </span>
+    ),
+  },
   {
     accessorKey: "status",
     header: "Status",
@@ -510,6 +539,7 @@ const createColumns = (contractId: string): ColumnDef<LemRow>[] => [
           <LemDetailsSheet
             contractId={contractId}
             lemId={row.original.id}
+            basePath={basePath}
             trigger={
               <button
                 type="button"
@@ -525,15 +555,21 @@ const createColumns = (contractId: string): ColumnDef<LemRow>[] => [
   },
 ];
 
-
 const LemTable: React.FC<{
   contractId: string;
   rows: LemRow[];
   isLoading?: boolean;
   searchValue?: string;
   onSearchChange?: (val: string) => void;
-}> = ({ contractId, rows, isLoading, searchValue, onSearchChange }) => {
-
+  basePath: string;
+}> = ({
+  contractId,
+  rows,
+  isLoading,
+  searchValue,
+  onSearchChange,
+  basePath,
+}) => {
   const filteredRows = React.useMemo(() => {
     const source = rows || [];
     const query = (searchValue || "").toLowerCase();
@@ -547,7 +583,7 @@ const LemTable: React.FC<{
     <div className="space-y-4" data-testid="lem-table">
       <DataTable<LemRow>
         data={filteredRows}
-        columns={createColumns(contractId)}
+        columns={createColumns(contractId, basePath)}
         header={() => (
           <div className="flex items-center gap-3 border-b w-full border-[#E5E7EB] px-5 py-4">
             <span className="text-sm font-medium text-slate-900">LEM</span>
@@ -587,14 +623,18 @@ const LemTable: React.FC<{
 
 export default LemTable;
 
-const RejectLemForm: React.FC<{ contractId: string; lemId: string }> = ({
-  contractId,
-  lemId,
-}) => {
+import Spinner from "@/components/ui/Spinner";
+
+const RejectLemForm: React.FC<{
+  contractId: string;
+  lemId: string;
+  basePath: string;
+  onSuccess?: () => void;
+}> = ({ contractId, lemId, basePath, onSuccess }) => {
   const toast = useToastHandler();
 
   const schema = yup.object().shape({
-    comment: yup.string().required("Reason is required"),
+    comment: yup.string().required("Rejection reason is required"),
   });
   const { control } = useForge({
     resolver: yupResolver(schema),
@@ -602,60 +642,71 @@ const RejectLemForm: React.FC<{ contractId: string; lemId: string }> = ({
   });
 
   const queryClient = useQueryClient();
-  const rejectMutation = useMutation<ApiResponse, ApiResponseError, { comment: string }>({
-    mutationKey: ["reject-lem", contractId, lemId],
-    mutationFn: async (data: { comment: string }) =>
+  const { mutate, isPending } = useMutation<
+    ApiResponse,
+    ApiResponseError,
+    { comment: string }
+  >({
+    mutationKey: ["reject-lem", contractId, lemId, basePath],
+    mutationFn: async (data) =>
       await postRequest({
-        url: `/contract/approver/contract/${contractId}/lems/${lemId}/approve`,
+        url: `${basePath}/${lemId}/approve`,
         payload: { action: "rejected", comment: data.comment },
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lems", contractId] });
-      queryClient.invalidateQueries({ queryKey: ["lem-detail", contractId, lemId] });
+      queryClient.invalidateQueries({
+        queryKey: ["lem-detail", contractId, lemId],
+      });
+      toast.success("Success", "LEM rejected successfully");
+      onSuccess?.();
     },
-    onError(error) {
-      toast.error("Failed to reject LEM", error);
+    onError: (error) => {
+      toast.error("Error", error?.response?.data?.message || "Failed to reject LEM");
     },
   });
 
-
-
-  const onSubmit = async (data: { comment: string }) => {
-    await rejectMutation.mutateAsync(data);
+  const onSubmit = (data: { comment: string }) => {
+    mutate(data);
   };
 
   return (
-    <Forge control={control} onSubmit={onSubmit}>
+    <Forge control={control} onSubmit={onSubmit} className="space-y-4">
       <Forger
         name="comment"
         component={TextArea}
         placeholder="Enter rejection reason..."
         rows={4}
       />
-      <DialogFooter>
+      <DialogFooter >
         <Button
           type="submit"
-          className="rounded-lg bg-[#EF4444]"
-          disabled={rejectMutation.isPending}
-          aria-busy={rejectMutation.isPending}
+          variant="destructive"
+          className="w-full sm:w-auto bg-[#EF4444] hover:bg-[#DC2626]"
+          disabled={isPending}
         >
-          {rejectMutation.isPending ? "Rejecting..." : "Reject"}
+          {isPending ? (
+            <div className="flex items-center gap-2">
+              <Spinner className="h-4 w-4 text-white" />
+              <span>Rejecting...</span>
+            </div>
+          ) : (
+            "Reject LEM"
+          )}
         </Button>
       </DialogFooter>
-      {rejectMutation.isError && (
-        <div className="px-2 pt-2 text-sm text-[#EF4444]">Failed to reject LEM</div>
-      )}
     </Forge>
   );
 };
 
-const ApproveLemForm: React.FC<{ contractId: string; lemId: string }> = ({
-  contractId,
-  lemId,
-}) => {
+const ApproveLemForm: React.FC<{
+  contractId: string;
+  lemId: string;
+  basePath: string;
+  onSuccess?: () => void;
+}> = ({ contractId, lemId, basePath, onSuccess }) => {
   const toast = useToastHandler();
-  const { isApprover, isManager } = useUserRole();
-  
+
   const schema = yup.object().shape({
     note: yup.string().optional(),
   });
@@ -666,33 +717,36 @@ const ApproveLemForm: React.FC<{ contractId: string; lemId: string }> = ({
 
   const queryClient = useQueryClient();
 
-  const approveMutation = useMutation<ApiResponse, ApiResponseError, { note?: string }>({
-    mutationKey: ["approve-lem", contractId, lemId],
-    mutationFn: async (data: { note?: string }) =>
-      isManager && !isApprover
-        ? (await contractManagerApi.approveLem(contractId, lemId, {
-            action: "approved",
-            comment: data.note,
-          })) as unknown as ApiResponse
-        : await postRequest({
-            url: `/contract/approver/contract/${contractId}/lems/${lemId}/approve`,
-            payload: { action: "approved", comment: data.note },
-          }),
+  const { mutate, isPending } = useMutation<
+    ApiResponse,
+    ApiResponseError,
+    { note?: string }
+  >({
+    mutationKey: ["approve-lem", contractId, lemId, basePath],
+    mutationFn: async (data) =>
+      await postRequest({
+        url: `${basePath}/${lemId}/approve`,
+        payload: { action: "approved", comment: data.note },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lems", contractId] });
-      queryClient.invalidateQueries({ queryKey: ["lem-detail", contractId, lemId] });
+      queryClient.invalidateQueries({
+        queryKey: ["lem-detail", contractId, lemId],
+      });
+      toast.success("Success", "LEM approved successfully");
+      onSuccess?.();
     },
-    onError(error) {
-      toast.error("Failed to approve LEM", error);
+    onError: (error) => {
+      toast.error("Error", error?.response?.data?.message || "Failed to approve LEM");
     },
   });
 
-  const onSubmit = async (data: { note?: string }) => {
-    await approveMutation.mutateAsync(data);
+  const onSubmit = (data: { note?: string }) => {
+    mutate(data);
   };
 
   return (
-    <Forge control={control} onSubmit={onSubmit}>
+    <Forge control={control} onSubmit={onSubmit} className="space-y-4">
       <Forger
         name="note"
         component={TextArea}
@@ -702,11 +756,17 @@ const ApproveLemForm: React.FC<{ contractId: string; lemId: string }> = ({
       <DialogFooter>
         <Button
           type="submit"
-          className="rounded-lg bg-[#1F3B63]"
-          disabled={approveMutation.isPending}
-          aria-busy={approveMutation.isPending}
+          className="w-full sm:w-auto bg-[#1F3B63] hover:bg-[#162c4b]"
+          disabled={isPending}
         >
-          {approveMutation.isPending ? "Approving..." : "Approve"}
+          {isPending ? (
+            <div className="flex items-center gap-2">
+              <Spinner className="h-4 w-4 text-white" />
+              <span>Approving...</span>
+            </div>
+          ) : (
+            "Approve LEM"
+          )}
         </Button>
       </DialogFooter>
     </Forge>

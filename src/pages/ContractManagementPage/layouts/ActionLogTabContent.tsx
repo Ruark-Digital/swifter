@@ -1,66 +1,91 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import { TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useQuery } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
+import { contractManagerApi } from "../api/contractManagerApi";
+import { format } from "date-fns";
+import ActionLogDetailsSheet from "../components/ActionLogDetailsSheet";
 
 type Props = { isActive?: boolean };
 
-const ActionLogTabContent: React.FC<Props> = () => {
-  type ActionLogRow = {
-    actionId: string;
-    module: string;
-    description: string;
-    actorName: string;
-    actorRole?: string;
-    reference: string;
-    dateLine1: string;
-    dateLine2: string;
-  };
+type ActionLogRow = {
+  actionId: string;
+  module: string;
+  description: string;
+  actorName: string;
+  actorRole?: string;
+  reference: string;
+  dateLine1: string;
+  dateLine2: string;
+  rawDate: Date; // For sorting
+};
 
-  const rows: ActionLogRow[] = [
-    {
-      actionId: "ACT-2025-10",
-      module: "Invoice",
-      description: "Invoice INV-023 submitted",
-      actorName: "Vendor",
-      reference: "INV-2025-10",
-      dateLine1: "12-05-2026,",
-      dateLine2: "11:00 AM EST",
-    },
-    {
-      actionId: "ACT-2025-10",
-      module: "Claim",
-      description: "Time claim approved (14 days)",
-      actorName: "David Brown",
-      actorRole: "Approver",
-      reference: "CL-2025-10",
-      dateLine1: "12-05-2026,",
-      dateLine2: "11:00 AM EST",
-    },
-    {
-      actionId: "ACT-2025-10",
-      module: "Change",
-      description: "Scope change rejected",
-      actorName: "David Brown",
-      actorRole: "Contract Manager",
-      reference: "CH-2025-10",
-      dateLine1: "12-05-2026,",
-      dateLine2: "11:00 AM EST",
-    },
-  ];
+const ActionLogTabContent: React.FC<Props> = () => {
+  const { id: contractId } = useParams<{ id: string }>();
+  const [selectedAction, setSelectedAction] = useState<ActionLogRow | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // 1. Fetch action logs
+  const { data: logsData, isLoading } = useQuery({
+    queryKey: ["contractLogs", contractId],
+    queryFn: () => contractManagerApi.listLogs(contractId!, { limit: 100 }), // Fetch more items
+    enabled: !!contractId,
+  });
+
+  const rows = useMemo(() => {
+    if (!logsData?.data?.logs) return [];
+
+    return logsData.data.logs.map((log) => {
+      const date = log.timestamp ? new Date(log.timestamp) : (log.createdAt ? new Date(log.createdAt) : new Date());
+      return {
+        actionId: log.logId || log._id || "Unknown",
+        module: log.module || "Unknown",
+        description: log.description || log.action || "No description",
+        actorName: log.actor?.name || "Unknown User",
+        actorRole: log.actor?.role || "Unknown Role",
+        reference: log.reference || "Unknown",
+        dateLine1: format(date, "MM-dd-yyyy,"),
+        dateLine2: format(date, "hh:mm a"),
+        rawDate: date,
+      };
+    }).sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime());
+  }, [logsData]);
+
+  const filteredRows = useMemo(() => {
+    if (!searchQuery) return rows;
+    const lowerQuery = searchQuery.toLowerCase();
+    return rows.filter(
+      (row) =>
+        row.description.toLowerCase().includes(lowerQuery) ||
+        row.module.toLowerCase().includes(lowerQuery) ||
+        row.actorName.toLowerCase().includes(lowerQuery) ||
+        row.reference.toLowerCase().includes(lowerQuery)
+    );
+  }, [rows, searchQuery]);
 
   const columns: ColumnDef<ActionLogRow>[] = [
     {
       accessorKey: "actionId",
       header: "Action ID",
       cell: ({ getValue }) => (
-        <span className="font-medium text-slate-700">{getValue<string>()}</span>
+        <span className="font-medium text-slate-700 truncate block max-w-[100px]" title={getValue<string>()}>
+          {getValue<string>()}
+        </span>
       ),
     },
-    { accessorKey: "module", header: "Module" },
+    { 
+        accessorKey: "module", 
+        header: "Module",
+        cell: ({ getValue }) => (
+            <span className="capitalize">{getValue<string>()}</span>
+        )
+    },
     { accessorKey: "description", header: "Description" },
     {
       accessorKey: "actorName",
@@ -79,14 +104,16 @@ const ActionLogTabContent: React.FC<Props> = () => {
       accessorKey: "reference",
       header: "Reference",
       cell: ({ getValue }) => (
-        <span className="font-medium text-slate-700">{getValue<string>()}</span>
+        <span className="font-medium text-slate-700 truncate block max-w-[120px]" title={getValue<string>()}>
+          {getValue<string>()}
+        </span>
       ),
     },
     {
       id: "date",
       header: "Date",
       cell: ({ row }) => (
-        <div>
+        <div className="text-xs text-slate-500">
           <div>{row.original.dateLine1}</div>
           <div>{row.original.dateLine2}</div>
         </div>
@@ -95,11 +122,15 @@ const ActionLogTabContent: React.FC<Props> = () => {
     {
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
-      cell: () => (
+      cell: ({ row }) => (
         <div className="text-right">
           <button
             type="button"
             className="font-medium text-green-600 hover:underline"
+            onClick={() => {
+                setSelectedAction(row.original);
+                setIsSheetOpen(true);
+            }}
           >
             View
           </button>
@@ -121,13 +152,15 @@ const ActionLogTabContent: React.FC<Props> = () => {
             <Input
               placeholder="Search log"
               className="h-10 pl-9 text-sm placeholder:text-slate-400"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
 
         <div className="p-0">
           <DataTable<ActionLogRow>
-            data={rows}
+            data={filteredRows}
             columns={columns}
             classNames={{
               container: "[&>div:last-child]:hidden",
@@ -138,14 +171,20 @@ const ActionLogTabContent: React.FC<Props> = () => {
               tCell: "p-4 text-slate-700",
             }}
             options={{
-              disablePagination: true,
+              disablePagination: false, // Enabled pagination as list might grow
               disableSelection: true,
-              isLoading: false,
-              totalCounts: rows.length,
+              isLoading: isLoading,
+              totalCounts: filteredRows.length,
             }}
           />
         </div>
       </Card>
+
+      <ActionLogDetailsSheet
+        isOpen={isSheetOpen}
+        onClose={() => setIsSheetOpen(false)}
+        action={selectedAction}
+      />
     </TabsContent>
   );
 };

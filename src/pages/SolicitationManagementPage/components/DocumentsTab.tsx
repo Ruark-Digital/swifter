@@ -1,13 +1,12 @@
 import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { File, Eye, Download, Edit } from "lucide-react";
+import { File, Eye, Download } from "lucide-react";
 import { InvitedVendorCard } from "../SolicitationDetailPage";
 import { cn } from "@/lib/utils";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils.tsx";
 import { truncate } from "lodash";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
-import { useNavigate } from "react-router-dom";
 
 // Document type definition
 type SolicitationFile = {
@@ -25,7 +24,6 @@ type DocumentsTabProps = {
 const DocumentsTab: React.FC<DocumentsTabProps> = ({ files = [] }) => {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<SolicitationFile | null>(null);
-  const navigate = useNavigate();
 
   const handleViewFile = (file: SolicitationFile) => {
     setSelectedFile(file);
@@ -111,23 +109,6 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ files = [] }) => {
                             <Eye className="w-4 h-4 text-gray-500" />
                           </Button>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 p-0 bg-green-100 dark:bg-slate-900 rounded-full"
-                          title="Edit in Collaboration Tool"
-                          onClick={() =>
-                            navigate(
-                              `/collaboration-tool?sourceUrl=${encodeURIComponent(
-                                file.url
-                              )}&fileName=${encodeURIComponent(file.name)}&fileType=${encodeURIComponent(
-                                file.type || ""
-                              )}`
-                            )
-                          }
-                        >
-                          <Edit className="w-4 h-4 text-green-500 dark:text-gray-500" />
-                        </Button>
                         {/* <Button
                            variant="ghost"
                            size="icon"

@@ -154,8 +154,8 @@ export interface ContractDetail {
   paymentStructure:       string;
   deliverables:           ContractDeliverable[];
   insurance:              ContractInsurance;
-  startDate:              Date;
-  endDate:                Date;
+  startDate:              string;
+  endDate:                string;
   duration:               number;
   files:                  File[];
   currentApprovalLevel:   number;
@@ -165,8 +165,8 @@ export interface ContractDetail {
   isDeleted:              boolean;
   milestone:              any[];
   signatories:            any[];
-  createdAt:              Date;
-  updatedAt:              Date;
+  createdAt:              string;
+  updatedAt:              string;
   __v:                    number;
   holdBackReleased:       number;
   savingAmount:           number;

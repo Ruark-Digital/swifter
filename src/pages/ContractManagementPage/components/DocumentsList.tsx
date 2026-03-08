@@ -1,10 +1,12 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Eye, Download } from "lucide-react";
+import { Eye, Download, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { File as ContractDocument } from "@/types";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
+import { useNavigate } from "react-router-dom";
+import { isBefore, startOfDay } from "date-fns";
 
 type Doc = {
   id: string;
@@ -17,11 +19,19 @@ type Doc = {
 
 type Props = {
   files?: ContractDocument[];
+  effectiveDate?: string;
 };
 
-const DocumentsList: React.FC<Props> = ({ files }) => {
+const DocumentsList: React.FC<Props> = ({ files, effectiveDate }) => {
+  const navigate = useNavigate();
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [selectedDoc, setSelectedDoc] = React.useState<Doc | null>(null);
+
+  const canEdit = React.useMemo(() => {
+    if (!effectiveDate) return true; // Assuming active if no date provided
+    return isBefore(startOfDay(new Date()), startOfDay(new Date(effectiveDate)));
+  }, [effectiveDate]);
+
   const docs = React.useMemo<Doc[]>(() => {
     if (!files?.length) return [];
     return files.map((file, index) => {
@@ -80,6 +90,17 @@ const DocumentsList: React.FC<Props> = ({ files }) => {
 
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" aria-label="Preview" onClick={() => handlePreview(d)}><Eye className="h-4 w-4" /></Button>
+                {canEdit && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    aria-label="Edit in Collaboration Tool" 
+                    title="Edit in Collaboration Tool"
+                    onClick={() => navigate(`/collaboration-tool?sourceUrl=${encodeURIComponent(d.url || "")}&fileName=${encodeURIComponent(d.name)}&fileType=${encodeURIComponent(d.type || "")}`)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button variant="ghost" size="icon" aria-label="Download" onClick={() => handleDownload(d)}><Download className="h-4 w-4" /></Button>
               </div>
             </CardContent>

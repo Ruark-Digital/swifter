@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useState, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 // import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import { useNavigate } from "react-router-dom";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -29,6 +29,177 @@ import { AiInsightsAlerts } from "./analytics/AiInsightsAlerts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
+const DEFAULT_CHART_FILTER = "12months";
+
+const LOADING_ROLES = new Set([
+  "super_admin",
+  "company_admin",
+  "evaluator",
+  "vendor",
+  "procurement",
+]);
+
+const STAT_ROUTE_MAPPINGS: Record<
+  string,
+  { route: string; filters?: Record<string, string> }
+> = {
+  "All Companies": { route: "/dashboard/companies" },
+  "Active Companies": {
+    route: "/dashboard/companies",
+    filters: { status: "active" },
+  },
+  "Suspended Companies": {
+    route: "/dashboard/companies",
+    filters: { status: "suspended" },
+  },
+  "All Admins": { route: "/dashboard/admin-management" },
+  "Super Admins": {
+    route: "/dashboard/admin-management",
+    filters: { role: "super_admin" },
+  },
+  "Organisation Admins": {
+    route: "/dashboard/admin-management",
+    filters: { role: "company_admin" },
+  },
+  "All Solicitations": { route: "/dashboard/solicitation" },
+  "Active Solicitations": {
+    route: "/dashboard/solicitation",
+    filters: { status: "active" },
+  },
+  "Pending Evaluations": {
+    route: "/dashboard/evaluation",
+    filters: { status: "pending" },
+  },
+  Awarded: {
+    route: "/dashboard/solicitation",
+    filters: { status: "awarded" },
+  },
+  "All Evaluations": { route: "/dashboard/evaluation" },
+  "Active Evaluations": {
+    route: "/dashboard/evaluation",
+    filters: { status: "active" },
+  },
+  "Completed Evaluations": {
+    route: "/dashboard/evaluation",
+    filters: { status: "completed" },
+  },
+  "All Invitations": { route: "/dashboard/invitations" },
+  "Confirmed Invitations": {
+    route: "/dashboard/invitations",
+    filters: { status: "confirmed" },
+  },
+  "Declined Invitations": {
+    route: "/dashboard/invitations",
+    filters: { status: "declined" },
+  },
+  "Pending Invitations": {
+    route: "/dashboard/invitations",
+    filters: { status: "pending" },
+  },
+  "Total Solicitations": { route: "/dashboard/solicitation" },
+  "Total Users": { route: "/dashboard/user-management" },
+  "Active Users": {
+    route: "/dashboard/user-management",
+    filters: { status: "active" },
+  },
+  "Inactive Users": {
+    route: "/dashboard/user-management",
+    filters: { status: "inactive" },
+  },
+};
+
+const CM_YTD_STATS = [
+  {
+    title: "All Contracts",
+    value: 0,
+    icon: "file",
+    color: "text-gray-700",
+    bgColor: "bg-gray-500/10",
+  },
+  {
+    title: "Active Contracts",
+    value: 0,
+    icon: "check-circle",
+    color: "text-green-600",
+    bgColor: "bg-green-500/10",
+  },
+  {
+    title: "Suspended",
+    value: 0,
+    icon: "x-circle",
+    color: "text-red-600",
+    bgColor: "bg-red-500/10",
+  },
+  {
+    title: "Expired",
+    value: 0,
+    icon: "x-circle",
+    color: "text-red-600",
+    bgColor: "bg-red-500/10",
+  },
+  {
+    title: "Terminated",
+    value: 0,
+    icon: "x-circle",
+    color: "text-red-600",
+    bgColor: "bg-red-500/10",
+  },
+  {
+    title: "Total Contract Value",
+    value: 0,
+    icon: "creditCard",
+    color: "text-blue-600",
+    bgColor: "bg-blue-500/10",
+  },
+  {
+    title: "Committed vs Actual",
+    value: 0,
+    icon: "creditCard",
+    color: "text-blue-600",
+    bgColor: "bg-blue-500/10",
+  },
+  {
+    title: "Savings Realized",
+    value: 0,
+    icon: "award",
+    color: "text-green-600",
+    bgColor: "bg-green-500/10",
+  },
+  {
+    title: "High Risk Contracts",
+    value: 0,
+    icon: "file",
+    color: "text-red-600",
+    bgColor: "bg-red-500/10",
+  },
+];
+
+const CM_ANALYTICS_ROWS: Array<{
+  className: string;
+  cards: Array<React.ComponentType>;
+}> = [
+  {
+    className: "grid grid-cols-1 lg:grid-cols-3 gap-6",
+    cards: [CycleTimeCard, InvoiceStatusCard, SpendCard],
+  },
+  {
+    className: "grid grid-cols-1 lg:grid-cols-2 gap-6",
+    cards: [VendorsValueCard, ProjectValueCard],
+  },
+  {
+    className: "grid grid-cols-1 lg:grid-cols-3 gap-6",
+    cards: [RiskDistributionCard, ChangeOrdersImpactCard, CategoryValueCard],
+  },
+  {
+    className: "grid grid-cols-1 lg:grid-cols-3 gap-6",
+    cards: [ComplianceStatusCard, ClauseIntelligenceCard, ContractStatusCard],
+  },
+  {
+    className: "grid grid-cols-1 lg:grid-cols-2 gap-6",
+    cards: [VendorPerformanceSummaryCard, RenewalsTimelineCard],
+  },
+];
+
 // Main Role-Based Dashboard Component
 export const RoleBasedDashboard: React.FC = () => {
   const { dashboardConfig, userRole } = useUserRole();
@@ -41,76 +212,6 @@ export const RoleBasedDashboard: React.FC = () => {
     "total-contracts"
   );
   const navigate = useNavigate();
-
-  // Contract Manager YTD Contracts empty-state cards
-  const cmYtdStats = useMemo(
-    () => [
-      {
-        title: "All Contracts",
-        value: 0,
-        icon: "file",
-        color: "text-gray-700",
-        bgColor: "bg-gray-500/10",
-      },
-      {
-        title: "Active Contracts",
-        value: 0,
-        icon: "check-circle",
-        color: "text-green-600",
-        bgColor: "bg-green-500/10",
-      },
-      {
-        title: "Suspended",
-        value: 0,
-        icon: "x-circle",
-        color: "text-red-600",
-        bgColor: "bg-red-500/10",
-      },
-      {
-        title: "Expired",
-        value: 0,
-        icon: "x-circle",
-        color: "text-red-600",
-        bgColor: "bg-red-500/10",
-      },
-      {
-        title: "Terminated",
-        value: 0,
-        icon: "x-circle",
-        color: "text-red-600",
-        bgColor: "bg-red-500/10",
-      },
-      {
-        title: "Total Contract Value",
-        value: 0,
-        icon: "creditCard",
-        color: "text-blue-600",
-        bgColor: "bg-blue-500/10",
-      },
-      {
-        title: "Committed vs Actual",
-        value: 0,
-        icon: "creditCard",
-        color: "text-blue-600",
-        bgColor: "bg-blue-500/10",
-      },
-      {
-        title: "Savings Realized",
-        value: 0,
-        icon: "award",
-        color: "text-green-600",
-        bgColor: "bg-green-500/10",
-      },
-      {
-        title: "High Risk Contracts",
-        value: 0,
-        icon: "file",
-        color: "text-red-600",
-        bgColor: "bg-red-500/10",
-      },
-    ],
-    []
-  );
 
   // Fetch dashboard data based on user role (without global filter)
   const {
@@ -544,132 +645,56 @@ export const RoleBasedDashboard: React.FC = () => {
   ]);
 
   // Handle individual chart filter changes
-  const handleFilterChange = (chartId?: string, filter?: string) => {
+  const handleFilterChange = useCallback((chartId?: string, filter?: string) => {
     if (!chartId || !filter) return;
     setChartFilters((prev) => ({
       ...prev,
       [chartId]: filter.replace(/\s+/g, ""),
     }));
-  };
+  }, []);
 
-  // Get filter for specific chart (default to "12months")
-  const getChartFilter = (chartId?: string) => {
-    if (!chartId) return "12months";
-    return chartFilters[chartId] || "12months";
-  };
+  const getChartFilter = useCallback(
+    (chartId?: string) => {
+      if (!chartId) return DEFAULT_CHART_FILTER;
+      return chartFilters[chartId] || DEFAULT_CHART_FILTER;
+    },
+    [chartFilters]
+  );
 
-  // Handle stat card clicks for navigation with filters
-  const handleStatCardClick = (title: string) => {
-    // Define route mappings with filters for each user role
-    const routeMappings: Record<
-      string,
-      { route: string; filters?: Record<string, string> }
-    > = {
-      // Super Admin routes
-      "All Companies": { route: "/dashboard/companies" },
-      "Active Companies": {
-        route: "/dashboard/companies",
-        filters: { status: "active" },
-      },
-      "Suspended Companies": {
-        route: "/dashboard/companies",
-        filters: { status: "suspended" },
-      },
-      "All Admins": { route: "/dashboard/admin-management" },
-      "Super Admins": {
-        route: "/dashboard/admin-management",
-        filters: { role: "super_admin" },
-      },
-      "Organisation Admins": {
-        route: "/dashboard/admin-management",
-        filters: { role: "company_admin" },
-      },
+  const handleStatCardClick = useCallback(
+    (title: string) => {
+      const mapping = STAT_ROUTE_MAPPINGS[title];
+      if (mapping) {
+        const { route, filters } = mapping;
 
-      // Procurement routes
-      "All Solicitations": { route: "/dashboard/solicitation" },
-      "Active Solicitations": {
-        route: "/dashboard/solicitation",
-        filters: { status: "active" },
-      },
-      "Pending Evaluations": {
-        route: "/dashboard/evaluation",
-        filters: { status: "pending" },
-      },
-      Awarded: {
-        route: "/dashboard/solicitation",
-        filters: { status: "awarded" },
-      },
+        if (filters && Object.keys(filters).length > 0) {
+          const searchParams = new URLSearchParams();
+          Object.entries(filters).forEach(([key, value]) => {
+            searchParams.set(key, value);
+          });
 
-      // Evaluator routes
-      "All Evaluations": { route: "/dashboard/evaluation" },
-      "Active Evaluations": {
-        route: "/dashboard/evaluation",
-        filters: { status: "active" },
-      },
-      "Completed Evaluations": {
-        route: "/dashboard/evaluation",
-        filters: { status: "completed" },
-      },
-
-      // Vendor routes
-      "All Invitations": { route: "/dashboard/invitations" },
-      "Confirmed Invitations": {
-        route: "/dashboard/invitations",
-        filters: { status: "confirmed" },
-      },
-      "Declined Invitations": {
-        route: "/dashboard/invitations",
-        filters: { status: "declined" },
-      },
-      "Pending Invitations": {
-        route: "/dashboard/invitations",
-        filters: { status: "pending" },
-      },
-
-      // Company Admin routes (similar to procurement for solicitations)
-      "Total Solicitations": { route: "/dashboard/solicitation" },
-      "Total Users": { route: "/dashboard/user-management" },
-      "Active Users": {
-        route: "/dashboard/user-management",
-        filters: { status: "active" },
-      },
-      "Inactive Users": {
-        route: "/dashboard/user-management",
-        filters: { status: "inactive" },
-      },
-    };
-
-    const mapping = routeMappings[title];
-    if (mapping) {
-      const { route, filters } = mapping;
-
-      if (filters && Object.keys(filters).length > 0) {
-        // Create URLSearchParams for filters
-        const searchParams = new URLSearchParams();
-        Object.entries(filters).forEach(([key, value]) => {
-          searchParams.set(key, value);
-        });
-
-        // Navigate with query parameters
-        navigate(`${route}?${searchParams.toString()}`);
-      } else {
-        // Navigate without filters
-        navigate(route);
+          navigate(`${route}?${searchParams.toString()}`);
+        } else {
+          navigate(route);
+        }
       }
-    }
-  };
+    },
+    [navigate]
+  );
 
-  // Show loading state if data is being fetched
-  if (
-    isLoading &&
-    [
-      "super_admin",
-      "company_admin",
-      "evaluator",
-      "vendor",
-      "procurement",
-    ].includes(userRole)
-  ) {
+  const isContractManager = userRole === "contract_manager";
+  const showCmOverviewTotalContracts =
+    isContractManager &&
+    cmTopTab === "overview" &&
+    cmSubTab === "total-contracts";
+  const showCmOverviewYtdContracts =
+    isContractManager && cmTopTab === "overview" && cmSubTab === "ytd-contracts";
+  const showCmAnalytics = isContractManager && cmTopTab === "analytics";
+  const showDefaultStats = !isContractManager || showCmOverviewTotalContracts;
+  const canShowMyActions = modules?.myActions === true;
+  const canShowGeneralUpdates = modules?.generalUpdatesNotifications === true;
+
+  if (isLoading && LOADING_ROLES.has(userRole)) {
     return (
       <PageLoader
         title="Dashboard"
@@ -690,7 +715,7 @@ export const RoleBasedDashboard: React.FC = () => {
         {/* <ExportReportSheet /> */}
       </div>
 
-      {userRole === "contract_manager" && (
+      {isContractManager && (
         <div className="space-y-4">
           <Tabs
             value={cmTopTab}
@@ -775,10 +800,7 @@ export const RoleBasedDashboard: React.FC = () => {
       )}
 
       {/* Stats Cards */}
-      {(userRole !== "contract_manager" ||
-        (userRole === "contract_manager" &&
-          cmTopTab === "overview" &&
-          cmSubTab === "total-contracts")) && (
+      {showDefaultStats && (
         <div
           className={cn(`grid grid-cols-1 md:grid-cols-2 gap-6`, {
             "lg:grid-cols-2": enhancedDashboardConfig.stats.length === 8,
@@ -790,18 +812,17 @@ export const RoleBasedDashboard: React.FC = () => {
         >
           {enhancedDashboardConfig.stats?.map?.((stat, index) => (
             <CardStats
-              key={index}
+              key={`${stat.title}-${index}`}
               {...stat}
               onClick={() => handleStatCardClick(stat.title)}
             />
           ))}
         </div>
       )}
-      {userRole === "contract_manager" &&
-        cmTopTab === "overview" &&
-        cmSubTab === "ytd-contracts" && (
+      
+      {showCmOverviewYtdContracts && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cmYtdStats.map((stat, index) => (
+            {CM_YTD_STATS.map((stat, index) => (
               <CardStats
                 key={`cm-ytd-${index}`}
                 {...stat}
@@ -810,58 +831,32 @@ export const RoleBasedDashboard: React.FC = () => {
             ))}
           </div>
         )}
-      {userRole === "contract_manager" && cmTopTab === "analytics" && (
+      {showCmAnalytics && (
         <>
-          {/* First row exact cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <CycleTimeCard />
-            <InvoiceStatusCard />
-            <SpendCard />
-          </div>
-
-          {/* Second row exact cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <VendorsValueCard />
-            <ProjectValueCard />
-          </div>
-
-          {/* Third row exact cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <RiskDistributionCard />
-            <ChangeOrdersImpactCard />
-            <CategoryValueCard />
-          </div>
-          {/* Fourth row exact cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <ComplianceStatusCard />
-            <ClauseIntelligenceCard />
-            <ContractStatusCard />
-          </div>
-          
-          {/* Fifth row exact cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <VendorPerformanceSummaryCard />
-            <RenewalsTimelineCard />
-          </div>
-          
-          {/* Last row exact gradient block */}
+          {CM_ANALYTICS_ROWS.map((row, rowIndex) => (
+            <div key={`cm-analytics-row-${rowIndex}`} className={row.className}>
+              {row.cards.map((AnalyticsCard, cardIndex) => (
+                <AnalyticsCard key={`cm-analytics-card-${rowIndex}-${cardIndex}`} />
+              ))}
+            </div>
+          ))}
           <AiInsightsAlerts />
         </>
       )}
 
       {/* Activities and Charts Section */}
       {enhancedDashboardConfig.rows?.map?.((item, rowIndex) => {
-        if (userRole === "contract_manager" && cmTopTab === "analytics") {
+        if (showCmAnalytics) {
           return null;
         }
         if (item.type === "activity") {
           const gatedActivities = item.properties.filter((activity) => {
-            if (activity.id === "my-actions" && modules?.myActions !== true) {
+            if (activity.id === "my-actions" && !canShowMyActions) {
               return false;
             }
             if (
               activity.id === "general-updates" &&
-              modules?.generalUpdatesNotifications !== true
+              !canShowGeneralUpdates
             ) {
               return false;
             }
@@ -916,14 +911,14 @@ export const RoleBasedDashboard: React.FC = () => {
                   if (
                     component.items &&
                     component.title === "General Updates" &&
-                    modules?.generalUpdatesNotifications !== true
+                    !canShowGeneralUpdates
                   ) {
                     return false;
                   }
                   if (
                     component.items &&
                     component.id === "my-actions" &&
-                    modules?.myActions !== true
+                    !canShowMyActions
                   ) {
                     return false;
                   }

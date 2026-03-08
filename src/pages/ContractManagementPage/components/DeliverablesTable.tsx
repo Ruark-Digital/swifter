@@ -31,6 +31,7 @@ type DeliverableDetailsSheetProps = {
   contractId: string;
   deliverableId: string;
   isApprover?: boolean;
+  basePath: string;
 };
 
 const LabelRow = ({
@@ -86,21 +87,21 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   trigger,
   contractId,
   deliverableId,
-  isApprover = false,
+  basePath,
 }) => {
   const [open, setOpen] = React.useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: [
-      isApprover ? "approver" : "contract-manager",
       "deliverable-detail",
       contractId,
       deliverableId,
+      basePath,
       open,
     ],
     queryFn: async () => {
       const res = await getRequest({
-        url: `${isApprover ? "/contract/approver/contracts" : "/contract/manager/contracts"}/${contractId}/deliverables/${deliverableId}`,
+        url: `${basePath}/${deliverableId}`,
       });
       return res as any;
     },
@@ -291,12 +292,14 @@ const columns: ColumnDef<DeliverableRow>[] = [
     header: () => <div className="text-right">Actions</div>,
     cell: ({ row, table }) => {
       const contractId: string = (table.options.meta as any)?.contractId ?? "";
+      const basePath: string = (table.options.meta as any)?.basePath ?? "";
       return (
         <div className="text-right">
           <DeliverableDetailsSheet
             contractId={contractId}
             deliverableId={row.original.id}
             isApprover={(table.options.meta as any)?.isApprover}
+            basePath={basePath}
             trigger={
               <button
                 type="button"
@@ -317,6 +320,7 @@ type DeliverablesTableProps = {
   isLoading: boolean;
   contractId: string;
   isApprover?: boolean;
+  basePath: string;
 };
 
 const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
@@ -324,6 +328,7 @@ const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
   isLoading,
   contractId,
   isApprover = false,
+  basePath,
 }) => {
   const [search, setSearch] = React.useState("");
   const filteredRows = React.useMemo(() => {
@@ -367,7 +372,7 @@ const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
           setPagination: () => {},
           pagination: { pageIndex: 0, pageSize: 10 },
           isLoading: !!isLoading,
-          meta: { contractId, isApprover },
+          meta: { contractId, isApprover, basePath },
         }}
         classNames={{
           container: "border border-[#E5E7EB] rounded-xl bg-white",

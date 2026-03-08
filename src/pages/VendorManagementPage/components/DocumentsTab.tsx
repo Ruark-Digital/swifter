@@ -1,11 +1,10 @@
 import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye, Download, Edit } from "lucide-react";
+import { Eye, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
-import { useNavigate } from "react-router-dom";
 
 export type VendorDocument = {
   _id: string;
@@ -23,7 +22,6 @@ type DocumentsTabProps = {
 export const DocumentsTab: React.FC<DocumentsTabProps> = ({ documents = [] }) => {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<VendorDocument | null>(null);
-  const navigate = useNavigate();
 
   const handleViewDocument = (document: VendorDocument) => {
     setSelectedDocument(document);
@@ -93,23 +91,6 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ documents = [] }) =>
                           <Eye className="w-4 h-4 text-gray-500" />
                         </Button>
                       )}
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 p-0 bg-green-100 dark:bg-slate-900 rounded-full hover:bg-green-200" 
-                        title="Edit in Collaboration Tool"
-                        onClick={() =>
-                          navigate(
-                            `/collaboration-tool?sourceUrl=${encodeURIComponent(
-                              document.url
-                            )}&fileName=${encodeURIComponent(document.name)}&fileType=${encodeURIComponent(
-                              document.type || ""
-                            )}`
-                          )
-                        }
-                      >
-                        <Edit className="w-4 h-4 text-green-500 dark:text-gray-500" />
-                      </Button>
                       <Button 
                         variant="ghost" 
                         size="icon" 

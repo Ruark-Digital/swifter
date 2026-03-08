@@ -1,7 +1,7 @@
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ContractDetail } from "@/types";
 import { AxiosRequestConfig } from "axios";
-import { ContractChangeDTO } from "./contractManagerApi";
+import { ContractChangeDTO, ContractRfiDTO, ManagerListRfisQuery } from "./contractManagerApi";
 
 type GetParams = { url: string; config?: AxiosRequestConfig };
 
@@ -12,7 +12,7 @@ export const createVendorApi = (
 ) => ({
   getContract: async (contractId: string) => {
     const res = await client.get({
-      url: `/vendor/contract/${contractId}`,
+      url: `contract/vendor/contracts/${contractId}`,
     });
     return res as ApiResponse<ContractDetail>;
   },
@@ -57,6 +57,40 @@ export const createVendorApi = (
   ) => {
     const res = await postRequest({
       url: `/vendor/contracts/${contractId}/change`,
+      payload,
+    });
+    return res as ApiResponse<any>;
+  },
+  listRfis: async (
+    contractId: string,
+    query?: ManagerListRfisQuery,
+  ) => {
+    const res = await client.get({
+      url: `/vendor/contracts/${contractId}/rfi`,
+      config: query ? { params: query } : undefined,
+    });
+    return res as ApiResponse<{
+      contractRfis?: any[];
+      total?: number;
+      page?: number;
+      skip?: number;
+    }>;
+  },
+  createRfi: async (dataId: string, payload: ContractRfiDTO) => {
+    const res = await postRequest({
+      url: `/vendor/contracts/${dataId}/rfi`,
+      payload,
+    });
+    return res as ApiResponse<ContractRfiDTO>;
+  },
+  createLem: async (contractId: string, payload: {
+    title: string;
+    description: string;
+    amount: number;
+    files: { name: string; url: string; type: string; size: number }[];
+  }) => {
+    const res = await postRequest({
+      url: `/contract/vendor/contracts/${contractId}/lems`,
       payload,
     });
     return res as ApiResponse<any>;

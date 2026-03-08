@@ -28,6 +28,7 @@ import { getFileIcon } from "@/lib/fileUtils";
 import { useDebounceValue } from "usehooks-ts";
 import { format } from "date-fns";
 import type { VendorReportRow, ReportDetails } from "@/types";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const LabelRow = ({
   label,
@@ -163,7 +164,10 @@ const ReportDetailsSheet: React.FC<{
                 ) : reportDetails ? (
                   <>
                     <div className="grid gap-6 sm:grid-cols-2">
-                      <LabelRow label="NCR Title" value={reportDetails.title} />
+                      <LabelRow
+                        label="Report Title"
+                        value={reportDetails.title}
+                      />
                       <LabelRow
                         label="Submitted by"
                         value={
@@ -172,7 +176,10 @@ const ReportDetailsSheet: React.FC<{
                           </a>
                         }
                       />
-                      <LabelRow label="NCR ID" value={reportDetails.reportId} />
+                      <LabelRow
+                        label="Report ID"
+                        value={reportDetails.reportId}
+                      />
                       <LabelRow
                         label="Submission Date"
                         value={
@@ -256,10 +263,28 @@ const ReportDetailsSheet: React.FC<{
   );
 };
 
-function VendorReportsTabContent({ contractId, isActive }: { contractId: string; isActive?: boolean }) {
+function VendorReportsTabContent({
+  contractId,
+  isActive,
+}: {
+  contractId: string;
+  isActive?: boolean;
+}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 300);
+  const { isVendor, isApprover, isManager, isAdmin, isViewOnly } =
+    useUserRole();
+
+  const getBasePath = () => {
+    if (isVendor) return `/contract/vendor/contracts/${contractId}`;
+    if (isApprover) return `/contract/approver/contracts/${contractId}`;
+    if (isManager) return `/contract/manager/contracts/${contractId}`;
+    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}`;
+    return `/contract/user/contracts/${contractId}`; // Default fallback
+  };
+
+  const basePath = getBasePath();
 
   // Fetch vendor reports
   const {
@@ -267,13 +292,13 @@ function VendorReportsTabContent({ contractId, isActive }: { contractId: string;
     isLoading: reportsLoading,
     error: reportsError,
   } = useQuery({
-    queryKey: ["vendor-reports", contractId, debouncedSearchQuery],
+    queryKey: ["vendor-reports", contractId, debouncedSearchQuery, basePath],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (debouncedSearchQuery) params.append("title", debouncedSearchQuery);
 
       const response = await getRequest({
-        url: `/contract/manager/contracts/${contractId}/reports?${params.toString()}`,
+        url: `${basePath}/reports?${params.toString()}`,
       });
       return response.data?.data?.reports || [];
     },
@@ -281,14 +306,11 @@ function VendorReportsTabContent({ contractId, isActive }: { contractId: string;
   });
 
   // Fetch reports stats
-  const {
-    data: reportsStats,
-    isLoading: statsLoading,
-  } = useQuery({
-    queryKey: ["vendor-reports-stats", contractId],
+  const { data: reportsStats, isLoading: statsLoading } = useQuery({
+    queryKey: ["vendor-reports-stats", contractId, basePath],
     queryFn: async () => {
       const response = await getRequest({
-        url: `/contract/manager/contracts/${contractId}/reports/stats`,
+        url: `${basePath}/reports/stats`,
       });
       return response.data?.data;
     },
@@ -302,12 +324,12 @@ function VendorReportsTabContent({ contractId, isActive }: { contractId: string;
     isLoading: detailsLoading,
     error: detailsError,
   } = useQuery({
-    queryKey: ["report-details", selectedReportId],
+    queryKey: ["report-details", selectedReportId, basePath],
     queryFn: async () => {
       if (!selectedReportId) return null;
-      const response = await getRequest(
-        { url: `/contract/manager/contracts/${contractId}/reports/${selectedReportId}` }
-      );
+      const response = await getRequest({
+        url: `${basePath}/reports/${selectedReportId}`,
+      });
       return response.data?.data;
     },
     enabled: !!selectedReportId && !!contractId,
@@ -319,9 +341,10 @@ function VendorReportsTabContent({ contractId, isActive }: { contractId: string;
       reportId: report.reportId,
       title: report.title,
       submittedBy: report.submittedBy?.name || "Unknown",
-      submissionDate: report.submissionDate
-        ? format(report.submissionDate, "dd-MM-yyyy")
-        : "",
+      submissionDate:
+        report.submissionDate || report.createdAt
+          ? format(report.submissionDate || report.createdAt, "dd-MM-yyyy")
+          : "",
       status: report.status,
       description: report.description,
       files: report.files || [],

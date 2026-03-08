@@ -49,7 +49,20 @@ export const schema = yup.object({
   businessDivision: yup.string().required("Business Division is required"),
   contractId: yup.string().optional(),
   description: yup.string().required("Description is required"),
-  vendor: yup.string().optional(),
+  vendor: yup
+    .string()
+    .optional()
+    .test(
+      "vendor-id-or-email",
+      "Vendor must be an existing vendor or a valid email address",
+      (value) => {
+        const trimmed = typeof value === "string" ? value.trim() : "";
+        if (!trimmed) return true;
+        const isObjectId = /^[a-f\d]{24}$/i.test(trimmed);
+        const isEmail = /.+@.+\..+/.test(trimmed);
+        return isObjectId || isEmail;
+      },
+    ),
   personnel: yup.array().optional(),
   internalTeam: yup.array().optional(),
   personnelMeta: yup
@@ -627,19 +640,20 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     mode: "onChange",
   });
 
-  const [open, setOpen] = React.useState(false);
   const [step, setStep] = React.useState(1);
-  const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
+  const [open, setOpen] = React.useState(false);
   const [signatories, setSignatories] = React.useState<string[]>([]);
+  const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
+
   const totalSteps = STEP_TITLES.length;
   const handleSendForApproval = React.useCallback((sigs: string[]) => {
     setSignatories(sigs);
     setStep(9);
   }, []);
 
-  const { success, error } = useToastHandler();
   const qc = useQueryClient();
   const clearSession = useClearSession();
+  const { success, error } = useToastHandler();
 
   const typesQuery = useQuery<ApiListResponse<ContractType>>({
     queryKey: useUserQueryKey(["contract-types"]),

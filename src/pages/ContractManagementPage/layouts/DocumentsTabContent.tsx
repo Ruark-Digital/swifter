@@ -13,9 +13,10 @@ type Props = {
   files?: ContractDetail["files"];
   contractId?: string;
   onUpdated?: (contract: ContractDetail) => void;
+  effectiveDate?: string;
 };
 
-const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated }) => {
+const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, effectiveDate }) => {
   const [editingContractId, setEditingContractId] = React.useState<string | null>(null);
   const { success } = useToastHandler();
   const qc = useQueryClient();
@@ -43,7 +44,7 @@ const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated }) 
 
       <DocumentsStatsCard count={files?.length ?? 0} />
 
-      <DocumentsList files={files} />
+      <DocumentsList files={files} effectiveDate={effectiveDate} />
 
       {editingContractId !== null && (
         <EditContract

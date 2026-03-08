@@ -1,6 +1,7 @@
 import { getRequest } from "@/lib/axiosInstance";
 import type { ApiResponse, ContractDetail } from "@/types";
 import type { AxiosRequestConfig } from "axios";
+import type { ManagerListRfisQuery } from "./contractManagerApi";
 
 type ViewOnlyContractPartyDTO = {
   _id?: string;
@@ -60,6 +61,20 @@ export const createViewOnlyApi = (
         data: normalizeViewOnlyContract(res.data?.data),
       },
     } as ApiResponse<ContractDetail>;
+  },
+  listRfis: async (contractId: string, query?: ManagerListRfisQuery) => {
+    const res = await client.get({
+      url: `/user/contracts/${contractId}/rfi`,
+      config: query ? { params: query } : undefined,
+    });
+    return res as ApiResponse<{
+      data?: {
+        contractRfis?: any[];
+        total?: number;
+        page?: number;
+        skip?: number;
+      };
+    }>;
   },
 });
 

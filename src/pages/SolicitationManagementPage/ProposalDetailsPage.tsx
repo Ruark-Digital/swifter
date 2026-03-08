@@ -614,22 +614,6 @@ const ProposalDetailsPage: React.FC = () => {
                       <Eye className="mr-2 h-4 w-4" />
                       View
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        navigate(
-                          `/collaboration-tool?sourceUrl=${encodeURIComponent(
-                            document.url
-                          )}&fileName=${encodeURIComponent(
-                            document.name
-                          )}&fileType=${encodeURIComponent(
-                            document.type || ""
-                          )}`
-                        );
-                      }}
-                    >
-                      <Edit className="mr-2 h-4 w-4" />
-                      Edit in Collaboration Tool
-                    </DropdownMenuItem>
                   </>
                 ) : (
                   <>

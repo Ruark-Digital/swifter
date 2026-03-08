@@ -5,23 +5,33 @@ import { useQuery } from "@tanstack/react-query";
 import NcrStatsCards from "../components/NcrStatsCards";
 import NcrTable from "../components/NcrTable";
 import {
-  contractManagerApi,
   type ManagerListNcrsQuery,
 } from "../api/contractManagerApi";
-import { approverApi } from "../api/approverApi";
 import { useUserRole } from "@/hooks/useUserRole";
 import CreateNcrDialog from "../components/CreateNcrDialog";
 import type { ContractDetail } from "@/types";
+import { getRequest } from "@/lib/axiosInstance";
 
 type Props = {
   contractId: string;
   contract: ContractDetail
   isActive?: boolean;
+  actionsDisabled?: boolean;
 };
 
-const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive }) => {
-  const { isApprover, isVendor } = useUserRole();
-  const api = isApprover ? approverApi : contractManagerApi;
+const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, actionsDisabled }) => {
+  const { isApprover, isVendor, isManager, isAdmin, isViewOnly } = useUserRole();
+  
+  const getBasePath = () => {
+    if (isVendor) return `/contract/vendor/contracts/${contractId}/ncrs`;
+    if (isApprover) return `/contract/approver/contracts/${contractId}/ncrs`;
+    if (isManager) return `/contract/manager/contracts/${contractId}/ncrs`;
+    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/ncrs`;
+    return `/contract/user/contracts/${contractId}/ncrs`; // Default fallback
+  };
+
+  const basePath = getBasePath();
+
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -29,29 +39,41 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive }) =
 
   const { data: statsRes, isLoading: isStatsLoading } = useQuery({
     queryKey: [
-      isApprover ? "approver" : "contractManager",
       "contractNcrs",
       "stats",
       contractId,
+      basePath
     ],
-    queryFn: async () => await api.getNcrStats(contractId),
+    queryFn: async () => {
+      const response = await getRequest({
+        url: `${basePath}/stats`,
+      });
+      return response.data;
+    },
     enabled: Boolean(contractId) && !!isActive,
   });
 
   const { data: ncrsRes, isLoading: isNcrsLoading } = useQuery({
     queryKey: [
-      isApprover ? "approver" : "contractManager",
       "contractNcrs",
       contractId,
       pagination.pageIndex,
       pagination.pageSize,
+      basePath
     ],
     queryFn: async () => {
       const query: ManagerListNcrsQuery = {
         page: pagination.pageIndex + 1,
         limit: pagination.pageSize,
       };
-      return await api.listNcrs(contractId, query);
+      const params = new URLSearchParams();
+      if (query.page) params.append("page", String(query.page));
+      if (query.limit) params.append("limit", String(query.limit));
+      
+      const response = await getRequest({
+        url: `${basePath}?${params.toString()}`,
+      });
+      return response.data;
     },
     enabled: Boolean(contractId) && !!isActive,
   });
@@ -69,10 +91,12 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive }) =
           <CreateNcrDialog
             contractId={contractId}
             contract={contract}
+            basePath={basePath}
             trigger={
               <button
                 type="button"
                 className="inline-flex h-10 items-center justify-center rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white"
+                disabled={!!actionsDisabled}
               >
                 Create NCR
               </button>
@@ -95,6 +119,7 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive }) =
         pagination={pagination}
         setPagination={setPagination}
         contractId={contractId}
+        basePath={basePath}
       />
     </TabsContent>
   );

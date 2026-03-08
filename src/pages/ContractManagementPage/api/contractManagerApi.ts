@@ -583,11 +583,19 @@ export type ContractComplianceDTO = {
     securityStatus?: "pending" | "approved" | "rejected";
   };
   policy?: Array<{
-    id?: string;
+    _id?: string;
     policyId?: string;
     policyName?: string;
     value?: string;
     status?: string;
+    description?: string;
+    createdAt?: string;
+    files?: Array<{
+      name?: string;
+      url?: string;
+      type?: string;
+      size?: string;
+    }>;
   }>;
   security?: Array<{
     id?: string;
@@ -595,12 +603,45 @@ export type ContractComplianceDTO = {
     amount?: string;
     expiryDate?: string;
     status?: string;
+    description?: string;
+    createdAt?: string;
+    files?: Array<{
+      name?: string;
+      url?: string;
+      type?: string;
+      size?: string;
+    }>;
   }>;
 };
 
 export type ManagerListNcrsQuery = {
   title?: string;
   ncrId?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type ContractLogDTO = {
+  _id?: string;
+  logId?: string;
+  module?: string;
+  action?: string;
+  description?: string;
+  actor?: {
+    _id?: string;
+    name?: string;
+    email?: string;
+    role?: string;
+  };
+  reference?: string;
+  referenceModel?: string;
+  timestamp?: string;
+  createdAt?: string;
+};
+
+export type ManagerListLogsQuery = {
+  logId?: string;
+  module?: string;
   page?: number;
   limit?: number;
 };
@@ -1111,6 +1152,32 @@ export const createContractManagerApi = (
         payload,
       });
       return res.data as { message?: string; success?: boolean };
+    },
+    listLogs: async (contractId: string, query?: ManagerListLogsQuery) => {
+      const res = await client.get({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/logs`,
+        config: query ? { params: query } : undefined,
+      });
+      return res.data as {
+        success?: boolean;
+        message?: string;
+        data?: {
+          logs?: ContractLogDTO[];
+          total?: number;
+          page?: number;
+          limit?: number;
+        };
+      };
+    },
+    getLogDetail: async (contractId: string, logId: string) => {
+      const res = await client.get({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/logs/${logId}`,
+      });
+      return res.data as {
+        success?: boolean;
+        message?: string;
+        data?: ContractLogDTO;
+      };
     },
   };
 };

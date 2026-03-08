@@ -10,17 +10,27 @@ import SavingsDetailsSheet from "../components/SavingsDetailsSheet";
 import { Forge, Forger, useForge } from "@/lib/forge";
 import {
   TextArea,
+  TextCurrencyInput,
   TextFileUploader,
   TextInput,
   TextSelect,
 } from "@/components/layouts/FormInputs";
-import { Check, CloudUpload, X } from "lucide-react";
+import { Check, CloudUpload, FileText, X } from "lucide-react";
 import type { ContractDetail } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { contractManagerApi } from "../api/contractManagerApi";
 import { formatDateTZ } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useWatch } from "react-hook-form";
+import { formatFileSize, getSimpleFileExtension } from "@/lib/fileUtils";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { postRequest } from "@/lib/axiosInstance";
+import type { ApiResponse, ApiResponseError } from "@/types";
+import type { UploadURLs } from "../lib/contractChanges";
+import * as yup from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
+import  Spinner  from "@/components/ui/Spinner";
 
 type HoldbackReleaseRow = {
   releaseId: string;
@@ -119,7 +129,6 @@ const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
   },
 ];
 
-
 const savingsRealizedColumns: ColumnDef<SavingsRealizedRow>[] = [
   {
     accessorKey: "savingsId",
@@ -195,6 +204,14 @@ type UpdateSavingsFormValues = {
   files: File[] | null;
 };
 
+const validationSchema = yup.object().shape({
+  title: yup.string().required("Title is required"),
+  amount: yup.string().required("Amount is required"),
+  category: yup.string().required("Category is required"),
+  description: yup.string().optional(),
+  files: yup.mixed().nullable(),
+});
+
 const UploadElement = () => {
   return (
     <div className="flex flex-col items-center gap-3">
@@ -211,13 +228,18 @@ const UploadElement = () => {
   );
 };
 
-const UpdateSavingsDialog: React.FC<{ trigger: React.ReactElement }> = ({
-  trigger,
-}) => {
+const UpdateSavingsDialog: React.FC<{
+  trigger: React.ReactElement;
+  contractId: string;
+}> = ({ trigger, contractId }) => {
   const [open, setOpen] = React.useState(false);
   const [successOpen, setSuccessOpen] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const toastHandler = useToastHandler();
+  const queryClient = useQueryClient();
 
-  const { control, reset } = useForge<UpdateSavingsFormValues>({
+  const { control, reset, setValue } = useForge<UpdateSavingsFormValues>({
+    resolver: yupResolver(validationSchema) as any,
     defaultValues: {
       title: "",
       amount: "",
@@ -227,15 +249,126 @@ const UpdateSavingsDialog: React.FC<{ trigger: React.ReactElement }> = ({
     },
   });
 
-  const handleSubmit = (data: UpdateSavingsFormValues) => {
-    void data;
-    setOpen(false);
-    setSuccessOpen(true);
-    reset();
+  const value = useWatch({ control, name: "files" }) as File[];
+
+  const { mutateAsync: uploadFile } = useMutation<
+    ApiResponse<UploadURLs[]>,
+    ApiResponseError,
+    { file: File }
+  >({
+    mutationKey: ["uploadSavingFile"],
+    mutationFn: async ({ file }) => {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      return await postRequest({
+        url: "/upload",
+        payload: formData,
+        config: {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      });
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationKey: ["createPaymentSaving", contractId],
+    mutationFn: async (data: any) => {
+      return await contractManagerApi.createPaymentSaving(contractId, data);
+    },
+    onSuccess: async () => {
+      setOpen(false);
+      setSuccessOpen(true);
+      reset();
+      await queryClient.invalidateQueries({
+        queryKey: ["contract-payment-savings", contractId],
+      });
+    },
+    onError: (error: any) => {
+      toastHandler.error(
+        "Error",
+        error?.response?.data?.message || "Failed to create saving",
+      );
+    },
+  });
+
+  const handleSubmit = async (data: UpdateSavingsFormValues) => {
+    setIsSubmitting(true);
+    try {
+      let uploadedFiles: {
+        name: string;
+        url: string;
+        type: string;
+        size: number;
+      }[] = [];
+
+      if (data.files && data.files.length > 0) {
+        const uploadPromises = data.files.map((file) => uploadFile({ file }));
+        const responses = await Promise.all(uploadPromises);
+
+        uploadedFiles = responses
+          .map((res, index) => {
+            if (res.data && res.data?.data?.[0]) {
+              return {
+                name: data.files![index].name,
+                url: res.data?.data?.[0].url,
+                type: getSimpleFileExtension(data.files![index].name).toUpperCase(),
+                size: data.files![index].size,
+              };
+            }
+            return null;
+          })
+          .filter(Boolean) as any;
+      }
+
+      const payload = {
+        title: data.title,
+        amount: Number(data.amount),
+        category: data.category,
+        description: data.description,
+        files: uploadedFiles,
+      };
+
+      await createMutation.mutateAsync(payload);
+    } catch (error) {
+      console.error("Error submitting savings:", error);
+      toastHandler.error("Submission Failed", "An error occurred while submitting the form. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const FileListItem = ({ file }: { file: File }) => {
-    return <div className="hidden">{file.name}</div>;
+    return (
+      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-blue-100 rounded flex items-center justify-center">
+            <FileText className="h-5 w-5 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-900">{file.name}</p>
+            <p className="text-xs text-gray-500">
+              {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
+              {formatFileSize(file.size)}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() =>
+            setValue(
+              "files",
+              (value || []).filter((v: File) => v.name !== file.name),
+            )
+          }
+          className="text-gray-400 hover:text-red-500 transition-colors"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    );
   };
 
   return (
@@ -243,8 +376,10 @@ const UpdateSavingsDialog: React.FC<{ trigger: React.ReactElement }> = ({
       <Dialog
         open={open}
         onOpenChange={(nextOpen) => {
-          setOpen(nextOpen);
-          if (!nextOpen) reset();
+          if (!isSubmitting) {
+            setOpen(nextOpen);
+            if (!nextOpen) reset();
+          }
         }}
       >
         <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -263,8 +398,9 @@ const UpdateSavingsDialog: React.FC<{ trigger: React.ReactElement }> = ({
               </div>
               <button
                 type="button"
-                onClick={() => setOpen(false)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#EF4444]"
+                onClick={() => !isSubmitting && setOpen(false)}
+                disabled={isSubmitting}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#EF4444] disabled:opacity-50"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -274,7 +410,7 @@ const UpdateSavingsDialog: React.FC<{ trigger: React.ReactElement }> = ({
               <Forger
                 name="title"
                 label="Title"
-                placeholder="Enter Amount"
+                placeholder="Enter Title"
                 component={TextInput}
               />
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -282,7 +418,7 @@ const UpdateSavingsDialog: React.FC<{ trigger: React.ReactElement }> = ({
                   name="amount"
                   label="Amount"
                   placeholder="Enter Amount"
-                  component={TextInput}
+                  component={TextCurrencyInput}
                 />
                 <Forger
                   name="category"
@@ -351,15 +487,24 @@ const UpdateSavingsDialog: React.FC<{ trigger: React.ReactElement }> = ({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="inline-flex h-11 min-w-[140px] items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F]"
+                disabled={isSubmitting}
+                className="inline-flex h-11 min-w-[140px] items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] disabled:opacity-50"
               >
                 Back
               </button>
               <button
                 type="submit"
-                className="inline-flex h-11 min-w-[170px] items-center justify-center rounded-xl bg-[#2A4467] px-6 text-base font-semibold text-white"
+                disabled={isSubmitting}
+                className="inline-flex h-11 min-w-[170px] items-center justify-center rounded-xl bg-[#2A4467] px-6 text-base font-semibold text-white disabled:opacity-50"
               >
-                Update
+                {isSubmitting ? (
+                  <div className="flex items-center gap-2">
+                    <Spinner className="h-4 w-4 text-white" />
+                    <span>Updating...</span>
+                  </div>
+                ) : (
+                  "Update"
+                )}
               </button>
             </div>
           </Forge>
@@ -407,9 +552,12 @@ type Props = {
   isActive?: boolean;
 };
 
-const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract, isActive }) => {
-  const { isVendor, isProcurement, isCompanyAdmin, isSuperAdmin } = useUserRole();
-  const isManager = isProcurement || isCompanyAdmin || isSuperAdmin;
+const PaymentSummaryTabContent: React.FC<Props> = ({
+  contractId,
+  contract,
+  isActive,
+}) => {
+  const { isVendor, isManager } = useUserRole();
 
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
@@ -522,8 +670,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract, isAct
       return {
         milestoneId: milestone?.milestoneId ?? `milestone-${index + 1}`,
         milestoneTitle: milestone?.name ?? "-",
-        deliverable:
-          milestone?.deliverable?.name ?? milestone?.name ?? "-",
+        deliverable: milestone?.deliverable?.name ?? milestone?.name ?? "-",
         amount: formatMoney(milestone?.amount),
         dueDate,
       };
@@ -536,10 +683,8 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract, isAct
   const holdbackValue =
     contract?.holdBack != null ? String(contract?.holdBack) : "-";
   const holdbackAmount =
-    contract?.holdBackBank != null
-      ? formatMoney(contract?.holdBackBank)
-      : "-";
-  const contigency = contract?.contigency ?? "-";
+    contract?.holdBackBank != null ? formatMoney(contract?.holdBackBank) : "-";
+  const contigency = formatMoney(Number(contract?.contigency)) ?? "-";
   const paymentStructure = contract?.paymentStructure ?? "-";
   const paymentTerm = contract?.paymentTerms?.name ?? "-";
 
@@ -565,6 +710,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract, isAct
           {isManager && (
             <div className="inline-flex items-start gap-6">
               <UpdateSavingsDialog
+                contractId={contractId}
                 trigger={
                   <button
                     type="button"
@@ -576,6 +722,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({ contractId, contract, isAct
               />
 
               <ReleaseHoldbackDialog
+                contractId={contractId}
                 trigger={
                   <button
                     type="button"

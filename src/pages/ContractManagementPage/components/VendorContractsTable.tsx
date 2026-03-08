@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import VendorEmptyState from "./VendorEmptyState";
+import { Link } from "react-router-dom";
 
 export type VendorContractRow = {
   id: string;
@@ -21,7 +22,15 @@ export type VendorContractRow = {
   value?: string;
   published?: string;
   endDate?: string;
-  status: "Active" | "Suspended" | "Closed" | "Terminated";
+  status:
+    | "Active"
+    | "Suspended"
+    | "Closed"
+    | "Terminated"
+    | "Expired"
+    | "Cancelled"
+    | "Published"
+    | "Draft";
 };
 
 const columns: ColumnDef<VendorContractRow>[] = [
@@ -56,8 +65,22 @@ const columns: ColumnDef<VendorContractRow>[] = [
     header: "Date",
     cell: ({ row }) => (
       <div className="text-xs text-slate-500">
-        {row.original.published && <div>Published: {row.original.published}</div>}
-        {row.original.endDate && <div>End Date: {row.original.endDate}</div>}
+        {row.original.published && (
+          <div>
+            Published:{" "}
+            <span className="font-semibold text-slate-900">
+              {row.original.published}
+            </span>
+          </div>
+        )}
+        {row.original.endDate && (
+          <div>
+            End Date:{" "}
+            <span className="font-semibold text-slate-900">
+              {row.original.endDate}
+            </span>
+          </div>
+        )}
       </div>
     ),
   },
@@ -67,7 +90,11 @@ const columns: ColumnDef<VendorContractRow>[] = [
     cell: ({ getValue }) => {
       const s = getValue<VendorContractRow["status"]>();
       const tone =
-        s === "Active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700";
+        s === "Active" || s === "Published"
+          ? "bg-green-100 text-green-700"
+          : s === "Draft"
+            ? "bg-gray-100 text-gray-700"
+            : "bg-red-100 text-red-700";
       return (
         <span
           data-testid="vendor-contract-status-badge"
@@ -84,18 +111,22 @@ const columns: ColumnDef<VendorContractRow>[] = [
     cell: ({ row }) => (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" data-testid="vendor-contract-actions-dropdown">
+          <Button
+            variant="ghost"
+            size="icon"
+            data-testid="vendor-contract-actions-dropdown"
+          >
             ⋮
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem asChild>
-            <a
-              href={`/dashboard/contract-management/${row.original.id}`}
+            <Link
+              to={`/dashboard/contract-management/${row.original.id}`}
               data-testid="vendor-view-contract-detail"
             >
               View Details
-            </a>
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -132,7 +163,8 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
     const query = search.toLowerCase();
     return rows.filter((row) => {
       return (
-        row.title.toLowerCase().includes(query) || row.code.toLowerCase().includes(query)
+        row.title.toLowerCase().includes(query) ||
+        row.code.toLowerCase().includes(query)
       );
     });
   }, [rows, search]);
@@ -144,7 +176,9 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
           <div className="flex items-center w-full justify-between border-b border-[#E9E9EB] dark:border-slate-600 p-3 pt-0">
             <div className="flex items-center gap-3 w-full">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-slate-700">Contracts</span>
+                <span className="text-sm font-medium text-slate-700">
+                  Contracts
+                </span>
                 <Input
                   placeholder="Search contract"
                   value={search}

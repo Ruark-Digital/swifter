@@ -14,20 +14,49 @@ import type { DeliverablesStats } from "../components/DeliverablesStatsCards";
 
 const DeliverablesTabContent: React.FC = () => {
   const { id: contractId } = useParams<{ id: string }>();
-  const { isApprover } = useUserRole();
+  const { isApprover, isVendor, isManager, isAdmin, isViewOnly } = useUserRole();
+
+  const getBasePath = () => {
+    if (isVendor) return `/contract/vendor/contracts/${contractId}/deliverables`;
+    if (isApprover) return `/contract/approver/contracts/${contractId}/deliverables`;
+    if (isManager) return `/contract/manager/contracts/${contractId}/deliverables`;
+    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/deliverables`;
+    return `/contract/user/contracts/${contractId}/deliverables`; // Default fallback
+  };
+
+  const basePath = getBasePath();
 
   const {
     data: listRes,
     isLoading: listLoading,
   } = useQuery({
     queryKey: [
-      isApprover ? "approver" : "contract-manager",
       "deliverables",
       contractId,
+      basePath
     ],
     queryFn: async () => {
       const res = await getRequest({
-        url: `${isApprover ? "/contract/approver/contracts" : "/contract/manager/contracts"}/${contractId}/deliverables`,
+        url: basePath,
+      });
+      return res as any;
+    },
+    enabled: !!contractId,
+    staleTime: 60000,
+  });
+
+  const {
+    data: statsRes,
+    isLoading: statsLoading,
+  } = useQuery({
+    queryKey: [
+      "deliverables-stats",
+      contractId,
+      basePath
+    ],
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${basePath}/stats`,
       });
       return res as any;
     },
@@ -36,19 +65,19 @@ const DeliverablesTabContent: React.FC = () => {
   });
 
   const rows: DeliverableRow[] = React.useMemo(() => {
-    const items: any[] = listRes?.data?.data ?? [];
+    const items: any[] = listRes?.data?.data || listRes?.data || [];
     return items.map((it) => ({
-      id: it?.deliverableId ?? "",
+      id: it?.deliverableId ?? it?._id ?? "",
       title: it?.title ?? "",
-      dueDate: it?.date ?? "-",
-      submissionDate: "-",
+      dueDate: it?.date ?? it?.dueDate ?? "-",
+      submissionDate: it?.submissionDate ?? "-",
       submissionStatus:
         (it?.submissionStatus === "submitted"
           ? "Submitted"
           : it?.submissionStatus === "late"
           ? "Late"
           : "Pending") as DeliverableRow["submissionStatus"],
-      kpi: it?.kpi?.kpiText ?? "",
+      kpi: it?.kpi?.kpiText ?? it?.kpi ?? "",
       status:
         (it?.status === "approved"
           ? "Approved"
@@ -59,15 +88,25 @@ const DeliverablesTabContent: React.FC = () => {
   }, [listRes]);
 
   const stats: DeliverablesStats = React.useMemo(() => {
-    const src = Array.isArray(listRes?.data?.data) ? listRes.data.data : [];
+    const data = statsRes?.data?.data || statsRes?.data;
+    if (data) {
+      return {
+        all: data.total ?? data.all ?? 0,
+        submitted: data.submitted ?? 0,
+        pending: data.pending ?? 0,
+        late: data.late ?? 0,
+      };
+    }
+    
+    const src = rows;
     const all = src.length;
-    const submitted = src.filter((it: any) => it?.submissionStatus === "submitted").length;
-    const late = src.filter((it: any) => it?.submissionStatus === "late").length;
+    const submitted = src.filter((it: any) => it?.submissionStatus === "Submitted").length;
+    const late = src.filter((it: any) => it?.submissionStatus === "Late").length;
     const pending = src.filter(
-      (it: any) => !["submitted", "late"].includes(String(it?.submissionStatus ?? "").toLowerCase()),
+      (it: any) => it?.submissionStatus === "Pending",
     ).length;
     return { all, submitted, pending, late };
-  }, [listRes]);
+  }, [statsRes, rows]);
 
   return (
     <TabsContent value="deliverables" className="space-y-6">
@@ -78,13 +117,14 @@ const DeliverablesTabContent: React.FC = () => {
         </Button>
       </div>
 
-      <DeliverablesStatsCards stats={stats} isLoading={!!listLoading} />
+      <DeliverablesStatsCards stats={stats} isLoading={!!listLoading || !!statsLoading} />
 
       <DeliverablesTable
         contractId={contractId ?? ""}
         rows={rows}
         isLoading={!!listLoading}
         isApprover={isApprover}
+        basePath={basePath}
       />
     </TabsContent>
   );

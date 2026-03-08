@@ -19,7 +19,6 @@ import { postRequest } from "@/lib/axiosInstance";
 import type { ApiResponse } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { cn } from "@/lib/utils";
-import { approverApi } from "../api/approverApi";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ContractDetail } from "@/types";
 import { memo, useCallback, useMemo } from "react";
@@ -42,6 +41,7 @@ type Props = {
   contractId: string;
   trigger: React.ReactElement;
   contract?: ContractDetail;
+  basePath: string;
 };
 
 const UploadElement = memo(() => {
@@ -104,7 +104,7 @@ const ACCEPTED_FILE_TYPES = {
   "image/jpeg": [".jpeg", ".jpg"],
 } as const;
 
-const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract }) => {
+const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract, basePath }) => {
   const [open, setOpen] = React.useState(false);
   const toast = useToastHandler();
   const queryClient = useQueryClient();
@@ -140,7 +140,7 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract }) => 
   }, []);
 
   const createNcrMutation = useMutation({
-    mutationKey: ["approver", "contractNcrs", "create", contractId],
+    mutationKey: ["contractNcrs", "create", contractId, basePath],
     mutationFn: async (data: CreateNcrFormValues) => {
       const uploaded = await uploadFiles(data.files);
       const sizeMap = new Map<string, number>(
@@ -160,21 +160,26 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract }) => 
               }))
             : undefined,
       };
-      return await approverApi.createNcr(contractId, payload);
+      
+      const res = await postRequest({
+        url: basePath,
+        payload
+      });
+      return res.data;
     },
     onSuccess: () => {
       toast.success("Success", "NCR created successfully");
       queryClient.invalidateQueries({
-        queryKey: ["approver", "contractNcrs", contractId],
+        queryKey: ["contractNcrs", contractId],
       });
       queryClient.refetchQueries({
-        queryKey: ["approver", "contractNcrs", contractId],
+        queryKey: ["contractNcrs", contractId],
       });
       setOpen(false);
       reset();
     },
     onError: () => {
-      toast.error("Error", "Failed to process files");
+      toast.error("Error", "Failed to create NCR");
     },
   });
 

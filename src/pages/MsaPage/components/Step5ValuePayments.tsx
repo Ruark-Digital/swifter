@@ -8,29 +8,37 @@ import {
   TextDatePicker,
 } from "@/components/layouts/FormInputs";
 import { useWatch, Control } from "react-hook-form";
-import { CreateContractFormData } from "./CreateContractSheet";
+import { CreateMsaFormData } from "../layouts/CreateMSADialog";
 
-type Props = { 
-  control: Control<CreateContractFormData>;
-  paymentTermOptions: Array<{ label: string; value: string }>;
+type Props = {
+  control: Control<CreateMsaFormData>;
 };
 
-const Step3ValuePayments: React.FC<Props> = ({ control, paymentTermOptions }) => {
+const paymentTermOptions = [
+  { label: "NET 30 - Payment 30 days after invoice submission", value: "net_30" },
+  { label: "NET 45 - Payment 45 days after invoice submission", value: "net_45" },
+  { label: "NET 60 - Payment 60 days after invoice submission", value: "net_60" },
+  { label: "NET 90 - Payment 90 days after invoice submission", value: "net_90" },
+  { label: "NET 120 - Payment 120 days after invoice submission", value: "net_120" },
+];
+
+const Step5ValuePayments: React.FC<Props> = ({ control }) => {
   const paymentStructure = useWatch({ control, name: "paymentStructure" });
-  const deliverables = useWatch({ control, name: "deliverables" }) as Array<{
-    name?: string;
-  }>;
+  const deliverables = useWatch({
+    control,
+    name: "deliverables",
+  }) as Array<{ name?: string }>;
 
   const deliverableOptions =
     deliverables?.map((d) => ({
       label: d.name || "Untitled Deliverable",
       value: d.name || "",
     })) || [];
-  
+
   const { fields, append, remove } = useFieldArray({
     control,
     name: "milestones",
-    inputProps: []
+    inputProps: [],
   });
 
   return (
@@ -41,13 +49,13 @@ const Step3ValuePayments: React.FC<Props> = ({ control, paymentTermOptions }) =>
         placeholder="Enter Amount"
         component={TextCurrencyInput}
         containerClass="md:col-span-2"
-        helperText="Contract Higher than $5m = High Risk Contract"
+        helperText=">$5m = High Risk , >$1-5m = Medium, <$1m = Low Risk"
       />
       <Forger
         name="contingency"
         label="Contingency (only visible internally)"
         placeholder="Enter Contingency"
-        component={TextCurrencyInput}
+        component={TextInput}
       />
       <Forger
         name="holdback"
@@ -66,14 +74,6 @@ const Step3ValuePayments: React.FC<Props> = ({ control, paymentTermOptions }) =>
           { label: "Milestone", value: "milestone" },
           { label: "Progress Draw", value: "lump_sum" },
         ]}
-      />
-      <Forger
-        name="selectedDeliverable"
-        label="Select Deliverable (Optional)"
-        placeholder="Select Deliverable"
-        component={TextSelect}
-        options={deliverableOptions}
-        containerClass="md:col-span-2"
       />
 
       {paymentStructure === "milestone" && (
@@ -153,4 +153,4 @@ const Step3ValuePayments: React.FC<Props> = ({ control, paymentTermOptions }) =>
   );
 };
 
-export default Step3ValuePayments;
+export default Step5ValuePayments;

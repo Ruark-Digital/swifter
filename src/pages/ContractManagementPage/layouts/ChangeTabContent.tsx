@@ -7,8 +7,8 @@ import ChangeTable from "../components/ChangeTable";
 import CreateChangeDialog from "../components/CreateChangeDialog";
 import { useQuery } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
+import { getRequest } from "@/lib/axiosInstance";
 import {
-  contractManagerApi,
   type ManagerListChangesQuery,
 } from "../api/contractManagerApi";
 import {
@@ -16,37 +16,47 @@ import {
   type ChangeTabValue,
 } from "@/pages/ContractManagementPage/lib/contractChanges";
 import { useUserRole } from "@/hooks/useUserRole";
-import { vendorApi } from "../api/vendorApi";
-import { approverApi } from "../api/approverApi";
 
 type Props = {
   contractId: string;
   isActive?: boolean;
+  actionsDisabled?: boolean;
 };
 
-const ChangeTabContent: React.FC<Props> = ({ contractId, isActive }) => {
-  const { isVendor, isManager, isApprover } = useUserRole();
+const ChangeTabContent: React.FC<Props> = ({
+  contractId,
+  isActive,
+  actionsDisabled,
+}) => {
+  const { isVendor, isManager, isApprover, isAdmin, isViewOnly } = useUserRole();
   const [activeTab, setActiveTab] = React.useState<ChangeTabValue>("all");
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
 
+  const getBasePath = () => {
+    if (isVendor) return `/contract/vendor/contracts/${contractId}/change`;
+    if (isApprover) return `/contract/approver/contracts/${contractId}/change`;
+    if (isManager) return `/contract/manager/contracts/${contractId}/changes`;
+    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/change`;
+    return `/contract/user/contracts/${contractId}/change`; // Default fallback
+  };
+
+  const basePath = getBasePath();
+
   const { data: statsRes, isLoading: isStatsLoading } = useQuery({
     queryKey: [
-      isManager ? "contractManager" : isVendor ? "vendor" : "approver",
       "contractChanges",
       "stats",
       contractId,
+      basePath
     ],
     queryFn: async () => {
-      if (isManager) {
-        return await contractManagerApi.getChangeStats(contractId);
-      }
-      if (isVendor) {
-        return await vendorApi.getChangeStats(contractId);
-      }
-      return await approverApi.getChangeStats(contractId);
+      const response = await getRequest({
+        url: `${basePath}/stats`,
+      });
+      return response.data;
     },
     enabled: Boolean(contractId) && !!isActive,
     staleTime: 60000,
@@ -54,36 +64,36 @@ const ChangeTabContent: React.FC<Props> = ({ contractId, isActive }) => {
 
   const { data: changesRes, isLoading: isChangesLoading } = useQuery({
     queryKey: [
-      isManager ? "contractManager" : isVendor ? "vendor" : "approver",
       "contractChanges",
       contractId,
       activeTab,
       pagination.pageIndex,
       pagination.pageSize,
+      basePath
     ],
     queryFn: async () => {
       const type = changeTabToApiType(activeTab);
-      const baseQuery = {
+      const query = {
         page: pagination.pageIndex + 1,
         limit: pagination.pageSize,
       } as ManagerListChangesQuery;
-      if (type) {
-        baseQuery.type = type;
-      }
-      if (isManager) {
-        return await contractManagerApi.listChanges(contractId, baseQuery);
-      }
-      if (isVendor) {
-        return await vendorApi.listChanges(contractId, baseQuery);
-      }
-      return await approverApi.listChanges(contractId, baseQuery);
+      
+      const params = new URLSearchParams();
+      if (query.page) params.append("page", String(query.page));
+      if (query.limit) params.append("limit", String(query.limit));
+      if (type) params.append("type", type);
+
+      const response = await getRequest({
+        url: `${basePath}?${params.toString()}`,
+      });
+      return response.data;
     },
     enabled: Boolean(contractId) && !!isActive,
     staleTime: 60000,
   });
 
-  const changeRows = (changesRes)?.data?.data?.changes ?? [];
-  const totalCount = (changesRes)?.data?.data?.total ?? changeRows.length;
+  const changeRows = changesRes?.data?.data?.changes ?? [];
+  const totalCount = changesRes?.data?.data?.total ?? changeRows.length;
 
   return (
     <TabsContent value="change" className="space-y-6">
@@ -101,7 +111,10 @@ const ChangeTabContent: React.FC<Props> = ({ contractId, isActive }) => {
           {(isManager || isVendor) && (
             <CreateChangeDialog
               trigger={
-                <Button className="h-10 rounded-xl bg-[#F3F4F6] px-4 text-sm font-medium text-[#111827] hover:bg-[#E5E7EB]">
+                <Button
+                  className="h-10 rounded-xl bg-[#F3F4F6] px-4 text-sm font-medium text-[#111827] hover:bg-[#E5E7EB]"
+                  disabled={!!actionsDisabled}
+                >
                   Create Change
                 </Button>
               }
@@ -114,7 +127,13 @@ const ChangeTabContent: React.FC<Props> = ({ contractId, isActive }) => {
 
       {(() => {
         const stats = (statsRes as any)?.data?.data ?? (statsRes as any)?.data;
-        return <ChangeStatsCards stats={stats} isLoading={isStatsLoading} variant={isApprover ? "approver" : "manager"} />;
+        return (
+          <ChangeStatsCards
+            stats={stats}
+            isLoading={isStatsLoading}
+            variant={isApprover ? "approver" : "manager"}
+          />
+        );
       })()}
 
       <Tabs

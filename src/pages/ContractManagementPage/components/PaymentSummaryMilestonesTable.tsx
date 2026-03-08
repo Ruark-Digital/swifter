@@ -132,7 +132,7 @@ const PaymentSummaryMilestonesTable = <
   return (
     <DataTable<T>
       header={() => (
-        <div className="flex items-center gap-6 border-b border-[#E9E9EB] px-4 pb-3">
+        <div className="flex items-center gap-6 border-b w-full border-[#E9E9EB] px-4 pb-3">
           <div className="text-base font-semibold text-[#0F0F0F]">
             {title}
           </div>

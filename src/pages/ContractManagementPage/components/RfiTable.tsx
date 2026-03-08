@@ -839,7 +839,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
 };
 
 const columns: ColumnDef<RfiRow>[] = [
-  { accessorKey: "id", header: "RFI ID" },
+  { accessorKey: "rfiId", header: "RFI ID" },
   {
     accessorKey: "title",
     header: "Title",
@@ -928,6 +928,7 @@ const RfiTable: React.FC<Props> = ({
   const tableRows: RfiRow[] = React.useMemo(() => {
     return rows.map((rfi) => ({
       id: rfi._id ?? "-",
+      rfiId: rfi.rfiId ?? "-",
       title: rfi.title ?? "-",
       type: (rfi.type as unknown as RfiRow["type"]) ?? "-",
       status: (rfi.status as unknown as RfiRow["status"]) ?? "-",

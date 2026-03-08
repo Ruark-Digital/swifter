@@ -13,7 +13,9 @@ import type { ApiResponseError } from "@/types";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUserRole } from "@/hooks/useUserRole";
 import VendorStatsCards from "./components/VendorStatsCards";
-import VendorContractsTable, { VendorContractRow } from "./components/VendorContractsTable";
+import VendorContractsTable, {
+  VendorContractRow,
+} from "./components/VendorContractsTable";
 import { formatDate } from "date-fns";
 
 type ContractApi = {
@@ -34,8 +36,8 @@ type ContractApi = {
   startDate?: string;
   endDate?: string;
   createdAt?: string;
-  vendor?: { name?: string, id?: string };
-  creator?: { name?: string, email?: string, _id?: string };
+  vendor?: { name?: string; id?: string };
+  creator?: { name?: string; email?: string; _id?: string };
   contractValue?: number;
 };
 
@@ -76,7 +78,15 @@ type VendorContractApi = {
   title: string;
   contractId: string;
   contractValue?: number;
-  status: "active" | "completed" | "terminated" | "suspended" | "expired";
+  status:
+    | "active"
+    | "completed"
+    | "terminated"
+    | "suspended"
+    | "expired"
+    | "cancelled"
+    | "publish"
+    | "draft";
   startDate?: string;
   endDate?: string;
   createdAt?: string;
@@ -148,7 +158,9 @@ const useApproverContractsStats = (enabled = true) => {
   return useQuery<ContractStatsResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
-      const res = await getRequest({ url: "/contract/approver/contracts/stats" });
+      const res = await getRequest({
+        url: "/contract/approver/contracts/stats",
+      });
       return res.data as ContractStatsResponse;
     },
     enabled,
@@ -239,6 +251,9 @@ const mapVendorStatusToLabel = (
   status: VendorContractApi["status"],
 ): VendorContractRow["status"] => {
   if (status === "active") return "Active";
+  if (status === "publish") return "Published";
+  if (status === "draft") return "Draft";
+  if (status === "expired") return "Expired";
   if (status === "suspended") return "Suspended";
   if (status === "terminated") return "Terminated";
   return "Closed";
@@ -324,9 +339,13 @@ const ContractManagementPage: React.FC = () => {
         <>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h2 className="text-xl font-semibold text-slate-900">Contracts</h2>
+              <h2 className="text-xl font-semibold text-slate-900">
+                Contracts
+              </h2>
               {isViewOnly && (
-                <Badge variant="secondary" className="text-xs">Read-only</Badge>
+                <Badge variant="secondary" className="text-xs">
+                  Read-only
+                </Badge>
               )}
             </div>
           </div>
@@ -359,9 +378,13 @@ const ContractManagementPage: React.FC = () => {
         <>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h2 className="text-xl font-semibold text-slate-900">Contracts</h2>
+              <h2 className="text-xl font-semibold text-slate-900">
+                Contracts
+              </h2>
               {isViewOnly && (
-                <Badge variant="secondary" className="text-xs">Read-only</Badge>
+                <Badge variant="secondary" className="text-xs">
+                  Read-only
+                </Badge>
               )}
             </div>
             <div className="flex items-center gap-4">
@@ -393,7 +416,7 @@ const ContractManagementPage: React.FC = () => {
               isLoading={isApproverContractsLoading}
               totalCount={approverContractsData?.data.totalContracts}
               isReadOnly={isViewOnly}
-                // disableActions={isApprover}
+              // disableActions={isApprover}
             />
           ) : (
             <Tabs

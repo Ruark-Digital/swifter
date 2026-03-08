@@ -77,12 +77,103 @@ const formatContractStatus = (status?: ContractDetail["status"]) => {
   return { label: "Unknown", className: "bg-slate-100 text-slate-700" };
 };
 
+type TabKey =
+  | "overview"
+  | "analytics"
+  | "kpi"
+  | "compliance"
+  | "documents"
+  | "amendments"
+  | "deliverables"
+  | "payment-summary"
+  | "rate-sheets"
+  | "lem"
+  | "invoice"
+  | "change"
+  | "claims"
+  | "rfi"
+  | "ncr-log"
+  | "approvers"
+  | "reports"
+  | "clause-library"
+  | "action-log";
+
+const ALL_TABS: Array<{ key: TabKey; label: string }> = [
+  { key: "overview", label: "Overview" },
+  { key: "analytics", label: "Analytics" },
+  { key: "kpi", label: "KPI" },
+  { key: "compliance", label: "Compliance & Security" },
+  { key: "documents", label: "Documents" },
+  { key: "amendments", label: "Amendments" },
+  { key: "deliverables", label: "Deliverables" },
+  { key: "payment-summary", label: "Payment Summary" },
+  { key: "rate-sheets", label: "Rate Sheets" },
+  { key: "lem", label: "LEM" },
+  { key: "invoice", label: "Invoice" },
+  { key: "change", label: "Change Management" },
+  { key: "claims", label: "Claims" },
+  { key: "rfi", label: "RFI" },
+  { key: "ncr-log", label: "NCR Log" },
+  { key: "approvers", label: "Approvers" },
+  { key: "reports", label: "Vendor’s Reports" },
+  { key: "clause-library", label: "Clause Library" },
+  { key: "action-log", label: "Action Log" },
+];
+
+const ROLE_TAB_WHITELIST: Record<
+  "approver" | "vendor" | "manager" | "view only",
+  TabKey[]
+> = {
+  approver: [
+    "overview",
+    "payment-summary",
+    "documents",
+    "amendments",
+    "change",
+    "claims",
+    "invoice",
+    "rfi",
+    "lem",
+    "deliverables",
+    "ncr-log",
+  ],
+  vendor: [
+    "overview",
+    "payment-summary",
+    "change",
+    "claims",
+    "deliverables",
+    "lem",
+    "invoice",
+    "rfi",
+    "documents",
+    "reports",
+    "ncr-log",
+    "compliance",
+    "amendments"
+  ],
+  manager: ALL_TABS.map((t) => t.key),
+  "view only": [
+    "overview",
+    "payment-summary",
+    "documents",
+    "amendments",
+    "change",
+    "claims",
+    "invoice",
+    "rfi",
+    "lem",
+    "deliverables",
+    "ncr-log",
+  ],
+};
+
 const ContractDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
-  const { isVendor, isApprover, isViewOnly, isCompanyAdmin } = useUserRole();
+  const { isVendor, isApprover, isViewOnly, isCompanyAdmin, isManager } = useUserRole();
   const queryKey = useUserQueryKey(["contract-manager-contracts"]);
   const approveStatusQueryKey = useUserQueryKey([
     "contract-approver-approve-status",
@@ -177,6 +268,26 @@ const ContractDetailPage: React.FC = () => {
     toastErrorRef.current("Contract Details", error as ApiResponseError);
   }, [error]);
 
+  const visibleTabs = React.useMemo(() => {
+    if (isApprover) {
+      return ALL_TABS.filter((t) =>
+        ROLE_TAB_WHITELIST.approver.includes(t.key),
+      );
+    }
+    if (isVendor) {
+      return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.vendor.includes(t.key));
+    }
+    if (isViewOnly) {
+      return ALL_TABS.filter((t) =>
+        ROLE_TAB_WHITELIST["view only"].includes(t.key),
+      );
+    }
+    if (isManager) {
+      return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
+    }
+    return ALL_TABS;
+  }, [isApprover, isVendor, isViewOnly, isManager]);
+
   if (isLoading) {
     return (
       <PageLoader
@@ -222,78 +333,17 @@ const ContractDetailPage: React.FC = () => {
   }
 
   const status = formatContractStatus(contract?.status);
+  const actionsDisabled = contract?.status === "pending_approval";
 
   const canApprove = approveStatusResponse?.data?.data?.status === "pending";
   const hasAprovedorRejected = approveStatusResponse?.data?.data?.status === "approved" || approveStatusResponse?.data?.data?.status === "rejected";
   const hasNoAuthorization = approveStatusResponse?.data?.data?.status === "N/A";
 
-  type TabKey =
-    | "overview"
-    | "analytics"
-    | "kpi"
-    | "compliance"
-    | "documents"
-    | "amendments"
-    | "deliverables"
-    | "payment-summary"
-    | "rate-sheets"
-    | "lem"
-    | "invoice"
-    | "change"
-    | "claims"
-    | "rfi"
-    | "ncr-log"
-    | "approvers"
-    | "reports"
-    | "clause-library"
-    | "action-log";
-
-  const ALL_TABS: Array<{ key: TabKey; label: string }> = [
-    { key: "overview", label: "Overview" },
-    { key: "analytics", label: "Analytics" },
-    { key: "kpi", label: "KPI" },
-    { key: "compliance", label: "Compliance & Security" },
-    { key: "documents", label: "Documents" },
-    { key: "amendments", label: "Amendments" },
-    { key: "deliverables", label: "Deliverables" },
-    { key: "payment-summary", label: "Payment Summary" },
-    { key: "rate-sheets", label: "Rate Sheets" },
-    { key: "lem", label: "LEM" },
-    { key: "invoice", label: "Invoice" },
-    { key: "change", label: "Change Management" },
-    { key: "claims", label: "Claims" },
-    { key: "rfi", label: "RFI" },
-    { key: "ncr-log", label: "NCR Log" },
-    { key: "approvers", label: "Approvers" },
-    { key: "reports", label: "Vendor’s Reports" },
-    { key: "clause-library", label: "Clause Library" },
-    { key: "action-log", label: "Action Log" },
-  ];
-
-  const ROLE_TAB_WHITELIST: Record<"approver", TabKey[]> = {
-    approver: [
-      "overview",
-      "payment-summary",
-      "documents",
-      "amendments",
-      "change",
-      "claims",
-      "invoice",
-      "rfi",
-      "lem",
-      "deliverables",
-      "ncr-log",
-    ],
-  };
-
-  const visibleTabs = isApprover
-    ? ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.approver.includes(t.key))
-    : ALL_TABS;
   const triggerClass =
     "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pt-5">
       <SEOWrapper
         title="Contract Details - SwiftPro eProcurement Portal"
         description="View contract overview, team, and key information."
@@ -326,7 +376,7 @@ const ContractDetailPage: React.FC = () => {
           <h1 className="text-2xl font-semibold text-slate-900">
             {contract?.title}
           </h1>
-          <p className="text-sm text-slate-500">{contract?._id}</p>
+          <p className="text-sm text-slate-500">{contract?.contractId}</p>
         </div>
         <Badge className={status?.className}>{status?.label}</Badge>
       </div>
@@ -380,11 +430,13 @@ const ContractDetailPage: React.FC = () => {
         <ChangeTabContent
           contractId={contract?._id ?? ""}
           isActive={activeTab === "change"}
+          actionsDisabled={actionsDisabled}
         />
 
         <ClaimsTabContent
           contractId={contract?._id ?? ""}
           isActive={activeTab === "claims"}
+          actionsDisabled={actionsDisabled}
         />
 
         <ApproversTabContent
@@ -412,22 +464,26 @@ const ContractDetailPage: React.FC = () => {
         <RfiTabContent
           contractId={contract?._id ?? ""}
           isActive={activeTab === "rfi"}
+          actionsDisabled={actionsDisabled}
         />
 
         <NcrLogTabContent
           contractId={contract?._id ?? ""}
           contract={contract}
           isActive={activeTab === "ncr-log"}
+          actionsDisabled={actionsDisabled}
         />
 
         <DocumentsTabContent
           files={contract?.files}
           contractId={contract?._id ?? ""}
+          effectiveDate={contract?.startDate}
         />
 
         <AmendmentsTabContent
           contractId={contract?._id ?? ""}
           isActive={activeTab === "amendments"}
+          actionsDisabled={actionsDisabled}
         />
 
         <PaymentSummaryTabContent

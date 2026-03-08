@@ -20,16 +20,17 @@ import {
 import { ArrowLeft, Download, Eye, Search, X } from "lucide-react";
 import type { ContractNcrSummary } from "../api/contractManagerApi";
 import { useQuery } from "@tanstack/react-query";
-import { approverApi } from "../api/approverApi";
 import { useUserRole } from "@/hooks/useUserRole";
 import { formatDateTZ } from "@/lib/utils";
 import SubmitCapaDialog from "./SubmitCapaDialog";
+import { getRequest } from "@/lib/axiosInstance";
 
 export type NcrRow = {
   id: string;
   title: string;
   status: "Approved" | "Pending" | "Rejected";
   contractId: string;
+  basePath: string;
 };
 
 type Props = {
@@ -39,12 +40,14 @@ type Props = {
   pagination: PaginationState;
   setPagination: OnChangeFn<PaginationState>;
   contractId: string;
+  basePath: string;
 };
 
 type NcrDetailsSheetProps = {
   trigger: React.ReactNode;
   contractId: string;
   ncrId: string;
+  basePath: string;
 };
 
 const LabelRow = ({
@@ -96,14 +99,19 @@ const DocCard = ({
   </div>
 );
 
-const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger, contractId, ncrId }) => {
+const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger, contractId, ncrId, basePath }) => {
   const [open, setOpen] = React.useState(false);
-  const { isApprover } = useUserRole();
+  const { isApprover, isVendor } = useUserRole();
 
   const { data: detailRes } = useQuery({
-    queryKey: ["approver", "contractNcrs", "detail", contractId, ncrId],
-    queryFn: async () => await approverApi.getNcrDetail(contractId, ncrId),
-    enabled: Boolean(contractId) && Boolean(ncrId) && !!isApprover && open,
+    queryKey: ["contractNcrs", "detail", contractId, ncrId, basePath],
+    queryFn: async () => {
+      const response = await getRequest({
+        url: `${basePath}/${ncrId}`,
+      });
+      return response.data;
+    },
+    enabled: Boolean(contractId) && Boolean(ncrId) && open,
     staleTime: 60000,
   });
 
@@ -245,7 +253,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger, contractId, 
               </TabsContent>
             </Tabs>
           </div>
-          {isApprover ? (
+          {isApprover || isVendor ? (
             <div className="flex w-full gap-3 pt-2">
               <Button
                 variant="outline"
@@ -258,6 +266,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger, contractId, 
                 contractId={contractId}
                 ncrId={ncrId}
                 ncrTitle={title}
+                basePath={basePath}
                 trigger={
                   <Button className="flex-1 h-12 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]">
                     Submit CAPA
@@ -301,6 +310,7 @@ const columns: ColumnDef<NcrRow>[] = [
         <NcrDetailsSheet
           contractId={row.original.contractId}
           ncrId={row.original.id}
+          basePath={row.original.basePath}
           trigger={
             <button
               type="button"
@@ -329,6 +339,7 @@ const NcrTable: React.FC<Props> = ({
   pagination,
   setPagination,
   contractId,
+  basePath,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -339,8 +350,9 @@ const NcrTable: React.FC<Props> = ({
         title: row.title ?? "-",
         status: formatNcrStatus(row.status),
         contractId,
+        basePath,
       })),
-    [rows, contractId],
+    [rows, contractId, basePath],
   );
 
   const filteredRows = React.useMemo(() => {

@@ -9,16 +9,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { CloudUpload, X } from "lucide-react";
 import { Forge, Forger, useForge } from "@/lib/forge";
-import {
-  TextArea,
-  TextDatePicker,
-  TextFileUploader,
-  TextInput,
-  TextSelect,
-} from "@/components/layouts/FormInputs";
+import { TextArea, TextDatePicker, TextFileUploader, TextInput, TextSelect } from "@/components/layouts/FormInputs";
 import { postRequest } from "@/lib/axiosInstance";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { approverApi } from "../api/approverApi";
 import { useWatch } from "react-hook-form";
 import { formatFileSize } from "@/lib/fileUtils";
 
@@ -27,6 +20,7 @@ type SubmitCapaDialogProps = {
   contractId: string;
   ncrId: string;
   ncrTitle?: string;
+  basePath: string;
 };
 
 const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
@@ -34,6 +28,7 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
   contractId,
   ncrId,
   ncrTitle,
+  basePath,
 }) => {
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
@@ -65,12 +60,12 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
 
   const submitCapaMutation = useMutation({
     mutationKey: [
-      "approver",
       "contractNcrs",
       "capa",
       "create",
       contractId,
       ncrId,
+      basePath
     ],
     mutationFn: async (data: {
       title: string;
@@ -95,13 +90,18 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
               }))
             : undefined,
       };
-      return await approverApi.createNcrCapa(contractId, ncrId, payload);
+      
+      const res = await postRequest({
+        url: `${basePath}/${ncrId}/capa`,
+        payload
+      });
+      return res.data;
     },
     onSuccess: async () => {
       setOpen(false);
       reset();
       await queryClient.invalidateQueries({
-        queryKey: ["approver", "contractNcrs", "detail", contractId, ncrId],
+        queryKey: ["contractNcrs", "detail", contractId, ncrId],
       });
     },
   });

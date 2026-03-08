@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/tooltip";
 import { businessDivisionApi } from "@/pages/BusinessDivisionsPage/api/businessDivisionApi";
 import { getRequest } from "@/lib/axiosInstance";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
 
 type Props = {
   typeOptions: Array<{ label: string; value: string }>;
@@ -101,6 +103,8 @@ const Step1BasicInfo: React.FC<Props> = ({
   projectOptions,
   awardedOptions,
 }) => {
+  const { isManager } = useUserRole();
+  const currentUser = useUser();
   const relationship = useWatch({ name: "relationship" });
   const { data: divisionsRes, isLoading: isLoadingDivisions } = useQuery<
     Awaited<ReturnType<typeof businessDivisionApi.listDivisions>>
@@ -264,16 +268,48 @@ const Step1BasicInfo: React.FC<Props> = ({
         <Forger
           name="manager"
           label="Contract Manger"
-          placeholder="Enter Title"
-          component={TextInput}
+          component={({
+            value,
+            onChange,
+          }: {
+            value?: string;
+            onChange?: (val: string) => void;
+          }) => (
+            <TextInput
+              placeholder="Enter Title"
+              value={
+                isManager ? (currentUser?.name ?? "") : ((value as any) ?? "")
+              }
+              onChange={(e) => onChange?.(e.target.value)}
+              disabled={isManager}
+              className="bg-[#2A44670D]"
+            />
+          )}
           className="bg-[#2A44670D]"
           data-testid="contract-manager-input"
         />
         <Forger
           name="jobTitle"
           label="Job Title"
-          placeholder="Enter Title"
-          component={TextInput}
+          component={({
+            value,
+            onChange,
+          }: {
+            value?: string;
+            onChange?: (val: string) => void;
+          }) => (
+            <TextInput
+              placeholder="Enter Title"
+              value={
+                isManager
+                  ? (currentUser?.role?.name ?? "")
+                  : ((value as any) ?? "")
+              }
+              onChange={(e) => onChange?.(e.target.value)}
+              disabled={isManager}
+              className="bg-[#2A44670D]"
+            />
+          )}
           className="bg-[#2A44670D]"
           data-testid="job-title-input"
         />

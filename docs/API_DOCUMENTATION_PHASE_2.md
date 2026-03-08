@@ -1927,6 +1927,41 @@
           }
         }
       },
+      "ContractComplianceDTO": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "policy",
+              "security"
+            ]
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
       "ContractInvoiceDTO": {
         "type": "object",
         "properties": {
@@ -7417,6 +7452,2096 @@
         }
       }
     },
+    "/approver/msa-contract/{contractId}/compliance": {
+      "get": {
+        "summary": "Get MSA contract compliance details",
+        "description": "Returns compliance summary, policy list, and security list for an MSA contract.",
+        "tags": [
+          "Approver - MSA Contract Compliance"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract compliance fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract or compliance not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/change/stats": {
+      "get": {
+        "summary": "Get MSA contract change statistics",
+        "description": "Returns statistics of changes for a specific MSA contract.",
+        "tags": [
+          "Approver - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract change statistics fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/change": {
+      "get": {
+        "summary": "List MSA contract changes",
+        "description": "Returns a list of changes for a specific MSA contract with pagination and filtering.",
+        "tags": [
+          "Approver - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Number of items per page"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by title"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by change type"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract changes fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/change/{changeId}": {
+      "get": {
+        "summary": "Get an MSA contract change by ID",
+        "description": "Returns details of a specific MSA contract change.",
+        "tags": [
+          "Approver - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "changeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Change ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract change fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractChangeDTO"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/change/{changeId}/comment": {
+      "get": {
+        "summary": "Get comments for an MSA contract change",
+        "description": "Returns a list of comments for a specific MSA contract change.",
+        "tags": [
+          "Approver - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "changeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Change ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract change comments fetched successfully"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a comment to an MSA contract change",
+        "description": "Adds a new comment to a specific MSA contract change.",
+        "tags": [
+          "Approver - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "changeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Change ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeCommentDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract change comment added successfully"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/change/{changeId}/comment/{commentId}/reply": {
+      "post": {
+        "summary": "Reply to an MSA contract change comment",
+        "description": "Adds a reply to a specific comment on an MSA contract change.",
+        "tags": [
+          "Approver - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "changeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Change ID"
+          },
+          {
+            "in": "path",
+            "name": "commentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comment ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeReplyDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract change reply added successfully"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/change/{changeId}/approve/status": {
+      "get": {
+        "summary": "Check if MSA contract change can be approved",
+        "description": "Checks if the current user can approve the MSA contract change at the current level.",
+        "tags": [
+          "Approver - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "changeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Change ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Approval status checked successfully"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/change/{changeId}/approve": {
+      "post": {
+        "summary": "Approve or reject an MSA contract change",
+        "description": "Submit an approval action (approve/reject) for the MSA contract change.",
+        "tags": [
+          "Approver - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "changeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Change ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalActionDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract change approved successfully"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/claim/stats": {
+      "get": {
+        "summary": "Get MSA contract claim statistics",
+        "description": "Returns statistics of claims for a specific MSA contract.",
+        "tags": [
+          "Approver - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract claim statistics fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/claim": {
+      "get": {
+        "summary": "List MSA contract claims",
+        "description": "Returns a list of claims for a specific MSA contract with pagination and filtering.",
+        "tags": [
+          "Approver - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Number of items per page"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by title"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by claim type"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract claims fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/claim/{claimId}": {
+      "get": {
+        "summary": "Get an MSA contract claim by ID",
+        "description": "Returns details of a specific MSA contract claim.",
+        "tags": [
+          "Approver - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Claim ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract claim fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractClaimDTO"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/claim/{claimId}/comment": {
+      "get": {
+        "summary": "Get comments for an MSA contract claim",
+        "description": "Returns a list of comments for a specific MSA contract claim.",
+        "tags": [
+          "Approver - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Claim ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract claim comments fetched successfully"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a comment to an MSA contract claim",
+        "description": "Adds a new comment to a specific MSA contract claim.",
+        "tags": [
+          "Approver - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Claim ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeCommentDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract claim comment added successfully"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/claim/{claimId}/comment/{commentId}/reply": {
+      "post": {
+        "summary": "Reply to an MSA contract claim comment",
+        "description": "Adds a reply to a specific comment on an MSA contract claim.",
+        "tags": [
+          "Approver - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Claim ID"
+          },
+          {
+            "in": "path",
+            "name": "commentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comment ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeReplyDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract claim reply added successfully"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/claim/{claimId}/approve": {
+      "post": {
+        "summary": "Approve or reject an MSA contract claim",
+        "description": "Submit an approval action (approve/reject) for the MSA contract claim.",
+        "tags": [
+          "Approver - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Claim ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalActionDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract claim action updated successfully"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/rfi/stats": {
+      "get": {
+        "summary": "Get MSA contract RFI statistics",
+        "description": "Returns counts of all, issue, and receive RFIs for a specific MSA contract.",
+        "tags": [
+          "Approver - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "all": {
+                          "type": "integer"
+                        },
+                        "issue": {
+                          "type": "integer"
+                        },
+                        "receive": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{dataId}/rfi": {
+      "post": {
+        "summary": "Create a new RFI issue",
+        "description": "Creates a new RFI issue for an MSA contract.",
+        "tags": [
+          "Approver - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractRfiDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractRfiDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/rfi": {
+      "get": {
+        "summary": "List contract RFIs",
+        "description": "Returns a paginated list of RFIs for a specific MSA contract.",
+        "tags": [
+          "Approver - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by RFI title"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by RFI status"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFIs fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/rfi/{rfiId}": {
+      "get": {
+        "summary": "Get a specific RFI",
+        "description": "Returns details for a specific RFI.",
+        "tags": [
+          "Approver - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "contractRfi": {
+                          "$ref": "#/components/schemas/ContractRfiDTO"
+                        },
+                        "isResponse": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/rfi/{rfiId}/response": {
+      "get": {
+        "summary": "Get RFI responses",
+        "description": "Returns responses for a specific RFI.",
+        "tags": [
+          "Approver - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI responses fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractRfiResponseDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI response not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{dataId}/rfi/{rfiId}/response": {
+      "post": {
+        "summary": "Create RFI response",
+        "description": "Creates a response for a specific RFI.",
+        "tags": [
+          "Approver - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractRfiResponseDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI response created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractRfiResponseDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/rfi/{rfiId}/comment": {
+      "get": {
+        "summary": "Get contract RFI comments",
+        "description": "Returns comments for a specific contract RFI.",
+        "tags": [
+          "Approver - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI comments fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractCommentDTO"
+                          }
+                        },
+                        "page": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a comment to a contract RFI",
+        "description": "Adds a new comment to a specific contract RFI.",
+        "tags": [
+          "Approver - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeCommentDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI comment added successfully"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/rfi/{rfiId}/comment/{commentId}/reply": {
+      "post": {
+        "summary": "Reply to a contract RFI comment",
+        "description": "Adds a reply to a specific comment on a contract RFI.",
+        "tags": [
+          "Approver - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          },
+          {
+            "in": "path",
+            "name": "commentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The comment ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeReplyDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI reply added successfully"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/invoice/stats": {
+      "get": {
+        "summary": "Get MSA contract invoice statistics",
+        "description": "Returns statistics for invoices associated with a specific MSA contract",
+        "tags": [
+          "Approver - MSA Contract Invoice"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract invoice statistics fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/invoice": {
+      "get": {
+        "summary": "List MSA contract invoices",
+        "description": "Returns a paginated list of invoices for a specific MSA contract",
+        "tags": [
+          "Approver - MSA Contract Invoice"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "query",
+            "name": "invoiceId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by invoice ID"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by invoice type"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract invoices fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/invoice/{invoiceId}": {
+      "get": {
+        "summary": "Get MSA contract invoice details",
+        "description": "Returns detailed information for a specific MSA contract invoice",
+        "tags": [
+          "Approver - MSA Contract Invoice"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "invoiceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Invoice ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract invoice fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract invoice not found"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/invoice/{invoiceId}/approve/status": {
+      "get": {
+        "summary": "Check if MSA contract invoice can be approved",
+        "description": "Checks if the current user can approve the MSA contract invoice at the current level",
+        "tags": [
+          "Approver - MSA Contract Invoice"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "invoiceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Invoice ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Approval status checked successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/invoice/{invoiceId}/approve": {
+      "post": {
+        "summary": "Approve or reject an MSA contract invoice",
+        "description": "Submit an approval action (approve/reject) for the MSA contract invoice",
+        "tags": [
+          "Approver - MSA Contract Invoice"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "invoiceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Invoice ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalActionDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract invoice approval status updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/amendment/stats": {
+      "get": {
+        "summary": "Get MSA contract amendment statistics",
+        "description": "Returns statistics for amendments associated with a specific MSA contract.",
+        "tags": [
+          "Approver - MSA Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract amendment stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/amendment": {
+      "get": {
+        "summary": "List MSA contract amendments",
+        "description": "Returns a list of amendments for a specific MSA contract.",
+        "tags": [
+          "Approver - MSA Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract amendments fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/amendment/{amendmentId}": {
+      "get": {
+        "summary": "Get MSA contract amendment details",
+        "description": "Returns detailed information for a specific MSA contract amendment.",
+        "tags": [
+          "Approver - MSA Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "amendmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract amendment ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract amendment fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract amendment not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/amendment/{amendmentId}/approve/status": {
+      "get": {
+        "summary": "Check if MSA contract amendment can be approved",
+        "description": "Checks if the current user can approve the MSA contract amendment at the current level.",
+        "tags": [
+          "Approver - MSA Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "amendmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract amendment ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract amendment approval status fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract amendment not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/approver/msa-contract/{contractId}/amendment/{amendmentId}/approve": {
+      "post": {
+        "summary": "Approve or reject an MSA contract amendment",
+        "description": "Submit an approval action (approve/reject) for the MSA contract amendment.",
+        "tags": [
+          "Approver - MSA Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "amendmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract amendment ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalActionDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract amendment approved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract amendment not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
     "/manager/business-division": {
       "post": {
         "summary": "Create a new business division",
@@ -10246,6 +12371,250 @@
           },
           "404": {
             "description": "Report not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/logs": {
+      "get": {
+        "summary": "List contract action logs",
+        "description": "Returns action logs for a contract with pagination and filters.",
+        "tags": [
+          "ContractManager - Contract Log"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          },
+          {
+            "in": "query",
+            "name": "logId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by log ID"
+          },
+          {
+            "in": "query",
+            "name": "module",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by module name"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "number"
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "number"
+            },
+            "description": "Page size"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract action logs fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "logs": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "total": {
+                          "type": "number"
+                        },
+                        "page": {
+                          "type": "number"
+                        },
+                        "limit": {
+                          "type": "number"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/logs/{logId}": {
+      "get": {
+        "summary": "Get contract action log detail",
+        "description": "Returns a single action log entry for a contract.",
+        "tags": [
+          "ContractManager - Contract Log"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "logId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Log ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract action log fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Log not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -17673,6 +20042,2712 @@
         }
       }
     },
+    "/manager/msa-contract/{contractId}/kpis": {
+      "get": {
+        "summary": "List MSA contract KPI dashboard rows",
+        "description": "Returns KPI categories with current and all-time average scores for an MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract Kpis"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          },
+          {
+            "in": "query",
+            "name": "startDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Filter history by start date"
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Filter history by end date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract KPIs fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "kpiId": {
+                            "type": "string"
+                          },
+                          "category": {
+                            "type": "string"
+                          },
+                          "target": {
+                            "type": "string"
+                          },
+                          "nonCompliance": {
+                            "type": "string"
+                          },
+                          "currentAvgScore": {
+                            "type": "number"
+                          },
+                          "allTimeAvgScore": {
+                            "type": "number"
+                          },
+                          "lastUpdated": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "variationPercent": {
+                            "type": "number",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/kpis/{kpiId}": {
+      "get": {
+        "summary": "Get KPI detail",
+        "description": "Returns KPI detail with metric breakdown and history for an MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract Kpis"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "kpiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "KPI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract KPI fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "kpiId": {
+                          "type": "string"
+                        },
+                        "category": {
+                          "type": "string"
+                        },
+                        "target": {
+                          "type": "string"
+                        },
+                        "nonCompliance": {
+                          "type": "string"
+                        },
+                        "currentAvgScore": {
+                          "type": "number"
+                        },
+                        "allTimeAvgScore": {
+                          "type": "number"
+                        },
+                        "lastUpdated": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "currentMetrics": {
+                          "type": "object"
+                        },
+                        "allTimeMetrics": {
+                          "type": "object"
+                        },
+                        "successRate": {
+                          "type": "number"
+                        },
+                        "variationPercent": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "invoiceAccuracyRate": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "history": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "404": {
+            "description": "KPI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Submit KPI values",
+        "description": "Adds a KPI history entry for an MSA contract KPI.",
+        "tags": [
+          "ContractManager - MSA Contract Kpis"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "kpiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "KPI ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractKPIDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract KPI updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "404": {
+            "description": "KPI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/compliance": {
+      "get": {
+        "summary": "Get MSA contract compliance details",
+        "description": "Returns compliance summary, policy list, and security list for an MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract Compliance"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract compliance fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "404": {
+            "description": "Contract or compliance not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/compliance/{type}/{typeId}/approve": {
+      "post": {
+        "summary": "Approve or reject an MSA contract compliance item",
+        "description": "Submit an approval action for a policy or security compliance entry.",
+        "tags": [
+          "ContractManager - MSA Contract Compliance"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "policy",
+                "security"
+              ]
+            },
+            "description": "Compliance item type"
+          },
+          {
+            "in": "path",
+            "name": "typeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Policy ID or security type ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalActionDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract compliance approval processed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "404": {
+            "description": "Contract or compliance item not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/changes/stats": {
+      "get": {
+        "summary": "Get MSA contract change statistics",
+        "description": "Returns statistics about changes for a specific MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract change stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/changes": {
+      "get": {
+        "summary": "List MSA contract changes",
+        "description": "Returns a list of changes for a specific MSA contract with filtering options.",
+        "tags": [
+          "ContractManager - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by change title"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by change type"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract changes fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/changes/{changeId}": {
+      "get": {
+        "summary": "Get an MSA contract change",
+        "description": "Returns details of a specific MSA contract change.",
+        "tags": [
+          "ContractManager - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "changeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The change ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract change fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractChangeDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{dataId}/change/{type}": {
+      "post": {
+        "summary": "Request an MSA contract change",
+        "description": "Creates a new contract change request for an MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract or MSA ID"
+          },
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ]
+            },
+            "description": "The type of document"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeManagerDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract change requested successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractChangeDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/changes/{changeId}/approve": {
+      "post": {
+        "summary": "Approve or reject an MSA contract change (Manager)",
+        "description": "Allows a manager or creator to approve/reject a contract change.",
+        "tags": [
+          "ContractManager - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "changeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The change ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalActionDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract change approval processed successfully"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/changes/{changeId}/approve/status": {
+      "get": {
+        "summary": "Check manager approval status for an MSA contract change",
+        "description": "Returns the current manager approval status for a specific MSA contract change.",
+        "tags": [
+          "ContractManager - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "changeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The change ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Manager change status fetched successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/changes/{changeId}/approvers": {
+      "get": {
+        "summary": "Get MSA contract change approvers",
+        "description": "Returns the list of approvers for a specific MSA contract change.",
+        "tags": [
+          "ContractManager - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "changeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The change ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract change approvers fetched successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/claims/stats": {
+      "get": {
+        "summary": "Get MSA contract claim statistics",
+        "description": "Returns statistics about claims for a specific MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract claim stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/claims": {
+      "get": {
+        "summary": "List MSA contract claims",
+        "description": "Returns a list of claims for a specific MSA contract with filtering options.",
+        "tags": [
+          "ContractManager - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by claim title"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by claim type"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract claims fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/claims/{claimId}": {
+      "get": {
+        "summary": "Get an MSA contract claim",
+        "description": "Returns details of a specific MSA contract claim.",
+        "tags": [
+          "ContractManager - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The claim ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract claim fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractClaimDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/claims/{claimId}/comments": {
+      "get": {
+        "summary": "Get MSA contract claim comments",
+        "description": "Returns comments for a specific MSA contract claim.",
+        "tags": [
+          "ContractManager - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The claim ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract claim comments fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a comment to an MSA contract claim",
+        "description": "Adds a new comment to a specific MSA contract claim.",
+        "tags": [
+          "ContractManager - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The claim ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeCommentDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract claim comment added successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/claims/{claimId}/comments/{commentId}/reply": {
+      "post": {
+        "summary": "Reply to an MSA contract claim comment",
+        "description": "Adds a reply to a specific comment on an MSA contract claim.",
+        "tags": [
+          "ContractManager - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The claim ID"
+          },
+          {
+            "in": "path",
+            "name": "commentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The comment ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeReplyDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract claim reply added successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/claims/{claimId}/approve": {
+      "post": {
+        "summary": "Approve or reject an MSA contract claim (Manager)",
+        "description": "Allows a manager or creator to approve/reject a contract claim.",
+        "tags": [
+          "ContractManager - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The claim ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalActionDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract claim approval processed successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/claims/{claimId}/approve/status": {
+      "get": {
+        "summary": "Check manager approval status for an MSA contract claim",
+        "description": "Returns the current manager approval status for a specific MSA contract claim.",
+        "tags": [
+          "ContractManager - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The claim ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Manager claim status fetched successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/claims/{claimId}/approvers": {
+      "get": {
+        "summary": "Get MSA contract claim approvers",
+        "description": "Returns the list of approvers for a specific MSA contract claim.",
+        "tags": [
+          "ContractManager - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The claim ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract claim approvers fetched successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Send MSA contract claim to approvers",
+        "description": "Sends the MSA contract claim to the specified approvers.",
+        "tags": [
+          "ContractManager - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The claim ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendApproverDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract claim approver sent successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/rfi/stats": {
+      "get": {
+        "summary": "Get MSA contract RFI statistics",
+        "description": "Returns counts of all, issue, and receive RFIs for a specific MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "all": {
+                          "type": "integer"
+                        },
+                        "issue": {
+                          "type": "integer"
+                        },
+                        "receive": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{dataId}/rfi": {
+      "post": {
+        "summary": "Create a new RFI issue",
+        "description": "Creates a new RFI issue for an MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractRfiDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI created successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{dataId}/rfi/{rfiId}/response": {
+      "post": {
+        "summary": "Create RFI response",
+        "description": "Creates a response for a specific RFI.",
+        "tags": [
+          "ContractManager - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractRfiResponseDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI created successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/rfi": {
+      "get": {
+        "summary": "List contract RFIs",
+        "description": "Returns a paginated list of RFIs for a specific MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by RFI title"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by RFI status"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFIs fetched successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/rfi/{rfiId}": {
+      "get": {
+        "summary": "Get a specific RFI",
+        "description": "Returns details for a specific RFI.",
+        "tags": [
+          "ContractManager - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI fetched successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/rfi/{rfiId}/response": {
+      "get": {
+        "summary": "Get RFI responses",
+        "description": "Returns responses for a specific RFI.",
+        "tags": [
+          "ContractManager - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI responses fetched successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/rfi/{rfiId}/comment": {
+      "get": {
+        "summary": "Get contract RFI comments",
+        "description": "Returns comments for a specific contract RFI.",
+        "tags": [
+          "ContractManager - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI comments fetched successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a comment to a contract RFI",
+        "description": "Adds a new comment to a specific contract RFI.",
+        "tags": [
+          "ContractManager - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeCommentDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI comment added successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/rfi/{rfiId}/comment/{commentId}/reply": {
+      "post": {
+        "summary": "Reply to a contract RFI comment",
+        "description": "Adds a reply to a specific comment on a contract RFI.",
+        "tags": [
+          "ContractManager - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          },
+          {
+            "in": "path",
+            "name": "commentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The comment ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeReplyDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI reply added successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/invoice/stats": {
+      "get": {
+        "summary": "Get MSA contract invoice statistics",
+        "description": "Returns statistics for invoices associated with a specific MSA contract",
+        "tags": [
+          "ContractManager - MSA Contract Invoice"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract invoice statistics fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "all": {
+                          "type": "integer"
+                        },
+                        "pending": {
+                          "type": "integer"
+                        },
+                        "accepted": {
+                          "type": "integer"
+                        },
+                        "rejected": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/invoice": {
+      "get": {
+        "summary": "List MSA contract invoices",
+        "description": "Returns a paginated list of invoices for a specific MSA contract",
+        "tags": [
+          "ContractManager - MSA Contract Invoice"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "query",
+            "name": "invoiceId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by invoice ID"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract invoices fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "invoices": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractInvoiceDTO"
+                          }
+                        },
+                        "total": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/invoice/{invoiceId}": {
+      "get": {
+        "summary": "Get MSA contract invoice details",
+        "description": "Returns detailed information for a specific MSA contract invoice",
+        "tags": [
+          "ContractManager - MSA Contract Invoice"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "invoiceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Invoice ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract invoice fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractInvoiceDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/amendments": {
+      "post": {
+        "summary": "Create amendment",
+        "description": "Create a new amendment for an MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractAmendmentDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Amendment created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractAmendmentDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/amendments/{amendmentId}": {
+      "get": {
+        "summary": "Get amendment details",
+        "description": "Returns details of a specific MSA contract amendment.",
+        "tags": [
+          "ContractManager - MSA Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "amendmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Amendment ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Amendment fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractAmendmentDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "404": {
+            "description": "Amendment not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/amendments/{amendmentId}/approvers": {
+      "post": {
+        "summary": "Add approvers to amendment",
+        "description": "Manually add approvers to an MSA contract amendment.",
+        "tags": [
+          "ContractManager - MSA Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "amendmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Amendment ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddApproversDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Approvers added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractAmendmentDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/amendments/{amendmentId}/approve": {
+      "post": {
+        "summary": "Approve/Reject amendment",
+        "description": "Approve or reject an MSA contract amendment.",
+        "tags": [
+          "ContractManager - MSA Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "amendmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Amendment ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalActionDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Amendment approval status updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractAmendmentDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
     "/manager/projects/stats": {
       "get": {
         "summary": "Get project statistics",
@@ -21577,6 +26652,1027 @@
         }
       }
     },
+    "/user/msa-contract/{contractId}/change/stats": {
+      "get": {
+        "summary": "Get MSA contract change statistics",
+        "description": "Returns statistics for changes associated with a specific MSA contract.",
+        "tags": [
+          "View Only User - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract change stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/change": {
+      "get": {
+        "summary": "List MSA contract changes",
+        "description": "Returns a paginated list of changes for a specific MSA contract.",
+        "tags": [
+          "View Only User - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by change title"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by change type"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract changes fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/change/{changeId}": {
+      "get": {
+        "summary": "Get MSA contract change details",
+        "description": "Returns detailed information for a specific MSA contract change.",
+        "tags": [
+          "View Only User - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "changeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The change ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract change fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractChangeDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract change not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/change/{changeId}/comment": {
+      "get": {
+        "summary": "Get MSA contract change comments",
+        "description": "Returns comments for a specific MSA contract change.",
+        "tags": [
+          "View Only User - MSA Contract Change"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "changeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The change ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract change comments fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract change not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/claim/stats": {
+      "get": {
+        "summary": "Get MSA contract claim statistics",
+        "description": "Returns statistics for claims associated with a specific MSA contract.",
+        "tags": [
+          "View Only User - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract claim stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/claim": {
+      "get": {
+        "summary": "List MSA contract claims",
+        "description": "Returns a paginated list of claims for a specific MSA contract.",
+        "tags": [
+          "View Only User - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by claim title"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by claim type"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract claims fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/claim/{claimId}": {
+      "get": {
+        "summary": "Get MSA contract claim details",
+        "description": "Returns detailed information for a specific MSA contract claim.",
+        "tags": [
+          "View Only User - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The claim ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract claim fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractClaimDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract claim not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/rfi/stats": {
+      "get": {
+        "summary": "Get MSA contract RFI statistics",
+        "description": "Returns counts of all, issue, and receive RFIs for a specific MSA contract.",
+        "tags": [
+          "View Only User - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "all": {
+                          "type": "integer"
+                        },
+                        "issue": {
+                          "type": "integer"
+                        },
+                        "receive": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/rfi": {
+      "get": {
+        "summary": "List contract RFIs",
+        "description": "Returns a paginated list of RFIs for a specific MSA contract.",
+        "tags": [
+          "View Only User - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by RFI title"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by RFI status"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFIs fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/rfi/{rfiId}": {
+      "get": {
+        "summary": "Get a specific RFI",
+        "description": "Returns details for a specific RFI.",
+        "tags": [
+          "View Only User - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "contractRfi": {
+                          "$ref": "#/components/schemas/ContractRfiDTO"
+                        },
+                        "isResponse": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/rfi/{rfiId}/comment": {
+      "get": {
+        "summary": "Get contract RFI comments",
+        "description": "Returns comments for a specific contract RFI.",
+        "tags": [
+          "View Only User - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI comments fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractCommentDTO"
+                          }
+                        },
+                        "page": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/invoice/stats": {
+      "get": {
+        "summary": "Get MSA contract invoice statistics",
+        "description": "Returns statistics for invoices associated with a specific MSA contract.",
+        "tags": [
+          "View Only User - MSA Contract Invoice"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract invoice stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/invoice": {
+      "get": {
+        "summary": "List MSA contract invoices",
+        "description": "Returns a paginated list of invoices for a specific MSA contract.",
+        "tags": [
+          "View Only User - MSA Contract Invoice"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "query",
+            "name": "invoiceId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by invoice ID"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by invoice type"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract invoices fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/invoice/{invoiceId}": {
+      "get": {
+        "summary": "Get MSA contract invoice details",
+        "description": "Returns detailed information for a specific MSA contract invoice.",
+        "tags": [
+          "View Only User - MSA Contract Invoice"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "invoiceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The invoice ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract invoice fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractInvoiceDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract invoice not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
     "/user/msa-contract/{contractId}/payment-holdbacks": {
       "get": {
         "summary": "List holdbacks",
@@ -21812,6 +27908,252 @@
           },
           "404": {
             "description": "Saving not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/compliance": {
+      "get": {
+        "summary": "Get MSA contract compliance details",
+        "description": "Returns compliance summary, policy list, and security list for an MSA contract.",
+        "tags": [
+          "View Only User - MSA Contract Compliance"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract compliance fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract or compliance not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/amendment/stats": {
+      "get": {
+        "summary": "Get MSA contract amendment statistics",
+        "description": "Returns statistics for amendments associated with a specific MSA contract.",
+        "tags": [
+          "View Only User - MSA Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract amendment stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract amendment stats fetched successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/amendment": {
+      "get": {
+        "summary": "List MSA contract amendments",
+        "description": "Returns a list of amendments for a specific MSA contract.",
+        "tags": [
+          "View Only User - MSA Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract amendments fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract amendments fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/user/msa-contract/{contractId}/amendment/{amendmentId}": {
+      "get": {
+        "summary": "Get MSA contract amendment details",
+        "description": "Returns detailed information for a specific MSA contract amendment.",
+        "tags": [
+          "View Only User - MSA Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "amendmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract amendment ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract amendment fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract amendment fetched successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract amendment not found"
           },
           "500": {
             "description": "Server error"
@@ -27563,6 +33905,1500 @@
         }
       }
     },
+    "/vendor/msa-contract/{contractId}/compliance": {
+      "get": {
+        "summary": "Get MSA contract compliance details",
+        "description": "Returns compliance summary, policy list, and security list for an MSA contract.",
+        "tags": [
+          "Vendor - MSA Contract Compliance"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract compliance fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract or compliance not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/compliance/{typeId}": {
+      "patch": {
+        "summary": "Update an MSA contract compliance item",
+        "description": "Updates compliance files and description for a policy or security item.",
+        "tags": [
+          "Vendor - MSA Contract Compliance"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "typeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Policy ID or security type ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractComplianceDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Compliance updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract or compliance item not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/claim/stats": {
+      "get": {
+        "summary": "Get MSA contract claim statistics",
+        "description": "Returns statistics for claims associated with a specific MSA contract.",
+        "tags": [
+          "Vendor - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract claim stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/claim": {
+      "get": {
+        "summary": "List MSA contract claims",
+        "description": "Returns a paginated list of claims for a specific MSA contract.",
+        "tags": [
+          "Vendor - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by claim title"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by claim type"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract claims fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create an MSA contract claim",
+        "description": "Creates a new contract claim for an MSA contract.",
+        "tags": [
+          "Vendor - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractClaimDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract claim created successfully"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/claim/{claimId}": {
+      "get": {
+        "summary": "Get MSA contract claim details",
+        "description": "Returns detailed information for a specific MSA contract claim.",
+        "tags": [
+          "Vendor - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The claim ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract claim fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractClaimDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract claim not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/claim/{claimId}/comment": {
+      "get": {
+        "summary": "Get MSA contract claim comments",
+        "description": "Returns comments for a specific MSA contract claim.",
+        "tags": [
+          "Vendor - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The claim ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract claim comments fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a comment to an MSA contract claim",
+        "description": "Adds a new comment to a specific MSA contract claim.",
+        "tags": [
+          "Vendor - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The claim ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeCommentDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract claim comment added successfully"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract claim not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/claim/{claimId}/comment/{commentId}/reply": {
+      "post": {
+        "summary": "Reply to an MSA contract claim comment",
+        "description": "Adds a reply to a specific comment on an MSA contract claim.",
+        "tags": [
+          "Vendor - MSA Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "claimId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The claim ID"
+          },
+          {
+            "in": "path",
+            "name": "commentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The comment ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeReplyDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract claim reply added successfully"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract claim not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/rfi/stats": {
+      "get": {
+        "summary": "Get MSA contract RFI statistics",
+        "description": "Returns RFI counts (all, issue, receive) for a specific MSA contract.",
+        "tags": [
+          "Vendor - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "all": {
+                          "type": "integer"
+                        },
+                        "issue": {
+                          "type": "integer"
+                        },
+                        "receive": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{dataId}/rfi": {
+      "post": {
+        "summary": "Create a new RFI issue",
+        "description": "Creates a new RFI issue for an MSA contract.",
+        "tags": [
+          "Vendor - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractRfiDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractRfiDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/rfi": {
+      "get": {
+        "summary": "List contract RFIs",
+        "description": "Returns a paginated list of RFIs for a specific MSA contract.",
+        "tags": [
+          "Vendor - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by RFI title"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by RFI status"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFIs fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "contractRfis": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractRfiDTO"
+                          }
+                        },
+                        "total": {
+                          "type": "integer"
+                        },
+                        "page": {
+                          "type": "integer"
+                        },
+                        "skip": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/rfi/{rfiId}": {
+      "get": {
+        "summary": "Get a specific RFI",
+        "description": "Returns details for a specific RFI.",
+        "tags": [
+          "Vendor - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "contractRfi": {
+                          "$ref": "#/components/schemas/ContractRfiDTO"
+                        },
+                        "isResponse": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/rfi/{rfiId}/response": {
+      "get": {
+        "summary": "Get RFI responses",
+        "description": "Returns responses for a specific RFI.",
+        "tags": [
+          "Vendor - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI responses fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractRfiResponseDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI response not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{dataId}/rfi/{rfiId}/response": {
+      "post": {
+        "summary": "Create RFI response",
+        "description": "Creates a response for a specific RFI.",
+        "tags": [
+          "Vendor - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractRfiResponseDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI response created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractRfiResponseDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/rfi/{rfiId}/comment": {
+      "get": {
+        "summary": "Get contract RFI comments",
+        "description": "Returns comments for a specific contract RFI.",
+        "tags": [
+          "Vendor - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI comments fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContractCommentDTO"
+                          }
+                        },
+                        "page": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a comment to a contract RFI",
+        "description": "Adds a new comment to a specific contract RFI.",
+        "tags": [
+          "Vendor - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeCommentDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI comment added successfully"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/rfi/{rfiId}/comment/{commentId}/reply": {
+      "post": {
+        "summary": "Reply to a contract RFI comment",
+        "description": "Adds a reply to a specific comment on a contract RFI.",
+        "tags": [
+          "Vendor - MSA Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          },
+          {
+            "in": "path",
+            "name": "commentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The comment ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractChangeReplyDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract RFI reply added successfully"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/invoice/stats": {
+      "get": {
+        "summary": "Get MSA contract invoice statistics",
+        "description": "Returns statistics for invoices associated with a specific MSA contract",
+        "tags": [
+          "Vendor - MSA Contract Invoice"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract invoice statistics fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/invoice": {
+      "post": {
+        "summary": "Create a new MSA contract invoice",
+        "description": "Create a new invoice for a specific MSA contract",
+        "tags": [
+          "Vendor - MSA Contract Invoice"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IContractInvoice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract invoice created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractInvoiceDTO"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List MSA contract invoices",
+        "description": "Returns a paginated list of invoices for a specific MSA contract",
+        "tags": [
+          "Vendor - MSA Contract Invoice"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "query",
+            "name": "invoiceId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by invoice ID"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by invoice type"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract invoices fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/invoice/{invoiceId}": {
+      "get": {
+        "summary": "Get MSA contract invoice details",
+        "description": "Returns detailed information for a specific MSA contract invoice",
+        "tags": [
+          "Vendor - MSA Contract Invoice"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "invoiceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Invoice ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract invoice fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractInvoiceDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract invoice not found"
+          }
+        }
+      }
+    },
     "/vendor/msa-contract/{contractId}/payment-savings": {
       "get": {
         "summary": "List savings",
@@ -27675,6 +35511,292 @@
           }
         }
       }
+    },
+    "/vendor/msa-contract/{contractId}/amendment/stats": {
+      "get": {
+        "summary": "Get MSA contract amendment statistics",
+        "description": "Returns statistics for amendments associated with a specific MSA contract.",
+        "tags": [
+          "Vendor - MSA Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract amendment stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract amendment stats fetched successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/amendment": {
+      "get": {
+        "summary": "List MSA contract amendments",
+        "description": "Returns a list of amendments for a specific MSA contract.",
+        "tags": [
+          "Vendor - MSA Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract amendments fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract amendments fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/amendment/{amendmentId}": {
+      "get": {
+        "summary": "Get MSA contract amendment details",
+        "description": "Returns detailed information for a specific MSA contract amendment.",
+        "tags": [
+          "Vendor - MSA Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "amendmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract amendment ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract amendment fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract amendment fetched successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract amendment not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/amendment/{amendmentId}/status": {
+      "patch": {
+        "summary": "Update MSA contract amendment vendor status",
+        "description": "Updates the vendor status of a specific MSA contract amendment (accepted/rejected).",
+        "tags": [
+          "Vendor - MSA Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The MSA contract ID"
+          },
+          {
+            "in": "path",
+            "name": "amendmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract amendment ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "accepted",
+                      "rejected"
+                    ],
+                    "description": "The new status for the amendment"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract amendment vendor status updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract amendment vendor status updated successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractAmendmentDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Not authorized to update this amendment"
+          },
+          "404": {
+            "description": "Contract amendment not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
     }
   },
   "tags": [
@@ -27715,6 +35837,30 @@
       "description": "MSA contract management for approvers"
     },
     {
+      "name": "Approver - MSA Contract Amendment",
+      "description": "MSA contract amendment management for approvers"
+    },
+    {
+      "name": "Approver - MSA Contract Compliance",
+      "description": "MSA contract compliance for approvers"
+    },
+    {
+      "name": "Approver - MSA Contract Change",
+      "description": "MSA contract change management for approvers"
+    },
+    {
+      "name": "Approver - MSA Contract Claim",
+      "description": "MSA contract claim management for approvers"
+    },
+    {
+      "name": "Approver - MSA Contract Invoice",
+      "description": "MSA contract invoice management for approvers"
+    },
+    {
+      "name": "Approver - MSA Contract RFI",
+      "description": "MSA contract RFI management for approvers"
+    },
+    {
       "name": "Business Division",
       "description": "Business Division management"
     },
@@ -27731,12 +35877,64 @@
       "description": "MSA contract management for managers"
     },
     {
+      "name": "ContractManager - MSA Contract Amendment",
+      "description": "MSA contract amendment management for managers"
+    },
+    {
+      "name": "ContractManager - MSA Contract Kpis",
+      "description": "MSA contract KPI management for managers"
+    },
+    {
+      "name": "ContractManager - MSA Contract Compliance",
+      "description": "MSA contract compliance management for managers"
+    },
+    {
+      "name": "ContractManager - MSA Contract Change",
+      "description": "MSA contract change management for managers"
+    },
+    {
+      "name": "ContractManager - MSA Contract Claim",
+      "description": "MSA contract claim management for managers"
+    },
+    {
+      "name": "ContractManager - MSA Contract RFI",
+      "description": "MSA contract RFI management for managers"
+    },
+    {
+      "name": "ContractManager - MSA Contract Invoice",
+      "description": "MSA contract invoice management for managers"
+    },
+    {
       "name": "Vendor-Contract",
       "description": "API endpoint for managing vendor contract"
     },
     {
       "name": "View Only User - MSA Contract",
       "description": "View-only MSA contract endpoints"
+    },
+    {
+      "name": "View Only User - MSA Contract Amendment",
+      "description": "View-only MSA contract amendment endpoints"
+    },
+    {
+      "name": "View Only User - MSA Contract Change",
+      "description": "View-only MSA contract change endpoints"
+    },
+    {
+      "name": "View Only User - MSA Contract Claim",
+      "description": "View-only MSA contract claim endpoints"
+    },
+    {
+      "name": "View Only User - MSA Contract RFI",
+      "description": "View-only MSA contract RFI endpoints"
+    },
+    {
+      "name": "View Only User - MSA Contract Invoice",
+      "description": "View-only MSA contract invoice endpoints"
+    },
+    {
+      "name": "View Only User - MSA Contract Compliance",
+      "description": "View-only MSA contract compliance endpoints"
     },
     {
       "name": "Vendor - Contract LEM",
@@ -27753,6 +35951,26 @@
     {
       "name": "Vendor - MSA Contract",
       "description": "Vendor MSA contract endpoints"
+    },
+    {
+      "name": "Vendor - MSA Contract Amendment",
+      "description": "Vendor MSA contract amendment endpoints"
+    },
+    {
+      "name": "Vendor - MSA Contract Compliance",
+      "description": "Vendor MSA contract compliance endpoints"
+    },
+    {
+      "name": "Vendor - MSA Contract Claim",
+      "description": "Vendor MSA contract claim endpoints"
+    },
+    {
+      "name": "Vendor - MSA Contract Invoice",
+      "description": "Vendor MSA contract invoice endpoints"
+    },
+    {
+      "name": "Vendor - MSA Contract RFI",
+      "description": "Vendor MSA contract RFI endpoints"
     }
   ]
 }

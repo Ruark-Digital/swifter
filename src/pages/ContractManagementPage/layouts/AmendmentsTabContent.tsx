@@ -8,7 +8,7 @@ import {
   TextFileUploader,
   TextInput,
 } from "@/components/layouts/FormInputs";
-import { AlertTriangle, Check, CloudUpload, X } from "lucide-react";
+import { AlertTriangle, Check, CloudUpload, FileText, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useWatch } from "react-hook-form";
 import AmendmentsStatsCards from "../components/AmendmentsStatsCards";
@@ -16,15 +16,14 @@ import AmendmentsTable, {
   type AmendmentRow,
 } from "../components/AmendmentsTable";
 import { useQuery } from "@tanstack/react-query";
-import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import type { ApiResponseError } from "@/types";
 import {
-  contractManagerApi,
   type ContractAmendmentDTO,
   type ContractAmendmentStatsDTO,
 } from "../api/contractManagerApi";
 import { useUserRole } from "@/hooks/useUserRole";
-import { approverApi } from "../api/approverApi";
+import { getRequest } from "@/lib/axiosInstance";
+import { formatFileSize, getSimpleFileExtension } from "@/lib/fileUtils";
 
 type CreateAmendmentFormValues = {
   amendmentTitle: string;
@@ -67,7 +66,7 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
   const [open, setOpen] = React.useState(false);
   const [successOpen, setSuccessOpen] = React.useState(false);
 
-  const { control, reset } = useForge<CreateAmendmentFormValues>({
+  const { control, reset, setValue } = useForge<CreateAmendmentFormValues>({
     defaultValues: {
       amendmentTitle: "",
       impactType: "time",
@@ -87,6 +86,7 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
       files: null,
     },
   });
+  const value = useWatch({ control, name: "files" }) as File[];
 
   const impactType = useWatch({ control, name: "impactType" });
   const scopeEnabled = useWatch({ control, name: "scopeEnabled" });
@@ -102,7 +102,34 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
   };
 
   const FileListItem = ({ file }: { file: File }) => {
-    return <div className="hidden">{file.name}</div>;
+    return (
+      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-blue-100 rounded flex items-center justify-center">
+            <FileText className="h-5 w-5 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-900">{file.name}</p>
+            <p className="text-xs text-gray-500">
+              {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
+              {formatFileSize(file.size)}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() =>
+            setValue(
+              "files",
+              (value || []).filter((v: File) => v.name !== file.name),
+            )
+          }
+          className="text-gray-400 hover:text-red-500 transition-colors"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    );
   };
 
   return (
@@ -117,7 +144,7 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
         <DialogTrigger asChild>{trigger}</DialogTrigger>
         <DialogContent
           showCloseButton={false}
-          className="max-h-[90vh] w-full max-w-[700px] gap-0 overflow-hidden rounded-2xl border-0 p-0"
+          className="max-h-[90vh] w-full gap-0 overflow-hidden rounded-2xl border-0 p-0"
         >
           <Forge
             control={control}
@@ -400,6 +427,7 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
                 component={TextArea}
                 rows={5}
               />
+
               <div className="space-y-4">
                 <div className="text-base font-semibold text-[#0F0F0F]">
                   Upload Files
@@ -431,7 +459,7 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
                 <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#EF4444] text-[#EF4444]">
                   <AlertTriangle className="h-4 w-4" />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 max-w-xs">
                   <div className="text-sm font-semibold text-[#0F0F0F]">
                     Vendor Acceptance Required
                   </div>
@@ -491,20 +519,32 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
 type Props = {
   contractId: string;
   isActive?: boolean;
+  actionsDisabled?: boolean;
 };
 
-const AmendmentsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
-  const { isApprover } = useUserRole();
-  const statsQueryKey = useUserQueryKey([
-    "contract-amendments-stats",
-    contractId,
-    isApprover ? "approver" : "manager",
-  ]);
-  const amendmentsQueryKey = useUserQueryKey([
-    "contract-amendments",
-    contractId,
-    isApprover ? "approver" : "manager",
-  ]);
+const AmendmentsTabContent: React.FC<Props> = ({
+  contractId,
+  isActive,
+  actionsDisabled,
+}) => {
+  const { isApprover, isVendor, isManager, isAdmin, isViewOnly } =
+    useUserRole();
+
+  const getBasePath = () => {
+    if (isVendor) return `/contract/vendor/contracts/${contractId}/amendment`;
+    if (isApprover)
+      return `/contract/approver/contracts/${contractId}/amendment`;
+    if (isManager)
+      return `/contract/manager/contracts/${contractId}/amendments`;
+    if (isAdmin || isViewOnly)
+      return `/contract/user/contracts/${contractId}/amendment`;
+    return `/contract/user/contracts/${contractId}/amendment`; // Default fallback
+  };
+
+  const basePath = getBasePath();
+
+  const statsQueryKey = ["contract-amendments-stats", contractId, basePath];
+  const amendmentsQueryKey = ["contract-amendments", contractId, basePath];
 
   const { data: statsRes, isLoading: isStatsLoading } = useQuery<
     {
@@ -515,10 +555,10 @@ const AmendmentsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   >({
     queryKey: statsQueryKey,
     queryFn: async () => {
-      if (isApprover) {
-        return await approverApi.getAmendmentStats(contractId);
-      }
-      return await contractManagerApi.getAmendmentStats(contractId);
+      const res = await getRequest({
+        url: `${basePath}/stats`,
+      });
+      return res as any;
     },
     enabled: Boolean(contractId) && !!isActive,
     staleTime: 60000,
@@ -526,21 +566,24 @@ const AmendmentsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   });
 
   const { data: amendmentsRes, isLoading: isAmendmentsLoading } = useQuery<
-    { message?: string; data?: ContractAmendmentDTO[] },
+    {
+      message?: string;
+      data?: { data: ContractAmendmentDTO[]; message: string };
+    },
     ApiResponseError
   >({
     queryKey: amendmentsQueryKey,
     queryFn: async () => {
-      if (isApprover) {
-        return await approverApi.listAmendments(contractId);
-      }
-      return await contractManagerApi.listAmendments(contractId);
+      const res = await getRequest({
+        url: basePath,
+      });
+      return res as any;
     },
     enabled: Boolean(contractId) && !!isActive,
   });
 
   const amendmentsRows = React.useMemo<AmendmentRow[]>(() => {
-    const amendments = amendmentsRes?.data ?? [];
+    const amendments = amendmentsRes?.data?.data ?? [];
     const normalizeVendorStatus = (
       value?: string,
     ): AmendmentRow["vendorStatus"] => {
@@ -557,7 +600,10 @@ const AmendmentsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       if (normalized === "rejected") return "Rejected";
       return "Pending";
     };
-    return amendments.map((amendment, index) => {
+
+    // console.log("amendments", amendments)
+
+    return amendments?.map?.((amendment, index) => {
       const amendmentId =
         amendment.amendmentId || amendment._id || `AM-${index + 1}`;
       const amendmentTitle = amendment.title || amendment.amendmentTitle || "-";
@@ -586,10 +632,13 @@ const AmendmentsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
             Export Report
           </Button>
 
-          {!isApprover && (
+          {isManager && (
             <CreateAmendmentDialog
               trigger={
-                <Button className="rounded-xl bg-[#2A4467] px-4 text-base font-semibold text-white hover:bg-[#2A4467]/90">
+                <Button
+                  className="rounded-xl bg-[#2A4467] px-4 text-base font-semibold text-white hover:bg-[#2A4467]/90"
+                  disabled={!!actionsDisabled}
+                >
                   <img
                     src="/assets/contract-management/amendments/plus.svg"
                     className="mr-2 h-5 w-5"

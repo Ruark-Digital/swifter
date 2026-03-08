@@ -11,7 +11,7 @@ import {
 import { Forge, Forger, useForge } from "@/lib/forge";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
-import { postRequest } from "@/lib/axiosInstance";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import {
   TextArea,
@@ -23,11 +23,9 @@ import { Check, CloudUpload, Share2, X } from "lucide-react";
 import RfiStatsCards from "../components/RfiStatsCards";
 import RfiTable from "../components/RfiTable";
 import {
-  contractManagerApi,
   type ContractRfiDTO,
   type ManagerListRfisQuery,
 } from "../api/contractManagerApi";
-import { approverApi } from "../api/approverApi";
 import type { UploadURLs } from "../lib/contractChanges";
 import { useToastHandler } from "@/hooks/useToaster";
 import { FileUploaderItem } from "@/components/ui/file-upload";
@@ -38,15 +36,17 @@ import { useUserRole } from "@/hooks/useUserRole";
 type IssueRfiDialogProps = {
   trigger: React.ReactNode;
   contractId: string;
+  basePath: string;
 };
 
 const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
   trigger,
   contractId,
+  basePath,
 }) => {
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
-  const { isApprover } = useUserRole();
+  const { isViewOnly } = useUserRole();
   const { control, reset } = useForge({
     defaultValues: {
       rfiTitle: "",
@@ -82,17 +82,31 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
   });
 
   const createMutation = useMutation({
-    mutationKey: [isApprover ? "approver" : "contractManager", "contractRfis", "create", contractId],
-    mutationFn: async (payload: ContractRfiDTO) =>
-      isApprover
-        ? await approverApi.createRfi(contractId, payload)
-        : await contractManagerApi.createRfi(contractId, payload),
+    mutationKey: [
+      "contractRfis",
+      "create",
+      contractId,
+      basePath
+    ],
+    mutationFn: async (payload: ContractRfiDTO) => {
+      if (isViewOnly) {
+        throw new Error("View-only users cannot issue RFIs");
+      }
+      const res = await postRequest({
+        url: basePath,
+        payload
+      });
+      return res.data;
+    },
     onSuccess: async () => {
       setIsSuccess(true);
       reset();
       toastHandler.success("RFI", "RFI issued successfully");
       await queryClient.invalidateQueries({
-        queryKey: [isApprover ? "approver" : "contractManager", "contractRfis", contractId],
+        queryKey: [
+          "contractRfis",
+          contractId,
+        ],
       });
     },
     onError: (error: ApiResponseError) => {
@@ -333,37 +347,80 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
 type Props = {
   contractId: string;
   isActive?: boolean;
+  actionsDisabled?: boolean;
 };
 
-const RfiTabContent: React.FC<Props> = ({ contractId, isActive }) => {
+const RfiTabContent: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
-  const { isApprover } = useUserRole();
+  const { isApprover, isVendor, isViewOnly, isManager, isAdmin } = useUserRole();
+
+  const getBasePath = () => {
+    if (isVendor) return `/contract/vendor/contracts/${contractId}/rfi`;
+    if (isApprover) return `/contract/approver/contracts/${contractId}/rfi`;
+    if (isManager) return `/contract/manager/contracts/${contractId}/rfis`;
+    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/rfi`;
+    return `/contract/user/contracts/${contractId}/rfi`; // Default fallback
+  };
+
+  const basePath = getBasePath();
 
   const { data: rfisRes, isLoading: isRfisLoading } = useQuery({
     queryKey: [
-      isApprover ? "approver" : "contractManager",
       "contractRfis",
       contractId,
       pagination.pageIndex,
       pagination.pageSize,
+      basePath
     ],
     queryFn: async () => {
       const query: ManagerListRfisQuery = {
         page: pagination.pageIndex + 1,
         limit: pagination.pageSize,
       };
-      return isApprover
-        ? await approverApi.listRfis(contractId, query)
-        : await contractManagerApi.listRfis(contractId, query);
+      
+      const params = new URLSearchParams();
+      if (query.page) params.append("page", String(query.page));
+      if (query.limit) params.append("limit", String(query.limit));
+
+      const response = await getRequest({
+        url: `${basePath}?${params.toString()}`,
+      });
+      return response.data;
     },
     enabled: Boolean(contractId) && !!isActive,
   });
 
-  const rfiRows = rfisRes?.data?.contractRfis ?? [];
-  const totalCount = rfisRes?.data?.total ?? rfiRows.length;
+  const { data: statsRes } = useQuery({
+    queryKey: ["contractRfis", "stats", contractId, basePath],
+    queryFn: async () => {
+      const response = await getRequest({
+        url: `${basePath}/stats`,
+      });
+      return response.data;
+    },
+    enabled: Boolean(contractId) && !!isActive,
+  });
+
+  const rfiRows = (() => {
+    const base = rfisRes as any;
+    if (!base) return [];
+    if (Array.isArray(base?.data?.contractRfis)) return base.data.contractRfis;
+    if (Array.isArray(base?.data?.reports)) return base.data.reports; // Some roles might use reports key? Check doc
+    if (Array.isArray(base?.data)) return base.data;
+    return [];
+  })();
+  
+  const totalCount = (() => {
+    const base = rfisRes as any;
+    if (typeof base?.data?.total === "number") return base.data.total;
+    if (typeof base?.total === "number") return base.total;
+    return rfiRows.length;
+  })();
+
+  const stats = statsRes?.data as any;
 
   return (
     <TabsContent value="rfi" className="space-y-6">
@@ -373,21 +430,24 @@ const RfiTabContent: React.FC<Props> = ({ contractId, isActive }) => {
           <Button variant="outline" className="h-10 rounded-xl px-4">
             <Share2 className="mr-2 h-4 w-4" /> Export Report
           </Button>
-          <IssueRfiDialog
-            contractId={contractId}
-            trigger={
-              <Button variant="secondary" className="h-10 rounded-xl px-4">
-                Issue RFI
-              </Button>
-            }
-          />
+          {!isViewOnly && (
+            <IssueRfiDialog
+              contractId={contractId}
+              basePath={basePath}
+              trigger={
+                <Button className="h-10 rounded-xl px-4" disabled={!!actionsDisabled}>
+                  Issue RFI
+                </Button>
+              }
+            />
+          )}
         </div>
       </div>
 
       <RfiStatsCards
-        all={totalCount}
-        issued={0}
-        received={0}
+        all={stats?.total ?? totalCount}
+        issued={stats?.issue ?? 0}
+        received={stats?.receive ?? 0}
         isLoading={isRfisLoading}
       />
 
@@ -424,7 +484,7 @@ const RfiTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         </TabsContent>
         <TabsContent value="issued">
           <RfiTable
-            rows={rfiRows.filter(item => item.type === "issue")}
+            rows={rfiRows.filter((item: any) => item.type === "issue")}
             isLoading={isRfisLoading}
             totalCount={totalCount}
             pagination={pagination}
@@ -433,7 +493,7 @@ const RfiTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         </TabsContent>
         <TabsContent value="received">
           <RfiTable
-            rows={rfiRows.filter(item => item.type === "received")}
+            rows={rfiRows.filter((item: any) => item.type === "received")}
             isLoading={isRfisLoading}
             totalCount={totalCount}
             pagination={pagination}

@@ -110,8 +110,9 @@ const sampleRows: MsaRow[] = Array.from({ length: 10 }).map((_, i) => ({
     : "Draft") as MsaRow["status"],
 }));
 
-const MsaTable: React.FC = () => {
+const MsaTable: React.FC<{ rows?: MsaRow[] }> = ({ rows }) => {
   const [search, setSearch] = React.useState("");
+  const data = React.useMemo(() => rows ?? sampleRows, [rows]);
   return (
     <div className="space-y-4" data-testid="msa-table">
       <div className="flex items-center gap-3">
@@ -163,7 +164,7 @@ const MsaTable: React.FC = () => {
       </div>
 
       <DataTable<MsaRow>
-        data={sampleRows}
+        data={data}
         columns={columns}
         options={{ disableSelection: true }}
       />
@@ -172,4 +173,3 @@ const MsaTable: React.FC = () => {
 };
 
 export default MsaTable;
-

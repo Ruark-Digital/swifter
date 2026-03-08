@@ -4,7 +4,6 @@ import LemTable, { type LemRow } from "../components/LemTable";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
-import { contractManagerApi } from "../api/contractManagerApi";
 
 type Props = {
   contractId: string;
@@ -12,10 +11,20 @@ type Props = {
 };
 
 const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
-  const { isApprover, isManager } = useUserRole();
+  const { isApprover, isManager, isVendor, isAdmin, isViewOnly } = useUserRole();
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
   
+  const getBasePath = () => {
+    if (isVendor) return `/contract/vendor/contracts/${contractId}/lems`;
+    if (isApprover) return `/contract/approver/contracts/${contractId}/lems`;
+    if (isManager) return `/contract/manager/contracts/${contractId}/lems`;
+    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/lems`;
+    return `/contract/user/contracts/${contractId}/lems`; // Default fallback
+  };
+
+  const basePath = getBasePath();
+
   React.useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 400);
     return () => clearTimeout(t);
@@ -23,38 +32,25 @@ const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
 
   const { data, isLoading } = useQuery({
     queryKey: [
-      isApprover ? "approver" : "contractManager",
       "lem-list",
       contractId,
       debounced,
+      basePath
     ],
     queryFn: async () => {
-      if (isManager && !isApprover) {
-        const res = await contractManagerApi.listLems(contractId, {
-          title: debounced || undefined,
-          page: 1,
-          limit: 10,
-        });
-        const items = res?.data?.resp || [];
-        const rows: LemRow[] = items.map((it) => ({
-          id: "",
-          title: it?.title || "",
-          amount:
-            typeof it?.amount === "number"
-              ? `$${it.amount.toLocaleString()}`
-              : `${it?.amount ?? ""}`,
-          submissionDate: "",
-          status: "Pending",
-        }));
-        return rows;
-      }
       const params = new URLSearchParams();
       if (debounced) params.append("title", debounced);
+      // Add pagination defaults if needed by the API
+      params.append("page", "1");
+      params.append("limit", "10");
+
       const res = await getRequest({
-        url: `/contract/approver/contracts/${contractId}/lems?${params.toString()}`,
+        url: `${basePath}?${params.toString()}`,
       });
-      const payload = (res as any)?.data?.data;
-      const items = payload?.resp || [];
+      
+      const payload = (res as any)?.data?.data || (res as any)?.data;
+      const items = payload?.resp || payload?.lems || [];
+      
       const rows: LemRow[] = items.map((it: any) => ({
         id: it?.lemId || it?._id || "",
         title: it?.title || "",
@@ -62,8 +58,8 @@ const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
           typeof it?.amount === "number"
             ? `$${it.amount.toLocaleString()}`
             : it?.amount || "",
-        submissionDate: it?.createdAt || "",
-        status: "Pending",
+        submissionDate: it?.createdAt || it?.submissionDate || "",
+        status: it?.status || "Pending",
       }));
       return rows;
     },
@@ -84,6 +80,7 @@ const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         isLoading={isLoading}
         searchValue={search}
         onSearchChange={(v) => setSearch(v)}
+        basePath={basePath}
       />
     </TabsContent>
   );

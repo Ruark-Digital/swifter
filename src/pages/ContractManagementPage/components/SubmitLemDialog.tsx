@@ -5,38 +5,31 @@ import * as yup from "yup";
 import { useFormContext, useWatch } from "react-hook-form";
 import { Forge, Forger, useForge } from "@/lib/forge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { TextArea, TextCurrencyInput, TextFileUploader, TextSelect } from "@/components/layouts/FormInputs";
+import { TextArea, TextCurrencyInput, TextFileUploader, TextInput } from "@/components/layouts/FormInputs";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { postRequest } from "@/lib/axiosInstance";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
-import { contractManagerApi } from "../api/contractManagerApi";
+import { vendorApi } from "../api/vendorApi";
 import { useToastHandler } from "@/hooks/useToaster";
 import { formatFileSize, getSimpleFileExtension } from "@/lib/fileUtils";
-import  Spinner from "@/components/ui/Spinner";
+import Spinner from "@/components/ui/Spinner";
 
-type ReleaseHoldbackFormValues = {
-  releaseType: string;
-  amountToBeReleased: string;
+type SubmitLemFormValues = {
+  title: string;
+  amount: string;
   description: string;
   files: File[] | null;
 };
 
 const schema = yup.object({
-  releaseType: yup
-    .string()
-    .oneOf(["Partial Release", "Full Release"], "Release Type is required")
-    .required("Release Type is required"),
-  amountToBeReleased: yup.string().when("releaseType", {
-    is: "Partial Release",
-    then: (s) => s.required("Amount to be Released is required"),
-    otherwise: (s) => s.notRequired(),
-  }),
-  description: yup.string().notRequired(),
+  title: yup.string().required("LEM Title is required"),
+  amount: yup.string().required("Amount is required"),
+  description: yup.string().required("Description is required"),
   files: yup.mixed().nullable().notRequired(),
 });
 
-type ReleaseHoldbackDialogProps = {
+type SubmitLemDialogProps = {
   trigger: React.ReactElement;
   contractId: string;
 };
@@ -58,7 +51,7 @@ const UploadElement = () => {
 };
 
 const FilesListItem = ({ file }: { file: File }) => {
-  const { control, setValue } = useFormContext<ReleaseHoldbackFormValues>();
+  const { control, setValue } = useFormContext<SubmitLemFormValues>();
   const value = useWatch({ control, name: "files" });
   return (
     <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-3">
@@ -84,30 +77,28 @@ const FilesListItem = ({ file }: { file: File }) => {
   );
 };
 
-const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, contractId }) => {
+const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({ trigger, contractId }) => {
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
 
-  const { control, reset, watch } = useForge<ReleaseHoldbackFormValues>({
+  const { control, reset } = useForge<SubmitLemFormValues>({
     resolver: yupResolver(schema) as any,
     defaultValues: {
-      releaseType: "",
-      amountToBeReleased: "",
+      title: "",
+      amount: "",
       description: "",
       files: null,
     },
   });
-
-  const releaseType = watch("releaseType");
 
   const { mutateAsync: uploadFile } = useMutation<
     ApiResponse<UploadURLs[]>,
     ApiResponseError,
     { file: File }
   >({
-    mutationKey: ["uploadHoldbackFile"],
+    mutationKey: ["uploadLemFile"],
     mutationFn: async ({ file }) => {
       const formData = new FormData();
       formData.append("file", file);
@@ -125,27 +116,29 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
   });
 
   const createMutation = useMutation({
-    mutationKey: ["createPaymentHoldback", contractId],
+    mutationKey: ["createLem", contractId],
     mutationFn: async (data: any) => {
-      return await contractManagerApi.createPaymentHoldback(contractId, data);
+      return await vendorApi.createLem(contractId, data);
     },
     onSuccess: async () => {
       setOpen(false);
       reset();
       await queryClient.invalidateQueries({
-        queryKey: ["contract-payment-holdbacks", contractId],
+        queryKey: ["contractLems", "contractInvoices", contractId],
       });
-      toastHandler.success("Success", "Holdback released successfully");
+      // Also invalidate invoices as LEMs might affect them or appear there? 
+      // Based on InvoiceTabContent, it fetches invoices.
+      toastHandler.success("Success", "LEM submitted successfully");
     },
     onError: (error: any) => {
       toastHandler.error(
         "Error",
-        error?.response?.data?.message || "Failed to release holdback",
+        error?.response?.data?.message || "Failed to submit LEM",
       );
     },
   });
 
-  const onSubmit = async (data: ReleaseHoldbackFormValues) => {
+  const onSubmit = async (data: SubmitLemFormValues) => {
     setIsSubmitting(true);
     try {
       let uploadedFiles: {
@@ -166,7 +159,7 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
                 name: data.files![index].name,
                 url: res.data?.data?.[0].url,
                 type: getSimpleFileExtension(data.files![index].name).toUpperCase(),
-                size: data.files![index].size,
+                size: data.files![index].size.toString(),
               };
             }
             return null;
@@ -175,23 +168,20 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
       }
 
       const payload = {
-        type: data.releaseType === "Full Release" ? "full" : "partial",
-        amount: data.releaseType === "Full Release" ? 0 : Number(data.amountToBeReleased),
+        title: data.title,
+        amount: Number(data.amount),
         description: data.description,
         files: uploadedFiles,
       };
 
       await createMutation.mutateAsync(payload);
     } catch (error) {
-      console.error("Error submitting holdback release:", error);
+      console.error("Error submitting LEM:", error);
       toastHandler.error("Submission Failed", "An error occurred while submitting the form. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const amountPlaceholder = releaseType === "Full Release" ? "Enter Title" : "Enter Amount";
-  const isFullRelease = releaseType === "Full Release";
 
   return (
     <Dialog 
@@ -204,43 +194,37 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-w-[600px] h-[80vh] overflow-auto gap-0 border-0 p-0 ">
-        <Forge control={control} onSubmit={onSubmit} className="flex flex-col">
-          <div className="flex items-center justify-between border-b border-[#E5E7EB] px-6 py-5">
-            <h2 className="text-xl font-semibold text-[#111827]">Release Holdback</h2>
+      <DialogContent className="h-[866px] max-h-[90vh] overflow-y-auto gap-0 border-0 p-0">
+        <Forge control={control} onSubmit={onSubmit} className="flex flex-col h-full">
+          <div className="flex items-center justify-between px-8 py-8">
+            <h2 className="text-xl font-semibold text-[#0F0F0F]">Submit LEM</h2>
           </div>
 
-          <div className="flex flex-col gap-6 px-6 py-6">
+          <div className="flex flex-1 flex-col gap-6 px-8">
             <Forger
-              name="releaseType"
-              label="Release Type"
-              component={TextSelect}
-              placeholder="Select Release Type"
-              options={[
-                { label: "Partial Release", value: "Partial Release" },
-                { label: "Full Release", value: "Full Release" },
-              ]}
+              name="title"
+              label="LEM Title"
+              component={TextInput}
+              placeholder="Enter Title"
             />
 
-            {!isFullRelease && (
-              <Forger
-                name="amountToBeReleased"
-                label="Amount to be Released"
-                component={TextCurrencyInput}
-                placeholder={amountPlaceholder}
-              />
-            )}
+            <Forger
+              name="amount"
+              label="Amount"
+              component={TextCurrencyInput}
+              placeholder="Enter Amount"
+            />
 
             <Forger
               name="description"
               label="Description"
               component={TextArea}
-              placeholder="Enter Description"
-              rows={4}
+              placeholder="Duration" // As per design text, though "Description" is label
+              rows={6} // Design shows a large text area
             />
 
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-[#374151]">Upload Files</label>
+            <div className="flex flex-col gap-3">
+              <label className="text-base font-normal text-[#0F0F0F]">Upload Files</label>
               <Forger
                 name="files"
                 component={TextFileUploader}
@@ -264,27 +248,27 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 border-t border-[#E5E7EB] px-6 py-5">
+          <div className="flex items-center gap-6 px-8 py-8 mt-auto">
             <button
               type="button"
               onClick={() => setOpen(false)}
               disabled={isSubmitting}
-              className="rounded-xl border border-[#E5E7EB] bg-white px-5 py-2.5 text-sm font-semibold text-[#374151] shadow-sm hover:bg-[#F9FAFB] disabled:opacity-50"
+              className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-3.5 text-base font-semibold text-[#0F0F0F] shadow-sm hover:bg-[#E5E7EB] disabled:opacity-50"
             >
               Back
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-xl bg-[#2A4467] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#1e3a5f] disabled:opacity-50"
+              className="flex-1 rounded-xl bg-[#2A4467] py-3.5 text-base font-semibold text-white shadow-sm hover:bg-[#1e3a5f] disabled:opacity-50"
             >
               {isSubmitting ? (
-                <div className="flex items-center gap-2">
-                  <Spinner className="h-4 w-4 text-white" />
-                  <span>Releasing...</span>
+                <div className="flex items-center justify-center gap-2">
+                  <Spinner className="h-5 w-5 text-white" />
+                  <span>Submitting...</span>
                 </div>
               ) : (
-                "Release"
+                "Submit LEM"
               )}
             </button>
           </div>
@@ -294,4 +278,4 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
   );
 };
 
-export default ReleaseHoldbackDialog;
+export default SubmitLemDialog;

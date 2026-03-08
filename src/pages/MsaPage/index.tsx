@@ -6,11 +6,83 @@ import StatsCards from "./components/StatsCards";
 import EmptyState from "./components/EmptyState";
 import MsaTable from "./components/MsaTable";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import CreateMSADialog from "./layouts/CreateMSADialog";
+import { useQuery } from "@tanstack/react-query";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import { getRequest } from "@/lib/axiosInstance";
+import type { MsaRow } from "./components/MsaTable";
 
 const MsaPage: React.FC = () => {
   const hasData = true;
+  const { isManager, isApprover, isVendor } = useUserRole();
+
+  const listUrl = isManager
+    ? "/contract/manager/msa-contract"
+    : isApprover
+    ? "/contract/approver/msa-contract"
+    : isVendor
+    ? "/contract/vendor/msa-contract"
+    : "/contract/user/msa-contract";
+
+  const myListUrl = isManager ? "/contract/manager/msa-contract/me" : undefined;
+
+  const allQuery = useQuery({
+    queryKey: useUserQueryKey(["msa", "list", listUrl, { page: 1, limit: 50 }]),
+    queryFn: async () =>
+      await getRequest({
+        url: listUrl,
+        config: { params: { page: 1, limit: 50 } },
+      }),
+  });
+
+  const mineQuery = useQuery({
+    queryKey: useUserQueryKey(["msa", "list", "me", myListUrl, { page: 1, limit: 50 }]),
+    queryFn: async () =>
+      await getRequest({
+        url: myListUrl as string,
+        config: { params: { page: 1, limit: 50 } },
+      }),
+    enabled: Boolean(myListUrl),
+  });
+
+  const toRows = (items: any[]): MsaRow[] =>
+    (items ?? []).map((it: any) => ({
+      id: String(it?._id ?? it?.id ?? ""),
+      title: String(it?.title ?? it?.name ?? ""),
+      code: String(it?.code ?? it?.msaId ?? it?.contractId ?? ""),
+      vendor: String(
+        it?.vendor?.name ??
+          it?.vendorName ??
+          it?.vendor ??
+          ""
+      ),
+      value: undefined,
+      owner: String(
+        it?.manager?.name ??
+          it?.owner?.name ??
+          it?.owner ??
+          ""
+      ),
+      published: it?.published || it?.startDate || undefined,
+      endDate: it?.endDate || undefined,
+      status: (String(it?.status ?? "Draft") as MsaRow["status"]),
+    }));
+
+  const extractItems = (res: any): any[] => {
+    return (
+      res?.data?.data?.contracts ??
+      res?.data?.data ??
+      res?.data?.contracts ??
+      []
+    );
+  };
+
+  const allRows = toRows(extractItems(allQuery.data));
+  const myRows = toRows(extractItems(mineQuery.data));
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pt-5">
       <SEOWrapper
         title="Master Service Agreements (MSA) - SwiftPro eProcurement Portal"
         description="Manage Master Service Agreements with clear status tracking and quick actions."
@@ -21,9 +93,13 @@ const MsaPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-slate-900">MSA</h2>
         <div className="flex items-center gap-4">
-          <Button className="rounded-xl" data-testid="create-msa-button">
-            <Plus className="mr-2 h-4 w-4" /> Create MSA
-          </Button>
+          <CreateMSADialog
+            trigger={
+              <Button className="rounded-xl" data-testid="create-msa-button">
+                <Plus className="mr-2 h-4 w-4" /> Create MSA
+              </Button>
+            }
+          />
         </div>
       </div>
 
@@ -57,10 +133,10 @@ const MsaPage: React.FC = () => {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="all">
-            <MsaTable />
+            <MsaTable rows={allRows} />
           </TabsContent>
           <TabsContent value="mine">
-            <MsaTable />
+            <MsaTable rows={myRows} />
           </TabsContent>
         </Tabs>
       ) : (

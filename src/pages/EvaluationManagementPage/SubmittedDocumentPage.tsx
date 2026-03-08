@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronRight, Eye, Download, FileText, InfoIcon, Edit } from "lucide-react";
+import { ChevronRight, Eye, Download, FileText, InfoIcon } from "lucide-react";
 import { DocSVG } from "@/assets/icons/Doc";
 import { PdfSVG } from "@/assets/icons/Pdf";
 import { ExcelSVG } from "@/assets/icons/Excel";
@@ -1285,7 +1285,6 @@ const Document = ({
   document: VendorDocument;
   onViewDocument: (document: VendorDocument) => void;
 }) => {
-  const navigate = useNavigate();
   // Get file icon based on type
   const getFileIcon = (type: string) => {
     const fileType = type;
@@ -1332,23 +1331,6 @@ const Document = ({
               onClick={() => onViewDocument(document)}
             >
               <Eye className="w-4 h-4 text-gray-500" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 p-0 bg-green-100 rounded-full hover:bg-green-200"
-              title="Edit in Collaboration Tool"
-              onClick={() =>
-                navigate(
-                  `/collaboration-tool?sourceUrl=${encodeURIComponent(
-                    document.url
-                  )}&fileName=${encodeURIComponent(document.name)}&fileType=${encodeURIComponent(
-                    document.type || ""
-                  )}`
-                )
-              }
-            >
-              <Edit className="w-4 h-4 text-green-500" />
             </Button>
             <Button
               variant="ghost"

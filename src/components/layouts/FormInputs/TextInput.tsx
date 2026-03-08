@@ -693,7 +693,7 @@ export const TextTimeInput = (
 
   return (
     <div
-      className={`flex flex-col font-medium w-full relative bg-pink-600 ${
+      className={`flex flex-col font-medium w-full relative ${
         containerClass ?? ""
       }`}
     >
