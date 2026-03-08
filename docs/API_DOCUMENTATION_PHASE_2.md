@@ -2048,6 +2048,319 @@
             }
           }
         }
+      },
+      "ContractDTO": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Contract"
+          }
+        ]
+      },
+      "IContract": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Contract"
+          }
+        ]
+      },
+      "IContractChange": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ContractChangeDTO"
+          }
+        ]
+      },
+      "IContractClaim": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ContractClaimDTO"
+          }
+        ]
+      },
+      "IContractInvoice": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ContractInvoiceDTO"
+          }
+        ]
+      },
+      "ContractDeliverableDTO": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ContractReportDTO": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ContractNCRDTO": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "responders": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ContractNCRCAPADTO": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ContractNCRDTO"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "timeline": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "ContractAmendmentDTO": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "impact": {
+            "type": "string",
+            "enum": [
+              "time",
+              "cost",
+              "time_cost",
+              "others"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "clause": {
+            "type": "string"
+          },
+          "others": {
+            "type": "string"
+          },
+          "chnages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "AddApproversDTO": {
+        "type": "object",
+        "properties": {
+          "userIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SendApproverDTO": {
+        "type": "object",
+        "properties": {
+          "userIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ContractKPIDTO": {
+        "type": "object",
+        "properties": {
+          "timestampDelivery": {
+            "type": "number"
+          },
+          "scheduleConfirm": {
+            "type": "number"
+          },
+          "mileStoneLog": {
+            "type": "number"
+          },
+          "inspectionReport": {
+            "type": "number"
+          },
+          "NCRLog": {
+            "type": "number"
+          },
+          "QADocs": {
+            "type": "number"
+          },
+          "timestampComLog": {
+            "type": "number"
+          },
+          "complianceTracking": {
+            "type": "number"
+          },
+          "invoiceContract": {
+            "type": "number"
+          },
+          "twoWay": {
+            "type": "number"
+          },
+          "issueResolution": {
+            "type": "number"
+          }
+        }
+      },
+      "RateSheetDTO": {
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      },
+      "BadRequestError": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BadRequest"
+          }
+        ]
       }
     }
   },

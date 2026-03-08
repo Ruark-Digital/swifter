@@ -604,10 +604,12 @@ const AmendmentsTabContent: React.FC<Props> = ({
     // console.log("amendments", amendments)
 
     return amendments?.map?.((amendment, index) => {
+      const id = amendment._id || amendment.amendmentId || `amendment-${index}`;
       const amendmentId =
         amendment.amendmentId || amendment._id || `AM-${index + 1}`;
       const amendmentTitle = amendment.title || amendment.amendmentTitle || "-";
       return {
+        id,
         amendmentId,
         amendmentTitle,
         vendorStatus: normalizeVendorStatus(amendment.vendorStatus),
@@ -653,7 +655,12 @@ const AmendmentsTabContent: React.FC<Props> = ({
 
       <AmendmentsStatsCards stats={statsRes?.data} isLoading={isStatsLoading} />
 
-      <AmendmentsTable rows={amendmentsRows} isLoading={isAmendmentsLoading} />
+      <AmendmentsTable
+        rows={amendmentsRows}
+        isLoading={isAmendmentsLoading}
+        contractId={contractId}
+        basePath={basePath}
+      />
     </TabsContent>
   );
 };
