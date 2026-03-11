@@ -25,7 +25,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useWatch } from "react-hook-form";
 import { formatFileSize, getSimpleFileExtension } from "@/lib/fileUtils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { postRequest } from "@/lib/axiosInstance";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
 import * as yup from "yup";
@@ -112,9 +112,11 @@ const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
   {
     id: "action",
     header: () => <div className="w-[80px] text-center">Action</div>,
-    cell: () => (
+    cell: ({ row }) => (
       // <div className="flex justify-center py-4">
       <HoldbackDetailsSheet
+        holdBackId={row.getValue<string>("releaseId")}
+          currency={row.getValue<string>("currency")}
         trigger={
           <button
             type="button"
@@ -178,9 +180,11 @@ const savingsRealizedColumns: ColumnDef<SavingsRealizedRow>[] = [
   {
     id: "action",
     header: () => <div className="w-[80px] text-center">Action</div>,
-    cell: () => (
+    cell: ({ row }) => (
       <div className="flex w-[80px] justify-center py-4">
         <SavingsDetailsSheet
+          savingId={row.getValue<string>("savingsId")}
+          currency={row.getValue<string>("currency")}
           trigger={
             <button
               type="button"
@@ -557,7 +561,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
   contract,
   isActive,
 }) => {
-  const { isVendor, isManager } = useUserRole();
+  const { isVendor, isManager, isApprover } = useUserRole();
 
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
@@ -579,8 +583,26 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
     isLoading: holdbacksLoading,
   } = useQuery({
     queryKey: holdbacksQueryKey,
-    queryFn: () => contractManagerApi.listPaymentHoldbacks(contractId),
-    enabled: Boolean(contractId) && isManager && !!isActive,
+    queryFn: async () => {
+      if (isManager) {
+        return contractManagerApi.listPaymentHoldbacks(contractId);
+      }
+      if (isApprover) {
+        const res = await getRequest({
+          url: `/contract/approver/contracts/${contractId}/payment-holdbacks`,
+        });
+        return res.data as { message?: string; data?: any[] };
+      }
+      if (isVendor) {
+        const res = await getRequest({
+          url: `/vendor/contracts/${contractId}/payment-holdbacks`,
+        });
+        return res.data as { message?: string; data?: any[] };
+      }
+      return { data: [] as any[] };
+    },
+    enabled:
+      Boolean(contractId) && !!isActive && (isManager || isApprover || isVendor),
     staleTime: 60000,
     retry: false,
   });
@@ -591,8 +613,26 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
     isLoading: savingsLoading,
   } = useQuery({
     queryKey: savingsQueryKey,
-    queryFn: () => contractManagerApi.listPaymentSavings(contractId),
-    enabled: Boolean(contractId) && isManager && !!isActive,
+    queryFn: async () => {
+      if (isManager) {
+        return contractManagerApi.listPaymentSavings(contractId);
+      }
+      if (isApprover) {
+        const res = await getRequest({
+          url: `/contract/approver/contracts/${contractId}/payment-savings`,
+        });
+        return res.data as { message?: string; data?: any[] };
+      }
+      if (isVendor) {
+        const res = await getRequest({
+          url: `/vendor/contracts/${contractId}/payment-savings`,
+        });
+        return res.data as { message?: string; data?: any[] };
+      }
+      return { data: [] as any[] };
+    },
+    enabled:
+      Boolean(contractId) && !!isActive && (isManager || isApprover || isVendor),
     staleTime: 60000,
     retry: false,
   });
@@ -634,8 +674,10 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
 
   const holdbackRows = React.useMemo<HoldbackReleaseRow[]>(() => {
     const holdbacks = holdbacksResponse?.data ?? [];
-    return holdbacks.map((holdback, index) => ({
-      releaseId: holdback.invoiceId ?? `holdback-${index + 1}`,
+    
+    return holdbacks.map((holdback) => ({
+      releaseId: holdback.holdBackId ?? `-`,
+      currency,
       releasedType:
         holdback.type === "full"
           ? "Full"
@@ -643,21 +685,22 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
             ? "Partial"
             : "-",
       releasedAmount: formatMoney(holdback.amount),
-      status: "-",
-      dueDate: "-",
+      status: holdback?.status ?? "-",
+      dueDate: formatDateTZ(holdback?.releasedDate, "MMM d, yyyy") ?? "-",
     }));
-  }, [formatMoney, holdbacksResponse?.data]);
+  }, [formatMoney, holdbacksResponse?.data, currency]);
 
   const savingsRows = React.useMemo<SavingsRealizedRow[]>(() => {
     const savings = savingsResponse?.data ?? [];
-    return savings.map((saving, index) => ({
-      savingsId: `saving-${index + 1}`,
+    return savings.map((saving) => ({
+      savingsId: saving.savingId ?? `-`,
       savingsTitle: saving.title ?? "-",
       category: saving.category ?? "-",
       amount: formatMoney(saving.amount),
-      dateSubmitted: "-",
+      currency,
+      dateSubmitted: formatDateTZ(saving?.submittedDate, "MMMM d, yyyy") ?? "-",
     }));
-  }, [formatMoney, savingsResponse?.data]);
+  }, [formatMoney, savingsResponse?.data, currency]);
 
   const milestoneRows = React.useMemo(() => {
     const milestones = Array.isArray(contract?.milestone)
@@ -832,7 +875,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
           >
             Holdback Release
           </TabsTrigger>
-          {isManager && (
+          {(isManager || isApprover) && (
             <TabsTrigger
               value="saving-realized"
               className="rounded-full px-5 py-1.5 text-base font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
@@ -883,7 +926,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
           )}
         </TabsContent>
 
-        {isManager && (
+        {(isManager || isApprover) && (
           <TabsContent value="saving-realized">
             <PaymentSummaryMilestonesTable<SavingsRealizedRow>
               title="Savings"

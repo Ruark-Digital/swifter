@@ -7,6 +7,8 @@ import {
   TextArea,
   TextFileUploader,
   TextInput,
+  TextDatePicker,
+  TextCurrencyInput,
 } from "@/components/layouts/FormInputs";
 import { AlertTriangle, Check, CloudUpload, FileText, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +18,7 @@ import AmendmentsTable, {
   type AmendmentRow,
 } from "../components/AmendmentsTable";
 import { useQuery } from "@tanstack/react-query";
-import type { ApiResponseError } from "@/types";
+import type { ApiResponse, ApiResponseError } from "@/types";
 import {
   type ContractAmendmentDTO,
   type ContractAmendmentStatsDTO,
@@ -25,9 +27,14 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { getRequest } from "@/lib/axiosInstance";
 import { formatFileSize, getSimpleFileExtension } from "@/lib/fileUtils";
 
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToastHandler } from "@/hooks/useToaster";
+import { postRequest } from "@/lib/axiosInstance";
+import type { UploadURLs } from "../lib/contractChanges";
+
 type CreateAmendmentFormValues = {
   amendmentTitle: string;
-  impactType: "time" | "cost" | "time_cost" | "other";
+  impactType: "time" | "cost" | "time_cost" | "others";
   timeImpactDays: string;
   costImpactAmount: string;
   scopeEnabled: boolean;
@@ -60,11 +67,14 @@ const UploadElement = () => {
   );
 };
 
-const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
-  trigger,
-}) => {
+const CreateAmendmentDialog: React.FC<{
+  trigger: React.ReactElement;
+  contractId: string;
+}> = ({ trigger, contractId }) => {
   const [open, setOpen] = React.useState(false);
   const [successOpen, setSuccessOpen] = React.useState(false);
+  const queryClient = useQueryClient();
+  const toastHandler = useToastHandler();
 
   const { control, reset, setValue } = useForge<CreateAmendmentFormValues>({
     defaultValues: {
@@ -86,8 +96,8 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
       files: null,
     },
   });
+  
   const value = useWatch({ control, name: "files" }) as File[];
-
   const impactType = useWatch({ control, name: "impactType" });
   const scopeEnabled = useWatch({ control, name: "scopeEnabled" });
   const expiryEnabled = useWatch({ control, name: "expiryEnabled" });
@@ -95,11 +105,125 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
   const clauseEnabled = useWatch({ control, name: "clauseEnabled" });
   const othersEnabled = useWatch({ control, name: "othersEnabled" });
 
-  const handleSubmit = (data: CreateAmendmentFormValues) => {
-    void data;
-    setOpen(false);
-    reset();
+  console.log({ impactType })
+
+  const { mutateAsync: uploadFile, isPending: isUploadingFiles } = useMutation<
+    ApiResponse<UploadURLs[]>,
+    ApiResponseError,
+    { file: File }
+  >({
+    mutationKey: ["uploadContractAmendmentFile"],
+    mutationFn: async ({ file }) => {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      return await postRequest({
+        url: "/upload",
+        payload: formData,
+        config: {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      });
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationKey: ["contract-amendments", "create", contractId],
+    mutationFn: async (payload: any) => {
+      const res = await postRequest({
+        url: `/contract/manager/contracts/${contractId}/amendments`,
+        payload,
+      });
+      return res.data;
+    },
+    onSuccess: async () => {
+      setOpen(false);
+      setSuccessOpen(true);
+      reset();
+      await queryClient.invalidateQueries({
+        queryKey: ["contract-amendments", contractId],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["contract-amendments-stats", contractId],
+      });
+    },
+    onError: (error: ApiResponseError) => {
+      toastHandler.error("Create Amendment Failed", error);
+    },
+  });
+
+  const handleSubmit = async (data: CreateAmendmentFormValues) => {
+    let uploadedFiles: any[] = [];
+
+    if (data.files?.length) {
+      try {
+        const uploadedItems = await Promise.all(
+          data.files.map(async (file) => {
+            const res = await uploadFile({ file });
+            const firstUploaded = res.data?.data?.[0];
+            if (!firstUploaded?.url) return undefined;
+            return {
+              name: firstUploaded.name || file.name,
+              url: firstUploaded.url,
+              type: firstUploaded.type || file.type,
+              size: firstUploaded.size || file.size.toString(),
+            };
+          }),
+        );
+
+        uploadedFiles = uploadedItems.filter(Boolean);
+      } catch (error) {
+        toastHandler.error("Upload Failed", error as ApiResponseError);
+        return;
+      }
+    }
+
+    const chnages = [];
+    if (data.impactType === "time" || data.impactType === "time_cost") {
+      if (data.timeImpactDays) {
+        chnages.push({ field: "time", value: data.timeImpactDays });
+      }
+    }
+    if (data.impactType === "cost" || data.impactType === "time_cost") {
+      if (data.costImpactAmount) {
+        chnages.push({
+          field: "cost",
+          value: data.costImpactAmount,
+        });
+      }
+    }
+    if (data.impactType === "others") {
+      if (data.scopeEnabled && data.scope) {
+        chnages.push({ field: "scope", value: data.scope });
+      }
+      if (data.expiryEnabled && data.newExpiryDate) {
+        chnages.push({ field: "time", value: data.newExpiryDate });
+      }
+      if (data.costEnabled && data.otherCost) {
+        chnages.push({ field: "cost", value: data.otherCost });
+      }
+    }
+
+    const payload = {
+      title: data.amendmentTitle,
+      impact: data.impactType,
+      description: data.description,
+      clause: data.impactType === "others" && data.clauseEnabled ? data.clause : undefined,
+      others: data.impactType === "others" && data.othersEnabled ? data.otherDetails : undefined,
+      changes: chnages,
+      files: uploadedFiles,
+    };
+
+    try {
+      await createMutation.mutateAsync(payload);
+    } catch {
+      // Error handled in onError
+    }
   };
+
+  const isSubmitting = createMutation.isPending || isUploadingFiles;
 
   const FileListItem = ({ file }: { file: File }) => {
     return (
@@ -200,7 +324,7 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
                       },
                       {
                         id: "impact-other",
-                        value: "other",
+                        value: "others",
                         label: "Other Combinations",
                       },
                     ].map((option) => {
@@ -236,7 +360,7 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
                   name="timeImpactDays"
                   label="New Expiry/ Delivery / Completion Date"
                   placeholder="Enter no. of days"
-                  component={TextInput}
+                  component={TextDatePicker}
                 />
               )}
 
@@ -245,7 +369,7 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
                   name="costImpactAmount"
                   label="Cost"
                   placeholder="Enter Amount"
-                  component={TextInput}
+                  component={TextCurrencyInput}
                 />
               )}
 
@@ -255,18 +379,18 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
                     name="timeImpactDays"
                     label="New Expiry/ Delivery / Completion Date"
                     placeholder="Enter no. of days"
-                    component={TextInput}
+                    component={TextDatePicker}
                   />
                   <Forger
                     name="costImpactAmount"
                     label="Cost"
                     placeholder="Enter Amount"
-                    component={TextInput}
+                    component={TextCurrencyInput}
                   />
                 </div>
               )}
 
-              {impactType === "other" && (
+              {impactType === "others" && (
                 <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4 shadow-[0_-1px_4px_0px_rgba(0,26,43,0.05)] space-y-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -476,14 +600,16 @@ const CreateAmendmentDialog: React.FC<{ trigger: React.ReactElement }> = ({
                 type="button"
                 onClick={() => setOpen(false)}
                 className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F]"
+                disabled={isSubmitting}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 className="inline-flex h-11 flex-1 items-center justify-center rounded-xl bg-[#2A4467] px-6 text-base font-semibold text-white"
+                disabled={isSubmitting}
               >
-                Create Amendment
+                {isSubmitting ? "Creating..." : "Create Amendment"}
               </Button>
             </div>
           </Forge>
@@ -547,10 +673,7 @@ const AmendmentsTabContent: React.FC<Props> = ({
   const amendmentsQueryKey = ["contract-amendments", contractId, basePath];
 
   const { data: statsRes, isLoading: isStatsLoading } = useQuery<
-    {
-      message?: string;
-      data?: ContractAmendmentStatsDTO;
-    },
+    ApiResponse<ContractAmendmentStatsDTO>,
     ApiResponseError
   >({
     queryKey: statsQueryKey,
@@ -604,7 +727,7 @@ const AmendmentsTabContent: React.FC<Props> = ({
     // console.log("amendments", amendments)
 
     return amendments?.map?.((amendment, index) => {
-      const id = amendment._id || amendment.amendmentId || `amendment-${index}`;
+      const id = amendment._id || amendment.amendmentId || '';
       const amendmentId =
         amendment.amendmentId || amendment._id || `AM-${index + 1}`;
       const amendmentTitle = amendment.title || amendment.amendmentTitle || "-";
@@ -636,6 +759,7 @@ const AmendmentsTabContent: React.FC<Props> = ({
 
           {isManager && (
             <CreateAmendmentDialog
+              contractId={contractId}
               trigger={
                 <Button
                   className="rounded-xl bg-[#2A4467] px-4 text-base font-semibold text-white hover:bg-[#2A4467]/90"
@@ -653,7 +777,7 @@ const AmendmentsTabContent: React.FC<Props> = ({
         </div>
       </div>
 
-      <AmendmentsStatsCards stats={statsRes?.data} isLoading={isStatsLoading} />
+      <AmendmentsStatsCards stats={statsRes?.data?.data} isLoading={isStatsLoading} />
 
       <AmendmentsTable
         rows={amendmentsRows}

@@ -257,31 +257,56 @@ export type ContractChangeApprover = {
   }>;
 };
 
-export type ContractHoldBackDTO = {
-  amount?: number;
-  type?: "partial" | "full";
-  invoiceId?: string;
-  description?: string;
-  files?: Array<{
-    name?: string;
-    url?: string;
-    type?: string;
-    size?: number;
-  }>;
-};
+export interface ContractHoldBackDTO {
+  _id:              string;
+  contract:         string;
+  contractRefModel: string;
+  company:          string;
+  amount:           number;
+  holdBackId:       string;
+  type:             string;
+  status:           string;
+  approvedBy:       string;
+  description:      string;
+  releasedDate:     Date;
+  files:            File[];
+  __v:              number;
+}
 
-export type ContractSavingDTO = {
-  amount?: number;
-  title?: string;
-  category?: string;
-  description?: string;
-  files?: Array<{
-    name?: string;
-    url?: string;
-    type?: string;
-    size?: number;
-  }>;
-};
+export interface File {
+  name:       string;
+  url:        string;
+  type:       string;
+  size:       string;
+  _id:        string;
+  uploadedAt: Date;
+}
+
+
+export interface ContractSavingDTO {
+  _id:              string;
+  contract:         string;
+  contractRefModel: string;
+  company:          string;
+  amount:           number;
+  savingId:         string;
+  title:            string;
+  category:         string;
+  submittedDate:    Date;
+  description:      string;
+  files:            File[];
+  __v:              number;
+}
+
+export interface File {
+  name:       string;
+  url:        string;
+  type:       string;
+  size:       string;
+  _id:        string;
+  uploadedAt: Date;
+}
+
 
 export type ContractChangeManagerDTO = {
   title?: string;
@@ -496,6 +521,7 @@ export type ContractAmendmentStatsDTO = {
   accepted?: number;
   all?: number;
   rejected?: number;
+  pending?: number;
 };
 
 export type ContractAmendmentDTO = {

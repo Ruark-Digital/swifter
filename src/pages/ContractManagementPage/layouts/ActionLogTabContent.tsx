@@ -10,6 +10,7 @@ import { useParams } from "react-router-dom";
 import { contractManagerApi } from "../api/contractManagerApi";
 import { format } from "date-fns";
 import ActionLogDetailsSheet from "../components/ActionLogDetailsSheet";
+import { useUserRole } from "@/hooks/useUserRole";
 
 type Props = { isActive?: boolean };
 
@@ -30,12 +31,13 @@ const ActionLogTabContent: React.FC<Props> = () => {
   const [selectedAction, setSelectedAction] = useState<ActionLogRow | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const { isManager, isProcurement } = useUserRole()
 
   // 1. Fetch action logs
   const { data: logsData, isLoading } = useQuery({
     queryKey: ["contractLogs", contractId],
     queryFn: () => contractManagerApi.listLogs(contractId!, { limit: 100 }), // Fetch more items
-    enabled: !!contractId,
+    enabled: !!contractId && (isManager || isProcurement),
   });
 
   const rows = useMemo(() => {

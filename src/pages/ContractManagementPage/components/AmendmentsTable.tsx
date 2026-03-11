@@ -22,8 +22,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft,
-  Eye,
-  Download,
   Search,
   Share2,
   AlertTriangle,
@@ -34,6 +32,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRequest, patchRequest, postRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserRole } from "@/hooks/useUserRole";
+import { DocType, DocumentItem } from "./DocumentItem";
+import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
+// import { useNavigate } from "react-router-dom";
 
 export type AmendmentRow = {
   id: string;
@@ -48,7 +49,10 @@ type AmendmentDetailsSheetProps = {
   contractId: string;
   basePath: string;
   amendmentId: string;
-  summary: Pick<AmendmentRow, "amendmentTitle" | "amendmentId" | "vendorStatus" | "status">;
+  summary: Pick<
+    AmendmentRow,
+    "amendmentTitle" | "amendmentId" | "vendorStatus" | "status"
+  >;
 };
 
 const LabelRow = ({
@@ -60,10 +64,10 @@ const LabelRow = ({
   value: React.ReactNode;
   highlight?: boolean;
 }) => (
-  <div className="grid grid-cols-2 gap-3 py-2">
-    <span className="text-sm text-[#6B7280]">{label}</span>
+  <div className="space-y-2 py-2">
+    <span className="text-sm text-[#6B7280] block">{label}</span>
     <span
-      className={`text-sm ${
+      className={`text-sm font-semibold block ${
         highlight ? "font-semibold text-[#0F0F0F]" : "text-[#111827]"
       }`}
     >
@@ -72,80 +76,87 @@ const LabelRow = ({
   </div>
 );
 
-const DocCard = ({
-  name,
-  type,
-  size,
-}: {
-  name: string;
-  type: string;
-  size: string;
-}) => (
-  <div className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-white p-3">
-    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#F3F4F6] text-xs font-semibold text-[#374151]">
-      {type}
-    </div>
-    <div className="flex-1">
-      <div className="text-sm font-medium text-[#0F0F0F]">{name}</div>
-      <div className="text-xs text-[#6B7280]">
-        {type} • {size}
-      </div>
-    </div>
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#6B7280]"
-      >
-        <Eye className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#6B7280]"
-      >
-        <Download className="h-4 w-4" />
-      </button>
-    </div>
-  </div>
-);
+export interface AmendmentDetail {
+  _id:              string;
+  contractRef:      string;
+  contractRefModel: string;
+  amendmentId:      string;
+  company:          string;
+  status:           string;
+  title:            string;
+  impact:           string;
+  description:      string;
+  changes:          Change[];
+  submittedBy:      SubmittedBy;
+  vendorStatus:     string;
+  files:            File[];
+  approvers:        Approvers[];
+  statusHistory:    any[];
+  __v:              number;
+}
 
-type AmendmentDetail = {
-  title?: string;
-  amendmentId?: string;
-  impact?: string;
-  description?: string;
-  vendorStatus?: string;
-  status?: string;
-  files?: Array<{ name?: string; type?: string; size?: string; url?: string }>;
-};
+export interface Approvers {
+  user:        User[];
+  amount:      number;
+  group:       string;
+  levelStatus: string;
+  completedAt: null;
+  _id:         string;
+}
 
-type PersonnelRole = { _id: string; name: string; __v?: number };
-type PersonnelUser = {
-  _id: string;
+export interface User {
+  user:       string;
+  status:     string;
+  comment:    string;
+  actionedAt: null;
+  _id:        string;
+}
+
+
+export interface Change {
+  field:    string;
+  oldValue: string;
+  newValue: Date;
+  _id:      string;
+}
+
+export interface File {
+  name:       string;
+  url:        string;
+  type:       string;
+  size:       string;
+  _id:        string;
+  uploadedAt: Date;
+}
+
+export interface SubmittedBy {
+  _id:   string;
   email: string;
-  role: PersonnelRole[];
-  firstName?: string;
-  lastName?: string;
+}
+
+
+export interface ApproveUser {
+  approverId: string;
+  name: string;
+  email: string;
+  userRef: string;
+  role: string;
+  approvalLevels: number[];
+  totalAssignments: number;
+  assignedApprovals: string;
+  approvedCount: number;
+  rejectedCount: number;
+  pendingCount: number;
+  totalCount: number;
+  status: string;
+}
+
+type PersonnelApiResponse = {
+  status: number;
+  message: string;
+  data: ApproveUser[];
 };
 
-type PersonnelApiResponse = { status: number; message: string; data: PersonnelUser[] };
-
-const formatRoleLabel = (roles: PersonnelRole[] | undefined) => {
-  const role = roles?.find((r) => r.name !== "approver")?.name ?? roles?.[0]?.name;
-  if (!role) return "—";
-  const parts = role.split(/[_\s-]+/g).filter(Boolean);
-  return parts.map((p) => `${p.charAt(0).toUpperCase()}${p.slice(1)}`).join(" ");
-};
-
-const normalizeFileType = (value?: string) => {
-  const s = value?.toLowerCase() ?? "";
-  if (s.includes("pdf")) return "PDF";
-  if (s.includes("doc")) return "DOC";
-  if (s.includes("xls")) return "XLS";
-  if (s.includes("zip")) return "ZIP";
-  if (s.includes("png")) return "PNG";
-  if (s.includes("jpeg") || s.includes("jpg")) return "JPG";
-  return value ? value.toUpperCase() : "—";
-};
 
 const StatusPill = ({ status }: { status: string }) => {
   const normalized = status.toLowerCase();
@@ -157,7 +168,9 @@ const StatusPill = ({ status }: { status: string }) => {
         : "bg-[#E539351A] text-[#E53935]";
   const label = `${status.charAt(0).toUpperCase()}${status.slice(1)}`;
   return (
-    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${tone}`}>
+    <span
+      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${tone}`}
+    >
       {label}
     </span>
   );
@@ -174,17 +187,17 @@ const VendorAcceptDialog: React.FC<{
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="w-[498px] h-[260px] p-8 rounded-2xl border-0 flex flex-col items-center justify-center gap-6">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#E53935] text-[#E53935]">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#E53935] text-[#E53935]">
           <X className="h-8 w-8" />
         </div>
-        <div className="text-center text-xl font-semibold text-[#0F0F0F]">
+        <div className="text-center text-base font-semibold text-[#0F0F0F]">
           Submission Accepted!
         </div>
         <div className="flex w-full gap-6">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-[14px] text-base font-semibold text-[#0F0F0F]"
+            className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F]"
           >
             Close
           </button>
@@ -192,7 +205,7 @@ const VendorAcceptDialog: React.FC<{
             type="button"
             disabled={isPending}
             onClick={onConfirm}
-            className="flex-1 rounded-xl bg-[#2A4467] py-[15px] text-base font-semibold text-white disabled:opacity-60"
+            className="flex-1 rounded-xl bg-[#2A4467] h-11 text-base font-semibold text-white disabled:opacity-60"
           >
             {isPending ? "Processing..." : "View Details"}
           </button>
@@ -218,9 +231,11 @@ const VendorRejectDialog: React.FC<{
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="w-[700px] h-[380px] p-8 rounded-2xl border-0 flex flex-col gap-6">
+      <DialogContent className="w-[700px] h-fit p-8 rounded-2xl border-0 flex flex-col gap-6">
         <div className="flex items-start justify-between">
-          <div className="text-xl font-semibold text-[#0F0F0F]">Reject Review</div>
+          <div className="text-xl font-semibold text-[#0F0F0F]">
+            Reject Review
+          </div>
           <button type="button" onClick={onClose} className="text-[#E53935]">
             <X className="h-6 w-6" />
           </button>
@@ -238,11 +253,11 @@ const VendorRejectDialog: React.FC<{
           />
         </div>
 
-        <div className="mt-auto flex w-full justify-end gap-6">
+        <div className="flex w-full justify-end gap-6">
           <button
             type="button"
             onClick={onClose}
-            className="w-[306px] rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-[14px] text-base font-semibold text-[#0F0F0F]"
+            className="w-[306px] rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F]"
           >
             Back
           </button>
@@ -250,7 +265,7 @@ const VendorRejectDialog: React.FC<{
             type="button"
             disabled={isPending}
             onClick={onConfirm}
-            className="w-[306px] rounded-xl bg-[#E53935] py-[15px] text-base font-semibold text-white disabled:opacity-60"
+            className="w-[306px] rounded-xl bg-[#E53935] h-11 text-base font-semibold text-white disabled:opacity-60"
           >
             {isPending ? "Rejecting..." : "Reject Review"}
           </button>
@@ -275,9 +290,11 @@ const AssignApprovalDialog: React.FC<{
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery<PersonnelApiResponse>({
-    queryKey: ["contract-personnel"],
+    queryKey: ["contract-approvers", contractId],
     queryFn: async () => {
-      const res = await getRequest({ url: "/contract/manager/personnel" });
+      const res = await getRequest({
+        url: `/contract/manager/contracts/${contractId}/approvers`,
+      });
       return res.data as PersonnelApiResponse;
     },
     enabled: open,
@@ -285,19 +302,40 @@ const AssignApprovalDialog: React.FC<{
     retry: false,
   });
 
-  const personnel = React.useMemo(() => {
-    const list =
-      data?.data?.filter((p) => p.role?.some((r) => r.name === "approver")) ?? [];
+  const allApprovers = React.useMemo(() => {
+    return data?.data ?? [];
+  }, [data?.data]);
+
+  const groupOptions = React.useMemo(() => {
+    const levelSet = new Set<number>();
+    for (const a of allApprovers) {
+      const levels = a?.approvalLevels ?? [];
+      for (const lvl of levels) {
+        if (typeof lvl === "number" && !Number.isNaN(lvl)) levelSet.add(lvl);
+      }
+    }
+    const levels = Array.from(levelSet).sort((a, b) => a - b);
+    return levels.map((level) => ({
+      value: String(level),
+      label: `Approval Level ${level}`,
+    }));
+  }, [allApprovers]);
+
+  const displayApprovers = React.useMemo(() => {
+    if (!selectedGroup) return [];
+    const list = allApprovers.filter((p) =>
+      (p?.approvalLevels ?? []).some((lvl) => String(lvl) === selectedGroup),
+    );
     if (!search) return list;
     const q = search.toLowerCase();
     return list.filter((p) => {
-      const name = `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
+      const name = p.name || "";
       return (
         name.toLowerCase().includes(q) ||
         (p.email ?? "").toLowerCase().includes(q)
       );
     });
-  }, [data?.data, search]);
+  }, [allApprovers, selectedGroup, search]);
 
   const toggleAssigned = (id: string) => {
     setSelectedIds((prev) =>
@@ -306,9 +344,12 @@ const AssignApprovalDialog: React.FC<{
   };
 
   const assignedUsers = React.useMemo(() => {
-    const byId = new Map((data?.data ?? []).map((p) => [p._id, p]));
-    return selectedIds.map((id) => byId.get(id)).filter(Boolean) as PersonnelUser[];
-  }, [data?.data, selectedIds]);
+    // Need to handle the different data structure here too
+    const byId = new Map(
+      ((allApprovers as any[]) ?? []).map((p) => [p.approverId, p]),
+    );
+    return selectedIds.map((id) => byId.get(id)).filter(Boolean);
+  }, [allApprovers, selectedIds]);
 
   const assignMutation = useMutation({
     mutationFn: async () => {
@@ -339,66 +380,103 @@ const AssignApprovalDialog: React.FC<{
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="w-[864px] h-[724px] p-8 rounded-2xl border-0 flex flex-col gap-6 overflow-hidden">
+      <DialogContent className="w-[864px] h- p-8 rounded-2xl border-0 flex flex-col gap-6 overflow-hidden">
         <div className="flex items-start justify-between">
-          <div className="text-xl font-semibold text-[#0F0F0F]">Send for Approval</div>
-          <button type="button" onClick={() => setOpen(false)} className="text-[#E53935]">
+          <div className="text-xl font-semibold text-[#0F0F0F]">
+            Send for Approval
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="text-[#E53935]"
+          >
             <X className="h-6 w-6" />
           </button>
         </div>
 
         <div className="space-y-3 w-full">
-          <div className="text-sm font-medium text-[#0F0F0F]">Select Approvers Group</div>
+          <div className="text-sm font-medium text-[#0F0F0F]">
+            Select Approvers Group
+          </div>
           <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-            <SelectTrigger className="h-12 w-full rounded-lg border border-[#E5E7EB] px-4 text-sm">
+            <SelectTrigger className="h-14 w-full rounded-lg border border-[#E5E7EB] px-4 text-sm">
               <SelectValue placeholder="Select Option" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="group-1">Group 1 - Approval Level</SelectItem>
+              {groupOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
-        <div className="flex flex-col rounded-xl border border-[#E5E7EB] overflow-hidden w-[800px]">
+        <div className="flex flex-col rounded-xl border border-[#E5E7EB] overflow-hidden w-full">
           <div className="flex items-center justify-between bg-[#F9FAFB] px-6 py-4 border-b border-[#E5E7EB]">
-            <div className="w-[150px] text-sm font-semibold text-[#2A4467]">Group</div>
-            <div className="w-[150px] text-center text-sm font-semibold text-[#2A4467]">Role</div>
-            <div className="w-[121px] text-center text-sm font-semibold text-[#2A4467]">Action</div>
+            <div className="w-[150px] text-sm font-semibold text-[#2A4467]">
+              Group
+            </div>
+            <div className="w-[150px] text-center text-sm font-semibold text-[#2A4467]">
+              Role
+            </div>
+            <div className="w-[121px] text-center text-sm font-semibold text-[#2A4467]">
+              Action
+            </div>
           </div>
+
           <div className="flex-1 overflow-y-auto">
             {isLoading ? (
               <div className="p-6 text-sm text-[#6B7280]">Loading...</div>
-            ) : personnel.length === 0 ? (
-              <div className="p-6 text-sm text-[#6B7280]">No personnel found.</div>
+            ) : !selectedGroup ? (
+              <div className="p-6 text-sm text-[#6B7280]">
+                Select an approver group to view members.
+              </div>
+            ) : displayApprovers.length === 0 ? (
+              <div className="p-6 text-sm text-[#6B7280]">
+                No approvers in this group.
+              </div>
             ) : (
               <div className="flex flex-col gap-3 py-3">
-                {personnel.map((p) => {
-                  const name = `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim() || p.email;
-                  const assigned = selectedIds.includes(p._id);
+                {displayApprovers.map((p: any) => {
+                  const name = p.name || p.email;
+                  const id = p.approverId || p._id;
+                  const roleName = p.role || "Approver";
+                  const assigned = selectedIds.includes(id);
                   return (
-                    <div key={p._id} className="flex items-start justify-between px-6">
+                    <div
+                      key={id}
+                      className="flex items-start justify-between px-6"
+                    >
                       <div className="w-[150px] py-2">
-                        <div className="text-sm font-semibold text-[#374151]">{name}</div>
-                        <a className="text-xs text-[#286EE0] underline" href={`mailto:${p.email}`}>
+                        <div className="text-sm font-semibold text-[#374151]">
+                          {name}
+                        </div>
+                        <a
+                          className="text-xs text-[#286EE0] underline"
+                          href={`mailto:${p.email}`}
+                        >
                           {p.email}
                         </a>
                       </div>
                       <div className="w-[150px] py-2 text-center text-sm font-medium text-[#374151]">
-                        {formatRoleLabel(p.role)}
+                        {roleName}
                       </div>
                       <button
                         type="button"
-                        onClick={() => toggleAssigned(p._id)}
+                        onClick={() => toggleAssigned(id)}
                         className="w-[121px] py-2 flex items-center justify-center gap-2"
                       >
                         {assigned ? (
-                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#00A859]">
-                            <Check className="h-4 w-4 text-white" />
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#00A859]">
+                            <Check className="h-2 w-2 text-white" />
                           </span>
                         ) : (
-                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[#DDDDDD]" />
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-[#DDDDDD]" />
                         )}
-                        <span className="text-sm font-medium text-[#353535]">Assign</span>
+                        <span className="text-sm font-medium text-[#353535]">
+                          Assign
+                        </span>
                       </button>
                     </div>
                   );
@@ -409,14 +487,26 @@ const AssignApprovalDialog: React.FC<{
         </div>
 
         <div className="space-y-3 w-full">
-          <div className="text-sm font-medium text-[#0F0F0F]">Assigned Approvers</div>
+          <div className="text-sm font-medium text-[#0F0F0F]">
+            Assigned Approvers
+          </div>
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-4 py-4">
-            {assignedUsers.map((p) => {
-              const name = `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim() || p.email;
+            {assignedUsers.map((p: any) => {
+              const name = p.name || p.email;
+              const id = p.approverId || p._id;
               return (
-                <div key={p._id} className="inline-flex items-center gap-2 rounded-lg bg-[#2A44671A] px-2 py-1">
-                  <span className="text-xs font-semibold text-[#2A4467]">{name}</span>
-                  <button type="button" onClick={() => toggleAssigned(p._id)} className="text-[#E53935]">
+                <div
+                  key={id}
+                  className="inline-flex items-center gap-2 rounded-lg bg-[#2A44671A] px-2 py-1"
+                >
+                  <span className="text-xs font-semibold text-[#2A4467]">
+                    {name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => toggleAssigned(id)}
+                    className="text-[#E53935]"
+                  >
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -435,7 +525,7 @@ const AssignApprovalDialog: React.FC<{
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="w-[188px] rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-[14px] text-base font-semibold text-[#0F0F0F]"
+            className="w-[188px] rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-2 font-semibold text-[#0F0F0F]"
           >
             Back
           </button>
@@ -443,7 +533,7 @@ const AssignApprovalDialog: React.FC<{
             type="button"
             disabled={assignMutation.isPending || selectedIds.length === 0}
             onClick={() => assignMutation.mutate()}
-            className="w-[188px] rounded-xl bg-[#2A4467] py-[15px] text-base font-semibold text-white disabled:opacity-60"
+            className="w-[188px] rounded-xl bg-[#2A4467] py-2 font-semibold text-white disabled:opacity-60"
           >
             {assignMutation.isPending ? "Sending..." : "Send for Approval"}
           </button>
@@ -464,10 +554,16 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   const [acceptOpen, setAcceptOpen] = React.useState(false);
   const [rejectOpen, setRejectOpen] = React.useState(false);
   const toast = useToastHandler();
+  // const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { isVendor, isManager } = useUserRole();
+  const { isVendor, isManager, isApprover } = useUserRole();
 
-  const detailQueryKey = ["contract-amendment-detail", contractId, basePath, amendmentId];
+  const detailQueryKey = [
+    "contract-amendment-detail",
+    contractId,
+    basePath,
+    amendmentId,
+  ];
 
   const { data: detailRes, isLoading } = useQuery<{ data?: AmendmentDetail }>({
     queryKey: detailQueryKey,
@@ -476,13 +572,30 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
       return res.data as { data?: AmendmentDetail };
     },
     enabled: open,
-    staleTime: 60_000,
-    retry: false,
+    // staleTime: 60_000,
+    // retry: false,
   });
 
   const detail = detailRes?.data;
   const title = detail?.title || summary.amendmentTitle;
   const displayId = detail?.amendmentId || summary.amendmentId;
+  const normalizedImpact = (detail?.impact ?? "").toString().toLowerCase();
+  const hasApprovals = Boolean(detail?.approvers?.length);
+  const hasTimeImpact = normalizedImpact.includes("time");
+  const isTimeImpact = normalizedImpact === "time";
+  const isCostImpact = normalizedImpact === "cost";
+  const isTimeCostImpact =
+    normalizedImpact === "time_cost" || normalizedImpact === "time & cost";
+  const isOtherCombination =
+    normalizedImpact === "others" || normalizedImpact === "other combination";
+  const vendorRejected =
+    (detail?.vendorStatus ?? "").toString().toLowerCase() === "rejected";
+  const vendorReason =
+    // prefer explicit vendor reason fields if available, otherwise fallback
+    (detail as any)?.vendorReason ||
+    (detail as any)?.rejectReason ||
+    (detail as any)?.reason ||
+    undefined;
   const vendorLabel = detail?.vendorStatus
     ? `${detail.vendorStatus.charAt(0).toUpperCase()}${detail.vendorStatus.slice(1)}`
     : summary.vendorStatus;
@@ -519,9 +632,50 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
       setRejectOpen(false);
     },
     onError: (error: any) => {
-      toast.error("Error", error?.message || "Failed to update amendment status");
+      toast.error(
+        "Error",
+        error?.message || "Failed to update amendment status",
+      );
     },
   });
+
+  const approverActionMutation = useMutation({
+    mutationFn: async (action: "approved" | "rejected") => {
+      return await postRequest({
+        url: `${basePath}/${amendmentId}/approve`,
+        payload: { action },
+      });
+    },
+    onSuccess: (_, action) => {
+      toast.success(
+        "Success",
+        action === "approved" ? "Amendment approved" : "Amendment rejected",
+      );
+      invalidateAll();
+    },
+    onError: (error: any) => {
+      toast.error(
+        "Error",
+        error?.message || "Failed to submit approval decision",
+      );
+    },
+  });
+
+  const handlePreview = (doc: DocType) => {
+    if (!doc.url) return;
+    // setSelectedDoc(doc);
+    // setViewerOpen(true);
+  };
+
+  const handleDownload = (doc: DocType) => {
+    if (!doc.url) return;
+    const a = window.document.createElement("a");
+    a.href = doc.url;
+    a.download = doc.name;
+    window.document.body.appendChild(a);
+    a.click();
+    window.document.body.removeChild(a);
+  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -553,14 +707,6 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                 >
                   <Share2 className="mr-2 h-4 w-4" /> Export
                 </Button>
-                <SheetClose asChild>
-                  <button
-                    type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[#FCA5A5] text-[#EF4444]"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </SheetClose>
               </div>
             </div>
           </SheetHeader>
@@ -569,7 +715,10 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
             {isLoading ? "Loading..." : title || "—"}
           </div>
 
-          <Tabs defaultValue="overview" className="w-full bg-transparent space-y-4">
+          <Tabs
+            defaultValue="overview"
+            className="w-full bg-transparent space-y-4"
+          >
             <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0  justify-start bg-transparent w-full">
               <TabsTrigger
                 value="overview"
@@ -577,66 +726,181 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
               >
                 Overview
               </TabsTrigger>
-              <TabsTrigger
+              {/* <TabsTrigger
                 value="comments"
                 className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
               >
                 Comments
-              </TabsTrigger>
+              </TabsTrigger> */}
             </TabsList>
 
             <TabsContent value="overview" className="space-y-5">
-              <div className="grid gap-6 sm:grid-cols-2">
-                <div>
-                  <LabelRow
-                    label="Amendment Name"
-                    value={title || "—"}
-                  />
-                  <LabelRow label="Impact Type" value={detail?.impact ?? "—"} />
-                  <LabelRow label="Time" value="—" />
-                  <LabelRow
-                    label="New Expiry/Delivery/Completion Date"
-                    value="—"
-                  />
+              {/* Top overview grid (varies by impact) */}
+              {isTimeImpact && (
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <LabelRow label="Amendment Name" value={title || "—"} />
+                    <LabelRow label="Impact Type" value="Time" />
+                    <LabelRow label="Time" value="—" />
+                    <LabelRow
+                      label="New Expiry/Delivery/Completion Date"
+                      value="—"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <LabelRow label="Amendment ID" value={displayId || "—"} />
+                    <LabelRow
+                      label="Prev. Expiry/Delivery/Completion Date"
+                      value="—"
+                    />
+                    <LabelRow label="Vendor" value={vendorLabel || "—"} />
+                    <LabelRow
+                      label="Status"
+                      value={<StatusPill status={statusLabel || "pending"} />}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <LabelRow label="Amendment ID" value={displayId || "—"} />
-                  <LabelRow label="Value" value="—" highlight />
-                  <LabelRow label="Vendor" value={vendorLabel || "—"} />
-                  <LabelRow
-                    label="Status"
-                    value={
-                      <StatusPill status={statusLabel || "pending"} />
-                    }
-                  />
-                </div>
-              </div>
+              )}
 
-              <div className="space-y-2">
+              {isCostImpact && (
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <LabelRow label="Amendment Name" value={title || "—"} />
+                    <LabelRow label="Impact Type" value="Cost" />
+                  </div>
+                  <div className="space-y-2">
+                    <LabelRow label="Amendment ID" value={displayId || "—"} />
+                    <LabelRow label="Value" value="—" highlight />
+                    <LabelRow label="Vendor" value={vendorLabel || "—"} />
+                    <LabelRow
+                      label="Status"
+                      value={<StatusPill status={statusLabel || "pending"} />}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {isTimeCostImpact && (
+                <div className="space-y-6">
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <LabelRow label="Amendment Name" value={title || "—"} />
+                      <LabelRow label="Impact Type" value="Time & Cost" />
+                    </div>
+                    <div className="space-y-2">
+                      <LabelRow label="Amendment ID" value={displayId || "—"} />
+                      <LabelRow
+                        label="Prev. Expiry/Delivery/Completion Date"
+                        value="—"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <LabelRow
+                        label="New Expiry/Delivery/Completion Date"
+                        value="—"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <LabelRow label="Value" value="—" highlight />
+                      <LabelRow label="Vendor" value={vendorLabel || "—"} />
+                      <LabelRow
+                        label="Status"
+                        value={<StatusPill status={statusLabel || "pending"} />}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isOtherCombination && (
+                <div className="space-y-6">
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <LabelRow label="Amendment Name" value={title || "—"} />
+                      <LabelRow label="Impact Type" value="Other Combination" />
+                    </div>
+                    <div className="space-y-2">
+                      <LabelRow label="Amendment ID" value={displayId || "—"} />
+                      <LabelRow label="Scope" value="-" />
+                    </div>
+                  </div>
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <LabelRow
+                        label="Prev. Expiry/Delivery/Completion Date"
+                        value="—"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <LabelRow
+                        label="New Expiry/Delivery/Completion Date"
+                        value="—"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <LabelRow label="Value" value="$1m" highlight />
+                    <LabelRow label="Vendor" value={vendorLabel || "—"} />
+                    <LabelRow
+                      label="Status"
+                      value={<StatusPill status={statusLabel || "pending"} />}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2 mb-7">
                 <div className="text-sm text-[#6B7280]">Description</div>
                 <div className="text-sm text-[#374151]">
                   {detail?.description || "—"}
                 </div>
               </div>
 
+              {vendorRejected && (
+                <div className="space-y-2">
+                  <div className="text-sm text-[#6B7280]">
+                    Vendor’s Rejection Reason
+                  </div>
+                  <div className="text-sm text-[#374151]">
+                    {vendorReason || "—"}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3">
                 <div className="text-sm text-[#6B7280]">Attached Documents</div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {(detail?.files ?? []).map((f, idx) => (
-                    <DocCard
-                      key={`${f.url ?? f.name ?? "file"}-${idx}`}
-                      name={f.name ?? "Document"}
-                      type={normalizeFileType(f.type)}
-                      size={f.size ?? "—"}
-                    />
-                  ))}
+                  {(detail?.files ?? []).map((f, idx) => {
+                    const fileExtension = getFileExtension(
+                      f.name ?? "",
+                      f.type ?? "",
+                    );
+                    return (
+                      <DocumentItem
+                        d={{
+                          id: f.url ?? "",
+                          name: f.name ?? "",
+                          icon: getFileIcon(f.type ?? ""),
+                          type: fileExtension,
+                          size: f.size ?? "—",
+                        }}
+                        // canEdit={canEdit}
+                        // navigate={navigate?.(contractId)}
+                        handlePreview={handlePreview}
+                        handleDownload={handleDownload}
+                        key={`${f.url ?? f.name ?? "file"}-${idx}`}
+                      />
+                    );
+                  })}
                   {(detail?.files ?? []).length === 0 && (
                     <div className="text-sm text-[#6B7280]">No documents.</div>
                   )}
                 </div>
               </div>
 
-              {isManager && (
+              {isManager && hasTimeImpact && !hasApprovals && (
                 <>
                   <div className="flex items-start gap-3 rounded-2xl border border-[#2A44671A] bg-[#F8F8F8] p-4">
                     <div className="flex h-8 w-10 items-center justify-center rounded-full border border-[#EF4444] text-[#EF4444]">
@@ -648,8 +912,8 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                         Action needed
                       </div>
                       <div className="text-sm text-[#626262]">
-                        This amendment includes a time impact, but no approver has
-                        been assigned to review time-related impacts.
+                        This amendment includes a time impact, but no approver
+                        has been assigned to review time-related impacts.
                       </div>
                     </div>
                   </div>
@@ -662,7 +926,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                     trigger={
                       <button
                         type="button"
-                        className="h-11 w-full rounded-xl bg-[#2A4467] text-sm font-semibold text-white"
+                        className="h-11 w-fit px-6 rounded-xl bg-[#2A4467] text-sm font-semibold text-white"
                       >
                         Assign Approval
                       </button>
@@ -671,6 +935,18 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                 </>
               )}
             </TabsContent>
+
+            {/* Edit Submission appears for vendor on rejected 'Other Combination' */}
+            {isVendor && isOtherCombination && vendorRejected && (
+              <div className="px-6 pb-6">
+                <button
+                  type="button"
+                  className="w-full rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-[14px] text-base font-semibold text-[#2A4467]"
+                >
+                  Edit Submission
+                </button>
+              </div>
+            )}
 
             <TabsContent value="comments" className="space-y-4">
               <div className="rounded-xl border border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
@@ -692,7 +968,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                   <button
                     type="button"
                     onClick={() => setRejectOpen(true)}
-                    className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-[14px] text-base font-semibold text-[#0F0F0F]"
+                    className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F]"
                   >
                     Reject Amendment
                   </button>
@@ -707,12 +983,35 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                   <button
                     type="button"
                     onClick={() => setAcceptOpen(true)}
-                    className="flex-1 rounded-xl bg-[#2A4467] py-[15px] text-base font-semibold text-white"
+                    className="flex-1 rounded-xl bg-[#2A4467] h-11 text-base font-semibold text-white"
                   >
                     Accept Amendment
                   </button>
                 }
               />
+            </div>
+          </div>
+        )}
+
+        {isApprover && (
+          <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] bg-white p-6">
+            <div className="flex gap-6">
+              <button
+                type="button"
+                disabled={approverActionMutation.isPending}
+                onClick={() => approverActionMutation.mutate("rejected")}
+                className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F] disabled:opacity-60"
+              >
+                Reject
+              </button>
+              <button
+                type="button"
+                disabled={approverActionMutation.isPending}
+                onClick={() => approverActionMutation.mutate("approved")}
+                className="flex-1 rounded-xl bg-[#2A4467] h-11 text-base font-semibold text-white disabled:opacity-60"
+              >
+                Approve
+              </button>
             </div>
           </div>
         )}
@@ -779,7 +1078,9 @@ const AmendmentsTable: React.FC<Props> = ({
           return (
             <div className="flex w-[120px] items-center justify-center py-2">
               <div className={`rounded-xl px-[18px] py-[6px] ${tone}`}>
-                <span className="text-xs font-semibold leading-[15px]">{s}</span>
+                <span className="text-xs font-semibold leading-[15px]">
+                  {s}
+                </span>
               </div>
             </div>
           );

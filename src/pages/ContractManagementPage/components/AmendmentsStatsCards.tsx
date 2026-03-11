@@ -33,6 +33,7 @@ type Props = {
 
 const AmendmentsStatsCards: React.FC<Props> = ({ stats, isLoading }) => {
   void isLoading;
+
   const all = stats?.all ?? 0;
   const approved = stats?.accepted ?? 0;
   const rejected = stats?.rejected ?? 0;

@@ -1,27 +1,151 @@
 import React from "react";
-import { ArrowLeft, Download, Eye, X } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 
-import { Sheet, SheetClose, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getRequest } from "@/lib/axiosInstance";
+import { useToastHandler } from "@/hooks/useToaster";
+import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
+import { DocumentItem, type DocType } from "./DocumentItem";
+import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
+import { formatDate } from "date-fns";
+import { formatCurrency } from "@/lib/utils";
 
-type Props = { trigger: React.ReactNode };
-
-type AttachedDoc = {
-  name: string;
-  type: "DOC" | "PDF";
-  size: string;
+type Props = {
+  trigger: React.ReactNode;
+  holdBackId?: string;
+  basePath?: string;
+  currency?: string;
 };
 
-const docs: AttachedDoc[] = [
-  { name: "RFP_HRSoftware", type: "DOC", size: "25KB" },
-  { name: "RFP_HRSoftware", type: "PDF", size: "1MB" },
-  { name: "RFP_HRSoftware", type: "DOC", size: "25KB" },
-  { name: "RFP_HRSoftware", type: "PDF", size: "1MB" },
-];
+export interface HoldbackDetailDTO {
+  _id: string;
+  contract: string;
+  contractRefModel: string;
+  company: string;
+  amount: number;
+  holdBackId: string;
+  type: string;
+  status: string;
+  approvedBy: string;
+  description: string;
+  releasedDate: Date;
+  files: File[];
+  __v: number;
+}
 
-const HoldbackDetailsSheet: React.FC<Props> = ({ trigger }) => {
+export interface File {
+  name: string;
+  url: string;
+  type: string;
+  size: string;
+  _id: string;
+  uploadedAt: Date;
+}
+
+const HoldbackDetailsSheet: React.FC<Props> = ({
+  trigger,
+  holdBackId,
+  basePath,
+  currency = "USD",
+}) => {
+  const toast = useToastHandler();
+  const [open, setOpen] = React.useState(false);
+  const { isVendor, isApprover, isManager } = useUserRole();
+
+  const rolePrefix = React.useMemo(() => {
+    if (basePath) return basePath; // allow parent override
+    const role = isManager
+      ? "manager"
+      : isApprover
+        ? "approver"
+        : isVendor
+          ? "vendor"
+          : "user";
+    // detail endpoints use /contract/<role>/contracts/payment-holdbacks/<id>
+    return `/contract/${role}/contracts/payment-holdbacks`;
+  }, [basePath, isApprover, isManager, isVendor]);
+
+  const queryKey = ["contract-holdback-detail", rolePrefix, holdBackId];
+  const { data: detailRes, isLoading, isError, error } = useQuery<{
+    message?: string;
+    data?: HoldbackDetailDTO;
+  }>({
+    queryKey,
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${rolePrefix}/${holdBackId}`,
+      });
+      return res.data as any;
+    },
+    enabled: open && Boolean(holdBackId),
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  React.useEffect(() => {
+    if (!isError) return;
+    toast.error(
+      "Holdback Details",
+      (error as any)?.message || "Failed to fetch details",
+    );
+  }, [error, isError, toast]);
+
+  const detail = detailRes?.data;
+
+  const mappedDocs: DocType[] = (detail?.files ?? []).map((f) => {
+    const extension = getFileExtension(f.name || "", f.type || "");
+    return {
+      id: f.name || "-",
+      name: f.name || "-",
+      type: extension,
+      size: typeof f.size === "number" ? `${f.size}B` : f.size || "-",
+      url: f.url,
+      icon: getFileIcon(extension),
+    };
+  });
+
+  const handlePreview = (doc: DocType) => {
+    if (!doc.url) return;
+    window.open(doc.url, "_blank", "noopener,noreferrer");
+  };
+  const handleDownload = (doc: DocType) => {
+    if (!doc.url) return;
+    const a = window.document.createElement("a");
+    a.href = doc.url;
+    a.download = doc.name;
+    window.document.body.appendChild(a);
+    a.click();
+    window.document.body.removeChild(a);
+  };
+
+  const queryClient = useQueryClient();
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [confirmAction, setConfirmAction] = React.useState<"approved" | "rejected" | null>(null);
+  const approveMutation = useMutation({
+    mutationFn: async (action: "approved" | "rejected") => {
+      void action;
+      throw new Error("Holdback approval endpoint not available");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+      setConfirmOpen(false);
+    },
+    onError: (err: any) => {
+      toast.error("Holdback Approval", err?.message || "Operation not supported");
+      setConfirmOpen(false);
+    },
+  });
+
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="right"
@@ -31,15 +155,23 @@ const HoldbackDetailsSheet: React.FC<Props> = ({ trigger }) => {
           <div className="flex items-center justify-between px-8 pt-7">
             <div className="flex items-center gap-3">
               <SheetClose asChild>
-                <button type="button" className="inline-flex h-9 w-9 items-center justify-center">
+                <button
+                  type="button"
+                  className="inline-flex h-9 w-9 items-center justify-center"
+                >
                   <ArrowLeft className="h-5 w-5 text-[#2A4467]" />
                 </button>
               </SheetClose>
-              <div className="text-base font-semibold text-[#0F0F0F]">Holdback Details</div>
+              <div className="text-base font-semibold text-[#0F0F0F]">
+                Holdback Details
+              </div>
             </div>
 
             <SheetClose asChild>
-              <button type="button" className="inline-flex h-10 w-10 items-center justify-center">
+              <button
+                type="button"
+                className="inline-flex h-10 w-10 items-center justify-center"
+              >
                 <X className="h-5 w-5 text-[#EF4444]" />
               </button>
             </SheetClose>
@@ -60,110 +192,172 @@ const HoldbackDetailsSheet: React.FC<Props> = ({ trigger }) => {
             </div>
 
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-x-16 gap-y-7">
-                <div className="space-y-2">
-                  <div className="text-xs font-medium text-[#9CA3AF]">Release Type</div>
-                  <div className="text-sm font-semibold text-[#0F0F0F]">Partial Release</div>
+              {!holdBackId ? (
+                <div className="rounded-xl border border-dashed border-[#E5E7EB] p-6 text-sm text-[#6B7280]">
+                  No holdback selected.
                 </div>
-                <div className="space-y-2">
-                  <div className="text-xs font-medium text-[#9CA3AF]">Release ID</div>
-                  <div className="text-sm font-semibold text-[#0F0F0F]">HB-2025-10</div>
+              ) : isLoading ? (
+                <div className="grid grid-cols-2 gap-x-16 gap-y-7 animate-pulse">
+                  <div className="space-y-2">
+                    <div className="h-3 w-40 rounded bg-[#F3F4F6]" />
+                    <div className="h-4 w-52 rounded bg-[#E5E7EB]" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-3 w-40 rounded bg-[#F3F4F6]" />
+                    <div className="h-4 w-52 rounded bg-[#E5E7EB]" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-3 w-40 rounded bg-[#F3F4F6]" />
+                    <div className="h-4 w-52 rounded bg-[#E5E7EB]" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-3 w-40 rounded bg-[#F3F4F6]" />
+                    <div className="h-4 w-52 rounded bg-[#E5E7EB]" />
+                  </div>
                 </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-x-16 gap-y-7">
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-[#9CA3AF]">
+                      Release Type
+                    </div>
+                    <div className="text-sm font-semibold text-[#0F0F0F]">
+                      {detail?.type === "full"
+                        ? "Full Release"
+                        : detail?.type === "partial"
+                          ? "Partial Release"
+                          : "-"}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-[#9CA3AF]">
+                      Release ID
+                    </div>
+                    <div className="text-sm font-semibold text-[#0F0F0F]">
+                      {detail?.holdBackId || "-"}
+                    </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <div className="text-xs font-medium text-[#9CA3AF]">Released Amount</div>
-                  <div className="text-sm font-semibold text-[#0F0F0F]">$2.5m</div>
-                </div>
-                <div className="space-y-2">
-                  <div className="text-xs font-medium text-[#9CA3AF]">Released Date</div>
-                  <div className="text-sm font-semibold text-[#0F0F0F]">April 30, 2025</div>
-                </div>
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-[#9CA3AF]">
+                      Released Amount
+                    </div>
+                    <div className="text-sm font-semibold text-[#0F0F0F]">
+                      {detail?.amount != null ? formatCurrency(detail?.amount, "en-US", currency) : "-"}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-[#9CA3AF]">
+                      Released Date
+                    </div>
+                    <div className="text-sm font-semibold text-[#0F0F0F]">
+                      {detail?.releasedDate ? formatDate(detail?.releasedDate, "MMMM d, yyyy") : "-"}
+                    </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <div className="text-xs font-medium text-[#9CA3AF]">Status</div>
-                  <Badge className="w-fit rounded-full bg-[#FEF9C3] px-4 py-1 text-xs font-semibold text-[#CA8A04] hover:bg-[#FEF9C3]">
-                    Pending
-                  </Badge>
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-[#9CA3AF]">
+                      Status
+                    </div>
+                    <Badge className="w-fit rounded-full bg-[#FEF9C3] px-4 py-1 text-xs font-semibold text-[#CA8A04] hover:bg-[#FEF9C3]">
+                      Pending
+                    </Badge>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="space-y-3">
-                <div className="text-xs font-medium text-[#9CA3AF]">Description</div>
+                <div className="text-xs font-medium text-[#9CA3AF]">
+                  Description
+                </div>
                 <div className="text-sm font-medium leading-6 text-[#374151]">
-                  Lorem ipsum dolor sit amet consectetur. Volutpat quis egestas nunc egestas ut
-                  sed accumsan commodo vitae. Ullamcorper feugiat pulvinar consectetur vel
-                  natoque amet enim ac sed. Laoreet fringilla sollicitudin pharetra sit proin
-                  dictum. Sit sed lorem mauris.
+                  {isLoading ? (
+                    <span className="inline-block h-4 w-56 rounded bg-[#E5E7EB]" />
+                  ) : (
+                    detail?.description || "-"
+                  )}
                 </div>
               </div>
 
               <div className="space-y-4 pt-3">
-                <div className="text-sm font-semibold text-[#0F0F0F]">Attached Documents</div>
-                <div className="grid grid-cols-2 gap-6">
-                  {docs.map((d, idx) => (
-                    <div
-                      key={`${d.type}-${idx}`}
-                      className="flex items-center justify-between rounded-xl border border-[#E5E7EB] bg-white px-4 py-3"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`flex h-12 w-12 items-center justify-center rounded-lg ${
-                            d.type === "PDF" ? "bg-[#FEE2E2]" : "bg-[#DBEAFE]"
-                          }`}
-                        >
-                          <div
-                            className={`text-sm font-extrabold ${
-                              d.type === "PDF" ? "text-[#EF4444]" : "text-[#2563EB]"
-                            }`}
-                          >
-                            {d.type === "PDF" ? "PDF" : "W"}
-                          </div>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="text-sm font-semibold text-[#0F0F0F]">{d.name}</div>
-                          <div className="flex items-center gap-2 text-xs font-medium text-[#9CA3AF]">
-                            <span>{d.type}</span>
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#D1D5DB]" />
-                            <span>{d.size}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white"
-                        >
-                          <Eye className="h-4 w-4 text-[#6B7280]" />
-                        </button>
-                        <button
-                          type="button"
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white"
-                        >
-                          <Download className="h-4 w-4 text-[#2A4467]" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                <div className="text-sm font-semibold text-[#0F0F0F]">
+                  Attached Documents
                 </div>
+                {isLoading ? (
+                  <div className="grid grid-cols-2 gap-6">
+                    {Array.from({ length: 4 }).map((_, idx) => (
+                      <div
+                        key={idx}
+                        className="h-16 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] animate-pulse"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-6">
+                    {mappedDocs.map((d) => (
+                      <DocumentItem
+                        key={d.id}
+                        d={d}
+                        handlePreview={handlePreview}
+                        handleDownload={handleDownload}
+                      />
+                    ))}
+                    {mappedDocs.length === 0 && (
+                      <div className="text-sm text-[#6B7280]">
+                        No documents.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-6 border-t border-[#E5E7EB] bg-white px-8 py-6">
-            <button
-              type="button"
-              className="h-12 flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-sm font-semibold text-[#0F0F0F]"
-            >
-              Reject
-            </button>
-            <button
-              type="button"
-              className="h-12 flex-1 rounded-xl bg-[#2A4467] text-sm font-semibold text-white"
-            >
-              Approve
-            </button>
-          </div>
+          {isApprover && (
+            <div className="flex items-center justify-between gap-6 border-t border-[#E5E7EB] bg-white px-8 py-6">
+              <button
+                type="button"
+                className="h-12 flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-sm font-semibold text-[#0F0F0F]"
+                disabled={isLoading || !holdBackId || approveMutation.isPending}
+                onClick={() => {
+                  setConfirmAction("rejected");
+                  setConfirmOpen(true);
+                }}
+              >
+                Reject
+              </button>
+              <button
+                type="button"
+                className="h-12 flex-1 rounded-xl bg-[#2A4467] text-sm font-semibold text-white"
+                disabled={isLoading || !holdBackId || approveMutation.isPending}
+                onClick={() => {
+                  setConfirmAction("approved");
+                  setConfirmOpen(true);
+                }}
+              >
+                Approve
+              </button>
+            </div>
+          )}
+
+          <ConfirmAlert
+            open={confirmOpen}
+            onClose={(v) => setConfirmOpen(v)}
+            title={confirmAction === "approved" ? "Approve Holdback" : "Reject Holdback"}
+            text={
+              confirmAction === "approved"
+                ? "Are you sure you want to approve this holdback?"
+                : "Are you sure you want to reject this holdback?"
+            }
+            onPrimaryAction={() => {
+              if (!confirmAction) return;
+              approveMutation.mutate(confirmAction);
+            }}
+            primaryButtonText={confirmAction === "approved" ? "Approve" : "Reject"}
+            secondaryButtonText="Cancel"
+            type={confirmAction === "approved" ? "success" : "delete"}
+            isLoading={approveMutation.isPending}
+          />
         </div>
       </SheetContent>
     </Sheet>
@@ -171,4 +365,3 @@ const HoldbackDetailsSheet: React.FC<Props> = ({ trigger }) => {
 };
 
 export default HoldbackDetailsSheet;
-

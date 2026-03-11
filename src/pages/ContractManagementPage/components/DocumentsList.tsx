@@ -1,12 +1,10 @@
 import React from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Eye, Download, Edit } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import type { File as ContractDocument } from "@/types";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { useNavigate } from "react-router-dom";
 import { isBefore, startOfDay } from "date-fns";
+import { DocumentItem } from "./DocumentItem";
 
 type Doc = {
   id: string;
@@ -75,36 +73,14 @@ const DocumentsList: React.FC<Props> = ({ files, effectiveDate }) => {
       ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {docs.map((d) => (
-          <Card key={d.id} className="border-slate-200">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div
-                className={`h-10 w-10`}
-              >
-                {d.icon}
-              </div>
-
-              <div className="flex-1">
-                <p className="text-sm font-medium text-slate-900">{d.name}</p>
-                <p className="text-xs text-slate-500">{d.type} • {d.size}</p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" aria-label="Preview" onClick={() => handlePreview(d)}><Eye className="h-4 w-4" /></Button>
-                {canEdit && (
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    aria-label="Edit in Collaboration Tool" 
-                    title="Edit in Collaboration Tool"
-                    onClick={() => navigate(`/collaboration-tool?sourceUrl=${encodeURIComponent(d.url || "")}&fileName=${encodeURIComponent(d.name)}&fileType=${encodeURIComponent(d.type || "")}`)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                )}
-                <Button variant="ghost" size="icon" aria-label="Download" onClick={() => handleDownload(d)}><Download className="h-4 w-4" /></Button>
-              </div>
-            </CardContent>
-          </Card>
+          <DocumentItem 
+            key={d.id}
+            d={d}
+            canEdit={canEdit}
+            navigate={navigate}
+            handlePreview={handlePreview}
+            handleDownload={handleDownload}
+          />
         ))}
       </div>
       )}

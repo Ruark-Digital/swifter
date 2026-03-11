@@ -28,11 +28,13 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Download, Eye, Search, Share2, X } from "lucide-react";
+import { ArrowLeft, Search, Share2, X } from "lucide-react";
 import { useToastHandler } from "@/hooks/useToaster";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useUserRole } from "@/hooks/useUserRole";
 import { formatDate } from "date-fns";
+import { DocumentItem, type DocType } from "./DocumentItem";
+import { getFileExtension } from "@/lib/fileUtils";
 
 export type LemRow = {
   id: string;
@@ -49,6 +51,47 @@ type LemDetailsSheetProps = {
   basePath: string;
 };
 
+export interface LemDetailResponse {
+  manager:          Manager;
+  _id:              string;
+  approverStatus:   "N/A" | "approved" | "rejected" | "pending";
+  company:          string;
+  contractRef:      string;
+  contractRefModel: string;
+  submittedBy:      string;
+  lemId:            string;
+  title:            string;
+  description:      string;
+  amount:           number;
+  status:           string;
+  files:            File[];
+  approvers:        any[];
+  createdAt:        Date;
+  updatedAt:        Date;
+  __v:              number;
+  summary:          null[];
+  rateSheet:        RateSheet;
+}
+
+export interface File {
+  name: string;
+  url:  string;
+  type: string;
+  size: number;
+  _id:  string;
+}
+
+export interface Manager {
+  user:       string;
+  status:     string;
+  comment:    string;
+  actionedAt: Date;
+}
+
+export interface RateSheet {
+}
+
+
 const LabelRow = ({
   label,
   value,
@@ -62,42 +105,6 @@ const LabelRow = ({
   </div>
 );
 
-const DocCard = ({
-  name,
-  type,
-  size,
-}: {
-  name: string;
-  type: "DOC" | "PDF";
-  size: string;
-}) => (
-  <div className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-white p-3">
-    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EEF2FF]">
-      {getFileIcon(type)}
-    </div>
-    <div className="flex-1">
-      <div className="text-sm font-medium text-[#111827]">{name}</div>
-      <div className="text-xs text-[#9CA3AF]">
-        {type} • {size}
-      </div>
-    </div>
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F3F4F6] text-[#6B7280]"
-      >
-        <Eye className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E6F0FF] text-[#2563EB]"
-      >
-        <Download className="h-4 w-4" />
-      </button>
-    </div>
-  </div>
-);
-
 const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   trigger,
   contractId,
@@ -105,13 +112,14 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   basePath,
 }) => {
   const { isVendor } = useUserRole();
+
   const { data: lemDetail, isLoading: detailLoading } = useQuery({
     queryKey: ["lem-detail", contractId, lemId, basePath],
     queryFn: async () => {
       const res = await getRequest({
         url: `${basePath}/${lemId}`,
       });
-      return (res as any)?.data?.data || (res as any)?.data;
+      return (res)?.data?.data as LemDetailResponse
     },
     enabled: !!contractId && !!lemId,
   });
@@ -126,6 +134,20 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
     },
     enabled: !!contractId && !!lemId,
   });
+
+  const handlePreview = (doc: DocType) => {
+    if (!doc.url) return;
+    window.open(doc.url, "_blank", "noopener,noreferrer");
+  };
+  const handleDownload = (doc: DocType) => {
+    if (!doc.url) return;
+    const a = window.document.createElement("a");
+    a.href = doc.url;
+    a.download = doc.name;
+    window.document.body.appendChild(a);
+    a.click();
+    window.document.body.removeChild(a);
+  };
 
   return (
     <Sheet>
@@ -173,7 +195,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
             </div>
 
             <Tabs defaultValue="overview" className="space-y-4">
-              <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
+              <TabsList className="h-auto rounded-none w-full border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
                 <TabsTrigger
                   value="overview"
                   className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
@@ -200,7 +222,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                     label="Submitted By"
                     value={
                       <a className="text-[#2563EB] underline">
-                        {lemDetail?.submittedBy?.name || "Olamide Oladehinde"}
+                        {lemDetail?.submittedBy || "-"}
                       </a>
                     }
                   />
@@ -251,14 +273,25 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                     <div className="text-base font-semibold text-[#0F0F0F]">
                       Attachment
                     </div>
-                    {lemDetail.files.map((file: any, index: number) => (
-                      <DocCard
-                        key={index}
-                        name={file.name || "Attachment"}
-                        type={file.type || "PDF"}
-                        size={file.size || "—"}
-                      />
-                    ))}
+                    {lemDetail.files.map((file: any, index: number) => {
+                      const ext = getFileExtension(file?.name || "", file?.type || "");
+                      const d: DocType = {
+                        id: `${file?.name || "attachment"}-${index}`,
+                        name: file?.name || "Attachment",
+                        type: ext,
+                        size: file?.size || "—",
+                        url: file?.url,
+                        icon: getFileIcon(ext),
+                      };
+                      return (
+                        <DocumentItem
+                          key={d.id}
+                          d={d}
+                          handlePreview={handlePreview}
+                          handleDownload={handleDownload}
+                        />
+                      );
+                    })}
                   </div>
                 )}
               </TabsContent>
@@ -430,7 +463,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
             </Tabs>
           </div>
 
-          {!isVendor && (
+          {(!isVendor && lemDetail?.approverStatus === "pending") && (
             <div className="flex gap-3 pt-6">
               <Dialog>
                 <DialogTrigger asChild>
