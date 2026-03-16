@@ -21,6 +21,7 @@ export interface Option {
   label: string
   value: string
   disable?: boolean
+  searchText?: string
 }
 
 interface MultiSelectProps {
@@ -41,6 +42,8 @@ interface MultiSelectProps {
   emptyIndicator?: React.ReactNode
   creatable?: boolean
   createLabel?: string
+  enableMultiTermFilter?: boolean
+  multiTermOperator?: "AND" | "OR"
 }
 
 const MultipleSelector = React.forwardRef<
@@ -65,6 +68,8 @@ const MultipleSelector = React.forwardRef<
     emptyIndicator,
     creatable = false,
     createLabel = "Create",
+    enableMultiTermFilter = false,
+    multiTermOperator = "AND",
     ...props
   },
   ref
@@ -198,6 +203,31 @@ const MultipleSelector = React.forwardRef<
     },
     [animation, toggleOption]
   )
+
+  const displayOptions = React.useMemo(() => {
+    const query = inputValue.trim().toLowerCase()
+    if (!enableMultiTermFilter || !query) return options
+
+    const tokens = query.split(/\s+/).filter(Boolean)
+    if (tokens.length < 2) {
+      return options.filter(o => {
+        const l = o.label?.toLowerCase?.() ?? ""
+        const v = o.value?.toLowerCase?.() ?? ""
+        const s = o.searchText?.toLowerCase?.() ?? ""
+        return l.includes(query) || v.includes(query) || s.includes(query)
+      })
+    }
+
+    return options.filter(o => {
+      const l = o.label?.toLowerCase?.() ?? ""
+      const v = o.value?.toLowerCase?.() ?? ""
+      const s = o.searchText?.toLowerCase?.() ?? ""
+      const matchToken = (t: string) => l.includes(t) || v.includes(t) || s.includes(t)
+      return multiTermOperator === "AND"
+        ? tokens.every(matchToken)
+        : tokens.some(matchToken)
+    })
+  }, [options, inputValue, enableMultiTermFilter, multiTermOperator])
 
   return (
     <Popover
@@ -345,7 +375,7 @@ const MultipleSelector = React.forwardRef<
                   <span className="text-blue-600 dark:text-blue-400">{createLabel} "{inputValue.trim()}"</span>
                 </CommandItem>
               )}
-              {options.map((option) => {
+              {displayOptions.map((option) => {
                 const isSelected = selectedValues?.some?.(
                   (selectedValue) => selectedValue.value === option.value
                 )

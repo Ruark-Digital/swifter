@@ -11,8 +11,19 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ArrowLeft, Download, Eye, Search, Share2, X } from "lucide-react";
+import { ArrowLeft, Search, Share2, X } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ContractInvoiceDTO } from "../api/contractManagerApi";
+import { contractManagerApi } from "../api/contractManagerApi";
+import { approverApi } from "../api/approverApi";
+import { vendorApi } from "../api/vendorApi";
+import { getRequest } from "@/lib/axiosInstance";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useToastHandler } from "@/hooks/useToaster";
+import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
+import { DocumentItem, type DocType } from "./DocumentItem";
+import { DocumentViewer } from "@/components/ui/DocumentViewer";
+import type { ApiResponseError } from "@/types";
 
 export type InvoiceRow = {
   id: string;
@@ -24,7 +35,8 @@ export type InvoiceRow = {
 
 type InvoiceDetailsSheetProps = {
   trigger: React.ReactNode;
-  variant?: "manager" | "approver";
+  contractId: string;
+  invoiceId: string;
 };
 
 const LabelRow = ({
@@ -40,46 +52,146 @@ const LabelRow = ({
   </div>
 );
 
-const DocCard = ({
-  name,
-  type,
-  size,
-}: {
-  name: string;
-  type: "DOC" | "PDF";
-  size: string;
-}) => (
-  <div className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-white p-3">
-    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EEF2FF] text-xs font-semibold text-[#3B82F6]">
-      {type}
-    </div>
-    <div className="flex-1">
-      <div className="text-sm font-medium text-[#111827]">{name}</div>
-      <div className="text-xs text-[#9CA3AF]">
-        {type} • {size}
-      </div>
-    </div>
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F3F4F6] text-[#6B7280]"
-      >
-        <Eye className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E6F0FF] text-[#2563EB]"
-      >
-        <Download className="h-4 w-4" />
-      </button>
-    </div>
-  </div>
-);
 
 const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   trigger,
-  variant,
+  contractId,
+  invoiceId,
 }) => {
+  const { isVendor, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
+  const toastHandler = useToastHandler();
+  const queryClient = useQueryClient();
+  const [viewerOpen, setViewerOpen] = React.useState(false);
+  const [selectedDoc, setSelectedDoc] = React.useState<DocType | null>(null);
+
+  const {
+    data,
+    isLoading,
+    error,
+  } = useQuery<{
+    message?: string;
+    data?: ContractInvoiceDTO;
+  }>({
+    queryKey: ["contractInvoiceDetail", contractId, invoiceId],
+    queryFn: async () => {
+      if (isApprover) {
+        return await approverApi.getInvoiceDetail(contractId, invoiceId);
+      }
+      if (isVendor) {
+        const res = await vendorApi.getInvoiceDetail(contractId, invoiceId);
+        return { message: res.data.message, data: res.data.data };
+      }
+      if (isManager || isAdmin) {
+        return await contractManagerApi.getInvoiceDetail(invoiceId);
+      }
+      if (isViewOnly) {
+        const res = await getRequest({
+          url: `/contract/user/contracts/${contractId}/invoice/${invoiceId}`,
+        });
+        return res.data as { message?: string; data?: ContractInvoiceDTO };
+      }
+      return { data: undefined, message: undefined };
+    },
+    enabled: Boolean(contractId) && Boolean(invoiceId),
+    staleTime: 30000,
+  });
+
+  const invoice = data?.data;
+
+  const { data: approveStatusRes } = useQuery<{
+    message?: string;
+    data?: { status?: boolean };
+  }>({
+    queryKey: ["invoiceApproveStatus", contractId, invoiceId],
+    queryFn: async () => {
+      return await approverApi.getInvoiceApproveStatus(contractId, invoiceId);
+    },
+    enabled: Boolean(contractId) && Boolean(invoiceId) && isApprover,
+    staleTime: 30000,
+  });
+  const canApprove = approveStatusRes?.data?.status === true;
+
+  const approveInvoiceMutation = useMutation<
+    void,
+    ApiResponseError,
+    "approved" | "rejected"
+  >({
+    mutationKey: ["approveInvoice", contractId, invoiceId],
+    mutationFn: async (action) => {
+      await approverApi.approveInvoice(contractId, invoiceId, { action });
+    },
+    onSuccess: async (_, action) => {
+      toastHandler.success(
+        "Invoice updated",
+        action === "approved"
+          ? "Invoice approved successfully"
+          : "Invoice rejected successfully",
+      );
+      await queryClient.invalidateQueries({ queryKey: ["contractInvoiceDetail"] });
+      await queryClient.invalidateQueries({ queryKey: ["contractInvoices"] });
+    },
+    onError: (err, action) => {
+      toastHandler.error(
+        action === "approved"
+          ? "Failed to approve invoice"
+          : "Failed to reject invoice",
+        err?.response?.data?.message || "Unable to update invoice status",
+      );
+    },
+  });
+
+  const handlePreview = React.useCallback((d: DocType) => {
+    setSelectedDoc(d);
+    setViewerOpen(true);
+  }, []);
+
+  const handleDownload = React.useCallback((d: DocType) => {
+    if (!d.url) return;
+    window.open(d.url, "_blank", "noopener,noreferrer");
+  }, []);
+
+  const files: DocType[] =
+    invoice?.files?.map((file, index) => {
+      const ext = getFileExtension(file?.name || "", file?.type || "");
+      return {
+        id: `${file?.name || "attachment"}-${index}`,
+        name: file?.name || "Attachment",
+        type: ext,
+        size: file?.size || "—",
+        url: file?.url,
+        icon: getFileIcon(ext),
+      };
+    }) ?? [];
+
+  const statusLabel =
+    invoice?.status === "approved"
+      ? "Approved"
+      : invoice?.status === "rejected"
+        ? "Rejected"
+        : invoice?.status === "draft"
+          ? "Draft"
+          : invoice?.status === "pending"
+            ? "Pending"
+            : invoice?.status ?? "-";
+
+  const statusTone =
+    invoice?.status === "approved"
+      ? "bg-green-100 text-green-700"
+      : invoice?.status === "rejected"
+        ? "bg-red-100 text-red-700"
+        : invoice?.status === "draft"
+          ? "bg-slate-100 text-slate-700"
+          : "bg-yellow-100 text-yellow-700";
+
+  const invoiceIdLabel = invoice?.invoiceId ?? invoice?._id ?? invoiceId;
+  const typeLabel =
+    typeof invoice?.type === "string"
+      ? invoice.type
+          .split(" ")
+          .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+          .join(" ")
+      : "-";
+
   return (
     <Sheet>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
@@ -114,8 +226,13 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
 
           <div className="space-y-6">
             <div className="flex items-start justify-between">
-              <div className="text-base font-semibold text-[#0F0F0F]">
-                Invoice Details
+              <div className="space-y-1">
+                <div className="text-xs font-medium text-[#9CA3AF]">
+                  Invoice Details
+                </div>
+                <div className="text-base font-semibold text-[#0F0F0F]">
+                  {invoice?.title ?? "-"}
+                </div>
               </div>
               <Button
                 variant="outline"
@@ -126,16 +243,30 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2">
-              <LabelRow label="Submitted by" value="Zenith Solutions" />
-              <LabelRow label="Invoice ID" value="INV-2025-10" />
-              <LabelRow label="Invoice Category" value="Milestone Payment" />
-              <LabelRow label="Linked Milestone" value="Milestone 1" />
-              <LabelRow label="Submission Date" value="April 30, 2025" />
+              <LabelRow label="Invoice ID" value={invoiceIdLabel} />
+              <LabelRow label="Invoice Category" value={typeLabel || "-"} />
+              <LabelRow
+                label="Amount"
+                value={
+                  typeof invoice?.amount === "number"
+                    ? new Intl.NumberFormat(undefined, {
+                        style: "currency",
+                        currency: "USD",
+                      }).format(invoice.amount)
+                    : "-"
+                }
+              />
+              <LabelRow
+                label="Tax Code"
+                value={invoice?.taxCode ?? "-"}
+              />
               <LabelRow
                 label="Status"
                 value={
-                  <span className="inline-flex rounded-full bg-[#DCFCE7] px-3 py-1 text-xs font-semibold text-[#16A34A]">
-                    Approved
+                  <span
+                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusTone}`}
+                  >
+                    {statusLabel}
                   </span>
                 }
               />
@@ -146,38 +277,69 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                 Description/Note
               </div>
               <div className="text-sm text-[#374151]">
-                Crypto ipsum bitcoin ethereum dogecoin litecoin. Compound
-                decentraland stacks decred uniswap velas serum. Crypto ipsum
-                bitcoin ethereum dogecoin litecoin. Compound decentraland stacks
-                decred uniswap velas serum. Crypto ipsum bitcoin ethereum dogecoin
-                litecoin. Compound decentraland stacks decred uniswap velas serum.
-                Crypto ipsum bitcoin ethereum dogecoin litecoin. Compound
-                decentraland stacks decred uniswap velas serum.
+                {isLoading
+                  ? "Loading..."
+                  : invoice?.description || "No description provided."}
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="text-base font-semibold text-[#0F0F0F]">
-                Attachment
+            {files.length > 0 && (
+              <div className="space-y-3">
+                <div className="text-base font-semibold text-[#0F0F0F]">
+                  Attachments
+                </div>
+                <div className="space-y-2">
+                  {files.map((d) => (
+                    <DocumentItem
+                      key={d.id}
+                      d={d}
+                      handlePreview={handlePreview}
+                      handleDownload={handleDownload}
+                    />
+                  ))}
+                </div>
               </div>
-              <DocCard name="RFP_HRSoftware" type="DOC" size="25KB" />
-            </div>
+            )}
+
+            {error && !invoice && (
+              <div className="text-xs text-red-600">
+                Failed to load invoice details.
+              </div>
+            )}
           </div>
 
-          {variant === "approver" && (
+          {isApprover && canApprove && (
             <div className="flex gap-3 pt-6">
               <Button
                 variant="outline"
                 className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                disabled={approveInvoiceMutation.isPending}
+                onClick={() => approveInvoiceMutation.mutate("rejected")}
               >
-                Reject
+                {approveInvoiceMutation.isPending ? "Processing..." : "Reject"}
               </Button>
-              <Button className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
-                Approve
+              <Button
+                className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
+                disabled={approveInvoiceMutation.isPending}
+                onClick={() => approveInvoiceMutation.mutate("approved")}
+              >
+                {approveInvoiceMutation.isPending ? "Processing..." : "Approve"}
               </Button>
             </div>
           )}
         </div>
+        {selectedDoc && (
+          <DocumentViewer
+            isOpen={viewerOpen}
+            onClose={() => {
+              setViewerOpen(false);
+              setSelectedDoc(null);
+            }}
+            fileUrl={selectedDoc.url as string}
+            fileName={selectedDoc.name}
+            fileType={getFileExtension(selectedDoc.name, selectedDoc.type)}
+          />
+        )}
       </SheetContent>
     </Sheet>
   );
@@ -189,7 +351,7 @@ type InvoiceTableProps = {
   totalCount?: number;
   pagination: PaginationState;
   setPagination: React.Dispatch<React.SetStateAction<PaginationState>>;
-  variant?: "manager" | "approver";
+  contractId: string;
 };
 
 const InvoiceTable: React.FC<InvoiceTableProps> = ({
@@ -198,7 +360,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
   totalCount,
   pagination,
   setPagination,
-  variant = "manager",
+  contractId,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -251,10 +413,11 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
       {
         id: "actions",
         header: () => <div className="text-right">Actions</div>,
-        cell: () => (
+        cell: ({ row }) => (
           <div className="text-right">
             <InvoiceDetailsSheet
-              variant={variant}
+              contractId={contractId}
+              invoiceId={row.original.id}
               trigger={
                 <button
                   type="button"
@@ -269,7 +432,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
         ),
       },
     ];
-  }, [variant]);
+  }, [contractId]);
 
   const invoiceRows: InvoiceRow[] = React.useMemo(() => {
     const currencyFormatter = new Intl.NumberFormat(undefined, {

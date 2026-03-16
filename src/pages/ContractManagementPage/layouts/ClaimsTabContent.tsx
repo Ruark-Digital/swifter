@@ -17,8 +17,13 @@ type Props = {
   actionsDisabled?: boolean;
 };
 
-const ClaimsTabContent: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
-  const { isApprover, isVendor, isManager, isAdmin, isViewOnly } = useUserRole();
+const ClaimsTabContent: React.FC<Props> = ({
+  contractId,
+  isActive,
+  actionsDisabled,
+}) => {
+  const { isApprover, isVendor, isManager, isAdmin, isViewOnly } =
+    useUserRole();
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -28,19 +33,15 @@ const ClaimsTabContent: React.FC<Props> = ({ contractId, isActive, actionsDisabl
     if (isVendor) return `/contract/vendor/contracts/${contractId}/claim`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/claim`;
     if (isManager) return `/contract/manager/contracts/${contractId}/claims`;
-    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/claim`;
+    if (isAdmin || isViewOnly)
+      return `/contract/user/contracts/${contractId}/claim`;
     return `/contract/user/contracts/${contractId}/claim`; // Default fallback
   };
 
   const basePath = getBasePath();
 
   const { data: statsRes, isLoading: isStatsLoading } = useQuery({
-    queryKey: [
-      "contractClaims",
-      "stats",
-      contractId,
-      basePath
-    ],
+    queryKey: ["contractClaims", "stats", contractId, basePath],
     queryFn: async () => {
       const response = await getRequest({
         url: `${basePath}/stats`,
@@ -56,14 +57,14 @@ const ClaimsTabContent: React.FC<Props> = ({ contractId, isActive, actionsDisabl
       contractId,
       pagination.pageIndex,
       pagination.pageSize,
-      basePath
+      basePath,
     ],
     queryFn: async () => {
       const query: ManagerListClaimsQuery = {
         page: pagination.pageIndex + 1,
         limit: pagination.pageSize,
       };
-      
+
       const params = new URLSearchParams();
       if (query.page) params.append("page", String(query.page));
       if (query.limit) params.append("limit", String(query.limit));
@@ -90,10 +91,14 @@ const ClaimsTabContent: React.FC<Props> = ({ contractId, isActive, actionsDisabl
           >
             <Share2 className="mr-2 h-4 w-4" /> Export Report
           </Button>
+
           {!isApprover && (
             <RequestClaimDialog
               trigger={
-                <Button className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-medium text-white hover:bg-[#1f3552]" disabled={!!actionsDisabled}>
+                <Button
+                  className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-medium text-white hover:bg-[#1f3552]"
+                  disabled={!!actionsDisabled}
+                >
                   Create Claim
                 </Button>
               }

@@ -8,7 +8,7 @@ import type { PaginationState } from "@tanstack/react-table";
 import { type ManagerListInvoicesQuery } from "../api/contractManagerApi";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
-import SubmitLemDialog from "../components/SubmitLemDialog";
+import CreateInvoiceDialog from "../components/CreateInvoiceDialog";
 
 type Props = {
   contractId: string;
@@ -79,11 +79,11 @@ const InvoiceTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-slate-900">Invoice</h3>
         {isVendor && (
-          <SubmitLemDialog
+          <CreateInvoiceDialog
             contractId={contractId}
             trigger={
               <Button className="rounded-xl bg-[#2A4467] px-4 font-semibold text-white hover:bg-[#2A4467]/90">
-                Submit LEM
+                Create Invoice
               </Button>
             }
           />
@@ -98,7 +98,7 @@ const InvoiceTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         totalCount={totalCount}
         pagination={pagination}
         setPagination={setPagination}
-        variant={isApprover ? "approver" : "manager"}
+        contractId={contractId}
       />
     </TabsContent>
   );

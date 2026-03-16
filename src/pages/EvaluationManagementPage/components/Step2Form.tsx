@@ -13,6 +13,7 @@ type Evaluator = {
   _id: string;
   email: string;
   status: string;
+  name?: string;
 };
 
 interface Step2FormProps {
@@ -44,6 +45,7 @@ const Step2Form = ({ control, isEdit = false }: Step2FormProps) => {
       ?.map((evaluator) => ({
         label: evaluator.email,
         value: evaluator._id,
+        searchText: `${evaluator.email ?? ""} ${evaluator.name ?? ""}`,
       })) || [];
 
   const addGroup = () => {
@@ -88,6 +90,8 @@ const Step2Form = ({ control, isEdit = false }: Step2FormProps) => {
                 hideClearAllButton={false}
                 creatable={true}
                 createLabel="Add email"
+                enableMultiTermFilter={true}
+                multiTermOperator="AND"
                 emptyIndicator={
                   <p className="text-center text-sm text-gray-500">
                     No evaluators found

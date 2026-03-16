@@ -60,7 +60,7 @@ const FilesListItem = ({ file }: { file: File }) => {
           <FileText className="h-5 w-5 text-[#2A4467]" />
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium text-[#0F0F0F]">{file.name}</div>
+          <div className="truncate text-sm font-medium max-w-xs text-[#0F0F0F]">{file.name}</div>
           <div className="text-xs font-medium text-[#9CA3AF]">
             {getSimpleFileExtension(file.name).toUpperCase()} • {formatFileSize(file.size)}
           </div>
@@ -125,6 +125,9 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({ trigger, contractId }
       reset();
       await queryClient.invalidateQueries({
         queryKey: ["contractLems", "contractInvoices", contractId],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["lem-list", contractId],
       });
       // Also invalidate invoices as LEMs might affect them or appear there? 
       // Based on InvoiceTabContent, it fetches invoices.

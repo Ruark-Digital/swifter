@@ -26,7 +26,7 @@ export type TextMultiSelectProps = {
   label?: string | JSX.Element;
   containerClass?: string;
   error?: string;
-  options: { label: string; value: string }[];
+  options: { label: string; value: string; searchText?: string }[];
   placeholder?: string;
   onChange?: ((value: Option[]) => void) | ((event: { target: { name: string; value: Option[] } }) => void);
   value?: Option[];
@@ -37,6 +37,8 @@ export type TextMultiSelectProps = {
   emptyIndicator?: React.ReactNode;
   creatable?: boolean;
   createLabel?: string;
+  enableMultiTermFilter?: boolean;
+  multiTermOperator?: "AND" | "OR";
 }
 
 // Forge-compatible TextSelect component
@@ -125,14 +127,14 @@ export const TextMultiSelect = (props: TextMultiSelectProps & Partial<ForgerSlot
     name,
     value,
     onChange,
-    onBlur,
-    control,
     maxCount = 3,
     hideClearAllButton = false,
     hidePlaceholderWhenSelected = false,
     emptyIndicator,
     creatable = false,
     createLabel = "Create",
+    enableMultiTermFilter = false,
+    multiTermOperator = "AND",
     ...selectProps
   } = props;
   
@@ -154,7 +156,8 @@ export const TextMultiSelect = (props: TextMultiSelectProps & Partial<ForgerSlot
   // Convert options to Option format
   const formattedOptions: Option[] = options.map(option => ({
     label: option.label,
-    value: option.value
+    value: option.value,
+    searchText: option.searchText
   }));
 
   return (
@@ -179,6 +182,8 @@ export const TextMultiSelect = (props: TextMultiSelectProps & Partial<ForgerSlot
         emptyIndicator={emptyIndicator || <p className="text-center text-sm">No results found</p>}
         creatable={creatable}
         createLabel={createLabel}
+        enableMultiTermFilter={enableMultiTermFilter}
+        multiTermOperator={multiTermOperator}
         className={`w-full !h-12 border border-gray-300 rounded-lg focus:border-[#2A4467] focus:ring-[#2A4467] text-gray-900 dark:!text-gray-200 ${
           error ? "border-red-500" : ""
         }`}

@@ -26,7 +26,7 @@ export type ForgeControl<
   TFieldProps = unknown
 > = Control<T, any> & {
   fields?: FieldProps<TFieldProps>[];
-  hasFields: boolean;
+  hasFields?: boolean;
   _enhancedValidationState?: EnhancedValidationState<T>;
   _validationContext?: ValidationContext;
   _fieldConfigs?: FieldConfig<T>[];

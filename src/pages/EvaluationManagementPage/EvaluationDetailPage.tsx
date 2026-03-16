@@ -937,7 +937,7 @@ const EvaluationDetailPage: React.FC = () => {
                       {evaluation?.startDate
                         ? formatDateTZ(
                             evaluation.startDate,
-                            "MMMM dd, yyyy",
+                            "MMMM dd, yyyy hh:mm a",
                             evaluation?.timezone
                           )
                         : "N/A"}{" "}
@@ -1013,7 +1013,7 @@ const EvaluationDetailPage: React.FC = () => {
                       {evaluation?.endDate
                         ? formatDateTZ(
                             evaluation.endDate,
-                            "MMMM dd, yyyy",
+                            "MMMM dd, yyyy hh:mm a",
                             evaluation?.timezone
                           )
                         : "N/A"}{" "}

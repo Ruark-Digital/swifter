@@ -4,6 +4,8 @@ import LemTable, { type LemRow } from "../components/LemTable";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
+import { Button } from "@/components/ui/button";
+import SubmitLemDialog from "../components/SubmitLemDialog";
 
 type Props = {
   contractId: string;
@@ -72,6 +74,16 @@ const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         <h3 className="text-base font-semibold text-slate-900">
           Labor, Equipment & Material Reports
         </h3>
+        {isVendor ? (
+          <SubmitLemDialog
+            contractId={contractId}
+            trigger={
+              <Button className="h-10 rounded-xl px-4">
+                Submit LEM
+              </Button>
+            }
+          />
+        ) : null}
       </div>
 
       <LemTable

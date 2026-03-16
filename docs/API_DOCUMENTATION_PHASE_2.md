@@ -1032,6 +1032,140 @@
           }
         }
       },
+      "IContractClaim": {
+        "type": "object",
+        "required": [
+          "title",
+          "type",
+          "impact",
+          "description"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "impact": {
+            "type": "string",
+            "enum": [
+              "time",
+              "cost",
+              "time_cost"
+            ]
+          },
+          "time": {
+            "type": "number"
+          },
+          "cost": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ContractClaimDTO": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "claimId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "under review",
+              "approved",
+              "rejected",
+              "dispute"
+            ]
+          },
+          "type": {
+            "type": "string"
+          },
+          "impact": {
+            "type": "string",
+            "enum": [
+              "time",
+              "cost",
+              "time_cost"
+            ]
+          },
+          "time": {
+            "type": "number"
+          },
+          "cost": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "manager": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string"
+              },
+              "comment": {
+                "type": "string"
+              }
+            }
+          },
+          "approvers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContractChangeApprover"
+            }
+          }
+        }
+      },
       "ProjectStats": {
         "type": "object",
         "properties": {
@@ -1172,6 +1306,60 @@
           "message": {
             "type": "string",
             "example": "Bad request"
+          }
+        }
+      },
+      "FinancialStatement": {
+        "type": "object",
+        "properties": {
+          "originalContractValue": {
+            "type": "number"
+          },
+          "changeOrders": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "number"
+              },
+              "value": {
+                "type": "number"
+              }
+            }
+          },
+          "pendingChangeOrders": {
+            "type": "number"
+          },
+          "savingsRealized": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "percentage": {
+                "type": "number"
+              }
+            }
+          },
+          "percentageIncrease": {
+            "type": "number"
+          },
+          "holdbackAmount": {
+            "type": "number"
+          },
+          "releasedHoldback": {
+            "type": "number"
+          },
+          "currentContractValue": {
+            "type": "number"
+          },
+          "billedTillDate": {
+            "type": "number"
+          },
+          "remaining": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
           }
         }
       },
@@ -1847,86 +2035,6 @@
           }
         }
       },
-      "ContractClaimDTO": {
-        "type": "object",
-        "properties": {
-          "_id": {
-            "type": "string"
-          },
-          "claimId": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "under review",
-              "approved",
-              "rejected",
-              "dispute"
-            ]
-          },
-          "type": {
-            "type": "string"
-          },
-          "impact": {
-            "type": "string",
-            "enum": [
-              "time",
-              "cost",
-              "time_cost"
-            ]
-          },
-          "time": {
-            "type": "number"
-          },
-          "cost": {
-            "type": "number"
-          },
-          "descrption": {
-            "type": "string"
-          },
-          "files": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string"
-                },
-                "url": {
-                  "type": "string"
-                },
-                "type": {
-                  "type": "string"
-                },
-                "size": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "manager": {
-            "type": "object",
-            "properties": {
-              "status": {
-                "type": "string"
-              },
-              "comment": {
-                "type": "string"
-              }
-            }
-          },
-          "approvers": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ContractChangeApprover"
-            }
-          }
-        }
-      },
       "ContractComplianceDTO": {
         "type": "object",
         "properties": {
@@ -1974,40 +2082,51 @@
           "title": {
             "type": "string"
           },
+          "description": {
+            "type": "string"
+          },
           "type": {
             "type": "string",
             "enum": [
               "progress draw",
               "monthly payment",
-              "milestone payment"
+              "milestone payment",
+              "holdback"
             ]
+          },
+          "lem": {
+            "type": "string"
           },
           "taxCode": {
-            "type": "string"
-          },
-          "taxValue": {
-            "type": "number"
-          },
-          "description": {
-            "type": "string"
-          },
-          "inputType": {
             "type": "string",
             "enum": [
-              "manual",
-              "file"
+              "HST",
+              "GST",
+              "PST/QST",
+              "Others"
             ]
-          },
-          "amount": {
-            "type": "number"
           },
           "status": {
             "type": "string",
             "enum": [
+              "active",
+              "draft",
               "pending",
               "approved",
-              "rejected",
-              "draft"
+              "rejected"
+            ]
+          },
+          "taxValue": {
+            "type": "number"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "fileType": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "file"
             ]
           },
           "files": {
@@ -2026,6 +2145,55 @@
                 },
                 "size": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "component": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "number"
+                },
+                "unitOfmeasurement": {
+                  "type": "string"
+                },
+                "unitPrice": {
+                  "type": "number"
+                },
+                "subItems": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "component": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "quantity": {
+                        "type": "number"
+                      },
+                      "unitOfmeasurement": {
+                        "type": "string"
+                      },
+                      "unitPrice": {
+                        "type": "number"
+                      },
+                      "subtotal": {
+                        "type": "number"
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -2070,19 +2238,134 @@
           }
         ]
       },
-      "IContractClaim": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ContractClaimDTO"
-          }
-        ]
-      },
       "IContractInvoice": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ContractInvoiceDTO"
+        "type": "object",
+        "required": [
+          "title",
+          "description",
+          "type",
+          "taxCode",
+          "status",
+          "fileType"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "progress draw",
+              "monthly payment",
+              "milestone payment",
+              "holdback"
+            ]
+          },
+          "lem": {
+            "type": "string"
+          },
+          "taxCode": {
+            "type": "string",
+            "enum": [
+              "HST",
+              "GST",
+              "PST/QST",
+              "Others"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "draft"
+            ]
+          },
+          "taxValue": {
+            "type": "number"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "fileType": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "file"
+            ]
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "component": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "number"
+                },
+                "unitOfmeasurement": {
+                  "type": "string"
+                },
+                "unitPrice": {
+                  "type": "number"
+                },
+                "subItems": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "component": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "quantity": {
+                        "type": "number"
+                      },
+                      "unitOfmeasurement": {
+                        "type": "string"
+                      },
+                      "unitPrice": {
+                        "type": "number"
+                      },
+                      "subtotal": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
-        ]
+        }
       },
       "ContractDeliverableDTO": {
         "type": "object",
@@ -12949,6 +13232,99 @@
         }
       }
     },
+    "/manager/contracts/{contractId}/clauses": {
+      "get": {
+        "summary": "Get contract clause library",
+        "description": "Returns clause library data for a contract.",
+        "tags": [
+          "ContractManager - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Clause library fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/manager/contracts/{contractId}/lems": {
       "get": {
         "summary": "List contract LEMs",
@@ -19704,6 +20080,292 @@
         }
       }
     },
+    "/manager/contracts/{contractId}/dashboard/financial-statement": {
+      "get": {
+        "summary": "Get contract financial statement",
+        "description": "Returns the financial overview of a contract, including values, change orders, holdbacks, and billed amounts.",
+        "tags": [
+          "ContractManager - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            },
+            "description": "The type of contract"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Financial statement fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FinancialStatement"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/dashboard/deliverable-status": {
+      "get": {
+        "summary": "Get deliverable status chart",
+        "description": "Returns the count of approved, rejected, and pending deliverables.",
+        "tags": [
+          "ContractManager - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deliverable status chart fetched successfully"
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/dashboard/activities": {
+      "get": {
+        "summary": "Get contract activities chart",
+        "description": "Returns a series of activities (changes, claims, invoices, etc.) over a given range.",
+        "tags": [
+          "ContractManager - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "YTD",
+                90, 60, 30, 7],
+              "default": "YTD"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Activities fetched successfully"
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/dashboard/delivery-summary": {
+      "get": {
+        "summary": "Get delivery summary chart",
+        "description": "Returns a summary of delivery performance over a given range.",
+        "tags": [
+          "ContractManager - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "YTD",
+                90, 60, 30, 7],
+              "default": "YTD"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Delivery summary fetched successfully"
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/dashboard/attachment": {
+      "get": {
+        "summary": "Get contract attachment summary",
+        "description": "Returns the count of amendments and insurance policies.",
+        "tags": [
+          "ContractManager - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attachment fetched successfully"
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/dashboard/vendor-kpi": {
+      "get": {
+        "summary": "Get vendor KPI chart",
+        "description": "Returns the KPI chart for the vendor associated with the contract.",
+        "tags": [
+          "ContractManager - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vendor KPI fetched successfully"
+          }
+        }
+      }
+    },
     "/manager/msa-contract/stats": {
       "get": {
         "summary": "Get MSA contract statistics",
@@ -23054,6 +23716,71 @@
           },
           "403": {
             "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/manager/msa-contract/{contractId}/clauses": {
+      "get": {
+        "summary": "Get MSA contract clause library",
+        "description": "Returns clause library data for an MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Clause library fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "404": {
+            "description": "MSA contract not found"
           },
           "500": {
             "description": "Server error"
@@ -32870,58 +33597,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "title",
-                  "description",
-                  "type",
-                  "priority"
-                ],
-                "properties": {
-                  "title": {
-                    "type": "string"
-                  },
-                  "description": {
-                    "type": "string"
-                  },
-                  "type": {
-                    "type": "string"
-                  },
-                  "priority": {
-                    "type": "string",
-                    "enum": [
-                      "low",
-                      "medium",
-                      "high"
-                    ]
-                  },
-                  "cost": {
-                    "type": "number"
-                  },
-                  "impact": {
-                    "type": "string"
-                  },
-                  "files": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "name": {
-                          "type": "string"
-                        },
-                        "url": {
-                          "type": "string"
-                        },
-                        "type": {
-                          "type": "string"
-                        },
-                        "size": {
-                          "type": "number"
-                        }
-                      }
-                    }
-                  }
-                }
+                "$ref": "#/components/schemas/IContractClaim"
               }
             }
           }

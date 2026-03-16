@@ -245,14 +245,9 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   <LabelRow
                     label="Submission Date"
                     value={
-                      lemDetail?.submissionDate || lemDetail?.createdAt
-                        ? formatDate(
-                            lemDetail?.submissionDate ||
-                              lemDetail?.createdAt ||
-                              "",
-                            "yyyy MMMM dd",
-                          )
-                        : "-"
+                      lemDetail?.createdAt
+                        ? formatDate(lemDetail.createdAt, "yyyy-MMM-dd")
+                        : "—"
                     }
                   />
                 </div>

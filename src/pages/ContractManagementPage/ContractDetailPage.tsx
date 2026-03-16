@@ -150,7 +150,8 @@ const ROLE_TAB_WHITELIST: Record<
     "reports",
     "ncr-log",
     "compliance",
-    "amendments"
+    "amendments",
+    "rate-sheets"
   ],
   manager: ALL_TABS.map((t) => t.key),
   "view only": [
@@ -173,7 +174,8 @@ const ContractDetailPage: React.FC = () => {
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
-  const { isVendor, isApprover, isViewOnly, isCompanyAdmin, isManager } = useUserRole();
+  const { isVendor, isApprover, isViewOnly, isCompanyAdmin, isManager } =
+    useUserRole();
   const queryKey = useUserQueryKey(["contract-manager-contracts"]);
   const approveStatusQueryKey = useUserQueryKey([
     "contract-approver-approve-status",
@@ -207,13 +209,12 @@ const ContractDetailPage: React.FC = () => {
   });
 
   const { data: approveStatusResponse } = useQuery({
-    queryKey: [
-      approveStatusQueryKey[0],
-      contractsResponse?.data?.data?._id,
-    ],
+    queryKey: [approveStatusQueryKey[0], contractsResponse?.data?.data?._id],
     queryFn: () => approverApi.getApproveStatus(contract?._id ?? ""),
     enabled:
-      !!contractsResponse?.data?.data?._id && isApprover && contractsResponse?.data?.data?.status === "pending_approval",
+      !!contractsResponse?.data?.data?._id &&
+      isApprover &&
+      contractsResponse?.data?.data?.status === "pending_approval",
     staleTime: 60000,
     retry: false,
   });
@@ -336,8 +337,11 @@ const ContractDetailPage: React.FC = () => {
   const actionsDisabled = contract?.status === "pending_approval";
 
   const canApprove = approveStatusResponse?.data?.data?.status === "pending";
-  const hasAprovedorRejected = approveStatusResponse?.data?.data?.status === "approved" || approveStatusResponse?.data?.data?.status === "rejected";
-  const hasNoAuthorization = approveStatusResponse?.data?.data?.status === "N/A";
+  const hasAprovedorRejected =
+    approveStatusResponse?.data?.data?.status === "approved" ||
+    approveStatusResponse?.data?.data?.status === "rejected";
+  const hasNoAuthorization =
+    approveStatusResponse?.data?.data?.status === "N/A";
 
   const triggerClass =
     "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3";
@@ -381,8 +385,12 @@ const ContractDetailPage: React.FC = () => {
         <Badge className={status?.className}>{status?.label}</Badge>
       </div>
 
-       {isApprover && canApprove && !hasAprovedorRejected && (
-        <div className={cn("flex items-center gap-4", { "hidden": hasNoAuthorization })}>
+      {isApprover && canApprove && !hasAprovedorRejected && (
+        <div
+          className={cn("flex items-center gap-4", {
+            hidden: hasNoAuthorization,
+          })}
+        >
           <Button
             variant="default"
             className="bg-[#2A4467] hover:bg-[#2A4467]/90"

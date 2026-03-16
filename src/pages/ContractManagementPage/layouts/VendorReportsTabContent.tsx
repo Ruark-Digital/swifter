@@ -29,6 +29,16 @@ import { useDebounceValue } from "usehooks-ts";
 import { format } from "date-fns";
 import type { VendorReportRow, ReportDetails } from "@/types";
 import { useUserRole } from "@/hooks/useUserRole";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import CreateVendorReportDialog from "../components/CreateVendorReportDialog";
+import { CheckCircle } from "lucide-react";
 
 const LabelRow = ({
   label,
@@ -139,12 +149,12 @@ const ReportDetailsSheet: React.FC<{
                 >
                   Overview
                 </TabsTrigger>
-                <TabsTrigger
+                {/* <TabsTrigger
                   value="comments"
                   className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                 >
                   Comments
-                </TabsTrigger>
+                </TabsTrigger> */}
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
@@ -275,6 +285,8 @@ function VendorReportsTabContent({
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 300);
   const { isVendor, isApprover, isManager, isAdmin, isViewOnly } =
     useUserRole();
+  const [openCreate, setOpenCreate] = useState(false);
+  const [openSuccess, setOpenSuccess] = useState(false);
 
   const getBasePath = () => {
     if (isVendor) return `/contract/vendor/contracts/${contractId}`;
@@ -382,7 +394,25 @@ function VendorReportsTabContent({
 
   return (
     <TabsContent value="reports" className="space-y-8">
-      <h2 className="text-lg font-semibold text-slate-900">Vendor’s Reports</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-slate-900">
+          Vendor’s Reports
+        </h2>
+        <Dialog open={openCreate} onOpenChange={setOpenCreate}>
+          <DialogTrigger asChild>
+            <Button className="h-10 rounded-xl bg-[#2A4467] text-white">
+              Create Report
+            </Button>
+          </DialogTrigger>
+          <CreateVendorReportDialog
+            contractId={contractId}
+            onSuccess={() => {
+              setOpenCreate(false);
+              setOpenSuccess(true);
+            }}
+          />
+        </Dialog>
+      </div>
 
       <Card className="w-[320px] rounded-xl border border-slate-200 bg-white p-5 shadow-none">
         <div className="flex items-center justify-between">
@@ -453,6 +483,39 @@ function VendorReportsTabContent({
           )}
         </div>
       </Card>
+
+      <Dialog open={openSuccess} onOpenChange={setOpenSuccess}>
+        <DialogContent
+          className="sm:max-w-[420px] rounded-2xl p-6"
+          showCloseButton={false}
+        >
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#ECFDF5]">
+              <CheckCircle className="h-8 w-8 text-[#16A34A]" />
+            </div>
+            <DialogHeader>
+              <DialogTitle className="text-base font-semibold text-[#0F0F0F]">
+                Report Created Successfully
+              </DialogTitle>
+            </DialogHeader>
+            <div className="mt-2 grid w-full grid-cols-2 gap-3">
+              <DialogClose asChild>
+                <Button
+                  variant="outline"
+                  className="h-11 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-slate-900"
+                >
+                  Close
+                </Button>
+              </DialogClose>
+              <DialogClose asChild>
+                <Button className="h-11 rounded-xl bg-[#2A4467] text-white">
+                  Done
+                </Button>
+              </DialogClose>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </TabsContent>
   );
 }
