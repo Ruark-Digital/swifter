@@ -26,7 +26,7 @@ export type TextMultiSelectProps = {
   label?: string | JSX.Element;
   containerClass?: string;
   error?: string;
-  options: { label: string; value: string; searchText?: string }[];
+  options: { label: string; value: string; searchText?: string; fieldMap?: Record<string, string> }[];
   placeholder?: string;
   onChange?: ((value: Option[]) => void) | ((event: { target: { name: string; value: Option[] } }) => void);
   value?: Option[];
@@ -39,6 +39,7 @@ export type TextMultiSelectProps = {
   createLabel?: string;
   enableMultiTermFilter?: boolean;
   multiTermOperator?: "AND" | "OR";
+  searchFieldsPriority?: string[];
 }
 
 // Forge-compatible TextSelect component
@@ -135,6 +136,7 @@ export const TextMultiSelect = (props: TextMultiSelectProps & Partial<ForgerSlot
     createLabel = "Create",
     enableMultiTermFilter = false,
     multiTermOperator = "AND",
+    searchFieldsPriority,
     ...selectProps
   } = props;
   
@@ -157,7 +159,8 @@ export const TextMultiSelect = (props: TextMultiSelectProps & Partial<ForgerSlot
   const formattedOptions: Option[] = options.map(option => ({
     label: option.label,
     value: option.value,
-    searchText: option.searchText
+    searchText: option.searchText,
+    fieldMap: option.fieldMap
   }));
 
   return (
@@ -184,6 +187,7 @@ export const TextMultiSelect = (props: TextMultiSelectProps & Partial<ForgerSlot
         createLabel={createLabel}
         enableMultiTermFilter={enableMultiTermFilter}
         multiTermOperator={multiTermOperator}
+        searchFieldsPriority={searchFieldsPriority}
         className={`w-full !h-12 border border-gray-300 rounded-lg focus:border-[#2A4467] focus:ring-[#2A4467] text-gray-900 dark:!text-gray-200 ${
           error ? "border-red-500" : ""
         }`}

@@ -22,6 +22,7 @@ export interface Option {
   value: string
   disable?: boolean
   searchText?: string
+  fieldMap?: Record<string, string>
 }
 
 interface MultiSelectProps {
@@ -44,6 +45,7 @@ interface MultiSelectProps {
   createLabel?: string
   enableMultiTermFilter?: boolean
   multiTermOperator?: "AND" | "OR"
+  searchFieldsPriority?: string[]
 }
 
 const MultipleSelector = React.forwardRef<
@@ -59,7 +61,6 @@ const MultipleSelector = React.forwardRef<
     animation = 0,
     maxCount = 3,
     modalPopover = false,
-    asChild = false,
     className,
     commandProps,
     defaultOptions = [],
@@ -70,10 +71,16 @@ const MultipleSelector = React.forwardRef<
     createLabel = "Create",
     enableMultiTermFilter = false,
     multiTermOperator = "AND",
+    searchFieldsPriority,
     ...props
   },
   ref
 ) => {
+  const availableOptions = React.useMemo(
+    () => (options.length > 0 ? options : defaultOptions),
+    [options, defaultOptions]
+  )
+
   const [selectedValues, setSelectedValues] = React.useState<Option[]>(
     value || defaultValue
   )
@@ -114,7 +121,7 @@ const MultipleSelector = React.forwardRef<
       }
       
       // Check if option already exists
-      const exists = [...options, ...selectedValues]?.some(
+      const exists = [...availableOptions, ...selectedValues]?.some(
         option => option.value?.toLowerCase?.() === newOption?.value?.toLowerCase?.()
       )
       
@@ -125,7 +132,7 @@ const MultipleSelector = React.forwardRef<
         setInputValue("")
       }
     },
-    [options, selectedValues, onValueChange]
+    [availableOptions, selectedValues, onValueChange]
   )
 
   const handleKeyDown = React.useCallback(
@@ -206,28 +213,56 @@ const MultipleSelector = React.forwardRef<
 
   const displayOptions = React.useMemo(() => {
     const query = inputValue.trim().toLowerCase()
-    if (!enableMultiTermFilter || !query) return options
+    if (!enableMultiTermFilter || !query) return availableOptions
 
     const tokens = query.split(/\s+/).filter(Boolean)
-    if (tokens.length < 2) {
-      return options.filter(o => {
-        const l = o.label?.toLowerCase?.() ?? ""
-        const v = o.value?.toLowerCase?.() ?? ""
-        const s = o.searchText?.toLowerCase?.() ?? ""
-        return l.includes(query) || v.includes(query) || s.includes(query)
+    const hasPriority = Array.isArray(searchFieldsPriority) && searchFieldsPriority.length > 0
+
+    // Build field texts based on priority list (only these fields are used)
+    const getFieldTexts = (o: Option) => {
+      if (!hasPriority) return []
+      const texts: string[] = []
+      for (const key of searchFieldsPriority!) {
+        if (key === "label") {
+          const v = o.label?.toLowerCase?.() ?? ""
+          if (v) texts.push(v)
+        } else if (key === "value") {
+          const v = o.value?.toLowerCase?.() ?? ""
+          if (v) texts.push(v)
+        } else if (o.fieldMap && o.fieldMap[key]) {
+          const v = o.fieldMap[key]?.toLowerCase?.() ?? ""
+          if (v) texts.push(v)
+        }
+      }
+      return texts
+    }
+
+    if (hasPriority) {
+      // Match against any of the prioritized fields; item passes if any field matches
+      const matchSingle = (fields: string[]) => fields.some((f) => f.includes(query))
+      const matchToken = (fields: string[], t: string) => fields.some((f) => f.includes(t))
+
+      return availableOptions.filter((o) => {
+        const fields = getFieldTexts(o)
+        if (fields.length === 0) return false
+        if (tokens.length < 2) return matchSingle(fields)
+        return multiTermOperator === "AND"
+          ? tokens.every((t) => matchToken(fields, t))
+          : tokens.some((t) => matchToken(fields, t))
       })
     }
 
-    return options.filter(o => {
-      const l = o.label?.toLowerCase?.() ?? ""
-      const v = o.value?.toLowerCase?.() ?? ""
-      const s = o.searchText?.toLowerCase?.() ?? ""
-      const matchToken = (t: string) => l.includes(t) || v.includes(t) || s.includes(t)
-      return multiTermOperator === "AND"
-        ? tokens.every(matchToken)
-        : tokens.some(matchToken)
-    })
-  }, [options, inputValue, enableMultiTermFilter, multiTermOperator])
+    // Fallback: when no priority specified, match against label only
+    const labelText = (o: Option) => o.label?.toLowerCase?.() ?? ""
+    if (tokens.length < 2) {
+      return availableOptions.filter((o) => labelText(o).includes(query))
+    }
+    return availableOptions.filter((o) =>
+      multiTermOperator === "AND"
+        ? tokens.every((t) => labelText(o).includes(t))
+        : tokens.some((t) => labelText(o).includes(t)),
+    )
+  }, [availableOptions, inputValue, enableMultiTermFilter, multiTermOperator, searchFieldsPriority])
 
   return (
     <Popover
@@ -349,9 +384,14 @@ const MultipleSelector = React.forwardRef<
         align="start"
         onEscapeKeyDown={() => setIsPopoverOpen(false)}
       >
-        <Command {...commandProps} onKeyDown={handleKeyDown} className="!w-full">
+        <Command
+          {...commandProps}
+          shouldFilter={enableMultiTermFilter ? false : commandProps?.shouldFilter}
+          onKeyDown={handleKeyDown}
+          className="!w-full"
+        >
           <CommandInput 
-            placeholder="Search..." 
+            placeholder={hidePlaceholderWhenSelected && selectedValues.length > 0 ? "" : "Search..."} 
             className="dark:text-gray-100 dark:placeholder:text-gray-400" 
             value={inputValue}
             onValueChange={setInputValue}
@@ -363,7 +403,7 @@ const MultipleSelector = React.forwardRef<
             <CommandGroup>
               {creatable && inputValue.trim() && 
                 /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inputValue.trim()) &&
-                !options.some(option => 
+                !availableOptions.some(option => 
                   option.value.toLowerCase() === inputValue.trim().toLowerCase()
                 ) && !selectedValues?.some?.(option => 
                   option.value.toLowerCase() === inputValue.trim().toLowerCase()

@@ -486,6 +486,7 @@ const ContractDetailPage: React.FC = () => {
           files={contract?.files}
           contractId={contract?._id ?? ""}
           effectiveDate={contract?.startDate}
+          actionsDisabled={contract?.status === "publish"}
         />
 
         <AmendmentsTabContent

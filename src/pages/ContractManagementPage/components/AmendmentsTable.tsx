@@ -35,6 +35,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { DocType, DocumentItem } from "./DocumentItem";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 // import { useNavigate } from "react-router-dom";
+import { approverApi } from "../api/approverApi";
 
 export type AmendmentRow = {
   id: string;
@@ -77,63 +78,63 @@ const LabelRow = ({
 );
 
 export interface AmendmentDetail {
-  _id:              string;
-  contractRef:      string;
+  _id: string;
+  contractRef: string;
+  approverStatus: "pending" | "approved";
   contractRefModel: string;
-  amendmentId:      string;
-  company:          string;
-  status:           string;
-  title:            string;
-  impact:           string;
-  description:      string;
-  changes:          Change[];
-  submittedBy:      SubmittedBy;
-  vendorStatus:     string;
-  files:            File[];
-  approvers:        Approvers[];
-  statusHistory:    any[];
-  __v:              number;
+  assignApprover: boolean;
+  amendmentId: string;
+  company: string;
+  status: string;
+  title: string;
+  impact: string;
+  description: string;
+  changes: Change[];
+  submittedBy: SubmittedBy;
+  vendorStatus: string;
+  files: File[];
+  approvers: Approvers[];
+  statusHistory: any[];
+  __v: number;
 }
 
 export interface Approvers {
-  user:        User[];
-  amount:      number;
-  group:       string;
+  user: User[];
+  amount: number;
+  group: string;
   levelStatus: string;
   completedAt: null;
-  _id:         string;
+  _id: string;
 }
 
 export interface User {
-  user:       string;
-  status:     string;
-  comment:    string;
+  user: string;
+  status: string;
+  comment: string;
   actionedAt: null;
-  _id:        string;
+  _id: string;
 }
 
-
 export interface Change {
-  field:    string;
+  field: string;
   oldValue: string;
   newValue: Date;
-  _id:      string;
+  _id: string;
 }
 
 export interface File {
-  name:       string;
-  url:        string;
-  type:       string;
-  size:       string;
-  _id:        string;
+  name: string;
+  url: string;
+  type: string;
+  size: string;
+  _id: string;
   uploadedAt: Date;
 }
 
 export interface SubmittedBy {
-  _id:   string;
+  _id: string;
   email: string;
 }
-
 
 export interface ApproveUser {
   approverId: string;
@@ -156,7 +157,6 @@ type PersonnelApiResponse = {
   message: string;
   data: ApproveUser[];
 };
-
 
 const StatusPill = ({ status }: { status: string }) => {
   const normalized = status.toLowerCase();
@@ -576,6 +576,16 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
     // retry: false,
   });
 
+  const { data: canApproveRes } = useQuery({
+    queryKey: ["amendment-approve-status", contractId, amendmentId],
+    queryFn: () =>
+      approverApi.getAmendmentApproveStatus(contractId, amendmentId),
+    enabled: open && isApprover,
+    staleTime: 60_000,
+  });
+
+  const canApprove = Boolean(canApproveRes?.data?.status);
+
   const detail = detailRes?.data;
   const title = detail?.title || summary.amendmentTitle;
   const displayId = detail?.amendmentId || summary.amendmentId;
@@ -918,20 +928,22 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                     </div>
                   </div>
 
-                  <AssignApprovalDialog
-                    contractId={contractId}
-                    basePath={basePath}
-                    amendmentId={amendmentId}
-                    onAssigned={invalidateAll}
-                    trigger={
-                      <button
-                        type="button"
-                        className="h-11 w-fit px-6 rounded-xl bg-[#2A4467] text-sm font-semibold text-white"
-                      >
-                        Assign Approval
-                      </button>
-                    }
-                  />
+                  {!detail?.assignApprover && (
+                    <AssignApprovalDialog
+                      contractId={contractId}
+                      basePath={basePath}
+                      amendmentId={amendmentId}
+                      onAssigned={invalidateAll}
+                      trigger={
+                        <button
+                          type="button"
+                          className="h-11 w-fit px-6 rounded-xl bg-[#2A4467] text-sm font-semibold text-white"
+                        >
+                          Assign Approval
+                        </button>
+                      }
+                    />
+                  )}
                 </>
               )}
             </TabsContent>
@@ -993,7 +1005,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
           </div>
         )}
 
-        {isApprover && (
+        {isApprover && detail?.approverStatus === "pending" && canApprove && (
           <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] bg-white p-6">
             <div className="flex gap-6">
               <button

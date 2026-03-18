@@ -14,9 +14,10 @@ type Props = {
   contractId?: string;
   onUpdated?: (contract: ContractDetail) => void;
   effectiveDate?: string;
+  actionsDisabled?: boolean;
 };
 
-const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, effectiveDate }) => {
+const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, effectiveDate, actionsDisabled }) => {
   const [editingContractId, setEditingContractId] = React.useState<string | null>(null);
   const { success } = useToastHandler();
   const qc = useQueryClient();
@@ -36,6 +37,7 @@ const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, ef
                 setEditingContractId(contractId);
               }
             }}
+            disabled={!!actionsDisabled}
           >
             Edit Contract
           </Button>
