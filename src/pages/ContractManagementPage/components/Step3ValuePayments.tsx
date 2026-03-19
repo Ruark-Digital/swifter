@@ -67,21 +67,21 @@ const Step3ValuePayments: React.FC<Props> = ({ control, paymentTermOptions }) =>
           { label: "Progress Draw", value: "lump_sum" },
         ]}
       />
-      <Forger
+     { paymentStructure !== "milestone" &&( <Forger
         name="selectedDeliverable"
         label="Select Deliverable (Optional)"
         placeholder="Select Deliverable"
         component={TextSelect}
         options={deliverableOptions}
         containerClass="md:col-span-2"
-      />
+      />)}
 
       {paymentStructure === "milestone" && (
         <div className="col-span-2 space-y-3">
           {fields.map((field, index) => (
             <div key={field.id} className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-slate-700">Milestone Name</p>
+                <p className="text-sm font-medium text-slate-700">Milestone</p>
                 <button
                   type="button"
                   className="text-xs text-red-600"

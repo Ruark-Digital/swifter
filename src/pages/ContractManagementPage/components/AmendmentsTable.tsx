@@ -81,6 +81,7 @@ export interface AmendmentDetail {
   _id: string;
   contractRef: string;
   approverStatus: "pending" | "approved";
+  vendorStatus: "pending" | "accepted";
   contractRefModel: string;
   assignApprover: boolean;
   amendmentId: string;
@@ -91,7 +92,6 @@ export interface AmendmentDetail {
   description: string;
   changes: Change[];
   submittedBy: SubmittedBy;
-  vendorStatus: string;
   files: File[];
   approvers: Approvers[];
   statusHistory: any[];
@@ -186,7 +186,7 @@ const VendorAcceptDialog: React.FC<{
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="w-[498px] h-[260px] p-8 rounded-2xl border-0 flex flex-col items-center justify-center gap-6">
+      <DialogContent className="w-[498px] h-[260px] p-4 rounded-2xl border-0 flex flex-col items-center justify-center gap-6">
         <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#E53935] text-[#E53935]">
           <X className="h-8 w-8" />
         </div>
@@ -968,7 +968,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
           </Tabs>
         </div>
 
-        {isVendor && (
+        {isVendor && detail?.vendorStatus === "pending" && (
           <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] bg-white p-6">
             <div className="flex gap-6">
               <VendorRejectDialog

@@ -12,8 +12,13 @@ export function useInactivityLogout(timeout = 1800000) {
   const setReset = useSetReset();
   const isAuthenticated = useAuthentication();
   const timerRef = useRef<NodeJS.Timeout>();
+  const isLocalDevelopment = import.meta.env.DEV;
 
   const resetTimer = useCallback(() => {
+    if (isLocalDevelopment) {
+      return;
+    }
+
     if (timerRef.current) {
       clearTimeout(timerRef.current);
     }
@@ -22,11 +27,13 @@ export function useInactivityLogout(timeout = 1800000) {
       setReset();
       navigate('/');
     }, timeout);
-  }, [navigate, setReset, timeout]);
+  }, [isLocalDevelopment, navigate, setReset, timeout]);
 
   useEffect(() => {
-    // Only run if user is authenticated
-    if (!isAuthenticated) {
+    if (!isAuthenticated || isLocalDevelopment) {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
       return;
     }
 
@@ -53,7 +60,7 @@ export function useInactivityLogout(timeout = 1800000) {
         clearTimeout(timerRef.current);
       }
     };
-  }, [isAuthenticated, resetTimer]);
+  }, [isAuthenticated, isLocalDevelopment, resetTimer]);
 
   // Return a function to manually reset the timer if needed
   return { resetTimer };

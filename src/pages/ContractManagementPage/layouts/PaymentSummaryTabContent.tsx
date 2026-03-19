@@ -556,7 +556,7 @@ type Props = {
   isActive?: boolean;
 };
 
-const PaymentSummaryTabContent: React.FC<Props> = ({
+const PaymentSummaryTabContent: React.FC<Props> = ({ 
   contractId,
   contract,
   isActive,
@@ -595,7 +595,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
       }
       if (isVendor) {
         const res = await getRequest({
-          url: `/vendor/contracts/${contractId}/payment-holdbacks`,
+          url: `/contract/vendor/contracts/${contractId}/payment-holdbacks`,
         });
         return res.data as { message?: string; data?: any[] };
       }
@@ -625,7 +625,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
       }
       if (isVendor) {
         const res = await getRequest({
-          url: `/vendor/contracts/${contractId}/payment-savings`,
+          url: `/contract/vendor/contracts/${contractId}/payment-savings`,
         });
         return res.data as { message?: string; data?: any[] };
       }

@@ -450,6 +450,7 @@ export type ContractInvoiceDTO = {
     type?: string;
     size?: string;
   }>;
+  approverStatus?: "pending" | "approved" | "rejected";
   manager?: { status?: string; comment?: string };
   approvers?: ContractChangeApprover[];
 };
@@ -978,6 +979,18 @@ export const createContractManagerApi = (
     getInvoiceDetail: async (invoiceId: string) => {
       const res = await client.get({
         url: `${MANAGER_CONTRACTS_PREFIX}/invoice/${invoiceId}`,
+      });
+      return res.data as { message?: string; data?: ContractInvoiceDTO };
+    },
+    approveInvoice: async (
+      contractId: string,
+      invoiceId: string,
+      payload: ApprovalActionDTO,
+    ) => {
+      await assertValid(approvalActionSchema, payload);
+      const res = await client.post({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/invoice/${invoiceId}/approve`,
+        payload,
       });
       return res.data as { message?: string; data?: ContractInvoiceDTO };
     },

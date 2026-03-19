@@ -41,6 +41,8 @@ import { useFormContext, useWatch } from "react-hook-form";
 import { useUserRole } from "@/hooks/useUserRole";
 import { DocumentItem, type DocType } from "../components/DocumentItem";
 import { useToastHandler } from "@/hooks/useToaster";
+import type { ApiResponse, ApiResponseError } from "@/types";
+import type { UploadURLs } from "../lib/contractChanges";
 
 type Props = {
   contractId: string;
@@ -135,10 +137,19 @@ const RateSheetFilesListItem = ({ file }: { file: File }) => {
   );
 };
 
-const SubmitRateSheetDialog: React.FC<{ trigger: React.ReactElement }> = ({
+const SubmitRateSheetDialog: React.FC<{
+  trigger: React.ReactElement;
+  contractId: string;
+  queryKeyPath: string;
+}> = ({
   trigger,
+  contractId,
+  queryKeyPath,
 }) => {
   const [open, setOpen] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const toastHandler = useToastHandler();
+  const queryClient = useQueryClient();
 
   const { control, reset } = useForge<SubmitRateSheetFormValues>({
     resolver: yupResolver(submitRateSheetSchema) as any,
@@ -150,21 +161,103 @@ const SubmitRateSheetDialog: React.FC<{ trigger: React.ReactElement }> = ({
     },
   });
 
-  const onSubmit = React.useCallback(
-    (data: SubmitRateSheetFormValues) => {
-      console.log("Submit rate sheet (UI only)", data);
+  const { mutateAsync: uploadFile, isPending } = useMutation<
+    ApiResponse<UploadURLs[]>,
+    ApiResponseError,
+    { file: File }
+  >({
+    mutationKey: ["uploadRateSheetFile"],
+    mutationFn: async ({ file }) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      return await postRequest({
+        url: "/upload",
+        payload: formData,
+        config: {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      });
+    },
+  });
+
+  const submitMutation = useMutation({
+    mutationKey: ["submitRateSheet", contractId],
+    mutationFn: async (payload: {
+      title: string;
+      description: string;
+      amount: number;
+      files: { name: string; url: string; type: string; size: string }[];
+    }) => {
+      return await postRequest({
+        url: `/contract/vendor/contracts/${contractId}/ratesheets`,
+        payload,
+      });
+    },
+    onSuccess: async (res: any) => {
       setOpen(false);
       reset();
+      await queryClient.invalidateQueries({
+        queryKey: ["rate-sheets", contractId, queryKeyPath],
+      });
+      toastHandler.success("Success", res?.data?.message || "Rate sheet submitted successfully");
     },
-    [reset],
+    onError: (error: any) => {
+      toastHandler.error(
+        "Error",
+        error?.response?.data?.message || "Failed to submit rate sheet",
+      );
+    },
+  });
+
+  const onSubmit = React.useCallback(
+    async (data: SubmitRateSheetFormValues) => {
+      setIsSubmitting(true);
+      try {
+        let uploadedFiles: { name: string; url: string; type: string; size: string }[] = [];
+
+        if (data.files && data.files.length > 0) {
+          const responses = await Promise.all(
+            data.files.map((file) => uploadFile({ file })),
+          );
+
+          uploadedFiles = responses
+            .map((res, index) => {
+              const uploaded = res.data?.data?.[0];
+              const source = data.files?.[index];
+              if (!uploaded || !source) return null;
+              return {
+                name: source.name,
+                url: uploaded.url,
+                type: getSimpleFileExtension(source.name).toUpperCase(),
+                size: source.size?.toString?.() ?? "0",
+              };
+            })
+            .filter(Boolean) as { name: string; url: string; type: string; size: string }[];
+        }
+
+        await submitMutation.mutateAsync({
+          title: data.title,
+          amount: Number(data.amount),
+          description: data.description,
+          files: uploadedFiles,
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [submitMutation, uploadFile],
   );
 
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        setOpen(nextOpen);
-        if (!nextOpen) reset();
+        if (!isSubmitting) {
+          setOpen(nextOpen);
+          if (!nextOpen) reset();
+        }
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -234,12 +327,14 @@ const SubmitRateSheetDialog: React.FC<{ trigger: React.ReactElement }> = ({
             <button
               type="button"
               onClick={() => setOpen(false)}
+              disabled={isSubmitting}
               className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-3.5 text-base font-semibold text-[#0F0F0F] shadow-sm hover:bg-[#E5E7EB]"
             >
               Back
             </button>
             <button
               type="submit"
+              disabled={isPending || submitMutation.isPending}
               className="flex-1 rounded-xl bg-[#2A4467] py-3.5 text-base font-semibold text-white shadow-sm hover:bg-[#1e3a5f]"
             >
               Submit Rate Sheet
@@ -366,16 +461,16 @@ const RateSheetDetailsSheet: React.FC<{
             </div>
 
             <Tabs defaultValue="overview" className="space-y-4">
-              <TabsList className="h-auto w-full justify-start gap-6 rounded-none border-b border-[#E5E7EB] bg-transparent p-0">
+              <TabsList className="h-auto rounded-none border-b w-full border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
                 <TabsTrigger
                   value="overview"
-                  className="rounded-none px-0 pb-3 text-xs font-semibold text-[#111827] data-[state=active]:text-[#2A4467] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:bottom-0 data-[state=active]:after:h-0.5 data-[state=active]:after:bg-[#2A4467]"
+                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                 >
                   Overview
                 </TabsTrigger>
                 <TabsTrigger
                   value="summary"
-                  className="rounded-none px-0 pb-3 text-xs font-semibold text-[#6B7280] data-[state=active]:text-[#2A4467] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:bottom-0 data-[state=active]:after:h-0.5 data-[state=active]:after:bg-[#2A4467]"
+                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                 >
                   Rate Sheet Summary
                 </TabsTrigger>
@@ -575,7 +670,7 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
           </span>
         ),
       },
-      { accessorKey: "submissionDate", header: "Submission Date" },
+      // { accessorKey: "submissionDate", header: "Submission Date" },
       {
         accessorKey: "status",
         header: "Status",
@@ -634,6 +729,8 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
           </Button>
           {isVendor && (
             <SubmitRateSheetDialog
+              contractId={contractId}
+              queryKeyPath={basePath}
               trigger={
                 <Button className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white hover:bg-[#2A4467]/90">
                   Submit Rate Sheet

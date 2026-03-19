@@ -155,7 +155,7 @@ export const schema = yup.object({
   securityAmount: yup.string().optional(),
   securityDueDate: yup.date().optional(),
   securityExpiryDate: yup.date().optional(),
-  rating: yup.number().min(1).max(5).required(),
+  rating: yup.number().min(1).max(10).required(),
   insurancePolicies: yup
     .array(
       yup.object({

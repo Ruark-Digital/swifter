@@ -61,6 +61,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   const { isVendor, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
+  const [open, setOpen] = React.useState(false);
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [selectedDoc, setSelectedDoc] = React.useState<DocType | null>(null);
 
@@ -92,7 +93,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
       }
       return { data: undefined, message: undefined };
     },
-    enabled: Boolean(contractId) && Boolean(invoiceId),
+    enabled: open && Boolean(contractId) && Boolean(invoiceId),
     staleTime: 30000,
   });
 
@@ -106,10 +107,15 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
     queryFn: async () => {
       return await approverApi.getInvoiceApproveStatus(contractId, invoiceId);
     },
-    enabled: Boolean(contractId) && Boolean(invoiceId) && isApprover,
+    enabled: open && Boolean(contractId) && Boolean(invoiceId) && isApprover,
     staleTime: 30000,
   });
   const canApprove = approveStatusRes?.data?.status === true;
+
+  const canManagerAct =
+    isManager && ((invoice?.approverStatus || "").toLowerCase() === "pending");
+
+ 
 
   const approveInvoiceMutation = useMutation<
     void,
@@ -118,6 +124,10 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   >({
     mutationKey: ["approveInvoice", contractId, invoiceId],
     mutationFn: async (action) => {
+      if (isManager) {
+        await contractManagerApi.approveInvoice(contractId, invoiceId, { action });
+        return;
+      }
       await approverApi.approveInvoice(contractId, invoiceId, { action });
     },
     onSuccess: async (_, action) => {
@@ -129,6 +139,9 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
       );
       await queryClient.invalidateQueries({ queryKey: ["contractInvoiceDetail"] });
       await queryClient.invalidateQueries({ queryKey: ["contractInvoices"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["invoiceApproveStatus", contractId, invoiceId],
+      });
     },
     onError: (err, action) => {
       toastHandler.error(
@@ -139,6 +152,8 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
       );
     },
   });
+
+   console.log({ canManagerAct, invoice, isApprover , canApprove })
 
   const handlePreview = React.useCallback((d: DocType) => {
     setSelectedDoc(d);
@@ -193,7 +208,16 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
       : "-";
 
   return (
-    <Sheet>
+    <Sheet
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) {
+          setViewerOpen(false);
+          setSelectedDoc(null);
+        }
+      }}
+    >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="right"
@@ -308,7 +332,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
             )}
           </div>
 
-          {isApprover && canApprove && (
+          {(isApprover && canApprove) || canManagerAct ? (
             <div className="flex gap-3 pt-6">
               <Button
                 variant="outline"
@@ -326,8 +350,9 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                 {approveInvoiceMutation.isPending ? "Processing..." : "Approve"}
               </Button>
             </div>
-          )}
+          ) : null}
         </div>
+        
         {selectedDoc && (
           <DocumentViewer
             isOpen={viewerOpen}
