@@ -99,23 +99,11 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
 
   const invoice = data?.data;
 
-  const { data: approveStatusRes } = useQuery<{
-    message?: string;
-    data?: { status?: boolean };
-  }>({
-    queryKey: ["invoiceApproveStatus", contractId, invoiceId],
-    queryFn: async () => {
-      return await approverApi.getInvoiceApproveStatus(contractId, invoiceId);
-    },
-    enabled: open && Boolean(contractId) && Boolean(invoiceId) && isApprover,
-    staleTime: 30000,
-  });
-  const canApprove = approveStatusRes?.data?.status === true;
+  const canApprove = ((invoice?.approverStatus || "").toLowerCase() === "pending");
 
   const canManagerAct =
     isManager && ((invoice?.approverStatus || "").toLowerCase() === "pending");
 
- 
 
   const approveInvoiceMutation = useMutation<
     void,
@@ -152,8 +140,6 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
       );
     },
   });
-
-   console.log({ canManagerAct, invoice, isApprover , canApprove })
 
   const handlePreview = React.useCallback((d: DocType) => {
     setSelectedDoc(d);
@@ -332,7 +318,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
             )}
           </div>
 
-          {(isApprover && canApprove) || canManagerAct ? (
+          {canManagerAct ? (
             <div className="flex gap-3 pt-6">
               <Button
                 variant="outline"
@@ -348,6 +334,26 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                 onClick={() => approveInvoiceMutation.mutate("approved")}
               >
                 {approveInvoiceMutation.isPending ? "Processing..." : "Approve"}
+              </Button>
+            </div>
+          ) : null}
+
+          {(isApprover && canApprove) ? (
+            <div className="flex gap-3 pt-6">
+              <Button
+                variant="outline"
+                className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                disabled={approveInvoiceMutation.isPending}
+                onClick={() => approveInvoiceMutation.mutate("rejected")}
+              >
+                {approveInvoiceMutation.isPending ? "Processing..." : "Reject"}
+              </Button>
+              <Button
+                className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
+                disabled={approveInvoiceMutation.isPending}
+                onClick={() => approveInvoiceMutation.mutate("approved")}
+              >
+                {approveInvoiceMutation.isPending ? "Processing..." : "Approve7"}
               </Button>
             </div>
           ) : null}
