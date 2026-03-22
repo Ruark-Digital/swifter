@@ -9,7 +9,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { CloudUpload, X } from "lucide-react";
 import { Forge, Forger, useForge } from "@/lib/forge";
-import { TextArea, TextDatePicker, TextFileUploader, TextInput, TextSelect } from "@/components/layouts/FormInputs";
+import {
+  TextArea,
+  TextDatePicker,
+  TextFileUploader,
+  TextInput,
+} from "@/components/layouts/FormInputs";
 import { postRequest } from "@/lib/axiosInstance";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWatch } from "react-hook-form";
@@ -32,12 +37,12 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
+
   const { control, reset, setValue } = useForge({
     defaultValues: {
       title: ncrTitle ?? "",
       timeline: undefined,
       description: "",
-      responderId: "",
       files: null as File[] | null,
     },
   });
@@ -65,13 +70,12 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
       "create",
       contractId,
       ncrId,
-      basePath
+      basePath,
     ],
     mutationFn: async (data: {
       title: string;
       timeline?: string;
       description?: string;
-      responderId?: string;
       files: File[] | null;
     }) => {
       const uploaded = await uploadFiles(data.files);
@@ -79,21 +83,20 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
         title: data.title,
         timeline: data.timeline,
         description: data.description,
-        responders: data.responderId ? [data.responderId] : undefined,
         files:
           uploaded && uploaded.length > 0
             ? uploaded.map((f: any, i: number) => ({
                 name: f.name,
                 url: f.url,
                 type: f.type,
-                size: String((data.files?.[i] as File)?.size ?? '-'),
+                size: String((data.files?.[i] as File)?.size ?? "-"),
               }))
             : undefined,
       };
-      
+
       const res = await postRequest({
         url: `${basePath}/${ncrId}/capa`,
-        payload
+        payload,
       });
       return res.data;
     },
@@ -142,19 +145,11 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-w-[700px] max-h-[90vh] overflow-y-auto rounded-2xl p-0">
+      <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-8 pt-8">
           <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
             Submit CAPA
           </DialogTitle>
-          <DialogClose asChild>
-            <button
-              type="button"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-[#FCA5A5] text-[#EF4444]"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </DialogClose>
         </div>
         <div className="px-8 pb-8 pt-2">
           <p className="text-sm font-semibold text-[#0F0F0F] mb-3">
@@ -170,7 +165,6 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
                     ? d.timeline.toISOString()
                     : d.timeline,
                 description: d.description,
-                responderId: d.responderId,
                 files: d.files,
               })
             }
@@ -195,13 +189,6 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
               placeholder="Enter Detail"
               component={TextArea}
               rows={5}
-            />
-            <Forger
-              name="responderId"
-              label="Select Responder (Could be the issuer)"
-              placeholder="Select Responder"
-              component={TextSelect}
-              options={[]}
             />
             <Forger
               name="files"

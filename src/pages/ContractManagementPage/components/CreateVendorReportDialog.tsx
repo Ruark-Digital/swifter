@@ -91,7 +91,7 @@ export function CreateVendorReportForm({
       defaultValues: {
         title: "",
         description: "",
-        mode: "manual",
+        mode: "file",
       },
     });
 
@@ -233,7 +233,7 @@ export function CreateVendorReportForm({
               }
               className="flex items-center gap-6"
             >
-              <div className="flex items-center gap-2">
+              {/* <div className="flex items-center gap-2">
                 <RadioGroupItem
                   value="manual"
                   id="mode-manual"
@@ -245,7 +245,7 @@ export function CreateVendorReportForm({
                 >
                   Manual Input
                 </Label>
-              </div>
+              </div> */}
               <div className="flex items-center gap-2">
                 <RadioGroupItem
                   value="file"

@@ -19,7 +19,7 @@ import {
   TextFileUploader,
   TextInput,
 } from "@/components/layouts/FormInputs";
-import { Check, CloudUpload, Share2, X } from "lucide-react";
+import { Check, CloudUpload, Share2 } from "lucide-react";
 import RfiStatsCards from "../components/RfiStatsCards";
 import RfiTable from "../components/RfiTable";
 import {
@@ -237,14 +237,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
               <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
                 Issue RFI
               </DialogTitle>
-              <DialogClose asChild>
-                <button
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#FCA5A5] text-[#EF4444]"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </DialogClose>
+             
             </div>
             <div className="px-8 pb-8 pt-6">
               <Forge

@@ -1,6 +1,10 @@
 import React from "react";
 import { DataTable } from "@/components/layouts/DataTable";
-import type { ColumnDef, OnChangeFn, PaginationState } from "@tanstack/react-table";
+import type {
+  ColumnDef,
+  OnChangeFn,
+  PaginationState,
+} from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,19 +15,20 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { ArrowLeft, Download, Eye, Search, X } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Download, Search, X } from "lucide-react";
 import type { ContractNcrSummary } from "../api/contractManagerApi";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUserRole } from "@/hooks/useUserRole";
 import { formatDateTZ } from "@/lib/utils";
 import SubmitCapaDialog from "./SubmitCapaDialog";
-import { getRequest } from "@/lib/axiosInstance";
+import { getRequest, patchRequest } from "@/lib/axiosInstance";
+import { ApiResponse, ApiResponseError } from "@/types";
+import { useUser } from "@/store/authSlice";
+import { useToastHandler } from "@/hooks/useToaster";
+import { getFileExtension, getFileIcon, formatFileSize } from "@/lib/fileUtils";
+import { DocumentItem, type DocType } from "./DocumentItem";
+import { DocumentViewer } from "@/components/ui/DocumentViewer";
 
 export type NcrRow = {
   id: string;
@@ -50,6 +55,67 @@ type NcrDetailsSheetProps = {
   basePath: string;
 };
 
+export interface NcrDetailsResponse {
+  _id: string;
+  company: string;
+  contractRef: string;
+  contractRefModel: string;
+  submittedBy: SubmittedBy;
+  ncrId: string;
+  title: string;
+  description: string;
+  capa: Capa[];
+  responders: Responder[];
+  status: string;
+  files: File[];
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
+export interface Capa {
+  _id: string;
+  company: string;
+  contractRef: string;
+  contractRefModel: string;
+  capaId: string;
+  title: string;
+  user: User;
+  timeline: string;
+  description: string;
+  capa: unknown[];
+  files: File[];
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
+export interface File {
+  name: string;
+  url: string;
+  type: string;
+  size: number;
+  _id: string;
+}
+
+export interface User {
+  _id: string;
+  name: string;
+  email: string;
+}
+
+export interface Responder {
+  user: string | User;
+  status: string;
+  actionedAt?: string;
+}
+
+export interface SubmittedBy {
+  _id: string;
+  name: string;
+  email: string;
+}
+
 const LabelRow = ({
   label,
   value,
@@ -63,45 +129,35 @@ const LabelRow = ({
   </div>
 );
 
-const DocCard = ({
-  name,
-  type,
-  size,
-}: {
-  name: string;
-  type: "DOC" | "PDF";
-  size: string;
-}) => (
-  <div className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-white p-3">
-    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EEF2FF] text-xs font-semibold text-[#3B82F6]">
-      {type}
-    </div>
-    <div className="flex-1">
-      <div className="text-sm font-medium text-[#111827]">{name}</div>
-      <div className="text-xs text-[#9CA3AF]">
-        {type} • {size}
-      </div>
-    </div>
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F3F4F6] text-[#6B7280]"
-      >
-        <Eye className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E6F0FF] text-[#2563EB]"
-      >
-        <Download className="h-4 w-4" />
-      </button>
-    </div>
-  </div>
-);
+const mapFilesToDocs = (files: File[]): DocType[] =>
+  files.map((file, index) => {
+    const fileType = getFileExtension(file?.name ?? "", file?.type ?? "");
+    return {
+      id: file?._id ?? `${file?.name ?? "file"}-${index}`,
+      name: file?.name ?? "Untitled",
+      type: fileType?.toUpperCase() ?? "FILE",
+      size:
+        typeof file?.size === "number"
+          ? formatFileSize(file.size)
+          : String(file?.size ?? "N/A"),
+      url: file?.url,
+      icon: getFileIcon(fileType),
+    };
+  });
 
-const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger, contractId, ncrId, basePath }) => {
+const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
+  trigger,
+  contractId,
+  ncrId,
+  basePath,
+}) => {
   const [open, setOpen] = React.useState(false);
+  const [viewerOpen, setViewerOpen] = React.useState(false);
+  const [selectedDoc, setSelectedDoc] = React.useState<DocType | null>(null);
   const { isApprover, isVendor } = useUserRole();
+  const user = useUser();
+  const toastHandler = useToastHandler();
+  const queryClient = useQueryClient();
 
   const { data: detailRes } = useQuery({
     queryKey: ["contractNcrs", "detail", contractId, ncrId, basePath],
@@ -109,13 +165,13 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger, contractId, 
       const response = await getRequest({
         url: `${basePath}/${ncrId}`,
       });
-      return response.data;
+      return response as ApiResponse<NcrDetailsResponse>;
     },
     enabled: Boolean(contractId) && Boolean(ncrId) && open,
     staleTime: 60000,
   });
 
-  const detail = detailRes?.data;
+  const detail = detailRes?.data?.data;
   const title = detail?.title ?? "-";
   const description = detail?.description ?? "-";
   const status = detail?.status ?? "-";
@@ -125,9 +181,122 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger, contractId, 
   const submissionDate = formatDateTZ(detail?.createdAt, "MMMM dd, yyyy");
   const responseDeadline = formatDateTZ(detail?.updatedAt, "MMMM dd, yyyy");
 
-  const files = (detail?.files ?? []) as Array<{ name?: string; type?: string; size?: string | number }>;
+  const latestCapa = detail?.capa?.[0];
 
+  const responderIds = React.useMemo(
+    () =>
+      (detail?.responders ?? [])
+        .map((responder) =>
+          typeof responder?.user === "string"
+            ? responder.user
+            : responder?.user?._id,
+        )
+        .filter((value): value is string => Boolean(value)),
+    [detail?.responders],
+  );
 
+  const isResponderMatched =
+    Boolean(user?._id) && responderIds.includes(user?._id ?? "");
+
+  const overviewDocs = React.useMemo(
+    () => mapFilesToDocs(detail?.files ?? []),
+    [detail?.files],
+  );
+  const capaDocs = React.useMemo(
+    () => mapFilesToDocs(latestCapa?.files ?? []),
+    [latestCapa?.files],
+  );
+
+  const handlePreview = (doc: DocType) => {
+    if (!doc.url) return;
+    setSelectedDoc(doc);
+    setViewerOpen(true);
+  };
+
+  const handleDownload = (doc: DocType) => {
+    if (!doc.url) return;
+    const a = window.document.createElement("a");
+    a.href = doc.url;
+    a.download = doc.name;
+    window.document.body.appendChild(a);
+    a.click();
+    window.document.body.removeChild(a);
+  };
+
+  const invalidateNcrQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["contractNcrs"] });
+  };
+
+  const approveCapaMutation = useMutation({
+    mutationFn: async () => {
+      if (!latestCapa?._id) throw new Error("CAPA record not found");
+      return await patchRequest({
+        url: `${basePath}/${ncrId}/capa/${latestCapa._id}/approve`,
+      });
+    },
+    onSuccess: async (res) => {
+      toastHandler.success(
+        "NCR CAPA",
+        (res as ApiResponse<{ message?: string }>)?.data?.message ??
+          "CAPA approved successfully",
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["contractNcrs", "detail", contractId, ncrId, basePath],
+      });
+      invalidateNcrQueries();
+    },
+    onError: (error: ApiResponseError) => {
+      toastHandler.error("NCR CAPA", error);
+    },
+  });
+
+  const rejectCapaMutation = useMutation({
+    mutationFn: async () =>
+      await patchRequest({
+        url: `${basePath}/${ncrId}/close`,
+        payload: { reason: "CAPA rejected" },
+      }),
+    onSuccess: (res) => {
+      toastHandler.success(
+        "NCR CAPA",
+        (res as ApiResponse<{ message?: string }>)?.data?.message ??
+          "CAPA rejected successfully",
+      );
+      invalidateNcrQueries();
+      setOpen(false);
+    },
+    onError: (error: ApiResponseError) => {
+      toastHandler.error("NCR CAPA", error);
+    },
+  });
+
+  const closeNcrMutation = useMutation({
+    mutationFn: async () =>
+      await patchRequest({
+        url: `${basePath}/${ncrId}/close`,
+        payload: { reason: "CAPA approved" },
+      }),
+    onSuccess: (res) => {
+      toastHandler.success(
+        "NCR",
+        (res as ApiResponse<{ message?: string }>)?.data?.message ??
+          "NCR closed successfully",
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["contractNcrs", "detail", contractId, ncrId, basePath],
+      });
+      invalidateNcrQueries();
+      setOpen(false);
+    },
+    onError: (error: ApiResponseError) => {
+      toastHandler.error("Close NCR", error);
+    },
+  });
+
+  const isRespondActionPending =
+    approveCapaMutation.isPending ||
+    rejectCapaMutation.isPending ||
+    closeNcrMutation.isPending;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -178,13 +347,19 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger, contractId, 
               <TabsList className="h-auto w-full justify-start gap-6 rounded-none border-b border-[#E5E7EB] bg-transparent p-0">
                 <TabsTrigger
                   value="overview"
-                  className="rounded-none border-b-2 border-transparent px-0 pb-2 text-xs font-semibold text-[#6B7280] data-[state=active]:border-[#2A4467] data-[state=active]:text-[#2A4467]"
+                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                 >
                   Overview
                 </TabsTrigger>
                 <TabsTrigger
+                  value="capa"
+                  className="data-[state=active]:border-[#6941C6] data-[state=active]:text-[#6941C6] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                >
+                  Corrective &amp; Preventive Action Plan
+                </TabsTrigger>
+                <TabsTrigger
                   value="comments"
-                  className="rounded-none border-b-2 border-transparent px-0 pb-2 text-xs font-semibold text-[#6B7280] data-[state=active]:border-[#2A4467] data-[state=active]:text-[#2A4467]"
+                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                 >
                   Comments
                 </TabsTrigger>
@@ -192,21 +367,19 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger, contractId, 
 
               <TabsContent value="overview" className="space-y-6">
                 <div className="grid gap-6 sm:grid-cols-2">
-                  <LabelRow
-                    label="NCR Title"
-                    value={title}
-                  />
+                  <LabelRow label="NCR Title" value={title} />
                   <LabelRow
                     label="Submitted by"
                     value={
-                      <a className="text-[#2563EB] underline">
-                        {submittedBy}
-                      </a>
+                      <a className="text-[#2563EB] underline">{submittedBy}</a>
                     }
                   />
                   <LabelRow label="NCR ID" value={ncrIdentifier} />
                   <LabelRow label="Submission Date" value={submissionDate} />
-                  <LabelRow label="Response Deadline" value={responseDeadline} />
+                  <LabelRow
+                    label="Response Deadline"
+                    value={responseDeadline}
+                  />
                   <LabelRow
                     label="Status"
                     value={
@@ -221,28 +394,64 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger, contractId, 
                   <div className="text-xs font-medium text-[#9CA3AF]">
                     Description
                   </div>
-                  <div className="text-sm text-[#374151]">
-                    {description}
+                  <div className="text-sm text-[#374151]">{description}</div>
+                </div>
+
+                {isResponderMatched ? (
+                  <div className="space-y-3">
+                    <div className="text-base font-semibold text-[#0F0F0F]">
+                      Attached Documents
+                    </div>
+                    {overviewDocs.length > 0 ? (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {overviewDocs.map((doc) => (
+                          <DocumentItem
+                            key={doc.id}
+                            d={doc}
+                            handlePreview={handlePreview}
+                            handleDownload={handleDownload}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+                        No attached documents.
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </TabsContent>
+
+              <TabsContent value="capa" className="space-y-10">
+                <div className="space-y-4">
+                  <div className="text- text-[#6B7280]">
+                    Corrective &amp; Preventive Action Plan
+                  </div>
+                  <div className="text-base font-semibold leading-[1.5] text-[#0F0F0F]">
+                    {latestCapa?.description ?? description}
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="text-base font-semibold text-[#0F0F0F]">
                     Attached Documents
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {(files ?? []).map((f, i) => (
-                      <DocCard
-                        key={`${f?.name ?? ""}-${i}`}
-                        name={f?.name ?? "Untitled"}
-                        type={
-                          ((f?.name ?? "").toLowerCase().endsWith(".pdf") ? "PDF" : "DOC") as
-                            "DOC" | "PDF"
-                        }
-                        size={typeof f?.size === "number" ? `${f.size}B` : String(f?.size ?? "N/A")}
-                      />
-                    ))}
-                  </div>
+                  {capaDocs.length > 0 ? (
+                    <div className="grid gap-3 sm:grid-cols-1">
+                      {capaDocs.map((doc) => (
+                        <DocumentItem
+                          key={doc.id}
+                          d={doc}
+                          handlePreview={handlePreview}
+                          handleDownload={handleDownload}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+                      No attached documents.
+                    </div>
+                  )}
                 </div>
               </TabsContent>
 
@@ -253,27 +462,71 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({ trigger, contractId, 
               </TabsContent>
             </Tabs>
           </div>
+
           {isApprover || isVendor ? (
             <div className="flex w-full gap-3 pt-2">
-              <Button
-                variant="outline"
-                className="flex-1 h-12 rounded-xl"
-                onClick={() => setOpen(false)}
-              >
-                Cancel
-              </Button>
-              <SubmitCapaDialog
-                contractId={contractId}
-                ncrId={ncrId}
-                ncrTitle={title}
-                basePath={basePath}
-                trigger={
-                  <Button className="flex-1 h-12 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]">
-                    Submit CAPA
+              {!latestCapa?._id ? (
+                <Button
+                  variant="outline"
+                  className="flex-1 h-12 rounded-xl"
+                  onClick={() => setOpen(false)}
+                >
+                  Cancel
+                </Button>
+              ) : null}
+              {latestCapa?._id && (isApprover || isVendor) ? (
+                <>
+                  <Button
+                    variant="outline"
+                    className="flex-1 h-12 rounded-xl border-[#FCA5A5] text-[#DC2626] hover:text-[#B91C1C]"
+                    onClick={() => rejectCapaMutation.mutate()}
+                    disabled={isRespondActionPending}
+                  >
+                    Reject CAPA
                   </Button>
-                }
-              />
+                  <Button
+                    className="flex-1 h-12 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
+                    onClick={() => approveCapaMutation.mutate()}
+                    disabled={isRespondActionPending}
+                  >
+                    Approve CAPA
+                  </Button>
+                  {String(status).toLowerCase() === "approved" ? (
+                    <Button
+                      className="flex-1 h-12 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
+                      onClick={() => closeNcrMutation.mutate()}
+                      disabled={isRespondActionPending}
+                    >
+                      Close NCR
+                    </Button>
+                  ) : null}
+                </>
+              ) : !latestCapa?._id && isResponderMatched ? (
+                <SubmitCapaDialog
+                  contractId={contractId}
+                  ncrId={ncrId}
+                  ncrTitle={title}
+                  basePath={basePath}
+                  trigger={
+                    <Button className="flex-1 h-12 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]">
+                      Submit CAPA
+                    </Button>
+                  }
+                />
+              ) : null}
             </div>
+          ) : null}
+          {selectedDoc ? (
+            <DocumentViewer
+              isOpen={viewerOpen}
+              onClose={() => {
+                setViewerOpen(false);
+                setSelectedDoc(null);
+              }}
+              fileUrl={selectedDoc.url ?? ""}
+              fileName={selectedDoc.name}
+              fileType={getFileExtension(selectedDoc.name, selectedDoc.type)}
+            />
           ) : null}
         </div>
       </SheetContent>
@@ -360,8 +613,8 @@ const NcrTable: React.FC<Props> = ({
     const query = search.toLowerCase();
     return tableRows.filter((row) =>
       [row.id, row.title, row.status].some((value) =>
-        value.toLowerCase().includes(query)
-      )
+        value.toLowerCase().includes(query),
+      ),
     );
   }, [search, tableRows]);
 
@@ -407,4 +660,3 @@ const NcrTable: React.FC<Props> = ({
 };
 
 export default NcrTable;
-

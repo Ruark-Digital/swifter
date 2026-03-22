@@ -2435,11 +2435,8 @@
           "description": {
             "type": "string"
           },
-          "responders": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+          "responder": {
+            "type": "string"
           },
           "files": {
             "type": "array",
@@ -2644,6 +2641,150 @@
             "$ref": "#/components/schemas/BadRequest"
           }
         ]
+      },
+      "CollabWebSocketConnection": {
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "example": "wss://dev.swiftpro.tech/collab?doc=contract-123&token=\u003Cjwt\u003E"
+          },
+          "path": {
+            "type": "string",
+            "example": "/collab"
+          },
+          "requiredQuery": {
+            "type": "object",
+            "properties": {
+              "doc": {
+                "type": "string",
+                "description": "Document room identifier"
+              }
+            }
+          },
+          "optionalQuery": {
+            "type": "object",
+            "properties": {
+              "token": {
+                "type": "string",
+                "description": "JWT fallback when Authorization header is unavailable"
+              }
+            }
+          },
+          "authHeader": {
+            "type": "string",
+            "example": "Authorization: Bearer \u003Cjwt\u003E"
+          },
+          "frameFormat": {
+            "type": "string",
+            "example": "binary (Yjs sync protocol)"
+          }
+        }
+      },
+      "CollabWebSocketMessageEnvelope": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "client_to_server",
+              "server_to_client"
+            ]
+          },
+          "protocol": {
+            "type": "string",
+            "enum": [
+              "y-sync",
+              "y-awareness"
+            ]
+          },
+          "encoding": {
+            "type": "string",
+            "enum": [
+              "varuint-prefixed-binary"
+            ]
+          },
+          "typeCode": {
+            "type": "integer",
+            "description": "First varuint in the frame indicating sync or awareness channel"
+          },
+          "payload": {
+            "type": "string",
+            "format": "byte",
+            "description": "Raw binary payload"
+          }
+        }
+      },
+      "CollabWebSocketLifecycleEvent": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string",
+            "enum": [
+              "connect",
+              "sync_step_1",
+              "sync_update",
+              "awareness_update",
+              "message_too_large",
+              "unauthorized",
+              "disconnect",
+              "error"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "server",
+              "client"
+            ]
+          },
+          "closeCode": {
+            "type": "integer",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "event",
+          "source"
+        ]
+      },
+      "CollabWebSocketErrorCode": {
+        "type": "object",
+        "properties": {
+          "closeCode": {
+            "type": "integer"
+          },
+          "trigger": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "closeCode",
+          "trigger",
+          "description"
+        ]
+      },
+      "CollabWebSocketUsageGuide": {
+        "type": "object",
+        "properties": {
+          "step": {
+            "type": "integer"
+          },
+          "instruction": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "step",
+          "instruction"
+        ]
       }
     }
   },
@@ -2653,6 +2794,77 @@
     }
   ],
   "paths": {
+    "/approver/personnel/contract/{contractId}": {
+      "get": {
+        "summary": "List contract personnel by contract",
+        "description": "Returns users in the company eligible for contract-related roles.",
+        "tags": [
+          "Approver - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "company_admin",
+          "contract_manager"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract personnel fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseUserList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/approver/contracts/stats": {
       "get": {
         "summary": "Get contract statistics",
@@ -3519,6 +3731,65 @@
               "type": "string"
             },
             "description": "LEM ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rate sheet fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "sheet": {
+                          "$ref": "#/components/schemas/RateSheetDTO"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approver/contracts/{contractId}/ratesheets/{rateSheetId}": {
+      "get": {
+        "summary": "Get rate sheet for detail",
+        "description": "Returns the rate sheet associated with a specific rate sheet ID.",
+        "tags": [
+          "Approver - Rate Sheet"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rateSheetId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ratesheet ID"
           }
         ],
         "responses": {
@@ -5715,9 +5986,7 @@
               "example": {
                 "title": "Concrete surface cracks",
                 "description": "Observed hairline cracks in slab section A.",
-                "responders": [
-                  "66d21a05b3f6cd1a4b0e1122"
-                ],
+                "responder": "66d21a05b3f6cd1a4b0e1122",
                 "files": [
                   {
                     "name": "photo.png",
@@ -11095,6 +11364,77 @@
         }
       }
     },
+    "/manager/personnel/contract/{contractId}": {
+      "get": {
+        "summary": "List contract personnel by contract",
+        "description": "Returns users in the company eligible for contract-related roles.",
+        "tags": [
+          "ContractManager - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "company_admin",
+          "contract_manager"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract personnel fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseUserList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/manager/msa-contract": {
       "get": {
         "summary": "List MSA contracts",
@@ -12120,7 +12460,7 @@
         "summary": "List contract KPI dashboard rows",
         "description": "Returns KPI categories with current and all-time average scores for a contract.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Kpis"
         ],
         "security": [
           {
@@ -13237,7 +13577,7 @@
         "summary": "Get contract clause library",
         "description": "Returns clause library data for a contract.",
         "tags": [
-          "ContractManager - Contract"
+          "ContractManager - Contract Clauses Library"
         ],
         "security": [
           {
@@ -13858,6 +14198,59 @@
             }
           }
         }
+      },
+      "post": {
+        "summary": "Create a rate sheet",
+        "description": "Creates a new rate sheet for a specific contract.",
+        "tags": [
+          "Vendor - Rate Sheet"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RateSheetDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Rate sheet created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/RateSheetDTO"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/manager/contracts/{contractId}/lems/{lemId}/ratesheet": {
@@ -13897,6 +14290,112 @@
               "type": "string"
             },
             "description": "LEM ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rate sheet fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "sheet": {
+                          "$ref": "#/components/schemas/RateSheetDTO"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rate sheet not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/ratesheets/{rateSheetId}": {
+      "get": {
+        "summary": "Get rate sheet for detail",
+        "description": "Returns the rate sheet.",
+        "tags": [
+          "ContractManager - Contract Ratesheet"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rateSheetId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Rate Sheet ID"
           }
         ],
         "responses": {
@@ -18783,7 +19282,7 @@
         }
       }
     },
-    "/manager/contracts/{dataId}/rfi": {
+    "/manager/contracts/{dataId}/rfis": {
       "post": {
         "summary": "Create a new RFI issue",
         "description": "Creates a new RFI issue for a contract or MSA contract.",
@@ -20247,6 +20746,117 @@
                       "$ref": "#/components/schemas/FinancialStatement"
                     }
                   }
+                },
+                "example": {
+                  "message": "Financial statement fetched successfully",
+                  "data": {
+                    "originalContractValue": 2500000,
+                    "changeOrders": {
+                      "count": 3,
+                      "value": 180000
+                    },
+                    "pendingChangeOrders": 45000,
+                    "savingsRealized": {
+                      "value": 120000,
+                      "percentage": 4.8
+                    },
+                    "percentageIncrease": 7.2,
+                    "holdbackAmount": 90000,
+                    "releasedHoldback": 30000,
+                    "currentContractValue": 2680000,
+                    "billedTillDate": 1250000,
+                    "remaining": 1430000,
+                    "currency": "CAD"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid query parameter",
+                  "details": {
+                    "field": "type",
+                    "reason": "Unsupported contract type"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Contract not found",
+                  "details": {
+                    "contractId": "CON-2024-001"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "9d7b9c1f-12ab-4d4b-9f23-1a0f6a2b8c31"
+                  }
                 }
               }
             }
@@ -20291,7 +20901,134 @@
         ],
         "responses": {
           "200": {
-            "description": "Deliverable status chart fetched successfully"
+            "description": "Deliverable status chart fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "approved": {
+                          "type": "integer"
+                        },
+                        "rejected": {
+                          "type": "integer"
+                        },
+                        "pending": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Deliverable status chart fetched successfully",
+                  "data": {
+                    "total": 24,
+                    "approved": 12,
+                    "rejected": 3,
+                    "pending": 9
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid query parameter",
+                  "details": {
+                    "field": "type",
+                    "reason": "Unsupported contract type"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Contract not found",
+                  "details": {
+                    "contractId": "CON-2024-001"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "1f6b5c2e-5d54-4a5f-9b26-0c9d10d9a6b2"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -20343,7 +21080,152 @@
         ],
         "responses": {
           "200": {
-            "description": "Activities fetched successfully"
+            "description": "Activities fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Activities fetched successfully",
+                  "data": {
+                    "current": {
+                      "range": "YTD",
+                      "startDate": "2025-01-01T00:00:00.000Z",
+                      "endDate": "2025-03-31T23:59:59.999Z",
+                      "labels": [
+                        "2025-01-01",
+                        "2025-02-01",
+                        "2025-03-01"
+                      ],
+                      "series": {
+                        "change": [2, 3, 1],
+                        "claims": [1, 0, 2],
+                        "invoice": [1, 2, 2],
+                        "rfi": [0, 1, 0],
+                        "ncr": [0, 0, 1],
+                        "deliverables": [3, 4, 2]
+                      }
+                    },
+                    "previous": {
+                      "range": "YTD",
+                      "startDate": "2024-01-01T00:00:00.000Z",
+                      "endDate": "2024-03-31T23:59:59.999Z",
+                      "labels": [
+                        "2024-01-01",
+                        "2024-02-01",
+                        "2024-03-01"
+                      ],
+                      "series": {
+                        "change": [1, 1, 2],
+                        "claims": [0, 1, 0],
+                        "invoice": [0, 1, 1],
+                        "rfi": [1, 0, 1],
+                        "ncr": [0, 0, 0],
+                        "deliverables": [2, 3, 1]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid range parameter",
+                  "details": {
+                    "field": "range",
+                    "reason": "Unsupported range value"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Contract not found",
+                  "details": {
+                    "contractId": "CON-2024-001"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "62b08f2e-7ab9-4c12-8f8a-4f95e7c2d0bf"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -20395,7 +21277,132 @@
         ],
         "responses": {
           "200": {
-            "description": "Delivery summary fetched successfully"
+            "description": "Delivery summary fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Delivery summary fetched successfully",
+                  "data": {
+                    "summary": {
+                      "total": 10,
+                      "onTime": 6,
+                      "rejected": 1,
+                      "lateMissed": 3
+                    },
+                    "deliverables": [
+                      {
+                        "kpi": {
+                          "kpi": 82,
+                          "kpiDays": 3,
+                          "kpiText": "Due in 3 days",
+                          "kpiStatus": "due_in"
+                        }
+                      },
+                      {
+                        "kpi": {
+                          "kpi": 40,
+                          "kpiDays": -2,
+                          "kpiText": "2 days late",
+                          "kpiStatus": "late"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid range parameter",
+                  "details": {
+                    "field": "range",
+                    "reason": "Unsupported range value"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract deliverables not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Contract Deliverable not found",
+                  "details": {
+                    "contractId": "CON-2024-001"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "8d37983a-7b7b-4c7c-a2b4-5e879f0c2a44"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -20436,7 +21443,110 @@
         ],
         "responses": {
           "200": {
-            "description": "Attachment fetched successfully"
+            "description": "Attachment fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Attachment fetched successfully",
+                  "data": {
+                    "amendment": 4,
+                    "policy": 7
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid query parameter",
+                  "details": {
+                    "field": "type",
+                    "reason": "Unsupported contract type"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Contract not found",
+                  "details": {
+                    "contractId": "CON-2024-001"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "34ef5d3e-92ab-4e33-9a76-7a7d7c0b2141"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -20477,7 +21587,3188 @@
         ],
         "responses": {
           "200": {
-            "description": "Vendor KPI fetched successfully"
+            "description": "Vendor KPI fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Vendor KPI fetched successfully",
+                  "data": [
+                    {
+                      "score": 72.5
+                    },
+                    {
+                      "score": 61.3
+                    },
+                    {
+                      "score": 80.1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid query parameter",
+                  "details": {
+                    "field": "type",
+                    "reason": "Unsupported contract type"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Contract not found",
+                  "details": {
+                    "contractId": "CON-2024-001"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "0e9c1b2f-c7d3-4d32-9bb9-3f017a6ef1b3"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/dashboard/overview": {
+      "get": {
+        "summary": "Get contract overview card metrics",
+        "description": "Returns risk, compliance, rating, budget, and KPI overview for a contract.",
+        "tags": [
+          "ContractManager - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID (or \"all\" is not supported for this endpoint)"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract overview fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Contract overview fetched successfully",
+                  "data": {
+                    "riskScore": {
+                      "score": 68,
+                      "tier": "high"
+                    },
+                    "compliance": {
+                      "score": 72.5,
+                      "tier": "good"
+                    },
+                    "rating": {
+                      "score": 6,
+                      "tier": "medium"
+                    },
+                    "budget": {
+                      "score": 8.4,
+                      "tier": "good"
+                    },
+                    "kpi": {
+                      "score": 61.2,
+                      "tier": "medium"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid query parameter",
+                  "details": {
+                    "field": "type",
+                    "reason": "Unsupported contract type"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Contract not found",
+                  "details": {
+                    "contractId": "CON-2024-001"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "4d3a8c19-85f6-43e0-8e2a-9f3e1a9f4b33"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/dashboard/alerts": {
+      "get": {
+        "summary": "Get contract monitoring alerts report",
+        "description": "Returns overdue items and insurance expiry alerts for a contract or for all contracts when contractId is \"all\".",
+        "tags": [
+          "ContractManager - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID or \"all\""
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract alerts fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Contract alerts fetched successfully",
+                  "data": {
+                    "generatedAt": "2025-03-15T12:30:00.000Z",
+                    "overdueThresholdDays": 7,
+                    "insuranceExpiryThresholdDays": 30,
+                    "summary": {
+                      "scannedContracts": 12,
+                      "contractsRequiringAttention": 3,
+                      "totalOverdueItems": 5,
+                      "totalInsuranceWarnings": 2,
+                      "totalErrors": 0
+                    },
+                    "contracts": [
+                      {
+                        "contractRef": "65f1c3e1b7c0a2d1a5d8e111",
+                        "contractCode": "CON-2024-001",
+                        "contractTitle": "Office Lease Agreement",
+                        "contractType": "Contract",
+                        "overdueItems": [
+                          {
+                            "entity": "invoice",
+                            "id": "INV-2024-089",
+                            "title": "January Draw",
+                            "status": "pending",
+                            "createdAt": "2025-02-01T10:00:00.000Z",
+                            "daysOpen": 42,
+                            "pendingWith": "manager",
+                            "amount": 850000
+                          }
+                        ],
+                        "insuranceWarnings": [
+                          {
+                            "category": "policy",
+                            "label": "General Liability",
+                            "expiryDate": "2025-04-10T00:00:00.000Z",
+                            "daysToExpiry": 26
+                          }
+                        ],
+                        "attentionFlags": {
+                          "hasOverdueApprovals": false,
+                          "hasOverdueManagerReviews": true,
+                          "hasInsuranceExpiryRisk": true,
+                          "hasCriticalRisk": false,
+                          "overdueItemCount": 1,
+                          "insuranceWarningCount": 1
+                        },
+                        "recommendedActions": [
+                          "Follow up manager for INVOICE INV-2024-089 (42 days overdue)",
+                          "Renew policy General Liability before 2025-04-10T00:00:00.000Z"
+                        ]
+                      }
+                    ],
+                    "errors": []
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid contractId",
+                  "details": {
+                    "field": "contractId",
+                    "reason": "Contract ID format is invalid"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Contract not found",
+                  "details": {
+                    "contractId": "CON-2024-001"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "2c4e5b10-1d7b-4a0d-9f7c-51b9f8e3caa2"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/{contractId}/dashboard/clause-legal-analysis": {
+      "get": {
+        "summary": "Get clause legal analysis for a contract",
+        "description": "Returns clause/legal analysis data for the contract dashboard.",
+        "tags": [
+          "ContractManager - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Clause legal analysis fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Clause legal analysis fetched successfully",
+                  "data": {
+                    "clauses": [
+                      {
+                        "title": "Liquidated Damages",
+                        "standard": "Standard penalty clause",
+                        "actual": "Capped at 10% of contract value",
+                        "risk": "high",
+                        "order": 1
+                      },
+                      {
+                        "title": "Payment Terms",
+                        "standard": "Net 30 days",
+                        "actual": "Net 45 days with early payment discount",
+                        "risk": "low",
+                        "order": 2
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid query parameter",
+                  "details": {
+                    "field": "type",
+                    "reason": "Unsupported contract type"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Clause legal analysis not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Clause legal analysis not found",
+                  "details": {
+                    "contractId": "CON-2024-001"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "a6b9c8d1-6d8e-4c9c-9aef-2d1e0d5b9c3a"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/dashboard/vendor-summary": {
+      "get": {
+        "summary": "Get vendor performance summary (portfolio level)",
+        "description": "Returns vendor performance rows with contract count, risk score, claims, change orders and performance indicator.",
+        "tags": [
+          "ContractManager - Main Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vendor performance summary fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Vendor performance summary fetched successfully",
+                  "data": {
+                    "layout": {
+                      "title": "Vendor Performance Summary",
+                      "columns": [
+                        "vendor",
+                        "contracts",
+                        "riskScore",
+                        "claims",
+                        "changeOrders",
+                        "performance"
+                      ]
+                    },
+                    "rows": [
+                      {
+                        "vendor": "BuildCorp Ltd",
+                        "contracts": 8,
+                        "riskScore": 65,
+                        "claims": 2,
+                        "changeOrders": 12,
+                        "performance": "critical",
+                        "totalContracts": 8,
+                        "upcomingRenewals": 2,
+                        "spendYtd": 850000,
+                        "riskStatus": "high"
+                      }
+                    ],
+                    "summary": {
+                      "totalVendors": 4,
+                      "totalContracts": 41,
+                      "upcomingRenewals": 6,
+                      "spendYtd": 2450000,
+                      "atRiskVendors": 2
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid query parameter",
+                  "details": {
+                    "field": "type",
+                    "reason": "Unsupported contract type"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Vendors not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Vendor records not found",
+                  "details": {
+                    "companyId": "65f1c3e1b7c0a2d1a5d8e111"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "1d7a9b2c-2b8f-4e7b-8a3f-86b3ad3e1e21"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/dashboard/renewals": {
+      "get": {
+        "summary": "Get renewals and expiry timeline (portfolio level)",
+        "description": "Returns renewal timeline entries and scheduled renewal actions based on contract formation and expiry.",
+        "tags": [
+          "ContractManager - Main Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Renewals and expiry timeline fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Renewals and expiry timeline fetched successfully",
+                  "data": {
+                    "timeline": [
+                      {
+                        "contractRef": "65f1c3e1b7c0a2d1a5d8e111",
+                        "contractTitle": "AWS Cloud Services",
+                        "contractCode": "CON-2024-001",
+                        "vendor": "BlueCorp Industries",
+                        "value": 2500000,
+                        "daysToExpiry": 30,
+                        "timelineStatus": "critical",
+                        "label": "Expires in 30 days",
+                        "stage": "executed"
+                      }
+                    ],
+                    "actions": [
+                      {
+                        "contractRef": "65f1c3e1b7c0a2d1a5d8e111",
+                        "contractCode": "CON-2024-001",
+                        "contractTitle": "AWS Cloud Services",
+                        "action": "generate_renewal_draft",
+                        "execution": "immediate",
+                        "renewalDeadline": "2025-04-01T00:00:00.000Z",
+                        "notifyOwner": true,
+                        "reason": "Expires within 30 days"
+                      }
+                    ],
+                    "summary": {
+                      "dueIn30Days": 2,
+                      "expired": 1,
+                      "scheduled": 3,
+                      "executed": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid query parameter",
+                  "details": {
+                    "field": "type",
+                    "reason": "Unsupported contract type"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contracts not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Contracts not found",
+                  "details": {
+                    "companyId": "65f1c3e1b7c0a2d1a5d8e111"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "5a30a1d9-2b62-4bfb-9a94-0b0e85e1c5a3"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/dashboard/clause-intelligence": {
+      "get": {
+        "summary": "Get clause intelligence (portfolio level)",
+        "description": "Returns clause sections with completion, most negotiated clauses, and high-risk clause types.",
+        "tags": [
+          "ContractManager - Main Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Clause intelligence fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Clause intelligence fetched successfully",
+                  "data": {
+                    "sections": [
+                      {
+                        "id": "liquidated_damages",
+                        "title": "Liquidated Damages",
+                        "collapsible": true,
+                        "collapsed": false,
+                        "mandatoryCount": 1,
+                        "optionalCount": 0,
+                        "completionPercentage": 100,
+                        "clauses": [
+                          {
+                            "title": "Liquidated Damages",
+                            "standard": "Standard penalty clause",
+                            "actual": "Capped at 10% of contract value",
+                            "risk": "high",
+                            "mandatory": true,
+                            "comparison": {
+                              "changed": true,
+                              "similarity": 62.5,
+                              "added": [
+                                "Capped",
+                                "10%"
+                              ],
+                              "removed": [
+                                "standard"
+                              ]
+                            },
+                            "redLine": "\u003Cdel\u003Estandard\u003C/del\u003E \u003Cins\u003ECapped 10%\u003C/ins\u003E"
+                          }
+                        ]
+                      }
+                    ],
+                    "completionPercentage": 85,
+                    "mostNegotiatedClauses": [
+                      {
+                        "category": "Liquidated Damages",
+                        "count": 78
+                      }
+                    ],
+                    "highRiskClauseTypes": [
+                      {
+                        "category": "Liquidated Damages",
+                        "contracts": 78,
+                        "severity": "high"
+                      }
+                    ],
+                    "helperMethods": {
+                      "compareClauseVersions": "available",
+                      "renderClauseRedLine": "available"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid query parameter",
+                  "details": {
+                    "field": "type",
+                    "reason": "Unsupported contract type"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Clause intelligence not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Clause intelligence not found",
+                  "details": {
+                    "companyId": "65f1c3e1b7c0a2d1a5d8e111"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "0f8d2b0c-4a6e-49f1-8f2a-cc0a3b7647d9"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/dashboard/cards/total": {
+      "get": {
+        "summary": "Get total contract dashboard cards (portfolio level)",
+        "description": "Returns total contract status metrics and financial summary.",
+        "tags": [
+          "ContractManager - Main Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          },
+          {
+            "in": "query",
+            "name": "vendorId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional vendor filter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Total contract dashboard card fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Total contract dashboard card fetched successfully",
+                  "data": {
+                    "allContracts": {
+                      "value": 42,
+                      "change": 5.2,
+                      "trend": "up"
+                    },
+                    "activeContracts": {
+                      "value": 28,
+                      "change": 2.1,
+                      "trend": "up"
+                    },
+                    "draftContracts": {
+                      "value": 6,
+                      "change": -1,
+                      "trend": "down"
+                    },
+                    "suspendedContracts": {
+                      "value": 2,
+                      "change": 0,
+                      "trend": "none"
+                    },
+                    "expiredContracts": {
+                      "value": 3,
+                      "change": 0.5,
+                      "trend": "up"
+                    },
+                    "terminatedContracts": {
+                      "value": 3,
+                      "change": 0,
+                      "trend": "none"
+                    },
+                    "totalContractValue": {
+                      "value": 12500000,
+                      "currency": "CAD"
+                    },
+                    "committedVsActual": {
+                      "committed": 12500000,
+                      "actual": 5400000,
+                      "percentage": 43.2,
+                      "trend": {
+                        "value": 5400000,
+                        "change": 4.8,
+                        "trend": "up"
+                      }
+                    },
+                    "savingsRealized": {
+                      "value": 320000,
+                      "percentage": 2.6,
+                      "trend": {
+                        "value": 320000,
+                        "change": 1.2,
+                        "trend": "up"
+                      }
+                    },
+                    "upcomingRenewals": {
+                      "count": 4,
+                      "days": 90
+                    },
+                    "highRiskContracts": {
+                      "count": 5
+                    },
+                    "holdbacks": {
+                      "value": 120000,
+                      "trend": {
+                        "value": 120000,
+                        "change": 0.8,
+                        "trend": "up"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid query parameter",
+                  "details": {
+                    "field": "vendorId",
+                    "reason": "Vendor ID format is invalid"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contracts not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Contracts not found",
+                  "details": {
+                    "companyId": "65f1c3e1b7c0a2d1a5d8e111"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "3c90f1b8-7d6b-4f2a-9c2a-5fd1b9a2a120"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/dashboard/cards/ytd": {
+      "get": {
+        "summary": "Get YTD contract dashboard cards (portfolio level)",
+        "description": "Returns year-to-date contract dashboard card metrics.",
+        "tags": [
+          "ContractManager - Main Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "YTD contract dashboard card fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "YTD contract dashboard card fetched successfully",
+                  "data": {
+                    "allContracts": {
+                      "value": 18,
+                      "change": 3.5,
+                      "trend": "up"
+                    },
+                    "activeContracts": {
+                      "value": 12,
+                      "change": 1.4,
+                      "trend": "up"
+                    },
+                    "draftContracts": {
+                      "value": 2,
+                      "change": 0,
+                      "trend": "none"
+                    },
+                    "suspendedContracts": {
+                      "value": 1,
+                      "change": 0,
+                      "trend": "none"
+                    },
+                    "expiredContracts": {
+                      "value": 2,
+                      "change": 0.5,
+                      "trend": "up"
+                    },
+                    "terminatedContracts": {
+                      "value": 1,
+                      "change": 0,
+                      "trend": "none"
+                    },
+                    "totalContractValue": {
+                      "value": 6500000,
+                      "currency": "CAD"
+                    },
+                    "committedVsActual": {
+                      "committed": 6500000,
+                      "actual": 2800000,
+                      "percentage": 43.1,
+                      "trend": {
+                        "value": 2800000,
+                        "change": 2.6,
+                        "trend": "up"
+                      }
+                    },
+                    "savingsRealized": {
+                      "value": 180000,
+                      "percentage": 2.8,
+                      "trend": {
+                        "value": 180000,
+                        "change": 1.1,
+                        "trend": "up"
+                      }
+                    },
+                    "upcomingRenewals": {
+                      "count": 2,
+                      "days": 90
+                    },
+                    "highRiskContracts": {
+                      "count": 3
+                    },
+                    "holdbacks": {
+                      "value": 60000,
+                      "trend": {
+                        "value": 60000,
+                        "change": 0.4,
+                        "trend": "up"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid query parameter",
+                  "details": {
+                    "field": "type",
+                    "reason": "Unsupported contract type"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contracts not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Contracts not found",
+                  "details": {
+                    "companyId": "65f1c3e1b7c0a2d1a5d8e111"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "d5c8a2f1-62c3-4c2b-9d76-1e3b7a5d0c4b"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/dashboard/action-logs": {
+      "get": {
+        "summary": "Get dashboard action logs (portfolio level)",
+        "description": "Returns recent activity logs across contracts for dashboard display.",
+        "tags": [
+          "ContractManager - Main Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          },
+          {
+            "in": "query",
+            "name": "vendorId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional vendor filter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard action logs fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Dashboard action logs fetched successfully",
+                  "data": [
+                    {
+                      "id": "65f1c3e1b7c0a2d1a5d8e555",
+                      "title": "Invoice INV-2024-089 awaiting approval",
+                      "description": "Submitted by BuildCorp Ltd",
+                      "status": "pending",
+                      "requestedBy": "BuildCorp Ltd",
+                      "contractTitle": "Office Lease Agreement",
+                      "createdAt": "2025-03-01T10:30:00.000Z",
+                      "type": "ContractInvoice"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid vendorId",
+                  "details": {
+                    "field": "vendorId",
+                    "reason": "Vendor ID format is invalid"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "a7b2e1c5-4f32-4e5b-9f1d-2c0a5c3a3d42"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/dashboard/general-updates": {
+      "get": {
+        "summary": "Get dashboard general updates (portfolio level)",
+        "description": "Returns general updates for the dashboard.",
+        "tags": [
+          "ContractManager - Main Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          },
+          {
+            "in": "query",
+            "name": "vendorId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional vendor filter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard general updates fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Dashboard general updates fetched successfully",
+                  "data": [
+                    {
+                      "id": "65f1c3e1b7c0a2d1a5d8e777",
+                      "title": "Change Submitted",
+                      "description": "Submitted by BuildCorp Ltd",
+                      "status": "pending",
+                      "requestedBy": "BuildCorp Ltd",
+                      "contractTitle": "Office Lease Agreement",
+                      "createdAt": "2025-03-05T09:15:00.000Z",
+                      "type": "ContractChange"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid vendorId",
+                  "details": {
+                    "field": "vendorId",
+                    "reason": "Vendor ID format is invalid"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "6c2f0d84-617d-4c18-9f12-9b9f3b6b5d55"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/dashboard/cycle-time": {
+      "get": {
+        "summary": "Get cycle time per stage (portfolio level)",
+        "description": "Returns cycle time insights per workflow stage.",
+        "tags": [
+          "ContractManager - Main Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard cycle time fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Dashboard cycle time fetched successfully",
+                  "data": {
+                    "stages": [
+                      {
+                        "name": "Drafting",
+                        "days": 12,
+                        "percentage": 24
+                      },
+                      {
+                        "name": "Review",
+                        "days": 18,
+                        "percentage": 36
+                      }
+                    ],
+                    "bottleneck": {
+                      "stage": "Review",
+                      "days": 18,
+                      "reason": "Pending approvals"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid query parameter",
+                  "details": {
+                    "field": "type",
+                    "reason": "Unsupported contract type"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "4c31d8a3-9c8f-4f88-9df6-4f0d67a7c9d2"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/dashboard/invoice-status": {
+      "get": {
+        "summary": "Get invoice status stats (portfolio level)",
+        "description": "Returns invoice status counts within a given range.",
+        "tags": [
+          "ContractManager - Main Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "YTD",
+                90, 60, 30, 7],
+              "default": 30
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard invoice status fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Dashboard invoice status fetched successfully",
+                  "data": {
+                    "approved": 6,
+                    "pending": 4,
+                    "rejected": 1
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid range parameter",
+                  "details": {
+                    "field": "range",
+                    "reason": "Unsupported range value"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "79bf2c0e-5b60-48f2-8f47-7f30f9b7b3af"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/dashboard/committed-vs-actual": {
+      "get": {
+        "summary": "Get committed vs actual spend (portfolio level)",
+        "description": "Returns committed vs actual spend trend within a given range.",
+        "tags": [
+          "ContractManager - Main Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "YTD",
+                90, 60, 30, 7],
+              "default": 30
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard committed vs actual spend fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Dashboard committed vs actual spend fetched successfully",
+                  "data": {
+                    "committed": 12500000,
+                    "actual": 5400000,
+                    "percentage": 43.2
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid range parameter",
+                  "details": {
+                    "field": "range",
+                    "reason": "Unsupported range value"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "2c6f7d4e-b3a7-4c89-9a62-6f0d6a2a8e54"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/dashboard/vendor-contract-value": {
+      "get": {
+        "summary": "Get contract value by vendor (portfolio level)",
+        "description": "Returns contract values aggregated by vendor.",
+        "tags": [
+          "ContractManager - Main Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "YTD",
+                90, 60, 30, 7],
+              "default": 30
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard vendor contract values fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Dashboard vendor contract values fetched successfully",
+                  "data": [
+                    {
+                      "name": "BuildCorp Ltd",
+                      "value": 3500000,
+                      "contractCount": 8
+                    },
+                    {
+                      "name": "TechServices Inc",
+                      "value": 2800000,
+                      "contractCount": 6
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid range parameter",
+                  "details": {
+                    "field": "range",
+                    "reason": "Unsupported range value"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "16f07a6d-8d12-4f39-8a33-0d3b72a2c5ff"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/dashboard/project-contract-value": {
+      "get": {
+        "summary": "Get contract value by project (portfolio level)",
+        "description": "Returns contract values aggregated by project.",
+        "tags": [
+          "ContractManager - Main Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "YTD",
+                90, 60, 30, 7],
+              "default": 30
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard project contract values fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Dashboard project contract values fetched successfully",
+                  "data": [
+                    {
+                      "name": "City Hall Renovation",
+                      "value": 2200000,
+                      "contractCount": 3
+                    },
+                    {
+                      "name": "Warehouse Expansion",
+                      "value": 1800000,
+                      "contractCount": 2
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid range parameter",
+                  "details": {
+                    "field": "range",
+                    "reason": "Unsupported range value"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "7e5c9d8f-efb2-4a16-8f0a-77f2d1a3c2f0"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/dashboard/risk-distribution": {
+      "get": {
+        "summary": "Get risk distribution (portfolio level)",
+        "description": "Returns distribution of contract risk within a given range.",
+        "tags": [
+          "ContractManager - Main Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "YTD",
+                90, 60, 30, 7],
+              "default": 30
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard risk distribution fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Dashboard risk distribution fetched successfully",
+                  "data": {
+                    "low": 12,
+                    "medium": 8,
+                    "high": 5
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid range parameter",
+                  "details": {
+                    "field": "range",
+                    "reason": "Unsupported range value"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "3f2a6d1e-2dcb-4a4f-8f6d-9d4f8d2e3d11"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/dashboard/change-order-impact": {
+      "get": {
+        "summary": "Get change order impact (portfolio level)",
+        "description": "Returns summary of change order impact for dashboard.",
+        "tags": [
+          "ContractManager - Main Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "YTD",
+                90, 60, 30, 7],
+              "default": 30
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard change order impact fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Dashboard change order impact fetched successfully",
+                  "data": {
+                    "totalCOs": 6,
+                    "valueIncrease": 350000,
+                    "percentageIncrease": 8.5,
+                    "chartData": [
+                      {
+                        "date": "2025-01",
+                        "original": 200000,
+                        "revised": 240000
+                      },
+                      {
+                        "date": "2025-02",
+                        "original": 200000,
+                        "revised": 260000
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid range parameter",
+                  "details": {
+                    "field": "range",
+                    "reason": "Unsupported range value"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "2f5a9c3e-2d4a-4e6d-9a4f-6a1d8f3c2b10"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/dashboard/category-value": {
+      "get": {
+        "summary": "Get contract value by category (portfolio level)",
+        "description": "Returns contract values aggregated by category.",
+        "tags": [
+          "ContractManager - Main Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "YTD",
+                90, 60, 30, 7],
+              "default": 30
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard contract category values fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Dashboard contract category values fetched successfully",
+                  "data": [
+                    {
+                      "name": "Construction",
+                      "value": 4200000,
+                      "contractCount": 9
+                    },
+                    {
+                      "name": "IT Services",
+                      "value": 3100000,
+                      "contractCount": 6
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid range parameter",
+                  "details": {
+                    "field": "range",
+                    "reason": "Unsupported range value"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "9a5c4f2e-9b3f-4c2c-8a7c-6d3f5a1b2c9e"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/dashboard/compliance-status": {
+      "get": {
+        "summary": "Get compliance status (portfolio level)",
+        "description": "Returns compliance status summary for dashboard.",
+        "tags": [
+          "ContractManager - Main Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "YTD",
+                90, 60, 30, 7],
+              "default": 30
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard compliance status fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Dashboard compliance status fetched successfully",
+                  "data": {
+                    "insuranceActive": {
+                      "current": 12,
+                      "total": 20,
+                      "percentage": 60
+                    },
+                    "securitySubmission": {
+                      "current": 8,
+                      "total": 20,
+                      "percentage": 40
+                    },
+                    "missedApprovals": 8,
+                    "ncrs": 3,
+                    "auditTrailCompleteness": 89
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid range parameter",
+                  "details": {
+                    "field": "range",
+                    "reason": "Unsupported range value"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "0b7c1a2f-6c8a-4e6b-9b2c-2d3a4c5f6e7a"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/dashboard/contract-status": {
+      "get": {
+        "summary": "Get contract status breakdown (portfolio level)",
+        "description": "Returns contract status distribution within a given range.",
+        "tags": [
+          "ContractManager - Main Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "YTD",
+                90, 60, 30, 7],
+              "default": 30
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard contract status fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "message": "Dashboard contract status fetched successfully",
+                  "data": {
+                    "active": 18,
+                    "pendingApproval": 4,
+                    "completed": 6,
+                    "terminated": 1,
+                    "suspended": 2,
+                    "draft": 3
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid range parameter",
+                  "details": {
+                    "field": "range",
+                    "reason": "Unsupported range value"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Authentication required",
+                  "details": {
+                    "reason": "Missing bearer token"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Access denied",
+                  "details": {
+                    "requiredRoles": [
+                      "contract_manager",
+                      "company_admin"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error",
+                  "details": {
+                    "traceId": "8d1f3a2b-4c5d-4a6e-9f1b-6c7d8e9f0a1b"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -27357,6 +31648,79 @@
         }
       }
     },
+    "/user/contracts/{contractId}/ratesheets/{rateSheetId}": {
+      "get": {
+        "summary": "Get rate sheet for detail",
+        "description": "Returns the rate sheet associated with a specific rate sheet ID.",
+        "tags": [
+          "View Only User - Rate Sheet"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rateSheetId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The rate sheet ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rate sheet fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Rate sheet fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "sheet": {
+                          "$ref": "#/components/schemas/RateSheetDTO"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Rate sheet not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
     "/user/contracts/{contractId}/amendment/stats": {
       "get": {
         "summary": "Get contract amendment statistics",
@@ -29317,6 +33681,77 @@
         }
       }
     },
+    "/vendor/personnel/contract/{contractId}": {
+      "get": {
+        "summary": "List contract personnel by contract",
+        "description": "Returns users in the company eligible for contract-related roles.",
+        "tags": [
+          "Vendor - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "company_admin",
+          "contract_manager"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract personnel fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseUserList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/vendor/contracts/stats": {
       "get": {
         "summary": "Get vendor contract statistics",
@@ -29375,6 +33810,221 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contracts/dashboard/cards/total": {
+      "get": {
+        "summary": "Get vendor dashboard total contract card",
+        "description": "Returns summary metrics for the vendor dashboard total contract card.",
+        "tags": [
+          "Vendor - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vendor dashboard total card fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Vendor dashboard total card fetched successfully",
+                  "data": {
+                    "allContracts": {
+                      "value": 8,
+                      "change": 1.2,
+                      "trend": "up"
+                    },
+                    "activeContracts": {
+                      "value": 5,
+                      "change": 0.8,
+                      "trend": "up"
+                    },
+                    "draftContracts": {
+                      "value": 1,
+                      "change": 0,
+                      "trend": "none"
+                    },
+                    "suspendedContracts": {
+                      "value": 0,
+                      "change": 0,
+                      "trend": "none"
+                    },
+                    "expiredContracts": {
+                      "value": 1,
+                      "change": 0,
+                      "trend": "none"
+                    },
+                    "terminatedContracts": {
+                      "value": 1,
+                      "change": 0,
+                      "trend": "none"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contracts/dashboard/action-logs": {
+      "get": {
+        "summary": "Get vendor dashboard action logs",
+        "description": "Returns recent action logs scoped to the vendor.",
+        "tags": [
+          "Vendor - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vendor dashboard action logs fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Vendor dashboard action logs fetched successfully",
+                  "data": [
+                    {
+                      "id": "65f1c3e1b7c0a2d1a5d8e555",
+                      "title": "Invoice INV-2024-089 awaiting approval",
+                      "description": "Submitted by BuildCorp Ltd",
+                      "status": "pending",
+                      "requestedBy": "BuildCorp Ltd",
+                      "contractTitle": "Office Lease Agreement",
+                      "createdAt": "2025-03-01T10:30:00.000Z",
+                      "type": "ContractInvoice"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contracts/dashboard/general-updates": {
+      "get": {
+        "summary": "Get vendor dashboard general updates",
+        "description": "Returns general updates for the vendor dashboard.",
+        "tags": [
+          "Vendor - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vendor dashboard general updates fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Vendor dashboard general updates fetched successfully",
+                  "data": [
+                    {
+                      "id": "65f1c3e1b7c0a2d1a5d8e777",
+                      "title": "Change Submitted",
+                      "description": "Submitted by BuildCorp Ltd",
+                      "status": "pending",
+                      "requestedBy": "BuildCorp Ltd",
+                      "contractTitle": "Office Lease Agreement",
+                      "createdAt": "2025-03-05T09:15:00.000Z",
+                      "type": "ContractChange"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           },
           "500": {
             "description": "Server error"
@@ -30222,6 +34872,63 @@
           },
           "404": {
             "description": "Rate Sheet not found"
+          }
+        }
+      },
+      "get": {
+        "summary": "Get rate sheet for detail",
+        "description": "Returns the rate sheet associated with a specific rate sheet ID.",
+        "tags": [
+          "Vendor - Rate Sheet"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rateSheetId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Rate Sheet ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rate sheet fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "sheet": {
+                          "$ref": "#/components/schemas/RateSheetDTO"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -33000,9 +37707,7 @@
               "example": {
                 "title": "Concrete surface cracks",
                 "description": "Observed hairline cracks in slab section A.",
-                "responders": [
-                  "66d21a05b3f6cd1a4b0e1122"
-                ],
+                "responder": "66d21a05b3f6cd1a4b0e1122",
                 "files": [
                   {
                     "name": "photo.png",
@@ -37022,6 +41727,147 @@
           }
         }
       }
+    },
+    "/collab": {
+      "get": {
+        "tags": [
+          "Collaboration"
+        ],
+        "summary": "WebSocket handshake for collaborative editing",
+        "description": "Upgrades the connection to WebSocket for real-time document collaboration.\nThe server path is `/collab` and expects `doc` query parameter.\nAuthentication supports:\n1) `Authorization: Bearer \u003Cjwt\u003E` header (preferred)\n2) `token=\u003Cjwt\u003E` query parameter fallback\n\nTransport details:\n- Binary protocol based on Yjs (`y-protocols/sync` and `y-protocols/awareness`)\n- Maximum inbound frame size: 1 MB\n- In production, non-HTTPS forwarded traffic is rejected\n",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "doc",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Document identifier used as the collaboration room key.",
+            "example": "contract-25-015"
+          },
+          {
+            "in": "query",
+            "name": "token",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "JWT token fallback when Authorization header is not sent."
+          }
+        ],
+        "responses": {
+          "101": {
+            "description": "Switching Protocols; WebSocket connection established.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollabWebSocketConnection"
+                },
+                "examples": {
+                  "connected": {
+                    "value": {
+                      "endpoint": "wss://dev.swiftpro.tech/collab?doc=contract-25-015&token=\u003Cjwt\u003E",
+                      "path": "/collab",
+                      "requiredQuery": {
+                        "doc": "contract-25-015"
+                      },
+                      "optionalQuery": {
+                        "token": "\u003Cjwt\u003E"
+                      },
+                      "authHeader": "Authorization: Bearer \u003Cjwt\u003E",
+                      "frameFormat": "binary (Yjs sync protocol)"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed; connection closed as unauthorized."
+          },
+          "403": {
+            "description": "Forbidden due to inactive tenant/subscription or HTTPS enforcement in production."
+          },
+          "1009": {
+            "description": "WebSocket closed because incoming message exceeded 1 MB."
+          }
+        },
+        "x-websocket": {
+          "protocols": [
+            "ws",
+            "wss"
+          ],
+          "binaryFrames": true,
+          "auth": {
+            "header": "Authorization Bearer token",
+            "queryFallback": "token"
+          },
+          "messageTypes": [
+            {
+              "name": "sync",
+              "protocolModule": "y-protocols/sync",
+              "direction": "bidirectional"
+            },
+            {
+              "name": "awareness",
+              "protocolModule": "y-protocols/awareness",
+              "direction": "bidirectional"
+            }
+          ],
+          "lifecycle": [
+            "connect",
+            "sync_step_1_from_server",
+            "sync_messages_bidirectional",
+            "awareness_broadcast",
+            "disconnect_or_error"
+          ],
+          "closeCodes": [
+            {
+              "closeCode": 1009,
+              "trigger": "Message too large",
+              "description": "Payload exceeded 1 MB"
+            },
+            {
+              "closeCode": 1011,
+              "trigger": "Persistence error",
+              "description": "Server-side update persistence failed"
+            },
+            {
+              "closeCode": 401,
+              "trigger": "Unauthorized",
+              "description": "JWT/session/tenant validation failed"
+            },
+            {
+              "closeCode": 403,
+              "trigger": "HTTPS required in production",
+              "description": "x-forwarded-proto did not include https"
+            }
+          ],
+          "usage": [
+            {
+              "step": 1,
+              "instruction": "Open ws(s) connection to /collab with doc query parameter"
+            },
+            {
+              "step": 2,
+              "instruction": "Send Authorization Bearer token or token query fallback"
+            },
+            {
+              "step": 3,
+              "instruction": "Wait for initial sync step from server"
+            },
+            {
+              "step": 4,
+              "instruction": "Exchange sync and awareness binary frames"
+            },
+            {
+              "step": 5,
+              "instruction": "Handle close codes and reconnect client-side as needed"
+            }
+          ]
+        }
+      }
     }
   },
   "tags": [
@@ -37172,6 +42018,10 @@
     {
       "name": "Vendor - Contract Compliance",
       "description": "Contract compliance management for vendors"
+    },
+    {
+      "name": "Vendor - Dashboard",
+      "description": "Vendor dashboard summary and activity"
     },
     {
       "name": "Vendor - MSA Contract",

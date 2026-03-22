@@ -91,13 +91,29 @@ const DocCard = ({
 
 const ReportDetailsSheet: React.FC<{
   reportId: string;
-  reportDetails: ReportDetails | null;
-  isLoading: boolean;
-  error: any;
+  basePath: string;
+  contractId: string;
   trigger: React.ReactNode;
-}> = ({ reportDetails, isLoading, error, trigger }) => {
+}> = ({ reportId, basePath, contractId, trigger }) => {
+  const [open, setOpen] = useState(false);
+
+  const {
+    data: reportDetails,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["report-details", reportId, basePath],
+    queryFn: async () => {
+      const response = await getRequest({
+        url: `${basePath}/reports/${reportId}`,
+      });
+      return response.data?.data as ReportDetails;
+    },
+    enabled: !!reportId && !!contractId && open,
+  });
+
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="right"
@@ -273,6 +289,21 @@ const ReportDetailsSheet: React.FC<{
   );
 };
 
+export interface ReportItem {
+  _id: string;
+  contractRef: string;
+  contractRefModel: string;
+  company: string;
+  reportId: string;
+  title: string;
+  submittedBy: string;
+  description: string;
+  files: any[];
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
 function VendorReportsTabContent({
   contractId,
   isActive,
@@ -281,7 +312,6 @@ function VendorReportsTabContent({
   isActive?: boolean;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 300);
   const { isVendor, isApprover, isManager, isAdmin, isViewOnly } =
     useUserRole();
@@ -312,7 +342,9 @@ function VendorReportsTabContent({
       const response = await getRequest({
         url: `${basePath}/reports?${params.toString()}`,
       });
-      return response.data?.data?.reports || [];
+      return (
+        (response.data?.data?.reports as ReportItem[]) || ([] as ReportItem[])
+      );
     },
     enabled: !!contractId && !!isActive,
   });
@@ -330,34 +362,16 @@ function VendorReportsTabContent({
     staleTime: 60_000,
   });
 
-  // Fetch report details when a report is selected
-  const {
-    data: reportDetails,
-    isLoading: detailsLoading,
-    error: detailsError,
-  } = useQuery({
-    queryKey: ["report-details", selectedReportId, basePath],
-    queryFn: async () => {
-      if (!selectedReportId) return null;
-      const response = await getRequest({
-        url: `${basePath}/reports/${selectedReportId}`,
-      });
-      return response.data?.data;
-    },
-    enabled: !!selectedReportId && !!contractId,
-  });
-
   const rows: VendorReportRow[] =
-    reportsData?.map((report: any) => ({
+    reportsData?.map((report) => ({
       _id: report._id,
       reportId: report.reportId,
       title: report.title,
-      submittedBy: report.submittedBy?.name || "Unknown",
-      submissionDate:
-        report.submissionDate || report.createdAt
-          ? format(report.submissionDate || report.createdAt, "dd-MM-yyyy")
-          : "",
-      status: report.status,
+      submittedBy: report.submittedBy || "Unknown",
+      submissionDate: report.createdAt
+        ? format(report.createdAt, "dd-MM-yyyy")
+        : "",
+      status: "Unknown",
       description: report.description,
       files: report.files || [],
     })) || [];
@@ -374,15 +388,10 @@ function VendorReportsTabContent({
         <div className="flex items-center gap-2">
           <ReportDetailsSheet
             reportId={row.original._id}
-            reportDetails={reportDetails}
-            isLoading={detailsLoading}
-            error={detailsError}
+            basePath={basePath}
+            contractId={contractId}
             trigger={
-              <Button
-                variant="link"
-                size="sm"
-                onClick={() => setSelectedReportId(row.original._id)}
-              >
+              <Button variant="link" size="sm">
                 view
               </Button>
             }
@@ -398,20 +407,22 @@ function VendorReportsTabContent({
         <h2 className="text-lg font-semibold text-slate-900">
           Vendor’s Reports
         </h2>
-        <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-          <DialogTrigger asChild>
-            <Button className="h-10 rounded-xl bg-[#2A4467] text-white">
-              Create Report
-            </Button>
-          </DialogTrigger>
-          <CreateVendorReportDialog
-            contractId={contractId}
-            onSuccess={() => {
-              setOpenCreate(false);
-              setOpenSuccess(true);
-            }}
-          />
-        </Dialog>
+        {isVendor && (
+          <Dialog open={openCreate} onOpenChange={setOpenCreate}>
+            <DialogTrigger asChild>
+              <Button className="h-10 rounded-xl bg-[#2A4467] text-white">
+                Create Report
+              </Button>
+            </DialogTrigger>
+            <CreateVendorReportDialog
+              contractId={contractId}
+              onSuccess={() => {
+                setOpenCreate(false);
+                setOpenSuccess(true);
+              }}
+            />
+          </Dialog>
+        )}
       </div>
 
       <Card className="w-[320px] rounded-xl border border-slate-200 bg-white p-5 shadow-none">

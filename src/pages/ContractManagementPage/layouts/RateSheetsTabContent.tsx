@@ -51,6 +51,7 @@ type Props = {
 
 type RateSheetRow = {
   id: string;
+  sheetId: string;
   title: string;
   amount: string;
   submissionDate: string;
@@ -169,7 +170,7 @@ const SubmitRateSheetDialog: React.FC<{
     mutationKey: ["uploadRateSheetFile"],
     mutationFn: async ({ file }) => {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", file as any);
       return await postRequest({
         url: "/upload",
         payload: formData,
@@ -346,6 +347,58 @@ const SubmitRateSheetDialog: React.FC<{
   );
 };
 
+export interface RateSheetDetailResponse {
+  sheet: RateSheetDetailResponseSheet;
+}
+
+export interface RateSheetDetailResponseSheet {
+  manager:          Manager;
+  _id:              string;
+  company:          string;
+  contractRef:      string;
+  contractRefModel: string;
+  submittedBy:      SubmittedBy;
+  sheetId:          string;
+  title:            string;
+  description:      string;
+  amount:           number;
+  status:           string;
+  files:            File[];
+  createdAt:        Date;
+  updatedAt:        Date;
+  __v:              number;
+  summary:          Summary[];
+}
+
+export interface File {
+  name: string;
+  url:  string;
+  type: string;
+  size: number;
+  _id:  string;
+}
+
+export interface Manager {
+  status: string;
+}
+
+export interface SubmittedBy {
+  _id:  string;
+  name: string;
+}
+
+export interface Summary {
+  name:   string;
+  sheets: SheetElement[];
+}
+
+export interface SheetElement {
+  sheetName: string;
+  headers:   string[];
+  rows:      { [key: string]: string }[];
+}
+
+
 const RateSheetDetailsSheet: React.FC<{
   trigger: React.ReactNode;
   contractId: string;
@@ -358,18 +411,15 @@ const RateSheetDetailsSheet: React.FC<{
   const { isManager } = useUserRole();
 
   const { data: detailRes, isLoading: detailLoading } = useQuery({
-    queryKey: ["rate-sheet-detail", basePath, contractId, row.id],
+    queryKey: ["rate-sheet-detail", basePath, contractId, row.sheetId],
     queryFn: async () => {
       const res = await getRequest({
-        url: `${basePath}/${row.id}`,
+        url: `${basePath}/${row.sheetId}`,
       });
-      const items = (res as any)?.data?.data || [];
-      const match = items.find(
-        (it: any) => it?.sheetId === row.id || it?.id === row.id || it?.rateId === row.id,
-      );
-      return match || null;
+      const sheet = res?.data?.data?.sheet as RateSheetDetailResponseSheet;
+      return sheet ?? null;
     },
-    enabled: open && !!contractId && !!row.id && !!basePath,
+    enabled: open && !!contractId && !!row.sheetId && !!basePath,
   });
 
   const { mutate: mutateApproval, isPending: isApproving } = useMutation({
@@ -397,23 +447,10 @@ const RateSheetDetailsSheet: React.FC<{
 
   const canApprove = isManager && basePath.includes("/manager/contracts");
 
-  const sheet = detailRes as
-    | {
-        sheetId?: string;
-        title?: string;
-        description?: string;
-        amount?: number;
-        status?: string;
-        files?: Array<{
-          name?: string;
-          url?: string;
-          type?: string;
-          size?: number;
-        }>;
-      }
-    | null;
-
+  const sheet = detailRes as RateSheetDetailResponseSheet | null;
+  console.log({ sheet })
   const files = sheet?.files ?? [];
+  const summary = sheet?.summary ?? [];
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -563,7 +600,69 @@ const RateSheetDetailsSheet: React.FC<{
 
               <TabsContent value="summary">
                 <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-6 text-sm text-[#6B7280]">
-                  No summary available.
+                  {detailLoading ? (
+                    <div>Loading summary...</div>
+                  ) : summary.length > 0 ? (
+                    <div className="space-y-6 text-[#111827]">
+                      {summary.map((group, groupIndex) => (
+                        <div key={`${group?.name || "summary"}-${groupIndex}`} className="space-y-4">
+                          <div className="text-sm font-semibold text-[#0F0F0F]">
+                            {group?.name || "Summary"}
+                          </div>
+                          <div className="space-y-5">
+                            {(group?.sheets || []).map((s, sheetIndex) => (
+                              <div key={`${s?.sheetName || "sheet"}-${sheetIndex}`} className="space-y-3">
+                                <div className="text-sm font-semibold text-[#0F0F0F]">
+                                  {s?.sheetName || "—"}
+                                </div>
+                                {Array.isArray(s?.headers) && s.headers.length > 0 ? (
+                                  <div className="overflow-x-auto rounded-lg border border-[#E5E7EB] bg-white">
+                                    <table className="w-full text-left text-sm">
+                                      <thead className="bg-[#F9FAFB] text-xs font-semibold text-[#6B7280]">
+                                        <tr>
+                                          {s.headers.map((h) => (
+                                            <th key={h} className="whitespace-nowrap px-4 py-3">
+                                              {h}
+                                            </th>
+                                          ))}
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {(s?.rows || []).length > 0 ? (
+                                          (s?.rows || []).map((r, rowIndex) => (
+                                            <tr key={rowIndex} className="border-t border-[#E5E7EB]">
+                                              {s.headers.map((h) => (
+                                                <td key={`${rowIndex}-${h}`} className="whitespace-nowrap px-4 py-3">
+                                                  {(r as any)?.[h] ?? "—"}
+                                                </td>
+                                              ))}
+                                            </tr>
+                                          ))
+                                        ) : (
+                                          <tr className="border-t border-[#E5E7EB]">
+                                            <td
+                                              className="px-4 py-3 text-[#6B7280]"
+                                              colSpan={s.headers.length}
+                                            >
+                                              No rows available.
+                                            </td>
+                                          </tr>
+                                        )}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                ) : (
+                                  <div className="text-sm text-[#6B7280]">No headers available.</div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div>No summary available.</div>
+                  )}
                 </div>
               </TabsContent>
             </Tabs>
@@ -627,6 +726,7 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       const items = (res as any)?.data?.data || [];
       const rows: RateSheetRow[] = items.map((it: any) => ({
         id: it?.rateId || it?._id || "",
+        sheetId: it?.sheetId || "",
         title: it?.title || "",
         amount:
           typeof it?.amount === "number"
@@ -648,6 +748,7 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       [row.id, row.title].some((v) => v.toLowerCase().includes(q)),
     );
   }, [data, search]);
+  console.log("filtered", filtered);
 
   const columns: ColumnDef<RateSheetRow>[] = React.useMemo(
     () => [

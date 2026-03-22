@@ -187,5 +187,94 @@ test.describe("Contract Detail (workflow)", () => {
     expect(viewOnlyRequests).toBe(1);
     expect(managerDetailRequests).toBe(0);
   });
+
+  test("renders rate sheet summary in the details sheet", async ({ page }) => {
+    const contractId = "c-rates-1";
+
+    await page.route(`**/contract/manager/contracts/${contractId}`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "Contract fetched successfully",
+          data: { _id: contractId, title: "Rates Contract", status: "active" },
+        }),
+      });
+    });
+
+    await page.route(`**/contract/manager/contracts/${contractId}/ratesheets`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: [
+            {
+              _id: "rate-1",
+              sheetId: "sheet-1",
+              title: "Rates 2026",
+              amount: 1000,
+              createdAt: "2026-02-01T00:00:00.000Z",
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.route(
+      `**/contract/manager/contracts/${contractId}/ratesheets/sheet-1`,
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            success: true,
+            message: "Rate sheet fetched successfully",
+            data: {
+              sheet: {
+                sheetId: "sheet-1",
+                title: "Rates 2026",
+                description: "Rate sheet description",
+                amount: 1000,
+                status: "pending",
+                files: [],
+                summary: [
+                  {
+                    name: "Labor",
+                    sheets: [
+                      {
+                        sheetName: "Skilled Trades",
+                        headers: ["Role", "Rate"],
+                        rows: [
+                          { Role: "Electrician", Rate: "$120" },
+                          { Role: "Plumber", Rate: "$110" },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          }),
+        });
+      }
+    );
+
+    await page.goto(`/dashboard/contract-management/${contractId}`);
+
+    await page.getByRole("tab", { name: "Rate Sheets" }).click();
+    await page.getByRole("button", { name: "View" }).click();
+
+    await expect(page.locator('[data-testid="rate-sheet-details-sheet"]')).toBeVisible();
+
+    await page.getByRole("tab", { name: "Rate Sheet Summary" }).click();
+
+    await expect(page.getByText("Labor")).toBeVisible();
+    await expect(page.getByText("Skilled Trades")).toBeVisible();
+    await expect(page.getByText("Electrician")).toBeVisible();
+    await expect(page.getByText("$120")).toBeVisible();
+  });
 });
 

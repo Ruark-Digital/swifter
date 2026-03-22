@@ -176,7 +176,7 @@ const ContractDetailPage: React.FC = () => {
   const lastErrorRef = React.useRef<unknown>(null);
   const { isVendor, isApprover, isViewOnly, isCompanyAdmin, isManager } =
     useUserRole();
-  const queryKey = useUserQueryKey(["contract-manager-contracts"]);
+  const queryKey = useUserQueryKey(["contract-manager-contracts", id]);
   const approveStatusQueryKey = useUserQueryKey([
     "contract-approver-approve-status",
     undefined,

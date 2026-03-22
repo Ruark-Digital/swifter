@@ -7,7 +7,6 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Share2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -77,33 +76,23 @@ const DocCard = ({
   </div>
 );
 
-const ActionLogDetailsSheet: React.FC<Props> = ({ isOpen, onClose, action }) => {
-  const { contractId } = useParams<{ contractId: string }>();
+const ActionLogDetailsSheet: React.FC<Props> = ({
+  isOpen,
+  onClose,
+  action,
+}) => {
+  const { id, contractId: contractIdParam } = useParams<{
+    id: string;
+    contractId: string;
+  }>();
+  const contractId = id || contractIdParam;
 
-  const { data: detailData, isLoading } = useQuery({
-    queryKey: ["actionDetail", action?.module, action?.reference],
+  const { data: detailResponse, isLoading } = useQuery({
+    queryKey: ["actionDetail", contractId, action?.actionId, action?.reference],
     queryFn: async () => {
       if (!action || !contractId) return null;
-      switch (action.module.toLowerCase()) {
-        case "invoice":
-          return (await contractManagerApi.getInvoiceDetail(action.reference)).data;
-        case "claim":
-          return (await contractManagerApi.getClaimDetail(action.reference)).data;
-        case "change":
-          return (await contractManagerApi.getChangeDetail(action.reference)).data;
-        case "rfi":
-          return (await contractManagerApi.getRfiDetail(contractId, action.reference)).data;
-        case "ncr":
-            // NCR doesn't have getDetail, try fetching from list
-            const ncrs = (await contractManagerApi.listNcrs(contractId, { ncrId: action.reference })).data;
-            return ncrs?.[0];
-        case "lem":
-            return (await contractManagerApi.getLemDetail(contractId, action.reference)).data;
-        case "amendment":
-            return (await contractManagerApi.getAmendmentDetail(action.reference)).data;
-        default:
-          return null;
-      }
+      const logId = action.actionId || action.reference;
+      return await contractManagerApi.getLogDetail(contractId, logId);
     },
     enabled: !!action && !!contractId && isOpen,
   });
@@ -128,73 +117,79 @@ const ActionLogDetailsSheet: React.FC<Props> = ({ isOpen, onClose, action }) => 
   };
 
   const renderContent = () => {
-    if (isLoading) return <div className="p-4 text-center">Loading details...</div>;
-    if (!detailData) return <div className="p-4 text-center">No details available.</div>;
+    if (isLoading)
+      return <div className="p-4 text-center">Loading details...</div>;
+    const detailData = detailResponse?.data;
 
-    // Mapping based on module type (generic mapping for now based on common fields)
-    // Adjust based on specific DTOs if needed
-    const anyData = detailData as any;
-    
-    // Determine title and ID labels based on module
-    let titleLabel = "Title";
-    let idLabel = "ID";
-    let submittedBy = action?.actorName || "Unknown"; // Fallback if not in detail
-    let submissionDate = action?.dateLine1 + " " + action?.dateLine2; // Fallback
-    
-    // Try to get specific fields if available
-    if (anyData.submittedBy?.name) submittedBy = anyData.submittedBy.name;
-    if (anyData.createdAt) submissionDate = format(new Date(anyData.createdAt), "MMMM dd, yyyy");
-    if (anyData.submittedAt) submissionDate = format(new Date(anyData.submittedAt), "MMMM dd, yyyy");
+    if (!detailData)
+      return <div className="p-4 text-center">No details available.</div>;
 
-    switch (action?.module.toLowerCase()) {
-        case "ncr":
-            titleLabel = "NCR Title";
-            idLabel = "NCR ID";
-            break;
-        case "rfi":
-            titleLabel = "RFI Title";
-            idLabel = "RFI ID";
-            break;
-        // ... add others
-    }
+    const anyData = detailData;
+    const moduleLabel = action?.module || "-";
+
+    const submittedBy = anyData.user?.name || "Unknown";
+
+    const submissionDateValue = anyData.createdAt;
+    const submissionDate =
+      submissionDateValue &&
+      !Number.isNaN(new Date(submissionDateValue).getTime())
+        ? format(new Date(submissionDateValue), "MMMM dd, yyyy")
+        : `${action?.dateLine1 || ""} ${action?.dateLine2 || ""}`.trim() || "-";
+
+    const statusText =
+      anyData.meta?.status|| "Unknown";
+
+    const files = [] as File[];
 
     return (
       <div className="space-y-6">
         <h3 className="text-lg font-semibold text-slate-900">
-          {anyData.title || action?.description}
+          {
+            anyData.action ||
+            action?.description ||
+            "Log Detail"}
         </h3>
 
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent w-full">
+            <TabsTrigger value="overview" className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3">Overview</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
-            <Separator />
             <div className="grid grid-cols-2 gap-6">
               <div>
+                <LabelRow label="Title" value={anyData.action || "-"} />
                 <LabelRow
-                  label={titleLabel}
-                  value={anyData.title || "-"}
+                  label="Action ID"
+                  value={action?.actionId || "-"}
                 />
-                <LabelRow label={idLabel} value={action?.reference || anyData._id || anyData.ncrId || anyData.rfiId || anyData.changeId || anyData.claimId || anyData.invoiceId || "-"} />
-                <LabelRow label="Response Deadline" value={anyData.deadline ? format(new Date(anyData.deadline), "MMMM dd, yyyy") : "-"} />
+                <LabelRow label="Module" value={moduleLabel || "-"} />
+                <LabelRow
+                  label="Reference"
+                  value={action?.reference || "-"}
+                />
+                <LabelRow
+                  label="Response Deadline"
+                  value={
+                    anyData.updatedAt
+                      ? format(new Date(anyData.updatedAt), "MMMM dd, yyyy")
+                      : "-"
+                  }
+                />
               </div>
               <div>
                 <LabelRow
                   label="Submitted by"
                   value={
-                    <a className="text-blue-600 underline">
-                      {submittedBy}
-                    </a>
+                    <a className="text-blue-600 underline">{submittedBy}</a>
                   }
                 />
                 <LabelRow label="Submission Date" value={submissionDate} />
                 <LabelRow
                   label="Status"
                   value={
-                    <Badge className={getStatusColor(anyData.status)}>
-                      {anyData.status || "Unknown"}
+                    <Badge className={getStatusColor(statusText)}>
+                      {statusText}
                     </Badge>
                   }
                 />
@@ -204,25 +199,28 @@ const ActionLogDetailsSheet: React.FC<Props> = ({ isOpen, onClose, action }) => 
             <div className="space-y-2">
               <span className="text-sm text-slate-500">Description</span>
               <p className="text-sm text-slate-700">
-                {anyData.description || anyData.descrption || "No description provided."}
+                {anyData.contractDetailRef ||
+                  "No description provided."}
               </p>
             </div>
 
             <div className="space-y-3">
-              <span className="text-sm text-slate-500">
-                Attached Documents
-              </span>
+              <span className="text-sm text-slate-500">Attached Documents</span>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {anyData.files?.map((file: any, index: number) => (
-                    <DocCard 
-                        key={index} 
-                        name={file.name || "Document"} 
-                        type={file.type || "FILE"} 
-                        size={file.size ? `${(file.size / 1024).toFixed(0)}KB` : "-"} 
-                    />
+                {files.map((file: any, index: number) => (
+                  <DocCard
+                    key={index}
+                    name={file.name || "Document"}
+                    type={file.type || "FILE"}
+                    size={
+                      file.size ? `${(file.size / 1024).toFixed(0)}KB` : "-"
+                    }
+                  />
                 ))}
-                {(!anyData.files || anyData.files.length === 0) && (
-                    <div className="text-sm text-slate-500">No documents attached.</div>
+                {files.length === 0 && (
+                  <div className="text-sm text-slate-500">
+                    No documents attached.
+                  </div>
                 )}
               </div>
             </div>

@@ -149,7 +149,7 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract, baseP
       const payload: any = {
         title: data.title,
         description: data.description,
-        responders: data.responderId ? [data.responderId] : undefined,
+        responder: data.responderId,
         files:
           uploaded && uploaded.length > 0
             ? uploaded.map((f) => ({
@@ -193,7 +193,7 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract, baseP
   const responderOptions = useMemo(() => {
     const a = Array.isArray(contract?.approvers) ? contract?.approvers : [];
     const i = Array.isArray(contract?.internalTeam) ? contract?.internalTeam : [];
-    const m = Array.isArray(contract?.managers) ? contract?.managers : [];
+    // const m = Array.isArray(contract?.managers) ? contract?.managers : [];
     const fromApprovers = a.map((u) => ({
       value: (u as any)?.id ?? (u as any)?._id ?? (u as any)?.email ?? "",
       label: (u as any)?.name ?? (u as any)?.email ?? "",
@@ -202,11 +202,11 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract, baseP
       value: (u as any)?.id ?? (u as any)?._id ?? (u as any)?.email ?? "",
       label: (u as any)?.name ?? (u as any)?.email ?? "",
     }));
-    const fromManagers = m.map((u) => ({
-      value: (u as any)?._id ?? (u as any)?.id ?? (u as any)?.user ?? (u as any)?.email ?? "",
-      label: (u as any)?.name ?? (u as any)?.email ?? "",
-    }));
-    const merged = [...fromApprovers, ...fromInternal, ...fromManagers].filter(
+    // const fromManagers = m.map((u) => ({
+    //   value: (u as any)?._id ?? (u as any)?.id ?? (u as any)?.user ?? (u as any)?.email ?? "",
+    //   label: (u as any)?.name ?? (u as any)?.email ?? "",
+    // }));
+    const merged = [...fromApprovers, ...fromInternal].filter(
       (opt) =>
         typeof opt.value === "string" &&
         opt.value !== "" &&

@@ -35,6 +35,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { formatDate } from "date-fns";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { getFileExtension } from "@/lib/fileUtils";
+import { cn } from "@/lib/utils";
 
 export type LemRow = {
   id: string;
@@ -69,9 +70,21 @@ export interface LemDetailResponse {
   createdAt:        Date;
   updatedAt:        Date;
   __v:              number;
-  summary:          null[];
+  summary:          Summary[];
   rateSheet:        RateSheet;
 }
+
+export interface Summary {
+  name:   string;
+  sheets: Sheet[];
+}
+
+export interface Sheet {
+  sheetName: string;
+  headers:   string[];
+  rows:      { [key: string]: string }[];
+}
+
 
 export interface File {
   name: string;
@@ -112,6 +125,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   basePath,
 }) => {
   const { isVendor } = useUserRole();
+  const [sheetTab, setSheetTab] = React.useState("overview");
 
   const { data: lemDetail, isLoading: detailLoading } = useQuery({
     queryKey: ["lem-detail", contractId, lemId, basePath],
@@ -124,16 +138,62 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
     enabled: !!contractId && !!lemId,
   });
 
-  const { data: rateSheet, isLoading: sheetLoading } = useQuery({
-    queryKey: ["lem-rate-sheet", contractId, lemId, basePath],
-    queryFn: async () => {
-      const res = await getRequest({
-        url: `${basePath}/${lemId}/ratesheet`,
-      });
-      return (res as any)?.data?.data?.sheet || (res as any)?.data?.sheet;
+  const getText = (value: unknown) =>
+    typeof value === "string" ? value.toLowerCase() : "";
+
+  const findSummarySheet = React.useCallback(
+    (category: "labor" | "equipment" | "material") => {
+      const summary = Array.isArray(lemDetail?.summary) ? lemDetail.summary : [];
+      const needle = category.toLowerCase();
+
+      for (const group of summary) {
+        const groupName = getText(group?.name);
+        const sheets = Array.isArray(group?.sheets) ? group.sheets : [];
+        for (const sheet of sheets) {
+          const sheetName = getText(sheet?.sheetName);
+          if (groupName.includes(needle) || sheetName.includes(needle)) {
+            return sheet;
+          }
+        }
+      }
+      return undefined;
     },
-    enabled: !!contractId && !!lemId,
-  });
+    [lemDetail?.summary],
+  );
+
+  const toColumns = React.useCallback((sheet?: Sheet) => {
+    const headers = Array.isArray(sheet?.headers) ? sheet.headers : [];
+    return headers.map((h) => ({
+      id: h,
+      header: h,
+      accessorFn: (row: Record<string, string>) => row?.[h] ?? "",
+    })) as Array<ColumnDef<Record<string, string>>>;
+  }, []);
+
+  const laborSheet = findSummarySheet("labor");
+  const equipmentSheet = findSummarySheet("equipment");
+  const materialSheet = findSummarySheet("material");
+
+  const laborRows = Array.isArray(laborSheet?.rows) ? laborSheet.rows : [];
+  const equipmentRows = Array.isArray(equipmentSheet?.rows)
+    ? equipmentSheet.rows
+    : [];
+  const materialRows = Array.isArray(materialSheet?.rows)
+    ? materialSheet.rows
+    : [];
+
+  const laborColumns = React.useMemo(
+    () => toColumns(laborSheet),
+    [laborSheet, toColumns],
+  );
+  const equipmentColumns = React.useMemo(
+    () => toColumns(equipmentSheet),
+    [equipmentSheet, toColumns],
+  );
+  const materialColumns = React.useMemo(
+    () => toColumns(materialSheet),
+    [materialSheet, toColumns],
+  );
 
   const handlePreview = (doc: DocType) => {
     if (!doc.url) return;
@@ -149,12 +209,16 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
     window.document.body.removeChild(a);
   };
 
+
   return (
     <Sheet>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-2xl rounded-2xl overflow-y-auto [&>button]:hidden"
+        className={cn(
+          "w-full rounded-2xl overflow-y-auto [&>button]:hidden",
+          sheetTab === "summary" ? "sm:max-w-6xl" : "sm:max-w-2xl",
+        )}
       >
         <div className="space-y-6" data-testid="lem-details-sheet">
           <SheetHeader className="space-y-0">
@@ -194,7 +258,11 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
               </Button>
             </div>
 
-            <Tabs defaultValue="overview" className="space-y-4">
+            <Tabs
+              value={sheetTab}
+              onValueChange={setSheetTab}
+              className="space-y-4"
+            >
               <TabsList className="h-auto rounded-none w-full border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
                 <TabsTrigger
                   value="overview"
@@ -316,35 +384,16 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
 
                   <TabsContent value="labor">
                     <DataTable<any>
-                      data={
-                        Array.isArray(rateSheet?.labor) ? rateSheet.labor : []
-                      }
-                      columns={[
-                        { accessorKey: "row", header: "#" },
-                        { accessorKey: "label", header: "Row Label" },
-                        { accessorKey: "avgRate", header: "Avg. Rate (CAD)" },
-                        { accessorKey: "manHour", header: "Man Hour" },
-                        { accessorKey: "cost", header: "Cost (CAD)" },
-                        { accessorKey: "feePercent", header: "Fee(%)" },
-                        { accessorKey: "fee", header: "Fee (CAD)" },
-                        { accessorKey: "price", header: "Price (CAD)" },
-                        {
-                          accessorKey: "rateSheetPrice",
-                          header: "Rate Sheet Price (CAD)",
-                        },
-                        { accessorKey: "variance", header: "Variance (CAD)" },
-                        { accessorKey: "status", header: "Status" },
-                      ]}
+                      data={laborRows}
+                      columns={laborColumns as any}
                       options={{
                         disableSelection: true,
                         disablePagination: true,
                         manualPagination: false,
-                        totalCounts: Array.isArray(rateSheet?.labor)
-                          ? rateSheet.labor.length
-                          : 0,
+                        totalCounts: laborRows.length,
                         setPagination: () => {},
                         pagination: { pageIndex: 0, pageSize: 10 },
-                        isLoading: !!sheetLoading,
+                        isLoading: !!detailLoading,
                       }}
                       classNames={{
                         container:
@@ -361,44 +410,16 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
 
                   <TabsContent value="equipment">
                     <DataTable<any>
-                      data={
-                        Array.isArray(rateSheet?.equipment)
-                          ? rateSheet.equipment
-                          : []
-                      }
-                      columns={[
-                        { accessorKey: "row", header: "#" },
-                        { accessorKey: "label", header: "Row Label" },
-                        { accessorKey: "avgUnits", header: "Avg. of Units" },
-                        {
-                          accessorKey: "monthlyRateUnit",
-                          header: "Mthly Rental Rate per Unit (w/o Markup)",
-                        },
-                        {
-                          accessorKey: "monthlyRate",
-                          header: "Mthly Rental Rate (w/o Markup)",
-                        },
-                        {
-                          accessorKey: "rentalCost",
-                          header: "Rental Cost (Period)",
-                        },
-                        { accessorKey: "feePercent", header: "Fee (%)" },
-                        { accessorKey: "fee", header: "Fee $ (Period)" },
-                        {
-                          accessorKey: "rentalPrice",
-                          header: "Rental Price (Period)",
-                        },
-                      ]}
+                      data={equipmentRows}
+                      columns={equipmentColumns as any}
                       options={{
                         disableSelection: true,
                         disablePagination: true,
                         manualPagination: false,
-                        totalCounts: Array.isArray(rateSheet?.equipment)
-                          ? rateSheet.equipment.length
-                          : 0,
+                        totalCounts: equipmentRows.length,
                         setPagination: () => {},
                         pagination: { pageIndex: 0, pageSize: 10 },
-                        isLoading: !!sheetLoading,
+                        isLoading: !!detailLoading,
                       }}
                       classNames={{
                         container:
@@ -415,31 +436,16 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
 
                   <TabsContent value="material">
                     <DataTable<any>
-                      data={
-                        Array.isArray(rateSheet?.material)
-                          ? rateSheet.material
-                          : []
-                      }
-                      columns={[
-                        { accessorKey: "row", header: "#" },
-                        { accessorKey: "label", header: "Row Label" },
-                        { accessorKey: "unitRate", header: "Unit Rate (CAD)" },
-                        { accessorKey: "units", header: "Units" },
-                        { accessorKey: "cost", header: "Cost (CAD)" },
-                        { accessorKey: "feePercent", header: "Fee(%)" },
-                        { accessorKey: "fee", header: "Fee (CAD)" },
-                        { accessorKey: "price", header: "Price (CAD)" },
-                      ]}
+                      data={materialRows}
+                      columns={materialColumns as any}
                       options={{
                         disableSelection: true,
                         disablePagination: true,
                         manualPagination: false,
-                        totalCounts: Array.isArray(rateSheet?.material)
-                          ? rateSheet.material.length
-                          : 0,
+                        totalCounts: materialRows.length,
                         setPagination: () => {},
                         pagination: { pageIndex: 0, pageSize: 10 },
-                        isLoading: !!sheetLoading,
+                        isLoading: !!detailLoading,
                       }}
                       classNames={{
                         container:

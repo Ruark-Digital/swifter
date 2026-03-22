@@ -211,7 +211,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="rounded-2xl p-6 gap-6 sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="rounded-2xl p-6 gap-6 sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between">
           <DialogHeader className="p-0">
             <DialogTitle className="text-[20px] font-semibold leading-[30px] text-[#0F0F0F]">

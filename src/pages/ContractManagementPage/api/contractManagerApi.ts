@@ -648,23 +648,52 @@ export type ManagerListNcrsQuery = {
   limit?: number;
 };
 
-export type ContractLogDTO = {
-  _id?: string;
-  logId?: string;
-  module?: string;
-  action?: string;
-  description?: string;
-  actor?: {
-    _id?: string;
-    name?: string;
-    email?: string;
-    role?: string;
-  };
-  reference?: string;
-  referenceModel?: string;
-  timestamp?: string;
-  createdAt?: string;
-};
+export interface LogModule {
+  "stripe out contract": string;
+}
+
+export interface ContractLogDetailDTO {
+  _id:                    string;
+  contract:               ContractLogDetail;
+  contractDef:            string;
+  company:                string;
+  contractDetailRef:      string;
+  contractDetailRefModel: string;
+  user:                   User;
+  userRef:                string;
+  action:                 string;
+  type:                   string;
+  meta:                   Meta;
+  logId:                  string;
+  createdAt:              string;
+  updatedAt:              string;
+  __v:                    number;
+}
+
+export interface ContractLogDetail {
+  _id:        string;
+  contractId: string;
+}
+
+export interface Meta {
+  level:  number;
+  status: string;
+}
+
+export interface User {
+  _id:  string;
+  name: string;
+}
+
+
+export interface ContractLogDTO {
+  actionId:  string;
+  module:    LogModule;
+  user:      string;
+  actor:     string;
+  date:      Date;
+  reference: string;
+}
 
 export type ManagerListLogsQuery = {
   logId?: string;
@@ -1215,7 +1244,7 @@ export const createContractManagerApi = (
       return res.data as {
         success?: boolean;
         message?: string;
-        data?: ContractLogDTO;
+        data?: ContractLogDetailDTO;
       };
     },
   };

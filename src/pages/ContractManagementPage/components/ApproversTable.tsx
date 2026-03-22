@@ -275,7 +275,6 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
 };
 
 const ApproversTable: React.FC<Props> = ({ rows, isLoading, contractId }) => {
-  console.log({ rows });
   
   const columns = React.useMemo<ColumnDef<ApproverRow>[]>(
     () => [
@@ -303,24 +302,24 @@ const ApproversTable: React.FC<Props> = ({ rows, isLoading, contractId }) => {
       { accessorKey: "role", header: "Role" },
       { accessorKey: "approvalLevel", header: "Approval Level" },
       { accessorKey: "assignedApprovals", header: "Assigned Approvals" },
-      {
-        accessorKey: "status",
-        header: "Status",
-        cell: ({ getValue }) => {
-          const s = getValue<ApproverRow["status"]>();
-          const tone =
-            s === "Completed"
-              ? "bg-blue-100 text-blue-700"
-              : "bg-yellow-100 text-yellow-700";
-          return (
-            <span
-              className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${tone}`}
-            >
-              {s}
-            </span>
-          );
-        },
-      },
+      // {
+      //   accessorKey: "status",
+      //   header: "Status",
+      //   cell: ({ getValue }) => {
+      //     const s = getValue<ApproverRow["status"]>();
+      //     const tone =
+      //       s === "Completed"
+      //         ? "bg-blue-100 text-blue-700"
+      //         : "bg-yellow-100 text-yellow-700";
+      //     return (
+      //       <span
+      //         className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${tone}`}
+      //       >
+      //         {s}
+      //       </span>
+      //     );
+      //   },
+      // },
       {
         id: "view",
         header: "Status",

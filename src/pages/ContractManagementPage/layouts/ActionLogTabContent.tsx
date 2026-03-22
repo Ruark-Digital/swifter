@@ -7,7 +7,7 @@ import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-import { contractManagerApi } from "../api/contractManagerApi";
+import { contractManagerApi, LogModule } from "../api/contractManagerApi";
 import { format } from "date-fns";
 import ActionLogDetailsSheet from "../components/ActionLogDetailsSheet";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -16,7 +16,7 @@ type Props = { isActive?: boolean };
 
 type ActionLogRow = {
   actionId: string;
-  module: string;
+  module: LogModule['stripe out contract'];
   description: string;
   actorName: string;
   actorRole?: string;
@@ -44,15 +44,15 @@ const ActionLogTabContent: React.FC<Props> = () => {
     if (!logsData?.data?.logs) return [];
 
     return logsData.data.logs.map((log) => {
-      const date = log.timestamp ? new Date(log.timestamp) : (log.createdAt ? new Date(log.createdAt) : new Date());
+      const date = log.date ? new Date(log.date) : new Date();
       return {
-        actionId: log.logId || log._id || "Unknown",
-        module: log.module || "Unknown",
-        description: log.description || log.action || "No description",
-        actorName: log.actor?.name || "Unknown User",
-        actorRole: log.actor?.role || "Unknown Role",
+        actionId: log.actionId || "Unknown",
+        module: log.module?.["stripe out contract"] || "Unknown",
+        description: "No description",
+        actorName: log.user || "Unknown User",
+        actorRole: log.actor || "Unknown Role",
         reference: log.reference || "Unknown",
-        dateLine1: format(date, "MM-dd-yyyy,"),
+        dateLine1: format(date, "MM-dd-yyyy"),
         dateLine2: format(date, "hh:mm a"),
         rawDate: date,
       };
