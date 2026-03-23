@@ -13,6 +13,24 @@ import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { getRequest } from "@/lib/axiosInstance";
 import type { MsaRow } from "./components/MsaTable";
 
+type MsaStatsData = Partial<{
+  all: number;
+  active: number;
+  draft: number;
+  suspended: number;
+  expired: number;
+  terminated: number;
+  pending: number;
+  pending_approval: number;
+  linked: number;
+  linkedContracts: number;
+}>;
+
+type MsaStatsResponse = {
+  message?: string;
+  data?: MsaStatsData;
+};
+
 const MsaPage: React.FC = () => {
   const hasData = true;
   const { isManager, isApprover, isVendor } = useUserRole();
@@ -26,6 +44,23 @@ const MsaPage: React.FC = () => {
     : "/contract/user/msa-contract";
 
   const myListUrl = isManager ? "/contract/manager/msa-contract/me" : undefined;
+
+  const statsUrl = isManager
+    ? "/contract/manager/msa-contract/stats"
+    : isApprover
+      ? "/contract/approver/msa-contract/stats"
+      : isVendor
+        ? "/contract/vendor/msa-contract/stats"
+        : "/contract/user/msa-contract/stats";
+
+  const statsQuery = useQuery({
+    queryKey: useUserQueryKey(["msa", "stats", statsUrl]),
+    queryFn: async () => {
+      const res = await getRequest({ url: statsUrl });
+      return res.data as MsaStatsResponse;
+    },
+    staleTime: 60_000,
+  });
 
   const allQuery = useQuery({
     queryKey: useUserQueryKey(["msa", "list", listUrl, { page: 1, limit: 50 }]),
@@ -81,6 +116,18 @@ const MsaPage: React.FC = () => {
   const allRows = toRows(extractItems(allQuery.data));
   const myRows = toRows(extractItems(mineQuery.data));
 
+  const stats = statsQuery.data?.data;
+  const counts = {
+    all: stats?.all ?? 0,
+    active: stats?.active ?? 0,
+    draft: stats?.draft ?? 0,
+    suspended: stats?.suspended ?? 0,
+    expired: stats?.expired ?? 0,
+    terminated: stats?.terminated ?? 0,
+    pending: stats?.pending ?? stats?.pending_approval ?? 0,
+    linked: stats?.linked ?? stats?.linkedContracts ?? 0,
+  };
+
   return (
     <div className="space-y-8 pt-5">
       <SEOWrapper
@@ -104,16 +151,7 @@ const MsaPage: React.FC = () => {
       </div>
 
       <StatsCards
-        counts={{
-          all: 52,
-          active: 11,
-          draft: 52,
-          suspended: 52,
-          expired: 52,
-          terminated: 52,
-          pending: 52,
-          linked: 52,
-        }}
+        counts={counts}
       />
 
       {hasData ? (

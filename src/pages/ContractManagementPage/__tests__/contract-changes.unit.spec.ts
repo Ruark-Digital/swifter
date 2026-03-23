@@ -3,6 +3,7 @@ import {
   changeTabToApiType,
   formatChangeTypeLabel,
   getCreateChangeTypeOptionsForRole,
+  pruneEmptyValuesDeep,
   shouldShowChangeDecisionActions,
   toContractChangeFileItem,
   toManagerCreateChangePayload,
@@ -134,6 +135,34 @@ test.describe("contractChanges helpers (unit)", () => {
       url: "https://cdn.example.com/doc.pdf",
       type: "application/pdf",
       size: 1234,
+    });
+  });
+
+  test("prunes empty values deeply but keeps 0 and false", async () => {
+    const payload = pruneEmptyValuesDeep({
+      title: "Contract",
+      emptyString: "",
+      whitespace: "   ",
+      nil: null,
+      undef: undefined,
+      zero: 0,
+      nope: false,
+      nested: {
+        a: "",
+        b: { c: [] },
+        d: { e: "ok", f: " " },
+      },
+      arr: ["", "x", "  ", 0, false, [], {}, { y: "" }, { y: "z" }],
+      keepDate: new Date("2025-01-01T00:00:00.000Z"),
+    });
+
+    expect(payload).toEqual({
+      title: "Contract",
+      zero: 0,
+      nope: false,
+      nested: { d: { e: "ok" } },
+      arr: ["x", 0, false, { y: "z" }],
+      keepDate: new Date("2025-01-01T00:00:00.000Z"),
     });
   });
 });

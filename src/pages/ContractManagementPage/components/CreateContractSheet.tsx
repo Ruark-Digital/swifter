@@ -31,6 +31,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { X } from "lucide-react";
 import { format } from "date-fns";
 import { useClearSession } from "@/store/solicitationFileSlice";
+import { pruneEmptyValuesDeep } from "../lib/contractChanges";
 
 type Props = {
   trigger: React.ReactNode;
@@ -1063,14 +1064,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         signatories: signatories && signatories.length > 0 ? signatories : undefined,
       };
 
-      // Remove undefined fields to avoid sending undeclared values
-      Object.keys(payload).forEach((k) => {
-        if ((payload as any)[k] === undefined) {
-          delete (payload as any)[k];
-        }
-      });
-
-      return payload;
+      return pruneEmptyValuesDeep(payload);
     },
     [
       awardedQuery.data?.data,
