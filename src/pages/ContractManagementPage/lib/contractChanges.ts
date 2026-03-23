@@ -16,6 +16,40 @@ export const formatChangeTypeLabel = (type: ContractChangeType): string => {
   return "Proposal";
 };
 
+export const getCreateChangeTypeOptionsForRole = ({
+  isManager,
+  isVendor,
+}: {
+  isManager: boolean;
+  isVendor: boolean;
+}): Array<{ value: ContractChangeType; label: string }> => {
+  if (isManager) {
+    return [
+      { value: "order", label: "Change Order" },
+      { value: "directive", label: "Change Directive" },
+    ];
+  }
+
+  if (isVendor) {
+    return [
+      { value: "request", label: "Change Request" },
+      { value: "order", label: "Change Order" },
+      { value: "proposal", label: "Change Proposal" },
+    ];
+  }
+
+  return [
+    { value: "request", label: "Change Request" },
+    { value: "order", label: "Change Order" },
+    { value: "directive", label: "Change Directive" },
+    { value: "proposal", label: "Change Proposal" },
+  ];
+};
+
+export const shouldShowChangeDecisionActions = (type: string | undefined) => {
+  return type !== "directive";
+};
+
 export type ManagerCreateChangeDialogValues = {
   changeName: string;
   changeType: string;
@@ -48,14 +82,14 @@ export const toManagerCreateChangePayload = (
 ): {
   title?: string;
   description?: string;
-  type?: "directive" | "proposal" | "request";
+  type?: "directive" | "order";
   urgency?: "low" | "medium" | "high";
   files?: Array<{ name: string; url: string; type: string; size: number }>;
 } => {
   const payload: {
     title?: string;
     description?: string;
-    type?: "directive" | "proposal" | "request";
+    type?: "directive" | "order";
     urgency?: "low" | "medium" | "high";
     files?: Array<{ name: string; url: string; type: string; size: number }>;
   } = {
@@ -64,12 +98,51 @@ export const toManagerCreateChangePayload = (
   };
 
   if (
-    values.changeType === "request" ||
     values.changeType === "directive" ||
-    values.changeType === "proposal" ||
     values.changeType === "order"
   ) {
-    payload.type = values.changeType as "directive" | "proposal" | "request";
+    payload.type = values.changeType as "directive" | "order";
+  }
+
+  if (values.urgency === "low" || values.urgency === "medium" || values.urgency === "high") {
+    payload.urgency = values.urgency;
+  }
+
+  return payload;
+};
+
+export const toVendorCreateChangePayload = (
+  values: ManagerCreateChangeDialogValues
+): {
+  title: string;
+  description: string;
+  type: "request" | "order" | "proposal";
+  proposalCategory?: string;
+  urgency?: "low" | "medium" | "high";
+  files?: Array<{ name: string; url: string; type: string; size: number }>;
+} => {
+  const type =
+    values.changeType === "request" ||
+    values.changeType === "order" ||
+    values.changeType === "proposal"
+      ? (values.changeType as "request" | "order" | "proposal")
+      : "request";
+
+  const payload: {
+    title: string;
+    description: string;
+    type: "request" | "order" | "proposal";
+    proposalCategory?: string;
+    urgency?: "low" | "medium" | "high";
+    files?: Array<{ name: string; url: string; type: string; size: number }>;
+  } = {
+    title: values.changeName,
+    description: values.description,
+    type,
+  };
+
+  if (type === "proposal") {
+    payload.proposalCategory = "placeholder";
   }
 
   if (values.urgency === "low" || values.urgency === "medium" || values.urgency === "high") {

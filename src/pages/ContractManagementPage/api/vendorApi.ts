@@ -54,7 +54,7 @@ export const createVendorApi = (
     payload: {
       title: string;
       description: string;
-      type: "request" | "directive" | "proposal";
+      type: "request" | "order" | "proposal";
       proposalCategory?: string;
       urgency?: "low" | "medium" | "high";
       files?: { name: string; url: string; type: string; size: number }[];

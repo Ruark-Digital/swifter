@@ -319,7 +319,7 @@ export type ContractChangeManagerDTO = {
     type?: string;
     size?: number;
   }>;
-  type?: "directive" | "proposal" | "request";
+  type?: "directive" | "order";
 };
 
 export type ContractChangeDTO = {

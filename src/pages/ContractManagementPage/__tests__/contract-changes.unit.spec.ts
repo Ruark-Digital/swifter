@@ -2,8 +2,11 @@ import { test, expect } from "@playwright/test";
 import {
   changeTabToApiType,
   formatChangeTypeLabel,
+  getCreateChangeTypeOptionsForRole,
+  shouldShowChangeDecisionActions,
   toContractChangeFileItem,
   toManagerCreateChangePayload,
+  toVendorCreateChangePayload,
 } from "../lib/contractChanges";
 
 test.describe("contractChanges helpers (unit)", () => {
@@ -26,29 +29,94 @@ test.describe("contractChanges helpers (unit)", () => {
     expect(
       toManagerCreateChangePayload({
         changeName: "Title",
-        changeType: "proposal",
+        changeType: "order",
         urgency: "high",
         description: "Desc",
       })
     ).toEqual({
       title: "Title",
       description: "Desc",
-      type: "proposal",
+      type: "order",
       urgency: "high",
     });
 
     expect(
       toManagerCreateChangePayload({
         changeName: "Title",
-        changeType: "request",
+        changeType: "directive",
         urgency: "urgent",
         description: "Desc",
       })
     ).toEqual({
       title: "Title",
       description: "Desc",
-      type: "request",
+      type: "directive",
     });
+  });
+
+  test("builds vendor create-change payload from dialog values", async () => {
+    expect(
+      toVendorCreateChangePayload({
+        changeName: "Title",
+        changeType: "request",
+        urgency: "high",
+        description: "Desc",
+      })
+    ).toEqual({
+      title: "Title",
+      description: "Desc",
+      type: "request",
+      urgency: "high",
+    });
+
+    expect(
+      toVendorCreateChangePayload({
+        changeName: "Title",
+        changeType: "order",
+        urgency: "low",
+        description: "Desc",
+      })
+    ).toEqual({
+      title: "Title",
+      description: "Desc",
+      type: "order",
+      urgency: "low",
+    });
+
+    expect(
+      toVendorCreateChangePayload({
+        changeName: "Title",
+        changeType: "proposal",
+        urgency: "medium",
+        description: "Desc",
+      })
+    ).toEqual({
+      title: "Title",
+      description: "Desc",
+      type: "proposal",
+      urgency: "medium",
+      proposalCategory: "placeholder",
+    });
+  });
+
+  test("restricts create-change type options by role", async () => {
+    expect(getCreateChangeTypeOptionsForRole({ isManager: true, isVendor: false })).toEqual([
+      { value: "order", label: "Change Order" },
+      { value: "directive", label: "Change Directive" },
+    ]);
+
+    expect(getCreateChangeTypeOptionsForRole({ isManager: false, isVendor: true })).toEqual([
+      { value: "request", label: "Change Request" },
+      { value: "order", label: "Change Order" },
+      { value: "proposal", label: "Change Proposal" },
+    ]);
+  });
+
+  test("hides decision actions for directive changes", async () => {
+    expect(shouldShowChangeDecisionActions("directive")).toBe(false);
+    expect(shouldShowChangeDecisionActions("order")).toBe(true);
+    expect(shouldShowChangeDecisionActions("proposal")).toBe(true);
+    expect(shouldShowChangeDecisionActions("request")).toBe(true);
   });
 
   test("maps uploaded file response to contract file payload", async () => {

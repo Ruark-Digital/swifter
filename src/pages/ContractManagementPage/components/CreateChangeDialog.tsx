@@ -20,7 +20,13 @@ import {
 import { CloudUpload } from "lucide-react";
 import { contractManagerApi, type ContractChangeManagerDTO } from "../api/contractManagerApi";
 import { vendorApi } from "../api/vendorApi";
-import { toContractChangeFileItem, toManagerCreateChangePayload, type UploadURLs } from "../lib/contractChanges";
+import {
+  getCreateChangeTypeOptionsForRole,
+  toContractChangeFileItem,
+  toManagerCreateChangePayload,
+  toVendorCreateChangePayload,
+  type UploadURLs,
+} from "../lib/contractChanges";
 import { useToastHandler } from "@/hooks/useToaster";
 import { FileUploaderItem } from "@/components/ui/file-upload";
 import { getFileIcon, getSimpleFileExtension, formatFileSize } from "@/lib/fileUtils.tsx";
@@ -36,17 +42,34 @@ const CreateChangeDialog: React.FC<Props> = ({ trigger, contractId, isManager = 
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
   const toastHandler = useToastHandler();
+  const changeTypeOptions = React.useMemo(
+    () => getCreateChangeTypeOptionsForRole({ isManager, isVendor: !isManager }),
+    [isManager],
+  );
+  const defaultChangeType = isManager ? "order" : "request";
 
   const { control, reset } = useForge({
     defaultValues: {
       changeName: "",
-      changeType: "",
+      changeType: defaultChangeType,
       amount: "",
       urgency: "",
       description: "",
       files: null,
     },
   });
+
+  React.useEffect(() => {
+    if (!open) return;
+    reset({
+      changeName: "",
+      changeType: defaultChangeType,
+      amount: "",
+      urgency: "",
+      description: "",
+      files: null,
+    });
+  }, [open, reset, defaultChangeType]);
 
   const files = useWatch({ control, name: "files" }) as File[] | null;
 
@@ -105,12 +128,19 @@ const CreateChangeDialog: React.FC<Props> = ({ trigger, contractId, isManager = 
   }) => {
     void data.amount;
 
-    const payload: ContractChangeManagerDTO = toManagerCreateChangePayload({
-      changeName: data.changeName,
-      changeType: data.changeType,
-      urgency: data.urgency,
-      description: data.description,
-    });
+    const payload: ContractChangeManagerDTO = isManager
+      ? toManagerCreateChangePayload({
+          changeName: data.changeName,
+          changeType: data.changeType,
+          urgency: data.urgency,
+          description: data.description,
+        })
+      : (toVendorCreateChangePayload({
+          changeName: data.changeName,
+          changeType: data.changeType,
+          urgency: data.urgency,
+          description: data.description,
+        }) as unknown as ContractChangeManagerDTO);
 
     if (data.files?.length) {
       try {
@@ -191,20 +221,7 @@ const CreateChangeDialog: React.FC<Props> = ({ trigger, contractId, isManager = 
               label="Change Type"
               placeholder="Change Proposal"
               component={TextSelect}
-              options={
-                isManager
-                  ? [
-                      { label: "Change Request", value: "request" },
-                      { label: "Change Order", value: "order" },
-                      { label: "Change Directive", value: "directive" },
-                      { label: "Change Proposal", value: "proposal" },
-                    ]
-                  : [
-                      { label: "Change Request", value: "request" },
-                      { label: "Change Directive", value: "directive" },
-                      { label: "Change Proposal", value: "proposal" },
-                    ]
-              }
+              options={changeTypeOptions.map((t) => ({ label: t.label, value: t.value }))}
             />
             <div className="grid grid-cols-2 gap-4">
               <Forger

@@ -26,6 +26,7 @@ import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { formatFileSize, getFileIcon, getSimpleFileExtension } from "@/lib/fileUtils";
+import { shouldShowChangeDecisionActions } from "../lib/contractChanges";
 
 type Props = { trigger: React.ReactNode; contractId: string; changeId: string };
 
@@ -102,6 +103,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const files = detail?.files;
 
   const canApprove = isManager;
+  const showDecisionActions = shouldShowChangeDecisionActions(changeType);
 
   const { mutate: mutateApproval, isPending: isApproving } = useMutation({
     mutationKey: ["approveChange", roleBasePath, contractId, changeId],
@@ -363,41 +365,43 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             </TabsContent>
           </Tabs>
 
-          <SheetFooter>
-            <div className="flex w-full gap-3 pt-2">
-              <Button
-                variant="outline"
-                className="flex-1 h-12 rounded-xl"
-                disabled={!canApprove || isApproving}
-                onClick={() => {
-                  if (!canApprove) {
-                    toast.error("Action not allowed", "Only managers can reject changes");
-                    return;
-                  }
-                  mutateApproval("rejected");
-                }}
-              >
-                Reject Change
-              </Button>
-              {canApprove ? (
+          {showDecisionActions && (
+            <SheetFooter>
+              <div className="flex w-full gap-3 pt-2">
                 <Button
+                  variant="outline"
                   className="flex-1 h-12 rounded-xl"
-                  disabled={isApproving}
-                  onClick={() => mutateApproval("approved")}
+                  disabled={!canApprove || isApproving}
+                  onClick={() => {
+                    if (!canApprove) {
+                      toast.error("Action not allowed", "Only managers can reject changes");
+                      return;
+                    }
+                    mutateApproval("rejected");
+                  }}
                 >
-                  Approve
+                  Reject Change
                 </Button>
-              ) : (
-                <SendApprovalDialog
-                  trigger={
-                    <Button className="flex-1 h-12 rounded-xl">
-                      Send for Approval
-                    </Button>
-                  }
-                />
-              )}
-            </div>
-          </SheetFooter>
+                {canApprove ? (
+                  <Button
+                    className="flex-1 h-12 rounded-xl"
+                    disabled={isApproving}
+                    onClick={() => mutateApproval("approved")}
+                  >
+                    Approve
+                  </Button>
+                ) : (
+                  <SendApprovalDialog
+                    trigger={
+                      <Button className="flex-1 h-12 rounded-xl">
+                        Send for Approval
+                      </Button>
+                    }
+                  />
+                )}
+              </div>
+            </SheetFooter>
+          )}
         </div>
       </SheetContent>
     </Sheet>
