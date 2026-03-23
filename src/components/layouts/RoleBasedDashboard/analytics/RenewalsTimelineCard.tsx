@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/utils";
 
 type Item = {
   title: string;
@@ -9,42 +10,71 @@ type Item = {
   color: string;
 };
 
-const items: Item[] = [
-  {
-    title: "AWS Cloud Services",
-    org: "BlueCorp Industries",
-    code: "CON-2024-001",
-    amount: "$2.5M",
-    note: "Expires in 30 days",
-    color: "#DC2626",
-  },
-  {
-    title: "AWS Cloud Services",
-    org: "BlueCorp Industries",
-    code: "CON-2024-001",
-    amount: "$2.5M",
-    note: "Expired 30 days ago",
-    color: "#DC2626",
-  },
-  {
-    title: "Office Lease Agreement",
-    org: "BlueCorp Industries",
-    code: "CON-2024-001",
-    amount: "$1.2M",
-    note: "Expires in 60 days",
-    color: "#F59E0B",
-  },
-  {
-    title: "Software Licenses",
-    org: "BlueCorp Industries",
-    code: "CON-2024-001",
-    amount: "$0.8M",
-    note: "Expires in 90 days",
-    color: "#10B981",
-  },
-];
+type Props = {
+  data?: {
+    timeline?: Array<{
+      contractTitle: string;
+      vendor: string;
+      contractCode: string;
+      value: number;
+      daysToExpiry: number;
+      timelineStatus: string;
+      label: string;
+    }>;
+  };
+};
 
-export const RenewalsTimelineCard: React.FC = () => {
+export const RenewalsTimelineCard: React.FC<Props> = ({ data }) => {
+  const timeline = data?.timeline && Array.isArray(data.timeline) && data.timeline.length > 0
+    ? data.timeline
+    : [
+        {
+          contractTitle: "AWS Cloud Services",
+          vendor: "BlueCorp Industries",
+          contractCode: "CON-2024-001",
+          value: 2500000,
+          daysToExpiry: 30,
+          timelineStatus: "critical",
+          label: "Expires in 30 days",
+        },
+        {
+          contractTitle: "Office Lease Agreement",
+          vendor: "BlueCorp Industries",
+          contractCode: "CON-2024-002",
+          value: 1200000,
+          daysToExpiry: 60,
+          timelineStatus: "warning",
+          label: "Expires in 60 days",
+        },
+        {
+          contractTitle: "Software Licenses",
+          vendor: "BlueCorp Industries",
+          contractCode: "CON-2024-003",
+          value: 800000,
+          daysToExpiry: 90,
+          timelineStatus: "ok",
+          label: "Expires in 90 days",
+        },
+      ];
+
+  const items: Item[] = timeline.map((t) => {
+    const status = (t.timelineStatus ?? "").toLowerCase();
+    const color =
+      status === "critical"
+        ? "#DC2626"
+        : status === "warning" || status === "warn"
+          ? "#F59E0B"
+          : "#10B981";
+
+    return {
+      title: t.contractTitle,
+      org: t.vendor,
+      code: t.contractCode,
+      amount: formatCurrency(t.value ?? 0, "en-US", "USD"),
+      note: t.label || `${t.daysToExpiry} days`,
+      color,
+    };
+  });
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
       <CardHeader className="pb-3">

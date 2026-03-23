@@ -174,32 +174,6 @@ const CM_YTD_STATS = [
   },
 ];
 
-const CM_ANALYTICS_ROWS: Array<{
-  className: string;
-  cards: Array<React.ComponentType>;
-}> = [
-  {
-    className: "grid grid-cols-1 lg:grid-cols-3 gap-6",
-    cards: [CycleTimeCard, InvoiceStatusCard, SpendCard],
-  },
-  {
-    className: "grid grid-cols-1 lg:grid-cols-2 gap-6",
-    cards: [VendorsValueCard, ProjectValueCard],
-  },
-  {
-    className: "grid grid-cols-1 lg:grid-cols-3 gap-6",
-    cards: [RiskDistributionCard, ChangeOrdersImpactCard, CategoryValueCard],
-  },
-  {
-    className: "grid grid-cols-1 lg:grid-cols-3 gap-6",
-    cards: [ComplianceStatusCard, ClauseIntelligenceCard, ContractStatusCard],
-  },
-  {
-    className: "grid grid-cols-1 lg:grid-cols-2 gap-6",
-    cards: [VendorPerformanceSummaryCard, RenewalsTimelineCard],
-  },
-];
-
 // Main Role-Based Dashboard Component
 export const RoleBasedDashboard: React.FC = () => {
   const { dashboardConfig, userRole } = useUserRole();
@@ -243,10 +217,72 @@ export const RoleBasedDashboard: React.FC = () => {
     vendorDashboard,
     vendorMyActions,
     vendorGeneralUpdates,
+    contractManagerTotalCards,
+    contractManagerYtdCards,
+    contractManagerActionLogs,
+    contractManagerGeneralUpdates,
+    contractManagerCycleTime,
+    contractManagerInvoiceStatus,
+    contractManagerCommittedVsActualSpend,
+    contractManagerVendorContractValue,
+    contractManagerProjectContractValue,
+    contractManagerRiskDistribution,
+    contractManagerChangeOrderImpact,
+    contractManagerCategoryValue,
+    contractManagerComplianceStatus,
+    contractManagerClauseIntelligence,
+    contractManagerContractStatus,
+    contractManagerVendorSummary,
+    contractManagerRenewals,
     isLoading,
     // Individual chart data fetchers
     getChartData,
   } = useDashboardData(userRole, chartFilters);
+
+  const cmYtdStats = useMemo(() => {
+    const ytd = contractManagerYtdCards;
+    return CM_YTD_STATS.map((stat) => {
+      const value =
+        stat.title === "All Contracts"
+          ? ytd?.allContracts?.value ?? 0
+          : stat.title === "Active Contracts"
+            ? ytd?.activeContracts?.value ?? 0
+            : stat.title === "Suspended"
+              ? ytd?.suspendedContracts?.value ?? 0
+              : stat.title === "Expired"
+                ? ytd?.expiredContracts?.value ?? 0
+                : stat.title === "Terminated"
+                  ? ytd?.terminatedContracts?.value ?? 0
+                  : stat.title === "Total Contract Value"
+                    ? ytd?.totalContractValue?.value ?? 0
+                    : stat.title === "Committed vs Actual"
+                      ? Math.round(ytd?.committedVsActual?.percentage ?? 0)
+                      : stat.title === "Savings Realized"
+                        ? ytd?.savingsRealized?.value ?? 0
+                        : stat.title === "High Risk Contracts"
+                          ? ytd?.highRiskContracts?.count ?? 0
+                          : 0;
+
+      return { ...stat, value };
+    });
+  }, [contractManagerYtdCards]);
+
+  const cmCycleTimeValues = useMemo(() => {
+    const stages = contractManagerCycleTime?.stages ?? [];
+    const getDays = (names: string[]) => {
+      const stage = stages.find((s) =>
+        names.some((n) => s?.name?.toLowerCase?.() === n.toLowerCase())
+      );
+      return stage?.days ?? 0;
+    };
+
+    return {
+      draft: getDays(["drafting", "draft"]),
+      review: getDays(["review"]),
+      approval: getDays(["approval"]),
+      execution: getDays(["execution", "executed"]),
+    };
+  }, [contractManagerCycleTime]);
 
   // Transform API data into dashboard configuration format
   const enhancedDashboardConfig: DashboardConfig = useMemo(() => {
@@ -609,6 +645,70 @@ export const RoleBasedDashboard: React.FC = () => {
       return payload;
     }
 
+    if (userRole === "contract_manager") {
+      const cards = contractManagerTotalCards;
+      const transformedStats = dashboardConfig.stats.map((stat) => {
+        const value =
+          stat.title === "All Contracts"
+            ? cards?.allContracts?.value ?? 0
+            : stat.title === "Active Contracts"
+              ? cards?.activeContracts?.value ?? 0
+              : stat.title === "Draft Contracts"
+                ? cards?.draftContracts?.value ?? 0
+                : stat.title === "Suspended"
+                  ? cards?.suspendedContracts?.value ?? 0
+                  : stat.title === "Expired"
+                    ? cards?.expiredContracts?.value ?? 0
+                    : stat.title === "Terminated"
+                      ? cards?.terminatedContracts?.value ?? 0
+                      : stat.title === "Total Contract Value"
+                        ? cards?.totalContractValue?.value ?? 0
+                        : stat.title === "Committed vs Actual Value"
+                          ? Math.round(cards?.committedVsActual?.percentage ?? 0)
+                          : stat.title === "Savings Realized"
+                            ? cards?.savingsRealized?.value ?? 0
+                            : stat.title === "Upcoming Renewals"
+                              ? cards?.upcomingRenewals?.count ?? 0
+                              : stat.title === "High Risk Contracts"
+                                ? cards?.highRiskContracts?.count ?? 0
+                                : stat.title === "Holdbacks"
+                                  ? cards?.holdbacks?.value ?? 0
+                                  : stat.value;
+        return { ...stat, value };
+      });
+
+      const transformedMyActions =
+        DashboardDataTransformer.transformContractManagerDashboardActivity(
+          contractManagerActionLogs
+        );
+      const transformedGeneralUpdates =
+        DashboardDataTransformer.transformContractManagerDashboardActivity(
+          contractManagerGeneralUpdates
+        );
+
+      return {
+        ...dashboardConfig,
+        stats: transformedStats,
+        rows: dashboardConfig.rows.map((row) => {
+          if (row.type === "activity") {
+            return {
+              ...row,
+              properties: row.properties.map((activity) => {
+                if (activity.id === "my-actions") {
+                  return { ...activity, items: transformedMyActions };
+                }
+                if (activity.id === "general-updates") {
+                  return { ...activity, items: transformedGeneralUpdates };
+                }
+                return activity;
+              }),
+            };
+          }
+          return row;
+        }),
+      };
+    }
+
     // For other roles, return the original config
     // This can be extended to handle other role-specific data transformations
     return dashboardConfig;
@@ -642,6 +742,9 @@ export const RoleBasedDashboard: React.FC = () => {
     vendorDashboard,
     vendorMyActions,
     vendorGeneralUpdates,
+    contractManagerTotalCards,
+    contractManagerActionLogs,
+    contractManagerGeneralUpdates,
   ]);
 
   // Handle individual chart filter changes
@@ -822,7 +925,7 @@ export const RoleBasedDashboard: React.FC = () => {
       
       {showCmOverviewYtdContracts && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {CM_YTD_STATS.map((stat, index) => (
+            {cmYtdStats.map((stat, index) => (
               <CardStats
                 key={`cm-ytd-${index}`}
                 {...stat}
@@ -833,13 +936,44 @@ export const RoleBasedDashboard: React.FC = () => {
         )}
       {showCmAnalytics && (
         <>
-          {CM_ANALYTICS_ROWS.map((row, rowIndex) => (
-            <div key={`cm-analytics-row-${rowIndex}`} className={row.className}>
-              {row.cards.map((AnalyticsCard, cardIndex) => (
-                <AnalyticsCard key={`cm-analytics-card-${rowIndex}-${cardIndex}`} />
-              ))}
-            </div>
-          ))}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <CycleTimeCard
+              values={cmCycleTimeValues}
+              bottleneck={contractManagerCycleTime?.bottleneck}
+            />
+            <InvoiceStatusCard
+              approved={contractManagerInvoiceStatus?.approved}
+              pending={contractManagerInvoiceStatus?.pending}
+              rejected={contractManagerInvoiceStatus?.rejected}
+            />
+            <SpendCard
+              committed={contractManagerCommittedVsActualSpend?.committed}
+              actual={contractManagerCommittedVsActualSpend?.actual}
+              currency={contractManagerTotalCards?.totalContractValue?.currency}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <VendorsValueCard rows={contractManagerVendorContractValue} />
+            <ProjectValueCard rows={contractManagerProjectContractValue} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <RiskDistributionCard values={contractManagerRiskDistribution} />
+            <ChangeOrdersImpactCard data={contractManagerChangeOrderImpact} />
+            <CategoryValueCard rows={contractManagerCategoryValue} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <ComplianceStatusCard data={contractManagerComplianceStatus} />
+            <ClauseIntelligenceCard data={contractManagerClauseIntelligence} />
+            <ContractStatusCard data={contractManagerContractStatus} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <VendorPerformanceSummaryCard data={contractManagerVendorSummary} />
+            <RenewalsTimelineCard data={contractManagerRenewals} />
+          </div>
           <AiInsightsAlerts />
         </>
       )}

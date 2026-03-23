@@ -3,16 +3,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartConfig } from "@/components/ui/chart";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 
-const data = [
-  { name: "Active", value: 12, color: "#ef4444" },
-  { name: "Pending Approval", value: 24, color: "#f59e0b" },
-  { name: "Completed", value: 54, color: "#286EE0" },
-  { name: "Terminated", value: 120, color: "#6B7280" },
-  { name: "Suspended", value: 120, color: "#9CA3AF" },
-  { name: "Draft", value: 120, color: "#FBBF24" },
-];
+type Props = {
+  data?: {
+    active?: number;
+    pendingApproval?: number;
+    completed?: number;
+    terminated?: number;
+    suspended?: number;
+    draft?: number;
+  };
+};
 
-export const ContractStatusCard: React.FC = () => {
+export const ContractStatusCard: React.FC<Props> = ({ data: api }) => {
+  const v = api || {
+    active: 12,
+    pendingApproval: 24,
+    completed: 54,
+    terminated: 120,
+    suspended: 120,
+    draft: 120,
+  };
+
+  const data = [
+    { name: "Active", value: v.active ?? 0, color: "#ef4444" },
+    { name: "Pending Approval", value: v.pendingApproval ?? 0, color: "#f59e0b" },
+    { name: "Completed", value: v.completed ?? 0, color: "#286EE0" },
+    { name: "Terminated", value: v.terminated ?? 0, color: "#6B7280" },
+    { name: "Suspended", value: v.suspended ?? 0, color: "#9CA3AF" },
+    { name: "Draft", value: v.draft ?? 0, color: "#FBBF24" },
+  ];
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
       <CardHeader className="pb-3">

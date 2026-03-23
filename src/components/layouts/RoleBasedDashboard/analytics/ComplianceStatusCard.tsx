@@ -8,15 +8,49 @@ type Row = {
   color: string;
 };
 
-const rows: Row[] = [
-  { label: "Insurance Active", right: "142 / 145", valuePct: 98, color: "#10b981" },
-  { label: "Contract Security Submission", right: "138 / 145", valuePct: 95, color: "#10b981" },
-  { label: "Missed Approvals", right: "8", valuePct: 8, color: "#ef4444" },
-  { label: "NCRs", right: "23", valuePct: 23, color: "#f59e0b" },
-  { label: "Audit Trail Completeness", right: "89%", valuePct: 89, color: "#f59e0b" },
-];
+type Props = {
+  data?: {
+    insuranceActive?: { current: number; total: number; percentage: number };
+    securitySubmission?: { current: number; total: number; percentage: number };
+    missedApprovals?: number;
+    ncrs?: number;
+    auditTrailCompleteness?: number;
+  };
+};
 
-export const ComplianceStatusCard: React.FC = () => {
+export const ComplianceStatusCard: React.FC<Props> = ({ data }) => {
+  const rows: Row[] = [
+    {
+      label: "Insurance Active",
+      right: `${data?.insuranceActive?.current ?? 142} / ${data?.insuranceActive?.total ?? 145}`,
+      valuePct: data?.insuranceActive?.percentage ?? 98,
+      color: "#10b981",
+    },
+    {
+      label: "Contract Security Submission",
+      right: `${data?.securitySubmission?.current ?? 138} / ${data?.securitySubmission?.total ?? 145}`,
+      valuePct: data?.securitySubmission?.percentage ?? 95,
+      color: "#10b981",
+    },
+    {
+      label: "Missed Approvals",
+      right: `${data?.missedApprovals ?? 8}`,
+      valuePct: data?.missedApprovals ?? 8,
+      color: "#ef4444",
+    },
+    {
+      label: "NCRs",
+      right: `${data?.ncrs ?? 23}`,
+      valuePct: data?.ncrs ?? 23,
+      color: "#f59e0b",
+    },
+    {
+      label: "Audit Trail Completeness",
+      right: `${data?.auditTrailCompleteness ?? 89}%`,
+      valuePct: data?.auditTrailCompleteness ?? 89,
+      color: "#f59e0b",
+    },
+  ];
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
       <CardHeader className="pb-3">

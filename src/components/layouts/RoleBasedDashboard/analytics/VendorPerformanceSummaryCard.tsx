@@ -12,13 +12,6 @@ type VendorRow = {
   performance: "warn" | "ok" | "good";
 };
 
-const rows: VendorRow[] = [
-  { vendor: "BuildCorp Ltd", contracts: 8, risk: 65, claims: 2, changeOrders: 12, performance: "warn" },
-  { vendor: "TechServices Inc", contracts: 15, risk: 42, claims: 0, changeOrders: 5, performance: "good" },
-  { vendor: "Global Consulting", contracts: 12, risk: 58, claims: 1, changeOrders: 8, performance: "ok" },
-  { vendor: "Equipment Supplier", contracts: 6, risk: 38, claims: 0, changeOrders: 3, performance: "good" },
-];
-
 const columns: ColumnDef<VendorRow>[] = [
   { accessorKey: "vendor", header: "Vendor", cell: ({ row }) => <span className="text-sm font-medium text-[#0F0F0F]">{row.original.vendor}</span> },
   { accessorKey: "contracts", header: "Contracts", cell: ({ row }) => <span className="text-sm text-[#0F0F0F]">{row.original.contracts}</span> },
@@ -63,7 +56,74 @@ const columns: ColumnDef<VendorRow>[] = [
   },
 ];
 
-export const VendorPerformanceSummaryCard: React.FC = () => {
+type Props = {
+  data?: {
+    rows?: Array<{
+      vendor?: string;
+      contracts?: number;
+      riskScore?: number;
+      claims?: number;
+      changeOrders?: number;
+      performance?: string;
+    }>;
+  };
+};
+
+export const VendorPerformanceSummaryCard: React.FC<Props> = ({ data }) => {
+  const rows: VendorRow[] =
+    data?.rows && Array.isArray(data.rows) && data.rows.length > 0
+      ? data.rows.map((r) => {
+          const performanceRaw = (r.performance ?? "").toLowerCase();
+          const performance: VendorRow["performance"] =
+            performanceRaw === "critical" || performanceRaw === "warn"
+              ? "warn"
+              : performanceRaw === "ok"
+                ? "ok"
+                : "good";
+
+          return {
+            vendor: r.vendor ?? "Unknown",
+            contracts: r.contracts ?? 0,
+            risk: r.riskScore ?? 0,
+            claims: r.claims ?? 0,
+            changeOrders: r.changeOrders ?? 0,
+            performance,
+          };
+        })
+      : [
+          {
+            vendor: "BuildCorp Ltd",
+            contracts: 8,
+            risk: 65,
+            claims: 2,
+            changeOrders: 12,
+            performance: "warn",
+          },
+          {
+            vendor: "TechServices Inc",
+            contracts: 15,
+            risk: 42,
+            claims: 0,
+            changeOrders: 5,
+            performance: "good",
+          },
+          {
+            vendor: "Global Consulting",
+            contracts: 12,
+            risk: 58,
+            claims: 1,
+            changeOrders: 8,
+            performance: "ok",
+          },
+          {
+            vendor: "Equipment Supplier",
+            contracts: 6,
+            risk: 38,
+            claims: 0,
+            changeOrders: 3,
+            performance: "good",
+          },
+        ];
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
       <CardHeader className="pb-3">

@@ -3,13 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartConfig } from "@/components/ui/chart";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 
-const data = [
-  { name: "Low", value: 98, color: "#10b981" },
-  { name: "Medium", value: 34, color: "#f59e0b" },
-  { name: "High (> $5M)", value: 12, color: "#ef4444" },
-];
+type Props = {
+  values?: { low: number; medium: number; high: number };
+};
 
-export const RiskDistributionCard: React.FC = () => {
+export const RiskDistributionCard: React.FC<Props> = ({ values }) => {
+  const v = values || { low: 98, medium: 34, high: 12 };
+  const data = [
+    { name: "Low", value: v.low, color: "#10b981" },
+    { name: "Medium", value: v.medium, color: "#f59e0b" },
+    { name: "High (> $5M)", value: v.high, color: "#ef4444" },
+  ];
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
       <CardHeader className="pb-3">
@@ -67,4 +71,3 @@ export const RiskDistributionCard: React.FC = () => {
     </Card>
   );
 };
-
