@@ -1,6 +1,11 @@
 import { test, expect, Page } from "@playwright/test";
 
-type SeedRole = "vendor" | "procurement" | "contract_manager" | "approver" | "view_only";
+type SeedRole =
+  | "vendor"
+  | "procurement"
+  | "contract_manager"
+  | "approver"
+  | "view_only";
 
 async function seedAuth(page: Page, role: SeedRole) {
   await page.addInitScript((roleName) => {
@@ -93,6 +98,73 @@ async function mockContractManagerEndpoints(page: Page) {
   });
 }
 
+async function mockCreateContractMeta(page: Page) {
+  await page.route("**/contract/manager/types**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ status: 200, message: "ok", data: [] }),
+    });
+  });
+
+  await page.route("**/contract/manager/payment-terms**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ status: 200, message: "ok", data: [] }),
+    });
+  });
+
+  await page.route("**/contract/manager/terms**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ status: 200, message: "ok", data: [] }),
+    });
+  });
+
+  await page.route(
+    "**/contract/manager/awarded-solicitation**",
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: 200, message: "ok", data: [] }),
+      });
+    },
+  );
+
+  await page.route("**/contract/manager/projects?**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ status: 200, message: "ok", data: [] }),
+    });
+  });
+
+  await page.route("**/contract/manager/business-division**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        message: "ok",
+        data: { docs: [], totalDocs: 0, page: 1, limit: 1000, totalPages: 1 },
+      }),
+    });
+  });
+
+  await page.route(
+    "**/procurement/solicitations/meta/categories**",
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: 200, message: "ok", data: [] }),
+      });
+    },
+  );
+}
+
 async function mockApproverEndpoints(page: Page) {
   await page.route("**/approver/contract/stats**", async (route) => {
     await route.fulfill({
@@ -178,21 +250,72 @@ test.describe("Contract Management Page (roles)", () => {
     });
   });
 
-  test("renders procurement/manager view with actions and tabs", async ({ page }) => {
+  test("renders procurement/manager view with actions and tabs", async ({
+    page,
+  }) => {
     await seedAuth(page, "contract_manager");
     await mockContractManagerEndpoints(page);
 
     await page.goto("/dashboard/contract-management");
 
     await expect(page.getByText("Export")).toBeVisible();
-    await expect(page.locator('[data-testid="create-contracts-button"]')).toBeVisible();
-    await expect(page.getByRole("tab", { name: "All Contracts" })).toBeVisible();
+    await expect(
+      page.locator('[data-testid="create-contracts-button"]'),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("tab", { name: "All Contracts" }),
+    ).toBeVisible();
     await expect(page.getByRole("tab", { name: "My Contracts" })).toBeVisible();
-    await expect(page.locator('[data-testid="contracts-stats-all"]')).toBeVisible();
+    await expect(
+      page.locator('[data-testid="contracts-stats-all"]'),
+    ).toBeVisible();
     await expect(page.locator('[data-testid="contracts-table"]')).toBeVisible();
   });
 
-  test("renders vendor view and does not call manager endpoints", async ({ page }) => {
+  test("create contract keeps draft on outside close, resets on cancel/close", async ({
+    page,
+  }) => {
+    await seedAuth(page, "contract_manager");
+    await mockContractManagerEndpoints(page);
+    await mockCreateContractMeta(page);
+
+    await page.goto("/dashboard/contract-management");
+
+    await page.locator('[data-testid="create-contracts-button"]').click();
+    await expect(
+      page.locator('[data-testid="create-contract-sheet"]'),
+    ).toBeVisible();
+
+    await page
+      .locator('[data-testid="contract-name-input"] input')
+      .fill("My Draft Contract");
+
+    await page.mouse.click(1, 1);
+
+    await page.locator('[data-testid="create-contracts-button"]').click();
+    await expect(
+      page.locator('[data-testid="create-contract-sheet"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="contract-name-input"] input'),
+    ).toHaveValue("My Draft Contract");
+
+    await page.getByRole("button", { name: "Cancel" }).click();
+
+    await page.locator('[data-testid="create-contracts-button"]').click();
+    await expect(
+      page.locator('[data-testid="create-contract-sheet"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="contract-name-input"] input'),
+    ).toHaveValue("");
+
+    await page.getByRole("button", { name: "Close" }).click();
+  });
+
+  test("renders vendor view and does not call manager endpoints", async ({
+    page,
+  }) => {
     await seedAuth(page, "vendor");
     await mockVendorEndpoints(page);
 
@@ -204,15 +327,25 @@ test.describe("Contract Management Page (roles)", () => {
 
     await page.goto("/dashboard/contract-management");
 
-    await expect(page.locator('[data-testid="vendor-contracts-stats-all"]')).toBeVisible();
-    await expect(page.locator('[data-testid="vendor-contracts-table"]')).toBeVisible();
-    await expect(page.locator('[data-testid="vendor-empty-state"]')).toBeVisible();
-    await expect(page.locator('[data-testid="create-contracts-button"]')).toHaveCount(0);
+    await expect(
+      page.locator('[data-testid="vendor-contracts-stats-all"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="vendor-contracts-table"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="vendor-empty-state"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="create-contracts-button"]'),
+    ).toHaveCount(0);
     await expect(page.getByText("Export")).toHaveCount(0);
     expect(managerRequests).toBe(0);
   });
 
-  test("renders approver view and uses approver endpoints", async ({ page }) => {
+  test("renders approver view and uses approver endpoints", async ({
+    page,
+  }) => {
     await seedAuth(page, "approver");
     await mockApproverEndpoints(page);
 
@@ -224,23 +357,33 @@ test.describe("Contract Management Page (roles)", () => {
 
     await page.goto("/dashboard/contract-management");
 
-    await expect(page.locator('[data-testid="contracts-stats-all"]')).toBeVisible();
+    await expect(
+      page.locator('[data-testid="contracts-stats-all"]'),
+    ).toBeVisible();
     await expect(page.locator('[data-testid="contracts-table"]')).toBeVisible();
     expect(managerRequests).toBe(0);
   });
 
-  test("renders view-only mode and hides create/export actions", async ({ page }) => {
+  test("renders view-only mode and hides create/export actions", async ({
+    page,
+  }) => {
     await seedAuth(page, "view_only");
     await mockContractManagerEndpoints(page);
 
     await page.goto("/dashboard/contract-management");
 
-    await expect(page.getByRole("heading", { name: "Contracts" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Contracts" }),
+    ).toBeVisible();
     await expect(page.getByText("Read-only")).toBeVisible();
-    await expect(page.locator('[data-testid="create-contracts-button"]')).toHaveCount(0);
+    await expect(
+      page.locator('[data-testid="create-contracts-button"]'),
+    ).toHaveCount(0);
     await expect(page.getByText("Export")).toHaveCount(0);
     await expect(page.locator('[data-testid="search-input"]')).toBeDisabled();
-    await expect(page.locator('[data-testid="create-contract-cta"]')).toHaveCount(0);
+    await expect(
+      page.locator('[data-testid="create-contract-cta"]'),
+    ).toHaveCount(0);
     await expect(page.locator('[data-testid="contracts-table"]')).toBeVisible();
   });
 });
