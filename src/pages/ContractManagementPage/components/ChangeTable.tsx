@@ -16,84 +16,24 @@ import { formatChangeTypeLabel } from "../lib/contractChanges";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 
-const columns: ColumnDef<ContractChangeDTO>[] = [
-  {
-    accessorKey: "title",
-    header: "Change Title",
-    cell: ({ getValue }) => {
-      const title = getValue<string | undefined>();
-      return <span className="font-medium text-slate-900">{title ?? "-"}</span>;
-    },
-  },
-  {
-    accessorKey: "type",
-    header: "Type",
-    cell: ({ getValue }) => {
-      const type = getValue<ContractChangeDTO["type"] | undefined>();
-      return <span>{type ? formatChangeTypeLabel(type) : "-"}</span>;
-    },
-  },
-  {
-    accessorKey: "urgency",
-    header: "Urgency",
-    cell: ({ getValue }) => {
-      const urgency = getValue<ContractChangeDTO["urgency"] | undefined>();
-      if (!urgency) return "-";
-      return urgency.charAt(0).toUpperCase() + urgency.slice(1);
-    },
-  },
-  {
-    accessorKey: "proposalCategory",
-    header: "Proposal Category",
-    cell: ({ getValue }) => {
-      const category = getValue<string | undefined>();
-      return category ?? "-";
-    },
-  },
-  {
-    id: "files",
-    header: "Files",
-    cell: ({ row }) => {
-      const count = row.original.files?.length ?? 0;
-      return <span className="font-semibold text-slate-900">{count}</span>;
-    },
-  },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: () => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon">
-            ⋮
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild>
-            <ChangeDetailsSheet
-              trigger={
-                <a href="#" data-testid="view-change-detail p-4">
-                  View Details
-                </a>
-              }
-            />
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-  },
-];
-
 const approverColumns: ColumnDef<ContractChangeDTO>[] = [
   {
     accessorKey: "changeId",
     header: "Change ID",
-    cell: ({ getValue }) => <span className="font-medium text-slate-900">{getValue<string>() ?? "-"}</span>,
+    cell: ({ getValue }) => (
+      <span className="font-medium text-slate-900">
+        {getValue<string>() ?? "-"}
+      </span>
+    ),
   },
   {
     accessorKey: "title",
     header: "Change Title",
-    cell: ({ getValue }) => <span className="font-medium text-slate-900">{getValue<string>() ?? "-"}</span>,
+    cell: ({ getValue }) => (
+      <span className="font-medium text-slate-900">
+        {getValue<string>() ?? "-"}
+      </span>
+    ),
   },
   {
     accessorKey: "type",
@@ -125,10 +65,13 @@ const approverColumns: ColumnDef<ContractChangeDTO>[] = [
     cell: ({ getValue }) => {
       const status = getValue<string | undefined>();
       let className = "bg-slate-100 text-slate-800 hover:bg-slate-100";
-      if (status === "approved") className = "bg-green-100 text-green-800 hover:bg-green-100";
-      if (status === "pending") className = "bg-yellow-100 text-yellow-800 hover:bg-yellow-100";
-      if (status === "rejected") className = "bg-red-100 text-red-800 hover:bg-red-100";
-      
+      if (status === "approved")
+        className = "bg-green-100 text-green-800 hover:bg-green-100";
+      if (status === "pending")
+        className = "bg-yellow-100 text-yellow-800 hover:bg-yellow-100";
+      if (status === "rejected")
+        className = "bg-red-100 text-red-800 hover:bg-red-100";
+
       return (
         <Badge className={`rounded-full px-3 py-1 font-normal ${className}`}>
           {status ? status.charAt(0).toUpperCase() + status.slice(1) : "-"}
@@ -140,7 +83,10 @@ const approverColumns: ColumnDef<ContractChangeDTO>[] = [
     id: "actions",
     header: "Actions",
     cell: () => (
-      <Button variant="link" className="text-green-600 font-semibold p-0 h-auto hover:no-underline">
+      <Button
+        variant="link"
+        className="text-green-600 font-semibold p-0 h-auto hover:no-underline"
+      >
         View
       </Button>
     ),
@@ -148,6 +94,7 @@ const approverColumns: ColumnDef<ContractChangeDTO>[] = [
 ];
 
 type ChangeTableProps = {
+  contractId: string;
   rows?: ContractChangeDTO[];
   isLoading?: boolean;
   totalCount?: number;
@@ -157,6 +104,7 @@ type ChangeTableProps = {
 };
 
 const ChangeTable: React.FC<ChangeTableProps> = ({
+  contractId,
   rows = [],
   isLoading,
   totalCount,
@@ -165,6 +113,94 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
   variant = "manager",
 }) => {
   const [search, setSearch] = React.useState("");
+
+  const managerColumns: ColumnDef<ContractChangeDTO>[] = React.useMemo(
+    () => [
+      {
+        accessorKey: "changeId",
+        header: "Change ID",
+        cell: ({ getValue }) => {
+          const title = getValue<string | undefined>();
+          return (
+            <span className="font-medium text-slate-900">{title ?? "-"}</span>
+          );
+        },
+      },
+      {
+        accessorKey: "title",
+        header: "Change Title",
+        cell: ({ getValue }) => {
+          const title = getValue<string | undefined>();
+          return (
+            <span className="font-medium text-slate-900">{title ?? "-"}</span>
+          );
+        },
+      },
+      {
+        accessorKey: "type",
+        header: "Type",
+        cell: ({ getValue }) => {
+          const type = getValue<ContractChangeDTO["type"] | undefined>();
+          return <span>{type ? formatChangeTypeLabel(type) : "-"}</span>;
+        },
+      },
+      {
+        accessorKey: "urgency",
+        header: "Urgency",
+        cell: ({ getValue }) => {
+          const urgency = getValue<ContractChangeDTO["urgency"] | undefined>();
+          if (!urgency) return "-";
+          return urgency.charAt(0).toUpperCase() + urgency.slice(1);
+        },
+      },
+      {
+        accessorKey: "proposalCategory",
+        header: "Proposal Category",
+        cell: ({ getValue }) => {
+          const category = getValue<string | undefined>();
+          return category ?? "-";
+        },
+      },
+      {
+        id: "files",
+        header: "Files",
+        cell: ({ row }) => {
+          const count = row.original.files?.length ?? 0;
+          return <span className="font-semibold text-slate-900">{count}</span>;
+        },
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => {
+          const changeId = row.original.changeId || "";
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  ⋮
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <ChangeDetailsSheet
+                    contractId={contractId}
+                    changeId={changeId}
+                    trigger={
+                      <a href="#" data-testid="view-change-detail p-4">
+                        View Details
+                      </a>
+                    }
+                  />
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
+      },
+    ],
+    [contractId],
+  );
 
   const filteredRows = React.useMemo(() => {
     if (!search) return rows;
@@ -210,7 +246,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
             "bg-white dark:bg-slate-950 rounded-xl px-3 border border-gray-300 dark:border-slate-600",
           expandedCell: "px-5",
         }}
-        columns={variant === "approver" ? approverColumns : columns}
+        columns={variant === "approver" ? approverColumns : managerColumns}
         options={{
           disableSelection: true,
           isLoading,

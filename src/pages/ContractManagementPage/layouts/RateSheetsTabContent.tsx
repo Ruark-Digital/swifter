@@ -398,6 +398,121 @@ export interface SheetElement {
   rows:      { [key: string]: string }[];
 }
 
+const EMPTY_RATE_SHEET_SUMMARY: Summary[] = [];
+
+const RateSheetSummaryTable = React.memo(
+  ({ headers, rows }: { headers: string[]; rows: SheetElement["rows"] }) => {
+    const headerCells = React.useMemo(
+      () =>
+        headers.map((h) => (
+          <th key={h} className="whitespace-nowrap px-4 py-3">
+            {h}
+          </th>
+        )),
+      [headers],
+    );
+
+    const bodyRows = React.useMemo(() => {
+      if (rows.length === 0) {
+        return (
+          <tr className="border-t border-[#E5E7EB]">
+            <td className="px-4 py-3 text-[#6B7280]" colSpan={headers.length}>
+              No rows available.
+            </td>
+          </tr>
+        );
+      }
+
+      return rows.map((r, rowIndex) => (
+        <tr key={rowIndex} className="border-t border-[#E5E7EB]">
+          {headers.map((h) => (
+            <td key={`${rowIndex}-${h}`} className="whitespace-nowrap px-4 py-3">
+              {(r as any)?.[h] ?? "—"}
+            </td>
+          ))}
+        </tr>
+      ));
+    }, [headers, rows]);
+
+    return (
+      <div className="overflow-x-auto rounded-lg border border-[#E5E7EB] bg-white">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-[#F9FAFB] text-xs font-semibold text-[#6B7280]">
+            <tr>{headerCells}</tr>
+          </thead>
+          <tbody>{bodyRows}</tbody>
+        </table>
+      </div>
+    );
+  },
+  (prev, next) => prev.headers === next.headers && prev.rows === next.rows,
+);
+
+const RateSheetSummarySheet = React.memo(
+  ({ sheet }: { sheet: SheetElement }) => {
+    return (
+      <div className="space-y-3">
+        <div className="text-sm font-semibold text-[#0F0F0F]">
+          {sheet?.sheetName || "—"}
+        </div>
+        {Array.isArray(sheet?.headers) && sheet.headers.length > 0 ? (
+          <RateSheetSummaryTable headers={sheet.headers} rows={sheet.rows || []} />
+        ) : (
+          <div className="text-sm text-[#6B7280]">No headers available.</div>
+        )}
+      </div>
+    );
+  },
+  (prev, next) => prev.sheet === next.sheet,
+);
+
+const RateSheetSummaryGroup = React.memo(
+  ({ group }: { group: Summary }) => {
+    const sheets = group?.sheets || [];
+
+    return (
+      <div className="space-y-4">
+        <div className="text-sm font-semibold text-[#0F0F0F]">
+          {group?.name || "Summary"}
+        </div>
+        <div className="space-y-5">
+          {sheets.map((s, sheetIndex) => (
+            <RateSheetSummarySheet
+              key={`${s?.sheetName || "sheet"}-${sheetIndex}`}
+              sheet={s}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  },
+  (prev, next) => prev.group === next.group,
+);
+
+const RateSheetSummaryTab = React.memo(
+  ({ detailLoading, summary }: { detailLoading: boolean; summary: Summary[] }) => {
+    return (
+      <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-6 text-sm text-[#6B7280]">
+        {detailLoading ? (
+          <div>Loading summary...</div>
+        ) : summary.length > 0 ? (
+          <div className="space-y-6 text-[#111827]">
+            {summary.map((group, groupIndex) => (
+              <RateSheetSummaryGroup
+                key={`${group?.name || "summary"}-${groupIndex}`}
+                group={group}
+              />
+            ))}
+          </div>
+        ) : (
+          <div>No summary available.</div>
+        )}
+      </div>
+    );
+  },
+  (prev, next) => prev.detailLoading === next.detailLoading && prev.summary === next.summary,
+);
+
 
 const RateSheetDetailsSheet: React.FC<{
   trigger: React.ReactNode;
@@ -448,9 +563,8 @@ const RateSheetDetailsSheet: React.FC<{
   const canApprove = isManager && basePath.includes("/manager/contracts");
 
   const sheet = detailRes as RateSheetDetailResponseSheet | null;
-  console.log({ sheet })
   const files = sheet?.files ?? [];
-  const summary = sheet?.summary ?? [];
+  const summary = sheet?.summary ?? EMPTY_RATE_SHEET_SUMMARY;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -599,71 +713,7 @@ const RateSheetDetailsSheet: React.FC<{
               </TabsContent>
 
               <TabsContent value="summary">
-                <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-6 text-sm text-[#6B7280]">
-                  {detailLoading ? (
-                    <div>Loading summary...</div>
-                  ) : summary.length > 0 ? (
-                    <div className="space-y-6 text-[#111827]">
-                      {summary.map((group, groupIndex) => (
-                        <div key={`${group?.name || "summary"}-${groupIndex}`} className="space-y-4">
-                          <div className="text-sm font-semibold text-[#0F0F0F]">
-                            {group?.name || "Summary"}
-                          </div>
-                          <div className="space-y-5">
-                            {(group?.sheets || []).map((s, sheetIndex) => (
-                              <div key={`${s?.sheetName || "sheet"}-${sheetIndex}`} className="space-y-3">
-                                <div className="text-sm font-semibold text-[#0F0F0F]">
-                                  {s?.sheetName || "—"}
-                                </div>
-                                {Array.isArray(s?.headers) && s.headers.length > 0 ? (
-                                  <div className="overflow-x-auto rounded-lg border border-[#E5E7EB] bg-white">
-                                    <table className="w-full text-left text-sm">
-                                      <thead className="bg-[#F9FAFB] text-xs font-semibold text-[#6B7280]">
-                                        <tr>
-                                          {s.headers.map((h) => (
-                                            <th key={h} className="whitespace-nowrap px-4 py-3">
-                                              {h}
-                                            </th>
-                                          ))}
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {(s?.rows || []).length > 0 ? (
-                                          (s?.rows || []).map((r, rowIndex) => (
-                                            <tr key={rowIndex} className="border-t border-[#E5E7EB]">
-                                              {s.headers.map((h) => (
-                                                <td key={`${rowIndex}-${h}`} className="whitespace-nowrap px-4 py-3">
-                                                  {(r as any)?.[h] ?? "—"}
-                                                </td>
-                                              ))}
-                                            </tr>
-                                          ))
-                                        ) : (
-                                          <tr className="border-t border-[#E5E7EB]">
-                                            <td
-                                              className="px-4 py-3 text-[#6B7280]"
-                                              colSpan={s.headers.length}
-                                            >
-                                              No rows available.
-                                            </td>
-                                          </tr>
-                                        )}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                ) : (
-                                  <div className="text-sm text-[#6B7280]">No headers available.</div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div>No summary available.</div>
-                  )}
-                </div>
+                <RateSheetSummaryTab detailLoading={detailLoading} summary={summary} />
               </TabsContent>
             </Tabs>
           </div>
@@ -748,11 +798,10 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       [row.id, row.title].some((v) => v.toLowerCase().includes(q)),
     );
   }, [data, search]);
-  console.log("filtered", filtered);
 
   const columns: ColumnDef<RateSheetRow>[] = React.useMemo(
     () => [
-      { accessorKey: "id", header: "Rate ID" },
+      { accessorKey: "sheetId", header: "Rate ID" },
       {
         accessorKey: "title",
         header: "Rate Title",

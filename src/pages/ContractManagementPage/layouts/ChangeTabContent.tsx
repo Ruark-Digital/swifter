@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
 import { getRequest } from "@/lib/axiosInstance";
 import {
+  ContractChangeDTO,
   type ManagerListChangesQuery,
 } from "../api/contractManagerApi";
 import {
@@ -16,6 +17,52 @@ import {
   type ChangeTabValue,
 } from "@/pages/ContractManagementPage/lib/contractChanges";
 import { useUserRole } from "@/hooks/useUserRole";
+import { ApiResponse } from "@/types";
+
+export interface ChangesDataResponse {
+  changes: Change[];
+  total:   number;
+}
+
+export interface Change {
+  manager:        Manager;
+  _id:            string;
+  company:        string;
+  changeRef:      ChangeRef;
+  changeRefModel: string;
+  requestedBy:    string;
+  description:    string;
+  title:          string;
+  urgency:        string;
+  status:         string;
+  type:           string;
+  files:          File[];
+  changeId:       string;
+  approvers:      any[];
+  createdAt:      Date;
+  updatedAt:      Date;
+  __v:            number;
+}
+
+export interface ChangeRef {
+  _id:           string;
+  contractId:    string;
+  contractValue: number;
+}
+
+export interface File {
+  name:       string;
+  url:        string;
+  type:       string;
+  size:       number;
+  _id:        string;
+  uploadedAt: Date;
+}
+
+export interface Manager {
+  status: string;
+}
+
 
 type Props = {
   contractId: string;
@@ -86,7 +133,7 @@ const ChangeTabContent: React.FC<Props> = ({
       const response = await getRequest({
         url: `${basePath}?${params.toString()}`,
       });
-      return response.data;
+      return response as ApiResponse<ChangesDataResponse>;
     },
     enabled: Boolean(contractId) && !!isActive,
     staleTime: 60000,
@@ -94,6 +141,14 @@ const ChangeTabContent: React.FC<Props> = ({
 
   const changeRows = changesRes?.data?.data?.changes ?? [];
   const totalCount = changesRes?.data?.data?.total ?? changeRows.length;
+
+  const filteredRows: ContractChangeDTO[] = changeRows.map((change) => ({
+    ...change,
+    type: change.type as ContractChangeDTO['type'],
+    urgency: change.urgency as ContractChangeDTO['urgency'],
+    status: change.status as ContractChangeDTO['status'],
+    proposalCategory: change.changeRefModel,
+  }));
 
   return (
     <TabsContent value="change" className="space-y-6">
@@ -179,8 +234,9 @@ const ChangeTabContent: React.FC<Props> = ({
 
         <TabsContent value="all">
           <ChangeTable
+            contractId={contractId}
             variant={isApprover ? "approver" : "manager"}
-            rows={changeRows}
+            rows={filteredRows}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
@@ -189,8 +245,9 @@ const ChangeTabContent: React.FC<Props> = ({
         </TabsContent>
         <TabsContent value="requests">
           <ChangeTable
+            contractId={contractId}
             variant={isApprover ? "approver" : "manager"}
-            rows={changeRows.filter((row: any) => row.type === "request")}
+            rows={filteredRows.filter((row) => row.type === "request")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
@@ -199,7 +256,8 @@ const ChangeTabContent: React.FC<Props> = ({
         </TabsContent>
         <TabsContent value="orders">
           <ChangeTable
-            rows={changeRows.filter((row: any) => row.type === "order")}
+            contractId={contractId}
+            rows={filteredRows.filter((row) => row.type === "order")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
@@ -208,7 +266,8 @@ const ChangeTabContent: React.FC<Props> = ({
         </TabsContent>
         <TabsContent value="directive">
           <ChangeTable
-            rows={changeRows.filter((row: any) => row.type === "directive")}
+            contractId={contractId}
+            rows={filteredRows.filter((row) => row.type === "directive")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
@@ -217,8 +276,9 @@ const ChangeTabContent: React.FC<Props> = ({
         </TabsContent>
         <TabsContent value="proposal">
           <ChangeTable
+            contractId={contractId}
             variant={isApprover ? "approver" : "manager"}
-            rows={changeRows.filter((row: any) => row.type === "proposal")}
+            rows={filteredRows.filter((row) => row.type === "proposal")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
