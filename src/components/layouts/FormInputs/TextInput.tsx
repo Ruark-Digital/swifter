@@ -239,6 +239,20 @@ export const TextTagInput = (
     : [];
   const shouldEnableAutocomplete =
     Boolean(enableAutocomplete) && safeAutocompleteOptions.length > 0;
+  const sanitizeTag = (t: any): CustomTag => ({
+    ...t,
+    id: (t?.id ?? t?.text ?? "").toString(),
+    text: (t?.text ?? t?.id ?? "").toString(),
+  });
+  const sanitizedValue = (safeValue ?? []).map(sanitizeTag);
+  const sanitizedTags = (safeTags ?? []).map(sanitizeTag);
+  const sanitizedAutocompleteOptions = (safeAutocompleteOptions ?? [])
+    .filter(
+      (opt) =>
+        (opt?.id ?? opt?.text) != null &&
+        String(opt?.id ?? opt?.text).trim() !== "",
+    )
+    .map(sanitizeTag);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -272,10 +286,10 @@ export const TextTagInput = (
   }, [activeTagIndex]);
 
   const handleTagSubInputChange = () => {
-    const nameVal = formData.name.trim();
-    const emailVal = formData.email.trim();
-    const roleVal = formData.role.trim();
-    const phoneVal = formData.phone.trim();
+    const nameVal = formData.name?.trim?.();
+    const emailVal = formData.email?.trim?.();
+    const roleVal = formData.role?.trim?.();
+    const phoneVal = formData.phone?.trim?.();
 
     if (!nameVal || !emailVal) {
       setErrorText("Name and Email are required");
@@ -285,8 +299,8 @@ export const TextTagInput = (
     const exists = (value ?? []).some((t, idx) => {
       if (activeTagIndex !== null && idx === activeTagIndex) return false;
       return (
-        t.text?.toLowerCase() === nameVal.toLowerCase() ||
-        t.id?.toLowerCase() === emailVal.toLowerCase()
+        t.text?.toLowerCase?.() === nameVal?.toLowerCase?.() ||
+        t.id?.toLowerCase?.() === emailVal?.toLowerCase?.()
       );
     });
 
@@ -359,16 +373,17 @@ export const TextTagInput = (
             >
               <TagInput
                 name={name}
-                value={safeValue}
+                value={sanitizedValue}
                 ref={ref}
-                tags={safeTags}
+                tags={sanitizedTags}
                 enableAutocomplete={shouldEnableAutocomplete}
-                autocompleteOptions={safeAutocompleteOptions}
+                autocompleteOptions={sanitizedAutocompleteOptions}
                 restrictTagsToAutocompleteOptions={
                   restrictTagsToAutocompleteOptions
                 }
                 setTags={(newTags) => {
-                  onChange?.(newTags);
+                  const arr = Array.isArray(newTags) ? newTags : [];
+                  onChange?.(arr.map(sanitizeTag));
                 }}
                 placeholder={placeholder ?? "Add a tag"}
                 inputProps={inputProps}
@@ -491,15 +506,16 @@ export const TextTagInput = (
       ) : (
         <TagInput
           name={name}
-          value={safeValue}
+          value={sanitizedValue}
           ref={ref}
-          tags={safeTags ?? safeValue}
+          tags={sanitizedTags ?? sanitizedValue}
           enableAutocomplete={enableAutocomplete}
           // className="bg-purple-600"
-          autocompleteOptions={autocompleteOptions}
+          autocompleteOptions={sanitizedAutocompleteOptions}
           restrictTagsToAutocompleteOptions={restrictTagsToAutocompleteOptions}
           setTags={(newTags) => {
-            onChange?.(newTags);
+            const arr = Array.isArray(newTags) ? newTags : [];
+            onChange?.(arr.map(sanitizeTag));
           }}
           placeholder={placeholder ?? "Add a tag"}
           inputProps={inputProps}

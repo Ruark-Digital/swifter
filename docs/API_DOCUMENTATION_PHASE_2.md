@@ -11538,6 +11538,47 @@
             "description": "Filter by date (YYYY-MM-DD)"
           }
         ]
+      },
+      "post": {
+        "summary": "Create MSA contract",
+        "description": "Creates a new MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateContractInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract created successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
       }
     },
     "/manager/contracts/stats": {
@@ -15641,7 +15682,7 @@
         }
       }
     },
-    "/manager/contracts/changes/{changeId}": {
+    "/manager/contracts/{contractId}/changes/{changeId}": {
       "get": {
         "summary": "Get a contract change",
         "description": "Returns details of a specific contract change.",
@@ -15661,6 +15702,15 @@
           "company_admin"
         ],
         "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
           {
             "in": "path",
             "name": "changeId",
@@ -15827,7 +15877,7 @@
         }
       }
     },
-    "/manager/contracts/changes/{changeId}/approve": {
+    "/manager/contracts/{contractId}/changes/{changeId}/approve": {
       "post": {
         "summary": "Approve or reject a contract change (Manager)",
         "description": "Allows a manager or creator to approve/reject a contract change.",
@@ -15844,6 +15894,15 @@
           "procurement"
         ],
         "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
           {
             "in": "path",
             "name": "changeId",
@@ -15924,7 +15983,7 @@
         }
       }
     },
-    "/manager/contracts/changes/{changeId}/approve/status": {
+    "/manager/contracts/{contractId}/changes/{changeId}/approve/status": {
       "get": {
         "summary": "Check manager approval status for a contract change",
         "description": "Returns the current manager approval status for a specific contract change.",
@@ -15941,6 +16000,15 @@
           "procurement"
         ],
         "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
           {
             "in": "path",
             "name": "changeId",
@@ -16010,7 +16078,7 @@
         }
       }
     },
-    "/manager/contracts/changes/{changeId}/approvers": {
+    "/manager/contracts/{contractId}/changes/{changeId}/approvers": {
       "get": {
         "summary": "Get contract change approvers",
         "description": "Returns the list of approvers for a specific contract change.",
@@ -16030,6 +16098,15 @@
           "company_admin"
         ],
         "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
           {
             "in": "path",
             "name": "changeId",
@@ -16096,7 +16173,7 @@
         }
       }
     },
-    "/manager/contracts/claims/{claimId}/approve": {
+    "/manager/contracts/{contractId}/claims/{claimId}/approve": {
       "post": {
         "summary": "Approve or reject a contract claim (Manager)",
         "description": "Allows a manager or creator to approve/reject a contract claim.",
@@ -16113,6 +16190,15 @@
           "procurement"
         ],
         "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          },
           {
             "in": "path",
             "name": "claimId",
@@ -16143,7 +16229,7 @@
                   "properties": {
                     "message": {
                       "type": "string",
-                      "example": "Contract claim approval processed successfully"
+                      "example": "Contract Claim updated"
                     }
                   }
                 }
@@ -16183,7 +16269,7 @@
         }
       }
     },
-    "/manager/contracts/claims/{claimId}/approve/status": {
+    "/manager/contracts/{contractId}/claims/{claimId}/approve/status": {
       "get": {
         "summary": "Check manager approval status for a contract claim",
         "description": "Returns the current manager approval status for a specific contract claim.",
@@ -16200,6 +16286,15 @@
           "procurement"
         ],
         "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
           {
             "in": "path",
             "name": "claimId",
@@ -16269,7 +16364,7 @@
         }
       }
     },
-    "/manager/contracts/changes/{changeId}/comments": {
+    "/manager/contracts/{contractId}/changes/{changeId}/comments": {
       "get": {
         "summary": "Get contract change comments",
         "description": "Returns comments for a specific contract change.",
@@ -16289,6 +16384,15 @@
           "company_admin"
         ],
         "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
           {
             "in": "path",
             "name": "changeId",
@@ -16364,9 +16468,7 @@
             }
           }
         }
-      }
-    },
-    "/manager/contracts/changes/{changeId}/comments/{contractId}": {
+      },
       "post": {
         "summary": "Add a comment to a contract change",
         "description": "Adds a new comment to a specific contract change.",
@@ -16465,7 +16567,7 @@
         }
       }
     },
-    "/manager/contracts/changes/{changeId}/comments/{commentId}/reply": {
+    "/manager/contracts/{contractId}/changes/{changeId}/comments/{commentId}/reply": {
       "post": {
         "summary": "Reply to a contract change comment",
         "description": "Adds a reply to a specific comment on a contract change.",
@@ -19147,102 +19249,6 @@
                     },
                     "data": {
                       "$ref": "#/components/schemas/ContractAmendmentDTO"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated user",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthenticatedError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden – user lacks required role",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthorizeError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/manager/contracts/{contractId}/claims/{claimId}/approve": {
-      "post": {
-        "summary": "Approve or reject a contract claim (Manager)",
-        "description": "Allows a manager or creator to approve/reject a contract claim.",
-        "tags": [
-          "ContractManager - Contract Claim"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-roles": [
-          "contract_manager",
-          "procurement"
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "contractId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Contract ID"
-          },
-          {
-            "in": "path",
-            "name": "claimId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "The contract claim ID"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApprovalActionDTO"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Contract claim approval processed successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Contract Claim updated"
                     }
                   }
                 }
@@ -24917,6 +24923,61 @@
       }
     },
     "/manager/msa-contract/{contractId}": {
+      "put": {
+        "summary": "Update MSA contract",
+        "description": "Updates an existing MSA contract.",
+        "tags": [
+          "ContractManager - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateContractInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract updated successfully"
+          },
+          "401": {
+            "description": "Unauthenticated user"
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
       "get": {
         "summary": "Get MSA contract details",
         "description": "Returns details of a specific MSA contract.",

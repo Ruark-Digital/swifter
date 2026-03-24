@@ -47,9 +47,19 @@ const Step2ContractTeam: React.FC = () => {
             text:
               p.firstName && p.lastName
                 ? `${p.firstName} (${p.lastName})`
-                : p.firstName,
+                : p.firstName
+                ? p.firstName
+                : (p.email ?? p._id),
             value: p._id,
-            meta: { email: p.email, role: p.role, phone: p.phone },
+            meta: {
+              email: p.email,
+              role: Array.isArray(p.role)
+                ? p.role[0]?.name ?? ""
+                : typeof (p as any)?.role === "string"
+                ? (p as any).role
+                : ((p as any)?.role?.name ?? ""),
+              phone: (p as any)?.phone,
+            },
           }))
         : [],
     [personnelData?.data?.data],

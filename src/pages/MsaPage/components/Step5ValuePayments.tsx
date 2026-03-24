@@ -12,17 +12,15 @@ import { CreateMsaFormData } from "../layouts/CreateMSADialog";
 
 type Props = {
   control: Control<CreateMsaFormData>;
+  paymentTermOptions?: Array<{ label: string; value: string }>;
+  isLoadingPaymentTerms?: boolean;
 };
 
-const paymentTermOptions = [
-  { label: "NET 30 - Payment 30 days after invoice submission", value: "net_30" },
-  { label: "NET 45 - Payment 45 days after invoice submission", value: "net_45" },
-  { label: "NET 60 - Payment 60 days after invoice submission", value: "net_60" },
-  { label: "NET 90 - Payment 90 days after invoice submission", value: "net_90" },
-  { label: "NET 120 - Payment 120 days after invoice submission", value: "net_120" },
-];
-
-const Step5ValuePayments: React.FC<Props> = ({ control }) => {
+const Step5ValuePayments: React.FC<Props> = ({
+  control,
+  paymentTermOptions,
+  isLoadingPaymentTerms,
+}) => {
   const paymentStructure = useWatch({ control, name: "paymentStructure" });
   const deliverables = useWatch({
     control,
@@ -46,7 +44,7 @@ const Step5ValuePayments: React.FC<Props> = ({ control }) => {
       <Forger
         name="contractValue"
         label="Contract Value ($)"
-        placeholder="Enter Amount"
+        placeholder="Enter contract value"
         component={TextCurrencyInput}
         containerClass="md:col-span-2"
         helperText=">$5m = High Risk , >$1-5m = Medium, <$1m = Low Risk"
@@ -54,19 +52,19 @@ const Step5ValuePayments: React.FC<Props> = ({ control }) => {
       <Forger
         name="contingency"
         label="Contingency (only visible internally)"
-        placeholder="Enter Contingency"
-        component={TextInput}
+        placeholder="Enter contingency"
+        component={TextCurrencyInput}
       />
       <Forger
         name="holdback"
         label="Holdback (Optional)"
-        placeholder="10%"
+        placeholder="Enter holdback"
         component={TextInput}
       />
       <Forger
         name="paymentStructure"
         label="Payment Structure"
-        placeholder="Monthly / Milestone / Progress Draw"
+        placeholder="Select payment structure"
         component={TextSelect}
         containerClass="md:col-span-2"
         options={[
@@ -101,19 +99,19 @@ const Step5ValuePayments: React.FC<Props> = ({ control }) => {
                 <Forger
                   name={`milestones.${index}.amount`}
                   label="Amount ($)"
-                  placeholder="Enter Amount"
+                  placeholder="Enter amount"
                   component={TextCurrencyInput}
                 />
                 <Forger
                   name={`milestones.${index}.dueDate`}
                   label="Due Date"
                   component={TextDatePicker}
-                  placeholder="Side Visits/Conference Call"
+                  placeholder="Select due date"
                 />
                 <Forger
                   name={`milestones.${index}.deliverable`}
                   label="Select Deliverable (Optional)"
-                  placeholder="Select Deliverable"
+                  placeholder="Select deliverable"
                   component={TextSelect}
                   options={deliverableOptions}
                   containerClass="md:col-span-2"
@@ -144,9 +142,36 @@ const Step5ValuePayments: React.FC<Props> = ({ control }) => {
       <Forger
         name="paymentTerm"
         label="Payment Term"
-        placeholder="When vendors will be paid after invoice submersion"
+        placeholder={
+          isLoadingPaymentTerms ? "Loading..." : "Select payment term"
+        }
         component={TextSelect}
-        options={paymentTermOptions}
+        options={
+          paymentTermOptions && paymentTermOptions.length > 0
+            ? paymentTermOptions
+            : [
+                {
+                  label: "NET 30 - Payment 30 days after invoice submission",
+                  value: "net_30",
+                },
+                {
+                  label: "NET 45 - Payment 45 days after invoice submission",
+                  value: "net_45",
+                },
+                {
+                  label: "NET 60 - Payment 60 days after invoice submission",
+                  value: "net_60",
+                },
+                {
+                  label: "NET 90 - Payment 90 days after invoice submission",
+                  value: "net_90",
+                },
+                {
+                  label: "NET 120 - Payment 120 days after invoice submission",
+                  value: "net_120",
+                },
+              ]
+        }
         containerClass="md:col-span-2"
       />
     </div>

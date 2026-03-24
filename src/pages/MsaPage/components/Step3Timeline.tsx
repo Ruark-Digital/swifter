@@ -1,12 +1,53 @@
 import React from "react";
-import { Forger } from "@/lib/forge";
+import { ForgeControl, Forger } from "@/lib/forge";
 import {
   TextDatePicker,
   TextInput,
   TextSelect,
 } from "@/components/layouts/FormInputs";
+import { useForgeValues } from "@/lib/forge";
+import { CreateMsaFormData } from "../layouts/CreateMSADialog";
+import { useWatch } from "react-hook-form";
+import { formatDateTZ } from "@/lib/utils";
+import { differenceInCalendarDays } from "date-fns";
 
-const Step3Timeline: React.FC = () => {
+type Props = {
+  termTypeOptions?: Array<{ label: string; value: string }>;
+  isLoadingTermTypes?: boolean;
+  control: ForgeControl<CreateMsaFormData>;
+};
+
+const Step3Timeline: React.FC<Props> = ({
+  termTypeOptions,
+  isLoadingTermTypes,
+  control,
+}) => {
+  const { setValue } = useForgeValues({ control });
+  const endDate = useWatch({ control, name: "endDate" });
+  const effectiveDate = useWatch({ control, name: "effectiveDate" });
+  const draftStartDate = useWatch({ control, name: "draftStartDate" });
+  const draftEndDate = useWatch({ control, name: "draftEndDate" });
+  const reviewStartDate = useWatch({ control, name: "reviewStartDate" });
+  const reviewEndDate = useWatch({ control, name: "reviewEndDate" });
+  const approvalStartDate = useWatch({ control, name: "approvalStartDate" });
+  const approvalEndDate = useWatch({ control, name: "approvalEndDate" });
+  const executionStartDate = useWatch({ control, name: "executionStartDate" });
+
+  React.useEffect(() => {
+    const start = effectiveDate ? formatDateTZ(effectiveDate) : undefined;
+    const end = endDate ? formatDateTZ(endDate) : undefined;
+
+    if (start && end) {
+      const days = Math.max(0, differenceInCalendarDays(end, start));
+      setValue("duration", days.toString(), {
+        shouldDirty: true,
+        shouldValidate: false,
+      });
+    } else {
+      setValue("duration", "", { shouldDirty: true, shouldValidate: false });
+    }
+  }, [effectiveDate, endDate, setValue]);
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -14,8 +55,9 @@ const Step3Timeline: React.FC = () => {
           <Forger
             name="effectiveDate"
             label="Contract Effective Date"
-            placeholder="Select Date"
+            placeholder="Select contract effective date"
             component={TextDatePicker}
+            showTime
           />
           <p className="text-xs font-semibold text-[#2A4467]">
             Could be in the past, present or future.
@@ -25,8 +67,10 @@ const Step3Timeline: React.FC = () => {
           <Forger
             name="endDate"
             label="End Date"
-            placeholder="Select Date"
+            placeholder="Select end date"
             component={TextDatePicker}
+            showTime
+            minDate={effectiveDate}
           />
         </div>
       </div>
@@ -34,21 +78,26 @@ const Step3Timeline: React.FC = () => {
       <Forger
         name="duration"
         label="Duration"
-        placeholder="Duration"
+        placeholder="Enter duration"
         component={TextInput}
         className="bg-[#2A44670D]"
+        disabled={true}
       />
 
       <Forger
         name="termType"
         label="Term Type"
-        placeholder="Select Type"
+        placeholder={isLoadingTermTypes ? "Loading..." : "Select term type"}
         component={TextSelect}
-        options={[
-          { label: "Fixed", value: "fixed" },
-          { label: "Multi Year", value: "multi_year" },
-          { label: "Annual", value: "annual" },
-        ]}
+        options={
+          termTypeOptions && termTypeOptions.length > 0
+            ? termTypeOptions
+            : [
+                { label: "Fixed", value: "fixed" },
+                { label: "Multi Year", value: "multi_year" },
+                { label: "Annual", value: "annual" },
+              ]
+        }
       />
 
       <div className="space-y-4 rounded-2xl bg-[#F9FAFB] p-4">
@@ -62,14 +111,17 @@ const Step3Timeline: React.FC = () => {
             <Forger
               name="draftStartDate"
               label="Start Date"
-              placeholder="Select Date"
+              placeholder="Select start date"
               component={TextDatePicker}
+              maxDate={effectiveDate}
             />
             <Forger
               name="draftEndDate"
               label="End Date"
-              placeholder="Select Date"
+              placeholder="Select end date"
               component={TextDatePicker}
+              minDate={draftStartDate}
+              maxDate={effectiveDate}
             />
           </div>
         </div>
@@ -80,14 +132,18 @@ const Step3Timeline: React.FC = () => {
             <Forger
               name="reviewStartDate"
               label="Start Date"
-              placeholder="Select Date"
+              placeholder="Select start date"
               component={TextDatePicker}
+              minDate={draftEndDate || draftStartDate}
+              maxDate={effectiveDate}
             />
             <Forger
               name="reviewEndDate"
               label="End Date"
-              placeholder="Select Date"
+              placeholder="Select end date"
               component={TextDatePicker}
+              minDate={reviewStartDate}
+              maxDate={effectiveDate}
             />
           </div>
         </div>
@@ -98,14 +154,18 @@ const Step3Timeline: React.FC = () => {
             <Forger
               name="approvalStartDate"
               label="Start Date"
-              placeholder="Select Date"
+              placeholder="Select start date"
               component={TextDatePicker}
+              minDate={reviewEndDate || reviewStartDate}
+              maxDate={effectiveDate}
             />
             <Forger
               name="approvalEndDate"
               label="End Date"
-              placeholder="Select Date"
+              placeholder="Select end date"
               component={TextDatePicker}
+              minDate={approvalStartDate}
+              maxDate={effectiveDate}
             />
           </div>
         </div>
@@ -116,14 +176,18 @@ const Step3Timeline: React.FC = () => {
             <Forger
               name="executionStartDate"
               label="Start Date"
-              placeholder="Select Date"
+              placeholder="Select start date"
               component={TextDatePicker}
+              minDate={approvalEndDate || approvalStartDate}
+              maxDate={effectiveDate}
             />
             <Forger
               name="executionEndDate"
               label="End Date"
-              placeholder="Select Date"
+              placeholder="Select end date"
               component={TextDatePicker}
+              minDate={executionStartDate}
+              maxDate={effectiveDate}
             />
           </div>
         </div>
@@ -133,4 +197,3 @@ const Step3Timeline: React.FC = () => {
 };
 
 export default Step3Timeline;
-

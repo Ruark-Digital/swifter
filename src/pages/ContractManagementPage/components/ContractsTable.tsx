@@ -15,6 +15,7 @@ import { Link } from "react-router-dom";
 
 export type ContractRow = {
   id: string;
+  contractId: string;
   title: string;
   code: string;
   vendor: string;
@@ -48,7 +49,7 @@ const columns: ColumnDef<ContractRow>[] = [
         >
           {row.original.title}
         </a>
-        <span className="text-xs text-slate-500">{row.original.code}</span>
+        <span className="text-xs text-slate-500">{row.original.contractId}</span>
       </div>
     ),
   },

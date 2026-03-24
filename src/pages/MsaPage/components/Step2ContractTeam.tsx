@@ -4,14 +4,24 @@ import {
   TextInput,
   TextSelect,
   TextTagInput,
+  TextMultiSelect,
 } from "@/components/layouts/FormInputs";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
 
 const Step2ContractTeam: React.FC = () => {
   const { data: personnelData } = useQuery({
     queryKey: ["contract-personnel"],
     queryFn: async () => await getRequest({ url: "/contract/manager/personnel" }),
+    staleTime: 60000,
+  });
+  const { isManager } = useUserRole();
+  const currentUser = useUser();
+  const { data: vendorsData } = useQuery({
+    queryKey: ["solicitationVendors"],
+    queryFn: async () => await getRequest({ url: "/procurement/solicitations/vendors" }),
     staleTime: 60000,
   });
 
@@ -28,28 +38,103 @@ const Step2ContractTeam: React.FC = () => {
     [personnelData],
   );
 
+  const vendorOptions = React.useMemo(
+    () =>
+      Array.isArray((vendorsData as any)?.data?.data)
+        ? (vendorsData as any)?.data?.data.map((vendor: any) => ({
+            label: vendor.name || vendor.email,
+            value: vendor._id,
+            name: vendor.name,
+          }))
+        : [],
+    [vendorsData],
+  );
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Forger
           name="manager"
           label="Contract Manger"
-          placeholder="Enter Title"
-          component={TextInput}
+          component={({
+            value,
+            onChange,
+          }: {
+            value?: string;
+            onChange?: (val: string) => void;
+          }) => (
+            <TextInput
+              placeholder="Enter contract manager"
+              value={
+                isManager ? (currentUser?.name ?? "") : ((value as any) ?? "")
+              }
+              onChange={(e) => onChange?.(e.target.value)}
+              disabled={isManager}
+            />
+          )}
         />
         <Forger
           name="jobTitle"
           label="Job Title"
-          placeholder="Enter Title"
-          component={TextInput}
+          component={({
+            value,
+            onChange,
+          }: {
+            value?: string;
+            onChange?: (val: string) => void;
+          }) => (
+            <TextInput
+              placeholder="Enter job title"
+              value={
+                isManager
+                  ? (currentUser?.role?.name ?? "")
+                  : ((value as any) ?? "")
+              }
+              onChange={(e) => onChange?.(e.target.value)}
+              disabled={isManager}
+            />
+          )}
         />
       </div>
 
       <Forger
         name="vendor"
         label="Vendor / Contractor"
-        placeholder="Enter Name"
-        component={TextInput}
+        component={({
+          value,
+          onChange,
+        }: {
+          value?: string;
+          onChange?: (val: string) => void;
+        }) => {
+          const normalizedValue = typeof value === "string" ? value.trim() : "";
+          const selectedOption = normalizedValue
+            ? vendorOptions.find((option: any) => option.value === normalizedValue) ?? {
+                label: normalizedValue,
+                value: normalizedValue,
+              }
+            : undefined;
+
+          const selectedValues = selectedOption ? [selectedOption] : [];
+
+          return (
+            <TextMultiSelect
+              name="vendor"
+              options={vendorOptions}
+              placeholder="Select vendor or type email"
+              maxCount={1}
+              creatable={true}
+              value={selectedValues as any}
+              onChange={(selectedOptions) =>
+                onChange?.(
+                  typeof selectedOptions?.[0]?.value === "string"
+                    ? selectedOptions[0].value.trim()
+                    : "",
+                )
+              }
+            />
+          );
+        }}
       />
       <Forger
         name="personnel"
@@ -71,7 +156,7 @@ const Step2ContractTeam: React.FC = () => {
       <Forger
         name="visibility"
         label="Visibility"
-        placeholder="Invites-only, Public"
+        placeholder="Select visibility"
         component={TextSelect}
         options={[
           { label: "Private", value: "private" },
@@ -83,4 +168,3 @@ const Step2ContractTeam: React.FC = () => {
 };
 
 export default Step2ContractTeam;
-

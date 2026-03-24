@@ -1,14 +1,25 @@
 import React from "react";
-import { Forger } from "@/lib/forge";
+import { Forger, useFieldArray } from "@/lib/forge";
 import {
-  TextSelect,
+  TextCurrencyInput,
+  TextInput,
   TextTagInput,
 } from "@/components/layouts/FormInputs";
-import { useFormContext, useWatch } from "react-hook-form";
+import { Control, useWatch } from "react-hook-form";
 import { CreateMsaFormData } from "../layouts/CreateMSADialog";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { InfoIcon } from "lucide-react";
+import { ApiResponseError } from "@/types";
 
 type ApproverTag = {
   id?: string;
@@ -18,111 +29,201 @@ type ApproverTag = {
   meta?: Record<string, unknown>;
 };
 
-const Step8ApprovalLevel: React.FC = () => {
-  const { control, setValue } = useFormContext<CreateMsaFormData>();
+type Props = { control: Control<CreateMsaFormData> };
 
-  const { data: personnelData } = useQuery({
-    queryKey: ["contract-personnel"],
-    queryFn: async () => await getRequest({ url: "/contract/manager/personnel" }),
-    staleTime: 60000,
+type ApiListResponse<T> = { status: number; message: string; data: T[] };
+
+type Personnel = {
+  _id: string;
+  email?: string;
+  role?: Array<{ name?: string }>;
+  firstName?: string;
+  lastName?: string;
+};
+
+const defaultApprovalGroup = {
+  name: "",
+  approvers: [],
+  amount: "",
+  approvalLevel: "",
+};
+
+const Step8ApprovalLevel: React.FC<Props> = ({ control }) => {
+  const { fields, append } = useFieldArray({
+    control,
+    name: "approvalGroups",
+    inputProps: [],
   });
 
-  const approverTags: ApproverTag[] = React.useMemo(() => {
-    const people = Array.isArray((personnelData as any)?.data?.data)
-      ? (personnelData as any)?.data?.data
-      : [];
-    return people.map((p: any) => {
+  const approvalGroups = useWatch({
+    control,
+    name: "approvalGroups",
+  }) as { approvers?: ApproverTag[] }[] | undefined;
+
+  const { data: personnelData, isLoading: isLoadingUsers } = useQuery<
+    ApiListResponse<Personnel>,
+    ApiResponseError
+  >({
+    queryKey: ["contract-personnel"],
+    queryFn: async () => {
+      const res = await getRequest({ url: "/contract/manager/personnel" });
+      return res.data as ApiListResponse<Personnel>;
+    },
+    staleTime: 60_000,
+  });
+
+  const approverTags = React.useMemo<ApproverTag[]>(() => {
+    const people =
+      personnelData?.data?.filter?.((item) =>
+        (item.role ?? []).some((r) => r?.name === "approver"),
+      ) ?? [];
+
+    return people.map((p) => {
       const email = p.email ?? "";
-      const name = p.firstName || email || p._id;
-      const label = email && name && email !== name ? `${name}` : name;
+      const name =
+        (p.firstName && p.lastName
+          ? `${p.firstName} (${p.lastName})`
+          : p.firstName) ||
+        email ||
+        p._id;
+      const label = email && name && email !== name ? `${name} (${email})` : name;
       const value = p._id || email;
       return {
         id: value,
         value,
         text: label,
-        meta: { email, role: p.role?.[0]?.name },
+        meta: { email },
       };
     });
   }, [personnelData]);
 
-  const approvalGroups = useWatch({ control, name: "approvalGroups" }) as Array<{ name?: string }> | undefined;
-  const assignedApprovers = useWatch({ control, name: "assignedApprovers" }) as ApproverTag[] | undefined;
-
-  const groupOptions =
-    approvalGroups && approvalGroups.length > 0
-      ? approvalGroups.map((g, idx) => ({
-          label: g?.name ? `${g.name} - Approval Level` : `Group ${idx + 1} - Approval Level`,
-          value: g?.name || `group_${idx + 1}`,
-        }))
-      : [{ label: "Group 1 - Approval Level", value: "group_1" }];
-
-  const rows = approverTags.slice(0, 3);
-
-  const assignApprover = (tag: ApproverTag) => {
-    const list = assignedApprovers || [];
-    const exists = list.some(
-      (t) => (t.value || t.id || t.text) === (tag.value || tag.id || tag.text),
-    );
-    if (!exists) {
-      setValue("assignedApprovers", [...list, tag], { shouldDirty: true, shouldTouch: true });
-    }
-  };
-
   return (
     <div className="space-y-6">
-      <Forger
-        name="approvalGroupSelection"
-        label="Select Approvers For Contract Execution"
-        placeholder="Select Group"
-        component={TextSelect}
-        options={groupOptions}
-      />
+      <p className="text-sm text-slate-600">Add with email address, name, domain name</p>
 
-      <div className="rounded-2xl border border-slate-200">
-        <div className="grid grid-cols-[1fr_200px_140px] items-center px-6 py-3 border-b text-sm font-semibold text-[#2A4467]">
-          <div>Group</div>
-          <div className="text-center">Role</div>
-          <div className="text-center">Action</div>
+      <div className="hidden md:grid grid-cols-[200px_300px_220px_140px] gap-8 text-sm font-medium text-slate-700 border-b pb-3">
+        <div>Group Name</div>
+        <div>Approvers</div>
+        <div>Amount Threshold</div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <span>Approval Level</span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="text-slate-400 hover:text-slate-600 focus:outline-none"
+                  >
+                    <InfoIcon className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs bg-[#2A4467] text-white border-none">
+                  <p className="text-xs font-semibold">Approval Level</p>
+                  <p className="mt-1 text-xs">
+                    Add people to group based on delegation of authority limits
+                  </p>
+                  <p className="mt-2 text-xs">1 - Lowest</p>
+                  <p className="text-xs">5 - Highest</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
-        <div className="px-6 py-4 space-y-4">
-          {rows.map((tag, idx) => (
-            <div key={idx} className="grid grid-cols-[1fr_200px_140px] items-center">
-              <div className="space-y-1">
-                <p className="text-sm text-[#0F0F0F]">{tag.text}</p>
-                {!!tag.meta?.email && (
-                  <p className="text-xs text-slate-500">{String(tag.meta.email)}</p>
+      </div>
+
+      <div className="space-y-4">
+        {fields.map((field, index) => (
+          <div
+            key={field.id}
+            className="grid grid-cols-1 md:grid-cols-[180px_320px_180px_180px] gap-4 md:gap-8 items-start border-b pb-4"
+          >
+            <Forger
+              name={`approvalGroups.${index}.name`}
+              placeholder={`Group ${index + 1}`}
+              component={TextInput}
+            />
+
+            <Forger
+              name={`approvalGroups.${index}.approvers`}
+              component={TextTagInput}
+              placeholder={isLoadingUsers ? "Loading..." : "Add Approvers"}
+              enableAutocomplete
+              autocompleteOptions={approverTags.filter((tag) => {
+                const selected = approvalGroups?.[index]?.approvers ?? [];
+                const selectedIds = new Set(
+                  selected.map(
+                    (approver, idx) =>
+                      approver?.value ||
+                      approver?.id ||
+                      approver?.email ||
+                      approver?.text ||
+                      String(idx),
+                  ),
+                );
+                const tagKey = tag.value || tag.id || tag.text;
+                return tagKey ? !selectedIds.has(tagKey) : true;
+              })}
+              inputProps={{ autoComplete: "off" }}
+              inputClassName="border-0"
+              inlineTagsContainerClassName="border-0 outline-0 hover:border-0 focus:border-0 focus-within:ring-0"
+            />
+
+            <Forger
+              name={`approvalGroups.${index}.amount`}
+              component={TextCurrencyInput}
+              containerClass="!w-40"
+              placeholder="$0.00"
+            />
+
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between md:hidden text-xs text-slate-500">
+                <span>Low</span>
+                <span>High</span>
+              </div>
+              <Forger
+                name={`approvalGroups.${index}.approvalLevel`}
+                component={({
+                  value,
+                  onChange,
+                }: {
+                  value?: string;
+                  onChange: (val: string) => void;
+                }) => (
+                  <RadioGroup
+                    value={value ?? ""}
+                    onValueChange={onChange}
+                    className="flex justify-between gap-4"
+                  >
+                    {["1", "2", "3", "4", "5"].map((level) => (
+                      <div key={level} className="flex flex-col items-center gap-1">
+                        <RadioGroupItem
+                          value={level}
+                          id={`approval-${index}-${level}`}
+                        />
+                        <Label htmlFor={`approval-${index}-${level}`} className="text-xs">
+                          {level}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
                 )}
-              </div>
-              <div className="text-sm text-[#0F0F0F] text-center">
-                {String(tag.meta?.role || "Legal")}
-              </div>
-              <div className="flex items-center justify-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="text-sm text-[#0F0F0F]"
-                  onClick={() => assignApprover(tag)}
-                >
-                  Assign
-                </Button>
+              />
+              <div className="hidden md:flex justify-between w-full text-xs text-slate-500 mt-1">
+                <span>Low</span>
+                <span>High</span>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
 
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-[#0F0F0F]">Assigned Approvers</p>
-        <Forger
-          name="assignedApprovers"
-          component={TextTagInput}
-          enableAutocomplete
-          autocompleteOptions={approverTags}
-          inputProps={{ autoComplete: "off", placeholder: "Search" }}
-          inputClassName="border-0"
-          inlineTagsContainerClassName="border-0 outline-0 hover:border-0 focus:border-0 focus-within:ring-0"
-        />
-      </div>
+      <Button
+        onClick={() => append(defaultApprovalGroup as any)}
+        className="w-fit  bg-[#2A4467] text-white text-xs font-semibold py-2 rounded-lg"
+      >
+        Add Approval Group
+      </Button>
     </div>
   );
 };

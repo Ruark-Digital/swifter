@@ -8,6 +8,7 @@ import { Forge, useForge } from "@/lib/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 import Step1BasicInfo from "@/pages/ContractManagementPage/components/Step1BasicInfo";
 import Step2ContractTeam from "@/pages/ContractManagementPage/components/Step2ContractTeam";
 import Step3ValuePayments from "@/pages/ContractManagementPage/components/Step3ValuePayments";
@@ -27,6 +28,7 @@ import { contractManagerApi } from "@/pages/ContractManagementPage/api/contractM
 import type { ContractDetail, ApiResponseError } from "@/types";
 import { schema as createSchema, defaultValues as createDefaults } from "@/pages/ContractManagementPage/components/CreateContractSheet";
 import { format } from "date-fns";
+import { X } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -79,7 +81,9 @@ const toNumberOrUndefined = (value: unknown) => {
 };
 
 const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdated }) => {
-  const { control, reset, getValues } = useForge<yup.InferType<typeof createSchema>>({
+  const { control, reset, getValues, trigger: formTrigger } = useForge<
+    yup.InferType<typeof createSchema>
+  >({
     resolver: yupResolver(createSchema),
     defaultValues: createDefaults,
     mode: "onChange",
@@ -90,6 +94,8 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
   const { success, error } = useToastHandler();
   const [lastError, setLastError] = React.useState<ApiResponseError | null>(null);
   const [lastPayload, setLastPayload] = React.useState<any | null>(null);
+  const [signatories, setSignatories] = React.useState<string[]>([]);
+  const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
 
   const typesQuery = useQuery({
     queryKey: useUserQueryKey(["contract-types"]),
@@ -477,6 +483,7 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       rating: data.rating || 5,
       status: "publish",
       approvers,
+      signatories: signatories && signatories.length > 0 ? signatories : undefined,
     };
 
     Object.keys(payload).forEach((k) => {
@@ -485,7 +492,75 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       }
     });
     return payload;
-  }, [paymentTermsQuery.data?.data, termTypesQuery.data?.data]);
+  }, [paymentTermsQuery.data?.data, signatories, termTypesQuery.data?.data]);
+
+  const STEP_FIELDS: Record<number, Array<keyof yup.InferType<typeof createSchema>>> = {
+    1: [
+      "name",
+      "relationship",
+      "project",
+      "awardedSolicitation",
+      "type",
+      "category",
+      "manager",
+      "jobTitle",
+      "contractId",
+      "rating",
+      "description",
+      "businessDivision",
+    ],
+    2: ["manager", "jobTitle", "vendor", "personnel", "internalTeam", "visibility"],
+    3: [
+      "effectiveDate",
+      "endDate",
+      "duration",
+      "termType",
+      "draftStartDate",
+      "draftEndDate",
+      "reviewStartDate",
+      "reviewEndDate",
+      "approvalStartDate",
+      "approvalEndDate",
+      "executionStartDate",
+      "executionEndDate",
+    ],
+    4: ["deliverables"],
+    5: [
+      "contractValue",
+      "contingency",
+      "holdback",
+      "paymentStructure",
+      "milestones",
+      "paymentTerm",
+    ],
+    6: [
+      "insuranceExpiryDate",
+      "insurancePolicies",
+      "contractSecurity",
+      "securityType",
+      "securityAmount",
+      "securityDueDate",
+      "securityExpiryDate",
+      "securities",
+    ],
+    7: ["documents"],
+    8: ["approvalGroups"],
+  };
+
+  const validateStep = React.useCallback(
+    async (currentStep: number) => {
+      const fields = STEP_FIELDS[currentStep] ?? [];
+      if (!fields.length) return true;
+      const ok = await formTrigger(fields as any, { shouldFocus: true });
+      return ok;
+    },
+    [formTrigger],
+  );
+
+  const handleSendForApproval = React.useCallback((sigs: string[]) => {
+    setSignatories(sigs);
+    setStep(9);
+  }, []);
 
   React.useEffect(() => {
     if (!open) return;
@@ -623,7 +698,15 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
                     <Button
                       type="button"
                       className="w-32 h-12 rounded-xl"
-                      onClick={() => setStep(Math.min(9, step + 1))}
+                      onClick={async () => {
+                        const ok = await validateStep(step);
+                        if (!ok) return;
+                        if (step === 8) {
+                          setIsApprovalDialogOpen(true);
+                          return;
+                        }
+                        setStep(Math.min(9, step + 1));
+                      }}
                     >
                       Continue
                     </Button>
@@ -631,6 +714,13 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
                 </div>
               )}
             </Forge>
+
+            <SendForApprovalDialog
+              control={control}
+              open={isApprovalDialogOpen}
+              onOpenChange={setIsApprovalDialogOpen}
+              onSendForApproval={handleSendForApproval}
+            />
           </div>
         </div>
       </DialogContent>
@@ -639,3 +729,242 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
 };
 
 export default EditContract;
+
+type SendForApprovalDialogProps = {
+  control: any;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSendForApproval: (signatories: string[]) => void;
+};
+
+const SendForApprovalDialog = React.memo(
+  ({
+    control,
+    open,
+    onOpenChange,
+    onSendForApproval,
+  }: SendForApprovalDialogProps) => {
+    const approvalGroups = useWatch({ control, name: "approvalGroups" }) as
+      | {
+          name?: string | null;
+          approvers?: any[];
+          approvalLevel?: string;
+          amount?: unknown;
+        }[]
+      | undefined;
+
+    const [selectedApprovalGroup, setSelectedApprovalGroup] =
+      React.useState("");
+    const [assignedApproverIds, setAssignedApproverIds] = React.useState<
+      string[]
+    >([]);
+
+    const approvalGroupOptions = React.useMemo(
+      () =>
+        (approvalGroups ?? []).map((group, index) => ({
+          label: `${group?.name || `Group ${index + 1}`} - Approval Level ${
+            group?.approvalLevel || "-"
+          }`,
+          value: String(index),
+        })),
+      [approvalGroups],
+    );
+
+    const selectedGroupIndex =
+      selectedApprovalGroup === "" ? -1 : Number(selectedApprovalGroup);
+    const selectedGroup =
+      selectedGroupIndex >= 0 && approvalGroups?.length
+        ? approvalGroups?.[selectedGroupIndex]
+        : undefined;
+
+    const selectedApprovers = React.useMemo(
+      () => (selectedGroup?.approvers ?? []) as any[],
+      [selectedGroup?.approvers],
+    );
+
+    const getApproverKey = React.useCallback(
+      (approver: any, index: number) =>
+        approver?.id ||
+        approver?.email ||
+        approver?.value ||
+        approver?.text ||
+        String(index),
+      [],
+    );
+
+    const toggleApprover = React.useCallback(
+      (approverId: string, checked: boolean) => {
+        setAssignedApproverIds((prev) =>
+          checked ? [...prev, approverId] : prev.filter((id) => id !== approverId),
+        );
+      },
+      [],
+    );
+
+    const allApprovers = React.useMemo(() => {
+      const list = (approvalGroups ?? []).flatMap((group) =>
+        (group?.approvers ?? []).map((approver, idx) => ({
+          approver,
+          key: getApproverKey(approver, idx),
+        })),
+      );
+      const seen = new Set<string>();
+      return list.filter(({ key }) => {
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }, [approvalGroups, getApproverKey]);
+
+    const assignedApprovers = React.useMemo(
+      () =>
+        allApprovers
+          .filter(({ key }) => assignedApproverIds.includes(key))
+          .map(({ approver }) => approver),
+      [allApprovers, assignedApproverIds],
+    );
+
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-2xl">
+          <div className=" space-y-6">
+            <div className="flex items-center justify-between">
+              <p className="text-xl font-semibold text-slate-900">
+                Send for Approval
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-slate-900">
+                Select Approvers For Contract Execution
+              </p>
+              <div className="relative">
+                <select
+                  className="w-full h-12 border border-gray-300 rounded-lg px-4 pr-10 text-sm text-slate-700 focus:border-[#2A4467] focus:ring-[#2A4467]"
+                  value={selectedApprovalGroup}
+                  onChange={(event) => setSelectedApprovalGroup(event.target.value)}
+                >
+                  <option value="">Select Group</option>
+                  {approvalGroupOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <div className="grid grid-cols-[1fr_160px_140px] bg-slate-50 px-6 py-2 text-sm font-semibold text-[#2A4467]">
+                <p>Group</p>
+                <p className="text-center">Role</p>
+                <p className="text-center">Action</p>
+              </div>
+              <div className="divide-y divide-gray-300">
+                {selectedApprovers.length === 0 && (
+                  <div className="px-6 py-6 text-sm text-slate-500">
+                    No approvers added for this group
+                  </div>
+                )}
+                {selectedApprovers.map((approver, index) => {
+                  const approverId = getApproverKey(approver, index);
+                  const name =
+                    approver?.text || approver?.name || approver?.label || "Unnamed";
+                  const email = approver?.id || approver?.email || "";
+                  const role = approver?.meta?.role
+                    ? approver.meta.role
+                    : selectedGroup?.approvalLevel
+                      ? `Approval Level ${selectedGroup.approvalLevel}`
+                      : "Approval";
+                  return (
+                    <div
+                      key={approverId}
+                      className="grid grid-cols-[1fr_160px_140px] items-center px-6 py-4"
+                    >
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-slate-700">
+                          {name}
+                        </p>
+                        {email && <p className="text-xs text-blue-600 ">{email}</p>}
+                      </div>
+                      <p className="text-sm text-slate-600 text-center">{role}</p>
+                      <div className="flex items-center justify-center gap-2">
+                        <Checkbox
+                          checked={assignedApproverIds.includes(approverId)}
+                          onCheckedChange={(checked) =>
+                            toggleApprover(approverId, Boolean(checked))
+                          }
+                        />
+                        <span className="text-sm text-slate-700">Assign</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-slate-900">Assigned Approvers</p>
+              <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-slate-50 px-4 py-4">
+                {assignedApprovers.length === 0 && (
+                  <p className="text-sm text-slate-500">Search</p>
+                )}
+                {assignedApprovers.map((approver, index) => {
+                  const approverId = getApproverKey(approver, index);
+                  const name =
+                    approver?.text || approver?.name || approver?.label || "Unnamed";
+                  return (
+                    <div
+                      key={approverId}
+                      className="flex items-center gap-2 rounded-md bg-[#2A44671A] px-2 py-1 text-xs font-semibold text-[#2A4467]"
+                    >
+                      <span>{name}</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleApprover(approverId, false)}
+                        className="text-[#2A4467]"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-6 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-12 px-8 rounded-xl"
+                onClick={() => onOpenChange(false)}
+              >
+                Back
+              </Button>
+              <Button
+                type="button"
+                className="h-12 px-8 rounded-xl bg-[#2A4467] hover:bg-[#1e3252] text-white"
+                onClick={() => {
+                  const sigs = assignedApprovers
+                    .map((approver, index) => {
+                      return (
+                        approver?.value ||
+                        approver?.id ||
+                        approver?.email ||
+                        getApproverKey(approver, index)
+                      );
+                    })
+                    .filter(Boolean) as string[];
+                  onOpenChange(false);
+                  onSendForApproval(sigs);
+                }}
+              >
+                Send for Approval
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  },
+);

@@ -20,6 +20,7 @@ import { formatDate } from "date-fns";
 
 type ContractApi = {
   _id: string;
+  contractId: string;
   title: string;
   category?: string;
   status:
@@ -232,6 +233,7 @@ const mapContractsToRows = (contracts?: ContractApi[]): ContractRow[] => {
 
     return {
       id: c._id,
+      contractId: c.contractId,
       title: c.title,
       code: c._id,
       vendor: c.vendor?.name ?? "-",
@@ -271,6 +273,7 @@ const mapVendorContractsToRows = (
 
     return {
       id: c._id,
+      contractId: c.contractId,
       title: c.title,
       code: c.contractId,
       company: c.vendor?.name ?? "-",

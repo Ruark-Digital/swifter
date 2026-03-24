@@ -8,6 +8,8 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { businessDivisionApi } from "@/pages/BusinessDivisionsPage/api/businessDivisionApi";
 import { Info } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
 import {
   Tooltip,
   TooltipContent,
@@ -15,6 +17,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+
+type Props = {
+  typeOptions?: Array<{ label: string; value: string }>;
+  isLoadingTypes?: boolean;
+};
 
 const ComplexityRating = ({
   value,
@@ -84,7 +91,9 @@ const ComplexityRating = ({
   );
 };
 
-const Step1BasicInfo: React.FC = () => {
+const Step1BasicInfo: React.FC<Props> = ({ typeOptions, isLoadingTypes }) => {
+  const { isManager } = useUserRole();
+  const currentUser = useUser();
   const { data: divisionsRes, isLoading: isLoadingDivisions } = useQuery<
     Awaited<ReturnType<typeof businessDivisionApi.listDivisions>>
   >({
@@ -106,7 +115,7 @@ const Step1BasicInfo: React.FC = () => {
       <Forger
         name="name"
         label="MSA Name"
-        placeholder="Enter Title"
+        placeholder="Enter MSA name"
         component={TextInput}
         data-testid="msa-name-input"
       />
@@ -114,17 +123,39 @@ const Step1BasicInfo: React.FC = () => {
       <Forger
         name="type"
         label="MSA Type"
-        placeholder="Select Type"
+        placeholder={isLoadingTypes ? "Loading..." : "Select MSA type"}
         component={TextSelect}
-        options={[
-          { label: "Major Work Construction", value: "major_work_construction" },
-          { label: "Minor Work Contruction", value: "minor_work_contruction" },
-          { label: "Engineering & Consulting", value: "engineering_consulting" },
-          { label: "Environmental Services", value: "environmental_services" },
-          { label: "Master Supply Agreement", value: "master_supply_agreement" },
-          { label: "Geo-Technical Services", value: "geo_technical_services" },
-          { label: "Others", value: "others" },
-        ]}
+        options={
+          typeOptions && typeOptions.length > 0
+            ? typeOptions
+            : [
+                {
+                  label: "Major Work Construction",
+                  value: "major_work_construction",
+                },
+                {
+                  label: "Minor Work Contruction",
+                  value: "minor_work_contruction",
+                },
+                {
+                  label: "Engineering & Consulting",
+                  value: "engineering_consulting",
+                },
+                {
+                  label: "Environmental Services",
+                  value: "environmental_services",
+                },
+                {
+                  label: "Master Supply Agreement",
+                  value: "master_supply_agreement",
+                },
+                {
+                  label: "Geo-Technical Services",
+                  value: "geo_technical_services",
+                },
+                { label: "Others", value: "others" },
+              ]
+        }
         data-testid="msa-type-select"
       />
 
@@ -132,16 +163,48 @@ const Step1BasicInfo: React.FC = () => {
         <Forger
           name="manager"
           label="Contract Manger"
-          placeholder="Enter Title"
-          component={TextInput}
+          component={({
+            value,
+            onChange,
+          }: {
+            value?: string;
+            onChange?: (val: string) => void;
+          }) => (
+            <TextInput
+              placeholder="Enter contract manager"
+              value={
+                isManager ? (currentUser?.name ?? "") : ((value as any) ?? "")
+              }
+              onChange={(e) => onChange?.(e.target.value)}
+              disabled={isManager}
+              className="bg-[#2A44670D]"
+            />
+          )}
           className="bg-[#2A44670D]"
           data-testid="msa-manager-input"
         />
         <Forger
           name="jobTitle"
           label="Job Title"
-          placeholder="Enter Title"
-          component={TextInput}
+          component={({
+            value,
+            onChange,
+          }: {
+            value?: string;
+            onChange?: (val: string) => void;
+          }) => (
+            <TextInput
+              placeholder="Enter job title"
+              value={
+                isManager
+                  ? (currentUser?.role?.name ?? "")
+                  : ((value as any) ?? "")
+              }
+              onChange={(e) => onChange?.(e.target.value)}
+              disabled={isManager}
+              className="bg-[#2A44670D]"
+            />
+          )}
           className="bg-[#2A44670D]"
           data-testid="msa-job-title-input"
         />
@@ -150,7 +213,7 @@ const Step1BasicInfo: React.FC = () => {
       <Forger
         name="msaId"
         label="MSA ID/Number (Optional)"
-        placeholder="Enter Title"
+        placeholder="Enter MSA ID/Number"
         component={TextInput}
         data-testid="msa-id-input"
       />
@@ -158,7 +221,7 @@ const Step1BasicInfo: React.FC = () => {
       <Forger
         name="description"
         label="Description"
-        placeholder="Enter Detail"
+        placeholder="Enter description"
         component={TextArea}
         data-testid="msa-description-input"
       />
@@ -168,7 +231,7 @@ const Step1BasicInfo: React.FC = () => {
       <Forger
         name="businessDivision"
         label="Business Division"
-        placeholder={isLoadingDivisions ? "Loading..." : "Select Division"}
+        placeholder={isLoadingDivisions ? "Loading..." : "Select business division"}
         component={TextSelect}
         options={businessDivisionOptions}
         data-testid="msa-business-division-select"

@@ -1,6 +1,11 @@
 import React from "react";
 import { Forger, useFieldArray } from "@/lib/forge";
-import { TextDatePicker, TextInput, TextSelect } from "@/components/layouts/FormInputs";
+import {
+  TextDatePicker,
+  TextInput,
+  TextSelect,
+  TextCurrencyInput,
+} from "@/components/layouts/FormInputs";
 import { useWatch, Control } from "react-hook-form";
 import { CreateMsaFormData } from "../layouts/CreateMSADialog";
 import { Button } from "@/components/ui/button";
@@ -40,7 +45,7 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
               name="insuranceExpiryDate"
               label="Expiry Date"
               component={TextDatePicker}
-              placeholder="Enter Title"
+              placeholder="Select expiry date"
               containerClass="md:col-span-2"
             />
             {policyFields.map((field, index) => (
@@ -48,7 +53,7 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
                 <Forger
                   name={`insurancePolicies.${index}.name`}
                   label="Policy Name"
-                  placeholder="Enter Policy"
+                  placeholder="Enter policy name"
                   component={TextInput}
                 />
                 <div className="space-y-2">
@@ -67,7 +72,7 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
                   <Forger
                     name={`insurancePolicies.${index}.limit`}
                     component={TextInput}
-                    placeholder="Enter Value/Amount"
+                    placeholder="Enter limit"
                   />
                 </div>
               </React.Fragment>
@@ -94,7 +99,7 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
             <Forger
               name="contractSecurity"
               label="Contract Security (Example LOC, Performance Bond, Bank Guarantee, Labor Bond, Material Bond)"
-              placeholder="Yes / No"
+              placeholder="Select yes or no"
               component={TextSelect}
               options={[
                 { label: "Yes", value: "yes" },
@@ -105,32 +110,6 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
 
             {security === "yes" && (
               <>
-                <Forger
-                  name="securityType"
-                  label="Security Type"
-                  placeholder="Enter Title"
-                  component={TextSelect}
-                  options={[
-                    { label: "Letter of Credit", value: "letter_of_credit" },
-                    { label: "Bank Guarantee", value: "bank_guarantee" },
-                    { label: "Performance Bond", value: "performance_bond" },
-                    { label: "Labour & Material Bond", value: "labour_material_bond" },
-                  ]}
-                />
-                <Forger
-                  name="securityAmount"
-                  label="Amount"
-                  placeholder="Enter Amount"
-                  component={TextInput}
-                />
-                <Forger
-                  name="securityDueDate"
-                  label="Due Date"
-                  component={TextDatePicker}
-                  placeholder="Enter Title"
-                  containerClass="md:col-span-2"
-                />
-
                 {secFields.map((field, index) => (
                   <div key={field.id} className="md:col-span-2 space-y-2">
                     <div className="flex items-center justify-between">
@@ -148,19 +127,26 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
                         name={`securities.${index}.type`}
                         label="Security Type"
                         placeholder="Enter Security"
-                        component={TextInput}
+                        component={TextSelect}
+                        options={[
+                          { label: "Letter of Credit", value: "letter_of_credit" },
+                          { label: "Bank Guarantee", value: "bank_guarantee" },
+                          { label: "Performance Bond", value: "performance_bond" },
+                          { label: "Material Bond", value: "material_bond" },
+                          { label: "Labour Bond", value: "labour_bond" },
+                        ]}
                       />
                       <Forger
                         name={`securities.${index}.amount`}
                         label="Amount"
                         placeholder="Enter Amount"
-                        component={TextInput}
+                        component={TextCurrencyInput}
                       />
                       <Forger
                         name={`securities.${index}.dueDate`}
                         label="Due Date"
                         component={TextDatePicker}
-                        placeholder="Enter Date"
+                        placeholder="Select due date"
                         containerClass="md:col-span-2"
                       />
                     </div>
