@@ -79,7 +79,7 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
                   </div>
                   <Forger
                     name={`insurancePolicies.${index}.limit`}
-                    component={TextInput}
+                    component={TextCurrencyInput}
                     placeholder="Enter Value/Amount"
                   />
                 </div>
