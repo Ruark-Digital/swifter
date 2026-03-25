@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export type MsaRow = {
   id: string;
@@ -77,13 +78,15 @@ const columns: ColumnDef<MsaRow>[] = [
   {
     id: "actions",
     header: "Actions",
-    cell: () => (
+    cell: ({ row }) => (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" data-testid="msa-actions-dropdown">⋮</Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem disabled data-testid="msa-view-details">View Details</DropdownMenuItem>
+          <DropdownMenuItem asChild data-testid="msa-view-details">
+            <Link to={`/dashboard/msa/${row.original.id}`}>View Details</Link>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     ),

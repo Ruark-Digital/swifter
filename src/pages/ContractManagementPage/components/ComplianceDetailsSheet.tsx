@@ -77,23 +77,14 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
   basePath,
   data,
 }) => {
-  const { isManager, isAdmin, isVendor } = useUserRole();
+  const { isManager, isAdmin } = useUserRole();
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
   const { data: complianceRes, isLoading } = useQuery({
     queryKey: ["contract-compliance-detail", contractId, basePath],
     queryFn: async () => {
-      // Use role-specific endpoints as requested
-      let url = basePath; // Default fallback (likely the user endpoint)
-
-      if (isManager) {
-        url = `/contract/manager/contracts/${contractId}/compliance`;
-      } else if (isVendor) {
-        url = `/contract/vendor/contracts/${contractId}/compliance`;
-      }
-
-      const res = await getRequest({ url });
+      const res = await getRequest({ url: basePath });
       return res.data as { data?: ContractComplianceDTO };
     },
     enabled: !!contractId,

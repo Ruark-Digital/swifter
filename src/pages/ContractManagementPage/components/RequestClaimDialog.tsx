@@ -9,9 +9,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Forge, Forger, useForge } from "@/lib/forge";
 import { TextArea, TextInput, TextSelect } from "@/components/layouts/FormInputs";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { postRequest } from "@/lib/axiosInstance";
+import { useToastHandler } from "@/hooks/useToaster";
 
 type Props = {
   trigger: React.ReactNode;
+  createPath?: string;
+  invalidateQueryKey?: readonly unknown[];
 };
 
 type ClaimFormValues = {
@@ -23,7 +28,14 @@ type ClaimFormValues = {
   description: string;
 };
 
-const RequestClaimDialog: React.FC<Props> = ({ trigger }) => {
+const RequestClaimDialog: React.FC<Props> = ({
+  trigger,
+  createPath,
+  invalidateQueryKey,
+}) => {
+  const [open, setOpen] = React.useState(false);
+  const qc = useQueryClient();
+  const toast = useToastHandler();
   const { control, setValue, watch } = useForge<ClaimFormValues>({
     defaultValues: {
       claimTitle: "",
@@ -37,12 +49,48 @@ const RequestClaimDialog: React.FC<Props> = ({ trigger }) => {
 
   const impactType = watch("impactType");
 
+  const createMutation = useMutation({
+    mutationKey: ["create-claim", createPath],
+    mutationFn: async (payload: any) => {
+      if (!createPath) throw new Error("Create claim endpoint unavailable");
+      const res = await postRequest({
+        url: createPath,
+        payload,
+      });
+      return res.data;
+    },
+    onSuccess: async () => {
+      toast.success("Claim", "Claim submitted successfully");
+      if (invalidateQueryKey) {
+        await qc.invalidateQueries({ queryKey: invalidateQueryKey });
+      }
+      setOpen(false);
+    },
+    onError: (error) => {
+      toast.error("Claim", error as any);
+    },
+  });
+
   const handleClaimSubmit = (data: ClaimFormValues) => {
-    void data;
+    const payload = {
+      title: data.claimTitle,
+      type: data.claimType,
+      impact: data.impactType,
+      time:
+        data.impactType === "time" || data.impactType === "time_cost"
+          ? Number(data.timeImpact)
+          : undefined,
+      cost:
+        data.impactType === "cost" || data.impactType === "time_cost"
+          ? Number(data.costImpact)
+          : undefined,
+      descrption: data.description,
+    };
+    createMutation.mutate(payload);
   };
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-8 pt-8">
@@ -205,9 +253,10 @@ const RequestClaimDialog: React.FC<Props> = ({ trigger }) => {
               </DialogClose>
               <Button
                 type="submit"
+                disabled={createMutation.isPending || !createPath}
                 className="h-12 flex-1 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
               >
-                Request Claim
+                {createMutation.isPending ? "Submitting..." : "Request Claim"}
               </Button>
             </div>
           </Forge>

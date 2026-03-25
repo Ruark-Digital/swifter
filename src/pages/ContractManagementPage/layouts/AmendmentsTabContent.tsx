@@ -67,10 +67,21 @@ const UploadElement = () => {
   );
 };
 
-const CreateAmendmentDialog: React.FC<{
+export const CreateAmendmentDialog: React.FC<{
   trigger: React.ReactElement;
   contractId: string;
-}> = ({ trigger, contractId }) => {
+  createPath?: string;
+  mutationScope?: string;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+}> = ({
+  trigger,
+  contractId,
+  createPath,
+  mutationScope = "contract-amendments",
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+}) => {
   const [open, setOpen] = React.useState(false);
   const [successOpen, setSuccessOpen] = React.useState(false);
   const queryClient = useQueryClient();
@@ -105,8 +116,6 @@ const CreateAmendmentDialog: React.FC<{
   const clauseEnabled = useWatch({ control, name: "clauseEnabled" });
   const othersEnabled = useWatch({ control, name: "othersEnabled" });
 
-  console.log({ impactType })
-
   const { mutateAsync: uploadFile, isPending: isUploadingFiles } = useMutation<
     ApiResponse<UploadURLs[]>,
     ApiResponseError,
@@ -130,10 +139,10 @@ const CreateAmendmentDialog: React.FC<{
   });
 
   const createMutation = useMutation({
-    mutationKey: ["contract-amendments", "create", contractId],
+    mutationKey: [mutationScope, "create", contractId],
     mutationFn: async (payload: any) => {
       const res = await postRequest({
-        url: `/contract/manager/contracts/${contractId}/amendments`,
+        url: createPath || `/contract/manager/contracts/${contractId}/amendments`,
         payload,
       });
       return res.data;
@@ -143,10 +152,11 @@ const CreateAmendmentDialog: React.FC<{
       setSuccessOpen(true);
       reset();
       await queryClient.invalidateQueries({
-        queryKey: ["contract-amendments", contractId],
+        queryKey: listInvalidateQueryKey ?? [mutationScope, contractId],
       });
       await queryClient.invalidateQueries({
-        queryKey: ["contract-amendments-stats", contractId],
+        queryKey:
+          statsInvalidateQueryKey ?? [`${mutationScope}-stats`, contractId],
       });
     },
     onError: (error: ApiResponseError) => {

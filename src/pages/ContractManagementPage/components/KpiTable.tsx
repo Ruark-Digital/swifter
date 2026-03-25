@@ -34,6 +34,8 @@ export type KpiRow = {
 type Props = {
   rows: KpiRow[];
   contractId: string;
+  basePath?: string;
+  canUpdate?: boolean;
 };
 
 /* columns moved inside KpiTable component to capture props safely */
@@ -42,10 +44,10 @@ const schema = yup.object().shape({
   note: yup.string().optional(),
 });
 
-const KpiUpdateDialogForm: React.FC<{ contractId: string; kpiId: string }> = ({
-  contractId,
-  kpiId,
-}) => {
+const KpiUpdateDialogForm: React.FC<{
+  kpiId: string;
+  basePath: string;
+}> = ({ kpiId, basePath }) => {
   const { control } = useForge({
     resolver: yupResolver(schema) as any,
     // defaultValue: {},
@@ -53,7 +55,7 @@ const KpiUpdateDialogForm: React.FC<{ contractId: string; kpiId: string }> = ({
 
   const onSubmit = async (payload: any) => {
     await postRequest({
-      url: `/contract/manager/contracts/${contractId}/kpis/${kpiId}`,
+      url: `${basePath}/${kpiId}`,
       payload,
     });
   };
@@ -74,15 +76,17 @@ const KpiUpdateDialogForm: React.FC<{ contractId: string; kpiId: string }> = ({
   );
 };
 
-const KpiDetailSheet: React.FC<{ contractId: string; kpiId: string }> = ({
-  contractId,
-  kpiId,
-}) => {
+const KpiDetailSheet: React.FC<{
+  contractId: string;
+  kpiId: string;
+  basePath: string;
+  canUpdate: boolean;
+}> = ({ contractId, kpiId, basePath, canUpdate }) => {
   const { data, isLoading, error } = useQuery({
-    queryKey: ["contract-kpi-detail", kpiId],
+    queryKey: ["contract-kpi-detail", contractId, basePath, kpiId],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/contracts/${contractId}/kpis/${kpiId}`,
+        url: `${basePath}/${kpiId}`,
       });
       return res.data?.data;
     },
@@ -171,26 +175,28 @@ const KpiDetailSheet: React.FC<{ contractId: string; kpiId: string }> = ({
               </div>
             </div>
 
-            <div className="flex justify-end pt-6">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button className="h-12 rounded-xl bg-[#2A4467] px-6 text-white hover:bg-[#2A4467]/90">
-                    Update Score
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[700px] p-0 rounded-2xl">
-                  <div className="max-h-[80vh] overflow-y-auto">
-                    <UpdateVendorPerformanceDialog
-                      contractId={contractId}
-                      kpiId={kpiId}
-                      category={(data.category as string) || ""}
-                      target={(data.target as string) || ""}
-                      nonCompliance={(data.nonCompliance as string) || ""}
-                    />
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
+            {canUpdate && (
+              <div className="flex justify-end pt-6">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button className="h-12 rounded-xl bg-[#2A4467] px-6 text-white hover:bg-[#2A4467]/90">
+                      Update Score
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[700px] p-0 rounded-2xl">
+                    <div className="max-h-[80vh] overflow-y-auto">
+                      <UpdateVendorPerformanceDialog
+                        kpiId={kpiId}
+                        basePath={basePath}
+                        category={(data.category as string) || ""}
+                        target={(data.target as string) || ""}
+                        nonCompliance={(data.nonCompliance as string) || ""}
+                      />
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            )}
           </>
         ) : (
           <div className="text-sm text-slate-600">No KPI data</div>
@@ -277,12 +283,12 @@ const MetricScale: React.FC<{
 };
 
 const UpdateVendorPerformanceDialog: React.FC<{
-  contractId: string;
   kpiId: string;
+  basePath: string;
   category: string;
   target: string;
   nonCompliance: string;
-}> = ({ contractId, kpiId, category, target, nonCompliance }) => {
+}> = ({ kpiId, basePath, category, target, nonCompliance }) => {
   const { control, reset } = useForge({
     defaultValues: {
       category,
@@ -304,7 +310,7 @@ const UpdateVendorPerformanceDialog: React.FC<{
         if (Number.isFinite(v)) metricsPayload[m.key] = v;
       }
       await postRequest({
-        url: `/contract/manager/contracts/${contractId}/kpis/${kpiId}`,
+        url: `${basePath}/${kpiId}`,
         payload: { metrics: metricsPayload },
       });
       success("KPI updated", "Values submitted successfully");
@@ -397,8 +403,15 @@ const UpdateVendorPerformanceDialog: React.FC<{
   );
 };
 
-const KpiTable: React.FC<Props> = ({ rows, contractId }) => {
+const KpiTable: React.FC<Props> = ({
+  rows,
+  contractId,
+  basePath,
+  canUpdate = true,
+}) => {
   const [search, setSearch] = React.useState("");
+  const resolvedBasePath =
+    basePath || `/contract/manager/contracts/${contractId}/kpis`;
 
   const columns: ColumnDef<KpiRow>[] = [
     {
@@ -459,7 +472,7 @@ const KpiTable: React.FC<Props> = ({ rows, contractId }) => {
         const actions = row.original.actions;
         return (
           <div className="flex w-[80px] items-center justify-center gap-[10px] py-2">
-            {actions.includes("Update") && (
+            {actions.includes("Update") && canUpdate && (
               <Dialog>
                 <DialogTrigger asChild>
                   <Button
@@ -474,8 +487,8 @@ const KpiTable: React.FC<Props> = ({ rows, contractId }) => {
                     <DialogTitle>Update KPI</DialogTitle>
                   </DialogHeader>
                   <KpiUpdateDialogForm
-                    contractId={contractId}
                     kpiId={row.original.kpiId}
+                    basePath={resolvedBasePath}
                   />
                 </DialogContent>
               </Dialog>
@@ -493,6 +506,8 @@ const KpiTable: React.FC<Props> = ({ rows, contractId }) => {
                 <KpiDetailSheet
                   contractId={contractId}
                   kpiId={row.original.kpiId}
+                  basePath={resolvedBasePath}
+                  canUpdate={canUpdate}
                 />
               </Sheet>
             )}

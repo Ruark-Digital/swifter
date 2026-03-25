@@ -36,9 +36,17 @@ type Props = {
   trigger: React.ReactNode;
   contractId: string;
   isManager?: boolean;
+  documentType?: "Contract" | "MsaContract";
+  invalidateQueryKey?: readonly unknown[];
 };
 
-const CreateChangeDialog: React.FC<Props> = ({ trigger, contractId, isManager = true }) => {
+const CreateChangeDialog: React.FC<Props> = ({
+  trigger,
+  contractId,
+  isManager = true,
+  documentType = "Contract",
+  invalidateQueryKey,
+}) => {
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
   const toastHandler = useToastHandler();
@@ -99,7 +107,11 @@ const CreateChangeDialog: React.FC<Props> = ({ trigger, contractId, isManager = 
     mutationKey: [isManager ? "contractManager" : "vendor", "contractChanges", "create", contractId],
     mutationFn: async (payload: ContractChangeManagerDTO) => {
       if (isManager) {
-        const res = await contractManagerApi.createChangeRequest(contractId, "Contract", payload);
+        const res = await contractManagerApi.createChangeRequest(
+          contractId,
+          documentType,
+          payload,
+        );
         return res;
       }
       const res = await vendorApi.createChange(contractId, payload as any);
@@ -110,7 +122,11 @@ const CreateChangeDialog: React.FC<Props> = ({ trigger, contractId, isManager = 
       setOpen(false);
       reset();
       await queryClient.invalidateQueries({
-        queryKey: [isManager ? "contractManager" : "vendor", "contractChanges"],
+        queryKey:
+          invalidateQueryKey ?? [
+            isManager ? "contractManager" : "vendor",
+            "contractChanges",
+          ],
       });
     },
     onError: (error: ApiResponseError) => {

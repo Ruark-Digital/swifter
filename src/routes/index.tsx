@@ -42,6 +42,7 @@ import ProjectManagementPage from "@/pages/ProjectManagementPage";
 import ContractManagementPage from "@/pages/ContractManagementPage";
 import ContractDetailPage from "@/pages/ContractManagementPage/ContractDetailPage";
 import MsaPage from "@/pages/MsaPage";
+import MsaDetailPage from "@/pages/MsaPage/MsaDetailPage";
 // import Example from "@/pages/Example";
 import CollaborationToolPage from "@/pages/CollaborationToolPage";
 
@@ -199,6 +200,14 @@ export const routes = [
         element: (
           <ProtectedRoute>
             <MsaPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/dashboard/msa/:id",
+        element: (
+          <ProtectedRoute>
+            <MsaDetailPage />
           </ProtectedRoute>
         ),
       },

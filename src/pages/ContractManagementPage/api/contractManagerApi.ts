@@ -846,8 +846,12 @@ export const createContractManagerApi = (
       type: "Contract" | "MsaContract",
       payload: ContractChangeManagerDTO,
     ) => {
+      const createPath =
+        type === "MsaContract"
+          ? `/contract/manager/msa-contract/${dataId}/change/${type}`
+          : `${MANAGER_CONTRACTS_PREFIX}/${dataId}/change/${type}`;
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/${dataId}/change/${type}`,
+        url: createPath,
         payload,
       });
       return res.data as { message?: string; data?: ContractChangeDTO };

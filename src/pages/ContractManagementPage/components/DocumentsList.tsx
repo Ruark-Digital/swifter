@@ -1,6 +1,6 @@
 import React from "react";
 import type { File as ContractDocument } from "@/types";
-import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
+import { formatFileSize, getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { useNavigate } from "react-router-dom";
 import { isBefore, startOfDay } from "date-fns";
@@ -33,8 +33,14 @@ const DocumentsList: React.FC<Props> = ({ files, effectiveDate }) => {
   const docs = React.useMemo<Doc[]>(() => {
     if (!files?.length) return [];
     return files.map((file, index) => {
-      const size = typeof file.size === "string" ? file.size : "-";
-      const fileExtension = getFileExtension(file.name, file.type);
+      const rawSize = file.size as unknown;
+      const size =
+        typeof rawSize === "number"
+          ? formatFileSize(rawSize)
+          : typeof rawSize === "string"
+            ? rawSize
+            : "-";
+      const fileExtension = getFileExtension(file.name || "", file.type || "");
 
       return {
         id: file._id ?? `${file.name ?? "file"}-${index}`,

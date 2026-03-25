@@ -149,7 +149,7 @@ const defaultValues: CreateMsaFormData = {
   approvalEndDate: undefined,
   executionStartDate: undefined,
   executionEndDate: undefined,
-  deliverables: [{ name: "Deliverable 1", dueDate: undefined }],
+  deliverables: [{ name: "", dueDate: undefined }],
   contractValue: "",
   contingency: "",
   holdback: "",
@@ -166,7 +166,7 @@ const defaultValues: CreateMsaFormData = {
   documents: null,
   approvalGroupSelection: "",
   assignedApprovers: [],
-  approvalGroups: [{ name: "Group 1", approvers: [], approvalLevel: "1", amount: "" }],
+  approvalGroups: [{ name: "", approvers: [], approvalLevel: "0", amount: "" }],
 };
 
 const STEP_TITLES = [
@@ -265,9 +265,6 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
   const buildPayload = React.useCallback(
     async (data: CreateMsaFormData, status: "draft" | "publish") => {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const typeName = typeOptions.find((t) => t.value === data.type)?.label;
-      const paymentTermName = paymentTermOptions.find((t) => t.value === data.paymentTerm)?.label;
-      const termTypeName = termTypeOptions.find((t) => t.value === data.termType)?.label;
 
       const toNumberOrUndefined = (value: any) => {
         if (value === null || value === undefined) return undefined;
@@ -379,7 +376,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
         contractSecurityType,
         policy: Array.isArray(data.insurancePolicies)
           ? (data.insurancePolicies ?? [])
-              .map((p) => ({ policyName: p?.name, limit: p?.limit }))
+              .map((p) => ({ policyName: p?.name, limit: toNumberOrUndefined(p?.limit) }))
               .filter((p) => p.policyName || p.limit)
           : undefined,
       };
@@ -403,22 +400,26 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
         },
       };
 
-      const approvers =
-        (data.approvalGroups ?? []).flatMap((g: any, i: number) => {
-          const lvl = g?.approvalLevel ? Number(g.approvalLevel) : i + 1;
-          const amountValue = toNumberOrUndefined(g?.amount);
-          const userIds = (g?.approvers ?? []).map((u: any) => u?.value ?? u).filter(Boolean);
+       const approvers =
+        (data.approvalGroups ?? []).filter(item => item.name && item.approvers?.length).flatMap((g, i) => {
+          const lvl = g.approvalLevel ? Number(g.approvalLevel) : i + 1;
+          const amountValue = toNumberOrUndefined(g.amount);
+          // API expects user as array of strings
+          const userIds = (g.approvers ?? [])
+            .map((u: any) => u?.value ?? u)
+            .filter(Boolean);
           return {
             user: userIds,
-            groupName: g?.name,
-            level: Number.isFinite(lvl) ? lvl : i + 1,
+            groupName: g.name,
+            level: lvl,
             amount: amountValue,
           };
         }) ?? [];
 
       const payload = {
         title: data.name,
-        contractId: data.msaId,
+        msaType: data.type,
+        msaContractId: data.msaId || undefined,
         description: data.description,
         jobTitle: data.jobTitle,
         vendor: (() => {
@@ -430,10 +431,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
         })(),
         businessDivision: data.businessDivision,
         rating: data.rating,
-        contractType: data.type,
-        category: typeName,
         timezone: tz,
-        contractRelationship: "msa_project",
         contractAmount: data.contractValue
           ? Number(String(data.contractValue).replace(/[^0-9.]/g, ""))
           : undefined,
@@ -450,13 +448,11 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
               : undefined
             : toNumberOrUndefined(data.holdback),
         paymentStructure,
-        contractPaymentTerm: data.paymentTerm,
-        paymentTerm: paymentTermName,
-        contractTermType: data.termType,
-        termType: termTypeName,
+        paymentTerm: data.paymentTerm || undefined,
         startDate: data.effectiveDate ? formatDate(data.effectiveDate) : undefined,
         endDate: data.endDate ? formatDate(data.endDate) : undefined,
         duration: data.duration ? Number(String(data.duration).replace(/[^0-9.]/g, "")) : undefined,
+        termType: data.termType || undefined,
         deliverables,
         milestone,
         personnel,
@@ -472,7 +468,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
 
       return pruneEmptyValuesDeep(payload);
     },
-    [paymentTermOptions, signatories, termTypeOptions, typeOptions],
+    [signatories],
   );
 
   const createMutation = useMutation({
@@ -486,6 +482,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
     },
     onSuccess: () => {
       toast.success("MSA created successfully", "Your MSA has been created.");
+      qc.refetchQueries({ queryKey: msaQueryKeyPrefix });
       setOpen(false);
       setStep(1);
       reset(defaultValues);

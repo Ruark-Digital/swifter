@@ -35,6 +35,8 @@ import { useToastHandler } from "@/hooks/useToaster";
 type Props = {
   trigger: React.ReactElement;
   contractId: string;
+  createPath?: string;
+  invalidateQueryKey?: readonly unknown[];
 };
 
 type InvoiceItem = {
@@ -566,7 +568,12 @@ const InvoiceComponent = ({
   );
 };
 
-const CreateInvoiceDialog: React.FC<Props> = ({ trigger, contractId }) => {
+const CreateInvoiceDialog: React.FC<Props> = ({
+  trigger,
+  contractId,
+  createPath,
+  invalidateQueryKey,
+}) => {
   const [open, setOpen] = React.useState(false);
   const [completeOpen, setCompleteOpen] = React.useState(false);
   const [invoiceCompleted, setInvoiceCompleted] = React.useState(false);
@@ -616,12 +623,19 @@ const CreateInvoiceDialog: React.FC<Props> = ({ trigger, contractId }) => {
         unitPrice?: number;
       }>;
     }) => {
+      if (createPath) {
+        const res = await postRequest({
+          url: createPath,
+          payload,
+        });
+        return res.data;
+      }
       return await vendorApi.createInvoice(contractId, payload);
     },
     onSuccess: async () => {
       toastHandler.success("Success", "Invoice submitted successfully");
       await queryClient.invalidateQueries({
-        queryKey: ["contractInvoices"],
+        queryKey: invalidateQueryKey ?? ["contractInvoices"],
       });
       setOpen(false);
       setCompleteOpen(false);
