@@ -577,7 +577,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-12 rounded-xl bg-[#F3F4F6] border border-[#E5E7EB] text-[#0F0F0F] hover:bg-[#E5E7EB]"
+                  className="h-12 rounded-xl w-full bg-[#F3F4F6] border border-[#E5E7EB] text-[#0F0F0F] hover:bg-[#E5E7EB]"
                   onClick={onCancel}
                   data-testid="cancel-create-msa"
                 >

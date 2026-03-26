@@ -29,6 +29,12 @@ import Compliance from "./layouts/Compliance";
 import ChangeManagement from "./layouts/ChangeManagement";
 import Claims from "./layouts/Claims";
 import Invoice from "./layouts/Invoice";
+import Rfi from "./layouts/Rfi";
+import Lem from "./layouts/Lem";
+import Approvers from "./layouts/Approvers";
+import Deliverables from "./layouts/Deliverables";
+import Reports from "./layouts/Reports";
+import NcrLog from "./layouts/NcrLog";
 import { Share2 } from "lucide-react";
 
 type TabKey =
@@ -81,9 +87,15 @@ const ROLE_TAB_WHITELIST: Record<
     "compliance",
     "documents",
     "amendments",
+    "lem",
     "invoice",
     "change",
     "claims",
+    "rfi",
+    "deliverables",
+    "ncr-log",
+    "approvers",
+    "reports",
     "payment-summary",
   ],
   vendor: [
@@ -91,9 +103,15 @@ const ROLE_TAB_WHITELIST: Record<
     "compliance",
     "documents",
     "amendments",
+    "lem",
     "invoice",
     "change",
     "claims",
+    "rfi",
+    "deliverables",
+    "ncr-log",
+    "approvers",
+    "reports",
     "payment-summary",
   ],
   manager: [
@@ -102,9 +120,15 @@ const ROLE_TAB_WHITELIST: Record<
     "compliance",
     "documents",
     "amendments",
+    "lem",
     "invoice",
     "change",
     "claims",
+    "rfi",
+    "deliverables",
+    "ncr-log",
+    "approvers",
+    "reports",
     "payment-summary",
   ],
   "view only": [
@@ -112,9 +136,15 @@ const ROLE_TAB_WHITELIST: Record<
     "compliance",
     "documents",
     "amendments",
+    "lem",
     "invoice",
     "change",
     "claims",
+    "rfi",
+    "deliverables",
+    "ncr-log",
+    "approvers",
+    "reports",
     "payment-summary",
   ],
 };
@@ -530,6 +560,16 @@ const MsaDetailPage: React.FC = () => {
               isActive={activeTab === "claims"}
               actionsDisabled={msa?.status === "publish"}
             />
+            <Rfi
+              contractId={id ?? ""}
+              isActive={activeTab === "rfi"}
+              actionsDisabled={msa?.status === "publish"}
+            />
+            <NcrLog contractId={id ?? ""} isActive={activeTab === "ncr-log"} />
+            <Deliverables contractId={id ?? ""} isActive={activeTab === "deliverables"} />
+            <Lem contractId={id ?? ""} isActive={activeTab === "lem"} />
+            <Approvers contractId={id ?? ""} isActive={activeTab === "approvers"} />
+            <Reports contractId={id ?? ""} isActive={activeTab === "reports"} />
             <Kpi contractId={id ?? ""} isActive={activeTab === "kpi"} />
 
             <PaymentSummary
