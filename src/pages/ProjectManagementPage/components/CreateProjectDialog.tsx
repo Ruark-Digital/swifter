@@ -61,6 +61,7 @@ type Props = {
     endDate?: string;
     allowMultipleContracts: boolean;
     files?: UploadedFile[];
+    businessDivision?: string;
   }) => Promise<void> | void;
   isSubmitting: boolean;
 };
@@ -381,7 +382,10 @@ const CreateProjectDialog: React.FC<Props> = ({
       budget: typeof data.budget === "number" ? data.budget : undefined,
       allowMultipleContracts: !!data.allowMultipleContracts,
       files: uploadedFiles,
+      businessDivision: data.businessDivision,
     };
+
+    console.log({ payload })
 
     try {
       if (onSubmit) {
