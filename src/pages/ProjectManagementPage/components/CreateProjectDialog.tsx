@@ -438,11 +438,40 @@ const CreateProjectDialog: React.FC<Props> = ({
             <Forger
               name="category"
               label="Project Category"
-              placeholder="Enter Project Category"
+              placeholder="Select Project Category"
               component={TextSelect}
               options={[
-                { label: "MSA", value: "msa" },
-                { label: "Stand-Alone", value: "standalone" },
+                {
+                  label: "Construction & Infrastructure",
+                  value: "construction_infrastructure",
+                },
+                {
+                  label: "Information Technology",
+                  value: "information_technology",
+                },
+                {
+                  label: "Operations & Manufacturing",
+                  value: "operations_manufacturing",
+                },
+                {
+                  label: "Business & Corporate Strategy",
+                  value: "business_corporate_strategy",
+                },
+                { label: "Finance & Investment", value: "finance_investment" },
+                { label: "Sustainability & ESG", value: "sustainability_esg" },
+                {
+                  label: "Human Resources & Training",
+                  value: "human_resources_training",
+                },
+                {
+                  label: "Supply Chain & Procurement",
+                  value: "supply_chain_procurement",
+                },
+                {
+                  label: "Branding, Marketing & Communicating",
+                  value: "branding_marketing_communicating",
+                },
+                { label: "Others", value: "others" },
               ]}
               data-testid="project-category-select"
             />
