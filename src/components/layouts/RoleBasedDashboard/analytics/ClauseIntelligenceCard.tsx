@@ -55,7 +55,7 @@ export const ClauseIntelligenceCard: React.FC<Props> = ({ data }) => {
     return "#FEFCE8";
   };
   return (
-    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
+    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm flex flex-col">
       <CardHeader className="pb-3">
         <CardTitle className="text-[16px] font-semibold text-[#030712]">
           Clause Intelligence (Portfolio Level)
@@ -73,9 +73,9 @@ export const ClauseIntelligenceCard: React.FC<Props> = ({ data }) => {
           </TabsList>
         </Tabs>
       </CardHeader>
-      <CardContent className="space-y-4 pt-0">
+      <CardContent className="space-y-4 pt-0 flex-1 flex flex-col">
         <p className="text-sm font-semibold text-[#030712]">Most Negotiated Clauses</p>
-        <ChartContainer config={{} as ChartConfig} className="h-[240px]">
+        <ChartContainer config={{} as ChartConfig} className="h-full">
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart data={radarData}>
               <PolarGrid stroke="#E5E7EB" />
@@ -96,7 +96,7 @@ export const ClauseIntelligenceCard: React.FC<Props> = ({ data }) => {
         </ChartContainer>
 
         <p className="text-sm font-semibold text-[#030712]">High-Risk Clause Types</p>
-        <div className="space-y-3">
+        <div className="space-y-3 overflow-auto max-h-72">
           {highRisk.map((h, idx) => (
             <div
               key={idx}

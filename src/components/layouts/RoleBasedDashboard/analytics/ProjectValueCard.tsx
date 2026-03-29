@@ -54,7 +54,7 @@ export const ProjectValueCard: React.FC<Props> = ({ rows }) => {
           </TabsList>
         </Tabs>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-5 ">
         {data.map((row, idx) => {
           const pct =
             domainMax > 0

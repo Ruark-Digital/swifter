@@ -46,7 +46,16 @@ async function seedAuth(page: Page, role: SeedRole) {
   }, role);
 }
 
-async function mockContractManagerDashboardEndpoints(page: Page) {
+type VendorContractValueRow = {
+  name: string;
+  value: number;
+  contractCount: number;
+};
+
+async function mockContractManagerDashboardEndpoints(
+  page: Page,
+  options?: { vendorContractValueRows?: VendorContractValueRow[] }
+) {
   await page.route(
     "**/contract/manager/contracts/dashboard/cards/total**",
     async (route) => {
@@ -216,10 +225,11 @@ async function mockContractManagerDashboardEndpoints(page: Page) {
       contentType: "application/json",
       body: JSON.stringify({
         message: "ok",
-        data: [
-          { name: "BuildCorp Ltd", value: 3500000, contractCount: 8 },
-          { name: "TechServices Inc", value: 2800000, contractCount: 6 },
-        ],
+        data:
+          options?.vendorContractValueRows ?? [
+            { name: "BuildCorp Ltd", value: 3500000, contractCount: 8 },
+            { name: "TechServices Inc", value: 2800000, contractCount: 6 },
+          ],
       }),
     });
   });
@@ -448,5 +458,37 @@ test.describe("Dashboard (Contract Manager)", () => {
     await page.goto("/dashboard");
 
     expect(managerRequests).toBe(0);
+  });
+
+  test("approver can access analytics tab on dashboard", async ({ page }) => {
+    await seedAuth(page, "approver");
+    await page.goto("/dashboard");
+
+    await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Analytics" })).toBeVisible();
+
+    await page.getByRole("tab", { name: "Analytics" }).click();
+    await expect(page.getByText("Average Cycle Time per Stage")).toBeVisible();
+    await expect(page.getByText("Contract Value by vendors")).toBeVisible();
+  });
+
+  test("renders readable vendor labels in contract value by vendors chart", async ({ page }) => {
+    await seedAuth(page, "contract_manager");
+    await mockContractManagerDashboardEndpoints(page, {
+      vendorContractValueRows: [
+        { name: "BuildCorp Ltd", value: 3500000, contractCount: 8 },
+        { name: "TechServices Incorporated", value: 2800000, contractCount: 6 },
+        { name: "Global Consulting Group", value: 2200000, contractCount: 5 },
+      ],
+    });
+
+    await page.goto("/dashboard");
+    await page.getByRole("tab", { name: "Analytics" }).click();
+
+    const chartCard = page.locator("div").filter({ hasText: "Contract Value by vendors" }).first();
+    await expect(chartCard.locator("tspan", { hasText: "BuildCorp Ltd" })).toBeVisible();
+    await expect(chartCard.locator("tspan").filter({ hasText: /…$/ })).toHaveCount(2);
+    await expect(chartCard.locator("tspan", { hasText: "TechServices Incorporated" })).toHaveCount(0);
+    await expect(chartCard.locator("tspan", { hasText: "Global Consulting Group" })).toHaveCount(0);
   });
 });

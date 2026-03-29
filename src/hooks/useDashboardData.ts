@@ -336,6 +336,12 @@ export const useDashboardData = (
   const getFilterForChart = (chartId: string) => {
     return chartFilters[chartId] || defaultFilter;
   };
+  const isContractDashboardRole =
+    userRole === "contract_manager" || userRole === "approver";
+  const contractDashboardBasePath =
+    userRole === "approver"
+      ? "/contract/approver/contracts/dashboard"
+      : "/contract/manager/contracts/dashboard";
 
   // SuperAdmin dashboard count
   const { data: dashboardCount, isLoading: isLoadingCount } = useQuery<
@@ -748,12 +754,12 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-cards-total", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/contracts/dashboard/cards/total",
+        url: `${contractDashboardBasePath}/cards/total`,
         config: { params: { type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerDashboardCards>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: isContractDashboardRole,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -766,12 +772,12 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-cards-ytd", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/contracts/dashboard/cards/ytd",
+        url: `${contractDashboardBasePath}/cards/ytd`,
         config: { params: { type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerDashboardCards>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: isContractDashboardRole,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -787,12 +793,12 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-action-logs", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/contracts/dashboard/action-logs",
+        url: `${contractDashboardBasePath}/action-logs`,
         config: { params: { type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: isContractDashboardRole,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -808,12 +814,12 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-general-updates", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/contracts/dashboard/general-updates",
+        url: `${contractDashboardBasePath}/general-updates`,
         config: { params: { type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: isContractDashboardRole,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -829,12 +835,12 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-cycle-time", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/contracts/dashboard/cycle-time",
+        url: `${contractDashboardBasePath}/cycle-time`,
         config: { params: { type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerCycleTime>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: isContractDashboardRole,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -850,12 +856,12 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-invoice-status", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/contracts/dashboard/invoice-status",
+        url: `${contractDashboardBasePath}/invoice-status`,
         config: { params: { range: "YTD", type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerInvoiceStatus>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: isContractDashboardRole,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -871,12 +877,12 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-committed-vs-actual", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/contracts/dashboard/committed-vs-actual",
+        url: `${contractDashboardBasePath}/committed-vs-actual`,
         config: { params: { range: "YTD", type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerCommittedVsActualSpend>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: isContractDashboardRole,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -892,12 +898,12 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-vendor-contract-value", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/contracts/dashboard/vendor-contract-value",
+        url: `${contractDashboardBasePath}/vendor-contract-value`,
         config: { params: { range: "YTD", type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerValueByEntity[]>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: isContractDashboardRole,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -913,12 +919,12 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-project-contract-value", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/contracts/dashboard/project-contract-value",
+        url: `${contractDashboardBasePath}/project-contract-value`,
         config: { params: { range: "YTD", type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerValueByEntity[]>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: isContractDashboardRole,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -934,12 +940,12 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-risk-distribution", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/contracts/dashboard/risk-distribution",
+        url: `${contractDashboardBasePath}/risk-distribution`,
         config: { params: { range: "YTD", type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerRiskDistribution>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: isContractDashboardRole,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -955,12 +961,12 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-change-order-impact", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/contracts/dashboard/change-order-impact",
+        url: `${contractDashboardBasePath}/change-order-impact`,
         config: { params: { range: "YTD", type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerChangeOrderImpact>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: isContractDashboardRole,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -976,12 +982,12 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-category-value", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/contracts/dashboard/category-value",
+        url: `${contractDashboardBasePath}/category-value`,
         config: { params: { range: "YTD", type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerValueByEntity[]>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: isContractDashboardRole,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -997,12 +1003,12 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-compliance-status", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/contracts/dashboard/compliance-status",
+        url: `${contractDashboardBasePath}/compliance-status`,
         config: { params: { range: "YTD", type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerComplianceStatus>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: isContractDashboardRole,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -1018,12 +1024,12 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-clause-intelligence", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/contracts/dashboard/clause-intelligence",
+        url: `${contractDashboardBasePath}/clause-intelligence`,
         config: { params: { type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerClauseIntelligence>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: isContractDashboardRole,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -1039,12 +1045,12 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-contract-status", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/contracts/dashboard/contract-status",
+        url: `${contractDashboardBasePath}/contract-status`,
         config: { params: { range: "YTD", type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerContractStatus>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: isContractDashboardRole,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -1060,12 +1066,12 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-vendor-summary", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/contracts/dashboard/vendor-summary",
+        url: `${contractDashboardBasePath}/vendor-summary`,
         config: { params: { type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerVendorSummary>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: isContractDashboardRole,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -1081,12 +1087,12 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-renewals", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/contracts/dashboard/renewals",
+        url: `${contractDashboardBasePath}/renewals`,
         config: { params: { type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerRenewals>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: isContractDashboardRole,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,

@@ -26,7 +26,6 @@ import { ContractStatusCard } from "./analytics/ContractStatusCard";
 import { VendorPerformanceSummaryCard } from "./analytics/VendorPerformanceSummaryCard";
 import { RenewalsTimelineCard } from "./analytics/RenewalsTimelineCard";
 import { AiInsightsAlerts } from "./analytics/AiInsightsAlerts";
-import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const DEFAULT_CHART_FILTER = "12months";
@@ -645,7 +644,7 @@ export const RoleBasedDashboard: React.FC = () => {
       return payload;
     }
 
-    if (userRole === "contract_manager") {
+    if (userRole === "contract_manager" || userRole === "approver") {
       const cards = contractManagerTotalCards;
       const transformedStats = dashboardConfig.stats.map((stat) => {
         const value =
@@ -785,15 +784,18 @@ export const RoleBasedDashboard: React.FC = () => {
     [navigate]
   );
 
-  const isContractManager = userRole === "contract_manager";
+  const isContractAnalyticsRole =
+    userRole === "contract_manager" || userRole === "approver";
   const showCmOverviewTotalContracts =
-    isContractManager &&
+    isContractAnalyticsRole &&
     cmTopTab === "overview" &&
     cmSubTab === "total-contracts";
   const showCmOverviewYtdContracts =
-    isContractManager && cmTopTab === "overview" && cmSubTab === "ytd-contracts";
-  const showCmAnalytics = isContractManager && cmTopTab === "analytics";
-  const showDefaultStats = !isContractManager || showCmOverviewTotalContracts;
+    isContractAnalyticsRole &&
+    cmTopTab === "overview" &&
+    cmSubTab === "ytd-contracts";
+  const showCmAnalytics = isContractAnalyticsRole && cmTopTab === "analytics";
+  const showDefaultStats = !isContractAnalyticsRole || showCmOverviewTotalContracts;
   const canShowMyActions = modules?.myActions === true;
   const canShowGeneralUpdates = modules?.generalUpdatesNotifications === true;
 
@@ -818,7 +820,7 @@ export const RoleBasedDashboard: React.FC = () => {
         {/* <ExportReportSheet /> */}
       </div>
 
-      {isContractManager && (
+      {isContractAnalyticsRole && (
         <div className="space-y-4">
           <Tabs
             value={cmTopTab}
@@ -889,14 +891,7 @@ export const RoleBasedDashboard: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="analytics">
-              <Card>
-                <CardContent className="p-6">
-                  <p className="text-sm text-gray-600">
-                    Placeholder: Analytics content will display here when designs
-                    are provided.
-                  </p>
-                </CardContent>
-              </Card>
+              
             </TabsContent>
           </Tabs>
         </div>

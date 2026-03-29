@@ -15,7 +15,7 @@ export const RiskDistributionCard: React.FC<Props> = ({ values }) => {
     { name: "High (> $5M)", value: v.high, color: "#ef4444" },
   ];
   return (
-    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
+    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm flex flex-col">
       <CardHeader className="pb-3">
         <CardTitle className="text-[16px] font-semibold text-[#030712]">
           Risk Distribution
@@ -33,8 +33,8 @@ export const RiskDistributionCard: React.FC<Props> = ({ values }) => {
           </TabsList>
         </Tabs>
       </CardHeader>
-      <CardContent className="pt-0 space-y-4">
-        <ChartContainer config={{} as ChartConfig}>
+      <CardContent className="pt-0 space-y-4 flex-1 flex flex-col">
+        <ChartContainer className="h-full" config={{} as ChartConfig}>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie

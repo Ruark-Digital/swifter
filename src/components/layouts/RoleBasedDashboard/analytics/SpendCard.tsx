@@ -46,13 +46,14 @@ export const SpendCard: React.FC<Props> = ({
         {/* Committed */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-[16px] font-semibold text-[#6B6B6B]">
+            <p className="text-xs font-semibold text-[#6B6B6B]">
               Committed Spend
             </p>
-            <p className="text-[20px] font-bold text-[#0088FF]">
+            <p className="text-sm font-bold text-[#0088FF]">
               {committedLabel}
             </p>
           </div>
+
           <div className="w-full h-2.5 bg-[#DDDDDD] rounded-full overflow-hidden">
             <div
               className="h-2.5 bg-[#286EE0] rounded-full"
@@ -60,13 +61,14 @@ export const SpendCard: React.FC<Props> = ({
             />
           </div>
         </div>
+
         {/* Actual */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-[16px] font-semibold text-[#6B6B6B]">
+            <p className="text-xs font-semibold text-[#6B6B6B]">
               Actual Spend
             </p>
-            <p className="text-[20px] font-bold text-[#43A047]">
+            <p className="text-sm font-bold text-[#43A047]">
               {actualLabel}
             </p>
           </div>
@@ -77,26 +79,28 @@ export const SpendCard: React.FC<Props> = ({
             />
           </div>
         </div>
+
         {/* Remaining budget */}
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <p className="text-[18px] font-semibold text-[#111827]">
+            <p className="text-base font-semibold text-[#111827]">
               Remaining Budget
             </p>
-            <p className="text-[16px] text-[#374151]">
+            <p className="text-sm text-[#374151]">
               {utilizationPct}% of committed budget utilized
             </p>
           </div>
-          <p className="text-[20px] font-bold text-[#43A047]">
+          <p className="text-xs font-bold text-[#43A047]">
             {remainingLabel}
           </p>
         </div>
+        
         {/* Performance callout */}
         <div className="rounded-2xl bg-[#EFF6FF] p-4">
-          <p className="text-[18px] font-semibold text-[#111827]">
+          <p className="text-xs font-semibold text-[#111827]">
             Budget Performance
           </p>
-          <p className="text-[16px] text-[#374151]">
+          <p className="text-sm text-[#374151]">
             On track with projected spend rate
           </p>
         </div>
@@ -104,3 +108,4 @@ export const SpendCard: React.FC<Props> = ({
     </Card>
   );
 };
+

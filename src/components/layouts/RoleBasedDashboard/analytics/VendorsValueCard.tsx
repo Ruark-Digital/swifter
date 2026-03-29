@@ -21,6 +21,8 @@ type Props = {
   rows?: Row[];
 };
 
+const MAX_VENDOR_LABEL_LENGTH = 14;
+
 export const VendorsValueCard: React.FC<Props> = ({ rows }) => {
   const data = (rows && rows.length > 0
     ? rows
@@ -36,8 +38,12 @@ export const VendorsValueCard: React.FC<Props> = ({ rows }) => {
 
   const max = Math.max(0, ...data.map((d) => d.valueM));
   const domainMax = max > 0 ? Math.ceil(max / 10) * 10 : 100;
+  const formatVendorTick = (name: string) =>
+    name.length > MAX_VENDOR_LABEL_LENGTH
+      ? `${name.slice(0, MAX_VENDOR_LABEL_LENGTH)}…`
+      : name;
   return (
-    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
+    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm flex flex-col">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-[16px] font-semibold text-[#0F0F0F]">
@@ -68,12 +74,12 @@ export const VendorsValueCard: React.FC<Props> = ({ rows }) => {
           </TabsList>
         </Tabs>
       </CardHeader>
-      <CardContent className="pt-0">
-        <ChartContainer config={{} as ChartConfig} className="aspect-[16/9]">
+      <CardContent className="pt-0 flex-1 flex flex-col">
+        <ChartContainer className="h-full" config={{} as ChartConfig}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data}
-              margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
+              margin={{ top: 10, right: 10, left: 10, bottom: 40 }}
             >
               <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
               <YAxis
@@ -97,6 +103,9 @@ export const VendorsValueCard: React.FC<Props> = ({ rows }) => {
                 tickLine={false}
                 axisLine={false}
                 interval={0}
+                tickFormatter={formatVendorTick}
+                minTickGap={10}
+                height={56}
               />
               <Tooltip
                 cursor={{ fill: "rgba(0,0,0,0.05)" }}
