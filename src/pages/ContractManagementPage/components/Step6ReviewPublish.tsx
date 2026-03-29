@@ -13,15 +13,19 @@ type Props = { control: Control<any> };
 const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
   const name = useWatch({ control, name: "name" });
   const type = useWatch({ control, name: "type" });
+  const typeLabel = useWatch({ control, name: "typeLabel" });
   const category = useWatch({ control, name: "category" });
+  const categoryLabel = useWatch({ control, name: "categoryLabel" });
   const description = useWatch({ control, name: "description" });
   const rating = useWatch({ control, name: "rating" });
 
   const manager = useWatch({ control, name: "manager" });
   const vendor = useWatch({ control, name: "vendor" });
+  const vendorLabel = useWatch({ control, name: "vendorLabel" });
   const contractValue = useWatch({ control, name: "contractValue" });
   const paymentStructure = useWatch({ control, name: "paymentStructure" });
   const paymentTerm = useWatch({ control, name: "paymentTerm" });
+  const paymentTermLabel = useWatch({ control, name: "paymentTermLabel" });
   const milestones = useWatch({ control, name: "milestones" }) as
     | { name?: string | null; amount?: unknown; dueDate?: Date | null }[]
     | undefined;
@@ -51,6 +55,15 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
     if (typeof value === "number") return value.toLocaleString();
     return String(value);
   };
+
+  const paymentStructureLabel =
+    paymentStructure === "monthly"
+      ? "Monthly"
+      : paymentStructure === "milestone"
+        ? "Milestone"
+        : paymentStructure === "lump_sum"
+          ? "Progress Draw"
+          : paymentStructure;
 
   const hasTeamInfo = manager || vendor;
   const hasMilestones = milestones && milestones.length > 0;
@@ -85,12 +98,12 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
                 </div>
                 <div>
                   <p className="text-slate-500">Contract Type</p>
-                  <p className="text-slate-800">{type || "Not specified"}</p>
+                  <p className="text-slate-800">{typeLabel || type || "Not specified"}</p>
                 </div>
                 <div>
                   <p className="text-slate-500">Category</p>
                   <p className="text-slate-800">
-                    {category || "Not specified"}
+                    {categoryLabel || category || "Not specified"}
                   </p>
                 </div>
                 <div>
@@ -135,7 +148,7 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
                   <div>
                     <p className="text-slate-500">Vendor</p>
                     <p className="text-slate-800">
-                      {vendor || "Not specified"}
+                      {vendorLabel || vendor || "Not specified"}
                     </p>
                   </div>
                 </>
@@ -165,13 +178,13 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
                 <div>
                   <p className="text-slate-500">Payment Structure</p>
                   <p className="text-slate-800">
-                    {paymentStructure || "Not specified"}
+                    {paymentStructureLabel || "Not specified"}
                   </p>
                 </div>
                 <div>
                   <p className="text-slate-500">Payment Term</p>
                   <p className="text-slate-800">
-                    {paymentTerm || "Not specified"}
+                    {paymentTermLabel || paymentTerm || "Not specified"}
                   </p>
                 </div>
               </div>

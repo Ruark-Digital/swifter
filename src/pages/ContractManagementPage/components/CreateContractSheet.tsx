@@ -49,7 +49,9 @@ export const schema = yup.object({
   project: yup.string().optional(),
   awardedSolicitation: yup.string().optional(),
   type: yup.string().required("Contract type is required"),
+  typeLabel: yup.string().optional(),
   category: yup.string().required("Category is required"),
+  categoryLabel: yup.string().optional(),
   manager: yup.string().optional(),
   jobTitle: yup.string().optional(),
   businessDivision: yup.string().required("Business Division is required"),
@@ -69,6 +71,7 @@ export const schema = yup.object({
         return isObjectId || isEmail;
       },
     ),
+  vendorLabel: yup.string().optional(),
   personnel: yup.array().optional(),
   internalTeam: yup.array().optional(),
   personnelMeta: yup
@@ -99,6 +102,7 @@ export const schema = yup.object({
   holdback: yup.string().optional(),
   paymentStructure: yup.string().optional(),
   paymentTerm: yup.string().optional(),
+  paymentTermLabel: yup.string().optional(),
   milestones: yup
     .array(
       yup.object({
@@ -189,13 +193,16 @@ export const defaultValues = {
   project: "",
   awardedSolicitation: "",
   type: "",
+  typeLabel: "",
   category: "",
+  categoryLabel: "",
   manager: "",
   jobTitle: "",
   businessDivision: "",
   contractId: "",
   description: "",
   vendor: "",
+  vendorLabel: "",
   personnel: [],
   internalTeam: [],
   personnelMeta: [],
@@ -206,6 +213,7 @@ export const defaultValues = {
   holdback: "",
   paymentStructure: "",
   paymentTerm: "",
+  paymentTermLabel: "",
   milestones: [{ name: "", amount: "", dueDate: undefined, deliverable: "" }],
   effectiveDate: undefined,
   endDate: undefined,
@@ -556,7 +564,14 @@ const SendForApprovalDialog = React.memo(
 );
 
 const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
-  const { control, getValues, reset, trigger: formTrigger } = useForge<CreateContractFormData>({
+  const {
+    control,
+    getValues,
+    reset,
+    trigger: formTrigger,
+    setError,
+    clearErrors,
+  } = useForge<CreateContractFormData>({
     resolver: yupResolver(schema),
     defaultValues,
     mode: "onChange",
@@ -748,9 +763,40 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       const fields = STEP_FIELDS[currentStep] ?? [];
       if (!fields.length) return true;
       const ok = await formTrigger(fields as any, { shouldFocus: true });
-      return ok;
+      if (!ok) return false;
+      if (currentStep !== 5) return true;
+      const values = getValues();
+      if (values.paymentStructure !== "milestone") return true;
+      const milestones = values.milestones ?? [];
+      let hasMilestoneError = false;
+      milestones.forEach((milestone, index) => {
+        const hasAmount =
+          milestone?.amount !== undefined &&
+          milestone?.amount !== null &&
+          String(milestone.amount).trim() !== "";
+        const hasDueDate = Boolean(milestone?.dueDate);
+        if (!hasAmount) {
+          setError(`milestones.${index}.amount`, {
+            type: "required",
+            message: "Milestone amount is required",
+          });
+          hasMilestoneError = true;
+        } else {
+          clearErrors(`milestones.${index}.amount`);
+        }
+        if (!hasDueDate) {
+          setError(`milestones.${index}.dueDate`, {
+            type: "required",
+            message: "Milestone due date is required",
+          });
+          hasMilestoneError = true;
+        } else {
+          clearErrors(`milestones.${index}.dueDate`);
+        }
+      });
+      return !hasMilestoneError;
     },
-    [formTrigger],
+    [clearErrors, formTrigger, getValues, setError],
   );
 
   const buildPayload = React.useCallback(
@@ -1114,7 +1160,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
                     className=" h-12 rounded-xl"
                     onClick={() => {
                       const vals = getValues();
-                      submit(vals as CreateContractFormData);
+                      submit(vals as CreateContractFormData, "draft");
                     }}
                     disabled={mutation.isPending}
                   >

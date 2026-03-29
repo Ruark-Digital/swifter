@@ -353,7 +353,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                 disabled={approveInvoiceMutation.isPending}
                 onClick={() => approveInvoiceMutation.mutate("approved")}
               >
-                {approveInvoiceMutation.isPending ? "Processing..." : "Approve7"}
+                {approveInvoiceMutation.isPending ? "Processing..." : "Approve"}
               </Button>
             </div>
           ) : null}

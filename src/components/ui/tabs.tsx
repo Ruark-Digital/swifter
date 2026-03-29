@@ -7,11 +7,24 @@ function Tabs({
   className,
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.Root>) {
+  const shouldFallbackToDefaultValue =
+    typeof props.value === "string" &&
+    !props.onValueChange &&
+    typeof props.defaultValue !== "string"
+
+  const rootProps = shouldFallbackToDefaultValue
+    ? {
+        ...props,
+        defaultValue: props.value,
+        value: undefined,
+      }
+    : props
+
   return (
     <TabsPrimitive.Root
       data-slot="tabs"
       className={cn("flex flex-col gap-2", className)}
-      {...props}
+      {...rootProps}
     />
   )
 }

@@ -83,7 +83,9 @@ const DeliverablesTabContent: React.FC = () => {
           ? "Approved"
           : it?.status === "rejected"
           ? "Rejected"
-          : "Under Review") as DeliverableRow["status"],
+          : it?.status === "pending"
+            ? "Pending"
+            : "Under Review") as DeliverableRow["status"],
     }));
   }, [listRes]);
 

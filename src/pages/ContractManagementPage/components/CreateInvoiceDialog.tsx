@@ -56,6 +56,7 @@ type FormValues = {
   otherTaxValue?: string;
   description?: string;
   uploadMode?: "manual" | "file";
+  invoiceAmount?: string;
   total?: number;
   items?: InvoiceItem[];
   files?: File[] | null;
@@ -72,6 +73,7 @@ const schema = yup.object({
     .mixed<"manual" | "file">()
     .oneOf(["manual", "file"])
     .optional(),
+  invoiceAmount: yup.string().optional(),
   total: yup.number().optional(),
   items: yup
     .array(
@@ -660,6 +662,7 @@ const CreateInvoiceDialog: React.FC<Props> = ({
       description: "",
       uploadMode: "manual",
       total: 0,
+      invoiceAmount: "",
     },
   });
 
@@ -782,9 +785,22 @@ const CreateInvoiceDialog: React.FC<Props> = ({
         }
 
         const amountFromTotal =
-          typeof values.total === "number" && Number.isFinite(values.total)
-            ? values.total
-            : undefined;
+          uploadMode === "manual"
+            ? typeof values.total === "number" && Number.isFinite(values.total)
+              ? values.total
+              : undefined
+            : (() => {
+                const parsed = Number.parseFloat(values.invoiceAmount ?? "");
+                return Number.isFinite(parsed) ? parsed : undefined;
+              })();
+
+        if (uploadMode === "file" && typeof amountFromTotal !== "number") {
+          toastHandler.error(
+            "Missing Invoice Amount",
+            "Please enter invoice amount when using file upload mode.",
+          );
+          return;
+        }
 
         const taxValueParsed = values.otherTaxValue
           ? Number.parseFloat(values.otherTaxValue)
@@ -928,13 +944,21 @@ const CreateInvoiceDialog: React.FC<Props> = ({
             <Forger
               name="description"
               label="Description"
-              placeholder="Duration"
+              placeholder="Enter description"
               rows={5}
               component={TextArea}
             />
 
             <div className="space-y-4">
               <Forger name="uploadMode" component={RadioGroupDemo} />
+              {useWatch({ control, name: "uploadMode" }) === "file" && (
+                <Forger
+                  name="invoiceAmount"
+                  label="Invoice Amount"
+                  placeholder="Enter invoice amount"
+                  component={TextInput}
+                />
+              )}
               <InvoiceComponent
                 completeOpen={completeOpen}
                 handleCompleteOpenChange={(open) => {

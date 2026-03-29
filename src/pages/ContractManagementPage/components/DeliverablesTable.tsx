@@ -23,7 +23,7 @@ export type DeliverableRow = {
   submissionDate?: string;
   submissionStatus: "Submitted" | "Late" | "Pending";
   kpi: string;
-  status: "Approved" | "Rejected" | "Under Review";
+  status: "Approved" | "Rejected" | "Pending" | "Under Review";
 };
 
 type DeliverableDetailsSheetProps = {
@@ -87,6 +87,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   trigger,
   contractId,
   deliverableId,
+  isApprover,
   basePath,
 }) => {
   const [open, setOpen] = React.useState(false);
@@ -220,15 +221,23 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
           </div>
 
           <div className="flex gap-3 pt-6">
-            <Button
-              variant="outline"
-              className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
-            >
-              Reject
-            </Button>
-            <Button className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
-              Approve
-            </Button>
+            {isApprover ? (
+              <>
+                <Button
+                  variant="outline"
+                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                >
+                  Reject
+                </Button>
+                <Button className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
+                  Approve
+                </Button>
+              </>
+            ) : (
+              <Button className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
+                Submit
+              </Button>
+            )}
           </div>
         </div>
       </SheetContent>
@@ -277,6 +286,8 @@ const columns: ColumnDef<DeliverableRow>[] = [
           ? "bg-green-100 text-green-700"
           : s === "Rejected"
           ? "bg-red-100 text-red-600"
+          : s === "Pending"
+            ? "bg-yellow-100 text-yellow-700"
           : "bg-yellow-100 text-yellow-700";
       return (
         <span

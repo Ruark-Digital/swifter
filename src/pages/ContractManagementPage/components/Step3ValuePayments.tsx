@@ -108,7 +108,7 @@ const Step3ValuePayments: React.FC<Props> = ({ control, paymentTermOptions }) =>
                   name={`milestones.${index}.dueDate`}
                   label="Due Date"
                   component={TextDatePicker}
-                  placeholder="Side Visits/Conference Call"
+                  placeholder="Select Due Date"
                 />
                 <Forger
                   name={`milestones.${index}.deliverable`}

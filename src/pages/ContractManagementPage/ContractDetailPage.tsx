@@ -126,6 +126,7 @@ const ROLE_TAB_WHITELIST: Record<
 > = {
   approver: [
     "overview",
+    "analytics",
     "payment-summary",
     "documents",
     "amendments",

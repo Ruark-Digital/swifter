@@ -11,7 +11,7 @@ import { Forge, Forger, useForge } from "@/lib/forge";
 import type { ApiResponseError } from "@/types";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import * as yup from "yup";
 import { businessDivisionApi } from "../api/businessDivisionApi";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
@@ -24,17 +24,41 @@ const createDivisionSchema = yup.object().shape({
 type CreateDivisionFormValues = yup.InferType<typeof createDivisionSchema>;
 
 type Props = {
-  trigger: ReactNode;
+  trigger?: ReactNode;
+  mode?: "create" | "edit";
+  divisionId?: string;
+  initialValues?: CreateDivisionFormValues;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
-const CreateDivisionDialog = ({ trigger }: Props) => {
-  const [open, setOpen] = useState(false);
+const CreateDivisionDialog = ({
+  trigger,
+  mode = "create",
+  divisionId,
+  initialValues,
+  open: controlledOpen,
+  onOpenChange,
+}: Props) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = typeof controlledOpen === "boolean";
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (nextOpen: boolean) => {
+    if (!isControlled) {
+      setInternalOpen(nextOpen);
+    }
+    onOpenChange?.(nextOpen);
+  };
   const toast = useToastHandler();
   const queryClient = useQueryClient();
+  const defaults = useMemo(
+    () => initialValues ?? { name: "", location: "" },
+    [initialValues]
+  );
 
   const { control, reset } = useForge<CreateDivisionFormValues>({
     resolver: yupResolver(createDivisionSchema),
-    defaultValues: { name: "", location: "" },
+    defaultValues: defaults,
   });
 
   const { mutateAsync: createDivision, isPending } = useMutation<
@@ -55,21 +79,56 @@ const CreateDivisionDialog = ({ trigger }: Props) => {
     },
   });
 
+  const { mutateAsync: updateDivision, isPending: isUpdating } = useMutation<
+    Awaited<ReturnType<typeof businessDivisionApi.updateDivision>>,
+    ApiResponseError,
+    CreateDivisionFormValues
+  >({
+    mutationKey: ["businessDivisions", "update", divisionId],
+    mutationFn: async (payload) => {
+      return await businessDivisionApi.updateDivision(divisionId ?? "", payload);
+    },
+    onSuccess: (res) => {
+      toast.success("Success", res?.message ?? "Business division updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["businessDivisions"] });
+      setOpen(false);
+    },
+    onError: (error) => {
+      toast.error("Error", error);
+    },
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    reset(defaults);
+  }, [defaults, open, reset]);
+
   const onSubmit = async (data: CreateDivisionFormValues) => {
+    if (mode === "edit") {
+      await updateDivision(data);
+      return;
+    }
     await createDivision(data);
   };
 
   const onCancel = () => {
-    reset({ name: "", location: "" });
+    reset(defaults);
     setOpen(false);
   };
 
+  const pending = isPending || isUpdating;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-[520px]">
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
+      <DialogContent
+        className="sm:max-w-[520px]"
+        data-testid={mode === "edit" ? "edit-division-dialog" : "create-division-dialog"}
+      >
         <DialogHeader>
-          <DialogTitle className="font-quicksand">Create Division</DialogTitle>
+          <DialogTitle className="font-quicksand">
+            {mode === "edit" ? "Edit Division" : "Create Division"}
+          </DialogTitle>
         </DialogHeader>
         <Forge control={control} onSubmit={onSubmit} className="space-y-5">
           <Forger
@@ -85,11 +144,11 @@ const CreateDivisionDialog = ({ trigger }: Props) => {
             placeholder="Enter location"
           />
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
+            <Button type="button" variant="outline" onClick={onCancel} disabled={pending}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-[#2A4467] hover:bg-[#1f3552]" disabled={isPending}>
-              Create Division
+            <Button type="submit" className="bg-[#2A4467] hover:bg-[#1f3552]" disabled={pending}>
+              {mode === "edit" ? "Save Changes" : "Create Division"}
             </Button>
           </div>
         </Forge>
@@ -99,4 +158,3 @@ const CreateDivisionDialog = ({ trigger }: Props) => {
 };
 
 export default CreateDivisionDialog;
-

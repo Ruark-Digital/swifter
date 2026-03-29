@@ -140,13 +140,15 @@ const MsaPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-slate-900">MSA</h2>
         <div className="flex items-center gap-4">
-          <CreateMSADialog
-            trigger={
-              <Button className="rounded-xl" data-testid="create-msa-button">
-                <Plus className="mr-2 h-4 w-4" /> Create MSA
-              </Button>
-            }
-          />
+          {isManager && (
+            <CreateMSADialog
+              trigger={
+                <Button className="rounded-xl" data-testid="create-msa-button">
+                  <Plus className="mr-2 h-4 w-4" /> Create MSA
+                </Button>
+              }
+            />
+          )}
         </div>
       </div>
 
@@ -185,4 +187,3 @@ const MsaPage: React.FC = () => {
 };
 
 export default MsaPage;
-

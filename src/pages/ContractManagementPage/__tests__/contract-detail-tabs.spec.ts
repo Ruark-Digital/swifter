@@ -76,6 +76,7 @@ test.describe("Contract Detail Tabs visibility", () => {
 
     const allowed = [
       "Overview",
+      "Analytics",
       "Payment Summary",
       "Documents",
       "Amendments",
@@ -93,7 +94,6 @@ test.describe("Contract Detail Tabs visibility", () => {
     }
 
     const disallowed = [
-      "Analytics",
       "KPI",
       "Compliance & Security",
       "Rate Sheets",

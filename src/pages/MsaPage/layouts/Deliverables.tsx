@@ -147,7 +147,9 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
           ? "Approved"
           : it?.status === "rejected"
             ? "Rejected"
-            : "Under Review") as DeliverableRow["status"],
+            : it?.status === "pending"
+              ? "Pending"
+              : "Under Review") as DeliverableRow["status"],
     }));
   }, [listRes]);
 

@@ -37,6 +37,10 @@ const BusinessDivisionsPage = () => {
   const [selectedDivisionId, setSelectedDivisionId] = useState<string | null>(
     null
   );
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingDivision, setEditingDivision] = useState<BusinessDivision | null>(
+    null
+  );
 
   if (!isCompanyAdmin) {
     return <Navigate to="/dashboard" replace />;
@@ -352,6 +356,23 @@ const BusinessDivisionsPage = () => {
           if (!nextOpen) setSelectedDivisionId(null);
         }}
         divisionId={selectedDivisionId}
+        onEditDivision={(division) => {
+          setEditingDivision(division);
+          setEditOpen(true);
+        }}
+      />
+      <CreateDivisionDialog
+        mode="edit"
+        open={editOpen}
+        onOpenChange={(nextOpen) => {
+          setEditOpen(nextOpen);
+          if (!nextOpen) setEditingDivision(null);
+        }}
+        divisionId={editingDivision?._id}
+        initialValues={{
+          name: editingDivision?.name ?? "",
+          location: editingDivision?.location ?? "",
+        }}
       />
     </>
   );

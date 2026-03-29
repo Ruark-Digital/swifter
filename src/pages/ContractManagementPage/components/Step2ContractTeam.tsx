@@ -12,12 +12,14 @@ import { Personnel } from "./Step7ApprovalLevel";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
+import { useFormContext } from "react-hook-form";
 
 // type Props = {
 //   internalStakeholderOptions?: Array<{ label: string; value: string }>;
 // };
 
 const Step2ContractTeam: React.FC = () => {
+  const { setValue } = useFormContext();
   const { data: personnelData } = useQuery<
     ApiResponse<Personnel>,
     ApiResponseError
@@ -152,11 +154,17 @@ const Step2ContractTeam: React.FC = () => {
               creatable={true}
               value={selectedValues as any}
               onChange={(selectedOptions) =>
-                onChange?.(
-                  typeof selectedOptions?.[0]?.value === "string"
-                    ? selectedOptions[0].value.trim()
-                    : "",
-                )
+                {
+                  const selected = selectedOptions?.[0];
+                  const nextValue =
+                    typeof selected?.value === "string" ? selected.value.trim() : "";
+                  const nextLabel =
+                    typeof selected?.label === "string"
+                      ? selected.label.trim()
+                      : nextValue;
+                  onChange?.(nextValue);
+                  setValue("vendorLabel" as never, nextLabel as never);
+                }
               }
             />
           );

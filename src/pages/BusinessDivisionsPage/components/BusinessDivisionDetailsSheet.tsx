@@ -14,6 +14,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   divisionId?: string | null;
+  onEditDivision?: (division: BusinessDivision) => void;
 };
 
 const formatCompactCurrency = (value?: number) => {
@@ -41,7 +42,12 @@ const safeText = (value: unknown) => {
   return text.length > 0 ? text : "—";
 };
 
-const BusinessDivisionDetailsSheet = ({ open, onOpenChange, divisionId }: Props) => {
+const BusinessDivisionDetailsSheet = ({
+  open,
+  onOpenChange,
+  divisionId,
+  onEditDivision,
+}: Props) => {
   const { data: detailRes, isLoading } = useQuery({
     queryKey: ["businessDivisions", "detail", divisionId],
     queryFn: async () => await businessDivisionApi.getDivisionById(String(divisionId)),
@@ -142,6 +148,12 @@ const BusinessDivisionDetailsSheet = ({ open, onOpenChange, divisionId }: Props)
               <Button
                 type="button"
                 className="h-[52px] w-full rounded-xl bg-[#F3F4F6] text-base font-semibold text-[#111827] font-quicksand hover:bg-[#E5E7EB]"
+                disabled={isLoading || !division}
+                onClick={() => {
+                  if (!division) return;
+                  onOpenChange(false);
+                  onEditDivision?.(division);
+                }}
               >
                 Edit Business Division
               </Button>
@@ -154,4 +166,3 @@ const BusinessDivisionDetailsSheet = ({ open, onOpenChange, divisionId }: Props)
 };
 
 export default BusinessDivisionDetailsSheet;
-
