@@ -848,6 +848,10 @@ export const SolicitationManagementPage = () => {
           ),
         },
         {
+          accessorKey: "timezone",
+          header: "Timezone",
+        },
+        {
           accessorKey: "submissionStatus",
           header: "Submission Status",
           cell: ({ row }) => {
@@ -1231,18 +1235,22 @@ export const SolicitationManagementPage = () => {
                 <strong>Published:</strong>{" "}
                 {safeFormatDate(
                   row.original.submissionDeadline,
-                  "MMM d, yyyy pppp"
+                  "MMM d, yyyy hh:mm a"
                 )}
               </span>
               <span>
                 <strong>Closing:</strong>{" "}
                 {safeFormatDate(
                   row.original.questionDeadline,
-                  "MMM d, yyyy pppp"
+                  "MMM d, yyyy hh:mm a"
                 )}
               </span>
             </>
           ),
+        },
+        {
+          accessorKey: "timezone",
+          header: "Timezone",
         },
         {
           accessorKey: "status",

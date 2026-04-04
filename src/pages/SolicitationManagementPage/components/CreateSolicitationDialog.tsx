@@ -362,7 +362,7 @@ const CreateSolicitationDialog = () => {
     }
   };
 
-  const handleCancel = async () => {
+  const handleSaveAsDraft = async () => {
     try {
       const formData = forge.getValues();
 
@@ -398,14 +398,14 @@ const CreateSolicitationDialog = () => {
           (formData.visibility as "public" | "invite-only") || "invite-only",
         status: "draft", // Save as draft
         submissionDeadline: formData.submissionDeadlineDate
-          ? new Date(formData.submissionDeadlineDate).toISOString()
-          : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Default to 30 days from now
+          ? format(formData.submissionDeadlineDate,  "yyyy-MM-dd'T'HH:mm:ss")
+          : format(Date.now() + 30 * 24 * 60 * 60 * 1000, "yyyy-MM-dd'T'HH:mm:ss"), // Default to 30 days from now
         questionDeadline: formData.questionAcceptanceDeadlineDate
-          ? new Date(formData.questionAcceptanceDeadlineDate).toISOString()
+          ? format(formData.questionAcceptanceDeadlineDate,  "yyyy-MM-dd'T'HH:mm:ss")
           : undefined,
         bidIntent: formData.bidIntent as "required" | "not-required",
         bidIntentDeadline: formData.bidIntentDeadlineDate
-          ? new Date(formData.bidIntentDeadlineDate).toISOString()
+          ? format(formData.bidIntentDeadlineDate,  "yyyy-MM-dd'T'HH:mm:ss")
           : undefined,
         timezone: formData.timezone || "Africa/Lagos",
         events: (() => {
@@ -663,7 +663,7 @@ const CreateSolicitationDialog = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleCancel}
+                onClick={handleSaveAsDraft}
                 className="px-8 py-2 border border-gray-300 text-gray-700 hover:bg-gray-100 rounded-lg"
               >
                 Save as Draft

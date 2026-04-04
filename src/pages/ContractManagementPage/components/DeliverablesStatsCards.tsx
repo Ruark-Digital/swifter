@@ -35,16 +35,34 @@ const StatCard: React.FC<StatProps> = ({ title, value, tone, testId }) => {
   );
 };
 
-const DeliverablesStatsCards: React.FC = () => {
+export type DeliverablesStats = {
+  all: number;
+  submitted: number;
+  pending: number;
+  late: number;
+};
+
+type Props = {
+  stats?: DeliverablesStats;
+  isLoading?: boolean;
+};
+
+const DeliverablesStatsCards: React.FC<Props> = ({ stats, isLoading }) => {
+  void isLoading;
+  const s = {
+    all: stats?.all ?? 0,
+    submitted: stats?.submitted ?? 0,
+    pending: stats?.pending ?? 0,
+    late: stats?.late ?? 0,
+  };
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      <StatCard title="All Deliverable" value={8} tone="gray" testId="deliverables-stats-all" />
-      <StatCard title="Submitted" value={4} tone="green" testId="deliverables-stats-submitted" />
-      <StatCard title="Pending Submission" value={5} tone="yellow" testId="deliverables-stats-pending" />
-      <StatCard title="Late Submission" value={5} tone="red" testId="deliverables-stats-late" />
+      <StatCard title="All Deliverables" value={s.all} tone="gray" testId="deliverables-stats-all" />
+      <StatCard title="Submitted" value={s.submitted} tone="green" testId="deliverables-stats-submitted" />
+      <StatCard title="Pending" value={s.pending} tone="yellow" testId="deliverables-stats-pending" />
+      <StatCard title="Late" value={s.late} tone="red" testId="deliverables-stats-late" />
     </div>
   );
 };
 
 export default DeliverablesStatsCards;
-

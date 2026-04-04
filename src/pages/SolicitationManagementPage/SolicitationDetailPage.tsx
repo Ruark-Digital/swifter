@@ -1061,6 +1061,7 @@ export const SolicitationDetailPage = () => {
                             <Button
                               className="bg-[#2A4467] hover:bg-[#1e3252] text-white disabled:opacity-50 disabled:cursor-not-allowed"
                               disabled={
+                                solicitation.status === "draft" ||
                                 (solicitation.status === "closed" ||
                                   solicitation.status === "awarded") &&
                                 !isCompanyAdmin

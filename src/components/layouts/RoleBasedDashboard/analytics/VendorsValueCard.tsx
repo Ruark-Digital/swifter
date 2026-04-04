@@ -11,18 +11,39 @@ import {
   Tooltip,
 } from "recharts";
 
-const data = [
-  { name: "BuildCorp Ltd", value: 40 },
-  { name: "TechServices Inc", value: 43 },
-  { name: "Global Consulting", value: 35 },
-  { name: "Equipment Supplier", value: 32 },
-  { name: "Equipment Supplier", value: 31 },
-  { name: "Equipment Supplier", value: 31 },
-];
+type Row = {
+  name: string;
+  value: number;
+  contractCount?: number;
+};
 
-export const VendorsValueCard: React.FC = () => {
+type Props = {
+  rows?: Row[];
+};
+
+const MAX_VENDOR_LABEL_LENGTH = 14;
+
+export const VendorsValueCard: React.FC<Props> = ({ rows }) => {
+  const data = (rows && rows.length > 0
+    ? rows
+    : [
+        { name: "BuildCorp Ltd", value: 3500000, contractCount: 8 },
+        { name: "TechServices Inc", value: 2800000, contractCount: 6 },
+      ]
+  ).map((r) => ({
+    name: r.name,
+    valueM: r.value / 1_000_000,
+    contractCount: r.contractCount ?? 0,
+  }));
+
+  const max = Math.max(0, ...data.map((d) => d.valueM));
+  const domainMax = max > 0 ? Math.ceil(max / 10) * 10 : 100;
+  const formatVendorTick = (name: string) =>
+    name.length > MAX_VENDOR_LABEL_LENGTH
+      ? `${name.slice(0, MAX_VENDOR_LABEL_LENGTH)}…`
+      : name;
   return (
-    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
+    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm flex flex-col">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-[16px] font-semibold text-[#0F0F0F]">
@@ -53,16 +74,16 @@ export const VendorsValueCard: React.FC = () => {
           </TabsList>
         </Tabs>
       </CardHeader>
-      <CardContent className="pt-0">
-        <ChartContainer config={{} as ChartConfig} className="aspect-[16/9]">
+      <CardContent className="pt-0 flex-1 flex flex-col">
+        <ChartContainer className="h-full" config={{} as ChartConfig}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data}
-              margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
+              margin={{ top: 10, right: 10, left: 10, bottom: 40 }}
             >
               <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
               <YAxis
-                domain={[0, 100]}
+                domain={[0, domainMax]}
                 tick={{ fill: "#344054", fontSize: 12, fontWeight: 700 }}
                 tickLine={false}
                 axisLine={false}
@@ -82,6 +103,9 @@ export const VendorsValueCard: React.FC = () => {
                 tickLine={false}
                 axisLine={false}
                 interval={0}
+                tickFormatter={formatVendorTick}
+                minTickGap={10}
+                height={56}
               />
               <Tooltip
                 cursor={{ fill: "rgba(0,0,0,0.05)" }}
@@ -91,15 +115,18 @@ export const VendorsValueCard: React.FC = () => {
                       <p className="text-[14px] font-medium text-[#0F0F0F]">
                         {payload[0].payload.name}
                       </p>
-                      <p className="text-[12px] text-[#6B6B6B]">10 Contract</p>
                       <p className="text-[12px] text-[#6B6B6B]">
-                        ${payload[0].value}M
+                        {payload[0].payload.contractCount}{" "}
+                        {payload[0].payload.contractCount === 1 ? "Contract" : "Contracts"}
+                      </p>
+                      <p className="text-[12px] text-[#6B6B6B]">
+                        ${Number(payload[0].value).toFixed(1)}M
                       </p>
                     </div>
                   ) : null
                 }
               />
-              <Bar dataKey="value" fill="#286EE0" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="valueM" fill="#286EE0" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>
@@ -107,4 +134,3 @@ export const VendorsValueCard: React.FC = () => {
     </Card>
   );
 };
-

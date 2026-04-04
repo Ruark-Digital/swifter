@@ -17,7 +17,7 @@ export const InvoiceStatusCard: React.FC<Props> = ({
   ];
 
   return (
-    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
+    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm flex flex-col">
       <CardHeader className="pb-2">
         <CardTitle className="text-[16px] font-semibold text-[#030712]">
           Invoice Status
@@ -42,8 +42,8 @@ export const InvoiceStatusCard: React.FC<Props> = ({
           </TabsList>
         </Tabs>
       </CardHeader>
-      <CardContent className="pt-0 px-4 pb-4 space-y-4 ">
-        <ChartContainer config={{} as ChartConfig}>
+      <CardContent className="pt-0 px-4 pb-4 space-y-4 flex-1 flex flex-col">
+        <ChartContainer className="h-full " config={{} as ChartConfig}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -62,6 +62,7 @@ export const InvoiceStatusCard: React.FC<Props> = ({
             </PieChart>
           </ResponsiveContainer>
         </ChartContainer>
+
         <div className="flex items-center justify-center gap-6">
           {data.map((d) => (
             <div key={d.name} className="flex items-center gap-2">

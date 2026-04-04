@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronRight, Eye, Download, FileText, InfoIcon, Edit } from "lucide-react";
+import { ChevronRight, Eye, Download, FileText, InfoIcon } from "lucide-react";
 import { DocSVG } from "@/assets/icons/Doc";
 import { PdfSVG } from "@/assets/icons/Pdf";
 import { ExcelSVG } from "@/assets/icons/Excel";
@@ -347,6 +347,7 @@ const SubmittedDocumentPage: React.FC = () => {
   const [revisedCriteriaTimestamps, setRevisedCriteriaTimestamps] = useState<Record<string, string>>({});
   const [submittedCriteriaTimestamps, setSubmittedCriteriaTimestamps] = useState<Record<string, string>>({});
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState<"requested-documents" | "evaluation-criteria" | "pricing-breakdown">("requested-documents");
 
   // Document viewer state
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -535,6 +536,7 @@ const SubmittedDocumentPage: React.FC = () => {
       }));
     }
     setActiveCriteriaId(null);
+    setEditingCriteriaId(null);
   };
 
   // Loading state
@@ -598,6 +600,8 @@ const SubmittedDocumentPage: React.FC = () => {
   const evaluationStatus = (evaluationInfo?.status || criteriaEvaluationInfo?.status || "").toString();
   const isEvaluationCompleted = evaluationStatus.toLowerCase() === "completed";
 
+  
+
   return (
     <div className="p-6 min-h-full">
       {/* Breadcrumb */}
@@ -654,7 +658,17 @@ const SubmittedDocumentPage: React.FC = () => {
       </div>
 
       {/* Tabs Navigation */}
-      <Tabs defaultValue="requested-documents" className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => {
+          setActiveTab(v as typeof activeTab);
+          if (v !== "evaluation-criteria" && activeCriteriaId) {
+            handleAccordionClose();
+            setEditingCriteriaId(null);
+          }
+        }}
+        className="w-full"
+      >
         <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 !bg-transparent p-0 w-full justify-start">
           <TabsTrigger
             value="requested-documents"
@@ -711,7 +725,22 @@ const SubmittedDocumentPage: React.FC = () => {
               Evaluation Criteria
             </h2>
 
-            <Accordion type="single" collapsible className="w-full pb-5">
+            <Accordion
+              type="single"
+              collapsible
+              value={activeCriteriaId || undefined}
+              onValueChange={(val) => {
+                if (!val) {
+                  handleAccordionClose();
+                  setEditingCriteriaId(null);
+                } else {
+                  const item = criteria.find((c) => c._id === val);
+                  const type = item?.criteria.pass_fail ? "pass_fail" : "weight";
+                  handleStartScoring(val, type);
+                }
+              }}
+              className="w-full pb-5"
+            >
               {criteria.length > 0 ? (
                 criteria.map((criteriaItem) => (
                   <AccordionItem
@@ -721,20 +750,6 @@ const SubmittedDocumentPage: React.FC = () => {
                   >
                     <AccordionTrigger
                       className="px-4 py-4 hover:no-underline"
-                      onClick={() => {
-                        // Auto-activate scoring when accordion is opened
-                        if (activeCriteriaId !== criteriaItem._id) {
-                          handleStartScoring(
-                            criteriaItem._id,
-                            criteriaItem.criteria.pass_fail
-                              ? "pass_fail"
-                              : "weight"
-                          );
-                        } else {
-                          // If clicking on the same accordion that's already open, close it
-                          handleAccordionClose();
-                        }
-                      }}
                     >
                       <div className="flex items-center justify-between w-full">
                         <span className="font-medium text-gray-900 dark:text-slate-200">
@@ -750,6 +765,7 @@ const SubmittedDocumentPage: React.FC = () => {
                         )}
                       </div>
                     </AccordionTrigger>
+
                     <AccordionContent className="px-0 pt-0">
                       <div className="border-t border-gray-200">
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-0">
@@ -1285,7 +1301,6 @@ const Document = ({
   document: VendorDocument;
   onViewDocument: (document: VendorDocument) => void;
 }) => {
-  const navigate = useNavigate();
   // Get file icon based on type
   const getFileIcon = (type: string) => {
     const fileType = type;
@@ -1332,23 +1347,6 @@ const Document = ({
               onClick={() => onViewDocument(document)}
             >
               <Eye className="w-4 h-4 text-gray-500" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 p-0 bg-green-100 rounded-full hover:bg-green-200"
-              title="Edit in Collaboration Tool"
-              onClick={() =>
-                navigate(
-                  `/collaboration-tool?sourceUrl=${encodeURIComponent(
-                    document.url
-                  )}&fileName=${encodeURIComponent(document.name)}&fileType=${encodeURIComponent(
-                    document.type || ""
-                  )}`
-                )
-              }
-            >
-              <Edit className="w-4 h-4 text-green-500" />
             </Button>
             <Button
               variant="ghost"

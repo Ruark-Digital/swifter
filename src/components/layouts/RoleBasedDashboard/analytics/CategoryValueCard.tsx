@@ -1,17 +1,28 @@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const rows = [
-  { name: "Equipment", value: 15 },
-  { name: "Consulting", value: 25 },
-  { name: "IT Services", value: 45 },
-  { name: "Construction", value: 45, overlay: { title: "Construction", contracts: "10 Contracts", value: "$45M" } },
-  { name: "Other", value: 45 },
-];
+type Row = {
+  name: string;
+  value: number;
+  contractCount?: number;
+};
 
-const axis = Array.from({ length: 11 }).map((_, i) => i * 10);
+type Props = {
+  rows?: Row[];
+};
 
-export const CategoryValueCard: React.FC = () => {
+export const CategoryValueCard: React.FC<Props> = ({ rows }) => {
+  const data = (rows && rows.length > 0 ? rows : []).map((r) => ({
+    name: r.name,
+    valueM: r.value / 1_000_000,
+    contractCount: r.contractCount ?? 0,
+  }));
+
+  const max = Math.max(0, ...data.map((d) => d.valueM));
+  const domainMax = max > 0 ? Math.ceil(max / 10) * 10 : 100;
+  const axis = Array.from({ length: 11 }).map((_, i) =>
+    Math.round((domainMax / 10) * i),
+  );
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
       <CardHeader className="pb-3">
@@ -26,11 +37,18 @@ export const CategoryValueCard: React.FC = () => {
         </div>
         <Tabs value="ytd" className="w-full">
           <TabsList className="bg-transparent p-0 gap-2">
-            <TabsTrigger className="rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467]" value="ytd">
+            <TabsTrigger
+              className="rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467]"
+              value="ytd"
+            >
               YTD
             </TabsTrigger>
             {["12 months", "6 months", "3 months"].map((t) => (
-              <TabsTrigger key={t} value={t.replace(/\s+/g, "")} className="rounded-md px-3 py-2 text-sm font-semibold text-[#667085]">
+              <TabsTrigger
+                key={t}
+                value={t.replace(/\s+/g, "")}
+                className="rounded-md px-3 py-2 text-sm font-semibold text-[#667085]"
+              >
                 {t}
               </TabsTrigger>
             ))}
@@ -38,13 +56,23 @@ export const CategoryValueCard: React.FC = () => {
         </Tabs>
       </CardHeader>
       <CardContent className="space-y-5">
-        {rows.map((row, idx) => {
-          const pct = Math.min(100, Math.max(0, row.value));
+        {data.map((row, idx) => {
+          const pct =
+            domainMax > 0
+              ? Math.min(
+                  100,
+                  Math.max(0, Math.round((row.valueM / domainMax) * 100)),
+                )
+              : 0;
           return (
             <div key={idx} className="space-y-2 relative">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-[#030712]">{row.name}</p>
-                <p className="text-sm font-semibold text-[#030712]">${row.value}M</p>
+                <p className="text-sm font-semibold text-[#030712]">
+                  {row.name}
+                </p>
+                <p className="text-sm font-semibold text-[#030712]">
+                  ${row.valueM.toFixed(1)}M
+                </p>
               </div>
               <div className="w-full h-2.5 bg-[#DDDDDD] rounded-full overflow-hidden">
                 <div
@@ -52,11 +80,18 @@ export const CategoryValueCard: React.FC = () => {
                   style={{ width: `${pct}%` }}
                 />
               </div>
-              {row.overlay && (
+              {idx === 3 && (
                 <div className="absolute left-1/2 -translate-x-1/2 -top-8 bg-white border border-[#E5E7EB] rounded-2xl p-2 w-[150px] shadow">
-                  <p className="text-[14px] font-medium text-[#0F0F0F]">{row.overlay.title}</p>
-                  <p className="text-[12px] text-[#6B6B6B]">{row.overlay.contracts}</p>
-                  <p className="text-[12px] text-[#6B6B6B]">{row.overlay.value}</p>
+                  <p className="text-[14px] font-medium text-[#0F0F0F]">
+                    {row.name}
+                  </p>
+                  <p className="text-[12px] text-[#6B6B6B]">
+                    {row.contractCount}{" "}
+                    {row.contractCount === 1 ? "Contract" : "Contracts"}
+                  </p>
+                  <p className="text-[12px] text-[#6B6B6B]">
+                    ${row.valueM.toFixed(1)}M
+                  </p>
                 </div>
               )}
             </div>
@@ -73,4 +108,3 @@ export const CategoryValueCard: React.FC = () => {
     </Card>
   );
 };
-

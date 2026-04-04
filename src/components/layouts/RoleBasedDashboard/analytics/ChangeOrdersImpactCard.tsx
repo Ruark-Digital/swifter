@@ -11,14 +11,28 @@ import {
   Tooltip,
 } from "recharts";
 
-const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"];
-const data = months.map((m, i) => ({
-  month: m,
-  Original: Math.max(20, 50 - i * 4 + (i % 2 ? -3 : 3)),
-  Revised: 18 + (i % 2 ? 1 : -1),
-}));
+type ApiData = {
+  totalCOs: number;
+  valueIncrease: number;
+  percentageIncrease: number;
+  chartData: Array<{ date: string; original: number; revised: number }>;
+};
 
-export const ChangeOrdersImpactCard: React.FC = () => {
+type Props = {
+  data?: ApiData;
+};
+
+export const ChangeOrdersImpactCard: React.FC<Props> = ({ data }) => {
+  const chart = (
+    data?.chartData && data.chartData.length > 0 ? data.chartData : []
+  ).map((d) => ({
+    month: d.date,
+    Original: d.original / 1_000_000,
+    Revised: d.revised / 1_000_000,
+  }));
+
+  const max = Math.max(0, ...chart.map((d) => Math.max(d.Original, d.Revised)));
+  const domainMax = max > 0 ? Math.ceil(max / 10) * 10 : 100;
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
       <CardHeader className="pb-3">
@@ -33,11 +47,18 @@ export const ChangeOrdersImpactCard: React.FC = () => {
         </div>
         <Tabs value="ytd" className="w-full">
           <TabsList className="bg-transparent p-0 gap-2">
-            <TabsTrigger className="rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467]" value="ytd">
+            <TabsTrigger
+              className="rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467]"
+              value="ytd"
+            >
               YTD
             </TabsTrigger>
             {["12 months", "6 months", "3 months"].map((t) => (
-              <TabsTrigger key={t} value={t.replace(/\s+/g, "")} className="rounded-md px-3 py-2 text-sm font-semibold text-[#667085]">
+              <TabsTrigger
+                key={t}
+                value={t.replace(/\s+/g, "")}
+                className="rounded-md px-3 py-2 text-sm font-semibold text-[#667085]"
+              >
                 {t}
               </TabsTrigger>
             ))}
@@ -45,15 +66,37 @@ export const ChangeOrdersImpactCard: React.FC = () => {
         </Tabs>
       </CardHeader>
       <CardContent className="pt-0 space-y-4">
-        <ChartContainer config={{} as ChartConfig} className="aspect-[16/9]">
+        <ChartContainer config={{} as ChartConfig} className="">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-              <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" vertical={false} />
-              <YAxis domain={[0, 100]} tick={{ fill: "#344054", fontSize: 12, fontWeight: 700 }} />
+            <LineChart
+              data={chart}
+              margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
+            >
+              <CartesianGrid
+                stroke="#E5E7EB"
+                strokeDasharray="3 3"
+                vertical={false}
+              />
+              <YAxis
+                domain={[0, domainMax]}
+                tick={{ fill: "#344054", fontSize: 12, fontWeight: 700 }}
+              />
               <XAxis dataKey="month" tick={{ fill: "#6B7280", fontSize: 12 }} />
               <Tooltip />
-              <Line type="monotone" dataKey="Original" stroke="#10b981" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="Revised" stroke="#1e3a8a" strokeWidth={2} dot={false} />
+              <Line
+                type="monotone"
+                dataKey="Original"
+                stroke="#10b981"
+                strokeWidth={2}
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="Revised"
+                stroke="#1e3a8a"
+                strokeWidth={2}
+                dot={false}
+              />
             </LineChart>
           </ResponsiveContainer>
         </ChartContainer>
@@ -61,12 +104,22 @@ export const ChangeOrdersImpactCard: React.FC = () => {
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl bg-[#F9FAFB] p-3 text-center">
             <p className="text-[12px] text-[#6B6B6B]">Total COs</p>
-            <p className="text-[18px] font-semibold text-[#030712]">142</p>
+            <p className="text-[18px] font-semibold text-[#030712]">
+              {data?.totalCOs ?? 142}
+            </p>
           </div>
           <div className="rounded-xl bg-[#FEE2E2] p-3 text-center">
             <p className="text-[12px] text-[#6B6B6B]">Value Increase</p>
             <p className="text-[18px] font-semibold text-[#B91C1C]">
-              $100M <span className="text-[12px] text-[#B91C1C]">(+15.8%)</span>
+              $
+              {(
+                ((data?.valueIncrease ?? 100_000_000) as number) / 1_000_000
+              ).toFixed(1)}
+              M{" "}
+              <span className="text-[12px] text-[#B91C1C]">
+                ({(data?.percentageIncrease ?? 15.8) >= 0 ? "+" : ""}
+                {data?.percentageIncrease ?? 15.8}%)
+              </span>
             </p>
           </div>
         </div>

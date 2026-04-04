@@ -1,6 +1,11 @@
 import React from "react";
 import { Forger, useFieldArray } from "@/lib/forge";
-import { TextDatePicker, TextInput, TextSelect } from "@/components/layouts/FormInputs";
+import {
+  TextDatePicker,
+  TextInput,
+  TextSelect,
+  TextCurrencyInput
+} from "@/components/layouts/FormInputs";
 import { useWatch, Control } from "react-hook-form";
 import { CreateContractFormData } from "./CreateContractSheet";
 import { Button } from "@/components/ui/button";
@@ -17,19 +22,27 @@ type Props = {
 
 const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
   const security = useWatch({ control, name: "contractSecurity" });
-  const { fields: policyFields, append: appendPolicy, remove: removePolicy } = useFieldArray({
+  const {
+    fields: policyFields,
+    append: appendPolicy,
+    remove: removePolicy,
+  } = useFieldArray({
     control,
     name: "insurancePolicies",
-    inputProps: []
+    inputProps: [],
   });
-  const { fields: secFields, append: appendSec, remove: removeSec } = useFieldArray({
+  const {
+    fields: secFields,
+    append: appendSec,
+    remove: removeSec,
+  } = useFieldArray({
     control,
     name: "securities",
-    inputProps: []
+    inputProps: [],
   });
 
   return (
-    <Accordion type="multiple"  className="mt-4 space-y-6">
+    <Accordion type="multiple" className="mt-4 space-y-6">
       <AccordionItem value="insurance" className="border-none">
         <AccordionTrigger className="text-sm font-medium text-slate-700 hover:no-underline border-b border-slate-200 pb-4">
           Insurance Coverage
@@ -40,7 +53,7 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
               name="insuranceExpiryDate"
               label="Expiry Date"
               component={TextDatePicker}
-              placeholder="Enter Title"
+              placeholder="Select expiry date"
               containerClass="md:col-span-2"
             />
             {policyFields.map((field, index) => (
@@ -66,7 +79,7 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
                   </div>
                   <Forger
                     name={`insurancePolicies.${index}.limit`}
-                    component={TextInput}
+                    component={TextCurrencyInput}
                     placeholder="Enter Value/Amount"
                   />
                 </div>
@@ -105,36 +118,12 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
 
             {security === "yes" && (
               <>
-                <Forger
-                  name="securityType"
-                  label="Security Type"
-                  placeholder="Enter Title"
-                  component={TextSelect}
-                  options={[
-                    { label: "Letter of Credit", value: "letter_of_credit" },
-                    { label: "Bank Guarantee", value: "bank_guarantee" },
-                    { label: "Performance Bond", value: "performance_bond" },
-                    { label: "Labour & Material Bond", value: "labour_material_bond" },
-                  ]}
-                />
-                <Forger
-                  name="securityAmount"
-                  label="Amount"
-                  placeholder="Enter Amount"
-                  component={TextInput}
-                />
-                <Forger
-                  name="securityDueDate"
-                  label="Due Date"
-                  component={TextDatePicker}
-                  placeholder="Enter Title"
-                  containerClass="md:col-span-2"
-                />
-
                 {secFields.map((field, index) => (
                   <div key={field.id} className="md:col-span-2 space-y-2">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-slate-700">Amount</p>
+                      <p className="text-sm font-medium text-slate-700">
+                        Amount
+                      </p>
                       <button
                         type="button"
                         className="text-xs text-red-600"
@@ -148,13 +137,32 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
                         name={`securities.${index}.type`}
                         label="Security Type"
                         placeholder="Enter Security"
-                        component={TextInput}
+                        component={TextSelect}
+                        options={[
+                          {
+                            label: "Letter of Credit",
+                            value: "letter_of_credit",
+                          },
+                          { label: "Bank Guarantee", value: "bank_guarantee" },
+                          {
+                            label: "Performance Bond",
+                            value: "performance_bond",
+                          },
+                          {
+                            label: "Material Bond",
+                            value: "material_bond",
+                          },
+                          {
+                            label: "Labour Bond",
+                            value: "labour_bond",
+                          },
+                        ]}
                       />
                       <Forger
                         name={`securities.${index}.amount`}
                         label="Amount"
                         placeholder="Enter Amount"
-                        component={TextInput}
+                        component={TextCurrencyInput}
                       />
                       <Forger
                         name={`securities.${index}.dueDate`}
@@ -170,7 +178,9 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => appendSec({ type: "", amount: "", dueDate: undefined })}
+                    onClick={() =>
+                      appendSec({ type: "", amount: "", dueDate: undefined })
+                    }
                   >
                     + Add Security
                   </Button>

@@ -17,6 +17,15 @@ type Props = {
 
 const Step3ValuePayments: React.FC<Props> = ({ control, paymentTermOptions }) => {
   const paymentStructure = useWatch({ control, name: "paymentStructure" });
+  const deliverables = useWatch({ control, name: "deliverables" }) as Array<{
+    name?: string;
+  }>;
+
+  const deliverableOptions =
+    deliverables?.map((d) => ({
+      label: d.name || "Untitled Deliverable",
+      value: d.name || "",
+    })) || [];
   
   const { fields, append, remove } = useFieldArray({
     control,
@@ -38,7 +47,7 @@ const Step3ValuePayments: React.FC<Props> = ({ control, paymentTermOptions }) =>
         name="contingency"
         label="Contingency (only visible internally)"
         placeholder="Enter Contingency"
-        component={TextInput}
+        component={TextCurrencyInput}
       />
       <Forger
         name="holdback"
@@ -58,21 +67,21 @@ const Step3ValuePayments: React.FC<Props> = ({ control, paymentTermOptions }) =>
           { label: "Progress Draw", value: "lump_sum" },
         ]}
       />
-      <Forger
+     { paymentStructure !== "milestone" &&( <Forger
         name="selectedDeliverable"
         label="Select Deliverable (Optional)"
         placeholder="Select Deliverable"
         component={TextSelect}
-        options={[]}
+        options={deliverableOptions}
         containerClass="md:col-span-2"
-      />
+      />)}
 
       {paymentStructure === "milestone" && (
         <div className="col-span-2 space-y-3">
           {fields.map((field, index) => (
             <div key={field.id} className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-slate-700">Milestone Name</p>
+                <p className="text-sm font-medium text-slate-700">Milestone</p>
                 <button
                   type="button"
                   className="text-xs text-red-600"
@@ -84,22 +93,31 @@ const Step3ValuePayments: React.FC<Props> = ({ control, paymentTermOptions }) =>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
                 <Forger
                   name={`milestones.${index}.name`}
+                  label="Milestone Name"
                   placeholder={`Milestone ${index + 1}`}
                   containerClass="md:col-span-2"
                   component={TextInput}
                 />
-              <Forger
-                name={`milestones.${index}.amount`}
-                label="Amount ($)"
-                placeholder="Enter Amount"
-                component={TextCurrencyInput}
-              />
-              <Forger
-                name={`milestones.${index}.dueDate`}
-                label="Due Date"
-                component={TextDatePicker}
-                placeholder="Side Visits/Conference Call"
-              />
+                <Forger
+                  name={`milestones.${index}.amount`}
+                  label="Amount ($)"
+                  placeholder="Enter Amount"
+                  component={TextCurrencyInput}
+                />
+                <Forger
+                  name={`milestones.${index}.dueDate`}
+                  label="Due Date"
+                  component={TextDatePicker}
+                  placeholder="Select Due Date"
+                />
+                <Forger
+                  name={`milestones.${index}.deliverable`}
+                  label="Select Deliverable (Optional)"
+                  placeholder="Select Deliverable"
+                  component={TextSelect}
+                  options={deliverableOptions}
+                  containerClass="md:col-span-2"
+                />
               </div>
             </div>
           ))}
@@ -113,6 +131,7 @@ const Step3ValuePayments: React.FC<Props> = ({ control, paymentTermOptions }) =>
                   name: `Milestone ${fields.length + 1}`,
                   amount: "",
                   dueDate: undefined,
+                  deliverable: "",
                 })
               }
             >

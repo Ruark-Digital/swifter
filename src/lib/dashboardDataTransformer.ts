@@ -2271,6 +2271,33 @@ export class DashboardDataTransformer {
     });
   }
 
+  static transformContractManagerDashboardActivity(data: any[] | undefined) {
+    if (!data || !Array.isArray(data)) {
+      return [];
+    }
+
+    return data.map((item: any, index: number) => {
+      const title = item?.title ?? "";
+      const description = item?.description ?? "";
+      const createdAt = item?.createdAt ?? "";
+      const contractTitle = item?.contractTitle ?? "";
+      const requestedBy = item?.requestedBy ?? "";
+
+      const strongTitle = title ? `<strong>${title}</strong>` : "<strong>Update</strong>";
+      const suffixParts = [description, contractTitle, requestedBy].filter(Boolean);
+      const suffix = suffixParts.length > 0 ? ` — ${suffixParts.join(" • ")}` : "";
+
+      return {
+        id: item?.id ?? `cm-${index}`,
+        title: contractTitle || title || "Contract",
+        text: `${strongTitle}${suffix}`,
+        date: createdAt ? formatDateTZ(createdAt, "MMM d, yyyy h:mm a") : undefined,
+        status: item?.status ?? undefined,
+        type: item?.type ?? undefined,
+      };
+    });
+  }
+
   /**
    * Transform Company Admin General Updates data for activity component
    * Based on VendorUpdate schema: array of objects with action, createdAt, and solicitation properties

@@ -5,13 +5,23 @@ export const makeArrayData = <T = unknown>(func: () => T) =>
   faker.helpers.multiple(func, { count: 10 });
 
 export const getUser = (roleName?: UserRole): User => {
-  const roles: string[] = ['evaluator', 'vendor', 'company_admin', 'super_admin', 'procurement', 'contract_manager'];
-  const selectedRole = roleName || faker.helpers.arrayElement(roles) as UserRole;
+  const roles: string[] = [
+    "evaluator",
+    "vendor",
+    "approver",
+    "view_only",
+    "company_admin",
+    "super_admin",
+    "procurement",
+    "contract_manager",
+  ];
+  const selectedRole =
+    roleName || (faker.helpers.arrayElement(roles) as UserRole);
   return {
     _id: faker.string.uuid(),
     companyId: {
       name: faker.string.uuid(),
-      _id: faker.string.uuid()
+      _id: faker.string.uuid(),
     },
     createdAt: faker.date.past().toISOString(),
     email: faker.internet.email(),
@@ -19,9 +29,9 @@ export const getUser = (roleName?: UserRole): User => {
     role: {
       _id: faker.string.uuid(),
       name: selectedRole,
-      __v: 0
+      __v: 0,
     },
-    status: faker.helpers.arrayElement(['active', 'inactive', 'suspended']),
+    status: faker.helpers.arrayElement(["active", "inactive", "suspended"]),
     updatedAt: faker.date.recent().toISOString(),
     module: {
       contractManagement: true,
@@ -42,13 +52,13 @@ export const getUser = (roleName?: UserRole): User => {
     isAi: true,
     isDeleted: false,
     contactEmail: faker.internet.email(),
-  }
-}
+  };
+};
 
 export const getToken = () => {
-  return faker.string.uuid()
-}
+  return faker.string.uuid();
+};
 
-export { default as InactivityLogoutDemo } from './InactivityLogoutDemo';
-export { ConfirmAlertDemo } from './ConfirmAlertDemo';
-export { TextComboDemo } from './TextComboDemo';
+export { default as InactivityLogoutDemo } from "./InactivityLogoutDemo";
+export { ConfirmAlertDemo } from "./ConfirmAlertDemo";
+export { TextComboDemo } from "./TextComboDemo";

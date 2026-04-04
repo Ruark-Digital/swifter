@@ -57,5 +57,5 @@ const FeedItem: React.FC<FeedItemProps> = ({
   );
 };
 
-export default FeedItem;
+export default React.memo(FeedItem);
 

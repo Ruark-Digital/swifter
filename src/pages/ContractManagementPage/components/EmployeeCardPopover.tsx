@@ -24,8 +24,16 @@ const EmployeeCardPopover: React.FC<Props> = ({
   role = "Supervisor",
   phone = "+1 (344) 2213",
 }) => {
-  const initials = name
-    .split(" ")
+  const displayName =
+    typeof name === "string" && name.trim()
+      ? name
+      : typeof email === "string" && email.trim()
+        ? email
+        : userId ?? "";
+  const initials = String(displayName)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
@@ -40,7 +48,7 @@ const EmployeeCardPopover: React.FC<Props> = ({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-[342px] p-5 rounded-2xl border border-slate-200"
+        className="w-[342px] p-5 rounded-2xl border border-slate-200 bg-white"
         data-testid="employee-card-popover"
       >
         <div className="flex items-center gap-2">

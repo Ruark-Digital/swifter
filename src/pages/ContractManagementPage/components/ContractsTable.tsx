@@ -11,9 +11,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import EmptyState from "./EmptyState";
+import { Link } from "react-router-dom";
 
 export type ContractRow = {
   id: string;
+  contractId: string;
   title: string;
   code: string;
   vendor: string;
@@ -23,6 +25,7 @@ export type ContractRow = {
   endDate?: string;
   status:
     | "Active"
+    | "Publish"
     | "Draft"
     | "Expired"
     | "Terminated"
@@ -46,7 +49,7 @@ const columns: ColumnDef<ContractRow>[] = [
         >
           {row.original.title}
         </a>
-        <span className="text-xs text-slate-500">{row.original.code}</span>
+        <span className="text-xs text-slate-500">{row.original.contractId}</span>
       </div>
     ),
   },
@@ -66,9 +69,11 @@ const columns: ColumnDef<ContractRow>[] = [
     cell: ({ row }) => (
       <div className="text-xs text-slate-500">
         {row.original.published && (
-          <div>Published: {row.original.published}</div>
+          <div><span className="text-black font-bold">Published:</span> {row.original.published}</div>
         )}
-        {row.original.endDate && <div>End Date: {row.original.endDate}</div>}
+        {row.original.endDate && (
+          <div><span className="text-black font-bold">End Date:</span> {row.original.endDate}</div>
+        )}
       </div>
     ),
   },
@@ -78,7 +83,7 @@ const columns: ColumnDef<ContractRow>[] = [
     cell: ({ getValue }) => {
       const s = getValue<ContractRow["status"]>();
       const tone =
-        s === "Active" || s === "Completed"
+        s === "Active" || s === "Publish"
           ? "bg-green-100 text-green-700"
           : s === "Draft"
           ? "bg-slate-100 text-slate-700"
@@ -105,12 +110,12 @@ const columns: ColumnDef<ContractRow>[] = [
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem asChild>
-            <a
-              href={`/dashboard/contract-management/${row.original.id}`}
+            <Link
+              to={`/dashboard/contract-management/${row.original.id}`}
               data-testid="view-contract-detail"
             >
               View Details
-            </a>
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -122,19 +127,28 @@ type ContractsTableProps = {
   rows?: ContractRow[];
   isLoading?: boolean;
   totalCount?: number;
+  isReadOnly?: boolean;
+  disableActions?: boolean;
 };
 
 const ContractsTable: React.FC<ContractsTableProps> = ({
   rows = [],
   isLoading,
   totalCount,
+  isReadOnly,
+  disableActions,
 }) => {
   const [search, setSearch] = React.useState("");
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
-  
+
+  const tableColumns = React.useMemo(() => {
+    if (!isReadOnly && !disableActions) return columns;
+    return columns.filter((column) => column.id !== "actions");
+  }, [isReadOnly, disableActions]);
+
   const filteredRows = React.useMemo(() => {
     if (!search) return rows;
     const query = search.toLowerCase();
@@ -162,9 +176,17 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                   onChange={(e) => setSearch(e.target.value)}
                   data-testid="search-input"
                   className="h-10 w-[260px]"
+                  disabled={isReadOnly}
                 />
               </div>
-              <div className="ml-auto flex items-center gap-2">
+              <div
+                className={
+                  isReadOnly
+                    ? "ml-auto flex items-center gap-2 pointer-events-none opacity-60"
+                    : "ml-auto flex items-center gap-2"
+                }
+                aria-disabled={isReadOnly}
+              >
                 <DropdownFilters
                   filters={[
                     {
@@ -206,13 +228,13 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
             </div>
           </div>
         )}
-        emptyPlaceholder={<EmptyState />}
+        emptyPlaceholder={<EmptyState isReadOnly={isReadOnly || disableActions} />}
         classNames={{
           container:
             "bg-white dark:bg-slate-950 rounded-xl px-3 border border-gray-300 dark:border-slate-600",
         }}
         data={filteredRows}
-        columns={columns}
+        columns={tableColumns}
         options={{
           disableSelection: true,
           isLoading,

@@ -117,6 +117,7 @@ const ProjectManagementPage: React.FC = () => {
             budget: form.budget ?? 0,
             allowMultiple: form.allowMultipleContracts,
             files: form.files,
+            businessDivision: form.businessDivision,
           });
 
           setLastCreatedProjectId(res.data?._id ?? null);

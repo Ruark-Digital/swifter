@@ -28,10 +28,12 @@ import {
 // Type definitions for uploaded files
 interface UploadedFile {
   id?: string; // Optional document ID for deduplication
-  name: string;
+  name?: string;
   url: string;
   type: string;
   size: string;
+  originalName?: string;
+  fileName?: string;
   uploadedAt?: string;
 }
 
@@ -368,8 +370,9 @@ export const FileUploadManager = ({
 
       // Filter out documents that already exist in the store
       const newDocuments = documents.filter((doc: DocumentType) => {
+        const documentName = doc.name || doc.originalName || doc.fileName;
+        if (!documentName || !doc.url) return false;
         const exists = fileExistsInStore(doc);
-        // console.log(`Document ${doc.name} (ID: ${doc._id}) exists in store: ${exists}`);
         return !exists;
       });
       
@@ -382,21 +385,25 @@ export const FileUploadManager = ({
       if (newDocuments.length > 0) {
         // console.log('Adding new documents:', newDocuments.map(d => ({ name: d.name, id: d._id })));
         // Convert new documents to FileWithUploadState format
-        const newFileStates = newDocuments.map((doc: DocumentType) => ({
-          file: new File([], doc.name || "document", {
+        const newFileStates = newDocuments.map((doc: DocumentType) => {
+          const documentName =
+            doc.name || doc.originalName || doc.fileName || "document";
+          return {
+          file: new File([], documentName, {
             type: doc.type || "application/octet-stream",
           }),
           status: "uploaded" as const,
           progress: 100,
           uploadedData: {
             id: doc._id, // Store the document ID for deduplication
-            name: doc.name,
+            name: documentName,
             url: doc.url,
             type: doc.type,
             size: doc.size || "0 Bytes",
             uploadedAt: new Date().toISOString(),
           },
-        }));
+          };
+        });
 
         // Add only new files to state
         addFiles(newFileStates);
@@ -511,11 +518,17 @@ export const FileUploadManager = ({
       if (response.data?.data && response.data.data.length > 0) {
         const uploadedFile = response.data.data[0];
         const currentFile = filesWithState[index];
+        const uploadedName =
+          uploadedFile.name ||
+          uploadedFile.originalName ||
+          uploadedFile.fileName ||
+          currentFile?.file?.name;
         updateFileState(index, {
           status: "uploaded",
           progress: 100,
           uploadedData: {
             ...uploadedFile,
+            name: uploadedName,
             size: formatFileSize(currentFile.file.size),
           },
         });

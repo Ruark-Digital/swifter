@@ -279,15 +279,17 @@ const EditSolicitationDialog = ({
   // Helper function to format date for input
   const formatDateForInput = (dateString: string) => {
     if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toISOString().split("T")[0];
+    console.log({ dateString })
+    const date = dateString;
+    return date;
   };
 
   // Helper function to format time for input
   const formatTimeForInput = (dateString: string) => {
     if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toTimeString().split(" ")[0].substring(0, 5);
+    const date = format(dateString,  "yyyy-MM-dd'T'HH:mm:ss");
+    return date.split("T")[1].substring(0, 5);
+    // return date.toTimeString().split(" ")[0].substring(0, 5);
   };
 
   // Prepare default values from solicitation data
@@ -350,6 +352,7 @@ const EditSolicitationDialog = ({
   useEffect(() => {
     if (!open) return;
     forge.reset(getDefaultValues());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveSolicitation, open]);
 
   // File upload mutation
@@ -669,16 +672,16 @@ const EditSolicitationDialog = ({
             : effectiveSolicitation.visibility),
         status: "draft", // Always save as draft
         submissionDeadline: formData.submissionDeadlineDate
-          ? new Date(formData.submissionDeadlineDate).toISOString()
+            ? format(formData.submissionDeadlineDate,  "yyyy-MM-dd'T'HH:mm:ss")
           : effectiveSolicitation.submissionDeadline,
-        questionDeadline: formData.questionAcceptanceDeadlineDate
-          ? new Date(formData.questionAcceptanceDeadlineDate).toISOString()
+        questionDeadline: formData.questionAcceptanceDeadlineDate 
+          ? format(formData.questionAcceptanceDeadlineDate,  "yyyy-MM-dd'T'HH:mm:ss")
           : effectiveSolicitation.questionDeadline,
         bidIntent:
           (formData.bidIntent as "required" | "not required") ||
           effectiveSolicitation.bidIntent,
         bidIntentDeadline: formData.bidIntentDeadlineDate
-          ? new Date(formData.bidIntentDeadlineDate).toISOString()
+          ? format(formData.bidIntentDeadlineDate,  "yyyy-MM-dd'T'HH:mm:ss")
           : effectiveSolicitation.bidIntentDeadline,
         timezone:
           formData.timezone || effectiveSolicitation.timezone || "Africa/Lagos",

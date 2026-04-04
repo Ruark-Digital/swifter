@@ -33,13 +33,15 @@ const Step5Deliverables: React.FC<Props> = ({ control }) => {
               label="Due Date"
               component={TextDatePicker}
             />
-            <button
-              type="button"
-              className="text-xs text-red-600 md:col-span-2 text-left md:text-right"
-              onClick={() => remove(index)}
-            >
-              Remove Deliverable
-            </button>
+            {index > 0 && (
+              <button
+                type="button"
+                className="text-xs text-red-600 md:col-span-2 text-left md:text-right"
+                onClick={() => remove(index)}
+              >
+                Remove Deliverable
+              </button>
+            )}
           </div>
         ))}
       </div>

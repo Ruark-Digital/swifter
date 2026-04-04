@@ -35,6 +35,7 @@ export type AssignedEvaluationApiResponse = {
   averageProgress: number;
   startDate: string;
   endDate: string;
+  timezone: string;
   evaluationGroups: {
     name: string;
     status: string;

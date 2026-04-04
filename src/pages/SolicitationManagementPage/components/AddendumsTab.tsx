@@ -456,6 +456,7 @@ const AddendumsTab: React.FC<AddendumsTabProps> = ({
                     <Button
                       className="bg-[#2A4467] hover:bg-[#1e3252] text-white disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={
+                        solicitationStatus === "draft" ||
                         (solicitationStatus === "closed" ||
                           solicitationStatus === "awarded") &&
                         !isCompanyAdmin

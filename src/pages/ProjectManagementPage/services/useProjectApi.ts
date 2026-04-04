@@ -45,6 +45,7 @@ export type CreateProjectInput = {
     type: string;
     size: number;
   }>;
+  businessDivision?: string;
 };
 
 export const useProjectsList = (params?: {

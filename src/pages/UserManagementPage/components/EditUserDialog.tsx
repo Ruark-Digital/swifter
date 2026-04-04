@@ -71,8 +71,8 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
 
   // Update form values when user data is loaded
   useEffect(() => {
+    console.log({ user })
     if (user) {
-      console.log({ user })
       reset({
         name: user.name || "",
         phone: user.phone || "",
@@ -120,11 +120,18 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
     reset();
   };
 
-  const roleOptions = [
-    { value: "company_admin", label: "Company Admin" },
-    { value: "procurement", label: "Procurement Lead" },
-    { value: "evaluator", label: "Evaluator" },
-  ];
+  // Fetch roles
+  const { data: rolesData, isLoading: rolesLoading } = useQuery({
+    queryKey: ["roles"],
+    queryFn: async () => await getRequest({ url: "/onboarding/roles" }),
+  });
+
+  const roles = rolesData?.data?.data || [];
+
+  const roleOptions = roles.map((role: { _id: string; name: string }) => ({
+    value: role._id,
+    label: role.name?.replace?.('_', " ")?.toUpperCase(),
+  }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -134,7 +141,7 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
         </DialogHeader>
 
         <div className="p-6 space-y-4">
-          {isLoading ? (
+          {isLoading || rolesLoading ? (
             <PageLoader 
               showHeader={false}
               message="Loading user data..."

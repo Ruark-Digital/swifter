@@ -147,6 +147,181 @@ export interface CompanyStatus {
   pending: number;
 }
 
+export type ContractManagerTrendDirection = "up" | "down" | "none";
+
+export type ContractManagerCountTrend = {
+  value: number;
+  change: number;
+  trend: ContractManagerTrendDirection;
+};
+
+export type ContractManagerMoney = {
+  value: number;
+  currency: string;
+};
+
+export type ContractManagerMoneyTrend = {
+  value: number;
+  change: number;
+  trend: ContractManagerTrendDirection;
+};
+
+export type ContractManagerCommittedVsActual = {
+  committed: number;
+  actual: number;
+  percentage: number;
+  trend: ContractManagerMoneyTrend;
+};
+
+export type ContractManagerSavingsRealized = {
+  value: number;
+  percentage: number;
+  trend: ContractManagerMoneyTrend;
+};
+
+export type ContractManagerUpcomingRenewals = {
+  count: number;
+  days: number;
+};
+
+export type ContractManagerHighRiskContracts = {
+  count: number;
+};
+
+export type ContractManagerHoldbacks = {
+  value: number;
+  trend: ContractManagerMoneyTrend;
+};
+
+export type ContractManagerDashboardCards = {
+  allContracts: ContractManagerCountTrend;
+  activeContracts: ContractManagerCountTrend;
+  draftContracts: ContractManagerCountTrend;
+  suspendedContracts: ContractManagerCountTrend;
+  expiredContracts: ContractManagerCountTrend;
+  terminatedContracts: ContractManagerCountTrend;
+  totalContractValue: ContractManagerMoney;
+  committedVsActual: ContractManagerCommittedVsActual;
+  savingsRealized: ContractManagerSavingsRealized;
+  upcomingRenewals: ContractManagerUpcomingRenewals;
+  highRiskContracts: ContractManagerHighRiskContracts;
+  holdbacks: ContractManagerHoldbacks;
+};
+
+export type ContractManagerDashboardActivityItem = {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  requestedBy: string;
+  contractTitle: string;
+  createdAt: string;
+  type: string;
+};
+
+export type ContractManagerDashboardResponse<T> = {
+  message?: string;
+  data?: T;
+};
+
+export type ContractManagerCycleTimeStage = {
+  name: string;
+  days: number;
+  percentage: number;
+};
+
+export type ContractManagerCycleTime = {
+  stages: ContractManagerCycleTimeStage[];
+  bottleneck?: { stage: string; days: number; reason: string };
+};
+
+export type ContractManagerInvoiceStatus = {
+  approved: number;
+  pending: number;
+  rejected: number;
+};
+
+export type ContractManagerCommittedVsActualSpend = {
+  committed: number;
+  actual: number;
+  percentage: number;
+};
+
+export type ContractManagerValueByEntity = {
+  name: string;
+  value: number;
+  contractCount: number;
+};
+
+export type ContractManagerRiskDistribution = {
+  low: number;
+  medium: number;
+  high: number;
+};
+
+export type ContractManagerChangeOrderImpact = {
+  totalCOs: number;
+  valueIncrease: number;
+  percentageIncrease: number;
+  chartData: Array<{ date: string; original: number; revised: number }>;
+};
+
+export type ContractManagerComplianceStatus = {
+  insuranceActive: { current: number; total: number; percentage: number };
+  securitySubmission: { current: number; total: number; percentage: number };
+  missedApprovals: number;
+  ncrs: number;
+  auditTrailCompleteness: number;
+};
+
+export type ContractManagerClauseIntelligence = {
+  completionPercentage: number;
+  mostNegotiatedClauses: Array<{ category: string; count: number }>;
+  highRiskClauseTypes: Array<{
+    category: string;
+    contracts: number;
+    severity: string;
+  }>;
+};
+
+export type ContractManagerContractStatus = {
+  active: number;
+  pendingApproval: number;
+  completed: number;
+  terminated: number;
+  suspended: number;
+  draft: number;
+};
+
+export type ContractManagerVendorSummary = {
+  layout: { title: string; columns: string[] };
+  rows: Array<{
+    vendor?: string;
+    contracts?: number;
+    riskScore?: number;
+    claims?: number;
+    changeOrders?: number;
+    performance?: string;
+  }>;
+  summary?: unknown;
+};
+
+export type ContractManagerRenewals = {
+  timeline: Array<{
+    contractRef: string;
+    contractTitle: string;
+    contractCode: string;
+    vendor: string;
+    value: number;
+    daysToExpiry: number;
+    timelineStatus: string;
+    label: string;
+    stage: string;
+  }>;
+  actions?: unknown[];
+  summary?: unknown;
+};
+
 /**
  * Custom hook for fetching dashboard data based on user role
  * Implements API integration for SuperAdmin and other roles
@@ -161,6 +336,12 @@ export const useDashboardData = (
   const getFilterForChart = (chartId: string) => {
     return chartFilters[chartId] || defaultFilter;
   };
+  const isContractDashboardRole =
+    userRole === "contract_manager" || userRole === "approver";
+  const contractDashboardBasePath =
+    userRole === "approver"
+      ? "/contract/approver/contracts/dashboard"
+      : "/contract/manager/contracts/dashboard";
 
   // SuperAdmin dashboard count
   const { data: dashboardCount, isLoading: isLoadingCount } = useQuery<
@@ -566,6 +747,357 @@ export const useDashboardData = (
     refetchOnMount: false,
   });
 
+  const {
+    data: contractManagerTotalCards,
+    isLoading: isLoadingContractManagerTotalCards,
+  } = useQuery<ContractManagerDashboardResponse<ContractManagerDashboardCards>, ApiResponseError>({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-cards-total", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/cards/total`,
+        config: { params: { type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerDashboardCards>;
+    },
+    enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const {
+    data: contractManagerYtdCards,
+    isLoading: isLoadingContractManagerYtdCards,
+  } = useQuery<ContractManagerDashboardResponse<ContractManagerDashboardCards>, ApiResponseError>({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-cards-ytd", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/cards/ytd`,
+        config: { params: { type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerDashboardCards>;
+    },
+    enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const {
+    data: contractManagerActionLogs,
+    isLoading: isLoadingContractManagerActionLogs,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-action-logs", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/action-logs`,
+        config: { params: { type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>;
+    },
+    enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const {
+    data: contractManagerGeneralUpdates,
+    isLoading: isLoadingContractManagerGeneralUpdates,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-general-updates", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/general-updates`,
+        config: { params: { type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>;
+    },
+    enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const {
+    data: contractManagerCycleTime,
+    isLoading: isLoadingContractManagerCycleTime,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractManagerCycleTime>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-cycle-time", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/cycle-time`,
+        config: { params: { type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerCycleTime>;
+    },
+    enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const {
+    data: contractManagerInvoiceStatus,
+    isLoading: isLoadingContractManagerInvoiceStatus,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractManagerInvoiceStatus>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-invoice-status", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/invoice-status`,
+        config: { params: { range: "YTD", type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerInvoiceStatus>;
+    },
+    enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const {
+    data: contractManagerCommittedVsActualSpend,
+    isLoading: isLoadingContractManagerCommittedVsActualSpend,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractManagerCommittedVsActualSpend>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-committed-vs-actual", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/committed-vs-actual`,
+        config: { params: { range: "YTD", type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerCommittedVsActualSpend>;
+    },
+    enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const {
+    data: contractManagerVendorContractValue,
+    isLoading: isLoadingContractManagerVendorContractValue,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractManagerValueByEntity[]>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-vendor-contract-value", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/vendor-contract-value`,
+        config: { params: { range: "YTD", type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerValueByEntity[]>;
+    },
+    enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const {
+    data: contractManagerProjectContractValue,
+    isLoading: isLoadingContractManagerProjectContractValue,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractManagerValueByEntity[]>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-project-contract-value", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/project-contract-value`,
+        config: { params: { range: "YTD", type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerValueByEntity[]>;
+    },
+    enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const {
+    data: contractManagerRiskDistribution,
+    isLoading: isLoadingContractManagerRiskDistribution,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractManagerRiskDistribution>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-risk-distribution", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/risk-distribution`,
+        config: { params: { range: "YTD", type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerRiskDistribution>;
+    },
+    enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const {
+    data: contractManagerChangeOrderImpact,
+    isLoading: isLoadingContractManagerChangeOrderImpact,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractManagerChangeOrderImpact>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-change-order-impact", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/change-order-impact`,
+        config: { params: { range: "YTD", type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerChangeOrderImpact>;
+    },
+    enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const {
+    data: contractManagerCategoryValue,
+    isLoading: isLoadingContractManagerCategoryValue,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractManagerValueByEntity[]>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-category-value", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/category-value`,
+        config: { params: { range: "YTD", type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerValueByEntity[]>;
+    },
+    enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const {
+    data: contractManagerComplianceStatus,
+    isLoading: isLoadingContractManagerComplianceStatus,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractManagerComplianceStatus>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-compliance-status", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/compliance-status`,
+        config: { params: { range: "YTD", type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerComplianceStatus>;
+    },
+    enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const {
+    data: contractManagerClauseIntelligence,
+    isLoading: isLoadingContractManagerClauseIntelligence,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractManagerClauseIntelligence>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-clause-intelligence", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/clause-intelligence`,
+        config: { params: { type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerClauseIntelligence>;
+    },
+    enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const {
+    data: contractManagerContractStatus,
+    isLoading: isLoadingContractManagerContractStatus,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractManagerContractStatus>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-contract-status", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/contract-status`,
+        config: { params: { range: "YTD", type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerContractStatus>;
+    },
+    enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const {
+    data: contractManagerVendorSummary,
+    isLoading: isLoadingContractManagerVendorSummary,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractManagerVendorSummary>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-vendor-summary", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/vendor-summary`,
+        config: { params: { type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerVendorSummary>;
+    },
+    enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const {
+    data: contractManagerRenewals,
+    isLoading: isLoadingContractManagerRenewals,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractManagerRenewals>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-renewals", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/renewals`,
+        config: { params: { type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerRenewals>;
+    },
+    enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
   // Function to get chart-specific data
   const getChartData = (chartId?: string) => {
     if (!chartId) return [];
@@ -698,7 +1230,24 @@ export const useDashboardData = (
     // isLoadingProcurementBidIntent ||
     // isLoadingProcurementVendorsDistribution ||
     isLoadingProcurementWeeklyActivities ||
-    isLoadingProcurementTotalEvaluations;
+    isLoadingProcurementTotalEvaluations ||
+    isLoadingContractManagerTotalCards ||
+    isLoadingContractManagerYtdCards ||
+    isLoadingContractManagerActionLogs ||
+    isLoadingContractManagerGeneralUpdates ||
+    isLoadingContractManagerCycleTime ||
+    isLoadingContractManagerInvoiceStatus ||
+    isLoadingContractManagerCommittedVsActualSpend ||
+    isLoadingContractManagerVendorContractValue ||
+    isLoadingContractManagerProjectContractValue ||
+    isLoadingContractManagerRiskDistribution ||
+    isLoadingContractManagerChangeOrderImpact ||
+    isLoadingContractManagerCategoryValue ||
+    isLoadingContractManagerComplianceStatus ||
+    isLoadingContractManagerClauseIntelligence ||
+    isLoadingContractManagerContractStatus ||
+    isLoadingContractManagerVendorSummary ||
+    isLoadingContractManagerRenewals;
 
   return {
     // SuperAdmin data
@@ -741,6 +1290,24 @@ export const useDashboardData = (
     vendorMyActions: vendorMyActions?.data?.data,
     vendorGeneralUpdates: vendorGeneralUpdates?.data?.data,
 
+    contractManagerTotalCards: contractManagerTotalCards?.data,
+    contractManagerYtdCards: contractManagerYtdCards?.data,
+    contractManagerActionLogs: contractManagerActionLogs?.data,
+    contractManagerGeneralUpdates: contractManagerGeneralUpdates?.data,
+    contractManagerCycleTime: contractManagerCycleTime?.data,
+    contractManagerInvoiceStatus: contractManagerInvoiceStatus?.data,
+    contractManagerCommittedVsActualSpend: contractManagerCommittedVsActualSpend?.data,
+    contractManagerVendorContractValue: contractManagerVendorContractValue?.data,
+    contractManagerProjectContractValue: contractManagerProjectContractValue?.data,
+    contractManagerRiskDistribution: contractManagerRiskDistribution?.data,
+    contractManagerChangeOrderImpact: contractManagerChangeOrderImpact?.data,
+    contractManagerCategoryValue: contractManagerCategoryValue?.data,
+    contractManagerComplianceStatus: contractManagerComplianceStatus?.data,
+    contractManagerClauseIntelligence: contractManagerClauseIntelligence?.data,
+    contractManagerContractStatus: contractManagerContractStatus?.data,
+    contractManagerVendorSummary: contractManagerVendorSummary?.data,
+    contractManagerRenewals: contractManagerRenewals?.data,
+
     // Chart data function
     getChartData,
 
@@ -768,5 +1335,22 @@ export const useDashboardData = (
     isLoadingVendorGeneralUpdates,
     isLoadingProcurementMyActions,
     isLoadingProcurementGeneralUpdates,
+    isLoadingContractManagerTotalCards,
+    isLoadingContractManagerYtdCards,
+    isLoadingContractManagerActionLogs,
+    isLoadingContractManagerGeneralUpdates,
+    isLoadingContractManagerCycleTime,
+    isLoadingContractManagerInvoiceStatus,
+    isLoadingContractManagerCommittedVsActualSpend,
+    isLoadingContractManagerVendorContractValue,
+    isLoadingContractManagerProjectContractValue,
+    isLoadingContractManagerRiskDistribution,
+    isLoadingContractManagerChangeOrderImpact,
+    isLoadingContractManagerCategoryValue,
+    isLoadingContractManagerComplianceStatus,
+    isLoadingContractManagerClauseIntelligence,
+    isLoadingContractManagerContractStatus,
+    isLoadingContractManagerVendorSummary,
+    isLoadingContractManagerRenewals,
   };
 };

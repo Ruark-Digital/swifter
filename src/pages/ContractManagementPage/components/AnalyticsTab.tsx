@@ -16,57 +16,400 @@ import {
   ResponsiveContainer
 } from "recharts";
 import { cn } from "@/lib/utils";
+import type { ContractDetail } from "@/types";
 
-// Mock Data
-const kpiData = [
-  { label: "Risk Score", value: 65, status: "Medium Risk", color: "#F59E0B", type: "score" },
-  { label: "Compliance Status", value: 92, status: "Good", color: "#10B981", type: "percentage" },
-  { label: "Complexity Rating", value: 10, status: "High", color: "#EF4444", type: "score" },
-  { label: "Budget Status", value: 121, status: "Over Budget", color: "#EF4444", type: "percentage" },
-  { label: "SLA Performance", value: 88, status: "On Track", color: "#10B981", type: "percentage" },
-];
+type DashboardTier = "high" | "medium" | "good" | "critical" | "low" | string;
 
-const financialData = [
-  { label: "Original Contract Value", value: "$12.8M", highlight: false },
-  { label: "Change Orders (8)", value: "+$2.7M", highlight: true, color: "text-red-500" },
-  { label: "Pending Change Orders", value: "$0.18M", highlight: true, color: "text-yellow-500" },
-  { label: "Saving Realized", value: "$0.18M(5%)", highlight: true, color: "text-slate-700" },
-  { label: "% Increase from Original", value: "+21.1%", highlight: true, color: "text-red-500" },
-  { label: "Holdback Amount", value: "$0.75M", highlight: true, color: "text-purple-600" },
-];
+type DashboardOverview = {
+  riskScore?: { score?: number; tier?: DashboardTier };
+  compliance?: { score?: number; tier?: DashboardTier };
+  rating?: { score?: number; tier?: DashboardTier };
+  budget?: { score?: number; tier?: DashboardTier };
+  kpi?: { score?: number; tier?: DashboardTier };
+};
 
-const alertsData = [
-  { text: "Renew by 2025-06-30 - Contract expires in 175 days", urgent: true },
-  { text: "Pending CO requires approval - CO-005 ($180k) awaiting your sign-off", urgent: true },
-  { text: "Pending Invoice review - Invoice #INV-2024-089 for $850k due Jan 15", urgent: true },
-  { text: "Pending NCR review - 2 Non-Conformance Reports require closure", urgent: true },
-  { text: "Pending deliverable review - Safety Inspection Certificate is overdue", urgent: true },
-  { text: "Pending report review - Monthly Progress Report due in 8 days", urgent: true },
-];
+type FinancialStatement = {
+  originalContractValue?: number;
+  changeOrders?: { count?: number; value?: number };
+  pendingChangeOrders?: number;
+  savingsRealized?: { value?: number; percentage?: number };
+  percentageIncrease?: number;
+  holdbackAmount?: number;
+  releasedHoldback?: number;
+  currentContractValue?: number;
+  billedTillDate?: number;
+  remaining?: number;
+  currency?: string;
+};
 
-const legalData = [
-  { title: "Liquidated Damages", status: "HIGH RISK", color: "red", desc: "Standard: Standard penalty clause", actual: "Actual: Capped at 10% of contract value" },
-  { title: "Payment Terms", status: "LOW RISK", color: "green", desc: "Standard: Net 30 days", actual: "Actual: Net 45 days with early payment discount" },
-  { title: "Termination for Convenience", status: "MEDIUM RISK", color: "yellow", desc: "Standard: 30 days notice", actual: "Actual: 60 days notice required" },
-];
+type DeliverableStatus = {
+  total?: number;
+  approved?: number;
+  rejected?: number;
+  pending?: number;
+};
 
-const deliverableData = [
-  { name: "Approved", value: 10, color: "#1E293B" },
-  { name: "Rejected", value: 2, color: "#EF4444" },
-  { name: "Pending", value: 3, color: "#F59E0B" },
-];
+type ActivitiesData = {
+  current?: {
+    range?: string | number;
+    labels?: string[];
+    series?: {
+      change?: number[];
+      claims?: number[];
+      invoice?: number[];
+      rfi?: number[];
+      ncr?: number[];
+      deliverables?: number[];
+    };
+  };
+  previous?: {
+    range?: string | number;
+    labels?: string[];
+    series?: {
+      change?: number[];
+      claims?: number[];
+      invoice?: number[];
+      rfi?: number[];
+      ncr?: number[];
+      deliverables?: number[];
+    };
+  };
+};
 
-const activityData = [
-  { day: "Mon", change: 10, claims: 5, invoice: 8, rfi: 15, ncr: 2, deliverables: 20 },
-  { day: "Tues", change: 12, claims: 8, invoice: 10, rfi: 18, ncr: 3, deliverables: 22 },
-  { day: "Wed", change: 15, claims: 10, invoice: 12, rfi: 20, ncr: 4, deliverables: 25 },
-  { day: "Thu", change: 18, claims: 12, invoice: 15, rfi: 22, ncr: 5, deliverables: 28 },
-  { day: "Fri", change: 20, claims: 15, invoice: 18, rfi: 25, ncr: 6, deliverables: 30 },
-  { day: "Sat", change: 15, claims: 10, invoice: 12, rfi: 20, ncr: 4, deliverables: 25 },
-  { day: "Sun", change: 10, claims: 5, invoice: 8, rfi: 15, ncr: 2, deliverables: 20 },
-];
+type DeliverySummaryData = {
+  summary?: {
+    total?: number;
+    onTime?: number;
+    rejected?: number;
+    lateMissed?: number;
+  };
+  deliverables?: Array<{
+    kpi?: {
+      kpi?: number;
+      kpiDays?: number;
+      kpiText?: string;
+      kpiStatus?: string;
+    };
+  }>;
+};
 
-const AnalyticsTab: React.FC = () => {
+type AttachmentSummary = { amendment?: number; policy?: number };
+
+type AlertsData = {
+  generatedAt?: string;
+  summary?: {
+    scannedContracts?: number;
+    contractsRequiringAttention?: number;
+    totalOverdueItems?: number;
+    totalInsuranceWarnings?: number;
+    totalErrors?: number;
+  };
+  contracts?: Array<{
+    contractRef?: string;
+    contractCode?: string;
+    contractTitle?: string;
+    contractType?: string;
+    recommendedActions?: string[];
+  }>;
+};
+
+type ClauseLegalAnalysisData = {
+  clauses?: Array<{
+    title?: string;
+    standard?: string;
+    actual?: string;
+    risk?: string;
+    order?: number;
+  }>;
+};
+
+type VendorKpiData = Array<{ score?: number }>;
+
+type Props = {
+  contract?: ContractDetail;
+  overview?: DashboardOverview;
+  financialStatement?: FinancialStatement;
+  deliverableStatus?: DeliverableStatus;
+  activities?: ActivitiesData;
+  deliverySummary?: DeliverySummaryData;
+  attachments?: AttachmentSummary;
+  alerts?: AlertsData;
+  clauseLegalAnalysis?: ClauseLegalAnalysisData;
+  vendorKpi?: VendorKpiData;
+};
+
+const toTitleCase = (value: string) => {
+  const v = value.trim();
+  if (!v) return v;
+  return v.charAt(0).toUpperCase() + v.slice(1).toLowerCase();
+};
+
+const tierToColor = (tier?: DashboardTier) => {
+  const t = (tier ?? "").toLowerCase();
+  if (t === "high" || t === "critical") return "#EF4444";
+  if (t === "medium") return "#F59E0B";
+  if (t === "good" || t === "low") return "#10B981";
+  return "#64748B";
+};
+
+const tierToBadge = (tier?: DashboardTier) => {
+  const t = (tier ?? "").toLowerCase();
+  if (t === "high" || t === "critical") return "bg-red-50 text-red-700";
+  if (t === "medium") return "bg-yellow-50 text-yellow-700";
+  return "bg-green-50 text-green-700";
+};
+
+const formatNumber = (value?: number) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+  return value;
+};
+
+const formatPercent = (value?: number) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "--";
+  return `${Math.round(value)}%`;
+};
+
+const formatMoney = (value?: number, currency?: string) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "--";
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: currency ?? "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+};
+
+const formatIsoDate = (value?: string) => {
+  if (!value) return "--";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "--";
+  return d.toISOString().slice(0, 10);
+};
+
+const average = (values: number[]) => {
+  if (!values.length) return undefined;
+  const sum = values.reduce((acc, v) => acc + v, 0);
+  const avg = sum / values.length;
+  if (!Number.isFinite(avg)) return undefined;
+  return avg;
+};
+
+const AnalyticsTab: React.FC<Props> = ({
+  contract,
+  overview,
+  financialStatement,
+  deliverableStatus,
+  activities,
+  deliverySummary,
+  attachments,
+  alerts,
+  clauseLegalAnalysis,
+  vendorKpi,
+}) => {
+  const kpiCards = [
+    {
+      label: "Risk Score",
+      value: overview?.riskScore?.score,
+      tier: overview?.riskScore?.tier,
+      displayType: "percentage" as const,
+      maxValue: 100,
+    },
+    {
+      label: "Compliance Status",
+      value: overview?.compliance?.score,
+      tier: overview?.compliance?.tier,
+      displayType: "percentage" as const,
+      maxValue: 100,
+    },
+    {
+      label: "Complexity Rating",
+      value: overview?.rating?.score,
+      tier: overview?.rating?.tier,
+      displayType: "score" as const,
+      maxValue: 10,
+    },
+    {
+      label: "Budget Status",
+      value: overview?.budget?.score,
+      tier: overview?.budget?.tier,
+      displayType: "score" as const,
+      maxValue: 10,
+    },
+    {
+      label: "SLA Performance",
+      value: overview?.kpi?.score,
+      tier: overview?.kpi?.tier,
+      displayType: "percentage" as const,
+      maxValue: 100,
+    },
+  ];
+
+  const financialRows = [
+    {
+      label: "Original Contract Value",
+      value: formatMoney(
+        financialStatement?.originalContractValue,
+        financialStatement?.currency,
+      ),
+    },
+    {
+      label: `Change Orders (${formatNumber(financialStatement?.changeOrders?.count)})`,
+      value:
+        typeof financialStatement?.changeOrders?.value === "number"
+          ? `+${formatMoney(financialStatement?.changeOrders?.value, financialStatement?.currency)}`
+          : "--",
+      color: "text-red-500",
+    },
+    {
+      label: "Pending Change Orders",
+      value: formatMoney(
+        financialStatement?.pendingChangeOrders,
+        financialStatement?.currency,
+      ),
+      color: "text-yellow-500",
+    },
+    {
+      label: "Savings Realized",
+      value:
+        typeof financialStatement?.savingsRealized?.value === "number"
+          ? `${formatMoney(financialStatement?.savingsRealized?.value, financialStatement?.currency)}(${formatPercent(financialStatement?.savingsRealized?.percentage)})`
+          : "--",
+      color: "text-slate-700",
+    },
+    {
+      label: "% Increase from Original",
+      value:
+        typeof financialStatement?.percentageIncrease === "number"
+          ? `+${formatPercent(financialStatement?.percentageIncrease)}`
+          : "--",
+      color: "text-red-500",
+    },
+    {
+      label: "Holdback Amount",
+      value: formatMoney(
+        financialStatement?.holdbackAmount,
+        financialStatement?.currency,
+      ),
+      color: "text-purple-600",
+    },
+  ];
+
+  const alertsRows =
+    alerts?.contracts?.[0]?.recommendedActions?.length
+      ? alerts.contracts[0].recommendedActions.map((text) => ({
+          text,
+          urgent: true,
+        }))
+      : [];
+
+  const clauseRows =
+    clauseLegalAnalysis?.clauses?.length
+      ? clauseLegalAnalysis.clauses
+          .slice()
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+          .map((c) => {
+            const risk = (c.risk ?? "").toLowerCase();
+            const color = risk === "high" ? "red" : risk === "low" ? "green" : "yellow";
+            const status =
+              risk === "high"
+                ? "HIGH RISK"
+                : risk === "low"
+                  ? "LOW RISK"
+                  : "MEDIUM RISK";
+            return {
+              title: c.title ?? "--",
+              status,
+              color,
+              desc: `Standard: ${c.standard ?? "--"}`,
+              actual: `Actual: ${c.actual ?? "--"}`,
+            };
+          })
+      : [];
+
+  const deliverableChartData = [
+    {
+      name: "Approved",
+      value: formatNumber(deliverableStatus?.approved),
+      color: "#1E293B",
+    },
+    {
+      name: "Rejected",
+      value: formatNumber(deliverableStatus?.rejected),
+      color: "#EF4444",
+    },
+    {
+      name: "Pending",
+      value: formatNumber(deliverableStatus?.pending),
+      color: "#F59E0B",
+    },
+  ];
+
+  const labels = activities?.current?.labels ?? [];
+  const series = activities?.current?.series;
+  // Aggregate by month to avoid duplicate X-axis labels when API returns weekly data
+  const activityChartData = (() => {
+    const monthMap = new Map<string, {
+      change: number; claims: number; invoice: number; rfi: number; ncr: number; deliverables: number;
+    }>();
+    // Preserve insertion order for correct month ordering
+    labels.forEach((label, idx) => {
+      const d = new Date(label);
+      const monthKey = Number.isNaN(d.getTime())
+        ? String(label)
+        : new Intl.DateTimeFormat(undefined, { month: "short" }).format(d);
+      const existing = monthMap.get(monthKey) ?? { change: 0, claims: 0, invoice: 0, rfi: 0, ncr: 0, deliverables: 0 };
+      monthMap.set(monthKey, {
+        change: existing.change + (series?.change?.[idx] ?? 0),
+        claims: existing.claims + (series?.claims?.[idx] ?? 0),
+        invoice: existing.invoice + (series?.invoice?.[idx] ?? 0),
+        rfi: existing.rfi + (series?.rfi?.[idx] ?? 0),
+        ncr: existing.ncr + (series?.ncr?.[idx] ?? 0),
+        deliverables: existing.deliverables + (series?.deliverables?.[idx] ?? 0),
+      });
+    });
+    return Array.from(monthMap.entries()).map(([day, values]) => ({ day, ...values }));
+  })();
+
+  const deliverySummaryTotals = {
+    total: formatNumber(deliverySummary?.summary?.total),
+    onTime: formatNumber(deliverySummary?.summary?.onTime),
+    rejected: formatNumber(deliverySummary?.summary?.rejected),
+    lateMissed: formatNumber(deliverySummary?.summary?.lateMissed),
+  };
+
+  const vendorScores = (vendorKpi ?? [])
+    .map((v) => v.score)
+    .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+  const vendorAvg = average(vendorScores);
+  const vendorAvgPercent =
+    typeof vendorAvg === "number" ? Math.round(vendorAvg) : undefined;
+
+  const contractStatus = contract?.status ? toTitleCase(contract.status) : "--";
+  const contractOwner =
+    typeof (contract as any)?.creator === "string"
+      ? (contract as any).creator
+      : typeof (contract as any)?.creator?.name === "string"
+        ? (contract as any).creator.name
+        : "--";
+
+  const contractVendor =
+    typeof (contract as any)?.vendor === "string"
+      ? (contract as any).vendor
+      : typeof (contract as any)?.vendor?.name === "string"
+        ? (contract as any).vendor.name
+        : "--";
+
+  const contractValue =
+    typeof financialStatement?.currentContractValue === "number"
+      ? formatMoney(financialStatement.currentContractValue, financialStatement.currency)
+      : typeof (contract as any)?.totalAmount === "number"
+        ? formatMoney((contract as any).totalAmount, (contract as any).currency)
+        : "--";
+
+  const originalValue =
+    typeof financialStatement?.originalContractValue === "number"
+      ? formatMoney(financialStatement.originalContractValue, financialStatement.currency)
+      : "--";
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -82,46 +425,67 @@ const AnalyticsTab: React.FC = () => {
         <div className="flex items-start justify-between mb-6">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
-              <h2 className="text-xl font-bold">Building Construction Phase 2</h2>
-              <Badge className="bg-[#4ADE80] text-green-900 hover:bg-[#4ADE80] border-0">Active</Badge>
+              <h2 className="text-xl font-bold">{contract?.title ?? "--"}</h2>
+              <Badge className="bg-[#4ADE80] text-green-900 hover:bg-[#4ADE80] border-0">
+                {contractStatus}
+              </Badge>
             </div>
-            <p className="text-blue-100 text-sm">CON-2024-156 • BuildCorp Ltd</p>
+            <p className="text-blue-100 text-sm">
+              {contract?.contractId ?? "--"} • {contractVendor}
+            </p>
           </div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
           <div>
             <p className="text-blue-200 text-xs mb-1">Contract Value</p>
-            <p className="text-2xl font-bold">$15.5M</p>
+            <p className="text-2xl font-bold">{contractValue}</p>
           </div>
           <div>
             <p className="text-blue-200 text-xs mb-1">Original Value</p>
-            <p className="text-lg font-semibold">$12.8M</p>
+            <p className="text-lg font-semibold">{originalValue}</p>
           </div>
           <div>
             <p className="text-blue-200 text-xs mb-1">Start Date</p>
-            <p className="text-sm font-medium">2024-01-15</p>
+            <p className="text-sm font-medium">
+              {formatIsoDate(contract?.startDate)}
+            </p>
           </div>
           <div>
             <p className="text-blue-200 text-xs mb-1">End Date</p>
-            <p className="text-sm font-medium">2025-06-30</p>
+            <p className="text-sm font-medium">
+              {formatIsoDate(contract?.endDate)}
+            </p>
           </div>
           <div>
             <p className="text-blue-200 text-xs mb-1">Contract Owner</p>
-            <p className="text-sm font-medium">Sarah Johnson</p>
+            <p className="text-sm font-medium">{contractOwner}</p>
           </div>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {kpiData.map((kpi, index) => (
+        {kpiCards.map((kpi, index) => {
+          const value =
+            typeof kpi.value === "number" && Number.isFinite(kpi.value)
+              ? kpi.value
+              : 0;
+          const max = kpi.maxValue;
+          const color = tierToColor(kpi.tier);
+          const remainder = Math.max(0, max - value);
+          const status =
+            kpi.label === "Risk Score"
+              ? `${toTitleCase(String(kpi.tier ?? "medium"))} Risk`
+              : toTitleCase(String(kpi.tier ?? "good"));
+
+          return (
           <div key={index} className="bg-white p-4 rounded-xl border shadow-sm flex flex-col items-center">
             <p className="text-xs text-slate-500 font-medium mb-4 self-start">{kpi.label}</p>
             <div className="relative h-24 w-24 mb-2">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={[{ value: kpi.value }, { value: kpi.type === 'percentage' ? 100 - kpi.value : 100 - kpi.value }]} // Simplified max for score
+                    data={[{ value }, { value: remainder }]}
                     cx="50%"
                     cy="50%"
                     innerRadius={30}
@@ -130,14 +494,14 @@ const AnalyticsTab: React.FC = () => {
                     endAngle={-270}
                     dataKey="value"
                   >
-                    <Cell fill={kpi.color} />
+                    <Cell fill={color} />
                     <Cell fill="#E2E8F0" />
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className={cn("text-xl font-bold", `text-[${kpi.color}]`)} style={{ color: kpi.color }}>
-                  {kpi.value}{kpi.type === 'percentage' ? '%' : ''}
+                <span className={cn("text-xl font-bold")} style={{ color }}>
+                  {kpi.displayType === "percentage" ? `${Math.round(value)}%` : value}
                 </span>
               </div>
             </div>
@@ -145,14 +509,14 @@ const AnalyticsTab: React.FC = () => {
               variant="outline" 
               className={cn(
                 "border-0 mt-2",
-                kpi.status.includes("High") || kpi.status.includes("Over") ? "bg-red-50 text-red-700" :
-                kpi.status.includes("Medium") ? "bg-yellow-50 text-yellow-700" : "bg-green-50 text-green-700"
+                tierToBadge(kpi.tier)
               )}
             >
-              {kpi.status}
+              {status}
             </Badge>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Middle Section */}
@@ -164,7 +528,7 @@ const AnalyticsTab: React.FC = () => {
             <h3 className="font-semibold text-slate-800">Financial Overview</h3>
           </div>
           <div className="space-y-4">
-            {financialData.map((item, index) => (
+            {financialRows.map((item, index) => (
               <div key={index} className="flex justify-between items-center text-sm">
                 <span className="text-slate-600">{item.label}</span>
                 <span className={cn("font-semibold", item.color || "text-slate-900")}>{item.value}</span>
@@ -172,7 +536,12 @@ const AnalyticsTab: React.FC = () => {
             ))}
             <div className="pt-4 border-t mt-4 flex justify-between items-center bg-blue-50 p-3 rounded-lg">
               <span className="font-semibold text-slate-800">Current Contract Value</span>
-              <span className="font-bold text-blue-700 text-lg">$15.5M</span>
+              <span className="font-bold text-blue-700 text-lg">
+                {formatMoney(
+                  financialStatement?.currentContractValue,
+                  financialStatement?.currency,
+                )}
+              </span>
             </div>
           </div>
         </div>
@@ -184,7 +553,7 @@ const AnalyticsTab: React.FC = () => {
             <h3 className="font-semibold text-slate-800">Alerts & Recommended Actions</h3>
           </div>
           <ul className="space-y-4">
-            {alertsData.map((alert, index) => (
+            {alertsRows.map((alert, index) => (
               <li key={index} className="flex gap-2 text-sm text-slate-600">
                 <span className="text-orange-500 mt-1.5">•</span>
                 <span dangerouslySetInnerHTML={{ 
@@ -205,7 +574,7 @@ const AnalyticsTab: React.FC = () => {
             <h3 className="font-semibold text-slate-800">Clause & Legal Analysis</h3>
           </div>
           <div className="space-y-4">
-            {legalData.map((item, index) => (
+            {clauseRows.map((item, index) => (
               <div 
                 key={index} 
                 className={cn(
@@ -245,7 +614,7 @@ const AnalyticsTab: React.FC = () => {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={deliverableData}
+                  data={deliverableChartData}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -253,19 +622,21 @@ const AnalyticsTab: React.FC = () => {
                   paddingAngle={0}
                   dataKey="value"
                 >
-                  {deliverableData.map((entry, index) => (
+                  {deliverableChartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-3xl font-bold text-slate-900">15</span>
+              <span className="text-3xl font-bold text-slate-900">
+                {formatNumber(deliverableStatus?.total)}
+              </span>
               <span className="text-xs text-slate-500">Deliverables</span>
             </div>
           </div>
           <div className="flex justify-center gap-4 mt-4">
-            {deliverableData.map((item, index) => (
+            {deliverableChartData.map((item, index) => (
               <div key={index} className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
                 <span className="text-xs text-slate-600">{item.name} <span className="font-semibold text-slate-900">{item.value}</span></span>
@@ -279,14 +650,14 @@ const AnalyticsTab: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-semibold text-slate-800">Activities</h3>
             <div className="flex gap-2 text-xs">
-              <span className="px-2 py-1 bg-slate-100 rounded text-slate-600 font-medium">90 days</span>
+              <span className="px-2 py-1 bg-slate-100 rounded text-slate-600 font-medium">YTD</span>
+              <span className="px-2 py-1 text-slate-400">90 days</span>
               <span className="px-2 py-1 text-slate-400">60 days</span>
-              <span className="px-2 py-1 text-slate-400">30 days</span>
             </div>
           </div>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={activityData}>
+              <LineChart data={activityChartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
@@ -321,26 +692,26 @@ const AnalyticsTab: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-slate-800">Deliverable Summary</h3>
               <div className="flex gap-2 text-xs">
-                <span className="px-2 py-1 bg-slate-100 rounded text-slate-600 font-medium">90 days</span>
-                <span className="px-2 py-1 text-slate-400">60 days</span>
+                <span className="px-2 py-1 bg-slate-100 rounded text-slate-600 font-medium">YTD</span>
+                <span className="px-2 py-1 text-slate-400">90 days</span>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 mb-6">
               <div className="bg-slate-50 p-3 rounded-lg text-center">
                 <p className="text-xs text-slate-500">Total</p>
-                <p className="text-xl font-bold text-slate-900">45</p>
+                <p className="text-xl font-bold text-slate-900">{deliverySummaryTotals.total}</p>
               </div>
               <div className="bg-green-50 p-3 rounded-lg text-center">
                 <p className="text-xs text-green-600">On Time</p>
-                <p className="text-xl font-bold text-green-700">32</p>
+                <p className="text-xl font-bold text-green-700">{deliverySummaryTotals.onTime}</p>
               </div>
               <div className="bg-orange-50 p-3 rounded-lg text-center">
                 <p className="text-xs text-orange-600">Rejected</p>
-                <p className="text-xl font-bold text-orange-700">5</p>
+                <p className="text-xl font-bold text-orange-700">{deliverySummaryTotals.rejected}</p>
               </div>
               <div className="bg-red-50 p-3 rounded-lg text-center">
                 <p className="text-xs text-red-600">Late/Missed</p>
-                <p className="text-xl font-bold text-red-700">8</p>
+                <p className="text-xl font-bold text-red-700">{deliverySummaryTotals.lateMissed}</p>
               </div>
             </div>
           </div>
@@ -351,30 +722,32 @@ const AnalyticsTab: React.FC = () => {
               <div>
                 <div className="flex justify-between text-xs mb-1">
                   <span className="font-medium text-slate-700">Avg. Response Time</span>
-                  <span className="text-slate-500">4 days</span>
+                  <span className="text-slate-500">--</span>
                 </div>
-                <Progress value={60} className="h-1.5" variant="success" />
+                <Progress value={0} className="h-1.5" variant="success" />
               </div>
               <div>
                 <div className="flex justify-between text-xs mb-1">
                   <span className="font-medium text-slate-700">Quality Score</span>
-                  <span className="text-slate-500">90%</span>
+                  <span className="text-slate-500">
+                    {typeof vendorAvgPercent === "number" ? `${vendorAvgPercent}%` : "--"}
+                  </span>
                 </div>
-                <Progress value={90} className="h-1.5" />
+                <Progress value={vendorAvgPercent ?? 0} className="h-1.5" />
               </div>
               <div>
                 <div className="flex justify-between text-xs mb-1">
                   <span className="font-medium text-slate-700">On-Time Delivery</span>
-                  <span className="text-slate-500">90%</span>
+                  <span className="text-slate-500">--</span>
                 </div>
-                <Progress value={90} className="h-1.5" />
+                <Progress value={0} className="h-1.5" />
               </div>
               <div>
                 <div className="flex justify-between text-xs mb-1">
                   <span className="font-medium text-slate-700">Customer Satisfaction</span>
-                  <span className="text-slate-500">100%</span>
+                  <span className="text-slate-500">--</span>
                 </div>
-                <Progress value={100} className="h-1.5" variant="success" />
+                <Progress value={0} className="h-1.5" variant="success" />
               </div>
             </div>
           </div>
@@ -392,7 +765,9 @@ const AnalyticsTab: React.FC = () => {
             <div className="h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center mb-3">
               <FileText className="h-5 w-5 text-purple-600" />
             </div>
-            <p className="font-semibold text-slate-900">Amendments (3)</p>
+            <p className="font-semibold text-slate-900">
+              Amendments ({formatNumber(attachments?.amendment)})
+            </p>
             <p className="text-xs text-slate-500">View all</p>
           </div>
           <div className="border border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
@@ -400,7 +775,9 @@ const AnalyticsTab: React.FC = () => {
               <Shield className="h-5 w-5 text-green-600" />
             </div>
             <p className="font-semibold text-slate-900">Insurance</p>
-            <p className="text-xs text-slate-500">4 Polices</p>
+            <p className="text-xs text-slate-500">
+              {formatNumber(attachments?.policy)} Polices
+            </p>
           </div>
         </div>
       </div>

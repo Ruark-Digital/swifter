@@ -4,9 +4,10 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   values?: { draft: number; review: number; approval: number; execution: number };
+  bottleneck?: { stage: string; days: number; reason: string };
 };
 
-export const CycleTimeCard: React.FC<Props> = ({ values }) => {
+export const CycleTimeCard: React.FC<Props> = ({ values, bottleneck }) => {
   const v = values || { draft: 5, review: 8, approval: 12, execution: 6 };
   const max = Math.max(...Object.values(v), 12);
   const pct = (x: number) => Math.round((x / max) * 100);
@@ -63,14 +64,19 @@ export const CycleTimeCard: React.FC<Props> = ({ values }) => {
         <Row label="Approval" days={v.approval} />
         <Row label="Execution" days={v.execution} />
 
-        <div className="rounded-md bg-[#FEFCE8] border border-[#FDE68A] p-3">
-          <p className="text-[#854D0E] text-sm">
-            <span className="font-bold">Bottleneck Alert:</span>{" "}
-            Approval stage averaging 12 days (Legal review delays)
-          </p>
-        </div>
+        {(bottleneck?.stage || bottleneck?.reason) && (
+          <div className="rounded-md bg-[#FEFCE8] border border-[#FDE68A] p-3">
+            <p className="text-[#854D0E] text-sm">
+              <span className="font-bold">Bottleneck Alert:</span>{" "}
+              {bottleneck?.stage ? `${bottleneck.stage} stage` : "Stage"}{" "}
+              {typeof bottleneck?.days === "number"
+                ? `averaging ${bottleneck.days} days`
+                : ""}
+              {bottleneck?.reason ? ` (${bottleneck.reason})` : ""}
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 };
-

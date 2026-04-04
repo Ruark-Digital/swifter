@@ -1,10 +1,10 @@
 import React from "react";
+import { useParams } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SEOWrapper } from "@/components/SEO";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Share2 } from "lucide-react";
-import EmployeeCardPopover from "./components/EmployeeCardPopover";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -13,31 +13,346 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import ChangeStatsCards from "./components/ChangeStatsCards";
-import ChangeTable from "./components/ChangeTable";
-import ClaimsStatsCards from "./components/ClaimsStatsCards";
-import ClaimsTable from "./components/ClaimsTable";
-import ApproversTable from "./components/ApproversTable";
-import InvoiceStatsCards from "./components/InvoiceStatsCards";
-import InvoiceTable from "./components/InvoiceTable";
-import DeliverablesStatsCards from "./components/DeliverablesStatsCards";
-import DeliverablesTable from "./components/DeliverablesTable";
-import LemStatsCards from "./components/LemStatsCards";
-import LemTable from "./components/LemTable";
-import RfiStatsCards from "./components/RfiStatsCards";
-import RfiTable from "./components/RfiTable";
-import DocumentsStatsCard from "./components/DocumentsStatsCard";
-import DocumentsList from "./components/DocumentsList";
-import ComplianceSecurityTab from "./components/ComplianceSecurityTab";
-import AnalyticsTab from "./components/AnalyticsTab";
+import { PageLoader } from "@/components/ui/PageLoader";
+import { useToastHandler } from "@/hooks/useToaster";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import type { ApiResponseError, ContractDetail } from "@/types";
+import { useUserRole } from "@/hooks/useUserRole";
+import { vendorApi } from "./api/vendorApi";
+import { contractManagerApi } from "./api/contractManagerApi";
+import { approverApi } from "./api/approverApi";
+import { viewOnlyApi } from "./api/viewOnlyApi";
+import { companyAdminApi } from "./api/companyAdminApi";
+import AnalyticsTabContent from "./layouts/AnalyticsTabContent";
+import ApproversTabContent from "./layouts/ApproversTabContent";
+import ActionLogTabContent from "./layouts/ActionLogTabContent";
+import ChangeTabContent from "./layouts/ChangeTabContent";
+import ClaimsTabContent from "./layouts/ClaimsTabContent";
+import ComplianceTabContent from "./layouts/ComplianceTabContent";
+import ClauseLibraryTabContent from "./layouts/ClauseLibraryTabContent";
+import DeliverablesTabContent from "./layouts/DeliverablesTabContent";
+import DocumentsTabContent from "./layouts/DocumentsTabContent";
+import InvoiceTabContent from "./layouts/InvoiceTabContent";
+import LemTabContent from "./layouts/LemTabContent";
+import AmendmentsTabContent from "./layouts/AmendmentsTabContent";
+import NcrLogTabContent from "./layouts/NcrLogTabContent";
+import PaymentSummaryTabContent from "./layouts/PaymentSummaryTabContent";
+import RateSheetsTabContent from "./layouts/RateSheetsTabContent";
+import KpiTabContent from "./layouts/KpiTabContent";
+import OverviewTab from "./layouts/OverviewTab";
+import RfiTabContent from "./layouts/RfiTabContent";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import VendorReportsTabContent from "./layouts/VendorReportsTabContent";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+
+const formatContractStatus = (status?: ContractDetail["status"]) => {
+  if (status === "active")
+    return { label: "Active", className: "bg-green-100 text-green-700" };
+  if (status === "publish")
+    return { label: "Published", className: "bg-green-100 text-green-700" };
+  if (status === "draft")
+    return { label: "Draft", className: "bg-slate-100 text-slate-700" };
+  if (status === "pending_approval")
+    return {
+      label: "Pending Approval",
+      className: "bg-yellow-100 text-yellow-700",
+    };
+  if (status === "completed")
+    return { label: "Completed", className: "bg-blue-100 text-blue-700" };
+  if (status === "cancelled")
+    return { label: "Cancelled", className: "bg-red-100 text-red-700" };
+  if (status === "expired")
+    return { label: "Expired", className: "bg-orange-100 text-orange-700" };
+  if (status === "terminated")
+    return { label: "Terminated", className: "bg-red-100 text-red-700" };
+  return { label: "Unknown", className: "bg-slate-100 text-slate-700" };
+};
+
+type TabKey =
+  | "overview"
+  | "analytics"
+  | "kpi"
+  | "compliance"
+  | "documents"
+  | "amendments"
+  | "deliverables"
+  | "payment-summary"
+  | "rate-sheets"
+  | "lem"
+  | "invoice"
+  | "change"
+  | "claims"
+  | "rfi"
+  | "ncr-log"
+  | "approvers"
+  | "reports"
+  | "clause-library"
+  | "action-log";
+
+const ALL_TABS: Array<{ key: TabKey; label: string }> = [
+  { key: "overview", label: "Overview" },
+  { key: "analytics", label: "Analytics" },
+  { key: "kpi", label: "KPI" },
+  { key: "compliance", label: "Compliance & Security" },
+  { key: "documents", label: "Documents" },
+  { key: "amendments", label: "Amendments" },
+  { key: "deliverables", label: "Deliverables" },
+  { key: "payment-summary", label: "Payment Summary" },
+  { key: "rate-sheets", label: "Rate Sheets" },
+  { key: "lem", label: "LEM" },
+  { key: "invoice", label: "Invoice" },
+  { key: "change", label: "Change Management" },
+  { key: "claims", label: "Claims" },
+  { key: "rfi", label: "RFI" },
+  { key: "ncr-log", label: "NCR Log" },
+  { key: "approvers", label: "Approvers" },
+  { key: "reports", label: "Vendor’s Reports" },
+  { key: "clause-library", label: "Clause Library" },
+  { key: "action-log", label: "Action Log" },
+];
+
+const ROLE_TAB_WHITELIST: Record<
+  "approver" | "vendor" | "manager" | "view only",
+  TabKey[]
+> = {
+  approver: [
+    "overview",
+    "analytics",
+    "payment-summary",
+    "documents",
+    "amendments",
+    "change",
+    "claims",
+    "invoice",
+    "rfi",
+    "lem",
+    "deliverables",
+    "ncr-log",
+  ],
+  vendor: [
+    "overview",
+    "payment-summary",
+    "change",
+    "claims",
+    "deliverables",
+    "lem",
+    "invoice",
+    "rfi",
+    "documents",
+    "reports",
+    "ncr-log",
+    "compliance",
+    "amendments",
+    "rate-sheets"
+  ],
+  manager: ALL_TABS.map((t) => t.key),
+  "view only": [
+    "overview",
+    "payment-summary",
+    "documents",
+    "amendments",
+    "change",
+    "claims",
+    "invoice",
+    "rfi",
+    "lem",
+    "deliverables",
+    "ncr-log",
+  ],
+};
 
 const ContractDetailPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const toastHandler = useToastHandler();
+  const toastErrorRef = React.useRef(toastHandler.error);
+  const lastErrorRef = React.useRef<unknown>(null);
+  const { isVendor, isApprover, isViewOnly, isCompanyAdmin, isManager } =
+    useUserRole();
+  const queryKey = useUserQueryKey(["contract-manager-contracts", id]);
+  const approveStatusQueryKey = useUserQueryKey([
+    "contract-approver-approve-status",
+    undefined,
+  ]);
+  const queryClient = useQueryClient();
+
+  const [approvalDialogOpen, setApprovalDialogOpen] = React.useState(false);
+  const [approvalAction, setApprovalAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [comment, setComment] = React.useState("");
+  const [activeTab, setActiveTab] = React.useState<TabKey>("overview");
+
+  const {
+    data: contractsResponse,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey,
+    queryFn: () => {
+      if (isVendor) return vendorApi.getContract(id ?? "");
+      if (isApprover) return approverApi.getContract(id ?? "");
+      if (isCompanyAdmin) return companyAdminApi.getContract(id ?? "");
+      if (isViewOnly) return viewOnlyApi.getContract(id ?? "");
+      return contractManagerApi.getContract(id ?? "");
+    },
+    enabled: !!id,
+    staleTime: 60000,
+    retry: false,
+  });
+
+  const { data: approveStatusResponse } = useQuery({
+    queryKey: [approveStatusQueryKey[0], contractsResponse?.data?.data?._id],
+    queryFn: () => approverApi.getApproveStatus(contract?._id ?? ""),
+    enabled:
+      !!contractsResponse?.data?.data?._id &&
+      isApprover &&
+      contractsResponse?.data?.data?.status === "pending_approval",
+    staleTime: 60000,
+    retry: false,
+  });
+
+  const approvalMutation = useMutation({
+    mutationFn: async (action: "approved" | "rejected") => {
+      return approverApi.approveContract(id ?? "", {
+        action,
+        comment,
+      });
+    },
+    onSuccess: (res, action) => {
+      toastHandler.success(
+        `Contract ${action === "approved" ? "approved" : "rejected"} successfully`,
+        res.data.message,
+      );
+      queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({
+        queryKey: [
+          approveStatusQueryKey[0],
+          contractsResponse?.data?.data?._id,
+        ],
+      });
+      setApprovalDialogOpen(false);
+      setApprovalAction(null);
+      setComment("");
+    },
+    onError: (err: ApiResponseError) => {
+      toastHandler.error("Failed to update contract status", err);
+    },
+  });
+
+  const handleApprovalAction = (action: "approved" | "rejected") => {
+    setApprovalAction(action);
+    setApprovalDialogOpen(true);
+  };
+
+  const submitApproval = () => {
+    if (approvalAction) {
+      approvalMutation.mutate(approvalAction);
+    }
+  };
+
+  React.useEffect(() => {
+    toastErrorRef.current = toastHandler.error;
+  }, [toastHandler.error]);
+
+  React.useEffect(() => {
+    if (!error) return;
+    if (lastErrorRef.current === error) return;
+    lastErrorRef.current = error;
+    toastErrorRef.current("Contract Details", error as ApiResponseError);
+  }, [error]);
+
+  const visibleTabs = React.useMemo(() => {
+    if (isApprover) {
+      return ALL_TABS.filter((t) =>
+        ROLE_TAB_WHITELIST.approver.includes(t.key),
+      );
+    }
+    if (isVendor) {
+      return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.vendor.includes(t.key));
+    }
+    if (isViewOnly) {
+      return ALL_TABS.filter((t) =>
+        ROLE_TAB_WHITELIST["view only"].includes(t.key),
+      );
+    }
+    if (isManager) {
+      return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
+    }
+    return ALL_TABS;
+  }, [isApprover, isVendor, isViewOnly, isManager]);
+
+  if (isLoading) {
+    return (
+      <PageLoader
+        title="Contract Details"
+        message="Loading contract details..."
+        className="space-y-8"
+      />
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-8">
+        <SEOWrapper
+          title="Contract Details - SwiftPro eProcurement Portal"
+          description="View contract overview, team, and key information."
+          canonical={`/dashboard/contract-management/${id ?? ""}`}
+          robots="noindex, nofollow"
+        />
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          Failed to load contract details.
+        </div>
+      </div>
+    );
+  }
+
+  const contract = contractsResponse?.data?.data;
+
+  if (!contract) {
+    return (
+      <div className="space-y-8">
+        <SEOWrapper
+          title="Contract Details - SwiftPro eProcurement Portal"
+          description="View contract overview, team, and key information."
+          canonical={`/dashboard/contract-management/${id ?? ""}`}
+          robots="noindex, nofollow"
+        />
+        <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-700">
+          Contract not found.
+        </div>
+      </div>
+    );
+  }
+
+  const status = formatContractStatus(contract?.status);
+  const actionsDisabled = contract?.status === "pending_approval";
+
+  const canApprove = approveStatusResponse?.data?.data?.status === "pending";
+  const hasAprovedorRejected =
+    approveStatusResponse?.data?.data?.status === "approved" ||
+    approveStatusResponse?.data?.data?.status === "rejected";
+  const hasNoAuthorization =
+    approveStatusResponse?.data?.data?.status === "N/A";
+
+  const triggerClass =
+    "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3";
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pt-5">
       <SEOWrapper
         title="Contract Details - SwiftPro eProcurement Portal"
         description="View contract overview, team, and key information."
-        canonical="/dashboard/contract-management/:id"
+        canonical={`/dashboard/contract-management/${contract?._id ?? ""}`}
         robots="noindex, nofollow"
       />
 
@@ -54,7 +369,9 @@ const ContractDetailPage: React.FC = () => {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>Construction Services Agreement</BreadcrumbPage>
+            <BreadcrumbPage>
+              {contract?.title ?? "Contract Details"}
+            </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -62,370 +379,186 @@ const ContractDetailPage: React.FC = () => {
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold text-slate-900">
-            Construction Services Agreement
+            {contract?.title}
           </h1>
-          <p className="text-sm text-slate-500">CON-2025-10</p>
-          <Button variant="secondary" className="mt-4">
-            Approval Settings
-          </Button>
+          <p className="text-sm text-slate-500">{contract?.contractId}</p>
         </div>
-        <Badge className="bg-green-100 text-green-700">Active</Badge>
+        <Badge className={status?.className}>{status?.label}</Badge>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full bg-transparent space-y-4">
-        <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
-          <TabsTrigger
-            value="overview"
-            className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+      {isApprover && canApprove && !hasAprovedorRejected && (
+        <div
+          className={cn("flex items-center gap-4", {
+            hidden: hasNoAuthorization,
+          })}
+        >
+          <Button
+            variant="default"
+            className="bg-[#2A4467] hover:bg-[#2A4467]/90"
+            onClick={() => handleApprovalAction("approved")}
           >
-            Overview
-          </TabsTrigger>
-          <TabsTrigger
-            value="change"
-            className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+            Approve Contract
+          </Button>
+          <Button
+            variant="outline"
+            className="bg-[#F3F4F6] border-[#E5E7EB]"
+            onClick={() => handleApprovalAction("rejected")}
           >
-            Change Management
-          </TabsTrigger>
-          <TabsTrigger
-            value="claims"
-            className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-          >
-            Claims
-          </TabsTrigger>
-          <TabsTrigger
-            value="invoice"
-            className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-          >
-            Invoice
-          </TabsTrigger>
-          <TabsTrigger
-            value="rfi"
-            className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-          >
-            RFI
-          </TabsTrigger>
-          <TabsTrigger
-            value="lem"
-            className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-          >
-            LEM
-          </TabsTrigger>
-          <TabsTrigger
-            value="approvers"
-            className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-          >
-            Approvers
-          </TabsTrigger>
-          <TabsTrigger
-            value="deliverables"
-            className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-          >
-            Deliverables
-          </TabsTrigger>
-          <TabsTrigger
-            value="documents"
-            className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-          >
-            Documents
-          </TabsTrigger>
-        </TabsList>
+            Reject Contract
+          </Button>
+        </div>
+      )}
 
-        <TabsContent value="overview" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="text-base font-semibold text-gray-600">
-              Contract Details
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline">
-                <Share2 className="mr-2 h-4 w-4" /> Export Report
-              </Button>
-              <Button>Edit Contract</Button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <span className="text-slate-500">Contract Name</span>
-                <span className="text-slate-900 font-medium">
-                  Construction Services Agreement
-                </span>
-                <span className="text-slate-500">Project Name</span>
-                <span className="text-slate-900">
-                  IT Infrastructure Upgrade Project
-                </span>
-                <span className="text-slate-500">Effective Date</span>
-                <span className="text-slate-900">Date</span>
-                <span className="text-slate-500">Published Date</span>
-                <span className="text-slate-900">dATE</span>
-              </div>
-              <div className="space-y-2">
-                <span className="text-slate-500">Status</span>
-                <Badge className="bg-green-100 text-green-700">Active</Badge>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <span className="text-slate-500">Contract ID</span>
-                <span className="text-slate-900">CON-2025-10</span>
-                <span className="text-slate-500">Project Relationship</span>
-                <span className="text-slate-900">Stand-Alone Project</span>
-                <span className="text-slate-500">End Date</span>
-                <span className="text-slate-900">dATE</span>
-                <span className="text-slate-500">Contract Manager</span>
-                <a href="#" className="text-blue-600 underline">
-                  Mike@acme.com
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <span className="text-slate-500">Description</span>
-            <p className="text-slate-700 max-w-3xl">
-              “Lorem ipsum dolor sit amet consectetur. Volutpat quis egestas
-              nunc egestas ut sed accumsan commodo vitae. Ullamcorper feugiat
-              pulvinar consectetur vel natoque amet enim ac sed. Laoreet
-              fringilla sollicitudin pharetra sit proin dictum. Sit sed lorem
-              mauris.”
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <div className="text-base font-semibold text-gray-600">
-              Contract Team
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-2">
-                <span className="text-slate-500">Contract Manager</span>
-                <EmployeeCardPopover
-                  triggerLabel="Wisdom Kaye"
-                  name="Wisdom Kaye"
-                />
-                <span className="text-slate-500">Internal Stakeholder</span>
-                <div className="flex flex-col gap-1">
-                  <EmployeeCardPopover
-                    triggerLabel="Kanayo Kanayo"
-                    name="Kanayo Kanayo"
-                  />
-                  <EmployeeCardPopover
-                    triggerLabel="Will Smith"
-                    name="Will Smith"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <span className="text-slate-500">Vendor/Contractor</span>
-                <EmployeeCardPopover
-                  triggerLabel="Kaye Wisdom"
-                  name="Kaye Wisdom"
-                />
-                <span className="text-slate-500">
-                  Vendor/Contractor Key Personnel
-                </span>
-                <div className="flex flex-col gap-1">
-                  <EmployeeCardPopover
-                    triggerLabel="Olamide Oladehinde"
-                    name="Olamide Oladehinde"
-                  />
-                  <EmployeeCardPopover
-                    triggerLabel="Oluwaseun Oladehinde"
-                    name="Oluwaseun Oladehinde"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-6">
-          <AnalyticsTab />
-        </TabsContent>
-
-        <TabsContent value="compliance" className="space-y-6">
-          <ComplianceSecurityTab />
-        </TabsContent>
-
-        <TabsContent value="change" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold text-gray-600">Change</h3>
-            <div className="flex items-center gap-2">
-              <Button variant="outline">
-                <Share2 className="mr-2 h-4 w-4" /> Export Report
-              </Button>
-              <Button>Create Change</Button>
-            </div>
-          </div>
-
-          <ChangeStatsCards />
-
-          <Tabs defaultValue="all" className="w-full bg-transparent">
-            <TabsList className="h-auto rounded-none border-b border-[#E9E9EB] dark:border-slate-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
-              <TabsTrigger
-                value="all"
-                className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-              >
-                All Changes
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as TabKey)}
+        className="w-full bg-transparent space-y-4"
+      >
+        <ScrollArea className="pb-4 w-[75vw]">
+          <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
+            {visibleTabs.map((t) => (
+              <TabsTrigger key={t.key} value={t.key} className={triggerClass}>
+                {t.label}
               </TabsTrigger>
-              <TabsTrigger
-                value="requests"
-                className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-              >
-                Change Requests
-              </TabsTrigger>
-              <TabsTrigger
-                value="orders"
-                className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-              >
-                Change Orders
-              </TabsTrigger>
-              <TabsTrigger
-                value="directive"
-                className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-              >
-                Change Directive
-              </TabsTrigger>
-              <TabsTrigger
-                value="proposal"
-                className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-              >
-                Change Proposal
-              </TabsTrigger>
-            </TabsList>
+            ))}
+          </TabsList>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
-            <TabsContent value="all">
-              <ChangeTable />
-            </TabsContent>
-            <TabsContent value="requests">
-              <ChangeTable />
-            </TabsContent>
-            <TabsContent value="orders">
-              <ChangeTable />
-            </TabsContent>
-            <TabsContent value="directive">
-              <ChangeTable />
-            </TabsContent>
-            <TabsContent value="proposal">
-              <ChangeTable />
-            </TabsContent>
-          </Tabs>
-        </TabsContent>
+        <OverviewTab contract={contract} status={status} />
 
-        <TabsContent value="claims" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold text-gray-600">Claims</h3>
-            <div className="flex items-center gap-2">
-              <Button variant="outline">
-                <Share2 className="mr-2 h-4 w-4" /> Export Report
-              </Button>
-            </div>
-          </div>
+        <AnalyticsTabContent isActive={activeTab === "analytics"} />
 
-          <ClaimsStatsCards />
+        <KpiTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "kpi"}
+        />
 
-          <ClaimsTable />
-        </TabsContent>
+        <ComplianceTabContent isActive={activeTab === "compliance"} />
 
-        <TabsContent value="approvers" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold text-gray-600">Approvers</h3>
-            <div className="flex items-center gap-2">
-              <Button variant="outline">
-                <Share2 className="mr-2 h-4 w-4" /> Export Report
-              </Button>
-            </div>
-          </div>
+        <ChangeTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "change"}
+          actionsDisabled={actionsDisabled}
+        />
 
-          <ApproversTable />
-        </TabsContent>
+        <ClaimsTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "claims"}
+          actionsDisabled={actionsDisabled}
+        />
 
-        <TabsContent value="invoice" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold text-gray-600">Invoice</h3>
-            <div className="flex items-center gap-2">
-              <Button variant="outline">
-                <Share2 className="mr-2 h-4 w-4" /> Export Report
-              </Button>
-            </div>
-          </div>
+        <ApproversTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "approvers"}
+        />
 
-          <InvoiceStatsCards />
+        <InvoiceTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "invoice"}
+        />
 
-          <InvoiceTable />
-        </TabsContent>
+        <DeliverablesTabContent />
 
-        <TabsContent value="deliverables" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold text-gray-600">
-              Deliverable
-            </h3>
-            <div className="flex items-center gap-2">
-              <Button variant="outline">
-                <Share2 className="mr-2 h-4 w-4" /> Export Report
-              </Button>
-            </div>
-          </div>
+        <RateSheetsTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "rate-sheets"}
+        />
 
-          <DeliverablesStatsCards />
+        <LemTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "lem"}
+        />
 
-          <DeliverablesTable />
-        </TabsContent>
+        <RfiTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "rfi"}
+          actionsDisabled={actionsDisabled}
+        />
 
-        <TabsContent value="lem" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold text-gray-600">
-              Labor, Equipment & Material Reports
-            </h3>
-            <div className="flex items-center gap-2">
-              <Button variant="outline">
-                <Share2 className="mr-2 h-4 w-4" /> Export Report
-              </Button>
-            </div>
-          </div>
+        <NcrLogTabContent
+          contractId={contract?._id ?? ""}
+          contract={contract}
+          isActive={activeTab === "ncr-log"}
+          actionsDisabled={actionsDisabled}
+        />
 
-          <LemStatsCards />
+        <DocumentsTabContent
+          files={contract?.files}
+          contractId={contract?._id ?? ""}
+          effectiveDate={contract?.startDate}
+          actionsDisabled={contract?.status === "publish"}
+        />
 
-          <LemTable />
-        </TabsContent>
+        <AmendmentsTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "amendments"}
+          actionsDisabled={actionsDisabled}
+        />
 
-        <TabsContent value="rfi" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold text-gray-600">RFI</h3>
-            <div className="flex items-center gap-2">
-              <Button variant="outline"><Share2 className="mr-2 h-4 w-4" /> Export Report</Button>
-              <Button>Issue RFI</Button>
-            </div>
-          </div>
+        <PaymentSummaryTabContent
+          contractId={contract?._id ?? ""}
+          contract={contract}
+          isActive={activeTab === "payment-summary"}
+        />
 
-          <RfiStatsCards />
+        <ClauseLibraryTabContent isActive={activeTab === "clause-library"} />
 
-          <Tabs defaultValue="all" className="w-full bg-transparent">
-            <TabsList className="h-auto rounded-none border-b border-[#E9E9EB] dark:border-slate-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
-              <TabsTrigger value="all" className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3">All RFI</TabsTrigger>
-              <TabsTrigger value="issued" className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3">Issued</TabsTrigger>
-              <TabsTrigger value="received" className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3">Received</TabsTrigger>
-            </TabsList>
-            <TabsContent value="all"><RfiTable /></TabsContent>
-            <TabsContent value="issued"><RfiTable /></TabsContent>
-            <TabsContent value="received"><RfiTable /></TabsContent>
-          </Tabs>
-        </TabsContent>
+        <VendorReportsTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "reports"}
+        />
 
-        <TabsContent value="documents" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold text-gray-600">Documents</h3>
-            <div className="flex items-center gap-2">
-              <Button variant="outline"><Share2 className="mr-2 h-4 w-4" /> Export Report</Button>
-              <Button>Edit Contract</Button>
-            </div>
-          </div>
-
-          <DocumentsStatsCard />
-
-          <DocumentsList />
-        </TabsContent>
+        <ActionLogTabContent isActive={activeTab === "action-log"} />
       </Tabs>
+
+      <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {approvalAction === "approved"
+                ? "Approve Contract"
+                : "Reject Contract"}
+            </DialogTitle>
+            <DialogDescription>
+              {approvalAction === "approved"
+                ? "Are you sure you want to approve this contract? This action cannot be undone."
+                : "Please provide a reason for rejecting this contract."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <Textarea
+              placeholder="Add a comment (optional)"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              className="resize-none"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setApprovalDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={submitApproval}
+              disabled={approvalMutation.isPending}
+              variant={
+                approvalAction === "rejected" ? "destructive" : "default"
+              }
+            >
+              {approvalMutation.isPending
+                ? "Processing..."
+                : approvalAction === "approved"
+                  ? "Approve"
+                  : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

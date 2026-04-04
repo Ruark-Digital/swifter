@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import YooptaEditor, { createYooptaEditor } from "@yoopta/editor";
 import Paragraph from "@yoopta/paragraph";
 import { HeadingOne, HeadingTwo, HeadingThree } from "@yoopta/headings";
@@ -20,7 +19,6 @@ import {
   CodeMark,
   Highlight,
 } from "@yoopta/marks";
-import { YooptaContentValue, YooptaOnChangeOptions } from "@yoopta/editor";
 import { cn } from "@/lib/utils";
 import "@/pages/CollaborationToolPage/collaboration.css";
 import { createCollab } from "../collab/useYooptaYjs";
@@ -61,47 +59,80 @@ interface EditorPanelProps {
     fileName: string;
     fileType: string;
   };
+  collabMeta?: {
+    wsUrl: string;
+    roomId: string;
+    token?: string;
+    disable?: boolean;
+    presenceActive?: boolean;
+  };
 }
 
 const EditorPanel: React.FC<EditorPanelProps> = ({
   className,
   importMeta,
+  collabMeta,
 }) => {
   const navigate = useNavigate();
   const editor = useMemo(() => createYooptaEditor(), []);
-  const [value, setValue] = useState<YooptaContentValue>();
+  const collab = useMemo(() => {
+    const wsUrl = collabMeta?.wsUrl || import.meta.env.VITE_YWS_URL || "ws://localhost:1234";
+    let resolvedWsUrl = wsUrl;
 
-  const onChange = (v: YooptaContentValue, _opts: YooptaOnChangeOptions) =>
-    setValue(v);
+    if (collabMeta?.token) {
+      try {
+        const url = new URL(wsUrl);
+        if (!url.searchParams.get("token")) {
+          url.searchParams.set("token", collabMeta.token);
+        }
+        resolvedWsUrl = url.toString();
+      } catch {
+        resolvedWsUrl = wsUrl;
+      }
+    }
 
-  const { wrapPluginsWithCollab } = useMemo(
-    () =>
-      createCollab({
-        wsUrl: import.meta.env.VITE_YWS_URL ?? "ws://localhost:1234",
-        roomId: "collab:editor",
-        disable: true,
-      }),
-    []
-  );
+    return createCollab({
+      wsUrl: resolvedWsUrl,
+      roomId: collabMeta?.roomId || "collab:editor",
+      disable: collabMeta?.disable ?? false,
+    });
+  }, [collabMeta?.disable, collabMeta?.roomId, collabMeta?.token, collabMeta?.wsUrl]);
 
-  const collabPlugins = useMemo(
-    () => wrapPluginsWithCollab(PLUGINS),
-    [wrapPluginsWithCollab]
+  const collabPlugins = useMemo(() => collab.wrapPluginsWithCollab(PLUGINS), [collab]);
+  const handleNavigateBack = useCallback(() => {
+    navigate(-1);
+  }, [navigate]);
+
+  useEffect(
+    () => () => {
+      collab.destroy();
+    },
+    [collab]
   );
 
   useEffect(() => {
-    if (!importMeta) return;
+    collab.setPresenceActive(collabMeta?.presenceActive ?? true);
+  }, [collab, collabMeta?.presenceActive]);
+
+  useEffect(() => {
+    if (!importMeta?.sourceUrl) return;
+
+    let active = true;
+
     convertFileUrlToYoopta(
       editor,
       importMeta.sourceUrl,
       importMeta.fileName,
       importMeta.fileType
     ).then((content) => {
+      if (!active) return;
       editor.setEditorValue(content);
-      setValue(content);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [importMeta]);
+
+    return () => {
+      active = false;
+    };
+  }, [editor, importMeta]);
 
   return (
     <div className={cn("ct-editor-panel", className)}>
@@ -109,7 +140,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
         <span className="ct-editor-title">Document Editor</span>
         <div
           className="ct-dismiss-pill cursor-pointer"
-          onClick={() => navigate(-1)}
+          onClick={handleNavigateBack}
         >
           <XIcon className="ct-editor-dismiss w-6 h-6" />
         </div>
@@ -120,8 +151,6 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
           plugins={collabPlugins}
           marks={MARKS}
           tools={TOOLS}
-          value={value}
-          onChange={onChange}
           placeholder="Type text.."
           className="yoopta-editor w-full"
           style={{ width: "100%", paddingBottom: "120px" }}
@@ -131,4 +160,15 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
   );
 };
 
-export default EditorPanel;
+const arePropsEqual = (prev: EditorPanelProps, next: EditorPanelProps) =>
+  prev.className === next.className &&
+  prev.importMeta?.sourceUrl === next.importMeta?.sourceUrl &&
+  prev.importMeta?.fileName === next.importMeta?.fileName &&
+  prev.importMeta?.fileType === next.importMeta?.fileType &&
+  prev.collabMeta?.wsUrl === next.collabMeta?.wsUrl &&
+  prev.collabMeta?.roomId === next.collabMeta?.roomId &&
+  prev.collabMeta?.disable === next.collabMeta?.disable &&
+  prev.collabMeta?.token === next.collabMeta?.token &&
+  prev.collabMeta?.presenceActive === next.collabMeta?.presenceActive;
+
+export default React.memo(EditorPanel, arePropsEqual);

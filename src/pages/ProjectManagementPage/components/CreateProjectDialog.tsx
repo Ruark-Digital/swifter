@@ -2,12 +2,12 @@ import React from "react";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
+import { FileInput, FileUploader, FileUploaderContent } from "@/components/ui/file-upload";
 import { Forge, Forger, useForge } from "@/lib/forge";
 import { postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
@@ -19,12 +19,12 @@ import {
   TextSelect,
   TextCurrencyInput,
   TextDatePicker,
-  TextFileUploader,
 } from "@/components/layouts/FormInputs";
 import { CloudUpload, FileText, X } from "lucide-react";
 import { format, startOfDay } from "date-fns";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { truncate } from "lodash";
+import { businessDivisionApi } from "@/pages/BusinessDivisionsPage/api/businessDivisionApi";
 
 type UploadedFile = {
   name: string;
@@ -41,6 +41,7 @@ type InitialValues = {
   startDate?: Date;
   endDate?: Date;
   allowMultipleContracts?: boolean;
+  businessDivision?: string;
 };
 
 type Props = {
@@ -60,6 +61,7 @@ type Props = {
     endDate?: string;
     allowMultipleContracts: boolean;
     files?: UploadedFile[];
+    businessDivision?: string;
   }) => Promise<void> | void;
   isSubmitting: boolean;
 };
@@ -86,6 +88,7 @@ const schema = yup.object({
   description: yup.string().optional(),
   allowMultipleContracts: yup.boolean().default(false),
   files: yup.mixed<File[]>().nullable().optional().default(null),
+  businessDivision: yup.string().optional(),
 });
 
 const defaultValues = {
@@ -97,6 +100,7 @@ const defaultValues = {
   description: "",
   allowMultipleContracts: true,
   files: null as File[] | null,
+  businessDivision: "",
 };
 
 type FormState = yup.InferType<typeof schema>;
@@ -162,6 +166,16 @@ const CreateProjectDialog: React.FC<Props> = ({
     },
   });
 
+  const { data: divisionsRes, isLoading: isLoadingDivisions } = useQuery<
+    Awaited<ReturnType<typeof businessDivisionApi.listDivisions>>,
+    ApiResponseError
+  >({
+    queryKey: ["businessDivisions", "list", "all"],
+    queryFn: async () =>
+      await businessDivisionApi.listDivisions({ page: 1, limit: 1000 }),
+    enabled: open,
+  });
+
   const { control, watch, setValue } = useForge({
     resolver: yupResolver(schema),
     defaultValues,
@@ -171,6 +185,14 @@ const CreateProjectDialog: React.FC<Props> = ({
   const allowMultiple = watch("allowMultipleContracts");
   const files = watch("files");
   const startDate = watch("startDate");
+
+  const businessDivisionOptions = React.useMemo(() => {
+    const divisions = divisionsRes?.data?.docs ?? [];
+    return divisions.map((division) => ({
+      label: division.name || division._id,
+      value: division._id,
+    }));
+  }, [divisionsRes]);
 
   React.useEffect(() => {
     if (!open || !initialValues) return;
@@ -195,6 +217,9 @@ const CreateProjectDialog: React.FC<Props> = ({
     }
     if (typeof initialValues.allowMultipleContracts === "boolean") {
       setValue("allowMultipleContracts", initialValues.allowMultipleContracts);
+    }
+    if (typeof initialValues.businessDivision === "string") {
+      setValue("businessDivision", initialValues.businessDivision);
     }
 
     setValue("files", null);
@@ -233,7 +258,7 @@ const CreateProjectDialog: React.FC<Props> = ({
       uploadState?.status === "error";
 
     return (
-      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 max-w-xl">
+      <div className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50">
             <FileText className="h-5 w-5 text-slate-600" />
@@ -357,7 +382,10 @@ const CreateProjectDialog: React.FC<Props> = ({
       budget: typeof data.budget === "number" ? data.budget : undefined,
       allowMultipleContracts: !!data.allowMultipleContracts,
       files: uploadedFiles,
+      businessDivision: data.businessDivision,
     };
+
+    // console.log({ payload })
 
     try {
       if (onSubmit) {
@@ -372,19 +400,32 @@ const CreateProjectDialog: React.FC<Props> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl rounded-2xl p-0 max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="px-8 pt-8">
-          <DialogTitle>{title ?? "Create Project"}</DialogTitle>
-        </DialogHeader>
-
-        <div className="px-8 pb-6">
-          <Forge
-            control={control}
-            onSubmit={submit}
-            className="space-y-6"
-            data-testid={dialogTestId ?? "create-project-dialog"}
-            // debug
+      <DialogContent
+        showCloseButton={false}
+        className=" rounded-2xl p-6 gap-6 max-h-[90vh] overflow-y-auto"
+      >
+        <div className="flex items-start justify-between">
+          <DialogTitle className="text-[20px] font-semibold leading-[30px] text-[#0F0F0F]">
+            {title ?? "Create Project"}
+          </DialogTitle>
+          <button
+            type="button"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-red-500 hover:bg-red-50"
+            onClick={() => onOpenChange(false)}
+            aria-label="Close dialog"
+            data-testid="close-create-project"
           >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <Forge
+          control={control}
+          onSubmit={submit}
+          className="space-y-4"
+          data-testid={dialogTestId ?? "create-project-dialog"}
+        >
+          <div className="space-y-3">
             <Forger
               name="name"
               label="Project Name"
@@ -392,15 +433,45 @@ const CreateProjectDialog: React.FC<Props> = ({
               component={TextInput}
               data-testid="project-name-input"
             />
+          </div>
 
             <Forger
               name="category"
               label="Project Category"
-              placeholder="Enter Project Category"
+              placeholder="Select Project Category"
               component={TextSelect}
               options={[
-                { label: "MSA", value: "msa" },
-                { label: "Stand-Alone", value: "standalone" },
+                {
+                  label: "Construction & Infrastructure",
+                  value: "construction_infrastructure",
+                },
+                {
+                  label: "Information Technology",
+                  value: "information_technology",
+                },
+                {
+                  label: "Operations & Manufacturing",
+                  value: "operations_manufacturing",
+                },
+                {
+                  label: "Business & Corporate Strategy",
+                  value: "business_corporate_strategy",
+                },
+                { label: "Finance & Investment", value: "finance_investment" },
+                { label: "Sustainability & ESG", value: "sustainability_esg" },
+                {
+                  label: "Human Resources & Training",
+                  value: "human_resources_training",
+                },
+                {
+                  label: "Supply Chain & Procurement",
+                  value: "supply_chain_procurement",
+                },
+                {
+                  label: "Branding, Marketing & Communicating",
+                  value: "branding_marketing_communicating",
+                },
+                { label: "Others", value: "others" },
               ]}
               data-testid="project-category-select"
             />
@@ -413,7 +484,8 @@ const CreateProjectDialog: React.FC<Props> = ({
               data-testid="budget-input"
             />
 
-            <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-3">
               <Forger
                 name="startDate"
                 label="Start Date"
@@ -422,7 +494,9 @@ const CreateProjectDialog: React.FC<Props> = ({
                 data-testid="project-start-date-input"
                 minDate={startOfDay(new Date())}
               />
+            </div>
 
+            <div className="space-y-3">
               <Forger
                 name="endDate"
                 label="End Date"
@@ -432,7 +506,9 @@ const CreateProjectDialog: React.FC<Props> = ({
                 minDate={startDate || startOfDay(new Date())}
               />
             </div>
+          </div>
 
+          <div className="space-y-3">
             <Forger
               name="description"
               label="Project Description"
@@ -440,17 +516,20 @@ const CreateProjectDialog: React.FC<Props> = ({
               component={TextArea}
               data-testid="project-description-input"
             />
+          </div>
 
-            <Forger
-              name="files"
-              label="Upload Files"
-              component={TextFileUploader}
-              element={<UploadElement />}
-              List={FileListItem}
-              containerClass="w-full"
-              className="rounded-xl border border-dashed border-[#2A4467]"
-              accept={
-                {
+          <div className="space-y-3">
+            <p className="text-base font-medium text-[#0F0F0F]">Upload Files</p>
+            <FileUploader
+              value={files ?? []}
+              onValueChange={(nextFiles: File[] | null | undefined) => {
+                const safeFiles = Array.isArray(nextFiles) ? nextFiles : [];
+                setValue("files", safeFiles.length > 0 ? safeFiles : null);
+              }}
+              dropzoneOptions={{
+                multiple: true,
+                maxFiles: 10000000000000000000000000,
+                accept: {
                   "application/pdf": [".pdf"],
                   "application/msword": [".doc"],
                   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
@@ -463,58 +542,74 @@ const CreateProjectDialog: React.FC<Props> = ({
                   "application/zip": [".zip"],
                   "image/png": [".png"],
                   "image/jpeg": [".jpeg", ".jpg"],
-                } as any
-              }
-              dropzoneOptions={{
-                multiple: true,
+                },
               }}
+              className="w-full"
               data-testid="project-files-input"
-            />
-
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-700">
-                Project Control
-              </p>
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <span className="text-sm text-slate-700">
-                  Allow Multiple Contracts
-                </span>
-                <div className="flex items-center gap-3">
-                  <Switch
-                    checked={allowMultiple}
-                    onCheckedChange={(val) =>
-                      setValue("allowMultipleContracts", !!val)
-                    }
-                    data-testid="allow-multiple-contracts-switch"
-                  />
-                  <span className="text-sm text-slate-500">Enabled</span>
+            >
+              <FileInput className="border border-dashed border-[#2A4467] rounded-xl bg-white px-[15px] py-[47px]">
+                <div className="flex w-full flex-col items-center justify-center">
+                  <UploadElement />
                 </div>
+              </FileInput>
+              <FileUploaderContent className="mt-4 flex flex-col gap-3 px-0">
+                {(files ?? []).map((file) => (
+                  <FileListItem key={getFileKey(file)} file={file} control={control} />
+                ))}
+              </FileUploaderContent>
+            </FileUploader>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-[#0F0F0F]">Business Division</p>
+            <Forger
+              name="businessDivision"
+              placeholder={isLoadingDivisions ? "Loading..." : "Select Division"}
+              component={TextSelect}
+              options={businessDivisionOptions}
+              data-testid="project-business-division-select"
+            />
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-slate-700">Project Control</p>
+            <div className="flex items-center justify-between rounded-2xl bg-[#F9FAFB] p-4">
+              <span className="text-sm font-medium text-[#0F0F0F]">
+                Allow Multiple Contracts
+              </span>
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={allowMultiple}
+                  onCheckedChange={(val) => setValue("allowMultipleContracts", !!val)}
+                  data-testid="allow-multiple-contracts-switch"
+                />
+                <span className="text-sm font-medium text-[#344054]">Enabled</span>
               </div>
             </div>
+          </div>
 
-            <div className="flex w-full gap-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1 h-12 rounded-xl"
-                onClick={() => onOpenChange(false)}
-                data-testid="cancel-create-project"
-              >
-                Cancel
-              </Button>
+          <div className="flex w-full gap-6 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 h-12 rounded-xl bg-[#F3F4F6] border border-[#E5E7EB] text-[#0F0F0F] hover:bg-[#E5E7EB]"
+              onClick={() => onOpenChange(false)}
+              data-testid="cancel-create-project"
+            >
+              Cancel
+            </Button>
 
-              <Button
-                type="submit"
-                className="flex-1 h-12 rounded-xl"
-                disabled={isSubmitting || isUploadingFiles}
-                isLoading={isSubmitting || isUploadingFiles}
-                data-testid="continue-create-project"
-              >
-                {submitButtonText ?? "Continue"}
-              </Button>
-            </div>
-          </Forge>
-        </div>
+            <Button
+              type="submit"
+              className="flex-1 h-12 rounded-xl"
+              disabled={isSubmitting || isUploadingFiles}
+              isLoading={isSubmitting || isUploadingFiles}
+              data-testid="continue-create-project"
+            >
+              {submitButtonText ?? "Continue"}
+            </Button>
+          </div>
+        </Forge>
       </DialogContent>
     </Dialog>
   );
