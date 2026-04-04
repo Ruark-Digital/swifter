@@ -53,7 +53,7 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
               name="insuranceExpiryDate"
               label="Expiry Date"
               component={TextDatePicker}
-              placeholder="Enter Title"
+              placeholder="Select expiry date"
               containerClass="md:col-span-2"
             />
             {policyFields.map((field, index) => (

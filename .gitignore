@@ -8,3 +8,4 @@ api_documentation
 # Playwright artifacts
 playwright-report
 /test-results
+.tmp_docx_extract

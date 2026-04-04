@@ -268,7 +268,7 @@ const AnalyticsTab: React.FC<Props> = ({
       color: "text-yellow-500",
     },
     {
-      label: "Saving Realized",
+      label: "Savings Realized",
       value:
         typeof financialStatement?.savingsRealized?.value === "number"
           ? `${formatMoney(financialStatement?.savingsRealized?.value, financialStatement?.currency)}(${formatPercent(financialStatement?.savingsRealized?.percentage)})`
@@ -345,22 +345,29 @@ const AnalyticsTab: React.FC<Props> = ({
 
   const labels = activities?.current?.labels ?? [];
   const series = activities?.current?.series;
-  const activityChartData = labels.map((label, idx) => {
-    const d = new Date(label);
-    const day = Number.isNaN(d.getTime())
-      ? label
-      : new Intl.DateTimeFormat(undefined, { month: "short" }).format(d);
-
-    return {
-      day,
-      change: series?.change?.[idx] ?? 0,
-      claims: series?.claims?.[idx] ?? 0,
-      invoice: series?.invoice?.[idx] ?? 0,
-      rfi: series?.rfi?.[idx] ?? 0,
-      ncr: series?.ncr?.[idx] ?? 0,
-      deliverables: series?.deliverables?.[idx] ?? 0,
-    };
-  });
+  // Aggregate by month to avoid duplicate X-axis labels when API returns weekly data
+  const activityChartData = (() => {
+    const monthMap = new Map<string, {
+      change: number; claims: number; invoice: number; rfi: number; ncr: number; deliverables: number;
+    }>();
+    // Preserve insertion order for correct month ordering
+    labels.forEach((label, idx) => {
+      const d = new Date(label);
+      const monthKey = Number.isNaN(d.getTime())
+        ? String(label)
+        : new Intl.DateTimeFormat(undefined, { month: "short" }).format(d);
+      const existing = monthMap.get(monthKey) ?? { change: 0, claims: 0, invoice: 0, rfi: 0, ncr: 0, deliverables: 0 };
+      monthMap.set(monthKey, {
+        change: existing.change + (series?.change?.[idx] ?? 0),
+        claims: existing.claims + (series?.claims?.[idx] ?? 0),
+        invoice: existing.invoice + (series?.invoice?.[idx] ?? 0),
+        rfi: existing.rfi + (series?.rfi?.[idx] ?? 0),
+        ncr: existing.ncr + (series?.ncr?.[idx] ?? 0),
+        deliverables: existing.deliverables + (series?.deliverables?.[idx] ?? 0),
+      });
+    });
+    return Array.from(monthMap.entries()).map(([day, values]) => ({ day, ...values }));
+  })();
 
   const deliverySummaryTotals = {
     total: formatNumber(deliverySummary?.summary?.total),

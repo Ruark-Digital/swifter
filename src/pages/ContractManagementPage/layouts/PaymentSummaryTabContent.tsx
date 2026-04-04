@@ -759,7 +759,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
                     type="button"
                     className="inline-flex items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] px-[15px] py-2 text-base font-semibold text-[#0F0F0F]"
                   >
-                    Update Saving
+                    Update Savings
                   </button>
                 }
               />
@@ -830,7 +830,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
           {isManager && (
             <div className="flex flex-col justify-center gap-4">
               <div className="text-[18px] leading-7 text-[#6B6B6B]">
-                Saving Realized
+                Savings Realized
               </div>
               <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
                 {savingAmount}
@@ -880,7 +880,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
               value="saving-realized"
               className="rounded-full px-5 py-1.5 text-base font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
             >
-              Saving Realized
+              Savings Realized
             </TabsTrigger>
           )}
         </TabsList>

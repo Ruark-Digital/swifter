@@ -69,34 +69,7 @@ const milestoneColumns: ColumnDef<PaymentMilestoneRow>[] = [
 ];
 
 const milestoneRows: PaymentMilestoneRow[] = [
-  {
-    milestoneId: "MIL-2025-10",
-    milestoneTitle: "Additional structural reinforcement",
-    deliverable: "Additional structural reinforcement",
-    amount: "$2.5M",
-    dueDate: "12-65-2025",
-  },
-  {
-    milestoneId: "MIL-2025-10",
-    milestoneTitle: "Additional structural reinforcement",
-    deliverable: "Additional structural reinforcement",
-    amount: "$2.5M",
-    dueDate: "12-65-2025",
-  },
-  {
-    milestoneId: "MIL-2025-10",
-    milestoneTitle: "Additional structural reinforcement",
-    deliverable: "Additional structural reinforcement",
-    amount: "$2.5M",
-    dueDate: "12-65-2025",
-  },
-  {
-    milestoneId: "MIL-2025-10",
-    milestoneTitle: "Additional structural reinforcement",
-    deliverable: "Additional structural reinforcement",
-    amount: "$2.5M",
-    dueDate: "12-65-2025",
-  },
+ 
 ];
 
 const PaymentSummaryMilestonesTable = <

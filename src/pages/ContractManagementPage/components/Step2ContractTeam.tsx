@@ -12,14 +12,16 @@ import { Personnel } from "./Step7ApprovalLevel";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
-import { useFormContext } from "react-hook-form";
+import { UseFormSetValue, useFormContext } from "react-hook-form";
+import { CreateContractFormData } from "./CreateContractSheet";
 
-// type Props = {
-//   internalStakeholderOptions?: Array<{ label: string; value: string }>;
-// };
+type Props = {
+  setValue?: UseFormSetValue<CreateContractFormData>
+};
 
-const Step2ContractTeam: React.FC = () => {
-  const { setValue } = useFormContext();
+const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
+  const formContext = useFormContext<CreateContractFormData>();
+  const applyValue = setValue ?? formContext.setValue;
   const { data: personnelData } = useQuery<
     ApiResponse<Personnel>,
     ApiResponseError
@@ -31,6 +33,12 @@ const Step2ContractTeam: React.FC = () => {
   });
   const { isManager } = useUserRole();
   const currentUser = useUser();
+
+  React.useEffect(() => {
+    if (!isManager || !currentUser?.name) return;
+    applyValue("manager", currentUser.name as never);
+  }, [applyValue, currentUser?.name, isManager]);
+
   const { data: vendorsData } = useQuery<
     ApiResponse<Array<{ email: string; _id: string; name: string }>>,
     ApiResponseError
@@ -115,7 +123,7 @@ const Step2ContractTeam: React.FC = () => {
               placeholder="Enter Title"
               value={
                 isManager
-                  ? (currentUser?.role?.name ?? "")
+                  ? (currentUser?.role?.name ?? "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
                   : ((value as any) ?? "")
               }
               onChange={(e) => onChange?.(e.target.value)}
@@ -163,7 +171,7 @@ const Step2ContractTeam: React.FC = () => {
                       ? selected.label.trim()
                       : nextValue;
                   onChange?.(nextValue);
-                  setValue("vendorLabel" as never, nextLabel as never);
+                  applyValue("vendorLabel" as never, nextLabel as never);
                 }
               }
             />

@@ -418,7 +418,7 @@ const ContractManagementPage: React.FC = () => {
               rows={approverContractsRows}
               isLoading={isApproverContractsLoading}
               totalCount={approverContractsData?.data.totalContracts}
-              isReadOnly={isViewOnly}
+              isReadOnly={true}
               // disableActions={isApprover}
             />
           ) : (
