@@ -49,9 +49,7 @@ export const schema = yup.object({
   project: yup.string().optional(),
   awardedSolicitation: yup.string().optional(),
   type: yup.string().required("Contract type is required"),
-  typeLabel: yup.string().optional(),
   category: yup.string().required("Category is required"),
-  categoryLabel: yup.string().optional(),
   manager: yup.string().optional(),
   jobTitle: yup.string().optional(),
   businessDivision: yup.string().required("Business Division is required"),
@@ -71,7 +69,6 @@ export const schema = yup.object({
         return isObjectId || isEmail;
       },
     ),
-  vendorLabel: yup.string().optional(),
   personnel: yup.array().optional(),
   internalTeam: yup.array().optional(),
   personnelMeta: yup
@@ -102,13 +99,12 @@ export const schema = yup.object({
   holdback: yup.string().optional(),
   paymentStructure: yup.string().optional(),
   paymentTerm: yup.string().optional(),
-  paymentTermLabel: yup.string().optional(),
   milestones: yup
     .array(
       yup.object({
         name: yup.string().optional(),
-        amount: yup.mixed().optional(),
-        dueDate: yup.date().optional(),
+        amount: yup.mixed().required("Milestone amount is required"),
+        dueDate: yup.date().typeError("Invalid date").required("Due date is required"),
         deliverable: yup.string().optional(),
       }),
     )
@@ -193,16 +189,13 @@ export const defaultValues = {
   project: "",
   awardedSolicitation: "",
   type: "",
-  typeLabel: "",
   category: "",
-  categoryLabel: "",
   manager: "",
   jobTitle: "",
   businessDivision: "",
   contractId: "",
   description: "",
   vendor: "",
-  vendorLabel: "",
   personnel: [],
   internalTeam: [],
   personnelMeta: [],
@@ -213,7 +206,6 @@ export const defaultValues = {
   holdback: "",
   paymentStructure: "",
   paymentTerm: "",
-  paymentTermLabel: "",
   milestones: [{ name: "", amount: "", dueDate: undefined, deliverable: "" }],
   effectiveDate: undefined,
   endDate: undefined,
@@ -571,6 +563,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     trigger: formTrigger,
     setError,
     clearErrors,
+    setValue
   } = useForge<CreateContractFormData>({
     resolver: yupResolver(schema),
     defaultValues,
@@ -827,7 +820,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         paymentStructureEnum = "Progress Draw";
 
       const approvers =
-        (data.approvalGroups ?? []).flatMap((g, i) => {
+        (data.approvalGroups ?? []).filter(item => item.name && item.approvers?.length).flatMap((g, i) => {
           const lvl = g.approvalLevel ? Number(g.approvalLevel) : i + 1;
           const amountValue = toNumberOrUndefined(g.amount);
           // API expects user as array of strings
@@ -1060,8 +1053,20 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     setOpen(false);
   }, [reset, clearSession]);
 
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        reset(defaultValues);
+        setStep(1);
+        clearSession();
+      }
+      setOpen(nextOpen);
+    },
+    [clearSession, reset],
+  );
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
         forceMount
@@ -1103,7 +1108,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
                 />
               )}
 
-              {step === 2 && <Step2ContractTeam />}
+              {step === 2 && <Step2ContractTeam setValue={setValue} />}
 
               {step === 5 && (
                 <Step3ValuePayments

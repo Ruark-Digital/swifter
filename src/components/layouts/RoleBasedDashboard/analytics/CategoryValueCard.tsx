@@ -12,13 +12,7 @@ type Props = {
 };
 
 export const CategoryValueCard: React.FC<Props> = ({ rows }) => {
-  const data = (rows && rows.length > 0
-    ? rows
-    : [
-        { name: "Construction", value: 4200000, contractCount: 9 },
-        { name: "IT Services", value: 3100000, contractCount: 6 },
-      ]
-  ).map((r) => ({
+  const data = (rows && rows.length > 0 ? rows : []).map((r) => ({
     name: r.name,
     valueM: r.value / 1_000_000,
     contractCount: r.contractCount ?? 0,
@@ -27,7 +21,7 @@ export const CategoryValueCard: React.FC<Props> = ({ rows }) => {
   const max = Math.max(0, ...data.map((d) => d.valueM));
   const domainMax = max > 0 ? Math.ceil(max / 10) * 10 : 100;
   const axis = Array.from({ length: 11 }).map((_, i) =>
-    Math.round((domainMax / 10) * i)
+    Math.round((domainMax / 10) * i),
   );
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
@@ -43,11 +37,18 @@ export const CategoryValueCard: React.FC<Props> = ({ rows }) => {
         </div>
         <Tabs value="ytd" className="w-full">
           <TabsList className="bg-transparent p-0 gap-2">
-            <TabsTrigger className="rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467]" value="ytd">
+            <TabsTrigger
+              className="rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467]"
+              value="ytd"
+            >
               YTD
             </TabsTrigger>
             {["12 months", "6 months", "3 months"].map((t) => (
-              <TabsTrigger key={t} value={t.replace(/\s+/g, "")} className="rounded-md px-3 py-2 text-sm font-semibold text-[#667085]">
+              <TabsTrigger
+                key={t}
+                value={t.replace(/\s+/g, "")}
+                className="rounded-md px-3 py-2 text-sm font-semibold text-[#667085]"
+              >
                 {t}
               </TabsTrigger>
             ))}
@@ -58,12 +59,17 @@ export const CategoryValueCard: React.FC<Props> = ({ rows }) => {
         {data.map((row, idx) => {
           const pct =
             domainMax > 0
-              ? Math.min(100, Math.max(0, Math.round((row.valueM / domainMax) * 100)))
+              ? Math.min(
+                  100,
+                  Math.max(0, Math.round((row.valueM / domainMax) * 100)),
+                )
               : 0;
           return (
             <div key={idx} className="space-y-2 relative">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-[#030712]">{row.name}</p>
+                <p className="text-sm font-semibold text-[#030712]">
+                  {row.name}
+                </p>
                 <p className="text-sm font-semibold text-[#030712]">
                   ${row.valueM.toFixed(1)}M
                 </p>

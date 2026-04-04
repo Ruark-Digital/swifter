@@ -129,20 +129,13 @@ const Step1BasicInfo: React.FC<Props> = ({
   });
 
   const categoryOptions = React.useMemo(
-    () => {
-      const baseOptions: Array<{ label: string; value: string }> = Array.isArray(categoriesData?.data?.data)
+    () =>
+      Array.isArray(categoriesData?.data?.data)
         ? categoriesData.data.data.map((c: { _id?: string; name: string }) => ({
             label: c.name,
             value: c._id ?? c.name,
           }))
-        : [];
-      const hasOthers = baseOptions.some(
-        (option) => option.label.toLowerCase() === "others",
-      );
-      return hasOthers
-        ? baseOptions
-        : [...baseOptions, { label: "Others", value: "others" }];
-    },
+        : [],
     [categoriesData?.data?.data],
   );
 

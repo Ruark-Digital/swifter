@@ -4,6 +4,14 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   Sheet,
   SheetClose,
   SheetContent,
@@ -11,10 +19,27 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ArrowLeft, Download, Eye, Search, Share2, X } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { getRequest } from "@/lib/axiosInstance";
-import { getFileIcon } from "@/lib/fileUtils";
+import {
+  ArrowLeft,
+  Download,
+  Eye,
+  FileText,
+  Search,
+  Share2,
+  UploadCloud,
+  X,
+} from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
+import { formatFileSize, getFileIcon, getSimpleFileExtension } from "@/lib/fileUtils";
+import { useToastHandler } from "@/hooks/useToaster";
+
+type UploadedFilePayload = {
+  name: string;
+  url: string;
+  type: string;
+  size: string;
+};
 
 export type DeliverableRow = {
   id: string;
@@ -83,6 +108,288 @@ const DocCard = ({
   </div>
 );
 
+const SubmitDeliverableDialog: React.FC<{
+  trigger: React.ReactNode;
+  contractId: string;
+  deliverableId: string;
+  basePath: string;
+}> = ({ trigger, contractId, deliverableId, basePath }) => {
+  const [open, setOpen] = React.useState(false);
+  const [description, setDescription] = React.useState("");
+  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const toast = useToastHandler();
+  const queryClient = useQueryClient();
+
+  const resetForm = React.useCallback(() => {
+    setDescription("");
+    setSelectedFiles([]);
+    setIsDragging(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }, []);
+
+  const addFiles = React.useCallback((files: FileList | null) => {
+    if (!files?.length) return;
+    const next = Array.from(files);
+    setSelectedFiles((prev) => {
+      const merged = [...prev];
+      for (const file of next) {
+        if (!merged.some((existing) => existing.name === file.name)) {
+          merged.push(file);
+        }
+      }
+      return merged;
+    });
+  }, []);
+
+  const uploadFiles = React.useCallback(async (files: File[]) => {
+    const uploaded: UploadedFilePayload[] = [];
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const uploadRes = await postRequest({
+        url: "/upload",
+        payload: formData,
+        config: {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      });
+
+      const uploadedData = uploadRes?.data?.data;
+      if (Array.isArray(uploadedData) && uploadedData[0]) {
+        uploaded.push({
+          name: String(uploadedData[0].name),
+          url: String(uploadedData[0].url),
+          type: String(uploadedData[0].type),
+          size: String(uploadedData[0].size),
+        });
+        continue;
+      }
+
+      uploaded.push({
+        name: file.name,
+        url: "",
+        type: file.type || "application/octet-stream",
+        size: String(file.size),
+      });
+    }
+
+    return uploaded;
+  }, []);
+
+  const submitMutation = useMutation({
+    mutationKey: ["submit-deliverable", contractId, deliverableId],
+    mutationFn: async () => {
+      const files = await uploadFiles(selectedFiles);
+      return postRequest({
+        url: `${basePath}/${deliverableId}/submit`,
+        payload: {
+          description,
+          files,
+        },
+      });
+    },
+    onSuccess: () => {
+      toast.success("Success", "Deliverable submitted successfully");
+      queryClient.invalidateQueries({
+        queryKey: ["deliverables", contractId, basePath],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["deliverables-stats", contractId, basePath],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["deliverable-detail", contractId, deliverableId, basePath],
+      });
+      setOpen(false);
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast.error(
+        "Error",
+        error?.response?.data?.message || "Failed to submit deliverable",
+      );
+    },
+  });
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!submitMutation.isPending) {
+          setOpen(next);
+          if (!next) resetForm();
+        }
+      }}
+    >
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="w-[700px] max-w-[calc(100vw-32px)] rounded-2xl p-8">
+        <DialogHeader className="space-y-0">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-[36px] font-semibold text-[#0F0F0F]">
+              Submit Deliverable
+            </DialogTitle>
+            <DialogClose asChild>
+              <button
+                type="button"
+                className="inline-flex h-8 w-8 items-center justify-center text-[#EF4444]"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </DialogClose>
+          </div>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <p className="text-2xl font-normal text-[#0F0F0F]">Upload Files</p>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => fileInputRef.current?.click()}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  fileInputRef.current?.click();
+                }
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={(event) => {
+                event.preventDefault();
+                setIsDragging(false);
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                setIsDragging(false);
+                addFiles(event.dataTransfer.files);
+              }}
+              className={`flex min-h-[212px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed ${
+                isDragging ? "border-[#1F3B63] bg-[#F8FAFC]" : "border-[#1F3B63]"
+              } px-4 text-center`}
+            >
+              <UploadCloud className="h-12 w-12 text-[#1F3B63]" />
+              <p className="mt-4 text-[36px] font-semibold text-[#1F3B63]">
+                Drag & Drop or Click to choose files
+              </p>
+              <p className="mt-2 text-2xl text-[#6B6B6B]">
+                Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                accept=".doc,.docx,.pdf,.xls,.xlsx,.zip,.png,.jpeg,.jpg"
+                onChange={(event) => addFiles(event.target.files)}
+              />
+            </div>
+          </div>
+
+          {selectedFiles.length > 0 && (
+            <div className="space-y-3">
+              {selectedFiles.map((file) => (
+                <div
+                  key={`${file.name}-${file.lastModified}`}
+                  className="flex items-center justify-between rounded-lg border border-[#E5E7EB] px-3 py-2"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EAF1FB]">
+                      <FileText className="h-5 w-5 text-[#1F3B63]" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[#0F0F0F]">
+                        {file.name}
+                      </p>
+                      <p className="text-xs text-[#9CA3AF]">
+                        {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
+                        {formatFileSize(file.size)}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="inline-flex h-8 w-8 items-center justify-center text-[#EF4444]"
+                    onClick={() =>
+                      setSelectedFiles((prev) =>
+                        prev.filter((it) => it.name !== file.name),
+                      )
+                    }
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <p className="text-2xl font-normal text-[#0F0F0F]">
+              Add Responders <span className="text-[#6B6B6B]">(Multi-Select)</span>
+            </p>
+            <div className="rounded-lg border border-[#E5E7EB] px-3 py-3">
+              <div className="flex flex-wrap items-center gap-2">
+                {["Olamide Oladehinde", "Deji Ade", "Jacob Smith", "Ola Daniel"].map(
+                  (name) => (
+                    <span
+                      key={name}
+                      className="inline-flex items-center gap-2 rounded-lg bg-[#2A44671A] px-2 py-1 text-[12px] font-semibold text-[#2A4467]"
+                    >
+                      {name}
+                      <X className="h-[14px] w-[14px] text-[#EF4444]" />
+                    </span>
+                  ),
+                )}
+                <span className="text-2xl text-[#6B6B6B]">Search</span>
+              </div>
+            </div>
+            <p className="text-2xl font-medium text-[#2A4467]">
+              Add with email address, name
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-2xl font-medium text-[#0F0F0F]">Description</p>
+            <textarea
+              className="h-[120px] w-full rounded-lg border border-[#E5E7EB] px-4 py-3 text-xl text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#1F3B63]/20"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Duration"
+            />
+          </div>
+        </div>
+
+        <div className="mt-6 flex items-center gap-6 pl-[236px]">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setOpen(false)}
+            disabled={submitMutation.isPending}
+            className="h-[56px] flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-[16px] font-semibold text-[#0F0F0F]"
+          >
+            Back
+          </Button>
+          <Button
+            type="button"
+            onClick={() => submitMutation.mutate()}
+            disabled={submitMutation.isPending}
+            className="h-[56px] flex-1 rounded-xl bg-[#1F3B63] text-[16px] font-semibold text-white hover:bg-[#1F3B63]/95"
+          >
+            {submitMutation.isPending ? "Submitting..." : "Submit Deliverable"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   trigger,
   contractId,
@@ -91,6 +398,9 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   basePath,
 }) => {
   const [open, setOpen] = React.useState(false);
+  const isVendor = basePath.includes("/vendor/");
+  const toast = useToastHandler();
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: [
@@ -111,6 +421,37 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   });
 
   const detail = data?.data?.data;
+
+  const approveRejectMutation = useMutation({
+    mutationKey: ["approve-reject-deliverable", contractId, deliverableId, basePath],
+    mutationFn: async (action: "approved" | "rejected") =>
+      postRequest({
+        url: `${basePath}/${deliverableId}/approve`,
+        payload: { action, comment: "" },
+      }),
+    onSuccess: (_, action) => {
+      toast.success(
+        "Success",
+        `Deliverable ${action === "approved" ? "approved" : "rejected"} successfully`,
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["deliverables", contractId, basePath],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["deliverables-stats", contractId, basePath],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["deliverable-detail", contractId, deliverableId, basePath],
+      });
+    },
+    onError: (error: any, action) => {
+      toast.error(
+        "Error",
+        error?.response?.data?.message ||
+          `Failed to ${action === "approved" ? "approve" : "reject"} deliverable`,
+      );
+    },
+  });
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -226,18 +567,31 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                 <Button
                   variant="outline"
                   className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                  disabled={approveRejectMutation.isPending}
+                  onClick={() => approveRejectMutation.mutate("rejected")}
                 >
-                  Reject
+                  {approveRejectMutation.isPending ? "Rejecting..." : "Reject"}
                 </Button>
-                <Button className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
-                  Approve
+                <Button
+                  className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
+                  disabled={approveRejectMutation.isPending}
+                  onClick={() => approveRejectMutation.mutate("approved")}
+                >
+                  {approveRejectMutation.isPending ? "Approving..." : "Approve"}
                 </Button>
               </>
-            ) : (
-              <Button className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
-                Submit
-              </Button>
-            )}
+            ) : isVendor ? (
+              <SubmitDeliverableDialog
+                contractId={contractId}
+                deliverableId={deliverableId}
+                basePath={basePath}
+                trigger={
+                  <Button className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
+                    Submit
+                  </Button>
+                }
+              />
+            ) : null}
           </div>
         </div>
       </SheetContent>

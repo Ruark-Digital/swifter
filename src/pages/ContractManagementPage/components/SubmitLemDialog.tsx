@@ -222,7 +222,7 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({ trigger, contractId }
               name="description"
               label="Description"
               component={TextArea}
-              placeholder="Duration" // As per design text, though "Description" is label
+              placeholder="Enter Description"
               rows={6} // Design shows a large text area
             />
 

@@ -359,7 +359,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
         </div>
         <div className="space-y-2">
           <p className="text-[18px] leading-7 text-[#6B6B6B]">
-            Saving Realized
+            Savings Realized
           </p>
           <p className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
             {formatMoney(msa?.savingAmount)}
@@ -446,7 +446,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
 
         <TabsContent value="saving-realized">
           <PaymentSummaryMilestonesTable<SavingRealizedRow>
-            title="Saving Realized"
+            title="Savings Realized"
             rows={savingRows}
             columns={savingsColumns}
             getRowSearchValues={(row) => [

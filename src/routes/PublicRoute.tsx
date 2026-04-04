@@ -14,8 +14,14 @@ export const PublicRoute = (props: ProtectedRoute) => {
   const user = useUser();
 
   if (isAuthenticated) {
-    const targetRoute = user
-      ? getFirstAccessibleRoute(user.role.name as UserRole, user.module)
+    const roleName =
+      typeof user?.role === "string"
+        ? user.role
+        : typeof user?.role?.name === "string"
+          ? user.role.name
+          : undefined;
+    const targetRoute = roleName
+      ? getFirstAccessibleRoute(roleName as UserRole, user?.module)
       : "/dashboard";
     return <Navigate to={targetRoute} />;
   }

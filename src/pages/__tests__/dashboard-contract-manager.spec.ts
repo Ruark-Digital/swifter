@@ -472,6 +472,36 @@ test.describe("Dashboard (Contract Manager)", () => {
     await expect(page.getByText("Contract Value by vendors")).toBeVisible();
   });
 
+  test("public route does not crash when authenticated user role is missing", async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+
+    await page.addInitScript(() => {
+      const auth = {
+        state: {
+          user: {
+            _id: "test-user",
+            email: "test@swiftpro.com",
+            name: "Test User",
+            role: undefined,
+            module: undefined,
+          },
+          token: "test-token",
+          refresh: null,
+          authorities: [],
+        },
+        version: 0,
+      };
+      window.localStorage.setItem("auth", JSON.stringify(auth));
+    });
+
+    await page.goto("/");
+
+    expect(errors).toEqual([]);
+  });
+
   test("renders readable vendor labels in contract value by vendors chart", async ({ page }) => {
     await seedAuth(page, "contract_manager");
     await mockContractManagerDashboardEndpoints(page, {
