@@ -122,7 +122,8 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const files = detail?.files;
 
   const canApprove = isManager;
-  const showDecisionActions = shouldShowChangeDecisionActions(changeType) && approverStatus === "pending";
+  const showDecisionActions =
+    shouldShowChangeDecisionActions(changeType) && approverStatus === "pending";
 
   const { mutate: mutateApproval, isPending: isApproving } = useMutation({
     mutationKey: ["approveChange", roleBasePath, contractId, changeId],
@@ -245,14 +246,13 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   });
 
   console.log({ submittedByName });
-  if(isDetailLoading) {
+  if (isDetailLoading) {
     return (
       <div className="flex items-center justify-center">
         <Spinner />
       </div>
-    )
+    );
   }
-
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -294,21 +294,11 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             <TabsContent value="overview" className="space-y-4">
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <LabelRow
-                    label="Change Title"
-                    value={isDetailLoading ? "" : title}
-                  />
-                  <LabelRow
-                    label="Change Type"
-                    value={isDetailLoading ? "" : changeType}
-                  />
+                  <LabelRow label="Change Title" value={title} />
+                  <LabelRow label="Change Type" value={changeType} />
                   <LabelRow
                     label="Submission Date"
-                    value={
-                      isDetailLoading
-                        ? ""
-                        : formatDate(submittedAt, "yyyy MMM dd HH:mm aa")
-                    }
+                    value={submittedAt ? formatDate(submittedAt, "yyyy MMM dd HH:mm aa") : null}
                   />
                   <LabelRow
                     label="Submitted by"
