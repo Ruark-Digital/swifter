@@ -75,7 +75,7 @@ type ApproverContractListResponse = {
 };
 
 type VendorContractApi = {
-  _id: string;
+  id: string;
   title: string;
   contractId: string;
   contractValue?: number;
@@ -272,7 +272,7 @@ const mapVendorContractsToRows = (
         : undefined;
 
     return {
-      id: c._id,
+      id: c.id,
       contractId: c.contractId,
       title: c.title,
       code: c.contractId,
@@ -418,7 +418,7 @@ const ContractManagementPage: React.FC = () => {
               rows={approverContractsRows}
               isLoading={isApproverContractsLoading}
               totalCount={approverContractsData?.data.totalContracts}
-              isReadOnly={true}
+              // isReadOnly={true}
               // disableActions={isApprover}
             />
           ) : (

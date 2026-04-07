@@ -250,7 +250,7 @@ export interface File {
   type:       string;
   size:       string;
   _id:        string;
-  uploadedAt: Date;
+  uploadedAt: string;
 }
 
 export interface VendorPersonnel {

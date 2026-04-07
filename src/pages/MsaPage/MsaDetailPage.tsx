@@ -199,68 +199,105 @@ const formatMsaStatus = (status?: MsaStatus) => {
 };
 
 export interface MSAContractDetail {
-  _id: string;
-  company: Company;
-  creator: Creator;
-  managers: any[];
-  businessDivision: BusinessDivision;
-  rating: number;
-  title: string;
-  msaContractId: string;
-  description: string;
-  msaType: MSAType;
-  visibility: string;
-  currency: string;
-  contractValue: number;
-  holdBackBank: number;
-  deliverables: any[];
-  insurance: string;
-  duration: number;
-  files: any[];
-  currentApprovalLevel: number;
-  status: string;
-  timezone: string;
-  isDeleted: boolean;
-  vendorPersonnel: any[];
-  internalTeam: any[];
-  milestone: any[];
-  approvers: any[];
-  signatories: any[];
-  createdAt: Date;
-  updatedAt: Date;
-  __v: number;
-  holdBackReleased: number;
-  savingAmount: number;
-  holdBack?: number | string;
-  contigency?: number | string;
-  contingency?: number | string;
-  paymentStructure?: string;
-  paymentTerms?: { name?: string } | string;
-  paymentTerm?: { name?: string } | string;
+  vendor:                 Vendor;
+  contractFormationStage: ContractFormationStage;
+  _id:                    string;
+  company:                Company;
+  creator:                Creator;
+  internalTeam:           Approver[];
+  managers:               any[];
+  businessDivision:       BusinessDivision;
+  rating:                 number;
+  title:                  string;
+  msaContractId:          string;
+  description:            string;
+  msaType:                Company;
+  visibility:             string;
+  currency:               string;
+  contractValue:          number;
+  contigency:             string;
+  holdBack:               number;
+  holdBackBank:           number;
+  paymentStructure:       string;
+  deliverables:           string[];
+  insurance:              string;
+  startDate:              Date;
+  endDate:                Date;
+  duration:               number;
+  files:                  File[];
+  currentApprovalLevel:   number;
+  approvers:              Approver[];
+  status:                 string;
+  signatories:            Signatory[];
+  datePublished:          Date;
+  timezone:               string;
+  isDeleted:              boolean;
+  vendorPersonnel:        any[];
+  milestone:              any[];
+  createdAt:              Date;
+  updatedAt:              Date;
+  __v:                    number;
+  holdBackReleased:       number;
+  savingAmount:           number;
 }
 
-export interface MSAType {
-  _id: string;
-  name: string;
+export interface Approver {
+  id:    string;
+  name:  string;
+  email: string;
+  role?: string;
 }
 
 export interface BusinessDivision {
-  _id: string;
-  name: string;
+  _id:      string;
+  name:     string;
   location: string;
 }
 
 export interface Company {
-  _id: string;
+  _id:  string;
   name: string;
 }
 
-export interface Creator {
-  _id: string;
-  name: string;
-  email: string;
-  role: Company;
+export interface ContractFormationStage {
+  draft:     Approval;
+  review:    Approval;
+  approval:  Approval;
+  execution: Approval;
 }
+
+export interface Approval {
+  startDate: string;
+  endDate:   string;
+}
+
+export interface Creator {
+  _id:   string;
+  name:  string;
+  email: string;
+  role:  Company;
+}
+
+export interface File {
+  name:       string;
+  url:        string;
+  type:       string;
+  size:       string;
+  _id:        string;
+  uploadedAt: string;
+}
+
+export interface Signatory {
+  user:    string;
+  userRef: string;
+  status:  string;
+  _id:     string;
+}
+
+export interface Vendor {
+  status: string;
+}
+
 
 const formatDate = (iso?: string) => {
   if (!iso) return "N/A";
@@ -544,6 +581,7 @@ const MsaDetailPage: React.FC = () => {
             <Compliance
               contractId={id ?? ""}
               isActive={activeTab === "compliance"}
+              // contract={msa?.}
             />
             <ChangeManagement
               contractId={id ?? ""}

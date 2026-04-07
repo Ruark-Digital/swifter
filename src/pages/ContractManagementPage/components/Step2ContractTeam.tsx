@@ -36,7 +36,7 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
 
   React.useEffect(() => {
     if (!isManager || !currentUser?.name) return;
-    applyValue("manager", currentUser.name as never);
+    applyValue?.("manager", currentUser.name as never);
   }, [applyValue, currentUser?.name, isManager]);
 
   const { data: vendorsData } = useQuery<
@@ -171,7 +171,7 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
                       ? selected.label.trim()
                       : nextValue;
                   onChange?.(nextValue);
-                  applyValue("vendorLabel" as never, nextLabel as never);
+                  applyValue?.("vendorLabel" as never, nextLabel as never);
                 }
               }
             />

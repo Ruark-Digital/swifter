@@ -20,6 +20,7 @@ import SubmitPolicyDialog from "@/pages/ContractManagementPage/components/Submit
 type Props = {
   contractId: string;
   isActive?: boolean;
+  contract?: ContractComplianceDTO;
 };
 
 type PolicyRow = {
@@ -68,7 +69,7 @@ const getStatusTone = (status?: string) => {
   return "bg-gray-100 text-gray-700";
 };
 
-const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
+const Compliance: React.FC<Props> = ({ contractId, isActive, }) => {
   const { isVendor, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
@@ -309,7 +310,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
   return (
     <TabsContent value="compliance" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-4xl font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
+        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
           Compliance & Security Details
         </h3>
         <Button

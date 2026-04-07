@@ -18,27 +18,19 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import SendApprovalDialog from "./SendApprovalDialog";
 import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
-import { useUserRole } from "@/hooks/useUserRole";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
 import { DocumentItem, type DocType } from "./DocumentItem";
-import {
-  formatFileSize,
-  getFileIcon,
-  getSimpleFileExtension,
-} from "@/lib/fileUtils";
-import { shouldShowChangeDecisionActions } from "../lib/contractChanges";
+import { formatFileSize, getFileIcon, getSimpleFileExtension } from "@/lib/fileUtils";
 import { formatDate } from "date-fns";
-import Spinner from "@/components/ui/Spinner";
+import { approverApi } from "../api/approverApi";
+import type { ApprovalActionDTO } from "../api/approverApi";
 
 type Props = {
   trigger: React.ReactNode;
   contractId: string;
   changeId: string;
-  basePath?: string;
 };
 
 const LabelRow = ({
@@ -50,10 +42,10 @@ const LabelRow = ({
   value: React.ReactNode;
   highlight?: boolean;
 }) => (
-  <div className="space-y-2 py-3">
-    <span className="text-sm text-slate-500 block">{label}</span>
+  <div className="grid grid-cols-2 gap-3 py-2">
+    <span className="text-sm text-slate-500">{label}</span>
     <span
-      className={`text-sm block ${
+      className={`text-sm ${
         highlight ? "font-semibold text-slate-900" : "text-slate-800"
       }`}
     >
@@ -62,99 +54,43 @@ const LabelRow = ({
   </div>
 );
 
-const ChangeDetailsSheet: React.FC<Props> = ({
+const ApproverChangeDetailsSheet: React.FC<Props> = ({
   trigger,
   contractId,
   changeId,
-  basePath,
 }) => {
   const toast = useToastHandler();
   const qc = useQueryClient();
-  const { isManager, isApprover, isVendor, isAdmin, isViewOnly } =
-    useUserRole();
   const [open, setOpen] = React.useState(false);
 
-  const roleBasePath = React.useMemo(() => {
-    if (basePath) return basePath;
-    if (isManager) return "/contract/manager/contracts";
-    if (isApprover) return "/contract/approver/contracts";
-    if (isVendor) return "/contract/vendor/contracts";
-    if (isAdmin || isViewOnly) return "/contract/user/contracts";
-    return "/contract/user/contracts";
-  }, [basePath, isManager, isApprover, isVendor, isAdmin, isViewOnly]);
-
-  const usesListBasePath = React.useMemo(
-    () => roleBasePath.endsWith("/changes") || roleBasePath.endsWith("/change"),
-    [roleBasePath],
-  );
-
   const changeDetailQueryKey = React.useMemo(
-    () => ["contract-change-detail", roleBasePath, contractId, changeId],
-    [roleBasePath, contractId, changeId],
+    () => ["approver-change-detail", contractId, changeId],
+    [contractId, changeId],
   );
 
   const { data: detailRes, isLoading: isDetailLoading } = useQuery({
     queryKey: changeDetailQueryKey,
     queryFn: async () => {
-      const url = usesListBasePath
-        ? `${roleBasePath}/${changeId}`
-        : `${roleBasePath}/${contractId}/changes/${changeId}`;
-      const res = await getRequest({ url });
-      return (res as any)?.data;
+      const res = await approverApi.getChangeDetail(contractId, changeId);
+      return res;
     },
     enabled: open && !!contractId && !!changeId,
     staleTime: 60_000,
   });
 
-  const detail = (detailRes as any)?.data ?? (detailRes as any);
+  const detail = detailRes?.data ?? detailRes;
 
   const title = detail?.title ?? "";
   const description = detail?.description ?? "";
-  const submittedByName =
-    detail?.submittedBy?.name ?? detail?.submittedBy?.email ?? "";
-  const vendorEmail =
-    detail?.vendor?.email ?? detail?.vendor?.name ?? detail?.vendor ?? "";
-  const changeType = detail?.type ?? "";
+  const changeTypeRaw = detail?.type ?? "";
   const submittedAt = detail?.submittedAt ?? detail?.createdAt ?? "";
   const status = detail?.status ?? "";
   const approverStatus = detail?.approverStatus ?? "";
   const value = detail?.value;
   const files = detail?.files;
-
-  const canApprove = isManager;
-  const showDecisionActions = shouldShowChangeDecisionActions(changeType) && approverStatus === "pending";
-
-  const { mutate: mutateApproval, isPending: isApproving } = useMutation({
-    mutationKey: ["approveChange", roleBasePath, contractId, changeId],
-    mutationFn: async (action: "approved" | "rejected") => {
-      const canApprovePath = roleBasePath.includes("/manager/");
-      if (!canApprovePath) {
-        throw new Error(
-          "Change approve endpoint is not available for this role.",
-        );
-      }
-      const url = usesListBasePath
-        ? `${roleBasePath}/${changeId}/approve`
-        : `${roleBasePath}/changes/${changeId}/approve`;
-      return await postRequest({
-        url,
-        payload: { action, comment: "" },
-      });
-    },
-    onSuccess: (res, action) => {
-      toast.success(
-        `Change ${action === "approved" ? "approved" : "rejected"}`,
-        (res as any)?.data?.message,
-      );
-      qc.invalidateQueries({
-        queryKey: ["contractChanges", contractId],
-      });
-      qc.invalidateQueries({ queryKey: changeDetailQueryKey });
-    },
-    onError: (err: any) => {
-      toast.error("Failed to update change status", err);
-    },
-  });
+  const impactType = detail?.impactType ?? "";
+  const prevDate = detail?.previousDate ?? detail?.prevExpiryDate ?? "";
+  const newDate = detail?.newDate ?? detail?.newExpiryDate ?? "";
 
   const docs: DocType[] = React.useMemo(() => {
     const source = Array.isArray(files) ? files : [];
@@ -195,64 +131,67 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   }, []);
 
   const commentsQueryKey = React.useMemo(
-    () => ["contract-change-comments", roleBasePath, contractId, changeId],
-    [roleBasePath, contractId, changeId],
+    () => ["approver-change-comments", contractId, changeId],
+    [contractId, changeId],
   );
-
-  const canLoadComments =
-    open && !!contractId && !!changeId && (isManager || isApprover);
 
   const { data: commentsRes, isLoading: isCommentsLoading } = useQuery({
     queryKey: commentsQueryKey,
     queryFn: async () => {
-      const url = roleBasePath.includes("/manager/")
-        ? usesListBasePath
-          ? `${roleBasePath}/${changeId}/comments`
-          : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
-        : usesListBasePath
-          ? `${roleBasePath}/${changeId}/comment`
-          : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
-      const res = await getRequest({ url });
-      return (res as any)?.data;
+      const res = await approverApi.listChangeComments(contractId, changeId);
+      return res;
     },
-    enabled: canLoadComments,
+    enabled: open && !!contractId && !!changeId,
     staleTime: 30_000,
   });
 
   const comments =
-    ((commentsRes as any)?.data?.data ?? (commentsRes as any)?.data) || [];
+    (commentsRes as any)?.data?.data ?? (commentsRes as any)?.data ?? [];
 
   const { mutate: mutateAddComment, isPending: isAddingComment } = useMutation({
-    mutationKey: ["addChangeComment", roleBasePath, contractId, changeId],
+    mutationKey: ["approver-add-change-comment", contractId, changeId],
     mutationFn: async (content: string) => {
       if (!content.trim()) return;
-      const payload = { content };
-      const url = roleBasePath.includes("/manager/")
-        ? usesListBasePath
-          ? `${roleBasePath}/${changeId}/comments/${contractId}`
-          : `${roleBasePath}/changes/${changeId}/comments/${contractId}`
-        : usesListBasePath
-          ? `${roleBasePath}/${changeId}/comment`
-          : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
-      await postRequest({ url, payload });
+      await approverApi.addChangeComment(contractId, changeId, { content });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: commentsQueryKey });
     },
     onError: (err: any) => {
-      toast.error("Failed to send comment", err);
+      toast.error("Failed to send comment", err?.message ?? "Unknown error");
     },
   });
 
-  console.log({ submittedByName });
-  if(isDetailLoading) {
-    return (
-      <div className="flex items-center justify-center">
-        <Spinner />
-      </div>
-    )
-  }
+  const { mutate: mutateApproval, isPending: isApproving } = useMutation({
+    mutationKey: ["approver-approve-change", contractId, changeId],
+    mutationFn: async (action: "approved" | "rejected") => {
+      const payload: ApprovalActionDTO = { action, comment: "" };
+      const res = await approverApi.approveChange(contractId, changeId, payload);
+      return res;
+    },
+    onSuccess: (res, action) => {
+      toast.success(
+        `Change ${action === "approved" ? "approved" : "rejected"}`,
+        (res as any)?.message ?? "",
+      );
+      qc.invalidateQueries({ queryKey: changeDetailQueryKey });
+      qc.invalidateQueries({ queryKey: commentsQueryKey });
+    },
+    onError: (err: any) => {
+      toast.error(
+        "Failed to update change status",
+        err?.message ?? "Unknown error",
+      );
+    },
+  });
 
+  const isPending = approverStatus === "pending";
+  const formattedValue =
+    value != null ? `$${(Number(value) / 1000000).toFixed(2)}M` : null;
+  const showTimeFields =
+    impactType === "time" || impactType === "time & cost" || impactType === "time_and_cost";
+  const showCostField =
+    impactType === "cost" || impactType === "time & cost" || impactType === "time_and_cost";
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -261,10 +200,10 @@ const ChangeDetailsSheet: React.FC<Props> = ({
         className="sm:max-w-2xl lg:max-w-3xl rounded-2xl overflow-y-auto"
         side="right"
       >
-        <div className="space-y-6" data-testid="change-details-sheet">
+        <div className="space-y-6" data-testid="approver-change-details-sheet">
           <SheetHeader>
             <div className="flex items-center justify-between">
-              <SheetTitle>Change Details</SheetTitle>
+              <SheetTitle>Amendment Details</SheetTitle>
               <Button variant="outline" size="sm">
                 <Share2 className="mr-2 h-4 w-4" /> Export
               </Button>
@@ -294,88 +233,93 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             <TabsContent value="overview" className="space-y-4">
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <LabelRow
-                    label="Change Title"
-                    value={isDetailLoading ? "" : title}
-                  />
-                  <LabelRow
-                    label="Change Type"
-                    value={isDetailLoading ? "" : changeType}
-                  />
-                  <LabelRow
-                    label="Submission Date"
-                    value={
-                      isDetailLoading
-                        ? ""
-                        : formatDate(submittedAt, "yyyy MMM dd HH:mm aa")
-                    }
-                  />
-                  <LabelRow
-                    label="Submitted by"
-                    value={
-                      <a className="text-blue-600 underline">
-                        {isDetailLoading ? "" : submittedByName}
-                      </a>
-                    }
-                  />
+                  <LabelRow label="Amendment Name" value={isDetailLoading ? "" : title} />
+                  <LabelRow label="Amendment ID" value={isDetailLoading ? "" : (detail?.changeId ?? "-")} />
                 </div>
-
                 <div>
+                  <LabelRow label="Impact Type" value={isDetailLoading ? "" : (changeTypeRaw ? changeTypeRaw.charAt(0).toUpperCase() + changeTypeRaw.slice(1) : "-")} />
+                  {showTimeFields && (
+                    <LabelRow
+                      label="Prev. Expiry/Delivery/Completion Date"
+                      value={
+                        isDetailLoading
+                          ? ""
+                          : prevDate
+                            ? formatDate(new Date(prevDate), "yyyy MMM dd")
+                            : "-"
+                      }
+                    />
+                  )}
+                  {showCostField && formattedValue && (
+                    <LabelRow label="Value" value={isDetailLoading ? "" : formattedValue} highlight />
+                  )}
+                </div>
+              </div>
+
+              {showTimeFields && (
+                <div className="grid grid-cols-2 gap-6">
                   <LabelRow
-                    label="Vendor/Contractor"
-                    value={
-                      <a className="text-blue-600 underline">
-                        {isDetailLoading ? "" : vendorEmail}
-                      </a>
-                    }
-                  />
-                  <LabelRow
-                    label="Value"
+                    label="New Expiry/Delivery/Completion Date"
                     value={
                       isDetailLoading
                         ? ""
-                        : value != null
-                          ? `$${(Number(value) / 1000000).toFixed(2)}M`
+                        : newDate
+                          ? formatDate(new Date(newDate), "yyyy MMM dd")
                           : "-"
                     }
-                    highlight
                   />
-                  <LabelRow
-                    label="Status"
-                    value={
-                      <Badge className="bg-yellow-100 text-yellow-700">
-                        {isDetailLoading
-                          ? ""
-                          : status
-                            ? status.charAt(0).toUpperCase() + status.slice(1)
-                            : "-"}
-                      </Badge>
-                    }
-                  />
-                  <div className="py-2" />
                 </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-6">
+                <LabelRow
+                  label="Status"
+                  value={
+                    isDetailLoading ? (
+                      ""
+                    ) : status ? (
+                      <Badge
+                        className={
+                          status === "approved"
+                            ? "bg-green-100 text-green-800"
+                            : status === "rejected"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-yellow-100 text-yellow-800"
+                        }
+                      >
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                      </Badge>
+                    ) : (
+                      "-"
+                    )
+                  }
+                />
               </div>
 
               <div className="space-y-2">
                 <span className="text-sm text-slate-500">Description</span>
-                <p className="text-sm text-slate-700">
-                  {isDetailLoading ? "" : description}
+                <p className="text-sm text-slate-800 font-medium leading-7">
+                  {isDetailLoading ? "" : description || "—"}
                 </p>
               </div>
 
               <div className="space-y-5">
-                <span className="text-sm text-slate-500">
+                <span className="text-sm font-semibold text-slate-900">
                   Attached Documents
                 </span>
                 <div className="grid grid-cols-1 gap-3">
-                  {docs.map((d) => (
-                    <DocumentItem
-                      key={d.id}
-                      d={d}
-                      handlePreview={handlePreview}
-                      handleDownload={handleDownload}
-                    />
-                  ))}
+                  {docs.length > 0 ? (
+                    docs.map((d) => (
+                      <DocumentItem
+                        key={d.id}
+                        d={d}
+                        handlePreview={handlePreview}
+                        handleDownload={handleDownload}
+                      />
+                    ))
+                  ) : (
+                    <p className="text-sm text-slate-500">No documents attached.</p>
+                  )}
                 </div>
               </div>
             </TabsContent>
@@ -434,43 +378,24 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             </TabsContent>
           </Tabs>
 
-          {showDecisionActions && (
+          {isPending && (
             <SheetFooter>
               <div className="flex w-full gap-3 pt-2">
                 <Button
                   variant="outline"
                   className="flex-1 h-12 rounded-xl"
-                  disabled={!canApprove || isApproving}
-                  onClick={() => {
-                    if (!canApprove) {
-                      toast.error(
-                        "Action not allowed",
-                        "Only managers can reject changes",
-                      );
-                      return;
-                    }
-                    mutateApproval("rejected");
-                  }}
+                  disabled={isApproving}
+                  onClick={() => mutateApproval("rejected")}
                 >
-                  Reject Change
+                  Reject
                 </Button>
-                {canApprove ? (
-                  <Button
-                    className="flex-1 h-12 rounded-xl"
-                    disabled={isApproving}
-                    onClick={() => mutateApproval("approved")}
-                  >
-                    Approve
-                  </Button>
-                ) : (
-                  <SendApprovalDialog
-                    trigger={
-                      <Button className="flex-1 h-12 rounded-xl">
-                        Send for Approval
-                      </Button>
-                    }
-                  />
-                )}
+                <Button
+                  className="flex-1 h-12 rounded-xl bg-[#2A4467] hover:bg-[#1e3552] text-white"
+                  disabled={isApproving}
+                  onClick={() => mutateApproval("approved")}
+                >
+                  Approve
+                </Button>
               </div>
             </SheetFooter>
           )}
@@ -480,4 +405,4 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   );
 };
 
-export default ChangeDetailsSheet;
+export default ApproverChangeDetailsSheet;

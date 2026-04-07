@@ -254,7 +254,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                 <Forger
                   name="responseDeadline"
                   label="Response Deadline"
-                  placeholder="Enter Title"
+                  placeholder="Enter Date"
                   component={TextDatePicker}
                 />
                 <Forger
@@ -310,11 +310,11 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                   </div>
                 </div>
                 <div className="flex items-center gap-4 pt-2">
-                  <DialogClose asChild>
+                  <DialogClose >
                     <Button
-                      type="button"
+                      // type="button"
                       variant="outline"
-                      className="h-12 flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB]"
+                      className="h-12 fex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB]"
                       disabled={isSubmitting}
                     >
                       Cancel
@@ -405,6 +405,7 @@ const RfiTabContent: React.FC<Props> = ({ contractId, isActive, actionsDisabled 
     if (Array.isArray(base?.data)) return base.data;
     return [];
   })();
+
   
   const totalCount = (() => {
     const base = rfisRes as any;

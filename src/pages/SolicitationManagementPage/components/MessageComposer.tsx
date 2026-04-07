@@ -1,5 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import RichTextEditor from "@/components/layouts/FormInputs/RichTextEditor";
 import { useUser } from "@/store/authSlice";
@@ -12,6 +18,10 @@ interface MessageComposerProps {
     name: string;
     avatar?: string;
   };
+  availableUsers?: Array<{
+    name: string;
+    avatar?: string;
+  }>;
   currentUser?: {
     name: string;
     avatar?: string;
@@ -35,15 +45,20 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   onSend,
   isLoading = false,
   replyToUser,
+  availableUsers,
   currentUser,
   sendType,
   isNewChat,
 }) => {
   const { isProcurement } = useUserRole();
   const [content, setContent] = useState("");
+  const [selectedReplyUser, setSelectedReplyUser] = useState(replyToUser);
   const user = useUser();
 
-  // Use authenticated user data or fallback to prop/default
+  React.useEffect(() => {
+    setSelectedReplyUser(replyToUser);
+  }, [replyToUser]);
+
   const displayUser = user
     ? {
         name: user.name,
@@ -78,9 +93,37 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Reply to:
               </span>
-              <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
-                {replyToUser?.name || ""}
-              </span>
+              {availableUsers && availableUsers.length > 0 ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-7 text-sm">
+                      {selectedReplyUser?.name || "Select user"}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {availableUsers.map((user, index) => (
+                      <DropdownMenuItem
+                        key={user.name + index}
+                        onClick={() => setSelectedReplyUser(user)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={user.avatar} />
+                            <AvatarFallback className="text-xs">
+                              {getInitials(user.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>{user.name}</span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                  {replyToUser?.name || ""}
+                </span>
+              )}
             </div>
           </div>
         </div>
