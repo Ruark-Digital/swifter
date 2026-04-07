@@ -9,6 +9,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Forge, Forger, useForge } from "@/lib/forge";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
@@ -18,6 +20,7 @@ import {
   TextDatePicker,
   TextFileUploader,
   TextInput,
+  TextMultiSelect,
 } from "@/components/layouts/FormInputs";
 import { Check, CloudUpload, Share2 } from "lucide-react";
 import RfiStatsCards from "../components/RfiStatsCards";
@@ -29,15 +32,36 @@ import {
 import type { UploadURLs } from "../lib/contractChanges";
 import { useToastHandler } from "@/hooks/useToaster";
 import { FileUploaderItem } from "@/components/ui/file-upload";
-import { formatFileSize, getFileIcon, getSimpleFileExtension } from "@/lib/fileUtils";
+import {
+  formatFileSize,
+  getFileIcon,
+  getSimpleFileExtension,
+} from "@/lib/fileUtils";
 import { useWatch } from "react-hook-form";
 import { useUserRole } from "@/hooks/useUserRole";
+import type { Option } from "@/components/ui/multiselect";
 
 type IssueRfiDialogProps = {
   trigger: React.ReactNode;
   contractId: string;
   basePath: string;
 };
+
+type IssueRfiFormValues = {
+  rfiTitle: string;
+  responseDeadline?: Date | null;
+  question: string;
+  files: File[] | null;
+  responders: Option[];
+};
+
+const issueRfiSchema = yup.object({
+  rfiTitle: yup.string().required("RFI Title is required"),
+  responseDeadline: yup.date().nullable().optional(),
+  question: yup.string().required("Question is required"),
+  files: yup.mixed().nullable().optional(),
+  responders: yup.array().default([]),
+});
 
 const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
   trigger,
@@ -46,18 +70,60 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
-  const { isViewOnly } = useUserRole();
+  const { isViewOnly, isVendor } = useUserRole();
   const { control, reset } = useForge({
+    resolver: yupResolver(issueRfiSchema) as any,
     defaultValues: {
       rfiTitle: "",
       responseDeadline: undefined,
       question: "",
       files: null,
+      responders: [],
     },
   });
   const [isSuccess, setIsSuccess] = React.useState(false);
 
   const files = useWatch({ control, name: "files" }) as File[] | null;
+
+  const { data: personnelData } = useQuery<
+    ApiResponse<
+      Array<{
+        _id: string;
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        role?: { name: string } | string;
+      }>
+    >,
+    ApiResponseError
+  >({
+    queryKey: ["contract-personnel", contractId, isVendor],
+    queryFn: async () =>
+      await getRequest({
+        url: isVendor
+          ? `/contract/vendor/contracts/${contractId}/personnel`
+          : "/contract/manager/personnel",
+      }),
+  });
+
+  const personnelOptions = React.useMemo(() => {
+    const options = Array.isArray(personnelData?.data?.data)
+      ? personnelData?.data?.data?.map((p) => ({
+          label:
+            p.firstName && p.lastName
+              ? `${p.firstName} (${p.lastName})`
+              : p.firstName
+                ? p.firstName
+                : (p.email ?? p._id),
+          value: p._id,
+          searchText: [p.firstName, p.lastName, p.email]
+            .filter(Boolean)
+            .join(" "),
+        }))
+      : [];
+
+    return options;
+  }, [personnelData?.data?.data]);
 
   const { mutateAsync: uploadFile, isPending: isUploadingFiles } = useMutation<
     ApiResponse<UploadURLs[]>,
@@ -82,19 +148,14 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
   });
 
   const createMutation = useMutation({
-    mutationKey: [
-      "contractRfis",
-      "create",
-      contractId,
-      basePath
-    ],
+    mutationKey: ["contractRfis", "create", contractId, basePath],
     mutationFn: async (payload: ContractRfiDTO) => {
       if (isViewOnly) {
         throw new Error("View-only users cannot issue RFIs");
       }
       const res = await postRequest({
         url: basePath,
-        payload
+        payload,
       });
       return res.data;
     },
@@ -103,10 +164,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
       reset();
       toastHandler.success("RFI", "RFI issued successfully");
       await queryClient.invalidateQueries({
-        queryKey: [
-          "contractRfis",
-          contractId,
-        ],
+        queryKey: ["contractRfis", contractId],
       });
     },
     onError: (error: ApiResponseError) => {
@@ -114,15 +172,13 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
     },
   });
 
-  const handleSubmit = async (data: {
-    rfiTitle: string;
-    responseDeadline?: Date;
-    question: string;
-    files: File[] | null;
-  }) => {
+  const handleSubmit = async (data: IssueRfiFormValues) => {
+    const responderEmails = data.responders.map((r) => r.label).join(", ");
+
     const payload: ContractRfiDTO = {
       title: data.rfiTitle,
       description: data.question,
+      responder: responderEmails || undefined,
       deadline: data.responseDeadline
         ? data.responseDeadline.toISOString()
         : undefined,
@@ -147,8 +203,12 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
         const filesPayload = uploadedItems.filter(
           (
             item,
-          ): item is { name: string; url: string; type: string; size: string } =>
-            Boolean(item),
+          ): item is {
+            name: string;
+            url: string;
+            type: string;
+            size: string;
+          } => Boolean(item),
         );
         if (filesPayload.length) {
           payload.files = filesPayload;
@@ -237,7 +297,6 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
               <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
                 Issue RFI
               </DialogTitle>
-             
             </div>
             <div className="px-8 pb-8 pt-6">
               <Forge
@@ -263,6 +322,13 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                   placeholder="Enter Detail"
                   component={TextArea}
                   rows={5}
+                />
+                <Forger
+                  name="responders"
+                  label="Select Responder"
+                  placeholder="Search and select responders"
+                  component={TextMultiSelect}
+                  options={personnelOptions}
                 />
                 <div className="space-y-2">
                   <Forger
@@ -310,7 +376,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                   </div>
                 </div>
                 <div className="flex items-center gap-4 pt-2">
-                  <DialogClose >
+                  <DialogClose>
                     <Button
                       // type="button"
                       variant="outline"
@@ -343,18 +409,24 @@ type Props = {
   actionsDisabled?: boolean;
 };
 
-const RfiTabContent: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
+const RfiTabContent: React.FC<Props> = ({
+  contractId,
+  isActive,
+  actionsDisabled,
+}) => {
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
-  const { isApprover, isVendor, isViewOnly, isManager, isAdmin } = useUserRole();
+  const { isApprover, isVendor, isViewOnly, isManager, isAdmin } =
+    useUserRole();
 
   const getBasePath = () => {
     if (isVendor) return `/contract/vendor/contracts/${contractId}/rfi`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/rfi`;
     if (isManager) return `/contract/manager/contracts/${contractId}/rfis`;
-    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/rfi`;
+    if (isAdmin || isViewOnly)
+      return `/contract/user/contracts/${contractId}/rfi`;
     return `/contract/user/contracts/${contractId}/rfi`; // Default fallback
   };
 
@@ -366,14 +438,14 @@ const RfiTabContent: React.FC<Props> = ({ contractId, isActive, actionsDisabled 
       contractId,
       pagination.pageIndex,
       pagination.pageSize,
-      basePath
+      basePath,
     ],
     queryFn: async () => {
       const query: ManagerListRfisQuery = {
         page: pagination.pageIndex + 1,
         limit: pagination.pageSize,
       };
-      
+
       const params = new URLSearchParams();
       if (query.page) params.append("page", String(query.page));
       if (query.limit) params.append("limit", String(query.limit));
@@ -406,7 +478,6 @@ const RfiTabContent: React.FC<Props> = ({ contractId, isActive, actionsDisabled 
     return [];
   })();
 
-  
   const totalCount = (() => {
     const base = rfisRes as any;
     if (typeof base?.data?.total === "number") return base.data.total;
@@ -429,7 +500,10 @@ const RfiTabContent: React.FC<Props> = ({ contractId, isActive, actionsDisabled 
               contractId={contractId}
               basePath={basePath}
               trigger={
-                <Button className="h-10 rounded-xl px-4" disabled={!!actionsDisabled}>
+                <Button
+                  className="h-10 rounded-xl px-4"
+                  disabled={!!actionsDisabled}
+                >
                   Issue RFI
                 </Button>
               }
@@ -478,7 +552,7 @@ const RfiTabContent: React.FC<Props> = ({ contractId, isActive, actionsDisabled 
         </TabsContent>
         <TabsContent value="issued">
           <RfiTable
-            rows={rfiRows.filter((item: any) => item.type === "issue")}
+            rows={rfiRows.filter((item: any) => item.type === "issued")}
             isLoading={isRfisLoading}
             totalCount={totalCount}
             pagination={pagination}

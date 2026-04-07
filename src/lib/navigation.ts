@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { MdDashboard } from "react-icons/md";
 import {
   User2,

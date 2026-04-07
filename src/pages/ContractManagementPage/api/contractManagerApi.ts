@@ -165,6 +165,7 @@ export type ContractRfiDTO = {
   title?: string;
   description?: string;
   issueRfi?: string;
+  responder?: string;
   deadline?: string;
   files?: Array<{
     name?: string;
@@ -338,6 +339,7 @@ export type ContractChangeDTO = {
   type?: "request" | "directive" | "proposal" | "order";
   value?: number;
   submittedAt?: string;
+  approverStatus?: "N/A" | "pending" | "approved" | "rejected";
   status?: "pending" | "approved" | "rejected";
 };
 

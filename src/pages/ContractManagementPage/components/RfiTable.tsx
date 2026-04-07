@@ -211,7 +211,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     }
   >;
 
-  console.log({ comments, rfiCommentsRes })
+  // console.log({ comments, rfiCommentsRes })
 
   const getCommentAuthor = (comment: ContractCommentDTO) =>
     comment.user?.name ??
@@ -579,19 +579,19 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
 
   const { control, reset, setValue } = useForge({
     defaultValues: {
-      rfiTitle: "",
-      responseDeadline: undefined,
+      rfiTitle: rfi?.title ?? "",
+      responseDeadline: rfi?.deadline,
       responseDescription: "",
-      files: null,
+      files: null as File[] | null,
     },
   });
   const [isSuccess, setIsSuccess] = React.useState(false);
 
   React.useEffect(() => {
-    const d = rfi;
-    if (d) {
-      setValue("rfiTitle", d?.title ?? "");
-      setValue("responseDeadline", (d?.deadline ?? undefined) as any);
+    if (rfi) {
+      setValue("rfiTitle", rfi?.title ?? "", { shouldValidate: false });
+      setValue("responseDeadline", rfi?.deadline, { shouldValidate: false });
+      // setValue("responseDescription", rfi?.description ?? "", { shouldValidate: false });
     }
   }, [rfi, setValue]);
 
@@ -757,6 +757,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
                 control={control}
                 onSubmit={handleSubmit}
                 className="space-y-5"
+                debug
               >
                 <Forger
                   name="rfiTitle"
@@ -877,9 +878,10 @@ const columns: ColumnDef<RfiRow>[] = [
     header: () => <div className="text-right">Actions</div>,
     cell: ({ row }) => (
       <div className="text-right">
-        {row.original.type === "received" ? (
+        {row.original.type === "received" && row.original.status !== "closed" ? (
           <RespondToRfiDialog
             rfiId={row.original.id}
+            rfi={row.original.rfi}
             contractId={row.original.contractId ?? ""}
             trigger={
               <button

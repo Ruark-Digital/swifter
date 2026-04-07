@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { FieldValues, Path } from 'react-hook-form';
 import { FieldConfig, ValidationContext, EnhancedValidationState } from '../types/validationTypes';
 

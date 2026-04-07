@@ -121,13 +121,8 @@ const CreateChangeDialog: React.FC<Props> = ({
       toastHandler.success("Change Request", "Change request submitted successfully");
       setOpen(false);
       reset();
-      await queryClient.invalidateQueries({
-        queryKey:
-          invalidateQueryKey ?? [
-            isManager ? "contractManager" : "vendor",
-            "contractChanges",
-          ],
-      });
+      await queryClient.invalidateQueries({ queryKey: ["contractChanges"] });
+      await queryClient.invalidateQueries({ queryKey: ["contractChanges", "stats"] });
     },
     onError: (error: ApiResponseError) => {
       toastHandler.error("Change Request", error);

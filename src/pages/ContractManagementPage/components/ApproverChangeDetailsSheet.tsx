@@ -42,10 +42,10 @@ const LabelRow = ({
   value: React.ReactNode;
   highlight?: boolean;
 }) => (
-  <div className="grid grid-cols-2 gap-3 py-2">
-    <span className="text-sm text-slate-500">{label}</span>
+  <div className="space-y-2 py-3">
+    <span className="text-sm text-slate-500 block">{label}</span>
     <span
-      className={`text-sm ${
+      className={`text-sm block ${
         highlight ? "font-semibold text-slate-900" : "text-slate-800"
       }`}
     >
@@ -78,12 +78,11 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
     staleTime: 60_000,
   });
 
-  const detail = detailRes?.data ?? detailRes;
+  const detail = detailRes?.data as any;
 
   const title = detail?.title ?? "";
   const description = detail?.description ?? "";
   const changeTypeRaw = detail?.type ?? "";
-  const submittedAt = detail?.submittedAt ?? detail?.createdAt ?? "";
   const status = detail?.status ?? "";
   const approverStatus = detail?.approverStatus ?? "";
   const value = detail?.value;

@@ -245,7 +245,6 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     },
   });
 
-  console.log({ submittedByName });
   if (isDetailLoading) {
     return (
       <div className="flex items-center justify-center">
@@ -272,7 +271,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
           </SheetHeader>
 
           <h3 className="text-lg font-semibold text-slate-900">
-            {isDetailLoading ? "" : title}
+            {title}
           </h3>
 
           <Tabs defaultValue="overview" className="space-y-4">

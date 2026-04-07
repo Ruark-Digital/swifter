@@ -32,7 +32,8 @@ export type VendorContractRow = {
     | "Expired"
     | "Cancelled"
     | "Published"
-    | "Draft";
+    | "Draft"
+    | "Pending Approval";
 };
 
 const columns: ColumnDef<VendorContractRow>[] = [
@@ -91,12 +92,13 @@ const columns: ColumnDef<VendorContractRow>[] = [
     header: "Status",
     cell: ({ getValue }) => {
       const s = getValue<VendorContractRow["status"]>();
+      console.log({ s });
       const tone =
         s === "Active" || s === "Published"
           ? "bg-green-100 text-green-700"
           : s === "Draft"
             ? "bg-gray-100 text-gray-700"
-            : s === "Pending_Review"
+            : s === "Pending Approval"
             ? "bg-yellow-100 text-yellow-700"
             : "bg-red-100 text-red-700";
       return (
@@ -173,7 +175,6 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
     });
   }, [rows, search]);
 
-  console.log({ filteredRows })
 
   return (
     <div data-testid="vendor-contracts-table">
