@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import type { ContractClaimDTO } from "../api/contractManagerApi";
+import { useToastHandler } from "@/hooks/useToaster";
 
 const columns: ColumnDef<ContractClaimDTO>[] = [
   {
@@ -87,22 +88,31 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
   {
     id: "actions",
     header: "Actions",
-    cell: () => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon">⋮</Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild>
-            <a href="#" data-testid="view-claim-detail">View Details</a>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
+    cell: () => {
+      const toast = useToastHandler();
+      return (
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">⋮</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => {
+                toast.success("Claim Details", "Claim details view coming soon!");
+              }}>
+                View Details
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      );
+    },
   },
 ];
 
 type ClaimsTableProps = {
+  contractId: string;
+  basePath: string;
   rows?: ContractClaimDTO[];
   isLoading?: boolean;
   totalCount?: number;
@@ -111,6 +121,8 @@ type ClaimsTableProps = {
 };
 
 const ClaimsTable: React.FC<ClaimsTableProps> = ({
+  contractId,
+  basePath,
   rows = [],
   isLoading,
   totalCount,
@@ -171,6 +183,7 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
           manualPagination: true,
           pagination,
           setPagination,
+          meta: { contractId, basePath },
         }}
       />
     </div>
