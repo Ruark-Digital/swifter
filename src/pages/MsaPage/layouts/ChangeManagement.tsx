@@ -275,7 +275,6 @@ const ChangeManagement: React.FC<Props> = ({
               contractId={contractId}
               isManager
               documentType="MsaContract"
-              invalidateQueryKey={["msaChanges", contractId]}
             />
           )}
         </div>

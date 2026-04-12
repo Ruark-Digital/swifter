@@ -37,7 +37,6 @@ type Props = {
   contractId: string;
   isManager?: boolean;
   documentType?: "Contract" | "MsaContract";
-  invalidateQueryKey?: readonly unknown[];
 };
 
 const CreateChangeDialog: React.FC<Props> = ({
@@ -45,7 +44,6 @@ const CreateChangeDialog: React.FC<Props> = ({
   contractId,
   isManager = true,
   documentType = "Contract",
-  invalidateQueryKey,
 }) => {
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
