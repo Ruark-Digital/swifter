@@ -35,10 +35,12 @@ import { formatDate } from "date-fns";
 import Spinner from "@/components/ui/Spinner";
 
 type Props = {
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
   contractId: string;
   changeId: string;
   basePath?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 const LabelRow = ({
@@ -67,12 +69,17 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   contractId,
   changeId,
   basePath,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
 }) => {
   const toast = useToastHandler();
   const qc = useQueryClient();
   const { isManager, isApprover, isVendor, isAdmin, isViewOnly } =
     useUserRole();
-  const [open, setOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = React.useState(false);
+
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = setControlledOpen ?? setInternalOpen;
 
   const roleBasePath = React.useMemo(() => {
     if (basePath) return basePath;
@@ -255,7 +262,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>{trigger}</SheetTrigger>
+      {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
       <SheetContent
         className="sm:max-w-2xl lg:max-w-3xl rounded-2xl overflow-y-auto"
         side="right"
