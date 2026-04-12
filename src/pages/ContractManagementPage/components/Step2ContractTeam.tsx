@@ -12,7 +12,7 @@ import { Personnel } from "./Step7ApprovalLevel";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
-import { UseFormSetValue, useFormContext } from "react-hook-form";
+import { UseFormSetValue, useFormContext, useWatch } from "react-hook-form";
 import { CreateContractFormData } from "./CreateContractSheet";
 
 type Props = {
@@ -22,7 +22,7 @@ type Props = {
 const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
   const formContext = useFormContext<CreateContractFormData>();
   const applyValue = setValue ?? formContext.setValue;
-  const vendorId = formContext.watch("vendor");
+  const vendorId = useWatch({ control: formContext as any, name: "vendor" });
 
   const { data: personnelData } = useQuery<
     ApiResponse<Personnel>,
