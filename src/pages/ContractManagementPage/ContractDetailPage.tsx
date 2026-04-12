@@ -396,10 +396,10 @@ const ContractDetailPage: React.FC = () => {
         <Badge className={status?.className}>{status?.label}</Badge>
       </div>
 
-      {isApprover && canApprove && !hasAprovedorRejected && (
+      {((isApprover && canApprove && !hasAprovedorRejected) || canProjectManagerApprove) && (
         <div
           className={cn("flex items-center gap-4", {
-            hidden: hasNoAuthorization,
+            hidden: hasNoAuthorization && !canProjectManagerApprove,
           })}
         >
           <Button
