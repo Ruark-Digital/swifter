@@ -218,7 +218,7 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
         id: p._id ?? p.email ?? "",
         name: p.name || "",
         email: p.email ?? "",
-        role: typeof p.role === "string" ? p.role : (Array.isArray(p.role) ? p.role[0]?.name ?? "" : ""),
+        role: typeof p.role === "string" ? p.role : (Array.isArray(p.role) ? (p.role[0] as any)?.name ?? "" : ""),
         phone: (p as any).phone ?? "",
       })),
       internalTeam: (contract.internalTeam ?? []).map((t) => ({
@@ -684,7 +684,7 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
               {step === 7 && (
                 <Step4Form
                   control={control}
-                  // documents={watchedDocuments}
+                  documents={watchedDocuments}
                 />
               )}
               {step === 8 && <Step7ApprovalLevel control={control} />}
