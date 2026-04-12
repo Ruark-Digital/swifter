@@ -148,6 +148,16 @@ export const createVendorApi = (
     });
     return res;
   },
+  approveContract: async (
+    contractId: string,
+    payload: { action: "approved" | "rejected"; comment?: string }
+  ) => {
+    const res = await postRequest({
+      url: `/contract/vendor/contracts/${contractId}/approve`,
+      payload,
+    });
+    return res as ApiResponse<any>;
+  },
 });
 
 export const vendorApi = createVendorApi();
