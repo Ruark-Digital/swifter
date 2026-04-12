@@ -104,8 +104,8 @@ export const schema = yup.object({
     .array(
       yup.object({
         name: yup.string().optional(),
-        amount: yup.mixed().required("Milestone amount is required"),
-        dueDate: yup.date().typeError("Invalid date").required("Due date is required"),
+        amount: yup.mixed().optional(),
+        dueDate: yup.date().optional().nullable(),
         deliverable: yup.string().optional(),
       }),
     )
