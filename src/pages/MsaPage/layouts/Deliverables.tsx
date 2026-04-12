@@ -50,8 +50,8 @@ const StatCard = ({
     <Card className="border-[#E5E7EB] rounded-xl shadow-none">
       <CardContent className="px-6 py-5 flex items-center justify-between">
         <div className="space-y-2">
-          <div className="text-[34px] sm:text-sm text-[#6B6B6B] leading-5">{title}</div>
-          <div className="text-[34px] sm:text-[40px] font-semibold leading-8 text-[#0F0F0F]">
+          <div className="text-sm text-[#6B6B6B] leading-5">{title}</div>
+          <div className="text-xl font-semibold leading-8 text-[#0F0F0F]">
             {value}
           </div>
         </div>
@@ -176,7 +176,7 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
         </h3>
         <Button
           variant="outline"
-          className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F]"
+          className="h-12 rounded-xl border-[#E5E7EB] px-5 font-semibold text-[#0F0F0F]"
         >
           <Share2 className="mr-2 h-5 w-5" />
           Export Report

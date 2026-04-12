@@ -30,6 +30,7 @@ import PortalSettingsPage from "@/pages/PortalSettingsPage";
 import CommunicationManagementPage from "@/pages/CommunicationManagementPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import VendorOnboardingPage from "@/pages/OnboardingPage/VendorOnboardingPage";
+import PmOnboardingPage from "@/pages/OnboardingPage/PmOnboardingPage";
 import SubmitProposalPage from "@/pages/SolicitationManagementPage/components/SubmitProposalPage";
 import EditProposalPage from "@/pages/SolicitationManagementPage/components/EditProposalPage";
 import ProposalDetailsPage from "@/pages/SolicitationManagementPage/ProposalDetailsPage";
@@ -97,6 +98,14 @@ export const routes = [
         element: (
           <PublicRoute>
             <VendorOnboardingPage />
+          </PublicRoute>
+        ),
+      },
+      {
+        path: "/pm-onboarding/:encodedData",
+        element: (
+          <PublicRoute>
+            <PmOnboardingPage />
           </PublicRoute>
         ),
       },

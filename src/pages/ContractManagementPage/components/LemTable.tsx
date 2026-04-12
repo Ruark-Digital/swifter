@@ -59,7 +59,7 @@ export interface LemDetailResponse {
   company:          string;
   contractRef:      string;
   contractRefModel: string;
-  submittedBy:      string;
+  submittedBy?:      SubmittedBy;
   lemId:            string;
   title:            string;
   description:      string;
@@ -72,6 +72,11 @@ export interface LemDetailResponse {
   __v:              number;
   summary:          Summary[];
   rateSheet:        RateSheet;
+}
+
+export type SubmittedBy = {
+  name?: string
+  id?: string
 }
 
 export interface Summary {
@@ -290,7 +295,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                     label="Submitted By"
                     value={
                       <a className="text-[#2563EB] underline">
-                        {lemDetail?.submittedBy || "-"}
+                        {lemDetail?.submittedBy?.name || "-"}
                       </a>
                     }
                   />

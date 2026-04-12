@@ -10,6 +10,7 @@ import { getRequest } from "@/lib/axiosInstance";
 import PaymentSummaryMilestonesTable, {
   type PaymentMilestoneRow,
 } from "@/pages/ContractManagementPage/components/PaymentSummaryMilestonesTable";
+import { LabelItem } from "../components/LabelItem";
 
 type PaymentSummaryProps = {
   contractId: string;
@@ -225,12 +226,16 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
       {
         accessorKey: "status",
         header: () => <div className="text-center">Status</div>,
-        cell: ({ getValue }) => <div className="text-center">{getValue<string>()}</div>,
+        cell: ({ getValue }) => (
+          <div className="text-center">{getValue<string>()}</div>
+        ),
       },
       {
         accessorKey: "dueDate",
         header: () => <div className="text-center">Due Date</div>,
-        cell: ({ getValue }) => <div className="text-center">{getValue<string>()}</div>,
+        cell: ({ getValue }) => (
+          <div className="text-center">{getValue<string>()}</div>
+        ),
       },
     ],
     [],
@@ -251,7 +256,9 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
       {
         accessorKey: "dateSubmitted",
         header: () => <div className="text-center">Date Submitted</div>,
-        cell: ({ getValue }) => <div className="text-center">{getValue<string>()}</div>,
+        cell: ({ getValue }) => (
+          <div className="text-center">{getValue<string>()}</div>
+        ),
       },
     ],
     [],
@@ -279,13 +286,13 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
   return (
     <TabsContent value="payment-summary" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-semibold text-[#0F0F0F]">
+        <h3 className="text-base font-semibold text-[#0F0F0F]">
           Payment Summary
         </h3>
         <div className="flex items-center gap-4">
           <button
             type="button"
-            className="inline-flex h-12 items-center gap-2 rounded-xl border border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F]"
+            className="inline-flex h-12 items-center gap-2 text-sm rounded-xl border border-[#E5E7EB] px-5 font-semibold text-[#0F0F0F]"
           >
             <Share2 className="h-5 w-5" />
             Export Report
@@ -294,13 +301,13 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
             <>
               <button
                 type="button"
-                className="inline-flex h-12 items-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] px-5 text-base font-semibold text-[#0F0F0F]"
+                className="inline-flex h-12 items-center rounded-xl text-sm border border-[#E5E7EB] bg-[#F3F4F6] px-5 font-semibold text-[#0F0F0F]"
               >
                 Update Saving
               </button>
               <button
                 type="button"
-                className="inline-flex h-12 items-center rounded-xl bg-[#2A4467] px-5 text-base font-semibold text-white"
+                className="inline-flex h-12 items-center rounded-xl text-sm bg-[#2A4467] px-5 font-semibold text-white"
               >
                 Release Holdback
               </button>
@@ -316,91 +323,40 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
       )}
 
       <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
-        <div className="space-y-2">
-          <p className="text-[18px] leading-7 text-[#6B6B6B]">
-            Contract Value
-          </p>
-          <p className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-            {formatMoney(msa?.contractValue)}
-          </p>
-        </div>
-        <div className="space-y-2">
-          <p className="text-[18px] leading-7 text-[#6B6B6B]">
-            Contigency
-          </p>
-          <p className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-            {contigencyValue}
-          </p>
-        </div>
-        <div className="space-y-2">
-          <p className="text-[18px] leading-7 text-[#6B6B6B]">
-            Holdback
-          </p>
-          <p className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-            {holdbackValue}
-          </p>
-        </div>
+        <LabelItem label="Contract Value" value={formatMoney(msa?.contractValue)} />
 
-        <div className="space-y-2">
-          <p className="text-[18px] leading-7 text-[#6B6B6B]">
-            Holdback Amount
-          </p>
-          <p className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-            {formatMoney(msa?.holdBackBank)}
-          </p>
-        </div>
-        <div className="space-y-2">
-          <p className="text-[18px] leading-7 text-[#6B6B6B]">
-            Holdback Released
-          </p>
-          <p className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-            {formatMoney(msa?.holdBackReleased)}
-          </p>
-        </div>
-        <div className="space-y-2">
-          <p className="text-[18px] leading-7 text-[#6B6B6B]">
-            Savings Realized
-          </p>
-          <p className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-            {formatMoney(msa?.savingAmount)}
-          </p>
-        </div>
+        <LabelItem label="Contigency" value={contigencyValue} />
 
-        <div className="space-y-2">
-          <p className="text-[18px] leading-7 text-[#6B6B6B]">
-            Payment Structure
-          </p>
-          <p className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-            {msa?.paymentStructure || "-"}
-          </p>
-        </div>
-        <div className="space-y-2">
-          <p className="text-[18px] leading-7 text-[#6B6B6B]">
-            Payment Term
-          </p>
-          <p className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-            {paymentTermValue}
-          </p>
-        </div>
+        <LabelItem label="Holdback" value={holdbackValue} />
+
+        <LabelItem label="Holdback Amount" value={formatMoney(msa?.holdBackBank)} />
+
+        <LabelItem label="Holdback Released" value={formatMoney(msa?.holdBackReleased)} />
+
+        <LabelItem label="Savings Realized" value={formatMoney(msa?.savingAmount)} />
+
+        <LabelItem label="Payment Structure" value={msa?.paymentStructure || "-"} />
+
+        <LabelItem label="Payment Term" value={paymentTermValue} />
       </div>
 
       <Tabs defaultValue="milestones" className="w-full space-y-6">
         <TabsList className="h-auto rounded-full bg-[#F3F4F6] p-2">
           <TabsTrigger
             value="milestones"
-            className="rounded-full px-6 py-1.5 text-base font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             MileStones
           </TabsTrigger>
           <TabsTrigger
             value="holdback-release"
-            className="rounded-full px-6 py-1.5 text-base font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             Holdback Release
           </TabsTrigger>
           <TabsTrigger
             value="saving-realized"
-            className="rounded-full px-6 py-1.5 text-base font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             Saving Reaized
           </TabsTrigger>

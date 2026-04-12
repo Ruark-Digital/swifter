@@ -26,7 +26,11 @@ type MsaDetailsApiResponse = {
   };
 };
 
-const Documents: React.FC<DocumentsProps> = ({ contractId, files, isActive }) => {
+const Documents: React.FC<DocumentsProps> = ({
+  contractId,
+  files,
+  isActive,
+}) => {
   const { isVendor, isApprover, isViewOnly, isManager } = useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
@@ -81,21 +85,19 @@ const Documents: React.FC<DocumentsProps> = ({ contractId, files, isActive }) =>
   return (
     <TabsContent value="documents" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-semibold text-[#0F0F0F]">
-          Documents
-        </h3>
+        <h3 className="text-base font-semibold text-[#0F0F0F]">Documents</h3>
 
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
-            className="h-12 rounded-2xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F]"
+            className="h-12 rounded-2xl border-[#E5E7EB] px-5 font-semibold text-[#0F0F0F]"
           >
             <Share2 className="mr-2 h-5 w-5" /> Export Report
           </Button>
           {isManager && (
             <Button
               variant="outline"
-              className="h-12 rounded-2xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F]"
+              className="h-12 rounded-2xl border-[#E5E7EB] px-5 font-semibold text-[#0F0F0F]"
             >
               Edit Contract
             </Button>

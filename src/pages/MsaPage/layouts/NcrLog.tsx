@@ -284,7 +284,7 @@ const NcrLog: React.FC<Props> = ({ contractId, isActive }) => {
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append("page", "1");
-      params.append("limit", "200");
+      params.append("limit", "50");
       const response = await getRequest({
         url: `${basePath}?${params.toString()}`,
       });
@@ -395,7 +395,7 @@ const NcrLog: React.FC<Props> = ({ contractId, isActive }) => {
         <div className="rounded-xl border border-[#E5E7EB] bg-white px-6 py-5 flex items-center justify-between">
           <div className="space-y-2">
             <div className="text-sm text-[#6B6B6B]">All NCR</div>
-            <div className="text-[40px] font-semibold leading-8 text-[#0F0F0F]">
+            <div className="text-base font-semibold leading-8 text-[#0F0F0F]">
               {statsLoading ? "—" : stats.total ?? 0}
             </div>
           </div>
@@ -408,7 +408,7 @@ const NcrLog: React.FC<Props> = ({ contractId, isActive }) => {
         <div className="rounded-xl border border-[#E5E7EB] bg-white px-6 py-5 flex items-center justify-between">
           <div className="space-y-2">
             <div className="text-sm text-[#6B6B6B]">Issued</div>
-            <div className="text-[40px] font-semibold leading-8 text-[#0F0F0F]">
+            <div className="text-base font-semibold leading-8 text-[#0F0F0F]">
               {statsLoading ? "—" : stats.issue ?? 0}
             </div>
           </div>
@@ -421,7 +421,7 @@ const NcrLog: React.FC<Props> = ({ contractId, isActive }) => {
         <div className="rounded-xl border border-[#E5E7EB] bg-white px-6 py-5 flex items-center justify-between">
           <div className="space-y-2">
             <div className="text-sm text-[#6B6B6B]">Received</div>
-            <div className="text-[40px] font-semibold leading-8 text-[#0F0F0F]">
+            <div className="text-base font-semibold leading-8 text-[#0F0F0F]">
               {statsLoading ? "—" : stats.receive ?? 0}
             </div>
           </div>

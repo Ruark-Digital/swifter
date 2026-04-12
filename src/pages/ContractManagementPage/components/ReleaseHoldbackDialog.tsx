@@ -204,7 +204,7 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-w-[600px] h-[80vh] overflow-auto gap-0 border-0 p-0 ">
+      <DialogContent className="h-[80vh] overflow-auto gap-0 border-0 p-0 ">
         <Forge control={control} onSubmit={onSubmit} className="flex flex-col">
           <div className="flex items-center justify-between border-b border-[#E5E7EB] px-6 py-5">
             <h2 className="text-xl font-semibold text-[#111827]">Release Holdback</h2>

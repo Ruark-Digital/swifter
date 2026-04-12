@@ -92,7 +92,6 @@ const columns: ColumnDef<VendorContractRow>[] = [
     header: "Status",
     cell: ({ getValue }) => {
       const s = getValue<VendorContractRow["status"]>();
-      console.log({ s });
       const tone =
         s === "Active" || s === "Published"
           ? "bg-green-100 text-green-700"

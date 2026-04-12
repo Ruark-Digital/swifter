@@ -36,6 +36,7 @@ import Deliverables from "./layouts/Deliverables";
 import Reports from "./layouts/Reports";
 import NcrLog from "./layouts/NcrLog";
 import { Share2 } from "lucide-react";
+import { Status } from "./components/StatusBadge";
 
 type TabKey =
   | "overview"
@@ -175,129 +176,133 @@ const toMsaStatus = (value?: string): MsaStatus | undefined => {
   }
 };
 
-const formatMsaStatus = (status?: MsaStatus) => {
+const formatMsaStatus = (
+  status?: MsaStatus,
+): {
+  label: Status;
+  className: string;
+} => {
   if (status === "active")
-    return { label: "Active", className: "bg-green-100 text-green-700" };
+    return { label: "active", className: "bg-green-100 text-green-700" };
   if (status === "publish")
-    return { label: "Published", className: "bg-green-100 text-green-700" };
+    return { label: "publish", className: "bg-green-100 text-green-700" };
   if (status === "draft")
-    return { label: "Draft", className: "bg-slate-100 text-slate-700" };
+    return { label: "draft", className: "bg-slate-100 text-slate-700" };
   if (status === "pending_approval")
     return {
-      label: "Pending Approval",
+      label: "pending_approval",
       className: "bg-yellow-100 text-yellow-700",
     };
   if (status === "completed")
-    return { label: "Completed", className: "bg-blue-100 text-blue-700" };
+    return { label: "completed", className: "bg-blue-100 text-blue-700" };
   if (status === "cancelled")
-    return { label: "Cancelled", className: "bg-red-100 text-red-700" };
+    return { label: "cancelled", className: "bg-red-100 text-red-700" };
   if (status === "expired")
-    return { label: "Expired", className: "bg-orange-100 text-orange-700" };
+    return { label: "expired", className: "bg-orange-100 text-orange-700" };
   if (status === "terminated")
-    return { label: "Terminated", className: "bg-red-100 text-red-700" };
-  return { label: "Unknown", className: "bg-slate-100 text-slate-700" };
+    return { label: "terminated", className: "bg-red-100 text-red-700" };
+  return { label: "draft", className: "bg-slate-100 text-slate-700" };
 };
 
 export interface MSAContractDetail {
-  vendor:                 Vendor;
+  vendor: Vendor;
   contractFormationStage: ContractFormationStage;
-  _id:                    string;
-  company:                Company;
-  creator:                Creator;
-  internalTeam:           Approver[];
-  managers:               any[];
-  businessDivision:       BusinessDivision;
-  rating:                 number;
-  title:                  string;
-  msaContractId:          string;
-  description:            string;
-  msaType:                Company;
-  visibility:             string;
-  currency:               string;
-  contractValue:          number;
-  contigency:             string;
-  holdBack:               number;
-  holdBackBank:           number;
-  paymentStructure:       string;
-  deliverables:           string[];
-  insurance:              string;
-  startDate:              Date;
-  endDate:                Date;
-  duration:               number;
-  files:                  File[];
-  currentApprovalLevel:   number;
-  approvers:              Approver[];
-  status:                 string;
-  signatories:            Signatory[];
-  datePublished:          Date;
-  timezone:               string;
-  isDeleted:              boolean;
-  vendorPersonnel:        any[];
-  milestone:              any[];
-  createdAt:              Date;
-  updatedAt:              Date;
-  __v:                    number;
-  holdBackReleased:       number;
-  savingAmount:           number;
+  _id: string;
+  company: Company;
+  creator: Creator;
+  internalTeam: Approver[];
+  managers: any[];
+  businessDivision: BusinessDivision;
+  rating: number;
+  title: string;
+  msaContractId: string;
+  description: string;
+  msaType: Company;
+  visibility: string;
+  currency: string;
+  contractValue: number;
+  contigency: string;
+  holdBack: number;
+  holdBackBank: number;
+  paymentStructure: string;
+  deliverables: string[];
+  insurance: string;
+  startDate: Date;
+  endDate: Date;
+  duration: number;
+  files: File[];
+  currentApprovalLevel: number;
+  approvers: Approver[];
+  status: string;
+  signatories: Signatory[];
+  datePublished: Date;
+  timezone: string;
+  isDeleted: boolean;
+  vendorPersonnel: any[];
+  milestone: any[];
+  createdAt: Date;
+  updatedAt: Date;
+  __v: number;
+  holdBackReleased: number;
+  savingAmount: number;
 }
 
 export interface Approver {
-  id:    string;
-  name:  string;
+  id: string;
+  name: string;
   email: string;
   role?: string;
 }
 
 export interface BusinessDivision {
-  _id:      string;
-  name:     string;
+  _id: string;
+  name: string;
   location: string;
 }
 
 export interface Company {
-  _id:  string;
+  _id: string;
   name: string;
 }
 
 export interface ContractFormationStage {
-  draft:     Approval;
-  review:    Approval;
-  approval:  Approval;
+  draft: Approval;
+  review: Approval;
+  approval: Approval;
   execution: Approval;
 }
 
 export interface Approval {
   startDate: string;
-  endDate:   string;
+  endDate: string;
 }
 
 export interface Creator {
-  _id:   string;
-  name:  string;
+  _id: string;
+  name: string;
   email: string;
-  role:  Company;
+  role: Company;
 }
 
 export interface File {
-  name:       string;
-  url:        string;
-  type:       string;
-  size:       string;
-  _id:        string;
+  name: string;
+  url: string;
+  type: string;
+  size: string;
+  _id: string;
   uploadedAt: string;
 }
 
 export interface Signatory {
-  user:    string;
+  user: string;
   userRef: string;
-  status:  string;
-  _id:     string;
+  status: string;
+  _id: string;
 }
 
 export interface Vendor {
   status: string;
 }
-
 
 const formatDate = (iso?: string) => {
   if (!iso) return "N/A";
@@ -568,46 +573,65 @@ const MsaDetailPage: React.FC = () => {
                 vendorPersonnel={vendorPersonnel}
               />
             </TabsContent>
+
             <Documents
               contractId={id ?? ""}
               files={msa?.files}
               isActive={activeTab === "documents"}
             />
+
             <Amendments
               contractId={id ?? ""}
               isActive={activeTab === "amendments"}
               actionsDisabled={msa?.status === "publish"}
             />
+
             <Compliance
               contractId={id ?? ""}
               isActive={activeTab === "compliance"}
               // contract={msa?.}
             />
+
             <ChangeManagement
               contractId={id ?? ""}
               isActive={activeTab === "change"}
               actionsDisabled={msa?.status === "publish"}
             />
+
             <Invoice
               contractId={id ?? ""}
               isActive={activeTab === "invoice"}
               actionsDisabled={msa?.status === "publish"}
             />
+
             <Claims
               contractId={id ?? ""}
               isActive={activeTab === "claims"}
               actionsDisabled={msa?.status === "publish"}
             />
+
             <Rfi
               contractId={id ?? ""}
               isActive={activeTab === "rfi"}
               actionsDisabled={msa?.status === "publish"}
             />
+
             <NcrLog contractId={id ?? ""} isActive={activeTab === "ncr-log"} />
-            <Deliverables contractId={id ?? ""} isActive={activeTab === "deliverables"} />
+
+            <Deliverables
+              contractId={id ?? ""}
+              isActive={activeTab === "deliverables"}
+            />
+
             <Lem contractId={id ?? ""} isActive={activeTab === "lem"} />
-            <Approvers contractId={id ?? ""} isActive={activeTab === "approvers"} />
+
+            <Approvers
+              contractId={id ?? ""}
+              isActive={activeTab === "approvers"}
+            />
+
             <Reports contractId={id ?? ""} isActive={activeTab === "reports"} />
+            
             <Kpi contractId={id ?? ""} isActive={activeTab === "kpi"} />
 
             <PaymentSummary

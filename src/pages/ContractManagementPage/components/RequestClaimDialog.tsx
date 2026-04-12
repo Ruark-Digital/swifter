@@ -48,6 +48,7 @@ const RequestClaimDialog: React.FC<Props> = ({
   });
 
   const impactType = watch("impactType");
+  console.log({ createPath });
 
   const createMutation = useMutation({
     mutationKey: ["create-claim", createPath],
@@ -67,6 +68,7 @@ const RequestClaimDialog: React.FC<Props> = ({
       setOpen(false);
     },
     onError: (error) => {
+      console.log({ error });
       toast.error("Claim", error as any);
     },
   });
