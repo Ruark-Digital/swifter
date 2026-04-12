@@ -1,0 +1,1 @@
+{"version":3,"file":"weakMaps.d.ts","sourceRoot":"","sources":["../../src/utils/weakMaps.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,SAAS,EAAE,MAAM,OAAO,CAAC;AAClC,OAAO,EAAE,gBAAgB,EAAmB,MAAM,UAAU,CAAC;AAE7D,MAAM,MAAM,cAAc,GAAG,SAAS,CAAC,gBAAgB,CAAC,CAAC;AAEzD,eAAO,MAAM,mBAAmB,8DAA+C,CAAC;AAChF,eAAO,MAAM,4BAA4B,uEAAwD,CAAC"}

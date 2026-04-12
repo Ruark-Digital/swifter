@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { FieldValues, Path, FieldErrors, get } from "react-hook-form";
 import {
   FieldPriority,

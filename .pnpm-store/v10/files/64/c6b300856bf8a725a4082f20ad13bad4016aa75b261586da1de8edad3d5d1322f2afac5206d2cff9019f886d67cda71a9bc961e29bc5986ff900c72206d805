@@ -1,0 +1,13 @@
+import { useStore } from 'zustand';
+export function createSelectorFunctions(store) {
+    var storeIn = store;
+    storeIn.use = {};
+    Object.keys(storeIn.getState()).forEach(function (key) {
+        var selector = function (state) { return state[key]; };
+        storeIn.use[key] = typeof storeIn === 'function'
+            ? function () { return storeIn(selector); }
+            : function () { return useStore(storeIn, selector); };
+    });
+    return store;
+}
+//# sourceMappingURL=createSelectorFunctions.js.map

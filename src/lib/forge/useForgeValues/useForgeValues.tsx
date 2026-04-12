@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import {
   Field,
   FieldElement,
@@ -97,7 +97,7 @@ export const useForgeValues = <TFieldValues extends FieldValues = FieldValues>({
     isValid: false,
     errors: false,
   };
-  let _proxySubscribeFormState = {
+  const _proxySubscribeFormState = {
     ..._proxyFormState,
   };
 

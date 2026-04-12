@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import React, { Component, ReactNode, RefObject, FormHTMLAttributes } from "react";
 import { Accept } from "react-dropzone";
 import {

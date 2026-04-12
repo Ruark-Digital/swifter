@@ -51,6 +51,7 @@ export const schema = yup.object({
   type: yup.string().required("Contract type is required"),
   category: yup.string().required("Category is required"),
   manager: yup.string().optional(),
+  projectManager: yup.string().optional(),
   jobTitle: yup.string().optional(),
   businessDivision: yup.string().required("Business Division is required"),
   contractId: yup.string().optional(),
@@ -191,6 +192,7 @@ export const defaultValues = {
   type: "",
   category: "",
   manager: "",
+  projectManager: "",
   jobTitle: "",
   businessDivision: "",
   contractId: "",
@@ -713,7 +715,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       "description",
       "businessDivision",
     ],
-    2: ["manager", "jobTitle", "vendor", "personnel", "internalTeam", "visibility"],
+    2: ["manager", "projectManager", "jobTitle", "vendor", "personnel", "internalTeam", "visibility"],
     3: [
       "effectiveDate",
       "endDate",
@@ -980,6 +982,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         solicitationId: data.awardedSolicitation || undefined,
         contractId: data.contractId || undefined,
         jobTitle: data.jobTitle || undefined,
+        projectManager: data.projectManager || undefined,
         vendor,
         personnel:
           (data.personnelMeta && data.personnelMeta.length > 0

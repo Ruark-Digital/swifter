@@ -88,6 +88,12 @@ export const createVendorApi = (
     });
     return res as ApiResponse<ContractRfiDTO>;
   },
+  getRfiDetail: async (contractId: string, rfiId: string) => {
+    const res = await client.get({
+      url: `/contract/vendor/contracts/${contractId}/rfi/${rfiId}`,
+    });
+    return res as ApiResponse<ContractRfiDTO>;
+  },
   createLem: async (
     contractId: string,
     payload: {
@@ -135,6 +141,12 @@ export const createVendorApi = (
       url: `/contract/vendor/contracts/${contractId}/invoice/${invoiceId}`,
     });
     return res as ApiResponse<ContractInvoiceDTO>;
+  },
+  listPersonnel: async (contractId: string) => {
+    const res = await client.get({
+      url: `/contract/vendor/contracts/${contractId}/personnel`,
+    });
+    return res;
   },
 });
 

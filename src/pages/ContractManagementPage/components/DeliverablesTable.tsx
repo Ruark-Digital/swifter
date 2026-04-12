@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -21,8 +20,6 @@ import {
 } from "@/components/ui/sheet";
 import {
   ArrowLeft,
-  Download,
-  Eye,
   FileText,
   Search,
   Share2,
@@ -31,8 +28,27 @@ import {
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
-import { formatFileSize, getFileIcon, getSimpleFileExtension } from "@/lib/fileUtils";
+import {
+  formatFileSize,
+  getFileIcon,
+  getSimpleFileExtension,
+} from "@/lib/fileUtils";
 import { useToastHandler } from "@/hooks/useToaster";
+import { Forge, Forger, useForge } from "@/lib/forge";
+import {
+  TextArea,
+  TextFileUploader,
+  TextMultiSelect,
+} from "@/components/layouts/FormInputs";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { useWatch, useFormContext } from "react-hook-form";
+import Spinner from "@/components/ui/Spinner";
+import { DocumentItem } from "@/pages/ContractManagementPage/components/DocumentItem";
+import { DocumentViewer } from "@/components/ui/DocumentViewer";
+import { formatDate } from "date-fns";
+import { vendorApi } from "@/pages/ContractManagementPage/api/vendorApi";
+import { Option } from "@/components/ui/multiselect";
 
 type UploadedFilePayload = {
   name: string;
@@ -41,21 +57,65 @@ type UploadedFilePayload = {
   size: string;
 };
 
+type SubmitDeliverableFormValues = {
+  description: string;
+  files: File[] | null;
+  responders: Option[];
+};
+
+const submitDeliverableSchema = yup.object({
+  description: yup.string().required("Description is required"),
+  files: yup.mixed().nullable().notRequired(),
+  responders: yup
+    .array()
+    .of(
+      yup.object({
+        value: yup.string(),
+        label: yup.string(),
+      }),
+    )
+    .nullable()
+    .notRequired(),
+});
+
+const getStatusTone = (status?: string) => {
+  const normalized = status?.toLowerCase();
+  if (normalized === "approved") {
+    return "bg-[#EAF7EE] text-[#43A047]";
+  }
+  if (normalized === "rejected") {
+    return "bg-[#FEECEC] text-[#E53935]";
+  }
+  if (normalized === "pending" || normalized === "under review") {
+    return "bg-[#FFF8E1] text-[#F4B400]";
+  }
+  return "bg-gray-100 text-gray-700";
+};
+
 export type DeliverableRow = {
   id: string;
   title: string;
   dueDate: string;
-  submissionDate?: string;
+  date?: string;
   submissionStatus: "Submitted" | "Late" | "Pending";
-  kpi: string;
+  kpi: KPIDetail;
   status: "Approved" | "Rejected" | "Pending" | "Under Review";
+  approverStatus?: "N/A" | "pending" | "approved" | "rejected";
 };
+
+export interface KPIDetail {
+  kpi: number;
+  kpiDays: number;
+  kpiText: string;
+  kpiStatus: string;
+}
 
 type DeliverableDetailsSheetProps = {
   trigger: React.ReactNode;
   contractId: string;
   deliverableId: string;
   isApprover?: boolean;
+  isContractManager?: boolean;
   basePath: string;
 };
 
@@ -72,41 +132,53 @@ const LabelRow = ({
   </div>
 );
 
-const DocCard = ({
-  name,
-  type,
-  size,
-}: {
-  name: string;
-  type: string;
-  size: string;
-}) => (
-  <div className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-white p-3">
-    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EEF2FF]">
-      {getFileIcon(type)}
-    </div>
-    <div className="flex-1">
-      <div className="text-sm font-medium text-[#111827]">{name}</div>
-      <div className="text-xs text-[#9CA3AF]">
-        {type.toUpperCase()} • {size}
-      </div>
-    </div>
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
-      >
-        <Eye className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
-      >
-        <Download className="h-4 w-4" />
-      </button>
-    </div>
+const UploadElement = () => (
+  <div className="flex py-6 w-full cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[#1F3B63] px-4 text-center">
+    <UploadCloud className="h-12 w-12 text-[#1F3B63]" />
+    <p className="mt-4 text-base font-semibold text-[#1F3B63]">
+      Drag & Drop or Click to choose files
+    </p>
+    <p className="mt-2 text-sm text-[#6B6B6B]">
+      Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
+    </p>
   </div>
 );
+
+const FilesListItem = ({ file, index }: { file: File; index: number }) => {
+  const { setValue } = useFormContext<SubmitDeliverableFormValues>();
+  const value = useWatch({ name: "files" });
+
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] px-3 py-2">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EAF1FB]">
+          <FileText className="h-5 w-5 text-[#1F3B63]" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-[#0F0F0F]">{file.name}</p>
+          <p className="text-xs text-[#9CA3AF]">
+            {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
+            {formatFileSize(file.size)}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        className="inline-flex h-8 w-8 items-center justify-center text-[#EF4444]"
+        onClick={() => {
+          const newFiles = (value ?? []).filter(
+            (_: any, i: number) => i !== index,
+          );
+          setValue("files", newFiles.length > 0 ? newFiles : null, {
+            shouldValidate: true,
+          });
+        }}
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+};
 
 const SubmitDeliverableDialog: React.FC<{
   trigger: React.ReactNode;
@@ -115,39 +187,41 @@ const SubmitDeliverableDialog: React.FC<{
   basePath: string;
 }> = ({ trigger, contractId, deliverableId, basePath }) => {
   const [open, setOpen] = React.useState(false);
-  const [description, setDescription] = React.useState("");
-  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
-  const [isDragging, setIsDragging] = React.useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
-  const resetForm = React.useCallback(() => {
-    setDescription("");
-    setSelectedFiles([]);
-    setIsDragging(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  }, []);
+  const { data: personnelData } = useQuery({
+    queryKey: ["deliverable-personnel", contractId],
+    queryFn: async () => vendorApi.listPersonnel(contractId),
+    enabled: !!contractId,
+    staleTime: 60000,
+  });
 
-  const addFiles = React.useCallback((files: FileList | null) => {
-    if (!files?.length) return;
-    const next = Array.from(files);
-    setSelectedFiles((prev) => {
-      const merged = [...prev];
-      for (const file of next) {
-        if (!merged.some((existing) => existing.name === file.name)) {
-          merged.push(file);
-        }
-      }
-      return merged;
-    });
-  }, []);
+  const personnelOptions = React.useMemo<Option[]>(() => {
+    const data = personnelData?.data?.data;
+    if (!Array.isArray(data)) return [];
+    return data.map((p: any) => ({
+      value: p._id,
+      label:
+        p.firstName && p.lastName
+          ? `${p.firstName} ${p.lastName}`
+          : p.firstName || p.email || p._id,
+    }));
+  }, [personnelData]);
 
-  const uploadFiles = React.useCallback(async (files: File[]) => {
-    const uploaded: UploadedFilePayload[] = [];
-    for (const file of files) {
+  const { control, reset } = useForge<SubmitDeliverableFormValues>({
+    resolver: yupResolver(submitDeliverableSchema) as any,
+    defaultValues: {
+      description: "",
+      files: null,
+      responders: [],
+    },
+  });
+
+  const { mutateAsync: uploadFile } = useMutation({
+    mutationKey: ["upload-deliverable-file"],
+    mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append("file", file);
 
@@ -161,37 +235,34 @@ const SubmitDeliverableDialog: React.FC<{
         },
       });
 
-      const uploadedData = uploadRes?.data?.data;
-      if (Array.isArray(uploadedData) && uploadedData[0]) {
-        uploaded.push({
-          name: String(uploadedData[0].name),
-          url: String(uploadedData[0].url),
-          type: String(uploadedData[0].type),
-          size: String(uploadedData[0].size),
-        });
-        continue;
-      }
-
-      uploaded.push({
-        name: file.name,
-        url: "",
-        type: file.type || "application/octet-stream",
-        size: String(file.size),
-      });
-    }
-
-    return uploaded;
-  }, []);
+      return uploadRes?.data?.data?.[0];
+    },
+  });
 
   const submitMutation = useMutation({
     mutationKey: ["submit-deliverable", contractId, deliverableId],
-    mutationFn: async () => {
-      const files = await uploadFiles(selectedFiles);
+    mutationFn: async (data: SubmitDeliverableFormValues) => {
+      let uploadedFiles: UploadedFilePayload[] = [];
+
+      if (data.files && data.files.length > 0) {
+        const uploadPromises = Array.from(data.files).map((file) =>
+          uploadFile(file).then((uploaded) => ({
+            name: uploaded?.name || file.name,
+            url: uploaded?.url || "",
+            type: uploaded?.type || file.type || "application/octet-stream",
+            size: uploaded?.size || String(file.size),
+          })),
+        );
+
+        uploadedFiles = await Promise.all(uploadPromises);
+      }
+
       return postRequest({
         url: `${basePath}/${deliverableId}/submit`,
         payload: {
-          description,
-          files,
+          description: data.description,
+          files: uploadedFiles,
+          responders: data.responders.map((r) => r.value),
         },
       });
     },
@@ -207,7 +278,7 @@ const SubmitDeliverableDialog: React.FC<{
         queryKey: ["deliverable-detail", contractId, deliverableId, basePath],
       });
       setOpen(false);
-      resetForm();
+      reset();
     },
     onError: (error: any) => {
       toast.error(
@@ -217,174 +288,106 @@ const SubmitDeliverableDialog: React.FC<{
     },
   });
 
+  const onSubmit = async (data: SubmitDeliverableFormValues) => {
+    setIsSubmitting(true);
+    try {
+      await submitMutation.mutateAsync(data);
+    } catch (error) {
+      console.error("Error submitting deliverable:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!submitMutation.isPending) {
+        if (!isSubmitting) {
           setOpen(next);
-          if (!next) resetForm();
+          if (!next) reset();
         }
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="w-[700px] max-w-[calc(100vw-32px)] rounded-2xl p-8">
+      <DialogContent className="rounded-2xl p-8">
         <DialogHeader className="space-y-0">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-[36px] font-semibold text-[#0F0F0F]">
+            <DialogTitle className="text-base font-semibold text-[#0F0F0F]">
               Submit Deliverable
             </DialogTitle>
-            <DialogClose asChild>
-              <button
-                type="button"
-                className="inline-flex h-8 w-8 items-center justify-center text-[#EF4444]"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </DialogClose>
           </div>
         </DialogHeader>
 
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <p className="text-2xl font-normal text-[#0F0F0F]">Upload Files</p>
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => fileInputRef.current?.click()}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  fileInputRef.current?.click();
-                }
-              }}
-              onDragOver={(event) => {
-                event.preventDefault();
-                setIsDragging(true);
-              }}
-              onDragLeave={(event) => {
-                event.preventDefault();
-                setIsDragging(false);
-              }}
-              onDrop={(event) => {
-                event.preventDefault();
-                setIsDragging(false);
-                addFiles(event.dataTransfer.files);
-              }}
-              className={`flex min-h-[212px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed ${
-                isDragging ? "border-[#1F3B63] bg-[#F8FAFC]" : "border-[#1F3B63]"
-              } px-4 text-center`}
-            >
-              <UploadCloud className="h-12 w-12 text-[#1F3B63]" />
-              <p className="mt-4 text-[36px] font-semibold text-[#1F3B63]">
-                Drag & Drop or Click to choose files
-              </p>
-              <p className="mt-2 text-2xl text-[#6B6B6B]">
-                Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
-              </p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                className="hidden"
-                accept=".doc,.docx,.pdf,.xls,.xlsx,.zip,.png,.jpeg,.jpg"
-                onChange={(event) => addFiles(event.target.files)}
-              />
-            </div>
-          </div>
-
-          {selectedFiles.length > 0 && (
-            <div className="space-y-3">
-              {selectedFiles.map((file) => (
-                <div
-                  key={`${file.name}-${file.lastModified}`}
-                  className="flex items-center justify-between rounded-lg border border-[#E5E7EB] px-3 py-2"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EAF1FB]">
-                      <FileText className="h-5 w-5 text-[#1F3B63]" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-[#0F0F0F]">
-                        {file.name}
-                      </p>
-                      <p className="text-xs text-[#9CA3AF]">
-                        {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
-                        {formatFileSize(file.size)}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="inline-flex h-8 w-8 items-center justify-center text-[#EF4444]"
-                    onClick={() =>
-                      setSelectedFiles((prev) =>
-                        prev.filter((it) => it.name !== file.name),
-                      )
-                    }
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="space-y-3">
-            <p className="text-2xl font-normal text-[#0F0F0F]">
-              Add Responders <span className="text-[#6B6B6B]">(Multi-Select)</span>
-            </p>
-            <div className="rounded-lg border border-[#E5E7EB] px-3 py-3">
-              <div className="flex flex-wrap items-center gap-2">
-                {["Olamide Oladehinde", "Deji Ade", "Jacob Smith", "Ola Daniel"].map(
-                  (name) => (
-                    <span
-                      key={name}
-                      className="inline-flex items-center gap-2 rounded-lg bg-[#2A44671A] px-2 py-1 text-[12px] font-semibold text-[#2A4467]"
-                    >
-                      {name}
-                      <X className="h-[14px] w-[14px] text-[#EF4444]" />
-                    </span>
-                  ),
-                )}
-                <span className="text-2xl text-[#6B6B6B]">Search</span>
-              </div>
-            </div>
-            <p className="text-2xl font-medium text-[#2A4467]">
-              Add with email address, name
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <p className="text-2xl font-medium text-[#0F0F0F]">Description</p>
-            <textarea
-              className="h-[120px] w-full rounded-lg border border-[#E5E7EB] px-4 py-3 text-xl text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#1F3B63]/20"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="Duration"
+        <Forge control={control} onSubmit={onSubmit} className="space-y-6">
+          <div className="">
+            <Forger
+              name="files"
+              component={TextFileUploader}
+              element={<UploadElement />}
+              List={FilesListItem}
+              accept={
+                {
+                  "application/pdf": [".pdf"],
+                  "application/msword": [".doc"],
+                  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                    [".docx"],
+                  "application/vnd.ms-excel": [".xls"],
+                  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                    [".xlsx"],
+                  "application/zip": [".zip"],
+                  "image/png": [".png"],
+                  "image/jpeg": [".jpeg", ".jpg"],
+                } as any
+              }
             />
           </div>
-        </div>
 
-        <div className="mt-6 flex items-center gap-6 pl-[236px]">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setOpen(false)}
-            disabled={submitMutation.isPending}
-            className="h-[56px] flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-[16px] font-semibold text-[#0F0F0F]"
-          >
-            Back
-          </Button>
-          <Button
-            type="button"
-            onClick={() => submitMutation.mutate()}
-            disabled={submitMutation.isPending}
-            className="h-[56px] flex-1 rounded-xl bg-[#1F3B63] text-[16px] font-semibold text-white hover:bg-[#1F3B63]/95"
-          >
-            {submitMutation.isPending ? "Submitting..." : "Submit Deliverable"}
-          </Button>
-        </div>
+          <div className="space-y-3">
+            <Forger
+              name="responders"
+              label="Add Responders"
+              component={TextMultiSelect}
+              placeholder="Search and select responders"
+              options={personnelOptions}
+            />
+          </div>
+
+          <div className="space-y-3">
+            <Forger
+              name="description"
+              label="Description"
+              component={TextArea}
+              placeholder="Enter deliverable description"
+              rows={6}
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-6">
+            <Button
+              type="button"
+              onClick={() => setOpen(false)}
+              disabled={isSubmitting}
+              className="flex items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] font-semibold text-[#0F0F0F]"
+            >
+              Back
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex items-center justify-center rounded-xl bg-[#1F3B63] font-semibold text-white hover:bg-[#1F3B63]/95 disabled:opacity-50"
+            >
+              {isSubmitting ? (
+                <div className="flex items-center gap-2">
+                  <Spinner className="h-5 w-5 text-white" />
+                  <span>Submitting...</span>
+                </div>
+              ) : (
+                "Submit Deliverable"
+              )}
+            </Button>
+          </div>
+        </Forge>
       </DialogContent>
     </Dialog>
   );
@@ -395,21 +398,21 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   contractId,
   deliverableId,
   isApprover,
+  isContractManager,
   basePath,
 }) => {
   const [open, setOpen] = React.useState(false);
+  const [viewerOpen, setViewerOpen] = React.useState(false);
+  const [selectedDoc, setSelectedDoc] = React.useState<{
+    url: string;
+    name: string;
+  } | null>(null);
   const isVendor = basePath.includes("/vendor/");
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: [
-      "deliverable-detail",
-      contractId,
-      deliverableId,
-      basePath,
-      open,
-    ],
+    queryKey: ["deliverable-detail", contractId, deliverableId, basePath, open],
     queryFn: async () => {
       const res = await getRequest({
         url: `${basePath}/${deliverableId}`,
@@ -421,9 +424,21 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   });
 
   const detail = data?.data?.data;
+  const approverStatus = detail?.approverStatus;
+  const isSubmitted = detail?.submissionStatus === "submitted";
+  const isRejected = approverStatus === "rejected";
+  const canShowApproveButtons =
+    approverStatus && approverStatus !== "N/A" && !isSubmitted && !isRejected;
+  const canShowSubmitButton =
+    isVendor && !isSubmitted && approverStatus !== "N/A";
 
   const approveRejectMutation = useMutation({
-    mutationKey: ["approve-reject-deliverable", contractId, deliverableId, basePath],
+    mutationKey: [
+      "approve-reject-deliverable",
+      contractId,
+      deliverableId,
+      basePath,
+    ],
     mutationFn: async (action: "approved" | "rejected") =>
       postRequest({
         url: `${basePath}/${deliverableId}/approve`,
@@ -485,7 +500,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
             </div>
           </SheetHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-8">
             <div className="flex items-center justify-between">
               <div className="text-base font-semibold text-[#0F0F0F]">
                 {detail?.name ?? "Deliverable Details"}
@@ -508,27 +523,43 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                 ))}
               </div>
             ) : (
-              <div className="grid gap-6 sm:grid-cols-2">
-                <LabelRow label="Deliverable Title" value={detail?.name ?? "-"} />
+              <div className="grid gap-6 sm:grid-cols-2 mt-5">
+                <LabelRow
+                  label="Deliverable Title"
+                  value={detail?.name ?? "-"}
+                />
                 <LabelRow
                   label="Amount"
                   value={
                     typeof detail?.amount === "number"
                       ? `$${detail.amount.toLocaleString()}`
-                      : detail?.amount ?? "-"
+                      : (detail?.amount ?? "-")
                   }
                 />
-                <LabelRow label="Due Date" value={detail?.dueDate ?? "-"} />
+                <LabelRow
+                  label="Due Date"
+                  value={
+                    detail?.dueDate
+                      ? formatDate(detail?.dueDate, "yyyy MMMM dd")
+                      : "-"
+                  }
+                />
                 <LabelRow
                   label="Submission Date"
-                  value={detail?.submissionDate ?? "-"}
+                  value={
+                    detail?.submissionDate
+                      ? formatDate(detail?.submissionDate, "yyyy MMMM dd")
+                      : "-"
+                  }
                 />
               </div>
             )}
 
             <div className="space-y-2">
               <div className="text-xs font-medium text-[#9CA3AF]">Status</div>
-              <div className="inline-flex rounded-full bg-[#FEF3C7] px-3 py-1 text-xs font-semibold text-[#F59E0B]">
+              <div
+                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusTone(detail?.status)}`}
+              >
                 {detail?.status
                   ? detail.status
                       .replace(/_/g, " ")
@@ -538,7 +569,9 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
             </div>
 
             <div className="space-y-2">
-              <div className="text-xs font-medium text-[#9CA3AF]">Description</div>
+              <div className="text-xs font-medium text-[#9CA3AF]">
+                Description
+              </div>
               <div className="text-sm text-[#374151]">
                 {detail?.description ?? "-"}
               </div>
@@ -549,20 +582,52 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
             <div className="text-base font-semibold text-[#0F0F0F]">
               Attached Documents
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-1">
               {(detail?.files ?? []).map((f: any, idx: number) => (
-                <DocCard
+                <DocumentItem
                   key={idx}
-                  name={f?.name ?? "File"}
-                  type={f?.type ?? "DOC"}
-                  size={typeof f?.size === "string" ? f.size : String(f?.size ?? "")}
+                  d={{
+                    id: `${f?.name ?? "file"}-${idx}`,
+                    name: f?.name ?? "File",
+                    type: f?.type ?? "DOC",
+                    size:
+                      typeof f?.size === "string"
+                        ? f.size
+                        : String(f?.size ?? ""),
+                    url: f?.url,
+                    icon: getFileIcon(f?.type ?? "DOC"),
+                  }}
+                  handlePreview={(doc) => {
+                    if (doc.url) {
+                      setSelectedDoc({ url: doc.url, name: doc.name });
+                      setViewerOpen(true);
+                    }
+                  }}
+                  handleDownload={(doc) => {
+                    if (!doc.url) return;
+                    const a = window.document.createElement("a");
+                    a.href = doc.url;
+                    a.download = doc.name;
+                    window.document.body.appendChild(a);
+                    a.click();
+                    window.document.body.removeChild(a);
+                  }}
                 />
               ))}
             </div>
           </div>
 
-          <div className="flex gap-3 pt-6">
-            {isApprover ? (
+          {selectedDoc && (
+            <DocumentViewer
+              isOpen={viewerOpen}
+              onClose={() => setViewerOpen(false)}
+              fileUrl={selectedDoc.url}
+              fileName={selectedDoc.name}
+            />
+          )}
+
+          <div className="flex gap-3 pt-6 justify-end">
+            {(isApprover || isContractManager) && canShowApproveButtons ? (
               <>
                 <Button
                   variant="outline"
@@ -580,13 +645,13 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                   {approveRejectMutation.isPending ? "Approving..." : "Approve"}
                 </Button>
               </>
-            ) : isVendor ? (
+            ) : canShowSubmitButton && !isLoading ? (
               <SubmitDeliverableDialog
                 contractId={contractId}
                 deliverableId={deliverableId}
                 basePath={basePath}
                 trigger={
-                  <Button className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
+                  <Button className="h-11 w-64 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
                     Submit
                   </Button>
                 }
@@ -617,14 +682,18 @@ const columns: ColumnDef<DeliverableRow>[] = [
       <div className="space-y-1 text-xs text-slate-600">
         <p>
           <span className="text-slate-500">Due Date:&nbsp;</span>
-          <span className="text-slate-900">{row.original.dueDate}</span>
-        </p>
-        <p>
-          <span className="text-slate-500">Submission Date:&nbsp;</span>
           <span className="text-slate-900">
-            {row.original.submissionDate ?? "-"}
+            {row.original.dueDate
+              ? formatDate(row.original.dueDate ?? "", "yyyy MMM dd")
+              : "-"}
           </span>
         </p>
+        {/* {row.original.submissionDate && <p>
+          <span className="text-slate-500">Submission Date:&nbsp;</span>
+          <span className="text-slate-900">
+            {row.original.submissionDate ? formatDate(row.original.submissionDate ?? "", "yyyy MMM dd") : "-"}
+          </span>
+        </p>} */}
       </div>
     ),
   },
@@ -639,10 +708,10 @@ const columns: ColumnDef<DeliverableRow>[] = [
         s === "Approved"
           ? "bg-green-100 text-green-700"
           : s === "Rejected"
-          ? "bg-red-100 text-red-600"
-          : s === "Pending"
-            ? "bg-yellow-100 text-yellow-700"
-          : "bg-yellow-100 text-yellow-700";
+            ? "bg-red-100 text-red-600"
+            : s === "Pending"
+              ? "bg-yellow-100 text-yellow-700"
+              : "bg-yellow-100 text-yellow-700";
       return (
         <span
           className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${tone}`}
@@ -664,6 +733,7 @@ const columns: ColumnDef<DeliverableRow>[] = [
             contractId={contractId}
             deliverableId={row.original.id}
             isApprover={(table.options.meta as any)?.isApprover}
+            isContractManager={(table.options.meta as any)?.isContractManager}
             basePath={basePath}
             trigger={
               <button
@@ -685,6 +755,7 @@ type DeliverablesTableProps = {
   isLoading: boolean;
   contractId: string;
   isApprover?: boolean;
+  isContractManager?: boolean;
   basePath: string;
 };
 
@@ -693,15 +764,24 @@ const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
   isLoading,
   contractId,
   isApprover = false,
+  isContractManager = false,
   basePath,
 }) => {
   const [search, setSearch] = React.useState("");
+
   const filteredRows = React.useMemo(() => {
     const src = Array.isArray(rows) ? rows : [];
     const q = search.trim().toLowerCase();
     if (!q) return src;
     return src.filter((row) =>
-      [row.id, row.title, row.submissionStatus, row.status, row.kpi]
+      [
+        row.id,
+        row.title,
+        row.date,
+        row.submissionStatus,
+        row.status,
+        row.kpi.kpiText,
+      ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(q)),
     );
@@ -737,7 +817,7 @@ const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
           setPagination: () => {},
           pagination: { pageIndex: 0, pageSize: 10 },
           isLoading: !!isLoading,
-          meta: { contractId, isApprover, basePath },
+          meta: { contractId, isApprover, isContractManager, basePath },
         }}
         classNames={{
           container: "border border-[#E5E7EB] rounded-xl bg-white",

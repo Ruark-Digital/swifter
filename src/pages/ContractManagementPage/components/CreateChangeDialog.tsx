@@ -37,7 +37,6 @@ type Props = {
   contractId: string;
   isManager?: boolean;
   documentType?: "Contract" | "MsaContract";
-  invalidateQueryKey?: readonly unknown[];
 };
 
 const CreateChangeDialog: React.FC<Props> = ({
@@ -45,7 +44,6 @@ const CreateChangeDialog: React.FC<Props> = ({
   contractId,
   isManager = true,
   documentType = "Contract",
-  invalidateQueryKey,
 }) => {
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
@@ -121,13 +119,8 @@ const CreateChangeDialog: React.FC<Props> = ({
       toastHandler.success("Change Request", "Change request submitted successfully");
       setOpen(false);
       reset();
-      await queryClient.invalidateQueries({
-        queryKey:
-          invalidateQueryKey ?? [
-            isManager ? "contractManager" : "vendor",
-            "contractChanges",
-          ],
-      });
+      await queryClient.invalidateQueries({ queryKey: ["contractChanges"] });
+      await queryClient.invalidateQueries({ queryKey: ["contractChanges", "stats"] });
     },
     onError: (error: ApiResponseError) => {
       toastHandler.error("Change Request", error);

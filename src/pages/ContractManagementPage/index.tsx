@@ -75,7 +75,7 @@ type ApproverContractListResponse = {
 };
 
 type VendorContractApi = {
-  _id: string;
+  id: string;
   title: string;
   contractId: string;
   contractValue?: number;
@@ -87,7 +87,8 @@ type VendorContractApi = {
     | "expired"
     | "cancelled"
     | "publish"
-    | "draft";
+    | "draft"
+    | "pending_approval";
   startDate?: string;
   endDate?: string;
   createdAt?: string;
@@ -255,6 +256,7 @@ const mapVendorStatusToLabel = (
   if (status === "active") return "Active";
   if (status === "publish") return "Published";
   if (status === "draft") return "Draft";
+  if (status === "pending_approval") return "Pending Approval";
   if (status === "expired") return "Expired";
   if (status === "suspended") return "Suspended";
   if (status === "terminated") return "Terminated";
@@ -272,7 +274,7 @@ const mapVendorContractsToRows = (
         : undefined;
 
     return {
-      id: c._id,
+      id: c.id,
       contractId: c.contractId,
       title: c.title,
       code: c.contractId,
@@ -418,7 +420,7 @@ const ContractManagementPage: React.FC = () => {
               rows={approverContractsRows}
               isLoading={isApproverContractsLoading}
               totalCount={approverContractsData?.data.totalContracts}
-              isReadOnly={true}
+              // isReadOnly={true}
               // disableActions={isApprover}
             />
           ) : (

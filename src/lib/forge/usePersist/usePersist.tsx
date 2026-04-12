@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import React from "react";
 import { useSubscribe } from "../useSubscribe";
 import { Control, FieldValues, EventType } from "react-hook-form";

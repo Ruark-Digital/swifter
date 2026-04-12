@@ -12,6 +12,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { getRequest } from "@/lib/axiosInstance";
 import type { MsaRow } from "./components/MsaTable";
+import { ApiResponse, ApiResponseError } from "@/types";
 
 type MsaStatsData = Partial<{
   all: number;
@@ -26,6 +27,36 @@ type MsaStatsData = Partial<{
   linkedContracts: number;
 }>;
 
+export interface MSAResponseData {
+  contracts: Contract[];
+  totalContracts: number;
+}
+
+export interface Contract {
+  _id: string;
+  creator: Creator;
+  title: string;
+  msaContractId: string;
+  contractValue: number;
+  startDate?: string;
+  endDate?: string;
+  status: string;
+  createdAt: string;
+  vendor: Vendor;
+}
+
+export interface Creator {
+  _id: string;
+  name: string;
+  email: string;
+}
+
+export interface Vendor {
+  name: string;
+  email: string;
+  id: string
+}
+
 type MsaStatsResponse = {
   message?: string;
   data?: MsaStatsData;
@@ -38,10 +69,10 @@ const MsaPage: React.FC = () => {
   const listUrl = isManager
     ? "/contract/manager/msa-contract"
     : isApprover
-    ? "/contract/approver/msa-contract"
-    : isVendor
-    ? "/contract/vendor/msa-contract"
-    : "/contract/user/msa-contract";
+      ? "/contract/approver/msa-contract"
+      : isVendor
+        ? "/contract/vendor/msa-contract"
+        : "/contract/user/msa-contract";
 
   const myListUrl = isManager ? "/contract/manager/msa-contract/me" : undefined;
 
@@ -62,7 +93,7 @@ const MsaPage: React.FC = () => {
     staleTime: 60_000,
   });
 
-  const allQuery = useQuery({
+  const allQuery = useQuery<ApiResponse<MSAResponseData>, ApiResponseError>({
     queryKey: useUserQueryKey(["msa", "list", listUrl, { page: 1, limit: 50 }]),
     queryFn: async () =>
       await getRequest({
@@ -71,8 +102,14 @@ const MsaPage: React.FC = () => {
       }),
   });
 
-  const mineQuery = useQuery({
-    queryKey: useUserQueryKey(["msa", "list", "me", myListUrl, { page: 1, limit: 50 }]),
+  const mineQuery = useQuery<ApiResponse<MSAResponseData>, ApiResponseError>({
+    queryKey: useUserQueryKey([
+      "msa",
+      "list",
+      "me",
+      myListUrl,
+      { page: 1, limit: 50 },
+    ]),
     queryFn: async () =>
       await getRequest({
         url: myListUrl as string,
@@ -81,40 +118,29 @@ const MsaPage: React.FC = () => {
     enabled: Boolean(myListUrl),
   });
 
-  const toRows = (items: any[]): MsaRow[] =>
-    (items ?? []).map((it: any) => ({
-      id: String(it?._id ?? it?.id ?? ""),
-      title: String(it?.title ?? it?.name ?? ""),
-      code: String(it?.code ?? it?.msaId ?? it?.contractId ?? ""),
-      vendor: String(
-        it?.vendor?.name ??
-          it?.vendorName ??
-          it?.vendor ??
-          ""
-      ),
+  const toRows = (items: Contract[]): MsaRow[] =>
+    items.map((it: Contract) => ({
+      id: String(it?._id ?? "-"),
+      title: String(it?.title ?? "-"),
+      code: String(it?.msaContractId ?? "-"),
+      vendor: String(it?.vendor?.name ?? "-"),
       value: undefined,
-      owner: String(
-        it?.manager?.name ??
-          it?.owner?.name ??
-          it?.owner ??
-          ""
-      ),
-      published: it?.published || it?.startDate || undefined,
+      owner: String(it?.creator?.name ?? "-"),
+      published: it?.createdAt || undefined,
       endDate: it?.endDate || undefined,
-      status: (String(it?.status ?? "Draft") as MsaRow["status"]),
+      status: String(it?.status ?? "Draft") as MsaRow["status"],
     }));
 
-  const extractItems = (res: any): any[] => {
-    return (
-      res?.data?.data?.contracts ??
-      res?.data?.data ??
-      res?.data?.contracts ??
-      []
-    );
+  const extractItems = (res: MSAResponseData): Contract[] => {
+    return res?.contracts ?? [];
   };
 
-  const allRows = toRows(extractItems(allQuery.data));
-  const myRows = toRows(extractItems(mineQuery.data));
+  const allRows = toRows(
+    extractItems(allQuery.data?.data?.data ?? ({} as MSAResponseData)),
+  );
+  const myRows = toRows(
+    extractItems(mineQuery.data?.data?.data ?? ({} as MSAResponseData)),
+  );
 
   const stats = statsQuery.data?.data;
   const counts = {
@@ -152,9 +178,7 @@ const MsaPage: React.FC = () => {
         </div>
       </div>
 
-      <StatsCards
-        counts={counts}
-      />
+      <StatsCards counts={counts} />
 
       {hasData ? (
         <Tabs defaultValue="all" className="w-full bg-transparent space-y-4">

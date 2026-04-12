@@ -15,6 +15,7 @@ import { Link } from "react-router-dom";
 
 export type VendorContractRow = {
   id: string;
+  contractId: string;
   title: string;
   code: string;
   company: string;
@@ -26,11 +27,13 @@ export type VendorContractRow = {
     | "Active"
     | "Suspended"
     | "Closed"
+    | "Pending_Review"
     | "Terminated"
     | "Expired"
     | "Cancelled"
     | "Published"
-    | "Draft";
+    | "Draft"
+    | "Pending Approval";
 };
 
 const columns: ColumnDef<VendorContractRow>[] = [
@@ -94,6 +97,8 @@ const columns: ColumnDef<VendorContractRow>[] = [
           ? "bg-green-100 text-green-700"
           : s === "Draft"
             ? "bg-gray-100 text-gray-700"
+            : s === "Pending Approval"
+            ? "bg-yellow-100 text-yellow-700"
             : "bg-red-100 text-red-700";
       return (
         <span
@@ -168,6 +173,7 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
       );
     });
   }, [rows, search]);
+
 
   return (
     <div data-testid="vendor-contracts-table">

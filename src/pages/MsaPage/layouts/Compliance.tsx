@@ -1,7 +1,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/layouts/DataTable";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,13 @@ import type { ApiResponseError } from "@/types";
 import type { ContractComplianceDTO } from "@/pages/ContractManagementPage/api/contractManagerApi";
 import ComplianceDetailsSheet from "@/pages/ContractManagementPage/components/ComplianceDetailsSheet";
 import SubmitPolicyDialog from "@/pages/ContractManagementPage/components/SubmitPolicyDialog";
+import { LabelItem } from "../components/LabelItem";
+import { Status, StatusBadge } from "../components/StatusBadge";
 
 type Props = {
   contractId: string;
   isActive?: boolean;
+  contract?: ContractComplianceDTO;
 };
 
 type PolicyRow = {
@@ -69,20 +72,21 @@ const getStatusTone = (status?: string) => {
 };
 
 const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
-  const { isVendor, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
+  const { isVendor, isApprover, isManager, isAdmin, isViewOnly } =
+    useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
   const [search, setSearch] = React.useState("");
-  const [activeView, setActiveView] = React.useState<"policy" | "security">(
-    "policy",
-  );
+  const [activeTab, setActiveTab] = React.useState<"policy" | "security">("policy");
 
   const basePath = React.useMemo(() => {
-    if (isVendor) return `/contract/vendor/msa-contract/${contractId}/compliance`;
+    if (isVendor)
+      return `/contract/vendor/msa-contract/${contractId}/compliance`;
     if (isApprover)
       return `/contract/approver/msa-contract/${contractId}/compliance`;
-    if (isManager) return `/contract/manager/msa-contract/${contractId}/compliance`;
+    if (isManager)
+      return `/contract/manager/msa-contract/${contractId}/compliance`;
     if (isAdmin || isViewOnly)
       return `/contract/user/msa-contract/${contractId}/compliance`;
     return `/contract/user/msa-contract/${contractId}/compliance`;
@@ -309,7 +313,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
   return (
     <TabsContent value="compliance" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-4xl font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
+        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
           Compliance & Security Details
         </h3>
         <Button
@@ -328,136 +332,129 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
       )}
 
       <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
-        <div className="space-y-2">
-          <p className="text-[18px] leading-7 text-[#6B6B6B]">Insurance Coverage</p>
-          <p className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-            {complianceData?.details?.coverage
+        <LabelItem
+          label="Insurance Coverage"
+          value={
+            complianceData?.details?.coverage
               ? `${complianceData.details.coverage} Coverages`
-              : "-"}
-          </p>
-        </div>
-        <div className="space-y-2">
-          <p className="text-[18px] leading-7 text-[#6B6B6B]">Insurance Expiry Date</p>
-          <p className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-            {formatDate(complianceData?.details?.expDate)}
-          </p>
-        </div>
-        <div className="space-y-2">
-          <p className="text-[18px] leading-7 text-[#6B6B6B]">Insurance Status</p>
-          <Badge
-            variant="secondary"
-            className={cn(
-              "font-semibold rounded-full px-4 py-1 border-none",
-              getStatusTone(insuranceStatus),
-            )}
-          >
-            {insuranceStatus}
-          </Badge>
-        </div>
-        <div className="space-y-2">
-          <p className="text-[18px] leading-7 text-[#6B6B6B]">Contract Security</p>
-          <p className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-            {complianceData?.details?.security ? "Yes" : "No"}
-          </p>
-        </div>
-        <div className="space-y-2">
-          <p className="text-[18px] leading-7 text-[#6B6B6B]">Security Type</p>
-          <p className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
-            {securityTypeCount || "-"}
-          </p>
-        </div>
-        <div className="space-y-2">
-          <p className="text-[18px] leading-7 text-[#6B6B6B]">Security Status</p>
-          <Badge
-            variant="secondary"
-            className={cn(
-              "font-semibold rounded-full px-4 py-1 border-none",
-              getStatusTone(securityStatus),
-            )}
-          >
-            {securityStatus}
-          </Badge>
-        </div>
+              : "-"
+          }
+        />
+
+        <LabelItem
+          label="Insurance Expiry Date"
+          value={formatDate(complianceData?.details?.expDate)}
+        />
+       
+        <LabelItem
+          label="Insurance Status"
+          children={<StatusBadge status={insuranceStatus as Status} />}
+        />
+
+        <LabelItem
+          label="Contract Security"
+          value={complianceData?.details?.security ? "Yes" : "No"}
+        />
+       
+       <LabelItem
+          label="Security Type"
+          value={securityTypeCount || "-"}
+        />
+
+        <LabelItem
+          label="Security Status"
+          children={<StatusBadge status={securityStatus as Status} />}
+        />
       </div>
 
       <div className="space-y-6">
-        <div className="inline-flex rounded-full bg-[#F3F4F6] p-1">
-          <button
-            type="button"
-            onClick={() => setActiveView("policy")}
-            className={cn(
-              "rounded-full px-6 py-2 text-base font-semibold",
-              activeView === "policy"
-                ? "bg-[#2A4467] text-white"
-                : "text-[#6B6B6B]",
-            )}
-          >
-            Insurance Coverage
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveView("security")}
-            className={cn(
-              "rounded-full px-6 py-2 text-base font-semibold",
-              activeView === "security"
-                ? "bg-[#2A4467] text-white"
-                : "text-[#6B6B6B]",
-            )}
-          >
-            Contract Security
-          </button>
-        </div>
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as "policy" | "security")}
+        >
+          <TabsList className="bg-[#F3F4F6] rounded-full p-1 h-auto">
+            <TabsTrigger
+              value="policy"
+              className="rounded-full px-6 py-2 text-sm font-semibold data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:shadow-none text-[#6B6B6B]"
+            >
+              Insurance Coverage
+            </TabsTrigger>
+            <TabsTrigger
+              value="security"
+              className="rounded-full px-6 py-2 text-sm font-semibold data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:shadow-none text-[#6B6B6B]"
+            >
+              Contract Security
+            </TabsTrigger>
+          </TabsList>
 
-        <div className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
-          <div className="flex items-center gap-4 border-b border-[#E9E9EB] px-6 py-4">
-            <div className="text-base font-semibold text-[#0F0F0F]">
-              {activeView === "policy" ? "Policy" : "Security"}
-            </div>
-            <div className="relative w-[320px]">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B]" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search"
-                className="h-12 rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
+          <TabsContent value="policy" className="mt-0">
+            <div className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
+              <div className="flex items-center gap-4 border-b border-[#E9E9EB] px-6 py-4">
+                <div className="text-base font-semibold text-[#0F0F0F]">
+                  Policy
+                </div>
+                <div className="relative w-[320px]">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B]" />
+                  <Input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search"
+                    className="h-12 rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
+                  />
+                </div>
+              </div>
+              <DataTable<PolicyRow>
+                data={filteredPolicyRows}
+                columns={policyColumns}
+                options={{ disableSelection: true, disablePagination: true }}
+                classNames={{
+                  container: "[&>div:last-child]:hidden",
+                  table: "border-spacing-y-0",
+                  tHeader: "bg-[#F9FAFB]",
+                  tHeadRow: "border-b border-[#E5E7EB]",
+                  tBody: "bg-white",
+                  tRow: "border-b border-[#E5E7EB]",
+                  tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467]",
+                  tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+                }}
               />
             </div>
-          </div>
+          </TabsContent>
 
-          {activeView === "policy" ? (
-            <DataTable<PolicyRow>
-              data={filteredPolicyRows}
-              columns={policyColumns}
-              options={{ disableSelection: true, disablePagination: true }}
-              classNames={{
-                container: "[&>div:last-child]:hidden",
-                table: "border-spacing-y-0",
-                tHeader: "bg-[#F9FAFB]",
-                tHeadRow: "border-b border-[#E5E7EB]",
-                tBody: "bg-white",
-                tRow: "border-b border-[#E5E7EB]",
-                tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467]",
-                tCell: "px-6 py-4 text-sm text-slate-700 align-top",
-              }}
-            />
-          ) : (
-            <DataTable<SecurityRow>
-              data={filteredSecurityRows}
-              columns={securityColumns}
-              options={{ disableSelection: true, disablePagination: true }}
-              classNames={{
-                container: "[&>div:last-child]:hidden",
-                table: "border-spacing-y-0",
-                tHeader: "bg-[#F9FAFB]",
-                tHeadRow: "border-b border-[#E5E7EB]",
-                tBody: "bg-white",
-                tRow: "border-b border-[#E5E7EB]",
-                tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467]",
-                tCell: "px-6 py-4 text-sm text-slate-700 align-top",
-              }}
-            />
-          )}
-        </div>
+          <TabsContent value="security" className="mt-0">
+            <div className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
+              <div className="flex items-center gap-4 border-b border-[#E9E9EB] px-6 py-4">
+                <div className="text-base font-semibold text-[#0F0F0F]">
+                  Security
+                </div>
+                <div className="relative w-[320px]">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B]" />
+                  <Input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search"
+                    className="h-12 rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
+                  />
+                </div>
+              </div>
+              <DataTable<SecurityRow>
+                data={filteredSecurityRows}
+                columns={securityColumns}
+                options={{ disableSelection: true, disablePagination: true }}
+                classNames={{
+                  container: "[&>div:last-child]:hidden",
+                  table: "border-spacing-y-0",
+                  tHeader: "bg-[#F9FAFB]",
+                  tHeadRow: "border-b border-[#E5E7EB]",
+                  tBody: "bg-white",
+                  tRow: "border-b border-[#E5E7EB]",
+                  tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467]",
+                  tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+                }}
+              />
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </TabsContent>
   );

@@ -25,8 +25,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
 import { DocumentItem, type DocType } from "./DocumentItem";
-import { formatFileSize, getFileIcon, getSimpleFileExtension } from "@/lib/fileUtils";
+import {
+  formatFileSize,
+  getFileIcon,
+  getSimpleFileExtension,
+} from "@/lib/fileUtils";
 import { shouldShowChangeDecisionActions } from "../lib/contractChanges";
+import { formatDate } from "date-fns";
+import Spinner from "@/components/ui/Spinner";
 
 type Props = {
   trigger: React.ReactNode;
@@ -44,10 +50,10 @@ const LabelRow = ({
   value: React.ReactNode;
   highlight?: boolean;
 }) => (
-  <div className="grid grid-cols-2 gap-3 py-2">
-    <span className="text-sm text-slate-500">{label}</span>
+  <div className="space-y-2 py-3">
+    <span className="text-sm text-slate-500 block">{label}</span>
     <span
-      className={`text-sm ${
+      className={`text-sm block ${
         highlight ? "font-semibold text-slate-900" : "text-slate-800"
       }`}
     >
@@ -64,7 +70,8 @@ const ChangeDetailsSheet: React.FC<Props> = ({
 }) => {
   const toast = useToastHandler();
   const qc = useQueryClient();
-  const { isManager, isApprover, isVendor, isAdmin, isViewOnly } = useUserRole();
+  const { isManager, isApprover, isVendor, isAdmin, isViewOnly } =
+    useUserRole();
   const [open, setOpen] = React.useState(false);
 
   const roleBasePath = React.useMemo(() => {
@@ -77,9 +84,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   }, [basePath, isManager, isApprover, isVendor, isAdmin, isViewOnly]);
 
   const usesListBasePath = React.useMemo(
-    () =>
-      roleBasePath.endsWith("/changes") ||
-      roleBasePath.endsWith("/change"),
+    () => roleBasePath.endsWith("/changes") || roleBasePath.endsWith("/change"),
     [roleBasePath],
   );
 
@@ -108,25 +113,26 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const submittedByName =
     detail?.submittedBy?.name ?? detail?.submittedBy?.email ?? "";
   const vendorEmail =
-    detail?.vendor?.email ??
-    detail?.vendor?.name ??
-    detail?.vendor ??
-    "";
+    detail?.vendor?.email ?? detail?.vendor?.name ?? detail?.vendor ?? "";
   const changeType = detail?.type ?? "";
   const submittedAt = detail?.submittedAt ?? detail?.createdAt ?? "";
   const status = detail?.status ?? "";
+  const approverStatus = detail?.approverStatus ?? "";
   const value = detail?.value;
   const files = detail?.files;
 
   const canApprove = isManager;
-  const showDecisionActions = shouldShowChangeDecisionActions(changeType);
+  const showDecisionActions =
+    shouldShowChangeDecisionActions(changeType) && approverStatus === "pending";
 
   const { mutate: mutateApproval, isPending: isApproving } = useMutation({
     mutationKey: ["approveChange", roleBasePath, contractId, changeId],
     mutationFn: async (action: "approved" | "rejected") => {
       const canApprovePath = roleBasePath.includes("/manager/");
       if (!canApprovePath) {
-        throw new Error("Change approve endpoint is not available for this role.");
+        throw new Error(
+          "Change approve endpoint is not available for this role.",
+        );
       }
       const url = usesListBasePath
         ? `${roleBasePath}/${changeId}/approve`
@@ -194,19 +200,19 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     [roleBasePath, contractId, changeId],
   );
 
-  const canLoadComments = open && !!contractId && !!changeId && (isManager || isApprover);
+  const canLoadComments =
+    open && !!contractId && !!changeId && (isManager || isApprover);
 
   const { data: commentsRes, isLoading: isCommentsLoading } = useQuery({
     queryKey: commentsQueryKey,
     queryFn: async () => {
-      const url =
-        roleBasePath.includes("/manager/")
-          ? usesListBasePath
-            ? `${roleBasePath}/${changeId}/comments`
-            : `${roleBasePath}/changes/${changeId}/comments`
-          : usesListBasePath
-            ? `${roleBasePath}/${changeId}/comment`
-            : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
+      const url = roleBasePath.includes("/manager/")
+        ? usesListBasePath
+          ? `${roleBasePath}/${contractId}/changes/${changeId}/comments`
+          : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
+        : usesListBasePath
+          ? `${roleBasePath}/${changeId}/comment`
+          : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
       const res = await getRequest({ url });
       return (res as any)?.data;
     },
@@ -214,21 +220,21 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     staleTime: 30_000,
   });
 
-  const comments = ((commentsRes as any)?.data?.data ?? (commentsRes as any)?.data) || [];
+  const comments =
+    ((commentsRes as any)?.data?.data ?? (commentsRes as any)?.data) || [];
 
   const { mutate: mutateAddComment, isPending: isAddingComment } = useMutation({
     mutationKey: ["addChangeComment", roleBasePath, contractId, changeId],
     mutationFn: async (content: string) => {
       if (!content.trim()) return;
       const payload = { content };
-      const url =
-        roleBasePath.includes("/manager/")
-          ? usesListBasePath
-            ? `${roleBasePath}/${changeId}/comments/${contractId}`
-            : `${roleBasePath}/changes/${changeId}/comments/${contractId}`
-          : usesListBasePath
-            ? `${roleBasePath}/${changeId}/comment`
-            : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
+      const url = roleBasePath.includes("/manager/")
+        ? usesListBasePath
+          ? `${roleBasePath}/${contractId}/changes/${changeId}/comments`
+          : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
+        : usesListBasePath
+          ? `${roleBasePath}/${changeId}/comment`
+          : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
       await postRequest({ url, payload });
     },
     onSuccess: () => {
@@ -238,6 +244,14 @@ const ChangeDetailsSheet: React.FC<Props> = ({
       toast.error("Failed to send comment", err);
     },
   });
+
+  if (isDetailLoading) {
+    return (
+      <div className="flex items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -257,25 +271,34 @@ const ChangeDetailsSheet: React.FC<Props> = ({
           </SheetHeader>
 
           <h3 className="text-lg font-semibold text-slate-900">
-            {isDetailLoading ? "" : title}
+            {title}
           </h3>
 
           <Tabs defaultValue="overview" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="comments">Comments</TabsTrigger>
+            <TabsList className="h-auto rounded-none border-b w-full border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
+              <TabsTrigger
+                value="overview"
+                className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+              >
+                Overview
+              </TabsTrigger>
+              <TabsTrigger
+                value="comments"
+                className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+              >
+                Comments
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
-              <Separator />
               <div className="grid grid-cols-2 gap-6">
                 <div>
+                  <LabelRow label="Change Title" value={title} />
+                  <LabelRow label="Change Type" value={changeType} />
                   <LabelRow
-                    label="Change Title"
-                    value={isDetailLoading ? "" : title}
+                    label="Submission Date"
+                    value={submittedAt ? formatDate(submittedAt, "yyyy MMM dd HH:mm aa") : null}
                   />
-                  <LabelRow label="Change Type" value={isDetailLoading ? "" : changeType} />
-                  <LabelRow label="Submission Date" value={isDetailLoading ? "" : submittedAt} />
                   <LabelRow
                     label="Submitted by"
                     value={
@@ -285,11 +308,14 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     }
                   />
                 </div>
+
                 <div>
                   <LabelRow
                     label="Vendor/Contractor"
                     value={
-                      <a className="text-blue-600 underline">{isDetailLoading ? "" : vendorEmail}</a>
+                      <a className="text-blue-600 underline">
+                        {isDetailLoading ? "" : vendorEmail}
+                      </a>
                     }
                   />
                   <LabelRow
@@ -307,7 +333,11 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     label="Status"
                     value={
                       <Badge className="bg-yellow-100 text-yellow-700">
-                        {isDetailLoading ? "" : status ? status.charAt(0).toUpperCase() + status.slice(1) : "-"}
+                        {isDetailLoading
+                          ? ""
+                          : status
+                            ? status.charAt(0).toUpperCase() + status.slice(1)
+                            : "-"}
                       </Badge>
                     }
                   />
@@ -322,11 +352,11 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                 </p>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-5">
                 <span className="text-sm text-slate-500">
                   Attached Documents
                 </span>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   {docs.map((d) => (
                     <DocumentItem
                       key={d.id}
@@ -402,7 +432,10 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                   disabled={!canApprove || isApproving}
                   onClick={() => {
                     if (!canApprove) {
-                      toast.error("Action not allowed", "Only managers can reject changes");
+                      toast.error(
+                        "Action not allowed",
+                        "Only managers can reject changes",
+                      );
                       return;
                     }
                     mutateApproval("rejected");

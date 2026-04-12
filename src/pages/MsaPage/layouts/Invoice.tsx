@@ -549,7 +549,7 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
   return (
     <TabsContent value="invoice" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-4xl font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
+        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
           Invoice
         </h3>
         {isVendor && (
