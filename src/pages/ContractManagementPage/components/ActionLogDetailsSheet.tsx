@@ -23,6 +23,7 @@ type ActionLogItem = {
   reference: string;
   dateLine1: string;
   dateLine2: string;
+  rawReference?: any;
 };
 
 type Props = {
@@ -91,7 +92,9 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
     queryKey: ["actionDetail", contractId, action?.actionId, action?.reference],
     queryFn: async () => {
       if (!action || !contractId) return null;
-      const logId = action.actionId || action.reference;
+      const logId = (action.actionId && action.actionId !== "Unknown")
+        ? action.actionId
+        : (action.rawReference?._id || action.reference);
       return await contractManagerApi.getLogDetail(contractId, logId);
     },
     enabled: !!action && !!contractId && isOpen,
@@ -127,7 +130,8 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
     const anyData = detailData;
     const moduleLabel = action?.module || "-";
 
-    const submittedBy = anyData.user?.name || "Unknown";
+    const submittedByRaw = anyData.user?.name || anyData.user || "Unknown";
+    const submittedBy = typeof submittedByRaw === "string" ? submittedByRaw : "Unknown";
 
     const submissionDateValue = anyData.createdAt;
     const submissionDate =
@@ -144,10 +148,9 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
     return (
       <div className="space-y-6">
         <h3 className="text-lg font-semibold text-slate-900">
-          {
-            anyData.action ||
-            action?.description ||
-            "Log Detail"}
+          {typeof anyData.action === "string"
+            ? anyData.action
+            : action?.description || "Log Detail"}
         </h3>
 
         <Tabs defaultValue="overview" className="space-y-4">
@@ -158,7 +161,7 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
           <TabsContent value="overview" className="space-y-4">
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <LabelRow label="Title" value={anyData.action || "-"} />
+                <LabelRow label="Title" value={typeof anyData.action === "string" ? anyData.action : "-"} />
                 <LabelRow
                   label="Action ID"
                   value={action?.actionId || "-"}
@@ -199,8 +202,9 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
             <div className="space-y-2">
               <span className="text-sm text-slate-500">Description</span>
               <p className="text-sm text-slate-700">
-                {anyData.contractDetailRef ||
-                  "No description provided."}
+                {typeof anyData.contractDetailRef === "object" && anyData.contractDetailRef !== null
+                  ? JSON.stringify(anyData.contractDetailRef)
+                  : anyData.contractDetailRef || "No description provided."}
               </p>
             </div>
 
