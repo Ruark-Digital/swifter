@@ -61,6 +61,9 @@ SwiftPro is a modern, modular Single Page Application (SPA) designed for scalabl
 - **Collaboration Pipeline**: `@yoopta/editor` -> synced via `yjs` + `y-websocket` -> provides real-time multi-user editing.
 - **Testing & Quality Assurance**: `@playwright/test` for E2E suites located within `__tests__` folders, and `@sentry/react` for telemetry.
 
+### Reference Documentation
+- **Contract Management Swagger API Link**: [Swiftpro API Dev](https://api.swiftpro.tech/api/v1/dev/contract/docs/#/)
+
 ## 5. Instructions for Running the Project
 
 ### Prerequisites
