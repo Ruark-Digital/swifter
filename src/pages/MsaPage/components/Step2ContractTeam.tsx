@@ -11,11 +11,11 @@ import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
 
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 
 const Step2ContractTeam: React.FC = () => {
   const formContext = useFormContext<any>();
-  const vendorId = formContext.watch("vendor");
+  const vendorId = useWatch({ control: formContext as any, name: "vendor" });
 
   const { data: personnelData } = useQuery({
     queryKey: ["contract-personnel"],
