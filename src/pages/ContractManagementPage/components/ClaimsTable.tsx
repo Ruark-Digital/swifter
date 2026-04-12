@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import type { ContractClaimDTO } from "../api/contractManagerApi";
-import { useToastHandler } from "@/hooks/useToaster";
+import ClaimDetailsSheet from "./ClaimDetailsSheet";
 
 const columns: ColumnDef<ContractClaimDTO>[] = [
   {
@@ -88,18 +88,26 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
   {
     id: "actions",
     header: "Actions",
-    cell: () => {
-      const toast = useToastHandler();
+    cell: ({ row, table }) => {
+      const [sheetOpen, setSheetOpen] = React.useState(false);
+      const contractId = (table.options.meta as any)?.contractId ?? "";
+      const basePath = (table.options.meta as any)?.basePath ?? "";
+      
       return (
         <>
+          <ClaimDetailsSheet
+            open={sheetOpen}
+            onOpenChange={setSheetOpen}
+            claimId={row.original.claimId || row.original._id || ""}
+            contractId={contractId}
+            basePath={basePath}
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">⋮</Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => {
-                toast.success("Claim Details", "Claim details view coming soon!");
-              }}>
+              <DropdownMenuItem onClick={() => setSheetOpen(true)}>
                 View Details
               </DropdownMenuItem>
             </DropdownMenuContent>
