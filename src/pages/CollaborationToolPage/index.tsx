@@ -194,7 +194,7 @@ const CollaborationToolPage: React.FC = () => {
       }
 
       if (commentTarget === "change") {
-        const response = await contractManagerApi.listChangeComments(changeId);
+        const response = await contractManagerApi.listChangeComments(contractId, changeId);
         return extractCommentList(response);
       }
       if (commentTarget === "rfi") {
@@ -252,7 +252,7 @@ const CollaborationToolPage: React.FC = () => {
       }
 
       if (commentTarget === "change") {
-        await contractManagerApi.addChangeComment(changeId, contractId, payload);
+        await contractManagerApi.addChangeComment(contractId, changeId, payload);
         return;
       }
       if (commentTarget === "rfi") {

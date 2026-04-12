@@ -61,7 +61,9 @@ const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
             ? `$${it.amount.toLocaleString()}`
             : it?.amount || "",
         submissionDate: it?.createdAt || it?.submissionDate || "",
-        status: it?.status || "Pending",
+        status: it?.status 
+          ? it.status.charAt(0).toUpperCase() + it.status.slice(1).replace(/_/g, " ")
+          : "Pending",
       }));
       return rows;
     },

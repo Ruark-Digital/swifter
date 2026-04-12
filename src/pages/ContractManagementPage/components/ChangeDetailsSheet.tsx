@@ -208,7 +208,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     queryFn: async () => {
       const url = roleBasePath.includes("/manager/")
         ? usesListBasePath
-          ? `${roleBasePath}/${changeId}/comments`
+          ? `${roleBasePath}/${contractId}/changes/${changeId}/comments`
           : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
         : usesListBasePath
           ? `${roleBasePath}/${changeId}/comment`
@@ -230,8 +230,8 @@ const ChangeDetailsSheet: React.FC<Props> = ({
       const payload = { content };
       const url = roleBasePath.includes("/manager/")
         ? usesListBasePath
-          ? `${roleBasePath}/${changeId}/comments/${contractId}`
-          : `${roleBasePath}/changes/${changeId}/comments/${contractId}`
+          ? `${roleBasePath}/${contractId}/changes/${changeId}/comments`
+          : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
         : usesListBasePath
           ? `${roleBasePath}/${changeId}/comment`
           : `${roleBasePath}/${contractId}/change/${changeId}/comment`;

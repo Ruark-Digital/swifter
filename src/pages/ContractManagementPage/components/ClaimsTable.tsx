@@ -128,7 +128,7 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
         (row.title ?? "").toLowerCase().includes(query) ||
         (row.type ?? "").toLowerCase().includes(query) ||
         (row.status ?? "").toLowerCase().includes(query) ||
-        (row.descrption ?? "").toLowerCase().includes(query)
+        (row.description ?? "").toLowerCase().includes(query)
       );
     });
   }, [rows, search]);
