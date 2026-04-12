@@ -57,7 +57,7 @@ type RateSheetRow = {
   title: string;
   amount: string;
   submissionDate: string;
-  status: "Approved" | "Rejected" | "Pending";
+  status: string;
 };
 
 type SubmitRateSheetFormValues = {
@@ -74,14 +74,16 @@ const submitRateSheetSchema = yup.object({
   files: yup.mixed().nullable().notRequired(),
 });
 
-const StatusBadge = ({ status }: { status: RateSheetRow["status"] }) => {
-  const getStatusColor = (status: "approved" | "rejected" | "pending") => {
-    switch (status) {
+const StatusBadge = ({ status }: { status: string }) => {
+  const getStatusColor = (status: string) => {
+    const s = status.toLowerCase();
+    switch (s) {
       case "approved":
         return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
       case "rejected":
         return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
       case "pending":
+      case "pending approval":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
@@ -89,7 +91,7 @@ const StatusBadge = ({ status }: { status: RateSheetRow["status"] }) => {
   };
 
   return (
-    <Badge className={`${getStatusColor(status as "approved" | "rejected" | "pending")} border-0 p-2 px-4`}>
+    <Badge className={`${getStatusColor(status)} border-0 p-2 px-4`}>
       {status}
     </Badge>
   );
@@ -850,7 +852,9 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
             ? `$${it.amount.toLocaleString()}`
             : it?.amount || "",
         submissionDate: it?.createdAt || "",
-        status: "Pending",
+        status: it?.status
+          ? it.status.charAt(0).toUpperCase() + it.status.slice(1).replace(/_/g, " ")
+          : "Pending",
       }));
       return rows;
     },
@@ -892,11 +896,11 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         accessorKey: "status",
         header: "Status",
         cell: ({ getValue }) => {
-          const s = getValue<RateSheetRow["status"]>();
+          const s = getValue<string>();
           const tone =
-            s === "Approved"
+            s.toLowerCase() === "approved"
               ? "bg-green-100 text-green-700"
-              : s === "Rejected"
+              : s.toLowerCase() === "rejected"
                 ? "bg-red-100 text-red-600"
                 : "bg-yellow-100 text-yellow-700";
           return (

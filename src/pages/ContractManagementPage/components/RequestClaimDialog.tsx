@@ -86,7 +86,7 @@ const RequestClaimDialog: React.FC<Props> = ({
         data.impactType === "cost" || data.impactType === "time_cost"
           ? Number(data.costImpact)
           : undefined,
-      descrption: data.description,
+      description: data.description,
     };
     createMutation.mutate(payload);
   };

@@ -416,7 +416,7 @@ export type ContractClaimDTO = {
   impact?: "time" | "cost" | "time_cost";
   time?: number;
   cost?: number;
-  descrption?: string;
+  description?: string;
   files?: Array<{
     name?: string;
     url?: string;
@@ -878,9 +878,9 @@ export const createContractManagerApi = (
       });
       return res.data as { message?: string; data?: ContractChangeApprover[] };
     },
-    listChangeComments: async (changeId: string) => {
+    listChangeComments: async (contractId: string, changeId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/changes/${changeId}/comments`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/changes/${changeId}/comments`,
       });
       return res.data as {
         message?: string;
@@ -888,23 +888,24 @@ export const createContractManagerApi = (
       };
     },
     addChangeComment: async (
-      changeId: string,
       contractId: string,
+      changeId: string,
       payload: ContractChangeCommentDTO,
     ) => {
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/changes/${changeId}/comments/${contractId}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/changes/${changeId}/comments`,
         payload,
       });
       return res.data as { message?: string; data?: ContractCommentDTO };
     },
     replyChangeComment: async (
+      contractId: string,
       changeId: string,
       commentId: string,
       payload: ContractChangeReplyDTO,
     ) => {
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/changes/${changeId}/comments/${commentId}/reply`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/changes/${changeId}/comments/${commentId}/reply`,
         payload,
       });
       return res.data as { message?: string; data?: ContractCommentDTO };

@@ -54,6 +54,12 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
       Array.isArray(personnelData?.data?.data)
         ? personnelData?.data?.data?.map((p) => ({
             id: p._id,
+            label:
+              p.firstName && p.lastName
+                ? `${p.firstName} (${p.lastName})`
+                : p.firstName
+                ? p.firstName
+                : (p.email ?? p._id),
             text:
               p.firstName && p.lastName
                 ? `${p.firstName} (${p.lastName})`
@@ -132,6 +138,45 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
           )}
         />
       </div>
+
+      <Forger
+        name="projectManager"
+        label="Project Manager"
+        component={({
+          value,
+          onChange,
+        }: {
+          value?: string;
+          onChange?: (val: string) => void;
+        }) => {
+          const normalizedValue = typeof value === "string" ? value.trim() : "";
+          const selectedOption = normalizedValue
+            ? personnelOptions.find((option) => option.value === normalizedValue) ?? {
+                label: normalizedValue,
+                value: normalizedValue,
+              }
+            : undefined;
+
+          const selectedValues = selectedOption ? [selectedOption] : [];
+
+          return (
+            <TextMultiSelect
+              name="projectManager"
+              options={personnelOptions}
+              placeholder="Select project manager or type email"
+              maxCount={1}
+              creatable={true}
+              value={selectedValues as any}
+              onChange={(selectedOptions) => {
+                const selected = selectedOptions?.[0];
+                const nextValue =
+                  typeof selected?.value === "string" ? selected.value.trim() : "";
+                onChange?.(nextValue);
+              }}
+            />
+          );
+        }}
+      />
 
       <Forger
         name="vendor"
