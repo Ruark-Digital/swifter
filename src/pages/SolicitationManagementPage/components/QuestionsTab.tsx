@@ -61,9 +61,10 @@ type QuestionsResponse = {
 
 interface QuestionsTabProps {
   solicitationStatus?: string;
+  isOwner?: boolean;
 }
 
-const QuestionsTab: React.FC<QuestionsTabProps> = ({ solicitationStatus }) => {
+const QuestionsTab: React.FC<QuestionsTabProps> = ({ solicitationStatus, isOwner }) => {
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
   const { id: solicitationId } = useParams<{ id: string }>();
@@ -323,7 +324,7 @@ const QuestionsTab: React.FC<QuestionsTabProps> = ({ solicitationStatus }) => {
             key={question._id}
             question={question}
             sendType={sendType}
-            onReply={!question.isAnswered ? handleReplyClick : undefined}
+            onReply={!question.isAnswered && !(isProcurement && !isOwner) ? handleReplyClick : undefined}
             solicitationStatus={solicitationStatus}
           />
         ))}
@@ -382,6 +383,7 @@ const QuestionsTab: React.FC<QuestionsTabProps> = ({ solicitationStatus }) => {
             currentUser={{ name: "You" }}
             sendType={sendType}
             onSendTypeChange={setSendType}
+            disabled={isProcurement && !isOwner}
           />
         </div>
       )}

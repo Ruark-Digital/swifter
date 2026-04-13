@@ -52,7 +52,7 @@ const ActionLogTabContent: React.FC<Props> = () => {
         actorName: log.user || "Unknown User",
         actorRole: log.actor || "Unknown Role",
         reference: log.reference || "Unknown",
-        dateLine1: format(date, "MM-dd-yyyy"),
+        dateLine1: format(date, "dd MMM yyyy"),
         dateLine2: format(date, "hh:mm a"),
         rawDate: date,
       };

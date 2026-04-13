@@ -116,7 +116,7 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
   );
 
   const submissionDateLabel = latestApprovedDate
-    ? formatDateTZ(latestApprovedDate, "MMMM dd, yyyy")
+    ? formatDateTZ(latestApprovedDate, "dd MMM yyyy")
     : "N/A";
   const statusTone =
     summary.status === "Completed"

@@ -686,7 +686,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
             : "-",
       releasedAmount: formatMoney(holdback.amount),
       status: holdback?.status ?? "-",
-      dueDate: formatDateTZ(holdback?.releasedDate, "MMM d, yyyy") ?? "-",
+      dueDate: formatDateTZ(holdback?.releasedDate, "dd MMM yyyy") ?? "-",
     }));
   }, [formatMoney, holdbacksResponse?.data, currency]);
 
@@ -698,7 +698,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
       category: saving.category ?? "-",
       amount: formatMoney(saving.amount),
       currency,
-      dateSubmitted: formatDateTZ(saving?.submittedDate, "MMMM d, yyyy") ?? "-",
+      dateSubmitted: formatDateTZ(saving?.submittedDate, "dd MMM yyyy") ?? "-",
     }));
   }, [formatMoney, savingsResponse?.data, currency]);
 
@@ -708,7 +708,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
       : [];
     return milestones.map((milestone: any, index: number) => {
       const dueDate = milestone?.dueDate
-        ? formatDateTZ(milestone?.dueDate, "MMM d, yyyy")
+        ? formatDateTZ(milestone?.dueDate, "dd MMM yyyy")
         : "-";
       return {
         milestoneId: milestone?.milestoneId ?? `milestone-${index + 1}`,

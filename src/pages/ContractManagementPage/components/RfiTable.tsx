@@ -188,7 +188,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   const rfiIdentifier = rfi?.rfiId ?? rfi?._id ?? "-";
 
   const formatDate = (value?: string | Date) =>
-    formatDateTZ(value, "MMMM dd, yyyy");
+    formatDateTZ(value, "dd MMM yyyy");
 
   const submissionDate = formatDate(rfi?.createdAt);
   const responseDeadline = formatDate(rfiDetail?.deadline ?? rfi?.deadline);
@@ -426,7 +426,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                             ) : null}
                           </div>
                           <div className="text-xs text-[#6B7280]">
-                            {formatDateTZ(comment.createdAt, "MMM dd, yyyy")}
+                            {formatDateTZ(comment.createdAt, "dd MMM yyyy")}
                           </div>
                         </div>
                         <div

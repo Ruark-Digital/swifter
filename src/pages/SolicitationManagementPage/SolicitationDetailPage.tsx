@@ -1595,7 +1595,7 @@ export const SolicitationDetailPage = () => {
         )}
 
         <TabsContent value="questions">
-          <QuestionsTab solicitationStatus={solicitation?.status} />
+          <QuestionsTab solicitationStatus={solicitation?.status} isOwner={isOwner} />
         </TabsContent>
 
         <TabsContent value="addendums">

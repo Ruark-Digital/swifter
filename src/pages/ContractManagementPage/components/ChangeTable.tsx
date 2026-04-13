@@ -79,7 +79,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         header: "Submitted",
         cell: ({ getValue }) => {
           const date = getValue<string | undefined>();
-          return date ? format(new Date(date), "yyyy-MM-dd") : "-";
+          return date ? format(new Date(date), "dd MMM yyyy") : "-";
         },
       },
       {

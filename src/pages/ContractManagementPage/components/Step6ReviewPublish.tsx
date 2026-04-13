@@ -1,6 +1,7 @@
 import React from "react";
 import { useWatch, Control } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
 import {
   Accordion,
   AccordionContent,
@@ -109,7 +110,7 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
 
   const formatDate = (value?: Date | null) => {
     if (!value) return "Not specified";
-    return value.toLocaleDateString();
+    return format(value, "dd MMM yyyy");
   };
 
   const formatAmount = (value: unknown) => {

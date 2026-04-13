@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Share2, Eye, Download } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -199,16 +200,12 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
                   value={detail?.policyId || detail?.id || "—"}
                 />
                 <LabelValue
-                  label="Submission Date"
-                  value={
-                    detail?.createdAt
-                      ? new Date(detail.createdAt).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        })
-                      : "—"
-                  }
+                    label="Submission Date"
+                    value={
+                      detail?.createdAt
+                        ? format(new Date(detail.createdAt), "dd MMM yyyy")
+                        : "-"
+                    }
                 />
               </div>
 

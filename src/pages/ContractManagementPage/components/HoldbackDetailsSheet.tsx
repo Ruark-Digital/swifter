@@ -251,7 +251,7 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
                       Released Date
                     </div>
                     <div className="text-sm font-semibold text-[#0F0F0F]">
-                      {detail?.releasedDate ? formatDate(detail?.releasedDate, "MMMM d, yyyy") : "-"}
+                      {detail?.releasedDate ? formatDate(detail?.releasedDate, "dd MMM yyyy") : "-"}
                     </div>
                   </div>
 

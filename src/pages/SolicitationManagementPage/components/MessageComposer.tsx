@@ -29,6 +29,7 @@ interface MessageComposerProps {
   sendType: "reply" | "addendum" | null;
   isNewChat: boolean;
   onSendTypeChange: (type: "reply" | "addendum") => void;
+  disabled?: boolean;
 }
 
 // Helper function to get initials from name
@@ -49,6 +50,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   currentUser,
   sendType,
   isNewChat,
+  disabled = false,
 }) => {
   const { isProcurement } = useUserRole();
   const [content, setContent] = useState("");
@@ -136,9 +138,9 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
           <RichTextEditor
             value={content}
             onChange={setContent}
-            placeholder=""
+            placeholder={disabled ? "You don't have permission to comment on this solicitation." : ""}
             minHeight="200px"
-            disabled={isLoading}
+            disabled={isLoading || disabled}
           />
           {/* Character Count */}
           <div className="flex justify-between items-center mt-2">
@@ -152,7 +154,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
         <div className="flex justify-end">
           <Button
             onClick={handleSend}
-            disabled={isLoading || isContentEmpty}
+            disabled={isLoading || isContentEmpty || disabled}
             className="px-6 py-2 rounded-md font-medium"
           >
             {isLoading ? (
