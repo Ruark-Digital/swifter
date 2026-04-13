@@ -24,10 +24,10 @@ import { useWatch } from "react-hook-form";
 interface SubmitPolicyDialogProps {
   trigger: React.ReactNode;
   type: "policy" | "security";
-  id: string;
+  id?: string;
   contractId: string;
   basePath: string;
-  title: string;
+  title?: string;
 }
 
 const schema = yup.object().shape({
@@ -79,8 +79,9 @@ const SubmitPolicyDialog: React.FC<SubmitPolicyDialogProps> = ({
 
   const submitMutation = useMutation({
     mutationFn: async (payload: any) => {
+      const url = id ? `${basePath}/${id}` : basePath;
       return await patchRequest({
-        url: `${basePath}/${id}`,
+        url,
         payload,
       });
     },

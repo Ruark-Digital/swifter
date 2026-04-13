@@ -92,7 +92,7 @@ const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, basePath, cur
   const formatDate = (value?: string | Date) => {
     if (!value) return "-";
     try {
-      return format(new Date(value), "MMMM d, yyyy");
+      return format(new Date(value), "dd MMM yyyy");
     } catch {
       return "-";
     }

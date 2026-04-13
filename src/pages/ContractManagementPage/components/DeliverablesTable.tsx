@@ -540,7 +540,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                   label="Due Date"
                   value={
                     detail?.dueDate
-                      ? formatDate(detail?.dueDate, "yyyy MMMM dd")
+                      ? formatDate(detail?.dueDate, "dd MMM yyyy")
                       : "-"
                   }
                 />
@@ -548,7 +548,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                   label="Submission Date"
                   value={
                     detail?.submissionDate
-                      ? formatDate(detail?.submissionDate, "yyyy MMMM dd")
+                      ? formatDate(detail?.submissionDate, "dd MMM yyyy")
                       : "-"
                   }
                 />

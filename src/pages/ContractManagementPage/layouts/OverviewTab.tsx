@@ -791,17 +791,17 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
             : "N/A";
   const effectiveDate = formatDateTZ(
     contract.startDate,
-    "MMM d, yyyy",
+    "dd MMM yyyy",
     contract.timezone,
   );
   const publishedDate = formatDateTZ(
     contract.createdAt,
-    "MMM d, yyyy",
+    "dd MMM yyyy",
     contract.timezone,
   );
   const endDate = formatDateTZ(
     contract.endDate,
-    "MMM d, yyyy",
+    "dd MMM yyyy",
     contract.timezone,
   );
 

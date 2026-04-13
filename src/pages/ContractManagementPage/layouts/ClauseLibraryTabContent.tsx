@@ -3,6 +3,8 @@ import { TabsContent } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { useParams } from "react-router-dom";
+import { Loader2, Plus, Download, Edit3, Trash2 } from "lucide-react";
+import { format } from "date-fns";
 
 type ClauseCardProps = {
   title: string;
@@ -236,7 +238,7 @@ const formatDateShort = (date?: string) => {
   if (!date) return "—";
   const parsed = new Date(date);
   if (Number.isNaN(parsed.getTime())) return String(date);
-  return parsed.toLocaleDateString();
+  return format(parsed, "dd MMM yyyy");
 };
 
 const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {

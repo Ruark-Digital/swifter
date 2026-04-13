@@ -34,7 +34,7 @@ const KpiTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         ? `${item.allTimeAvgScore}%`
         : `${item.allTimeAvgScore ?? ""}`,
     lastUpdated: item.lastUpdated
-      ? format(new Date(item.lastUpdated), "dd-MM-yyyy")
+      ? format(new Date(item.lastUpdated), "dd MMM yyyy")
       : "",
     actions: ["Update", "View"],
   }));

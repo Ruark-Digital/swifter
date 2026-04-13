@@ -137,7 +137,7 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
     const submissionDate =
       submissionDateValue &&
       !Number.isNaN(new Date(submissionDateValue).getTime())
-        ? format(new Date(submissionDateValue), "MMMM dd, yyyy")
+        ? format(new Date(submissionDateValue), "dd MMM yyyy")
         : `${action?.dateLine1 || ""} ${action?.dateLine2 || ""}`.trim() || "-";
 
     const statusText =
@@ -175,7 +175,7 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
                   label="Response Deadline"
                   value={
                     anyData.updatedAt
-                      ? format(new Date(anyData.updatedAt), "MMMM dd, yyyy")
+                      ? format(new Date(anyData.updatedAt), "dd MMM yyyy")
                       : "-"
                   }
                 />

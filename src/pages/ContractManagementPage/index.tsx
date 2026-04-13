@@ -282,9 +282,9 @@ const mapVendorContractsToRows = (
       contractRelationship: "-",
       value,
       published: c.createdAt
-        ? formatDate(c.createdAt, "yyyy-MM-dd")
+        ? formatDate(c.createdAt, "dd MMM yyyy")
         : undefined,
-      endDate: c.endDate ? formatDate(c.endDate, "yyyy-MM-dd") : undefined,
+      endDate: c.endDate ? formatDate(c.endDate, "dd MMM yyyy") : undefined,
       status: mapVendorStatusToLabel(c.status),
     };
   });
