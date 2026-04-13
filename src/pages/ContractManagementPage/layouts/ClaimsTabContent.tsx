@@ -112,6 +112,8 @@ const ClaimsTabContent: React.FC<Props> = ({
       <ClaimsStatsCards stats={statsRes?.data} isLoading={isStatsLoading} />
 
       <ClaimsTable
+        contractId={contractId}
+        basePath={basePath}
         rows={claimRows}
         isLoading={isClaimsLoading}
         totalCount={totalCount}

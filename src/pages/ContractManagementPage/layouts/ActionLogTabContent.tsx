@@ -24,6 +24,7 @@ type ActionLogRow = {
   dateLine1: string;
   dateLine2: string;
   rawDate: Date; // For sorting
+  rawReference?: any;
 };
 
 const ActionLogTabContent: React.FC<Props> = () => {
@@ -43,11 +44,34 @@ const ActionLogTabContent: React.FC<Props> = () => {
   const rows = useMemo(() => {
     if (!logsData?.data?.logs) return [];
 
-    return logsData.data.logs.map((log) => {
+    return logsData.data.logs.map((log: any) => {
       const date = log.date ? new Date(log.date) : new Date();
+      let refStr = "Unknown";
+      if (log.reference) {
+        if (typeof log.reference === "string") {
+          refStr = log.reference;
+        } else if (typeof log.reference === "object") {
+          refStr = log.reference.changeId || log.reference.reportId || log.reference.ncrId || log.reference.rfiId || log.reference.claimId || log.reference._id || "Unknown";
+        }
+      }
+      let modStr = "Unknown";
+      if (typeof log.module === "string") {
+        modStr = log.module;
+      } else if (typeof log.module === "object" && log.module !== null) {
+        modStr = (Object.values(log.module)[0] as string) || "Unknown";
+      }
+
+      let userName = "Unknown User";
+      if (typeof log.user === "string") userName = log.user;
+      else if (log.user?.name) userName = log.user.name;
+
+      let roleName = "Unknown Role";
+      if (typeof log.actor === "string") roleName = log.actor;
+      else if (log.actor?.name) roleName = log.actor.name;
+
       return {
-        actionId: log.actionId || "Unknown",
-        module: log.module?.["stripe out contract"] || "Unknown",
+        actionId: log.actionId || log._id || "Unknown",
+        module: modStr,
         description: "No description",
         actorName: log.user || "Unknown User",
         actorRole: log.actor || "Unknown Role",
@@ -55,8 +79,9 @@ const ActionLogTabContent: React.FC<Props> = () => {
         dateLine1: format(date, "dd MMM yyyy"),
         dateLine2: format(date, "hh:mm a"),
         rawDate: date,
+        rawReference: log.reference,
       };
-    }).sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime());
+    }).sort((a: any, b: any) => b.rawDate.getTime() - a.rawDate.getTime());
   }, [logsData]);
 
   const filteredRows = useMemo(() => {

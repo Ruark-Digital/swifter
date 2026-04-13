@@ -187,27 +187,28 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         header: "Actions",
         cell: ({ row }) => {
           const changeId = row.original.changeId || "";
+          const [sheetOpen, setSheetOpen] = React.useState(false);
           return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  ⋮
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <ChangeDetailsSheet
-                    contractId={contractId}
-                    changeId={changeId}
-                    trigger={
-                      <a href="#" data-testid="view-change-detail" className="p-4 text-sm ">
-                        View Details
-                      </a>
-                    }
-                  />
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <>
+              <ChangeDetailsSheet
+                contractId={contractId}
+                changeId={changeId}
+                open={sheetOpen}
+                onOpenChange={setSheetOpen}
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    ⋮
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setSheetOpen(true)}>
+                    View Details
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           );
         },
       },

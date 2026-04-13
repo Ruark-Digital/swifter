@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import type { ContractClaimDTO } from "../api/contractManagerApi";
+import ChangeDetailsSheet from "./ChangeDetailsSheet";
 
 const columns: ColumnDef<ContractClaimDTO>[] = [
   {
@@ -87,22 +88,39 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
   {
     id: "actions",
     header: "Actions",
-    cell: () => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon">⋮</Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild>
-            <a href="#" data-testid="view-claim-detail">View Details</a>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
+    cell: ({ row, table }) => {
+      const [sheetOpen, setSheetOpen] = React.useState(false);
+      const contractId = (table.options.meta as any)?.contractId ?? "";
+      const basePath = (table.options.meta as any)?.basePath ?? "";
+      
+      return (
+        <>
+          <ChangeDetailsSheet
+            open={sheetOpen}
+            onOpenChange={setSheetOpen}
+            changeId={row.original.claimId || row.original._id || ""}
+            contractId={contractId}
+            basePath={basePath}
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">⋮</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setSheetOpen(true)}>
+                View Details
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      );
+    },
   },
 ];
 
 type ClaimsTableProps = {
+  contractId: string;
+  basePath: string;
   rows?: ContractClaimDTO[];
   isLoading?: boolean;
   totalCount?: number;
@@ -111,6 +129,8 @@ type ClaimsTableProps = {
 };
 
 const ClaimsTable: React.FC<ClaimsTableProps> = ({
+  contractId,
+  basePath,
   rows = [],
   isLoading,
   totalCount,
@@ -171,6 +191,7 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
           manualPagination: true,
           pagination,
           setPagination,
+          meta: { contractId, basePath },
         }}
       />
     </div>

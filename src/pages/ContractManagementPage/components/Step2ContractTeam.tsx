@@ -12,7 +12,7 @@ import { Personnel } from "./Step7ApprovalLevel";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
-import { UseFormSetValue, useFormContext } from "react-hook-form";
+import { UseFormSetValue, useFormContext, useWatch } from "react-hook-form";
 import { CreateContractFormData } from "./CreateContractSheet";
 
 type Props = {
@@ -22,6 +22,8 @@ type Props = {
 const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
   const formContext = useFormContext<CreateContractFormData>();
   const applyValue = setValue ?? formContext.setValue;
+  const vendorId = useWatch({ control: formContext as any, name: "vendor" });
+
   const { data: personnelData } = useQuery<
     ApiResponse<Personnel>,
     ApiResponseError
@@ -46,6 +48,17 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
     queryKey: ["solicitationVendors"],
     queryFn: async () =>
       await getRequest({ url: "/procurement/solicitations/vendors" }),
+    staleTime: 60000,
+  });
+
+  const { data: projectManagersData } = useQuery<
+    ApiResponse<Array<{ id: string; name: string; email?: string }>>,
+    ApiResponseError
+  >({
+    queryKey: ["vendor-project-managers", vendorId],
+    queryFn: async () =>
+      await getRequest({ url: `/contract/manager/contracts/vendor/${vendorId}/project-managers` }),
+    enabled: !!vendorId,
     staleTime: 60000,
   });
 
@@ -90,6 +103,19 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
           }))
         : [],
     [vendorsData?.data?.data],
+  );
+
+  const projectManagerOptions = React.useMemo(
+    () =>
+      Array.isArray(projectManagersData?.data?.data)
+        ? projectManagersData?.data?.data.map((pm) => ({
+            id: pm.id,
+            label: pm.name || pm.email || pm.id,
+            text: pm.name || pm.email || pm.id,
+            value: pm.id,
+          }))
+        : [],
+    [projectManagersData?.data?.data],
   );
 
   return (
@@ -140,45 +166,6 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
       </div>
 
       <Forger
-        name="projectManager"
-        label="Project Manager"
-        component={({
-          value,
-          onChange,
-        }: {
-          value?: string;
-          onChange?: (val: string) => void;
-        }) => {
-          const normalizedValue = typeof value === "string" ? value.trim() : "";
-          const selectedOption = normalizedValue
-            ? personnelOptions.find((option) => option.value === normalizedValue) ?? {
-                label: normalizedValue,
-                value: normalizedValue,
-              }
-            : undefined;
-
-          const selectedValues = selectedOption ? [selectedOption] : [];
-
-          return (
-            <TextMultiSelect
-              name="projectManager"
-              options={personnelOptions}
-              placeholder="Select project manager or type email"
-              maxCount={1}
-              creatable={true}
-              value={selectedValues as any}
-              onChange={(selectedOptions) => {
-                const selected = selectedOptions?.[0];
-                const nextValue =
-                  typeof selected?.value === "string" ? selected.value.trim() : "";
-                onChange?.(nextValue);
-              }}
-            />
-          );
-        }}
-      />
-
-      <Forger
         name="vendor"
         label="Vendor / Contractor"
         component={({
@@ -219,6 +206,45 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
                   applyValue?.("vendorLabel" as never, nextLabel as never);
                 }
               }
+            />
+          );
+        }}
+      />
+
+      <Forger
+        name="projectManager"
+        label="Project Manager"
+        component={({
+          value,
+          onChange,
+        }: {
+          value?: string;
+          onChange?: (val: string) => void;
+        }) => {
+          const normalizedValue = typeof value === "string" ? value.trim() : "";
+          const selectedOption = normalizedValue
+            ? projectManagerOptions.find((option) => option.value === normalizedValue) ?? {
+                label: normalizedValue,
+                value: normalizedValue,
+              }
+            : undefined;
+
+          const selectedValues = selectedOption ? [selectedOption] : [];
+
+          return (
+            <TextMultiSelect
+              name="projectManager"
+              options={projectManagerOptions}
+              placeholder="Select project manager or type email"
+              maxCount={1}
+              creatable={true}
+              value={selectedValues as any}
+              onChange={(selectedOptions) => {
+                const selected = selectedOptions?.[0];
+                const nextValue =
+                  typeof selected?.value === "string" ? selected.value.trim() : "";
+                onChange?.(nextValue);
+              }}
             />
           );
         }}

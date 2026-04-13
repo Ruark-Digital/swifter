@@ -18,6 +18,7 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import type { ApiResponseError, ContractDetail } from "@/types";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
 import { vendorApi } from "./api/vendorApi";
 import { contractManagerApi } from "./api/contractManagerApi";
 import { approverApi } from "./api/approverApi";
@@ -211,7 +212,7 @@ const ContractDetailPage: React.FC = () => {
 
   const { data: approveStatusResponse } = useQuery({
     queryKey: [approveStatusQueryKey[0], contractsResponse?.data?.data?._id],
-    queryFn: () => approverApi.getApproveStatus(contract?._id ?? ""),
+    queryFn: () => approverApi.getApproveStatus(contractsResponse?.data?.data?._id ?? ""),
     enabled:
       !!contractsResponse?.data?.data?._id &&
       isApprover &&
@@ -220,8 +221,17 @@ const ContractDetailPage: React.FC = () => {
     retry: false,
   });
 
+  const contractData = contractsResponse?.data?.data;
+  const user = useUser();
+  const isProjectManager = Boolean(user?._id && (contractData as any)?.projectManager?.user?._id === user._id);
+  const isProjectManagerPending = (contractData as any)?.projectManager?.status === "pending";
+  const canProjectManagerApprove = isProjectManager && isProjectManagerPending && contractData?.status === "pending_approval";
+
   const approvalMutation = useMutation({
     mutationFn: async (action: "approved" | "rejected") => {
+      if (canProjectManagerApprove) {
+        return vendorApi.approveContract(id ?? "", { action, comment });
+      }
       return approverApi.approveContract(id ?? "", {
         action,
         comment,
@@ -386,10 +396,10 @@ const ContractDetailPage: React.FC = () => {
         <Badge className={status?.className}>{status?.label}</Badge>
       </div>
 
-      {isApprover && canApprove && !hasAprovedorRejected && (
+      {((isApprover && canApprove && !hasAprovedorRejected) || canProjectManagerApprove) && (
         <div
           className={cn("flex items-center gap-4", {
-            hidden: hasNoAuthorization,
+            hidden: hasNoAuthorization && !canProjectManagerApprove,
           })}
         >
           <Button
