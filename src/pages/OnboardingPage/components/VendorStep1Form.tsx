@@ -53,6 +53,7 @@ const VendorStep1Form: React.FC<VendorStep1FormProps> = ({}) => {
         placeholder="hello@zenith.com"
         type="email"
         containerClass="w-full"
+        autoComplete="email"
       />
 
       <Forger

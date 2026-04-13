@@ -10,7 +10,6 @@
     "noEmit": true,
     "types": ["node"],
     "baseUrl": ".",
-    "ignoreDeprecations": "5.0",
     "paths": {
       "@/*": [
         "./src/*"
