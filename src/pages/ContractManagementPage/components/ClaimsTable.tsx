@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import type { ContractClaimDTO } from "../api/contractManagerApi";
-import ClaimDetailsSheet from "./ClaimDetailsSheet";
+import ChangeDetailsSheet from "./ChangeDetailsSheet";
 
 const columns: ColumnDef<ContractClaimDTO>[] = [
   {
@@ -95,10 +95,10 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
       
       return (
         <>
-          <ClaimDetailsSheet
+          <ChangeDetailsSheet
             open={sheetOpen}
             onOpenChange={setSheetOpen}
-            claimId={row.original.claimId || row.original._id || ""}
+            changeId={row.original.claimId || row.original._id || ""}
             contractId={contractId}
             basePath={basePath}
           />
