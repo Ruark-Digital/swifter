@@ -1234,14 +1234,14 @@ export const SolicitationManagementPage = () => {
               <span className="text-sm block">
                 <strong>Published:</strong>{" "}
                 {safeFormatDate(
-                  row.original.submissionDeadline,
+                  row.original.createdAt,
                   "MMM d, yyyy hh:mm a"
                 )}
               </span>
               <span>
                 <strong>Closing:</strong>{" "}
                 {safeFormatDate(
-                  row.original.questionDeadline,
+                  row.original.submissionDeadline,
                   "MMM d, yyyy hh:mm a"
                 )}
               </span>
@@ -1370,11 +1370,11 @@ export const SolicitationManagementPage = () => {
           }}
         />
         <StatCard
-          title="Active Solicitations"
+          title="Published Solicitations"
           value={dashboardStats.active}
           icon={IconMap["folder-open"] as any}
-          iconColor="text-blue-600"
-          iconBgColor="bg-blue-100"
+          iconColor="text-green-600"
+          iconBgColor="bg-green-100"
           onClick={() => {
             setFilters((prev) => ({ ...prev, status: "active", page: 1 }));
             setPagination({ pageIndex: 0, pageSize: 10 });

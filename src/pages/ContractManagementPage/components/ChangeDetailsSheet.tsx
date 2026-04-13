@@ -90,22 +90,36 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     return "/contract/user/contracts";
   }, [basePath, isManager, isApprover, isVendor, isAdmin, isViewOnly]);
 
+  const isClaim = roleBasePath.includes("/claim");
+
   const usesListBasePath = React.useMemo(
-    () => roleBasePath.endsWith("/changes") || roleBasePath.endsWith("/change"),
+    () =>
+      roleBasePath.endsWith("/changes") ||
+      roleBasePath.endsWith("/change") ||
+      roleBasePath.endsWith("/claims") ||
+      roleBasePath.endsWith("/claim"),
     [roleBasePath],
   );
 
   const changeDetailQueryKey = React.useMemo(
-    () => ["contract-change-detail", roleBasePath, contractId, changeId],
-    [roleBasePath, contractId, changeId],
+    () => [isClaim ? "contract-claim-detail" : "contract-change-detail", roleBasePath, contractId, changeId],
+    [isClaim, roleBasePath, contractId, changeId],
   );
 
   const { data: detailRes, isLoading: isDetailLoading } = useQuery({
     queryKey: changeDetailQueryKey,
     queryFn: async () => {
-      const url = usesListBasePath
+      let url = usesListBasePath
         ? `${roleBasePath}/${changeId}`
-        : `${roleBasePath}/${contractId}/changes/${changeId}`;
+        : isClaim
+          ? `${roleBasePath}/${contractId}/claims/${changeId}`
+          : `${roleBasePath}/${contractId}/changes/${changeId}`;
+          
+      // Handle the backend route mismatch for approver claims
+      if (isClaim && url.includes("/claim/") && !url.includes("/claims/")) {
+        url = url.replace("/claim/", "/claims/");
+      }
+
       const res = await getRequest({ url });
       return (res as any)?.data;
     },
@@ -127,6 +141,11 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const approverStatus = detail?.approverStatus ?? "";
   const value = detail?.value;
   const files = detail?.files;
+  
+  // Claim specific fields
+  const impact = detail?.impact;
+  const time = detail?.time;
+  const cost = detail?.cost;
 
   const canApprove = isManager;
   const showDecisionActions =
@@ -269,13 +288,13 @@ const ChangeDetailsSheet: React.FC<Props> = ({
       >
         <div className="space-y-6" data-testid="change-details-sheet">
           <SheetHeader>
-            <div className="flex items-center justify-between">
-              <SheetTitle>Change Details</SheetTitle>
-              <Button variant="outline" size="sm">
-                <Share2 className="mr-2 h-4 w-4" /> Export
-              </Button>
-            </div>
-          </SheetHeader>
+              <div className="flex items-center justify-between">
+                <SheetTitle>{isClaim ? "Claim Details" : "Change Details"}</SheetTitle>
+                <Button variant="outline" size="sm">
+                  <Share2 className="mr-2 h-4 w-4" /> Export
+                </Button>
+              </div>
+            </SheetHeader>
 
           <h3 className="text-lg font-semibold text-slate-900">
             {title}
@@ -300,43 +319,61 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             <TabsContent value="overview" className="space-y-4">
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <LabelRow label="Change Title" value={title} />
-                  <LabelRow label="Change Type" value={changeType} />
-                  <LabelRow
-                    label="Submission Date"
-                    value={submittedAt ? formatDate(submittedAt, "yyyy MMM dd HH:mm aa") : null}
-                  />
-                  <LabelRow
-                    label="Submitted by"
-                    value={
-                      <a className="text-blue-600 underline">
-                        {isDetailLoading ? "" : submittedByName}
-                      </a>
-                    }
-                  />
-                </div>
+                    <LabelRow label={isClaim ? "Claim Title" : "Change Title"} value={title} />
+                    <LabelRow label={isClaim ? "Claim Type" : "Change Type"} value={changeType} />
+                    {isClaim && impact && (
+                      <LabelRow label="Impact" value={impact.replace("_", " ")} highlight />
+                    )}
+                    <LabelRow
+                      label="Submission Date"
+                      value={submittedAt ? formatDate(submittedAt, "yyyy MMM dd HH:mm aa") : null}
+                    />
+                    <LabelRow
+                      label="Submitted by"
+                      value={
+                        <a className="text-blue-600 underline">
+                          {isDetailLoading ? "" : submittedByName}
+                        </a>
+                      }
+                    />
+                  </div>
 
-                <div>
-                  <LabelRow
-                    label="Vendor/Contractor"
-                    value={
-                      <a className="text-blue-600 underline">
-                        {isDetailLoading ? "" : vendorEmail}
-                      </a>
-                    }
-                  />
-                  <LabelRow
-                    label="Value"
-                    value={
-                      isDetailLoading
-                        ? ""
-                        : value != null
-                          ? `$${(Number(value) / 1000000).toFixed(2)}M`
-                          : "-"
-                    }
-                    highlight
-                  />
-                  <LabelRow
+                  <div>
+                    <LabelRow
+                      label="Vendor/Contractor"
+                      value={
+                        <a className="text-blue-600 underline">
+                          {isDetailLoading ? "" : vendorEmail}
+                        </a>
+                      }
+                    />
+                    {isClaim ? (
+                      <>
+                        {(impact === "time" || impact === "time_cost") && (
+                          <LabelRow label="Time Impact (Days)" value={time ?? "—"} />
+                        )}
+                        {(impact === "cost" || impact === "time_cost") && (
+                          <LabelRow
+                            label="Cost Impact"
+                            value={cost != null ? `$${Number(cost).toLocaleString()}` : "—"}
+                            highlight
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <LabelRow
+                        label="Value"
+                        value={
+                          isDetailLoading
+                            ? ""
+                            : value != null
+                              ? `$${(Number(value) / 1000000).toFixed(2)}M`
+                              : "-"
+                        }
+                        highlight
+                      />
+                    )}
+                    <LabelRow
                     label="Status"
                     value={
                       <Badge className="bg-yellow-100 text-yellow-700">
