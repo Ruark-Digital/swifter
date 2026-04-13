@@ -1,0 +1,10 @@
+import { type StoreApi, type UseBoundStore } from 'zustand';
+export type ZustandHookSelectors<StateType> = {
+    [Key in keyof StateType as `use${Capitalize<string & Key>}`]: () => StateType[Key];
+};
+export declare function createSelectorHooks<StateType extends object>(store: UseBoundStore<StoreApi<StateType>> | StoreApi<StateType>): {
+    (): StateType;
+    <U>(selector: (state: StateType) => U): U;
+    <U_1>(selector: (state: StateType) => U_1, equalityFn: (a: U_1, b: U_1) => boolean): U_1;
+} & StoreApi<StateType> & ZustandHookSelectors<StateType>;
+//# sourceMappingURL=createSelectorHooks.d.ts.map

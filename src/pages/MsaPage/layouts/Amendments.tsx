@@ -166,7 +166,7 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
-            className="rounded-xl border-[#E5E7EB] px-4 text-base font-semibold text-[#0F0F0F]"
+            className="rounded-xl border-[#E5E7EB] px-4 font-semibold text-[#0F0F0F]"
           >
             <img
               src="/assets/contract-management/amendments/share.svg"
@@ -184,7 +184,7 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
               statsInvalidateQueryKey={statsQueryKey}
               trigger={
                 <Button
-                  className="rounded-xl bg-[#2A4467] px-4 text-base font-semibold text-white hover:bg-[#2A4467]/90"
+                  className="rounded-xl bg-[#2A4467] px-4 font-semibold text-white hover:bg-[#2A4467]/90"
                   disabled={!!actionsDisabled}
                 >
                   <img

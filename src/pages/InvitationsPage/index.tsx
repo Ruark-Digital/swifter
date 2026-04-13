@@ -196,7 +196,7 @@ const InvitationsPage = () => {
 
   // API query for vendor invitations
   const { data: invitationsData, isLoading } = useQuery<
-    ApiResponse<{ data: VendorSolicitation[] }>,
+    ApiResponse<{ data: VendorSolicitation[], total: number }>,
     ApiResponseError
   >({
     queryKey: [
@@ -285,7 +285,7 @@ const InvitationsPage = () => {
 
   // Use transformed data for display
   const displayData = transformedData;
-  const totalCount = invitationsData?.data?.data?.data?.length || 0;
+  const totalCount = invitationsData?.data?.data?.total || 0;
 
   // Table columns definition
   const columns: ColumnDef<Invitation>[] = [

@@ -212,7 +212,7 @@ const ReportDetailsSheet: React.FC<{
                           reportDetails.submissionDate
                             ? format(
                                 new Date(reportDetails.submissionDate),
-                                "MMMM dd, yyyy",
+                                "dd MMM yyyy",
                               )
                             : "N/A"
                         }
@@ -223,7 +223,7 @@ const ReportDetailsSheet: React.FC<{
                           reportDetails.responseDeadline
                             ? format(
                                 new Date(reportDetails.responseDeadline),
-                                "MMMM dd, yyyy",
+                                "dd MMM yyyy",
                               )
                             : "N/A"
                         }
@@ -369,7 +369,7 @@ function VendorReportsTabContent({
       title: report.title,
       submittedBy: report.submittedBy || "Unknown",
       submissionDate: report.createdAt
-        ? format(report.createdAt, "dd-MM-yyyy")
+        ? format(report.createdAt, "dd MMM yyyy")
         : "",
       status: "Unknown",
       description: report.description,

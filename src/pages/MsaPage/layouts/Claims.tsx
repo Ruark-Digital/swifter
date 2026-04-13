@@ -98,7 +98,7 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append("page", "1");
-      params.append("limit", "200");
+      params.append("limit", "50");
       const response = await getRequest({
         url: `${claimsPath}?${params.toString()}`,
       });
@@ -217,7 +217,7 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   return (
     <TabsContent value="claims" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-4xl font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
+        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
           Claims
         </h3>
         <div className="flex items-center gap-4">

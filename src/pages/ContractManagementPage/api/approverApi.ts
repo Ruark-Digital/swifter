@@ -302,7 +302,7 @@ export const createApproverApi = (
     });
     return res.data as { message?: string; data?: ContractRFIDetailDTO };
   },
-  getRfiResponse: async (rfiId: string, contractId: string) => {
+  getRfiResponse: async (contractId: string, rfiId: string,) => {
     const res = await client.get({
       url: `/contract/approver/contracts/${contractId}/rfi/${rfiId}/response`,
     });

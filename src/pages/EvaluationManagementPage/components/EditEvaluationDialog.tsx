@@ -270,7 +270,7 @@ const EditEvaluationDialog = ({
   // Update form values when evaluation data is loaded
   useEffect(() => {
     if (isSuccess) {
-      let payload: EditEvaluationFormData = {
+      const payload: EditEvaluationFormData = {
         solicitation: evaluationData?.data?.data?.solicitation?._id || "",
         timezone: evaluationData?.data?.data?.timezone || "",
         start_date: evaluationData?.data?.data?.startDate || "",

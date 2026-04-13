@@ -11,7 +11,12 @@ import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
 
+import { useFormContext, useWatch } from "react-hook-form";
+
 const Step2ContractTeam: React.FC = () => {
+  const formContext = useFormContext<any>();
+  const vendorId = useWatch({ control: formContext as any, name: "vendor" });
+
   const { data: personnelData } = useQuery({
     queryKey: ["contract-personnel"],
     queryFn: async () => await getRequest({ url: "/contract/manager/personnel" }),
@@ -25,11 +30,20 @@ const Step2ContractTeam: React.FC = () => {
     staleTime: 60000,
   });
 
+  const { data: projectManagersData } = useQuery({
+    queryKey: ["vendor-project-managers", vendorId],
+    queryFn: async () =>
+      await getRequest({ url: `/contract/manager/contracts/vendor/${vendorId}/project-managers` }),
+    enabled: !!vendorId,
+    staleTime: 60000,
+  });
+
   const personnelOptions = React.useMemo(
     () =>
       Array.isArray((personnelData as any)?.data?.data)
         ? (personnelData as any)?.data?.data?.map((p: any) => ({
             id: p._id,
+            label: p.firstName && p.lastName ? `${p.firstName} (${p.lastName})` : p.firstName,
             text: p.firstName && p.lastName ? `${p.firstName} (${p.lastName})` : p.firstName,
             value: p._id,
             meta: { email: p.email, role: p.role, phone: p.phone },
@@ -48,6 +62,19 @@ const Step2ContractTeam: React.FC = () => {
           }))
         : [],
     [vendorsData],
+  );
+
+  const projectManagerOptions = React.useMemo(
+    () =>
+      Array.isArray((projectManagersData as any)?.data?.data)
+        ? (projectManagersData as any)?.data?.data.map((pm: any) => ({
+            id: pm.id,
+            label: pm.name || pm.email || pm.id,
+            text: pm.name || pm.email || pm.id,
+            value: pm.id,
+          }))
+        : [],
+    [projectManagersData],
   );
 
   return (
@@ -122,6 +149,46 @@ const Step2ContractTeam: React.FC = () => {
               name="vendor"
               options={vendorOptions}
               placeholder="Select vendor or type email"
+              maxCount={1}
+              creatable={true}
+              value={selectedValues as any}
+              onChange={(selectedOptions) =>
+                onChange?.(
+                  typeof selectedOptions?.[0]?.value === "string"
+                    ? selectedOptions[0].value.trim()
+                    : "",
+                )
+              }
+            />
+          );
+        }}
+      />
+
+      <Forger
+        name="projectManager"
+        label="Project Manager"
+        component={({
+          value,
+          onChange,
+        }: {
+          value?: string;
+          onChange?: (val: string) => void;
+        }) => {
+          const normalizedValue = typeof value === "string" ? value.trim() : "";
+          const selectedOption = normalizedValue
+            ? projectManagerOptions.find((option: any) => option.value === normalizedValue) ?? {
+                label: normalizedValue,
+                value: normalizedValue,
+              }
+            : undefined;
+
+          const selectedValues = selectedOption ? [selectedOption] : [];
+
+          return (
+            <TextMultiSelect
+              name="projectManager"
+              options={projectManagerOptions}
+              placeholder="Select project manager or type email"
               maxCount={1}
               creatable={true}
               value={selectedValues as any}

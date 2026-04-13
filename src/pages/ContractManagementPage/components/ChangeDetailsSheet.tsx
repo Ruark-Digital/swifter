@@ -25,14 +25,22 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
 import { DocumentItem, type DocType } from "./DocumentItem";
-import { formatFileSize, getFileIcon, getSimpleFileExtension } from "@/lib/fileUtils";
+import {
+  formatFileSize,
+  getFileIcon,
+  getSimpleFileExtension,
+} from "@/lib/fileUtils";
 import { shouldShowChangeDecisionActions } from "../lib/contractChanges";
+import { formatDate } from "date-fns";
+import Spinner from "@/components/ui/Spinner";
 
 type Props = {
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
   contractId: string;
   changeId: string;
   basePath?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 const LabelRow = ({
@@ -44,10 +52,10 @@ const LabelRow = ({
   value: React.ReactNode;
   highlight?: boolean;
 }) => (
-  <div className="grid grid-cols-2 gap-3 py-2">
-    <span className="text-sm text-slate-500">{label}</span>
+  <div className="space-y-2 py-3">
+    <span className="text-sm text-slate-500 block">{label}</span>
     <span
-      className={`text-sm ${
+      className={`text-sm block ${
         highlight ? "font-semibold text-slate-900" : "text-slate-800"
       }`}
     >
@@ -61,11 +69,17 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   contractId,
   changeId,
   basePath,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
 }) => {
   const toast = useToastHandler();
   const qc = useQueryClient();
-  const { isManager, isApprover, isVendor, isAdmin, isViewOnly } = useUserRole();
-  const [open, setOpen] = React.useState(false);
+  const { isManager, isApprover, isVendor, isAdmin, isViewOnly } =
+    useUserRole();
+  const [internalOpen, setInternalOpen] = React.useState(false);
+
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = setControlledOpen ?? setInternalOpen;
 
   const roleBasePath = React.useMemo(() => {
     if (basePath) return basePath;
@@ -76,24 +90,36 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     return "/contract/user/contracts";
   }, [basePath, isManager, isApprover, isVendor, isAdmin, isViewOnly]);
 
+  const isClaim = roleBasePath.includes("/claim");
+
   const usesListBasePath = React.useMemo(
     () =>
       roleBasePath.endsWith("/changes") ||
-      roleBasePath.endsWith("/change"),
+      roleBasePath.endsWith("/change") ||
+      roleBasePath.endsWith("/claims") ||
+      roleBasePath.endsWith("/claim"),
     [roleBasePath],
   );
 
   const changeDetailQueryKey = React.useMemo(
-    () => ["contract-change-detail", roleBasePath, contractId, changeId],
-    [roleBasePath, contractId, changeId],
+    () => [isClaim ? "contract-claim-detail" : "contract-change-detail", roleBasePath, contractId, changeId],
+    [isClaim, roleBasePath, contractId, changeId],
   );
 
   const { data: detailRes, isLoading: isDetailLoading } = useQuery({
     queryKey: changeDetailQueryKey,
     queryFn: async () => {
-      const url = usesListBasePath
+      let url = usesListBasePath
         ? `${roleBasePath}/${changeId}`
-        : `${roleBasePath}/${contractId}/changes/${changeId}`;
+        : isClaim
+          ? `${roleBasePath}/${contractId}/claims/${changeId}`
+          : `${roleBasePath}/${contractId}/changes/${changeId}`;
+          
+      // Handle the backend route mismatch for approver claims
+      if (isClaim && url.includes("/claim/") && !url.includes("/claims/")) {
+        url = url.replace("/claim/", "/claims/");
+      }
+
       const res = await getRequest({ url });
       return (res as any)?.data;
     },
@@ -108,25 +134,31 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const submittedByName =
     detail?.submittedBy?.name ?? detail?.submittedBy?.email ?? "";
   const vendorEmail =
-    detail?.vendor?.email ??
-    detail?.vendor?.name ??
-    detail?.vendor ??
-    "";
+    detail?.vendor?.email ?? detail?.vendor?.name ?? detail?.vendor ?? "";
   const changeType = detail?.type ?? "";
   const submittedAt = detail?.submittedAt ?? detail?.createdAt ?? "";
   const status = detail?.status ?? "";
+  const approverStatus = detail?.approverStatus ?? "";
   const value = detail?.value;
   const files = detail?.files;
+  
+  // Claim specific fields
+  const impact = detail?.impact;
+  const time = detail?.time;
+  const cost = detail?.cost;
 
   const canApprove = isManager;
-  const showDecisionActions = shouldShowChangeDecisionActions(changeType);
+  const showDecisionActions =
+    shouldShowChangeDecisionActions(changeType) && approverStatus === "pending";
 
   const { mutate: mutateApproval, isPending: isApproving } = useMutation({
     mutationKey: ["approveChange", roleBasePath, contractId, changeId],
     mutationFn: async (action: "approved" | "rejected") => {
       const canApprovePath = roleBasePath.includes("/manager/");
       if (!canApprovePath) {
-        throw new Error("Change approve endpoint is not available for this role.");
+        throw new Error(
+          "Change approve endpoint is not available for this role.",
+        );
       }
       const url = usesListBasePath
         ? `${roleBasePath}/${changeId}/approve`
@@ -194,19 +226,19 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     [roleBasePath, contractId, changeId],
   );
 
-  const canLoadComments = open && !!contractId && !!changeId && (isManager || isApprover);
+  const canLoadComments =
+    open && !!contractId && !!changeId && (isManager || isApprover);
 
   const { data: commentsRes, isLoading: isCommentsLoading } = useQuery({
     queryKey: commentsQueryKey,
     queryFn: async () => {
-      const url =
-        roleBasePath.includes("/manager/")
-          ? usesListBasePath
-            ? `${roleBasePath}/${changeId}/comments`
-            : `${roleBasePath}/changes/${changeId}/comments`
-          : usesListBasePath
-            ? `${roleBasePath}/${changeId}/comment`
-            : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
+      const url = roleBasePath.includes("/manager/")
+        ? usesListBasePath
+          ? `${roleBasePath}/${contractId}/changes/${changeId}/comments`
+          : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
+        : usesListBasePath
+          ? `${roleBasePath}/${changeId}/comment`
+          : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
       const res = await getRequest({ url });
       return (res as any)?.data;
     },
@@ -214,21 +246,21 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     staleTime: 30_000,
   });
 
-  const comments = ((commentsRes as any)?.data?.data ?? (commentsRes as any)?.data) || [];
+  const comments =
+    ((commentsRes as any)?.data?.data ?? (commentsRes as any)?.data) || [];
 
   const { mutate: mutateAddComment, isPending: isAddingComment } = useMutation({
     mutationKey: ["addChangeComment", roleBasePath, contractId, changeId],
     mutationFn: async (content: string) => {
       if (!content.trim()) return;
       const payload = { content };
-      const url =
-        roleBasePath.includes("/manager/")
-          ? usesListBasePath
-            ? `${roleBasePath}/${changeId}/comments/${contractId}`
-            : `${roleBasePath}/changes/${changeId}/comments/${contractId}`
-          : usesListBasePath
-            ? `${roleBasePath}/${changeId}/comment`
-            : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
+      const url = roleBasePath.includes("/manager/")
+        ? usesListBasePath
+          ? `${roleBasePath}/${contractId}/changes/${changeId}/comments`
+          : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
+        : usesListBasePath
+          ? `${roleBasePath}/${changeId}/comment`
+          : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
       await postRequest({ url, payload });
     },
     onSuccess: () => {
@@ -239,75 +271,117 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     },
   });
 
+  if (isDetailLoading) {
+    return (
+      <div className="flex items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>{trigger}</SheetTrigger>
+      {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
       <SheetContent
         className="sm:max-w-2xl lg:max-w-3xl rounded-2xl overflow-y-auto"
         side="right"
       >
         <div className="space-y-6" data-testid="change-details-sheet">
           <SheetHeader>
-            <div className="flex items-center justify-between">
-              <SheetTitle>Change Details</SheetTitle>
-              <Button variant="outline" size="sm">
-                <Share2 className="mr-2 h-4 w-4" /> Export
-              </Button>
-            </div>
-          </SheetHeader>
+              <div className="flex items-center justify-between">
+                <SheetTitle>{isClaim ? "Claim Details" : "Change Details"}</SheetTitle>
+                <Button variant="outline" size="sm">
+                  <Share2 className="mr-2 h-4 w-4" /> Export
+                </Button>
+              </div>
+            </SheetHeader>
 
           <h3 className="text-lg font-semibold text-slate-900">
-            {isDetailLoading ? "" : title}
+            {title}
           </h3>
 
           <Tabs defaultValue="overview" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="comments">Comments</TabsTrigger>
+            <TabsList className="h-auto rounded-none border-b w-full border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
+              <TabsTrigger
+                value="overview"
+                className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+              >
+                Overview
+              </TabsTrigger>
+              <TabsTrigger
+                value="comments"
+                className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+              >
+                Comments
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
-              <Separator />
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <LabelRow
-                    label="Change Title"
-                    value={isDetailLoading ? "" : title}
-                  />
-                  <LabelRow label="Change Type" value={isDetailLoading ? "" : changeType} />
-                  <LabelRow label="Submission Date" value={isDetailLoading ? "" : submittedAt} />
-                  <LabelRow
-                    label="Submitted by"
-                    value={
-                      <a className="text-blue-600 underline">
-                        {isDetailLoading ? "" : submittedByName}
-                      </a>
-                    }
-                  />
-                </div>
-                <div>
-                  <LabelRow
-                    label="Vendor/Contractor"
-                    value={
-                      <a className="text-blue-600 underline">{isDetailLoading ? "" : vendorEmail}</a>
-                    }
-                  />
-                  <LabelRow
-                    label="Value"
-                    value={
-                      isDetailLoading
-                        ? ""
-                        : value != null
-                          ? `$${(Number(value) / 1000000).toFixed(2)}M`
-                          : "-"
-                    }
-                    highlight
-                  />
-                  <LabelRow
+                    <LabelRow label={isClaim ? "Claim Title" : "Change Title"} value={title} />
+                    <LabelRow label={isClaim ? "Claim Type" : "Change Type"} value={changeType} />
+                    {isClaim && impact && (
+                      <LabelRow label="Impact" value={impact.replace("_", " ")} highlight />
+                    )}
+                    <LabelRow
+                      label="Submission Date"
+                      value={submittedAt ? formatDate(submittedAt, "yyyy MMM dd HH:mm aa") : null}
+                    />
+                    <LabelRow
+                      label="Submitted by"
+                      value={
+                        <a className="text-blue-600 underline">
+                          {isDetailLoading ? "" : submittedByName}
+                        </a>
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <LabelRow
+                      label="Vendor/Contractor"
+                      value={
+                        <a className="text-blue-600 underline">
+                          {isDetailLoading ? "" : vendorEmail}
+                        </a>
+                      }
+                    />
+                    {isClaim ? (
+                      <>
+                        {(impact === "time" || impact === "time_cost") && (
+                          <LabelRow label="Time Impact (Days)" value={time ?? "—"} />
+                        )}
+                        {(impact === "cost" || impact === "time_cost") && (
+                          <LabelRow
+                            label="Cost Impact"
+                            value={cost != null ? `$${Number(cost).toLocaleString()}` : "—"}
+                            highlight
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <LabelRow
+                        label="Value"
+                        value={
+                          isDetailLoading
+                            ? ""
+                            : value != null
+                              ? `$${(Number(value) / 1000000).toFixed(2)}M`
+                              : "-"
+                        }
+                        highlight
+                      />
+                    )}
+                    <LabelRow
                     label="Status"
                     value={
                       <Badge className="bg-yellow-100 text-yellow-700">
-                        {isDetailLoading ? "" : status ? status.charAt(0).toUpperCase() + status.slice(1) : "-"}
+                        {isDetailLoading
+                          ? ""
+                          : status
+                            ? status.charAt(0).toUpperCase() + status.slice(1)
+                            : "-"}
                       </Badge>
                     }
                   />
@@ -322,11 +396,11 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                 </p>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-5">
                 <span className="text-sm text-slate-500">
                   Attached Documents
                 </span>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   {docs.map((d) => (
                     <DocumentItem
                       key={d.id}
@@ -402,7 +476,10 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                   disabled={!canApprove || isApproving}
                   onClick={() => {
                     if (!canApprove) {
-                      toast.error("Action not allowed", "Only managers can reject changes");
+                      toast.error(
+                        "Action not allowed",
+                        "Only managers can reject changes",
+                      );
                       return;
                     }
                     mutateApproval("rejected");

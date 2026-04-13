@@ -153,22 +153,22 @@ test.describe("contractManagerApi (unit)", () => {
       url: "/contract/manager/contracts/changes/chg1/approvers",
     });
 
-    await api.listChangeComments("chg1");
+    await api.listChangeComments("c2", "chg1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/changes/chg1/comments",
+      url: "/contract/manager/contracts/c2/changes/chg1/comments",
     });
 
     const commentPayload = { comment: "c" };
-    await api.addChangeComment("chg1", "c3", commentPayload as never);
+    await api.addChangeComment("c3", "chg1", commentPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/changes/chg1/comments/c3",
+      url: "/contract/manager/contracts/c3/changes/chg1/comments",
       payload: commentPayload,
     });
 
     const replyPayload = { message: "r" };
-    await api.replyChangeComment("chg1", "cm1", replyPayload as never);
+    await api.replyChangeComment("c3", "chg1", "cm1", replyPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/changes/chg1/comments/cm1/reply",
+      url: "/contract/manager/contracts/c3/changes/chg1/comments/cm1/reply",
       payload: replyPayload,
     });
 

@@ -97,6 +97,8 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
   const [signatories, setSignatories] = React.useState<string[]>([]);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
 
+  const watchedDocuments = useWatch({ control, name: "documents" }) as any[];
+
   const typesQuery = useQuery({
     queryKey: useUserQueryKey(["contract-types"]),
     queryFn: async () => {
@@ -192,7 +194,7 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
         dueDate: s.dueDate ? new Date(s.dueDate) : undefined,
       })) ?? [];
 
-    reset({
+    const payload = {
       ...createDefaults,
       name: contract.title ?? "",
       relationship,
@@ -200,7 +202,41 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       awardedSolicitation: contract.solicitation?._id ?? "",
       type: contract.contractType?._id ?? "",
       category: contract.category ?? "",
+      manager: contract.managers?.[0] ?? "",
       jobTitle: contract.jobTitle ?? "",
+      vendor: contract.vendor?._id ?? "",
+      personnel: (contract.vendorPersonnel ?? []).map((p) => ({
+        id: p._id ?? p.email ?? "",
+        text: p.name || p.email || p._id || "",
+        meta: {
+          email: p.email ?? "",
+          role: Array.isArray(p.role) ? p.role[0]?.name ?? "" : (p.role ?? ""),
+          phone: (p as any).phone ?? "",
+        },
+      })),
+      personnelMeta: (contract.vendorPersonnel ?? []).map((p) => ({
+        id: p._id ?? p.email ?? "",
+        name: p.name || "",
+        email: p.email ?? "",
+        role: typeof p.role === "string" ? p.role : (Array.isArray(p.role) ? (p.role[0] as any)?.name ?? "" : ""),
+        phone: (p as any).phone ?? "",
+      })),
+      internalTeam: (contract.internalTeam ?? []).map((t) => ({
+        id: t.id ?? t.email ?? "",
+        text: t.name || t.email || t.id || "",
+        meta: {
+          email: t.email ?? "",
+          role: t.role ?? "",
+          phone: (t as any).phone ?? "",
+        },
+      })),
+      internalTeamMeta: (contract.internalTeam ?? []).map((t) => ({
+        id: t.id ?? t.email ?? "",
+        name: t.name || "",
+        email: t.email ?? "",
+        role: t.role ?? "",
+        phone: (t as any).phone ?? "",
+      })),
       businessDivision: contract.businessDivision?._id ?? "",
       contractId: contract.contractId ?? "",
       description: contract.description ?? "",
@@ -236,7 +272,11 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       insurancePolicies,
       securities,
       rating: contract.rating ?? 5,
-    });
+    }
+
+    console.log(payload);
+
+    reset(payload);
   }, [contractRes?.data?.data, paymentTermsQuery.data?.data, termTypesQuery.data?.data, reset]);
 
   const typeOptions = React.useMemo(
@@ -644,7 +684,7 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
               {step === 7 && (
                 <Step4Form
                   control={control}
-                  documents={useWatch({ control, name: "documents" }) as any[]}
+                  documents={watchedDocuments}
                 />
               )}
               {step === 8 && <Step7ApprovalLevel control={control} />}

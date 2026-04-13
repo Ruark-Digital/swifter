@@ -67,17 +67,17 @@ const DeliverablesTabContent: React.FC = () => {
   const rows: DeliverableRow[] = React.useMemo(() => {
     const items: any[] = listRes?.data?.data || listRes?.data || [];
     return items.map((it) => ({
-      id: it?.deliverableId ?? it?._id ?? "",
-      title: it?.title ?? "",
+      id: it?.deliverableId ?? "-",
+      title: it?.title ?? "-",
       dueDate: it?.date ?? it?.dueDate ?? "-",
-      submissionDate: it?.submissionDate ?? "-",
+      // submissionDate: it?.submissionDate ?? "",
       submissionStatus:
         (it?.submissionStatus === "submitted"
           ? "Submitted"
           : it?.submissionStatus === "late"
           ? "Late"
           : "Pending") as DeliverableRow["submissionStatus"],
-      kpi: it?.kpi?.kpiText ?? it?.kpi ?? "",
+      kpi: it?.kpi?.kpiText ?? it?.kpi ?? "-",
       status:
         (it?.status === "approved"
           ? "Approved"
@@ -126,6 +126,7 @@ const DeliverablesTabContent: React.FC = () => {
         rows={rows}
         isLoading={!!listLoading}
         isApprover={isApprover}
+        isContractManager={isManager}
         basePath={basePath}
       />
     </TabsContent>

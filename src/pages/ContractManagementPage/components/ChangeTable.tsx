@@ -10,88 +10,12 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import ChangeDetailsSheet from "./ChangeDetailsSheet";
+import ApproverChangeDetailsSheet from "./ApproverChangeDetailsSheet";
 import type { ContractChangeDTO } from "../api/contractManagerApi";
 import { formatChangeTypeLabel } from "../lib/contractChanges";
 
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-
-const approverColumns: ColumnDef<ContractChangeDTO>[] = [
-  {
-    accessorKey: "changeId",
-    header: "Change ID",
-    cell: ({ getValue }) => (
-      <span className="font-medium text-slate-900">
-        {getValue<string>() ?? "-"}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "title",
-    header: "Change Title",
-    cell: ({ getValue }) => (
-      <span className="font-medium text-slate-900">
-        {getValue<string>() ?? "-"}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "type",
-    header: "Type",
-    cell: ({ getValue }) => {
-      const type = getValue<ContractChangeDTO["type"] | undefined>();
-      return <span>{type ? formatChangeTypeLabel(type) : "-"}</span>;
-    },
-  },
-  {
-    accessorKey: "value",
-    header: "Value",
-    cell: ({ getValue }) => {
-      const val = getValue<number | undefined>();
-      return val ? `$${(val / 1000000).toFixed(2)}M` : "-";
-    },
-  },
-  {
-    accessorKey: "submittedAt",
-    header: "Submitted",
-    cell: ({ getValue }) => {
-      const date = getValue<string | undefined>();
-      return date ? format(new Date(date), "yyyy-MM-dd") : "-";
-    },
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ getValue }) => {
-      const status = getValue<string | undefined>();
-      let className = "bg-slate-100 text-slate-800 hover:bg-slate-100";
-      if (status === "approved")
-        className = "bg-green-100 text-green-800 hover:bg-green-100";
-      if (status === "pending")
-        className = "bg-yellow-100 text-yellow-800 hover:bg-yellow-100";
-      if (status === "rejected")
-        className = "bg-red-100 text-red-800 hover:bg-red-100";
-
-      return (
-        <Badge className={`rounded-full px-3 py-1 font-normal ${className}`}>
-          {status ? status.charAt(0).toUpperCase() + status.slice(1) : "-"}
-        </Badge>
-      );
-    },
-  },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: () => (
-      <Button
-        variant="link"
-        className="text-green-600 font-semibold p-0 h-auto hover:no-underline"
-      >
-        View
-      </Button>
-    ),
-  },
-];
 
 type ChangeTableProps = {
   contractId: string;
@@ -113,6 +37,95 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
   variant = "manager",
 }) => {
   const [search, setSearch] = React.useState("");
+
+  const approverColumns: ColumnDef<ContractChangeDTO>[] = React.useMemo(
+    () => [
+      {
+        accessorKey: "changeId",
+        header: "Change ID",
+        cell: ({ getValue }) => (
+          <span className="font-medium text-slate-900">
+            {getValue<string>() ?? "-"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "title",
+        header: "Change Title",
+        cell: ({ getValue }) => (
+          <span className="font-medium text-slate-900">
+            {getValue<string>() ?? "-"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "type",
+        header: "Type",
+        cell: ({ getValue }) => {
+          const type = getValue<ContractChangeDTO["type"] | undefined>();
+          return <span>{type ? formatChangeTypeLabel(type) : "-"}</span>;
+        },
+      },
+      {
+        accessorKey: "value",
+        header: "Value",
+        cell: ({ getValue }) => {
+          const val = getValue<number | undefined>();
+          return val ? `$${(val / 1000000).toFixed(2)}M` : "-";
+        },
+      },
+      {
+        accessorKey: "submittedAt",
+        header: "Submitted",
+        cell: ({ getValue }) => {
+          const date = getValue<string | undefined>();
+          return date ? format(new Date(date), "dd MMM yyyy") : "-";
+        },
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ getValue }) => {
+          const status = getValue<string | undefined>();
+          let className = "bg-slate-100 text-slate-800 hover:bg-slate-100";
+          if (status === "approved")
+            className = "bg-green-100 text-green-800 hover:bg-green-100";
+          if (status === "pending")
+            className = "bg-yellow-100 text-yellow-800 hover:bg-yellow-100";
+          if (status === "rejected")
+            className = "bg-red-100 text-red-800 hover:bg-red-100";
+
+          return (
+            <Badge className={`rounded-full px-3 py-1 font-normal ${className}`}>
+              {status ? status.charAt(0).toUpperCase() + status.slice(1) : "-"}
+            </Badge>
+          );
+        },
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => {
+          const changeId = row.original.changeId || "";
+          return (
+            <ApproverChangeDetailsSheet
+              contractId={contractId}
+              changeId={changeId}
+              trigger={
+                <Button
+                  variant="link"
+                  className="text-green-600 font-semibold p-0 h-auto hover:no-underline"
+                >
+                  View
+                </Button>
+              }
+            />
+          );
+        },
+      },
+    ],
+    [contractId],
+  );
 
   const managerColumns: ColumnDef<ContractChangeDTO>[] = React.useMemo(
     () => [
@@ -174,27 +187,28 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         header: "Actions",
         cell: ({ row }) => {
           const changeId = row.original.changeId || "";
+          const [sheetOpen, setSheetOpen] = React.useState(false);
           return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  ⋮
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <ChangeDetailsSheet
-                    contractId={contractId}
-                    changeId={changeId}
-                    trigger={
-                      <a href="#" data-testid="view-change-detail p-4">
-                        View Details
-                      </a>
-                    }
-                  />
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <>
+              <ChangeDetailsSheet
+                contractId={contractId}
+                changeId={changeId}
+                open={sheetOpen}
+                onOpenChange={setSheetOpen}
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    ⋮
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setSheetOpen(true)}>
+                    View Details
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           );
         },
       },

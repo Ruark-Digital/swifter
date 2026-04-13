@@ -7,15 +7,15 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
+  // DialogHeader,
+  // DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { Forge, Forger, useForge } from "@/lib/forge";
-import * as yup from "yup";
-import { yupResolver } from "@hookform/resolvers/yup";
+// import * as yup from "yup";
+// import { yupResolver } from "@hookform/resolvers/yup";
 import { postRequest } from "@/lib/axiosInstance";
 import { DropdownFilters } from "@/components/layouts/SolicitationFilters";
 import { Button } from "@/components/ui/button";
@@ -38,43 +38,6 @@ type Props = {
   canUpdate?: boolean;
 };
 
-/* columns moved inside KpiTable component to capture props safely */
-const schema = yup.object().shape({
-  value: yup.number().required("Value is required"),
-  note: yup.string().optional(),
-});
-
-const KpiUpdateDialogForm: React.FC<{
-  kpiId: string;
-  basePath: string;
-}> = ({ kpiId, basePath }) => {
-  const { control } = useForge({
-    resolver: yupResolver(schema) as any,
-    // defaultValue: {},
-  });
-
-  const onSubmit = async (payload: any) => {
-    await postRequest({
-      url: `${basePath}/${kpiId}`,
-      payload,
-    });
-  };
-
-  return (
-    <Forge control={control} onSubmit={onSubmit}>
-      <div className="space-y-4">
-        <Forger name="value" type="number" component="input" />
-        <Forger name="note" type="text" component="input" />
-        <button
-          type="submit"
-          className="h-10 rounded-md bg-[#2A4467] px-4 text-white"
-        >
-          Submit
-        </button>
-      </div>
-    </Forge>
-  );
-};
 
 const KpiDetailSheet: React.FC<{
   contractId: string;
@@ -472,7 +435,7 @@ const KpiTable: React.FC<Props> = ({
         const actions = row.original.actions;
         return (
           <div className="flex w-[80px] items-center justify-center gap-[10px] py-2">
-            {actions.includes("Update") && canUpdate && (
+            {/* {actions.includes("Update") && canUpdate && (
               <Dialog>
                 <DialogTrigger asChild>
                   <Button
@@ -492,7 +455,8 @@ const KpiTable: React.FC<Props> = ({
                   />
                 </DialogContent>
               </Dialog>
-            )}
+            )} */}
+            
             {actions.includes("View") && (
               <Sheet>
                 <SheetTrigger asChild>

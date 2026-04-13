@@ -73,7 +73,7 @@ const Kpi: React.FC<Props> = ({ contractId, isActive }) => {
   return (
     <TabsContent value="kpi" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-semibold text-[#0F0F0F]">
+        <h3 className="text-base font-semibold text-[#0F0F0F]">
           Key Performance Indicator
         </h3>
         <button

@@ -257,7 +257,7 @@ const ChangeManagement: React.FC<Props> = ({
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
-            className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F]"
+            className="h-12 rounded-xl border-[#E5E7EB] px-5 text-sm font-semibold text-[#0F0F0F]"
           >
             <Share2 className="mr-2 h-5 w-5" />
             Export Report
@@ -266,7 +266,7 @@ const ChangeManagement: React.FC<Props> = ({
             <CreateChangeDialog
               trigger={
                 <Button
-                  className="h-12 rounded-xl bg-[#F3F4F6] px-5 text-base font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB]"
+                  className="h-12 rounded-xl bg-[#F3F4F6] px-5 text-sm font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB]"
                   disabled={!!actionsDisabled}
                 >
                   Create Change
@@ -275,7 +275,6 @@ const ChangeManagement: React.FC<Props> = ({
               contractId={contractId}
               isManager
               documentType="MsaContract"
-              invalidateQueryKey={["msaChanges", contractId]}
             />
           )}
         </div>
@@ -291,31 +290,31 @@ const ChangeManagement: React.FC<Props> = ({
         <TabsList className="h-auto rounded-full bg-[#F3F4F6] p-1">
           <TabsTrigger
             value="all"
-            className="rounded-full px-6 py-2 text-base font-semibold data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="rounded-full px-6 py-2 text-sm font-semibold data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             All Changes
           </TabsTrigger>
           <TabsTrigger
             value="requests"
-            className="rounded-full px-6 py-2 text-base font-semibold data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="rounded-full px-6 py-2 text-sm font-semibold data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             Change Requests
           </TabsTrigger>
           <TabsTrigger
             value="orders"
-            className="rounded-full px-6 py-2 text-base font-semibold data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="rounded-full px-6 py-2 text-sm font-semibold data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             Change Orders
           </TabsTrigger>
           <TabsTrigger
             value="directive"
-            className="rounded-full px-6 py-2 text-base font-semibold data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="rounded-full px-6 py-2 text-sm font-semibold data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             Change Directive
           </TabsTrigger>
           <TabsTrigger
             value="proposal"
-            className="rounded-full px-6 py-2 text-base font-semibold data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="rounded-full px-6 py-2 text-sm font-semibold data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             Change Proposal
           </TabsTrigger>

@@ -8,7 +8,7 @@ import { Share2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ContractComplianceDTO } from "../api/contractManagerApi";
 import { useUserRole } from "@/hooks/useUserRole";
-import { differenceInDays } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import ComplianceDetailsSheet from "./ComplianceDetailsSheet";
 import SubmitPolicyDialog from "./SubmitPolicyDialog";
 import { useParams } from "react-router-dom";
@@ -101,33 +101,6 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         id: "actions",
         header: "Action",
         cell: ({ row }) => {
-          const status = row.original.status?.toLowerCase();
-          const isPending =
-            status === "pending" || status === "pending submission";
-          const isRejected = status === "rejected";
-          const showSubmit = isVendor && (isPending || isRejected);
-
-          if (showSubmit) {
-            const submitLabel = isRejected ? "Resubmit" : "Submit";
-            return (
-              <SubmitPolicyDialog
-                type="policy"
-                id={row.original.id}
-                contractId={contractId || ""}
-                basePath={basePath}
-                title={row.original.policyName}
-                trigger={
-                  <Button
-                    variant="link"
-                    className="text-green-600 font-semibold p-0 h-auto"
-                  >
-                    {submitLabel}
-                  </Button>
-                }
-              />
-            );
-          }
-
           return (
             <ComplianceDetailsSheet
               type="policy"
@@ -215,33 +188,6 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         id: "actions",
         header: "Action",
         cell: ({ row }) => {
-          const status = row.original.status?.toLowerCase();
-          const isPending =
-            status === "pending" || status === "pending submission";
-          const isRejected = status === "rejected";
-          const showSubmit = isVendor && (isPending || isRejected);
-
-          if (showSubmit) {
-            const submitLabel = isRejected ? "Resubmit" : "Submit";
-            return (
-              <SubmitPolicyDialog
-                type="security"
-                id={row.original.id}
-                contractId={contractId || ""}
-                basePath={basePath}
-                title={row.original.securityType}
-                trigger={
-                  <Button
-                    variant="link"
-                    className="text-green-600 font-semibold p-0 h-auto"
-                  >
-                    {submitLabel}
-                  </Button>
-                }
-              />
-            );
-          }
-
           return (
             <ComplianceDetailsSheet
               type="security"
@@ -279,7 +225,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
     if (!data?.security) return [];
     return data.security.map((s) => {
       const dueDate = s.expiryDate
-        ? new Date(s.expiryDate).toLocaleDateString()
+        ? format(new Date(s.expiryDate), "dd MMM yyyy")
         : "-";
       let dueIn = "-";
       if (s.expiryDate) {
@@ -334,9 +280,24 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         <h3 className="text-lg font-semibold text-slate-800">
           Compliance & Security Details
         </h3>
-        <Button variant="outline" className="text-slate-600 border-slate-300">
-          <Share2 className="mr-2 h-4 w-4" /> Export Report
-        </Button>
+        <div className="flex items-center gap-3">
+          {isVendor && (
+            <SubmitPolicyDialog
+              type={activeView}
+              contractId={contractId || ""}
+              basePath={basePath}
+              title={`Submit ${activeView === "policy" ? "Policies" : "Security"}`}
+              trigger={
+                <Button className="bg-[#2A4467] text-white hover:bg-[#1f3552]">
+                  Submit {activeView === "policy" ? "Policies" : "Security"}
+                </Button>
+              }
+            />
+          )}
+          <Button variant="outline" className="text-slate-600 border-slate-300">
+            <Share2 className="mr-2 h-4 w-4" /> Export Report
+          </Button>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -362,7 +323,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
             <p className="text-sm text-slate-500">Insurance Expiry Date</p>
             <p className="text-base font-semibold text-slate-900">
               {data?.details?.expDate
-                ? new Date(data.details.expDate).toLocaleDateString()
+                ? format(new Date(data.details.expDate), "dd MMM yyyy")
                 : "-"}
             </p>
           </div>

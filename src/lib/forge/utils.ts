@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unsafe-function-type */
-/* eslint-disable @typescript-eslint/no-empty-object-type */
  
  
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
+ 
+ 
 import React, {
   Children,
   ReactElement,

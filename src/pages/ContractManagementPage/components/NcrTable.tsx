@@ -178,8 +178,8 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
   const ncrIdentifier = detail?.ncrId ?? detail?._id ?? ncrId;
   const submittedBy = detail?.submittedBy?.name ?? "-";
 
-  const submissionDate = formatDateTZ(detail?.createdAt, "MMMM dd, yyyy");
-  const responseDeadline = formatDateTZ(detail?.updatedAt, "MMMM dd, yyyy");
+  const submissionDate = formatDateTZ(detail?.createdAt, "dd MMM yyyy");
+  const responseDeadline = formatDateTZ(detail?.updatedAt, "dd MMM yyyy");
 
   const latestCapa = detail?.capa?.[0];
 

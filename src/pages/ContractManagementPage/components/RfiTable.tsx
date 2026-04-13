@@ -40,7 +40,6 @@ import {
   Check,
   CloudUpload,
   Download,
-  Eye,
   Search,
   X,
 } from "lucide-react";
@@ -55,11 +54,13 @@ import {
   // type ContractRfiDTO,
 } from "../api/contractManagerApi";
 import { approverApi } from "../api/approverApi";
+// import { vendorApi } from "../api/vendorApi";
 import { formatDateTZ } from "@/lib/utils";
-import { formatFileSize, getFileExtension } from "@/lib/fileUtils";
+import { formatFileSize, getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserRole } from "@/hooks/useUserRole";
 import { postRequest } from "@/lib/axiosInstance";
+import { DocumentItem, type DocType } from "./DocumentItem";
 
 export type RfiRow = {
   id: string;
@@ -81,6 +82,7 @@ type RespondToRfiDialogProps = {
   trigger: React.ReactNode;
   rfiId: string;
   contractId: string;
+  rfi?: ContractRfis;
 };
 
 const LabelRow = ({
@@ -93,42 +95,6 @@ const LabelRow = ({
   <div className="space-y-2">
     <div className="text-xs font-medium text-[#9CA3AF]">{label}</div>
     <div className="text-sm font-medium text-[#111827]">{value}</div>
-  </div>
-);
-
-const DocCard = ({
-  name,
-  type,
-  size,
-}: {
-  name: string;
-  type: string;
-  size: string;
-}) => (
-  <div className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-white p-3">
-    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EEF2FF] text-xs font-semibold text-[#3B82F6]">
-      {type}
-    </div>
-    <div className="flex-1">
-      <div className="text-sm font-medium text-[#111827]">{name}</div>
-      <div className="text-xs text-[#9CA3AF]">
-        {type} • {size}
-      </div>
-    </div>
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F3F4F6] text-[#6B7280]"
-      >
-        <Eye className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E6F0FF] text-[#2563EB]"
-      >
-        <Download className="h-4 w-4" />
-      </button>
-    </div>
   </div>
 );
 
@@ -214,15 +180,15 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     },
   });
 
-  const rfiDetail = rfiDetailRes?.data as unknown as any;
+  const rfiDetail = rfiDetailRes?.data?.contractRfi as unknown as any;
   const rfiTitle = rfiDetail?.title ?? rfi?.title ?? "-";
   const rfiDescription = rfiDetail?.description ?? rfi?.description ?? "-";
   const rfiStatus = rfi?.status ?? "-";
-  const rfiSubmittedBy = rfi?.submittedBy ?? "-";
+  const rfiSubmittedBy = rfiDetail?.submittedBy?.name ?? rfi?.submittedBy ?? "-";
   const rfiIdentifier = rfi?.rfiId ?? rfi?._id ?? "-";
 
   const formatDate = (value?: string | Date) =>
-    formatDateTZ(value, "MMMM dd, yyyy");
+    formatDateTZ(value, "dd MMM yyyy");
 
   const submissionDate = formatDate(rfi?.createdAt);
   const responseDeadline = formatDate(rfiDetail?.deadline ?? rfi?.deadline);
@@ -244,6 +210,8 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
       createdBy?: { name?: string; email?: string };
     }
   >;
+
+  // console.log({ comments, rfiCommentsRes })
 
   const getCommentAuthor = (comment: ContractCommentDTO) =>
     comment.user?.name ??
@@ -374,16 +342,34 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                   <div className="text-base font-semibold text-[#0F0F0F]">
                     Attached Documents
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-1">
                     {files.map((file, index) => {
                       const name = file.name ?? "Untitled";
                       const type = getFileExtension(name, file.type ?? "");
+                      const d: DocType = {
+                        id: `${name}-${index}`,
+                        name,
+                        type: type || "FILE",
+                        size: getSizeLabel(file.size),
+                        url: (file as any).url,
+                        icon: getFileIcon(type || "FILE"),
+                      };
                       return (
-                        <DocCard
-                          key={`${name}-${index}`}
-                          name={name}
-                          type={type || "FILE"}
-                          size={getSizeLabel(file.size)}
+                        <DocumentItem
+                          key={d.id}
+                          d={d}
+                          handlePreview={() => {
+                            window.open(d.url || "#", "_blank");
+                          }}
+                          handleDownload={() => {
+                            if (!d.url) return;
+                            const link = document.createElement("a");
+                            link.href = d.url;
+                            link.download = d.name;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}
                         />
                       );
                     })}
@@ -440,7 +426,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                             ) : null}
                           </div>
                           <div className="text-xs text-[#6B7280]">
-                            {formatDateTZ(comment.createdAt, "MMM dd, yyyy")}
+                            {formatDateTZ(comment.createdAt, "dd MMM yyyy")}
                           </div>
                         </div>
                         <div
@@ -464,6 +450,11 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                   }}
                   isLoading={addCommentMutation.isPending}
                   replyToUser={{ name: "Zenith Solution" }}
+                  availableUsers={[
+                    { name: "Zenith Solution" },
+                    { name: "Procurement Team" },
+                    { name: "Contract Manager" },
+                  ]}
                   currentUser={{ name: "You" }}
                   sendType="reply"
                   isNewChat={false}
@@ -473,20 +464,23 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
             </Tabs>
           </div>
 
-          {!(rfiDetailRes?.data?.isResponse ?? false) && <SheetFooter>
-            <div className="flex w-full gap-3 pt-2">
-              <Button variant="outline" className="flex-1 h-12 rounded-xl">
-                Cancel
-              </Button>
-              <RespondToRfiDialog
-                rfiId={rfiId}
-                contractId={contractId}
-                trigger={
-                  <Button className="flex-1 h-12 rounded-xl">Respond</Button>
-                }
-              />
-            </div>
-          </SheetFooter>}
+          {!(rfiDetailRes?.data?.isResponse ?? false) && isApprover && (
+            <SheetFooter>
+              <div className="flex w-full gap-3 pt-2">
+                <Button variant="outline" className="flex-1 h-12 rounded-xl">
+                  Cancel
+                </Button>
+                <RespondToRfiDialog
+                  rfiId={rfiId}
+                  rfi={rfiDetail?.contractRfi}
+                  contractId={contractId}
+                  trigger={
+                    <Button className="flex-1 h-12 rounded-xl">Respond</Button>
+                  }
+                />
+              </div>
+            </SheetFooter>
+          )}
         </div>
       </SheetContent>
     </Sheet>
@@ -513,7 +507,9 @@ const RfiResponseContent: React.FC<{
     staleTime: 60000,
   });
 
-  const resp = Array.isArray(respRes?.data) ? respRes.data[0] ?? {} : respRes?.data ?? {};
+  const resp = Array.isArray(respRes?.data)
+    ? (respRes.data[0] ?? {})
+    : (respRes?.data ?? {});
   const description = resp?.description ?? "-";
   const files = (resp?.files ?? []) as Array<{
     name?: string;
@@ -534,16 +530,34 @@ const RfiResponseContent: React.FC<{
         <div className="text-base font-semibold text-[#0F0F0F]">
           Attached Documents
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-1">
           {files.map((file, index) => {
             const name = file.name ?? "Untitled";
             const type = getFileExtension(name, file.type ?? "");
+            const d: DocType = {
+              id: `${name}-${index}`,
+              name,
+              type: type || "FILE",
+              size: getSizeLabel(file.size),
+              url: file.url,
+              icon: getFileIcon(type || "FILE"),
+            };
             return (
-              <DocCard
-                key={`${name}-${index}`}
-                name={name}
-                type={type || "FILE"}
-                size={getSizeLabel(file.size)}
+              <DocumentItem
+                key={d.id}
+                d={d}
+                handlePreview={() => {
+                  window.open(d.url || "#", "_blank");
+                }}
+                handleDownload={() => {
+                  if (!d.url) return;
+                  const link = document.createElement("a");
+                  link.href = d.url;
+                  link.download = d.name;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
               />
             );
           })}
@@ -553,44 +567,33 @@ const RfiResponseContent: React.FC<{
   );
 };
 
-
 const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
   trigger,
   rfiId,
+  rfi,
   contractId,
 }) => {
   const { isApprover } = useUserRole();
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
+
   const { control, reset, setValue } = useForge({
     defaultValues: {
-      rfiTitle: "",
-      responseDeadline: undefined,
+      rfiTitle: rfi?.title ?? "",
+      responseDeadline: rfi?.deadline,
       responseDescription: "",
-      files: null,
+      files: null as File[] | null,
     },
   });
   const [isSuccess, setIsSuccess] = React.useState(false);
-  // const { data: rfiDetailRes } = useQuery({
-  //   queryKey: [
-  //     "approver",
-  //     "contractRfis",
-  //     "respond-prefill",
-  //     contractId,
-  //     rfiId,
-  //   ],
-  //   queryFn: async () => await approverApi.getRfiDetail(rfiId, contractId),
-  //   enabled: Boolean(contractId) && Boolean(rfiId) && isApprover,
-  //   staleTime: 60000,
-  // });
 
-  // React.useEffect(() => {
-  //   const d = rfiDetailRes?.data;
-  //   if (d) {
-  //     setValue("rfiTitle", d. ?? "");
-  //     setValue("responseDeadline", (d.deadline ?? undefined) as any);
-  //   }
-  // }, [rfiDetailRes?.data, setValue]);
+  React.useEffect(() => {
+    if (rfi) {
+      setValue("rfiTitle", rfi?.title ?? "", { shouldValidate: false });
+      setValue("responseDeadline", rfi?.deadline, { shouldValidate: false });
+      // setValue("responseDescription", rfi?.description ?? "", { shouldValidate: false });
+    }
+  }, [rfi, setValue]);
 
   const uploadFiles = async (
     files: File[] | null,
@@ -660,6 +663,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
       } as ApiResponseError);
       return;
     }
+
     try {
       await respondMutation.mutateAsync({
         responseDescription: data.responseDescription,
@@ -713,7 +717,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-w-[700px] max-h-[90vh] overflow-y-auto rounded-2xl p-0">
+      <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         {isSuccess ? (
           <div className="flex flex-col items-center gap-6 px-8 py-10">
             <div className="flex h-16 w-16 items-center justify-center rounded-full">
@@ -753,6 +757,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
                 control={control}
                 onSubmit={handleSubmit}
                 className="space-y-5"
+                debug
               >
                 <Forger
                   name="rfiTitle"
@@ -873,9 +878,10 @@ const columns: ColumnDef<RfiRow>[] = [
     header: () => <div className="text-right">Actions</div>,
     cell: ({ row }) => (
       <div className="text-right">
-        {row.original.type === "received" ? (
+        {row.original.type === "received" && row.original.status !== "closed" ? (
           <RespondToRfiDialog
             rfiId={row.original.id}
+            rfi={row.original.rfi}
             contractId={row.original.contractId ?? ""}
             trigger={
               <button

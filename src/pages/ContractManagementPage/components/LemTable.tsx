@@ -42,68 +42,15 @@ export type LemRow = {
   title: string;
   amount: string;
   submissionDate: string;
-  status: "Approved" | "Rejected" | "Pending";
+  status: string;
 };
 
-type LemDetailsSheetProps = {
-  trigger: React.ReactNode;
+export interface LemDetailsSheetProps {
+  trigger?: React.ReactNode;
   contractId: string;
   lemId: string;
   basePath: string;
-};
-
-export interface LemDetailResponse {
-  manager:          Manager;
-  _id:              string;
-  approverStatus:   "N/A" | "approved" | "rejected" | "pending";
-  company:          string;
-  contractRef:      string;
-  contractRefModel: string;
-  submittedBy:      string;
-  lemId:            string;
-  title:            string;
-  description:      string;
-  amount:           number;
-  status:           string;
-  files:            File[];
-  approvers:        any[];
-  createdAt:        Date;
-  updatedAt:        Date;
-  __v:              number;
-  summary:          Summary[];
-  rateSheet:        RateSheet;
 }
-
-export interface Summary {
-  name:   string;
-  sheets: Sheet[];
-}
-
-export interface Sheet {
-  sheetName: string;
-  headers:   string[];
-  rows:      { [key: string]: string }[];
-}
-
-
-export interface File {
-  name: string;
-  url:  string;
-  type: string;
-  size: number;
-  _id:  string;
-}
-
-export interface Manager {
-  user:       string;
-  status:     string;
-  comment:    string;
-  actionedAt: Date;
-}
-
-export interface RateSheet {
-}
-
 
 const LabelRow = ({
   label,
@@ -125,75 +72,16 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   basePath,
 }) => {
   const { isVendor } = useUserRole();
-  const [sheetTab, setSheetTab] = React.useState("overview");
-
   const { data: lemDetail, isLoading: detailLoading } = useQuery({
     queryKey: ["lem-detail", contractId, lemId, basePath],
     queryFn: async () => {
       const res = await getRequest({
         url: `${basePath}/${lemId}`,
       });
-      return (res)?.data?.data as LemDetailResponse
+      return (res)?.data?.data as any;
     },
     enabled: !!contractId && !!lemId,
   });
-
-  const getText = (value: unknown) =>
-    typeof value === "string" ? value.toLowerCase() : "";
-
-  const findSummarySheet = React.useCallback(
-    (category: "labor" | "equipment" | "material") => {
-      const summary = Array.isArray(lemDetail?.summary) ? lemDetail.summary : [];
-      const needle = category.toLowerCase();
-
-      for (const group of summary) {
-        const groupName = getText(group?.name);
-        const sheets = Array.isArray(group?.sheets) ? group.sheets : [];
-        for (const sheet of sheets) {
-          const sheetName = getText(sheet?.sheetName);
-          if (groupName.includes(needle) || sheetName.includes(needle)) {
-            return sheet;
-          }
-        }
-      }
-      return undefined;
-    },
-    [lemDetail?.summary],
-  );
-
-  const toColumns = React.useCallback((sheet?: Sheet) => {
-    const headers = Array.isArray(sheet?.headers) ? sheet.headers : [];
-    return headers.map((h) => ({
-      id: h,
-      header: h,
-      accessorFn: (row: Record<string, string>) => row?.[h] ?? "",
-    })) as Array<ColumnDef<Record<string, string>>>;
-  }, []);
-
-  const laborSheet = findSummarySheet("labor");
-  const equipmentSheet = findSummarySheet("equipment");
-  const materialSheet = findSummarySheet("material");
-
-  const laborRows = Array.isArray(laborSheet?.rows) ? laborSheet.rows : [];
-  const equipmentRows = Array.isArray(equipmentSheet?.rows)
-    ? equipmentSheet.rows
-    : [];
-  const materialRows = Array.isArray(materialSheet?.rows)
-    ? materialSheet.rows
-    : [];
-
-  const laborColumns = React.useMemo(
-    () => toColumns(laborSheet),
-    [laborSheet, toColumns],
-  );
-  const equipmentColumns = React.useMemo(
-    () => toColumns(equipmentSheet),
-    [equipmentSheet, toColumns],
-  );
-  const materialColumns = React.useMemo(
-    () => toColumns(materialSheet),
-    [materialSheet, toColumns],
-  );
 
   const handlePreview = (doc: DocType) => {
     if (!doc.url) return;
@@ -217,7 +105,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
         side="right"
         className={cn(
           "w-full rounded-2xl overflow-y-auto [&>button]:hidden",
-          sheetTab === "summary" ? "sm:max-w-6xl" : "sm:max-w-2xl",
+          "sm:max-w-2xl"
         )}
       >
         <div className="space-y-6" data-testid="lem-details-sheet">
@@ -259,8 +147,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
             </div>
 
             <Tabs
-              value={sheetTab}
-              onValueChange={setSheetTab}
+              value="overview"
               className="space-y-4"
             >
               <TabsList className="h-auto rounded-none w-full border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
@@ -269,12 +156,6 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                 >
                   Overview
-                </TabsTrigger>
-                <TabsTrigger
-                  value="summary"
-                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-                >
-                  LEM Summary
                 </TabsTrigger>
               </TabsList>
 
@@ -290,7 +171,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                     label="Submitted By"
                     value={
                       <a className="text-[#2563EB] underline">
-                        {lemDetail?.submittedBy || "-"}
+                        {lemDetail?.submittedBy?.name || "-"}
                       </a>
                     }
                   />
@@ -357,109 +238,6 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                     })}
                   </div>
                 )}
-              </TabsContent>
-
-              <TabsContent value="summary" className="space-y-4">
-                <Tabs defaultValue="labor" className="space-y-4">
-                  <TabsList className="h-auto w-full justify-start gap-3 rounded-full bg-[#F3F4F6] p-1">
-                    <TabsTrigger
-                      value="labor"
-                      className="rounded-full px-4 py-2 text-xs font-semibold text-[#6B7280] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
-                    >
-                      Labor (Timesheet)
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="equipment"
-                      className="rounded-full px-4 py-2 text-xs font-semibold text-[#6B7280] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
-                    >
-                      Equipment Rent
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="material"
-                      className="rounded-full px-4 py-2 text-xs font-semibold text-[#6B7280] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
-                    >
-                      Material
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="labor">
-                    <DataTable<any>
-                      data={laborRows}
-                      columns={laborColumns as any}
-                      options={{
-                        disableSelection: true,
-                        disablePagination: true,
-                        manualPagination: false,
-                        totalCounts: laborRows.length,
-                        setPagination: () => {},
-                        pagination: { pageIndex: 0, pageSize: 10 },
-                        isLoading: !!detailLoading,
-                      }}
-                      classNames={{
-                        container:
-                          "border border-[#E5E7EB] rounded-xl bg-white",
-                        tHeader: "bg-[#F9FAFB]",
-                        tHeadRow: "border-b border-[#E5E7EB]",
-                        tBody: "bg-white",
-                        tRow: "border-b border-[#E5E7EB]",
-                        tHead: "px-6 py-3 text-xs font-semibold text-[#6B7280]",
-                        tCell: "px-6 py-4 text-sm text-slate-700 align-top",
-                      }}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="equipment">
-                    <DataTable<any>
-                      data={equipmentRows}
-                      columns={equipmentColumns as any}
-                      options={{
-                        disableSelection: true,
-                        disablePagination: true,
-                        manualPagination: false,
-                        totalCounts: equipmentRows.length,
-                        setPagination: () => {},
-                        pagination: { pageIndex: 0, pageSize: 10 },
-                        isLoading: !!detailLoading,
-                      }}
-                      classNames={{
-                        container:
-                          "border border-[#E5E7EB] rounded-xl bg-white",
-                        tHeader: "bg-[#F9FAFB]",
-                        tHeadRow: "border-b border-[#E5E7EB]",
-                        tBody: "bg-white",
-                        tRow: "border-b border-[#E5E7EB]",
-                        tHead: "px-6 py-3 text-xs font-semibold text-[#6B7280]",
-                        tCell: "px-6 py-4 text-sm text-slate-700 align-top",
-                      }}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="material">
-                    <DataTable<any>
-                      data={materialRows}
-                      columns={materialColumns as any}
-                      options={{
-                        disableSelection: true,
-                        disablePagination: true,
-                        manualPagination: false,
-                        totalCounts: materialRows.length,
-                        setPagination: () => {},
-                        pagination: { pageIndex: 0, pageSize: 10 },
-                        isLoading: !!detailLoading,
-                      }}
-                      classNames={{
-                        container:
-                          "border border-[#E5E7EB] rounded-xl bg-white",
-                        tHeader: "bg-[#F9FAFB]",
-                        tHeadRow: "border-b border-[#E5E7EB]",
-                        tBody: "bg-white",
-                        tRow: "border-b border-[#E5E7EB]",
-                        tHead: "px-6 py-3 text-xs font-semibold text-[#6B7280]",
-                        tCell: "px-6 py-4 text-sm text-slate-700 align-top",
-                      }}
-                    />
-                  </TabsContent>
-                </Tabs>
               </TabsContent>
             </Tabs>
           </div>
@@ -550,15 +328,16 @@ const createColumns = (
     accessorKey: "status",
     header: "Status",
     cell: ({ getValue }) => {
-      const s = getValue<LemRow["status"]>();
-      const tone =
-        s === "Approved"
-          ? "bg-green-100 text-green-700"
-          : s === "Rejected"
-            ? "bg-red-100 text-red-600"
-            : "bg-yellow-100 text-yellow-700";
+      const s = getValue<string>();
+      const getStatusColor = (status: string) => {
+        const lower = status.toLowerCase();
+        if (lower === "approved") return "bg-green-100 text-green-700";
+        if (lower === "rejected") return "bg-red-100 text-red-600";
+        if (lower === "pending" || lower === "pending approval") return "bg-yellow-100 text-yellow-700";
+        return "bg-gray-100 text-gray-700";
+      };
       return (
-        <span className={`px-3 py-1 rounded-full text-xs font-medium ${tone}`}>
+        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(s)}`}>
           {s}
         </span>
       );

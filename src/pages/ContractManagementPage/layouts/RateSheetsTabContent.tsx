@@ -43,6 +43,8 @@ import { DocumentItem, type DocType } from "../components/DocumentItem";
 import { useToastHandler } from "@/hooks/useToaster";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
+import { formatDate } from "date-fns";
+import { Badge } from "@/components/ui/badge";
 
 type Props = {
   contractId: string;
@@ -55,7 +57,7 @@ type RateSheetRow = {
   title: string;
   amount: string;
   submissionDate: string;
-  status: "Approved" | "Rejected" | "Pending";
+  status: string;
 };
 
 type SubmitRateSheetFormValues = {
@@ -72,6 +74,29 @@ const submitRateSheetSchema = yup.object({
   files: yup.mixed().nullable().notRequired(),
 });
 
+const StatusBadge = ({ status }: { status: string }) => {
+  const getStatusColor = (status: string) => {
+    const s = status.toLowerCase();
+    switch (s) {
+      case "approved":
+        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+      case "rejected":
+        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+      case "pending":
+      case "pending approval":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
+    }
+  };
+
+  return (
+    <Badge className={`${getStatusColor(status)} border-0 p-2 px-4`}>
+      {status}
+    </Badge>
+  );
+};
+
 const LabelRow = ({
   label,
   value,
@@ -84,7 +109,6 @@ const LabelRow = ({
     <div className="text-sm font-medium text-[#111827]">{value}</div>
   </div>
 );
-
 
 const RateSheetUploadElement = () => {
   return (
@@ -142,11 +166,7 @@ const SubmitRateSheetDialog: React.FC<{
   trigger: React.ReactElement;
   contractId: string;
   queryKeyPath: string;
-}> = ({
-  trigger,
-  contractId,
-  queryKeyPath,
-}) => {
+}> = ({ trigger, contractId, queryKeyPath }) => {
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const toastHandler = useToastHandler();
@@ -202,7 +222,10 @@ const SubmitRateSheetDialog: React.FC<{
       await queryClient.invalidateQueries({
         queryKey: ["rate-sheets", contractId, queryKeyPath],
       });
-      toastHandler.success("Success", res?.data?.message || "Rate sheet submitted successfully");
+      toastHandler.success(
+        "Success",
+        res?.data?.message || "Rate sheet submitted successfully",
+      );
     },
     onError: (error: any) => {
       toastHandler.error(
@@ -216,7 +239,12 @@ const SubmitRateSheetDialog: React.FC<{
     async (data: SubmitRateSheetFormValues) => {
       setIsSubmitting(true);
       try {
-        let uploadedFiles: { name: string; url: string; type: string; size: string }[] = [];
+        let uploadedFiles: {
+          name: string;
+          url: string;
+          type: string;
+          size: string;
+        }[] = [];
 
         if (data.files && data.files.length > 0) {
           const responses = await Promise.all(
@@ -235,7 +263,12 @@ const SubmitRateSheetDialog: React.FC<{
                 size: source.size?.toString?.() ?? "0",
               };
             })
-            .filter(Boolean) as { name: string; url: string; type: string; size: string }[];
+            .filter(Boolean) as {
+            name: string;
+            url: string;
+            type: string;
+            size: string;
+          }[];
         }
 
         await submitMutation.mutateAsync({
@@ -263,11 +296,7 @@ const SubmitRateSheetDialog: React.FC<{
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-h-[70vh] overflow-auto gap-0 border-0 p-0 sm:max-w-xl">
-        <Forge
-          control={control}
-          onSubmit={onSubmit}
-          className="flex flex-col"
-        >
+        <Forge control={control} onSubmit={onSubmit} className="flex flex-col">
           <div className="flex items-center justify-between px-8 py-8">
             <h2 className="text-xl font-semibold text-[#0F0F0F]">
               Submit Rate Sheet
@@ -352,30 +381,36 @@ export interface RateSheetDetailResponse {
 }
 
 export interface RateSheetDetailResponseSheet {
-  manager:          Manager;
-  _id:              string;
-  company:          string;
-  contractRef:      string;
+  manager: Manager;
+  _id: string;
+  company: string;
+  contractRef: string;
   contractRefModel: string;
-  submittedBy:      SubmittedBy;
-  sheetId:          string;
-  title:            string;
-  description:      string;
-  amount:           number;
-  status:           string;
-  files:            File[];
-  createdAt:        Date;
-  updatedAt:        Date;
-  __v:              number;
-  summary:          Summary[];
+  submittedBy: SubmittedBy;
+  sheetId: string;
+  title: string;
+  description: string;
+  amount: number;
+  status: RateSheetRow["status"];
+  files: File[];
+  createdAt: Date;
+  updatedAt: Date;
+  approverStatus:
+    | "pendingApproval"
+    | "approved"
+    | "N/A"
+    | "rejected"
+    | "pending";
+  __v: number;
+  summary: Summary[];
 }
 
 export interface File {
   name: string;
-  url:  string;
+  url: string;
   type: string;
   size: number;
-  _id:  string;
+  _id: string;
 }
 
 export interface Manager {
@@ -383,19 +418,19 @@ export interface Manager {
 }
 
 export interface SubmittedBy {
-  _id:  string;
+  _id: string;
   name: string;
 }
 
 export interface Summary {
-  name:   string;
+  name: string;
   sheets: SheetElement[];
 }
 
 export interface SheetElement {
   sheetName: string;
-  headers:   string[];
-  rows:      { [key: string]: string }[];
+  headers: string[];
+  rows: { [key: string]: string }[];
 }
 
 const EMPTY_RATE_SHEET_SUMMARY: Summary[] = [];
@@ -426,7 +461,10 @@ const RateSheetSummaryTable = React.memo(
       return rows.map((r, rowIndex) => (
         <tr key={rowIndex} className="border-t border-[#E5E7EB]">
           {headers.map((h) => (
-            <td key={`${rowIndex}-${h}`} className="whitespace-nowrap px-4 py-3">
+            <td
+              key={`${rowIndex}-${h}`}
+              className="whitespace-nowrap px-4 py-3"
+            >
               {(r as any)?.[h] ?? "—"}
             </td>
           ))}
@@ -456,7 +494,10 @@ const RateSheetSummarySheet = React.memo(
           {sheet?.sheetName || "—"}
         </div>
         {Array.isArray(sheet?.headers) && sheet.headers.length > 0 ? (
-          <RateSheetSummaryTable headers={sheet.headers} rows={sheet.rows || []} />
+          <RateSheetSummaryTable
+            headers={sheet.headers}
+            rows={sheet.rows || []}
+          />
         ) : (
           <div className="text-sm text-[#6B7280]">No headers available.</div>
         )}
@@ -490,7 +531,13 @@ const RateSheetSummaryGroup = React.memo(
 );
 
 const RateSheetSummaryTab = React.memo(
-  ({ detailLoading, summary }: { detailLoading: boolean; summary: Summary[] }) => {
+  ({
+    detailLoading,
+    summary,
+  }: {
+    detailLoading: boolean;
+    summary: Summary[];
+  }) => {
     return (
       <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-6 text-sm text-[#6B7280]">
         {detailLoading ? (
@@ -510,9 +557,9 @@ const RateSheetSummaryTab = React.memo(
       </div>
     );
   },
-  (prev, next) => prev.detailLoading === next.detailLoading && prev.summary === next.summary,
+  (prev, next) =>
+    prev.detailLoading === next.detailLoading && prev.summary === next.summary,
 );
-
 
 const RateSheetDetailsSheet: React.FC<{
   trigger: React.ReactNode;
@@ -550,7 +597,9 @@ const RateSheetDetailsSheet: React.FC<{
         `Rate sheet ${action === "approved" ? "approved" : "rejected"}`,
         (res as any)?.data?.message,
       );
-      queryClient.invalidateQueries({ queryKey: ["rate-sheets", contractId, basePath] });
+      queryClient.invalidateQueries({
+        queryKey: ["rate-sheets", contractId, basePath],
+      });
       queryClient.invalidateQueries({
         queryKey: ["rate-sheet-detail", basePath, contractId, row.id],
       });
@@ -560,11 +609,11 @@ const RateSheetDetailsSheet: React.FC<{
     },
   });
 
-  const canApprove = isManager && basePath.includes("/manager/contracts");
-
   const sheet = detailRes as RateSheetDetailResponseSheet | null;
   const files = sheet?.files ?? [];
   const summary = sheet?.summary ?? EMPTY_RATE_SHEET_SUMMARY;
+
+  const canApprove = isManager && sheet?.approverStatus === "pending";
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -599,10 +648,10 @@ const RateSheetDetailsSheet: React.FC<{
           </SheetHeader>
 
           <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="text-base font-semibold text-[#0F0F0F]">
-                  {sheet?.title || row.title || "—"}
-                </div>
+            <div className="flex items-center justify-between">
+              <div className="text-base font-semibold text-[#0F0F0F]">
+                {sheet?.title || row.title || "—"}
+              </div>
               <Button
                 variant="outline"
                 className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
@@ -644,13 +693,16 @@ const RateSheetDetailsSheet: React.FC<{
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-6">
-                    <LabelRow label="Submission Date" value={row.submissionDate} />
+                    <LabelRow
+                      label="Submission Date"
+                      value={sheet?.createdAt
+                        ? formatDate(sheet?.createdAt, "yyyy MMM dd")
+                        : "—"}
+                    />
                     <LabelRow
                       label="Status"
                       value={
-                        <span className="rounded-full bg-[#FACC151A] px-3 py-1 text-xs font-semibold text-[#FACC15]">
-                          {sheet?.status || row.status}
-                        </span>
+                        <StatusBadge status={sheet?.status || row.status} />
                       }
                     />
                   </div>
@@ -663,7 +715,9 @@ const RateSheetDetailsSheet: React.FC<{
                     </div>
                   </div>
                   {detailLoading ? (
-                    <div className="text-sm text-[#6B7280]">Loading attachments...</div>
+                    <div className="text-sm text-[#6B7280]">
+                      Loading attachments...
+                    </div>
                   ) : files.length > 0 ? (
                     <div className="space-y-3">
                       <div className="text-sm font-semibold text-[#0F0F0F]">
@@ -707,46 +761,59 @@ const RateSheetDetailsSheet: React.FC<{
                       </div>
                     </div>
                   ) : (
-                    <div className="text-sm text-[#6B7280]">No attachments.</div>
+                    <div className="text-sm text-[#6B7280]">
+                      No attachments.
+                    </div>
                   )}
                 </div>
               </TabsContent>
 
               <TabsContent value="summary">
-                <RateSheetSummaryTab detailLoading={detailLoading} summary={summary} />
+                <RateSheetSummaryTab
+                  detailLoading={detailLoading}
+                  summary={summary}
+                />
               </TabsContent>
             </Tabs>
           </div>
 
-          <div className="flex gap-3 pt-6">
-            <Button
-              variant="outline"
-              className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
-              disabled={!canApprove || isApproving}
-              onClick={() => {
-                if (!canApprove) {
-                  toastHandler.error("Action not allowed", "Only managers can reject rate sheets");
-                  return;
-                }
-                mutateApproval("rejected");
-              }}
-            >
-              Reject Change
-            </Button>
-            <Button
-              className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
-              disabled={!canApprove || isApproving}
-              onClick={() => {
-                if (!canApprove) {
-                  toastHandler.error("Action not allowed", "Only managers can approve rate sheets");
-                  return;
-                }
-                mutateApproval("approved");
-              }}
-            >
-              Approve
-            </Button>
-          </div>
+          {canApprove && (
+            <div className="flex gap-3 pt-6">
+              <Button
+                variant="outline"
+                className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                disabled={!canApprove || isApproving}
+                onClick={() => {
+                  if (!canApprove) {
+                    toastHandler.error(
+                      "Action not allowed",
+                      "Only managers can reject rate sheets",
+                    );
+                    return;
+                  }
+                  mutateApproval("rejected");
+                }}
+              >
+                Reject Change
+              </Button>
+              <Button
+                className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
+                disabled={!canApprove || isApproving}
+                onClick={() => {
+                  if (!canApprove) {
+                    toastHandler.error(
+                      "Action not allowed",
+                      "Only managers can approve rate sheets",
+                    );
+                    return;
+                  }
+                  mutateApproval("approved");
+                }}
+              >
+                Approve
+              </Button>
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>
@@ -755,17 +822,19 @@ const RateSheetDetailsSheet: React.FC<{
 
 const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   const [search, setSearch] = React.useState("");
-  const { isVendor, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
+  const { isVendor, isApprover, isManager, isAdmin, isViewOnly } =
+    useUserRole();
 
   const basePath = React.useMemo(() => {
     if (isVendor) return `/contract/vendor/contracts/${contractId}/ratesheets`;
-    if (isApprover) return `/contract/approver/contracts/${contractId}/ratesheets`;
-    if (isManager) return `/contract/manager/contracts/${contractId}/ratesheets`;
+    if (isApprover)
+      return `/contract/approver/contracts/${contractId}/ratesheets`;
+    if (isManager)
+      return `/contract/manager/contracts/${contractId}/ratesheets`;
     if (isAdmin || isViewOnly)
       return `/contract/user/contracts/${contractId}/ratesheets`;
     return `/contract/user/contracts/${contractId}/ratesheets`;
   }, [contractId, isVendor, isApprover, isManager, isAdmin, isViewOnly]);
-
 
   const { data, isLoading } = useQuery({
     queryKey: ["rate-sheets", contractId, basePath],
@@ -783,7 +852,9 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
             ? `$${it.amount.toLocaleString()}`
             : it?.amount || "",
         submissionDate: it?.createdAt || "",
-        status: "Pending",
+        status: it?.status
+          ? it.status.charAt(0).toUpperCase() + it.status.slice(1).replace(/_/g, " ")
+          : "Pending",
       }));
       return rows;
     },
@@ -825,11 +896,11 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         accessorKey: "status",
         header: "Status",
         cell: ({ getValue }) => {
-          const s = getValue<RateSheetRow["status"]>();
+          const s = getValue<string>();
           const tone =
-            s === "Approved"
+            s.toLowerCase() === "approved"
               ? "bg-green-100 text-green-700"
-              : s === "Rejected"
+              : s.toLowerCase() === "rejected"
                 ? "bg-red-100 text-red-600"
                 : "bg-yellow-100 text-yellow-700";
           return (
@@ -896,7 +967,9 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         columns={columns}
         header={() => (
           <div className="flex items-center gap-3 border-b w-full border-[#E5E7EB] px-5 py-4">
-            <span className="text-sm font-medium text-slate-900">Rate Sheets</span>
+            <span className="text-sm font-medium text-slate-900">
+              Rate Sheets
+            </span>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input

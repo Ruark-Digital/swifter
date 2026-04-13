@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
+import { formatDate } from "date-fns";
 
 export type MsaRow = {
   id: string;
@@ -21,7 +22,13 @@ export type MsaRow = {
   owner: string;
   published?: string;
   endDate?: string;
-  status: "Active" | "Draft" | "Expired" | "Terminated" | "Suspended" | "Pending Approval";
+  status:
+    | "Active"
+    | "Draft"
+    | "Expired"
+    | "Terminated"
+    | "Suspended"
+    | "Pending Approval";
 };
 
 const columns: ColumnDef<MsaRow>[] = [
@@ -50,8 +57,17 @@ const columns: ColumnDef<MsaRow>[] = [
     header: "Date",
     cell: ({ row }) => (
       <div className="text-xs text-slate-500">
-        {row.original.published && <div>Published: {row.original.published}</div>}
-        {row.original.endDate && <div>End Date: {row.original.endDate}</div>}
+        {row.original.published && (
+          <div>
+            Published:{" "}
+            {formatDate(new Date(row.original.published), "yyyy MMM dd")}
+          </div>
+        )}
+        {row.original.endDate && (
+          <div>
+            End Date: {formatDate(new Date(row.original.endDate), "yyyy MMM dd")}
+          </div>
+        )}
       </div>
     ),
   },
@@ -64,12 +80,15 @@ const columns: ColumnDef<MsaRow>[] = [
         s === "Active"
           ? "bg-green-100 text-green-700"
           : s === "Draft"
-          ? "bg-slate-100 text-slate-700"
-          : s === "Expired" || s === "Terminated" || s === "Suspended"
-          ? "bg-red-100 text-red-700"
-          : "bg-yellow-100 text-yellow-700"; // Pending Approval
+            ? "bg-slate-100 text-slate-700"
+            : s === "Expired" || s === "Terminated" || s === "Suspended"
+              ? "bg-red-100 text-red-700"
+              : "bg-yellow-100 text-yellow-700"; // Pending Approval
       return (
-        <span data-testid="msa-status-badge" className={`px-2 py-1 rounded-full text-xs font-medium ${tone}`}>
+        <span
+          data-testid="msa-status-badge"
+          className={`px-2 py-1 rounded-full text-xs font-medium ${tone}`}
+        >
           {s}
         </span>
       );
@@ -81,7 +100,13 @@ const columns: ColumnDef<MsaRow>[] = [
     cell: ({ row }) => (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" data-testid="msa-actions-dropdown">⋮</Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            data-testid="msa-actions-dropdown"
+          >
+            ⋮
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem asChild data-testid="msa-view-details">
@@ -93,34 +118,17 @@ const columns: ColumnDef<MsaRow>[] = [
   },
 ];
 
-const sampleRows: MsaRow[] = Array.from({ length: 10 }).map((_, i) => ({
-  id: String(i + 1),
-  title: "Construction Services …",
-  code: "MSA-2025-10",
-  vendor: "BuildRight Contractors Inc.",
-  value: i % 2 === 0 ? "$2.50M" : undefined,
-  owner: "Olamide Oladehinde",
-  published: "2025-05-25",
-  endDate: "2025-05-25",
-  status: (i % 5 === 0
-    ? "Expired"
-    : i % 4 === 0
-    ? "Terminated"
-    : i % 3 === 0
-    ? "Suspended"
-    : i % 2 === 0
-    ? "Active"
-    : "Draft") as MsaRow["status"],
-}));
-
 const MsaTable: React.FC<{ rows?: MsaRow[] }> = ({ rows }) => {
   const [search, setSearch] = React.useState("");
-  const data = React.useMemo(() => rows ?? sampleRows, [rows]);
+  const data = React.useMemo(() => rows ?? [], [rows]);
+
   return (
     <div className="space-y-4" data-testid="msa-table">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-slate-700">Master Service Agreement</span>
+          <span className="text-sm font-medium text-slate-700">
+            Master Service Agreement
+          </span>
           <Input
             placeholder="Search contract"
             value={search}
@@ -132,7 +140,11 @@ const MsaTable: React.FC<{ rows?: MsaRow[] }> = ({ rows }) => {
         <div className="ml-auto flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="h-10" data-testid="msa-date-filter">
+              <Button
+                variant="outline"
+                className="h-10"
+                data-testid="msa-date-filter"
+              >
                 Date <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -143,23 +155,35 @@ const MsaTable: React.FC<{ rows?: MsaRow[] }> = ({ rows }) => {
           </DropdownMenu>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="h-10" data-testid="msa-status-filter">
+              <Button
+                variant="outline"
+                className="h-10"
+                data-testid="msa-status-filter"
+              >
                 Status <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem data-testid="msa-status-active">Active</DropdownMenuItem>
+              <DropdownMenuItem data-testid="msa-status-active">
+                Active
+              </DropdownMenuItem>
               <DropdownMenuItem disabled>Draft</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="h-10" data-testid="msa-category-filter">
+              <Button
+                variant="outline"
+                className="h-10"
+                data-testid="msa-category-filter"
+              >
                 Category <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem data-testid="msa-category-software">Software</DropdownMenuItem>
+              <DropdownMenuItem data-testid="msa-category-software">
+                Software
+              </DropdownMenuItem>
               <DropdownMenuItem disabled>Construction</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

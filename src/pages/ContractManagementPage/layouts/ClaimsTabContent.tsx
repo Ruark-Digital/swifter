@@ -94,6 +94,8 @@ const ClaimsTabContent: React.FC<Props> = ({
 
           {!isApprover && (
             <RequestClaimDialog
+              createPath={basePath}
+              invalidateQueryKey={["contractClaims", contractId, basePath]}
               trigger={
                 <Button
                   className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-medium text-white hover:bg-[#1f3552]"
@@ -110,6 +112,8 @@ const ClaimsTabContent: React.FC<Props> = ({
       <ClaimsStatsCards stats={statsRes?.data} isLoading={isStatsLoading} />
 
       <ClaimsTable
+        contractId={contractId}
+        basePath={basePath}
         rows={claimRows}
         isLoading={isClaimsLoading}
         totalCount={totalCount}

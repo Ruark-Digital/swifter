@@ -158,7 +158,7 @@ const AmendSubmissionDialog: React.FC<AmendSubmissionDialogProps> = ({
       
       const uploadResponse = await uploadFilesMutation.mutateAsync(formData);
 
-      let payload: any = {
+      const payload: any = {
         reason: data.reason,
         files: uploadResponse.data.data || [],
       }
