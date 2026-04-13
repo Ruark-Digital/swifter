@@ -28,6 +28,7 @@ const PmOnboardingForm: React.FC<PmOnboardingFormProps> = () => {
         type="email"
         disabled
         containerClass="w-full"
+        autoComplete="email"
       />
 
       <Forger
@@ -36,6 +37,7 @@ const PmOnboardingForm: React.FC<PmOnboardingFormProps> = () => {
         label="Phone Number"
         placeholder="+1 (555) 000-0000"
         containerClass="w-full"
+        autoComplete="tel"
       />
 
       <Forger
@@ -45,6 +47,7 @@ const PmOnboardingForm: React.FC<PmOnboardingFormProps> = () => {
         placeholder="Enter Password"
         type={showPassword ? "text" : "password"}
         containerClass="w-full"
+        autoComplete="new-password"
         endAdornment={
           <button
             type="button"
@@ -67,6 +70,7 @@ const PmOnboardingForm: React.FC<PmOnboardingFormProps> = () => {
         placeholder="Enter Password"
         type={showConfirmPassword ? "text" : "password"}
         containerClass="w-full"
+        autoComplete="new-password"
         endAdornment={
           <button
             type="button"

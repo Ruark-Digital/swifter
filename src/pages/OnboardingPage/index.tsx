@@ -135,8 +135,15 @@ const OnboardingPage = () => {
           return;
         }
 
-        setValue("name", decoded.name || "");
-        setValue("emailAddress", decoded.email || "");
+        const decodedName =
+          decoded.name ||
+          [decoded.firstName, decoded.lastName].filter(Boolean).join(" ") ||
+          "";
+        const decodedEmail =
+          decoded.emailAddress || decoded.email || decoded.primaryEmail || "";
+
+        setValue("name", decodedName);
+        setValue("emailAddress", decodedEmail);
         setValue("companyName", decoded.companyName || "");
         setTokenState(decoded.token);
       } catch (error) {
