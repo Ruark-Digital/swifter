@@ -139,8 +139,15 @@ const VendorOnboardingPage = () => {
         }
         // console.log({ decoded })
 
-        forge.setValue("name", decoded.name || "");
-        forge.setValue("emailAddress", decoded.email || "");
+        const decodedName =
+          decoded.name ||
+          [decoded.firstName, decoded.lastName].filter(Boolean).join(" ") ||
+          "";
+        const decodedEmail =
+          decoded.emailAddress || decoded.email || decoded.primaryEmail || "";
+
+        forge.setValue("name", decodedName);
+        forge.setValue("emailAddress", decodedEmail);
         setTokenState(decoded.token);
       } catch (error) {
         console.error("Error processing encoded data:", error);
