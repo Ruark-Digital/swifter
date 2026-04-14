@@ -1,0 +1,1 @@
+{"version":3,"file":"CodeBlockOptions.d.ts","sourceRoot":"","sources":["../../src/ui/CodeBlockOptions.tsx"],"names":[],"mappings":"AAAA,OAAO,EAA8B,SAAS,EAAE,eAAe,EAAE,MAAM,gBAAgB,CAAC;AASxF,OAAO,EAAE,WAAW,EAAE,MAAM,UAAU,CAAC;AAOvC,KAAK,KAAK,GAAG;IACX,MAAM,EAAE,SAAS,CAAC;IAClB,KAAK,EAAE,eAAe,CAAC;IACvB,OAAO,EAAE,WAAW,CAAC;CACtB,CAAC;AAEF,eAAO,MAAM,gBAAgB,+BAAgC,KAAK,4CAwEjE,CAAC"}
