@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import YooptaEditor, { createYooptaEditor } from "@yoopta/editor";
 import Paragraph from "@yoopta/paragraph";
 import { HeadingOne, HeadingTwo, HeadingThree } from "@yoopta/headings";
@@ -25,9 +25,10 @@ import "@/pages/CollaborationToolPage/collaboration.css";
 import { createCollab } from "../collab/useYooptaYjs";
 import Table from "@yoopta/table";
 import { useNavigate } from "react-router-dom";
-import { XIcon, HistoryIcon } from "lucide-react";
-import DocumentViewer from "./DocumentViewer";
+import { XIcon, History } from "lucide-react";
 import VersionHistoryModal, { Version } from "./VersionHistoryModal";
+import { useToastHandler } from "@/hooks/useToaster";
+import { useUser } from "@/store/authSlice";
 
 const PLUGINS = [
   Paragraph,
@@ -55,7 +56,6 @@ const TOOLS = {
 
 interface EditorPanelProps {
   className?: string;
-  initialValue?: string;
   importMeta?: {
     sourceUrl: string;
     fileName: string;
@@ -77,32 +77,44 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
 }) => {
   const navigate = useNavigate();
   const editor = useMemo(() => createYooptaEditor(), []);
+  const toast = useToastHandler();
+  const user = useUser();
   const [isVersionModalOpen, setIsVersionModalOpen] = React.useState(false);
   const [versions, setVersions] = React.useState<Version[]>([]);
+  const didImportRef = useRef(false);
 
   const handleSaveVersion = useCallback(() => {
-    const editorState = editor.getEditorValue();
     const newVersion: Version = {
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
-      author: "Current User", // Mock user, ideally from auth context
+      author: user?.name || "Unknown User",
     };
-    
-    // In a real app, this would be an API call to save the editorState JSON
-    // We store it locally in an array for demonstration
-    localStorage.setItem(`doc-version-${newVersion.id}`, JSON.stringify(editorState));
-    setVersions(prev => [newVersion, ...prev]);
-    alert("Version saved successfully!");
-  }, [editor]);
+    try {
+      const editorState = editor.getEditorValue();
+      localStorage.setItem(
+        `doc-version-${newVersion.id}`,
+        JSON.stringify(editorState)
+      );
+      setVersions((prev) => [newVersion, ...prev]);
+      toast.success("Version saved", "Document version saved successfully.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error("Version save failed", message);
+    }
+  }, [editor, toast, user?.name]);
 
   const handleRestoreVersion = useCallback((versionId: string) => {
-    const savedState = localStorage.getItem(`doc-version-${versionId}`);
-    if (savedState) {
+    try {
+      const savedState = localStorage.getItem(`doc-version-${versionId}`);
+      if (!savedState) return;
       editor.setEditorValue(JSON.parse(savedState));
       setIsVersionModalOpen(false);
-      alert("Version restored successfully!");
+      toast.success("Version restored", "Document version restored successfully.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error("Version restore failed", message);
     }
-  }, [editor]);
+  }, [editor, toast]);
   const collab = useMemo(() => {
     const wsUrl = collabMeta?.wsUrl || import.meta.env.VITE_YWS_URL || "ws://localhost:1234";
     let resolvedWsUrl = wsUrl;
@@ -144,15 +156,55 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
 
   useEffect(() => {
     if (!importMeta?.sourceUrl) return;
+    if (didImportRef.current) return;
 
-    // We no longer convert PDF, Excel, and Docx files to Yoopta blocks for optimization.
-    // They are handled by DocumentViewer natively.
-    // We only load empty state into YooptaEditor if we're dealing with native viewers.
-  }, [editor, importMeta]);
+    let active = true;
+
+    (async () => {
+      const importState = collab.doc.getMap<string>("ct:import");
+      const clientId = String(collab.doc.clientID);
+
+      if (importState.get("imported") === "true") return;
+
+      if (!importState.get("lock")) {
+        importState.set("lock", clientId);
+      }
+
+      if (importState.get("lock") !== clientId) return;
+
+      const current = editor.getEditorValue();
+      if (current && Object.keys(current).length > 0) {
+        importState.set("imported", "true");
+        importState.delete("lock");
+        return;
+      }
+
+      const { convertFileUrlToYoopta } = await import("@/lib/fileToYoopta");
+      const content = await convertFileUrlToYoopta(
+        editor,
+        importMeta.sourceUrl,
+        importMeta.fileName,
+        importMeta.fileType
+      );
+
+      if (!active) return;
+      editor.setEditorValue(content);
+      importState.set("imported", "true");
+      importState.delete("lock");
+      didImportRef.current = true;
+    })().catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error("Import failed", message);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [collab.doc, editor, importMeta?.fileName, importMeta?.fileType, importMeta?.sourceUrl, toast]);
 
   return (
-    <div className={cn("ct-editor-panel flex flex-col h-full", className)}>
-      <div className="ct-editor-header flex-shrink-0">
+    <div className={cn("ct-editor-panel", className)}>
+      <div className="ct-editor-header">
         <span className="ct-editor-title">Document Editor</span>
         <div className="flex items-center gap-4">
           <button
@@ -167,7 +219,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
             onClick={() => setIsVersionModalOpen(true)}
             aria-label="View Version History"
           >
-            <HistoryIcon className="w-4 h-4" />
+            <History className="w-4 h-4" />
             History
           </button>
           <button
@@ -175,8 +227,11 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
             onClick={() => {
               const commentId = crypto.randomUUID();
               editor.formats.comment.update({ commentId });
-              // Trigger a custom event so SidebarPanel knows to open a new comment input for this ID
-              window.dispatchEvent(new CustomEvent('ct-add-inline-comment', { detail: { commentId } }));
+              window.dispatchEvent(
+                new CustomEvent("ct-add-inline-comment", {
+                  detail: { commentId },
+                })
+              );
             }}
             aria-label="Add Inline Comment"
           >
@@ -190,27 +245,16 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
           </div>
         </div>
       </div>
-      <div className="flex flex-1 overflow-hidden">
-        {importMeta?.sourceUrl && (
-          <div className="w-1/2 border-r border-gray-200 overflow-auto h-full">
-            <DocumentViewer
-              sourceUrl={importMeta.sourceUrl}
-              fileName={importMeta.fileName}
-              fileType={importMeta.fileType}
-            />
-          </div>
-        )}
-        <div className={`ct-editor-canvas mt-5 overflow-auto h-full ${importMeta?.sourceUrl ? "w-1/2 pl-4" : "w-full pl-[4.5rem]"}`}>
-          <YooptaEditor
-            editor={editor}
-            plugins={collabPlugins}
-            marks={MARKS}
-            tools={TOOLS}
-            placeholder="Type text.."
-            className="yoopta-editor w-full h-full"
-            style={{ width: "100%", paddingBottom: "120px" }}
-          />
-        </div>
+      <div className="ct-editor-canvas pl-[4.5rem] mt-5">
+        <YooptaEditor
+          editor={editor}
+          plugins={collabPlugins}
+          marks={MARKS}
+          tools={TOOLS}
+          placeholder="Type text.."
+          className="yoopta-editor w-full"
+          style={{ width: "100%", paddingBottom: "120px" }}
+        />
       </div>
       <VersionHistoryModal
         isOpen={isVersionModalOpen}
