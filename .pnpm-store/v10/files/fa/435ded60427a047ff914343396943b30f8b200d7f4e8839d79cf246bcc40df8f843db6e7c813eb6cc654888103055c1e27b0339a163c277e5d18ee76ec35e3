@@ -1,0 +1,1 @@
+{"version":3,"file":"useRemoteCursorEditor.d.ts","sourceRoot":"","sources":["../../src/hooks/useRemoteCursorEditor.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,YAAY,EAAE,MAAM,iBAAiB,CAAC;AAC/C,OAAO,EAAE,WAAW,EAAkB,MAAM,aAAa,CAAC;AAE1D,wBAAgB,qBAAqB,CACnC,WAAW,SAAS,MAAM,CAAC,MAAM,EAAE,OAAO,CAAC,GAAG,MAAM,CAAC,MAAM,EAAE,OAAO,CAAC,KAClE,YAAY,CAAC,WAAW,CAAC,GAAG,WAAW,CAS3C"}

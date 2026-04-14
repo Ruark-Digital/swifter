@@ -1,0 +1,113 @@
+{
+    "name": "pdf2html",
+    "version": "4.4.0",
+    "description": "PDF to HTML or Text conversion using Apache Tika. Also generate PDF thumbnail using Apache PDFBox.",
+    "main": "index.js",
+    "types": "index.d.ts",
+    "scripts": {
+        "format": "prettier --check .",
+        "format:fix": "prettier --write .",
+        "lint": "eslint .",
+        "lint:fix": "eslint --fix .",
+        "test": "TZ=UTC mocha --timeout 10000",
+        "test:coverage": "nyc npm test",
+        "test:coverage:report": "nyc report --reporter=html",
+        "test:coverage:text": "nyc report --reporter=text",
+        "test:coverage:lcov": "nyc report --reporter=lcovonly",
+        "test:coverage:summary": "nyc report --reporter=text-summary",
+        "coverage:check": "nyc check-coverage --lines 80 --functions 80 --branches 80 --statements 80",
+        "test:types": "tsc --project test/tsconfig.json",
+        "postinstall": "node postinstall.js"
+    },
+    "dependencies": {
+        "cheerio": "^1.1.0",
+        "debug": "^4.4.1",
+        "dompurify": "^3.2.6",
+        "eslint-config-prettier": "^10.1.5",
+        "fs-extra": "^11.3.0",
+        "jsdom": "^26.1.0",
+        "lodash.defaults": "^4.2.0",
+        "sharp": "^0.34.2",
+        "urijs": "^1.19.11"
+    },
+    "devDependencies": {
+        "@types/node": "^24.0.10",
+        "chai": "^4.5.0",
+        "chai-as-promised": "^7.1.2",
+        "eslint": "^9.30.1",
+        "eslint-plugin-import": "^2.32.0",
+        "eslint-plugin-prettier": "^5.5.1",
+        "mocha": "^11.7.1",
+        "nyc": "^17.1.0",
+        "prettier": "^3.6.2",
+        "tsd": "^0.32.0",
+        "typescript": "^5.8.3"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/shebinleo/pdf2html.git"
+    },
+    "bugs": {
+        "url": "https://github.com/shebinleo/pdf2html/issues"
+    },
+    "keywords": [
+        "pdftohtml",
+        "tika",
+        "pdfbox",
+        "convert",
+        "pdf",
+        "html",
+        "thumbnail"
+    ],
+    "author": "Shebin Leo Vincent <shebinleovincent@gmail.com>",
+    "license": "Apache-2.0",
+    "engines": {
+        "node": ">= 18"
+    },
+    "pre-commit": [
+        "lint"
+    ],
+    "nyc": {
+        "all": true,
+        "include": [
+            "index.js",
+            "lib/**/*.js"
+        ],
+        "exclude": [
+            "test/**",
+            "vendor/**",
+            "node_modules/**",
+            "coverage/**",
+            "postinstall.js",
+            ".nyc_output/**"
+        ],
+        "reporter": [
+            "text",
+            "html",
+            "lcov"
+        ],
+        "check-coverage": true,
+        "lines": 80,
+        "statements": 80,
+        "functions": 80,
+        "branches": 80,
+        "watermarks": {
+            "lines": [
+                80,
+                95
+            ],
+            "functions": [
+                80,
+                95
+            ],
+            "branches": [
+                80,
+                95
+            ],
+            "statements": [
+                80,
+                95
+            ]
+        }
+    }
+}
