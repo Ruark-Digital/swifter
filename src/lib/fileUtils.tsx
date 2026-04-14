@@ -2,9 +2,6 @@ import { DocSVG } from "@/assets/icons/Doc";
 import { PdfSVG } from "@/assets/icons/Pdf";
 import PowerPointSVG from "@/assets/icons/PowerPoint";
 import { ExcelSVG } from "@/assets/icons/Excel";
-import * as XLSX from "xlsx";
-import mammoth from "mammoth";
-import { pdfjs } from "react-pdf";
 
 /**
  * Helper function to get file extension from name or type
@@ -229,6 +226,7 @@ export const isViewableFile = (fileName: string, fileType?: string): boolean => 
 export async function convertDocxToHtml(
   arrayBuffer: ArrayBuffer
 ): Promise<string> {
+  const mammoth = (await import("mammoth")).default;
   const result = await mammoth.convertToHtml(
     { arrayBuffer },
     {
@@ -247,6 +245,7 @@ export async function convertPdfToHtml(
   arrayBuffer: ArrayBuffer,
   options?: { mode?: "fast" | "rich" }
 ): Promise<string> {
+  const { pdfjs } = await import("react-pdf");
   const result = await pdfjs.getDocument({ data: arrayBuffer }).promise;
   const numPages = result.numPages;
   const htmlPages: string[] = [];
@@ -469,6 +468,7 @@ export async function convertSpreadsheetToHtml(
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
 
+  const XLSX = await import("xlsx");
   const wb = XLSX.read(arrayBuffer, { type: "array" });
   const parts: string[] = [];
 
@@ -502,4 +502,3 @@ export async function convertSpreadsheetToHtml(
 
   return parts.join("");
 }
-

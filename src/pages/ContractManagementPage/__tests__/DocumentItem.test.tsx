@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DocumentItem, DocType } from '../components/DocumentItem';
-import React from 'react';
 import '@testing-library/jest-dom/vitest';
 
 describe('DocumentItem', () => {
