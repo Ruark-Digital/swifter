@@ -296,7 +296,11 @@ export interface ReportItem {
   company: string;
   reportId: string;
   title: string;
-  submittedBy: string;
+  submittedBy: {
+    name: string;
+    email: string;
+    id: string;
+  };
   description: string;
   files: any[];
   createdAt: string;
@@ -367,7 +371,7 @@ function VendorReportsTabContent({
       _id: report._id,
       reportId: report.reportId,
       title: report.title,
-      submittedBy: report.submittedBy || "Unknown",
+      submittedBy: report.submittedBy?.name || "Unknown",
       submissionDate: report.createdAt
         ? format(report.createdAt, "dd MMM yyyy")
         : "",

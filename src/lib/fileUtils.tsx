@@ -2,9 +2,6 @@ import { DocSVG } from "@/assets/icons/Doc";
 import { PdfSVG } from "@/assets/icons/Pdf";
 import PowerPointSVG from "@/assets/icons/PowerPoint";
 import { ExcelSVG } from "@/assets/icons/Excel";
-import * as XLSX from "xlsx";
-import mammoth from "mammoth";
-import { pdfjs } from "react-pdf";
 
 /**
  * Helper function to get file extension from name or type
@@ -229,6 +226,7 @@ export const isViewableFile = (fileName: string, fileType?: string): boolean => 
 export async function convertDocxToHtml(
   arrayBuffer: ArrayBuffer
 ): Promise<string> {
+  const mammoth = (await import("mammoth")).default;
   const result = await mammoth.convertToHtml(
     { arrayBuffer },
     {
@@ -244,17 +242,20 @@ export async function convertDocxToHtml(
 
 // Helper function for converting PDF to HTMl
 export async function convertPdfToHtml(
-  arrayBuffer: ArrayBuffer
+  arrayBuffer: ArrayBuffer,
+  options?: { mode?: "fast" | "rich" }
 ): Promise<string> {
+  const { pdfjs } = await import("react-pdf");
   const result = await pdfjs.getDocument({ data: arrayBuffer }).promise;
   const numPages = result.numPages;
   const htmlPages: string[] = [];
+  const mode = options?.mode ?? "fast";
 
   for (let i = 1; i <= numPages; i++) {
     const page = await result.getPage(i);
     const textContent = await page.getTextContent();
     const lines = groupPdfLines(textContent.items as any[]);
-    htmlPages.push(formatLinesToHtml(lines));
+    htmlPages.push(mode === "fast" ? formatLinesToHtmlFast(lines) : formatLinesToHtml(lines));
   }
 
   return htmlPages.join("<hr>");
@@ -437,6 +438,24 @@ function formatLinesToHtml(lines: string[]): string {
   return out.join("");
 }
 
+function formatLinesToHtmlFast(lines: string[]): string {
+  const escapeHtml = (s: string) =>
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+  const out: string[] = [];
+  for (const raw of lines) {
+    const t = raw.trim();
+    if (!t) continue;
+    out.push(`<p>${escapeHtml(t)}</p>`);
+  }
+  return out.join("");
+}
+
 // Helper function for converting Spreadsheet to HTMl
 export async function convertSpreadsheetToHtml(
   arrayBuffer: ArrayBuffer
@@ -449,6 +468,7 @@ export async function convertSpreadsheetToHtml(
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
 
+  const XLSX = await import("xlsx");
   const wb = XLSX.read(arrayBuffer, { type: "array" });
   const parts: string[] = [];
 
@@ -482,5 +502,3 @@ export async function convertSpreadsheetToHtml(
 
   return parts.join("");
 }
-
-

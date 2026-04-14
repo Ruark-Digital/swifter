@@ -102,6 +102,7 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
             contractId={contractId}
             basePath={basePath}
           />
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">⋮</Button>
