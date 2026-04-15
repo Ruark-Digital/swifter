@@ -35,7 +35,7 @@ import type { UploadURLs } from "../lib/contractChanges";
 type CreateAmendmentFormValues = {
   amendmentTitle: string;
   impactType: "time" | "cost" | "time_cost" | "others";
-  timeImpactDays: string;
+  timeImpactDays: Date | string;
   costImpactAmount: string;
   scopeEnabled: boolean;
   expiryEnabled: boolean;
@@ -43,12 +43,31 @@ type CreateAmendmentFormValues = {
   clauseEnabled: boolean;
   othersEnabled: boolean;
   scope: string;
-  newExpiryDate: string;
+  newExpiryDate: Date | string;
   otherCost: string;
   clause: string;
   otherDetails: string;
   description: string;
   files: File[] | null;
+};
+
+type ContractAmendmentChange = { field: string; value: string };
+
+type ContractAmendmentFile = {
+  name: string;
+  url: string;
+  type: string;
+  size: string;
+};
+
+type CreateAmendmentPayload = {
+  title: string;
+  impact: CreateAmendmentFormValues["impactType"];
+  description: string;
+  clause?: string;
+  others?: string;
+  chnages: ContractAmendmentChange[];
+  files: ContractAmendmentFile[];
 };
 
 const UploadElement = () => {
@@ -140,7 +159,7 @@ export const CreateAmendmentDialog: React.FC<{
 
   const createMutation = useMutation({
     mutationKey: [mutationScope, "create", contractId],
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: CreateAmendmentPayload) => {
       const res = await postRequest({
         url: createPath || `/contract/manager/contracts/${contractId}/amendments`,
         payload,
@@ -165,7 +184,7 @@ export const CreateAmendmentDialog: React.FC<{
   });
 
   const handleSubmit = async (data: CreateAmendmentFormValues) => {
-    let uploadedFiles: any[] = [];
+    let uploadedFiles: ContractAmendmentFile[] = [];
 
     if (data.files?.length) {
       try {
@@ -183,46 +202,60 @@ export const CreateAmendmentDialog: React.FC<{
           }),
         );
 
-        uploadedFiles = uploadedItems.filter(Boolean);
+        uploadedFiles = uploadedItems.filter(
+          (item): item is ContractAmendmentFile => Boolean(item),
+        );
       } catch (error) {
         toastHandler.error("Upload Failed", error as ApiResponseError);
         return;
       }
     }
 
-    const chnages = [];
+    const chnages: ContractAmendmentChange[] = [];
     if (data.impactType === "time" || data.impactType === "time_cost") {
       if (data.timeImpactDays) {
-        chnages.push({ field: "time", value: data.timeImpactDays });
+        chnages.push({
+          field: "time",
+          value:
+            data.timeImpactDays instanceof Date
+              ? data.timeImpactDays.toISOString()
+              : String(data.timeImpactDays),
+        });
       }
     }
     if (data.impactType === "cost" || data.impactType === "time_cost") {
       if (data.costImpactAmount) {
         chnages.push({
           field: "cost",
-          value: data.costImpactAmount,
+          value: String(data.costImpactAmount),
         });
       }
     }
     if (data.impactType === "others") {
       if (data.scopeEnabled && data.scope) {
-        chnages.push({ field: "scope", value: data.scope });
+        chnages.push({ field: "scope", value: String(data.scope) });
       }
       if (data.expiryEnabled && data.newExpiryDate) {
-        chnages.push({ field: "time", value: data.newExpiryDate });
+        chnages.push({
+          field: "time",
+          value:
+            data.newExpiryDate instanceof Date
+              ? data.newExpiryDate.toISOString()
+              : String(data.newExpiryDate),
+        });
       }
       if (data.costEnabled && data.otherCost) {
-        chnages.push({ field: "cost", value: data.otherCost });
+        chnages.push({ field: "cost", value: String(data.otherCost) });
       }
     }
 
-    const payload = {
+    const payload: CreateAmendmentPayload = {
       title: data.amendmentTitle,
       impact: data.impactType,
       description: data.description,
       clause: data.impactType === "others" && data.clauseEnabled ? data.clause : undefined,
       others: data.impactType === "others" && data.othersEnabled ? data.otherDetails : undefined,
-      changes: chnages,
+      chnages,
       files: uploadedFiles,
     };
 
