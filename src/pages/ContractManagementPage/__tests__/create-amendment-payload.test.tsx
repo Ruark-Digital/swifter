@@ -208,7 +208,7 @@ describe("CreateAmendmentDialog payload", () => {
     );
     expect(createCall).toBeTruthy();
     const payload = (createCall?.[0] as any).payload;
-    expect(payload.changes).toEqual([{ field: "cost", value: "2000" }]);
+    expect(payload.changes).toEqual([{ field: "cost", value: 2000 }]);
   });
 
   it("populates `changes` for others impact when fields are enabled", async () => {
@@ -244,7 +244,7 @@ describe("CreateAmendmentDialog payload", () => {
     expect(payload.changes).toEqual([
       { field: "scope", value: "Scope" },
       { field: "time", value: "2026-05-20" },
-      { field: "cost", value: "500" },
+      { field: "cost", value: 500 },
     ]);
   });
 });

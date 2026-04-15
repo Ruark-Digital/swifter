@@ -17,7 +17,7 @@ import AmendmentsTable, {
   type AmendmentRow,
 } from "../components/AmendmentsTable";
 import { useQuery } from "@tanstack/react-query";
-import type { ApiResponse, ApiResponseError } from "@/types";
+import { parseFileSize } from "@/lib/utils";
 import {
   type ContractAmendmentDTO,
   type ContractAmendmentStatsDTO,
@@ -50,7 +50,7 @@ type CreateAmendmentFormValues = {
   files: File[] | null;
 };
 
-type ContractAmendmentChange = { field: string; value: string };
+type ContractAmendmentChange = { field: string; value: string | number };
 
 type ContractAmendmentFile = {
   name: string;
@@ -196,7 +196,7 @@ export const CreateAmendmentDialog: React.FC<{
               name: firstUploaded.name || file.name,
               url: firstUploaded.url,
               type: firstUploaded.type || file.type,
-              size: firstUploaded.size || file.size.toString(),
+              size: parseFileSize(firstUploaded.size) || file.size,
             };
           }),
         );
@@ -224,9 +224,12 @@ export const CreateAmendmentDialog: React.FC<{
     }
     if (data.impactType === "cost" || data.impactType === "time_cost") {
       if (data.costImpactAmount) {
+        const numValue = typeof data.costImpactAmount === "string" 
+          ? parseFloat(data.costImpactAmount) 
+          : data.costImpactAmount;
         changes.push({
           field: "cost",
-          value: String(data.costImpactAmount),
+          value: numValue,
         });
       }
     }
@@ -244,7 +247,10 @@ export const CreateAmendmentDialog: React.FC<{
         });
       }
       if (data.costEnabled && data.otherCost) {
-        changes.push({ field: "cost", value: String(data.otherCost) });
+        const numValue = typeof data.otherCost === "string"
+          ? parseFloat(data.otherCost)
+          : data.otherCost;
+        changes.push({ field: "cost", value: numValue });
       }
     }
 
