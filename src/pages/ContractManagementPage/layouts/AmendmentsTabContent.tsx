@@ -12,7 +12,6 @@ import {
 } from "@/components/layouts/FormInputs";
 import { AlertTriangle, Check, CloudUpload, FileText, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useWatch } from "react-hook-form";
 import AmendmentsStatsCards from "../components/AmendmentsStatsCards";
 import AmendmentsTable, {
   type AmendmentRow,
@@ -66,7 +65,7 @@ type CreateAmendmentPayload = {
   description: string;
   clause?: string;
   others?: string;
-  chnages: ContractAmendmentChange[];
+  changes: ContractAmendmentChange[];
   files: ContractAmendmentFile[];
 };
 
@@ -106,7 +105,7 @@ export const CreateAmendmentDialog: React.FC<{
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
 
-  const { control, reset, setValue } = useForge<CreateAmendmentFormValues>({
+  const { control, reset, setValue, watch } = useForge<CreateAmendmentFormValues>({
     defaultValues: {
       amendmentTitle: "",
       impactType: "time",
@@ -127,13 +126,13 @@ export const CreateAmendmentDialog: React.FC<{
     },
   });
   
-  const value = useWatch({ control, name: "files" }) as File[];
-  const impactType = useWatch({ control, name: "impactType" });
-  const scopeEnabled = useWatch({ control, name: "scopeEnabled" });
-  const expiryEnabled = useWatch({ control, name: "expiryEnabled" });
-  const costEnabled = useWatch({ control, name: "costEnabled" });
-  const clauseEnabled = useWatch({ control, name: "clauseEnabled" });
-  const othersEnabled = useWatch({ control, name: "othersEnabled" });
+  const value = watch("files") as File[] | null;
+  const impactType = watch("impactType");
+  const scopeEnabled = watch("scopeEnabled");
+  const expiryEnabled = watch("expiryEnabled");
+  const costEnabled = watch("costEnabled");
+  const clauseEnabled = watch("clauseEnabled");
+  const othersEnabled = watch("othersEnabled");
 
   const { mutateAsync: uploadFile, isPending: isUploadingFiles } = useMutation<
     ApiResponse<UploadURLs[]>,
@@ -211,10 +210,10 @@ export const CreateAmendmentDialog: React.FC<{
       }
     }
 
-    const chnages: ContractAmendmentChange[] = [];
+    const changes: ContractAmendmentChange[] = [];
     if (data.impactType === "time" || data.impactType === "time_cost") {
       if (data.timeImpactDays) {
-        chnages.push({
+        changes.push({
           field: "time",
           value:
             data.timeImpactDays instanceof Date
@@ -225,7 +224,7 @@ export const CreateAmendmentDialog: React.FC<{
     }
     if (data.impactType === "cost" || data.impactType === "time_cost") {
       if (data.costImpactAmount) {
-        chnages.push({
+        changes.push({
           field: "cost",
           value: String(data.costImpactAmount),
         });
@@ -233,10 +232,10 @@ export const CreateAmendmentDialog: React.FC<{
     }
     if (data.impactType === "others") {
       if (data.scopeEnabled && data.scope) {
-        chnages.push({ field: "scope", value: String(data.scope) });
+        changes.push({ field: "scope", value: String(data.scope) });
       }
       if (data.expiryEnabled && data.newExpiryDate) {
-        chnages.push({
+        changes.push({
           field: "time",
           value:
             data.newExpiryDate instanceof Date
@@ -245,7 +244,7 @@ export const CreateAmendmentDialog: React.FC<{
         });
       }
       if (data.costEnabled && data.otherCost) {
-        chnages.push({ field: "cost", value: String(data.otherCost) });
+        changes.push({ field: "cost", value: String(data.otherCost) });
       }
     }
 
@@ -255,7 +254,7 @@ export const CreateAmendmentDialog: React.FC<{
       description: data.description,
       clause: data.impactType === "others" && data.clauseEnabled ? data.clause : undefined,
       others: data.impactType === "others" && data.othersEnabled ? data.otherDetails : undefined,
-      chnages,
+      changes,
       files: uploadedFiles,
     };
 
