@@ -411,6 +411,27 @@ export const CardStats: React.FC<CardStatsProps> = ({
   onClick,
 }) => {
   const IconComponent = IconMap[icon as IconMapKey] || IconMap.folder;
+  const displayValue = React.useMemo(() => {
+    const safeValue = Number.isFinite(value) ? value : 0;
+
+    if (title.toLowerCase().includes("committed vs actual")) {
+      return `${Math.round(safeValue)}%`;
+    }
+
+    if (
+      title === "Total Contract Value" ||
+      title === "Savings Realized" ||
+      title === "Holdbacks"
+    ) {
+      return new Intl.NumberFormat("en-US", {
+        notation: "compact",
+        compactDisplay: "short",
+        maximumFractionDigits: 1,
+      }).format(safeValue);
+    }
+
+    return String(safeValue);
+  }, [title, value]);
 
   return (
     <Card 
@@ -425,7 +446,7 @@ export const CardStats: React.FC<CardStatsProps> = ({
           <div className="space-y-2">
             <p className="text-sm text-gray-600 dark:text-gray-400">{title}</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {value}
+              {displayValue}
             </p>
           </div>
           <div className={cn("p-2.5 rounded-full", bgColor)}>

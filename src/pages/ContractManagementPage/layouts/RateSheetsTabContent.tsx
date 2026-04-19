@@ -828,11 +828,12 @@ const RateSheetDetailsSheet: React.FC<{
 
 const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   const [search, setSearch] = React.useState("");
-  const { isVendor, isApprover, isManager, isAdmin, isViewOnly } =
+  const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } =
     useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
 
   const basePath = React.useMemo(() => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/ratesheets`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/ratesheets`;
     if (isApprover)
       return `/contract/approver/contracts/${contractId}/ratesheets`;
     if (isManager)
@@ -840,7 +841,14 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
     if (isAdmin || isViewOnly)
       return `/contract/user/contracts/${contractId}/ratesheets`;
     return `/contract/user/contracts/${contractId}/ratesheets`;
-  }, [contractId, isVendor, isApprover, isManager, isAdmin, isViewOnly]);
+  }, [
+    contractId,
+    isContractVendorLike,
+    isApprover,
+    isManager,
+    isAdmin,
+    isViewOnly,
+  ]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["rate-sheets", contractId, basePath],
@@ -848,7 +856,8 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       const res = await getRequest({
         url: basePath,
       });
-      const items = (res as any)?.data?.data || [];
+      const raw = (res as any)?.data?.data ?? [];
+      const items = Array.isArray(raw) ? raw : [];
       const rows: RateSheetRow[] = items.map((it: any) => ({
         id: it?.rateId || it?._id || "",
         sheetId: it?.sheetId || "",
@@ -954,7 +963,7 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
           <Button variant="outline" className="h-10 rounded-xl px-4">
             Export Report
           </Button>
-          {isVendor && (
+          {isContractVendorLike && (
             <SubmitRateSheetDialog
               contractId={contractId}
               queryKeyPath={basePath}

@@ -12,13 +12,12 @@ import {
 } from "@/components/layouts/FormInputs";
 import { AlertTriangle, Check, CloudUpload, FileText, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useWatch } from "react-hook-form";
 import AmendmentsStatsCards from "../components/AmendmentsStatsCards";
 import AmendmentsTable, {
   type AmendmentRow,
 } from "../components/AmendmentsTable";
 import { useQuery } from "@tanstack/react-query";
-import type { ApiResponse, ApiResponseError } from "@/types";
+import { parseFileSize } from "@/lib/utils";
 import {
   type ContractAmendmentDTO,
   type ContractAmendmentStatsDTO,
@@ -35,7 +34,7 @@ import type { UploadURLs } from "../lib/contractChanges";
 type CreateAmendmentFormValues = {
   amendmentTitle: string;
   impactType: "time" | "cost" | "time_cost" | "others";
-  timeImpactDays: string;
+  timeImpactDays: Date | string;
   costImpactAmount: string;
   scopeEnabled: boolean;
   expiryEnabled: boolean;
@@ -43,12 +42,31 @@ type CreateAmendmentFormValues = {
   clauseEnabled: boolean;
   othersEnabled: boolean;
   scope: string;
-  newExpiryDate: string;
+  newExpiryDate: Date | string;
   otherCost: string;
   clause: string;
   otherDetails: string;
   description: string;
   files: File[] | null;
+};
+
+type ContractAmendmentChange = { field: string; value: string | number };
+
+type ContractAmendmentFile = {
+  name: string;
+  url: string;
+  type: string;
+  size: string;
+};
+
+type CreateAmendmentPayload = {
+  title: string;
+  impact: CreateAmendmentFormValues["impactType"];
+  description: string;
+  clause?: string;
+  others?: string;
+  changes: ContractAmendmentChange[];
+  files: ContractAmendmentFile[];
 };
 
 const UploadElement = () => {
@@ -87,7 +105,7 @@ export const CreateAmendmentDialog: React.FC<{
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
 
-  const { control, reset, setValue } = useForge<CreateAmendmentFormValues>({
+  const { control, reset, setValue, watch } = useForge<CreateAmendmentFormValues>({
     defaultValues: {
       amendmentTitle: "",
       impactType: "time",
@@ -108,13 +126,13 @@ export const CreateAmendmentDialog: React.FC<{
     },
   });
   
-  const value = useWatch({ control, name: "files" }) as File[];
-  const impactType = useWatch({ control, name: "impactType" });
-  const scopeEnabled = useWatch({ control, name: "scopeEnabled" });
-  const expiryEnabled = useWatch({ control, name: "expiryEnabled" });
-  const costEnabled = useWatch({ control, name: "costEnabled" });
-  const clauseEnabled = useWatch({ control, name: "clauseEnabled" });
-  const othersEnabled = useWatch({ control, name: "othersEnabled" });
+  const value = watch("files") as File[] | null;
+  const impactType = watch("impactType");
+  const scopeEnabled = watch("scopeEnabled");
+  const expiryEnabled = watch("expiryEnabled");
+  const costEnabled = watch("costEnabled");
+  const clauseEnabled = watch("clauseEnabled");
+  const othersEnabled = watch("othersEnabled");
 
   const { mutateAsync: uploadFile, isPending: isUploadingFiles } = useMutation<
     ApiResponse<UploadURLs[]>,
@@ -140,7 +158,7 @@ export const CreateAmendmentDialog: React.FC<{
 
   const createMutation = useMutation({
     mutationKey: [mutationScope, "create", contractId],
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: CreateAmendmentPayload) => {
       const res = await postRequest({
         url: createPath || `/contract/manager/contracts/${contractId}/amendments`,
         payload,
@@ -165,7 +183,7 @@ export const CreateAmendmentDialog: React.FC<{
   });
 
   const handleSubmit = async (data: CreateAmendmentFormValues) => {
-    let uploadedFiles: any[] = [];
+    let uploadedFiles: ContractAmendmentFile[] = [];
 
     if (data.files?.length) {
       try {
@@ -178,51 +196,71 @@ export const CreateAmendmentDialog: React.FC<{
               name: firstUploaded.name || file.name,
               url: firstUploaded.url,
               type: firstUploaded.type || file.type,
-              size: firstUploaded.size || file.size.toString(),
+              size: parseFileSize(firstUploaded.size) || file.size,
             };
           }),
         );
 
-        uploadedFiles = uploadedItems.filter(Boolean);
+        uploadedFiles = uploadedItems.filter(
+          (item): item is ContractAmendmentFile => Boolean(item),
+        );
       } catch (error) {
         toastHandler.error("Upload Failed", error as ApiResponseError);
         return;
       }
     }
 
-    const chnages = [];
+    const changes: ContractAmendmentChange[] = [];
     if (data.impactType === "time" || data.impactType === "time_cost") {
       if (data.timeImpactDays) {
-        chnages.push({ field: "time", value: data.timeImpactDays });
+        changes.push({
+          field: "time",
+          value:
+            data.timeImpactDays instanceof Date
+              ? data.timeImpactDays.toISOString()
+              : String(data.timeImpactDays),
+        });
       }
     }
     if (data.impactType === "cost" || data.impactType === "time_cost") {
       if (data.costImpactAmount) {
-        chnages.push({
+        const numValue = typeof data.costImpactAmount === "string" 
+          ? parseFloat(data.costImpactAmount) 
+          : data.costImpactAmount;
+        changes.push({
           field: "cost",
-          value: data.costImpactAmount,
+          value: numValue,
         });
       }
     }
     if (data.impactType === "others") {
       if (data.scopeEnabled && data.scope) {
-        chnages.push({ field: "scope", value: data.scope });
+        changes.push({ field: "scope", value: String(data.scope) });
       }
       if (data.expiryEnabled && data.newExpiryDate) {
-        chnages.push({ field: "time", value: data.newExpiryDate });
+        changes.push({
+          field: "time",
+          value:
+            data.newExpiryDate instanceof Date
+              ? data.newExpiryDate.toISOString()
+              : String(data.newExpiryDate),
+        });
       }
       if (data.costEnabled && data.otherCost) {
-        chnages.push({ field: "cost", value: data.otherCost });
+        const numValue = typeof data.otherCost === "string"
+          ? parseFloat(data.otherCost)
+          : data.otherCost;
+        changes.push({ field: "cost", value: numValue });
       }
     }
 
-    const payload = {
+    const payload: CreateAmendmentPayload = {
       title: data.amendmentTitle,
       impact: data.impactType,
       description: data.description,
       clause: data.impactType === "others" && data.clauseEnabled ? data.clause : undefined,
       others: data.impactType === "others" && data.othersEnabled ? data.otherDetails : undefined,
-      changes: chnages,
+      changes,
       files: uploadedFiles,
     };
 
@@ -663,11 +701,12 @@ const AmendmentsTabContent: React.FC<Props> = ({
   isActive,
   actionsDisabled,
 }) => {
-  const { isApprover, isVendor, isManager, isAdmin, isViewOnly } =
+  const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
     useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
 
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/amendment`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/amendment`;
     if (isApprover)
       return `/contract/approver/contracts/${contractId}/amendment`;
     if (isManager)

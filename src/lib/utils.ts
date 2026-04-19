@@ -204,3 +204,16 @@ export const formatDateForInput = (dateString: string) => {
   const date = new Date(dateString);
   return date.toISOString().split("T")[0];
 };
+
+export const parseFileSize = (size: string | number): number => {
+  if (typeof size === "number") return size;
+  const match = size.match(/^([\d.]+)\s*(KB|MB|GB|TB)?$/i);
+  if (!match) return 0;
+  const value = parseFloat(match[1]);
+  const unit = match[2]?.toUpperCase();
+  if (unit === "KB") return value * 1024;
+  if (unit === "MB") return value * 1024 * 1024;
+  if (unit === "GB") return value * 1024 * 1024 * 1024;
+  if (unit === "TB") return value * 1024 * 1024 * 1024 * 1024;
+  return value;
+};

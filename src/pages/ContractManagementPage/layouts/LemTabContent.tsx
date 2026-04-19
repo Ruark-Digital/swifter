@@ -13,12 +13,14 @@ type Props = {
 };
 
 const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
-  const { isApprover, isManager, isVendor, isAdmin, isViewOnly } = useUserRole();
+  const { isApprover, isManager, isVendor, isProjectManager, isAdmin, isViewOnly } =
+    useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
   
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/lems`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/lems`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/lems`;
     if (isManager) return `/contract/manager/contracts/${contractId}/lems`;
     if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/lems`;
@@ -51,7 +53,8 @@ const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       });
       
       const payload = (res as any)?.data?.data || (res as any)?.data;
-      const items = payload?.resp || payload?.lems || [];
+      const raw = payload?.resp ?? payload?.lems ?? [];
+      const items = Array.isArray(raw) ? raw : [];
       
       const rows: LemRow[] = items.map((it: any) => ({
         id: it?.lemId || it?._id || "",
@@ -76,7 +79,7 @@ const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         <h3 className="text-base font-semibold text-slate-900">
           Labor, Equipment & Material Reports
         </h3>
-        {isVendor ? (
+        {isContractVendorLike ? (
           <SubmitLemDialog
             contractId={contractId}
             trigger={

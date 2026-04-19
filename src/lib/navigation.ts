@@ -29,7 +29,7 @@ export const getNavigationForRole = (
   modules?: Modules
 ): NavigationItem[] => {
   const baseNavigation: (NavigationItem | undefined)[] = [
-    modules?.reportsAnalytics && role !== "view_only"
+    modules?.reportsAnalytics && role !== "view_only" && role !== "project_manager"
       ? {
           icon: MdDashboard,
           title: "Dashboard",
@@ -201,6 +201,36 @@ export const getNavigationForRole = (
                 active: currentPath.startsWith(
                   "/dashboard/contract-management"
                 ),
+              },
+              {
+                title: "Master Service Agreements (MSA)",
+                to: "/dashboard/msa",
+                active: currentPath.startsWith("/dashboard/msa"),
+              },
+            ],
+          }
+        : undefined,
+      {
+        icon: User2,
+        title: "Profile",
+        to: "/dashboard/profile",
+        active: currentPath.startsWith("/dashboard/profile"),
+      },
+    ],
+    project_manager: [
+      modules?.contractManagement
+        ? {
+            icon: FileText,
+            title: "Contract Management",
+            to: "/dashboard/contract-management",
+            active:
+              currentPath.startsWith("/dashboard/contract-management") ||
+              currentPath.startsWith("/dashboard/msa"),
+            children: [
+              {
+                title: "Contracts",
+                to: "/dashboard/contract-management",
+                active: currentPath.startsWith("/dashboard/contract-management"),
               },
               {
                 title: "Master Service Agreements (MSA)",

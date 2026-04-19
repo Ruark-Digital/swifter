@@ -331,6 +331,7 @@ export const useDashboardData = (
   chartFilters: Record<string, string> = {}
 ) => {
   const defaultFilter = "12months";
+  const contractDashboardDefaultFilter = "ytd";
 
   // Helper function to get filter for a specific chart
   const getFilterForChart = (chartId: string) => {
@@ -342,6 +343,14 @@ export const useDashboardData = (
     userRole === "approver"
       ? "/contract/approver/contracts/dashboard"
       : "/contract/manager/contracts/dashboard";
+
+  const getContractDashboardRange = (chartId: string) => {
+    return chartFilters[chartId] || contractDashboardDefaultFilter;
+  };
+
+  const toContractDashboardRangeParam = (range: string) => {
+    return range === "ytd" ? "YTD" : range;
+  };
 
   // SuperAdmin dashboard count
   const { data: dashboardCount, isLoading: isLoadingCount } = useQuery<
@@ -832,11 +841,22 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerCycleTime>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-cycle-time", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-cycle-time",
+      userRole,
+      getContractDashboardRange("cycle-time"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${contractDashboardBasePath}/cycle-time`,
-        config: { params: { type: "Contract" } },
+        config: {
+          params: {
+            range: toContractDashboardRangeParam(
+              getContractDashboardRange("cycle-time"),
+            ),
+            type: "Contract",
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerCycleTime>;
     },
@@ -853,11 +873,22 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerInvoiceStatus>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-invoice-status", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-invoice-status",
+      userRole,
+      getContractDashboardRange("invoice-status"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${contractDashboardBasePath}/invoice-status`,
-        config: { params: { range: "YTD", type: "Contract" } },
+        config: {
+          params: {
+            range: toContractDashboardRangeParam(
+              getContractDashboardRange("invoice-status"),
+            ),
+            type: "Contract",
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerInvoiceStatus>;
     },
@@ -874,11 +905,22 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerCommittedVsActualSpend>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-committed-vs-actual", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-committed-vs-actual",
+      userRole,
+      getContractDashboardRange("committed-vs-actual"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${contractDashboardBasePath}/committed-vs-actual`,
-        config: { params: { range: "YTD", type: "Contract" } },
+        config: {
+          params: {
+            range: toContractDashboardRangeParam(
+              getContractDashboardRange("committed-vs-actual"),
+            ),
+            type: "Contract",
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerCommittedVsActualSpend>;
     },
@@ -895,11 +937,22 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerValueByEntity[]>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-vendor-contract-value", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-vendor-contract-value",
+      userRole,
+      getContractDashboardRange("vendor-contract-value"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${contractDashboardBasePath}/vendor-contract-value`,
-        config: { params: { range: "YTD", type: "Contract" } },
+        config: {
+          params: {
+            range: toContractDashboardRangeParam(
+              getContractDashboardRange("vendor-contract-value"),
+            ),
+            type: "Contract",
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerValueByEntity[]>;
     },
@@ -916,11 +969,22 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerValueByEntity[]>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-project-contract-value", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-project-contract-value",
+      userRole,
+      getContractDashboardRange("project-contract-value"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${contractDashboardBasePath}/project-contract-value`,
-        config: { params: { range: "YTD", type: "Contract" } },
+        config: {
+          params: {
+            range: toContractDashboardRangeParam(
+              getContractDashboardRange("project-contract-value"),
+            ),
+            type: "Contract",
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerValueByEntity[]>;
     },
@@ -937,11 +1001,22 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerRiskDistribution>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-risk-distribution", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-risk-distribution",
+      userRole,
+      getContractDashboardRange("risk-distribution"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${contractDashboardBasePath}/risk-distribution`,
-        config: { params: { range: "YTD", type: "Contract" } },
+        config: {
+          params: {
+            range: toContractDashboardRangeParam(
+              getContractDashboardRange("risk-distribution"),
+            ),
+            type: "Contract",
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerRiskDistribution>;
     },

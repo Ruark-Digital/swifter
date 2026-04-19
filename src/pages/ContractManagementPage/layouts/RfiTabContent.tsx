@@ -70,7 +70,8 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
-  const { isViewOnly, isVendor } = useUserRole();
+  const { isViewOnly, isVendor, isProjectManager } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const { control, reset } = useForge({
     resolver: yupResolver(issueRfiSchema) as any,
     defaultValues: {
@@ -97,10 +98,10 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
     >,
     ApiResponseError
   >({
-    queryKey: ["contract-personnel", contractId, isVendor],
+    queryKey: ["contract-personnel", contractId, isContractVendorLike],
     queryFn: async () =>
       await getRequest({
-        url: isVendor
+        url: isContractVendorLike
           ? `/contract/vendor/contracts/${contractId}/personnel`
           : "/contract/manager/personnel",
       }),
@@ -418,11 +419,12 @@ const RfiTabContent: React.FC<Props> = ({
     pageIndex: 0,
     pageSize: 10,
   });
-  const { isApprover, isVendor, isViewOnly, isManager, isAdmin } =
+  const { isApprover, isVendor, isProjectManager, isViewOnly, isManager, isAdmin } =
     useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
 
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/rfi`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/rfi`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/rfi`;
     if (isManager) return `/contract/manager/contracts/${contractId}/rfis`;
     if (isAdmin || isViewOnly)

@@ -20,10 +20,12 @@ type Props = {
 };
 
 const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, actionsDisabled }) => {
-  const { isApprover, isVendor, isManager, isAdmin, isViewOnly } = useUserRole();
+  const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
+    useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/ncrs`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/ncrs`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/ncrs`;
     if (isManager) return `/contract/manager/contracts/${contractId}/ncrs`;
     if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/ncrs`;
@@ -87,7 +89,7 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, act
         <h3 className="text-base font-semibold text-slate-900">
           Non-Compliance Report
         </h3>
-        {(isApprover || isVendor) && (
+        {(isApprover || isContractVendorLike) && (
           <CreateNcrDialog
             contractId={contractId}
             contract={contract}

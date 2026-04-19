@@ -9,7 +9,20 @@ import { getDashboardConfig } from "@/config/dashboardConfig";
 export const useUserRole = () => {
   const user = useUser();
 
-  const userRole: UserRole = user?.role?.name || "procurement";
+  const userRole: UserRole = useMemo(() => {
+    const roleName = user?.role?.name;
+    if (roleName) return roleName;
+
+    try {
+      const raw = window.localStorage.getItem("auth");
+      if (!raw) return "procurement";
+      const parsed = JSON.parse(raw);
+      const persistedRoleName = parsed?.state?.user?.role?.name;
+      return persistedRoleName || "procurement";
+    } catch {
+      return "procurement";
+    }
+  }, [user?.role?.name]);
 
   const dashboardConfig = useMemo(() => {
     return getDashboardConfig(userRole);
@@ -32,6 +45,7 @@ export const useUserRole = () => {
 
   const isEvaluator = userRole === "evaluator";
   const isVendor = userRole === "vendor";
+  const isProjectManager = userRole === "project_manager";
   const isApprover = userRole === "approver";
   const isViewOnly = userRole === "view_only";
   const isCompanyAdmin = userRole === "company_admin";
@@ -58,6 +72,7 @@ export const useUserRole = () => {
     hasAllRoles,
     isEvaluator,
     isVendor,
+    isProjectManager,
     isApprover,
     isViewOnly,
     isCompanyAdmin,

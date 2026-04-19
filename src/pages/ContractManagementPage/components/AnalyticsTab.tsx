@@ -124,6 +124,7 @@ type ClauseLegalAnalysisData = {
 };
 
 type VendorKpiData = Array<{ score?: number }>;
+type AnalyticsRange = "YTD" | 90 | 60 | 7;
 
 type Props = {
   contract?: ContractDetail;
@@ -131,7 +132,11 @@ type Props = {
   financialStatement?: FinancialStatement;
   deliverableStatus?: DeliverableStatus;
   activities?: ActivitiesData;
+  activitiesRange?: AnalyticsRange;
+  onActivitiesRangeChange?: (range: AnalyticsRange) => void;
   deliverySummary?: DeliverySummaryData;
+  deliverySummaryRange?: AnalyticsRange;
+  onDeliverySummaryRangeChange?: (range: AnalyticsRange) => void;
   attachments?: AttachmentSummary;
   alerts?: AlertsData;
   clauseLegalAnalysis?: ClauseLegalAnalysisData;
@@ -199,12 +204,31 @@ const AnalyticsTab: React.FC<Props> = ({
   financialStatement,
   deliverableStatus,
   activities,
+  activitiesRange = "YTD",
+  onActivitiesRangeChange,
   deliverySummary,
+  deliverySummaryRange = "YTD",
+  onDeliverySummaryRangeChange,
   attachments,
   alerts,
   clauseLegalAnalysis,
   vendorKpi,
 }) => {
+  const activitiesRanges: Array<{ label: string; value: AnalyticsRange }> = [
+    { label: "YTD", value: "YTD" },
+    { label: "90 days", value: 90 },
+    { label: "60 days", value: 60 },
+    { label: "7 days", value: 7 },
+  ];
+
+  const deliverySummaryRanges: Array<{ label: string; value: AnalyticsRange }> =
+    [
+      { label: "YTD", value: "YTD" },
+      { label: "90 days", value: 90 },
+      { label: "60 days", value: 60 },
+      { label: "7 days", value: 7 },
+    ];
+
   const kpiCards = [
     {
       label: "Risk Score",
@@ -650,9 +674,21 @@ const AnalyticsTab: React.FC<Props> = ({
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-semibold text-slate-800">Activities</h3>
             <div className="flex gap-2 text-xs">
-              <span className="px-2 py-1 bg-slate-100 rounded text-slate-600 font-medium">YTD</span>
-              <span className="px-2 py-1 text-slate-400">90 days</span>
-              <span className="px-2 py-1 text-slate-400">60 days</span>
+              {activitiesRanges.map((r) => (
+                <button
+                  key={r.label}
+                  type="button"
+                  className={cn(
+                    "px-2 py-1",
+                    r.value === activitiesRange
+                      ? "bg-slate-100 rounded text-slate-600 font-medium"
+                      : "text-slate-400",
+                  )}
+                  onClick={() => onActivitiesRangeChange?.(r.value)}
+                >
+                  {r.label}
+                </button>
+              ))}
             </div>
           </div>
           <div className="h-48">
@@ -692,8 +728,21 @@ const AnalyticsTab: React.FC<Props> = ({
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-slate-800">Deliverable Summary</h3>
               <div className="flex gap-2 text-xs">
-                <span className="px-2 py-1 bg-slate-100 rounded text-slate-600 font-medium">YTD</span>
-                <span className="px-2 py-1 text-slate-400">90 days</span>
+                {deliverySummaryRanges.map((r) => (
+                  <button
+                    key={r.label}
+                    type="button"
+                    className={cn(
+                      "px-2 py-1",
+                      r.value === deliverySummaryRange
+                        ? "bg-slate-100 rounded text-slate-600 font-medium"
+                        : "text-slate-400",
+                    )}
+                    onClick={() => onDeliverySummaryRangeChange?.(r.value)}
+                  >
+                    {r.label}
+                  </button>
+                ))}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 mb-6">

@@ -176,8 +176,15 @@ const ContractDetailPage: React.FC = () => {
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
-  const { isVendor, isApprover, isViewOnly, isCompanyAdmin, isManager } =
-    useUserRole();
+  const {
+    isVendor,
+    isProjectManager: isRoleProjectManager,
+    isApprover,
+    isViewOnly,
+    isCompanyAdmin,
+    isManager,
+  } = useUserRole();
+  const isContractVendorLike = isVendor || isRoleProjectManager;
   const queryKey = useUserQueryKey(["contract-manager-contracts", id]);
   const approveStatusQueryKey = useUserQueryKey([
     "contract-approver-approve-status",
@@ -199,7 +206,7 @@ const ContractDetailPage: React.FC = () => {
   } = useQuery({
     queryKey,
     queryFn: () => {
-      if (isVendor) return vendorApi.getContract(id ?? "");
+      if (isContractVendorLike) return vendorApi.getContract(id ?? "");
       if (isApprover) return approverApi.getContract(id ?? "");
       if (isCompanyAdmin) return companyAdminApi.getContract(id ?? "");
       if (isViewOnly) return viewOnlyApi.getContract(id ?? "");
@@ -223,9 +230,15 @@ const ContractDetailPage: React.FC = () => {
 
   const contractData = contractsResponse?.data?.data;
   const user = useUser();
-  const isProjectManager = Boolean(user?._id && (contractData as any)?.projectManager?.user?._id === user._id);
-  const isProjectManagerPending = (contractData as any)?.projectManager?.status === "pending";
-  const canProjectManagerApprove = isProjectManager && isProjectManagerPending && contractData?.status === "pending_approval";
+  const isContractProjectManager = Boolean(
+    user?._id && (contractData as any)?.projectManager?.user?._id === user._id,
+  );
+  const isContractProjectManagerPending =
+    (contractData as any)?.projectManager?.status === "pending";
+  const canProjectManagerApprove =
+    isContractProjectManager &&
+    isContractProjectManagerPending &&
+    contractData?.status === "pending_approval";
 
   const approvalMutation = useMutation({
     mutationFn: async (action: "approved" | "rejected") => {
@@ -286,7 +299,7 @@ const ContractDetailPage: React.FC = () => {
         ROLE_TAB_WHITELIST.approver.includes(t.key),
       );
     }
-    if (isVendor) {
+    if (isContractVendorLike) {
       return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.vendor.includes(t.key));
     }
     if (isViewOnly) {
@@ -298,7 +311,7 @@ const ContractDetailPage: React.FC = () => {
       return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
     }
     return ALL_TABS;
-  }, [isApprover, isVendor, isViewOnly, isManager]);
+  }, [isApprover, isContractVendorLike, isViewOnly, isManager]);
 
   if (isLoading) {
     return (

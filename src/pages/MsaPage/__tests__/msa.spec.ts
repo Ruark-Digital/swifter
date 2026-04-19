@@ -157,4 +157,12 @@ test.describe("MSA Page (stats)", () => {
     await expect(page.locator('[data-testid="msa-stats-all"]')).toContainText("7");
     await expect(page.locator('[data-testid="msa-stats-active"]')).toContainText("5");
   });
+
+  test("approver cannot see create MSA button", async ({ page }) => {
+    await seedAuth(page, "approver");
+
+    await page.goto("/dashboard/msa");
+
+    await expect(page.locator('[data-testid="create-msa-button"]')).toHaveCount(0);
+  });
 });
