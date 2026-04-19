@@ -701,11 +701,12 @@ const AmendmentsTabContent: React.FC<Props> = ({
   isActive,
   actionsDisabled,
 }) => {
-  const { isApprover, isVendor, isManager, isAdmin, isViewOnly } =
+  const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
     useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
 
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/amendment`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/amendment`;
     if (isApprover)
       return `/contract/approver/contracts/${contractId}/amendment`;
     if (isManager)

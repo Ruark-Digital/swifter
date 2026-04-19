@@ -22,15 +22,16 @@ const ClaimsTabContent: React.FC<Props> = ({
   isActive,
   actionsDisabled,
 }) => {
-  const { isApprover, isVendor, isManager, isAdmin, isViewOnly } =
+  const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
     useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
 
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/claim`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/claim`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/claim`;
     if (isManager) return `/contract/manager/contracts/${contractId}/claims`;
     if (isAdmin || isViewOnly)

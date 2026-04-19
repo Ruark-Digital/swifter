@@ -166,4 +166,163 @@ test.describe("Contract Detail Tabs visibility", () => {
 
     await expect(page.locator("button[role=tab]")).toHaveCount(allLabels.length);
   });
+
+  test("analytics chart range filters fetch per-chart data and remain independent", async ({ page }) => {
+    await seedAuth(page, "contract_manager");
+
+    const contractId = "c-analytics-filters-1";
+    let activitiesRequestCount = 0;
+
+    page.on("request", (req) => {
+      if (req.url().includes(`/contract/manager/contracts/${contractId}/dashboard/activities`)) {
+        activitiesRequestCount += 1;
+      }
+    });
+
+    await page.route("**/contract/**", async (route) => {
+      const requestUrl = route.request().url();
+      const url = new URL(requestUrl);
+
+      if (url.pathname.endsWith(`/contract/manager/contracts/${contractId}`)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: 200,
+            message: "Contract fetched successfully",
+            data: { _id: contractId, title: "Analytics Filters Contract", status: "active" },
+          }),
+        });
+        return;
+      }
+
+      if (requestUrl.includes(`/contract/manager/contracts/${contractId}/dashboard/activities`)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            message: "Activities fetched successfully",
+            data: {
+              current: { range: url.searchParams.get("range") ?? "YTD", labels: [], series: {} },
+              previous: { range: url.searchParams.get("range") ?? "YTD", labels: [], series: {} },
+            },
+          }),
+        });
+        return;
+      }
+
+      if (requestUrl.includes(`/contract/manager/contracts/${contractId}/dashboard/delivery-summary`)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            message: "Delivery summary fetched successfully",
+            data: { summary: {}, deliverables: [] },
+          }),
+        });
+        return;
+      }
+
+      if (requestUrl.includes(`/contract/manager/contracts/${contractId}/dashboard/vendor-kpi`)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: 200,
+            message: "ok",
+            data: [],
+          }),
+        });
+        return;
+      }
+
+      if (requestUrl.includes(`/contract/manager/contracts/${contractId}/deliverables/stats`)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: 200,
+            message: "ok",
+            data: { total: 0, submitted: 0, pending: 0, late: 0 },
+          }),
+        });
+        return;
+      }
+
+      if (requestUrl.includes(`/contract/manager/contracts/${contractId}/deliverables`)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: 200,
+            message: "ok",
+            data: [],
+          }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: 200, message: "ok", data: {} }),
+      });
+    });
+
+    await page.goto(`/dashboard/contract-management/${contractId}`);
+    await expect(
+      page.getByRole("heading", { name: "Analytics Filters Contract" }),
+    ).toBeVisible();
+    const analyticsTabTrigger = page
+      .locator('[data-slot="tabs-trigger"]', { hasText: "Analytics" })
+      .first();
+    await expect(analyticsTabTrigger).toBeVisible();
+    await Promise.all([
+      page.waitForRequest((req) => {
+        if (!req.url().includes(`/contract/manager/contracts/${contractId}/dashboard/activities`)) return false;
+        const u = new URL(req.url());
+        return u.searchParams.get("range") === "YTD";
+      }),
+      page.waitForRequest((req) => {
+        if (!req.url().includes(`/contract/manager/contracts/${contractId}/dashboard/delivery-summary`)) return false;
+        const u = new URL(req.url());
+        return u.searchParams.get("range") === "YTD";
+      }),
+      analyticsTabTrigger.click(),
+    ]);
+
+    const activitiesCard = page
+      .getByRole("heading", { name: "Activities" })
+      .locator("..")
+      .locator("..");
+    const activitiesNinetyDays = activitiesCard.getByRole("button", { name: "90 days" });
+    await expect(activitiesNinetyDays).toBeVisible();
+    await Promise.all([
+      page.waitForRequest((req) => {
+        if (!req.url().includes(`/contract/manager/contracts/${contractId}/dashboard/activities`)) return false;
+        const u = new URL(req.url());
+        return u.searchParams.get("range") === "90";
+      }),
+      activitiesNinetyDays.click(),
+    ]);
+
+    const activitiesRequestCountBeforeDeliveryChange = activitiesRequestCount;
+
+    const deliverableSummaryCard = page
+      .getByRole("heading", { name: "Deliverable Summary" })
+      .locator("..")
+      .locator("..");
+    const deliverableSevenDays = deliverableSummaryCard.getByRole("button", { name: "7 days" });
+    await expect(deliverableSevenDays).toBeVisible();
+    await Promise.all([
+      page.waitForRequest((req) => {
+        if (!req.url().includes(`/contract/manager/contracts/${contractId}/dashboard/delivery-summary`)) return false;
+        const u = new URL(req.url());
+        return u.searchParams.get("range") === "7";
+      }),
+      deliverableSevenDays.click(),
+    ]);
+
+    expect(activitiesRequestCount).toBe(activitiesRequestCountBeforeDeliveryChange);
+  });
 });

@@ -8,9 +8,14 @@ import { getRequest } from "@/lib/axiosInstance";
 type Props = { isActive?: boolean };
 
 const DEFAULT_CONTRACT_TYPE = "Contract" as const;
+type AnalyticsRange = "YTD" | 90 | 60 | 7;
 
 const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
   const { id: contractId } = useParams<{ id: string }>();
+  const [activitiesRange, setActivitiesRange] =
+    React.useState<AnalyticsRange>("YTD");
+  const [deliverySummaryRange, setDeliverySummaryRange] =
+    React.useState<AnalyticsRange>("YTD");
 
   const contractQuery = useQuery({
     queryKey: ["contract-manager", "contract", contractId],
@@ -68,11 +73,11 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
   });
 
   const activitiesQuery = useQuery({
-    queryKey: ["contract-manager-dashboard", "activities", contractId, "YTD"],
+    queryKey: ["contract-manager-dashboard", "activities", contractId, activitiesRange],
     queryFn: async () => {
       const res = await getRequest({
         url: `/contract/manager/contracts/${contractId}/dashboard/activities`,
-        config: { params: { range: "YTD", type: DEFAULT_CONTRACT_TYPE } },
+        config: { params: { range: activitiesRange, type: DEFAULT_CONTRACT_TYPE } },
       });
       return res.data?.data;
     },
@@ -82,11 +87,18 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
   });
 
   const deliverySummaryQuery = useQuery({
-    queryKey: ["contract-manager-dashboard", "delivery-summary", contractId, "YTD"],
+    queryKey: [
+      "contract-manager-dashboard",
+      "delivery-summary",
+      contractId,
+      deliverySummaryRange,
+    ],
     queryFn: async () => {
       const res = await getRequest({
         url: `/contract/manager/contracts/${contractId}/dashboard/delivery-summary`,
-        config: { params: { range: "YTD", type: DEFAULT_CONTRACT_TYPE } },
+        config: {
+          params: { range: deliverySummaryRange, type: DEFAULT_CONTRACT_TYPE },
+        },
       });
       return res.data?.data;
     },
@@ -163,7 +175,11 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
         financialStatement={financialStatementQuery.data}
         deliverableStatus={deliverableStatusQuery.data}
         activities={activitiesQuery.data}
+        activitiesRange={activitiesRange}
+        onActivitiesRangeChange={setActivitiesRange}
         deliverySummary={deliverySummaryQuery.data}
+        deliverySummaryRange={deliverySummaryRange}
+        onDeliverySummaryRangeChange={setDeliverySummaryRange}
         attachments={attachmentsQuery.data}
         vendorKpi={vendorKpiQuery.data}
         alerts={alertsQuery.data}

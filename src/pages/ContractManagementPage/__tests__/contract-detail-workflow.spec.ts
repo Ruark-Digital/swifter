@@ -276,5 +276,101 @@ test.describe("Contract Detail (workflow)", () => {
     await expect(page.getByText("Electrician")).toBeVisible();
     await expect(page.getByText("$120")).toBeVisible();
   });
+
+  test("contract manager can approve/reject pending invoice from invoice details", async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    const contractId = "c-123";
+    const invoiceId = "inv-1";
+
+    await page.route("**/contract/manager/contracts/*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "Contract fetched successfully",
+          data: { _id: contractId, title: "Unit Test Contract", status: "active" },
+        }),
+      });
+    });
+
+    await page.route(
+      `**/contract/manager/contracts/${contractId}/invoice/stats`,
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            message: "ok",
+            data: { approved: 0, pending: 1, rejected: 0, draft: 0 },
+          }),
+        });
+      },
+    );
+
+    await page.route(
+      `**/contract/manager/contracts/${contractId}/invoice**`,
+      async (route) => {
+        const url = route.request().url();
+        if (url.includes("/stats")) {
+          await route.fallback();
+          return;
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            message: "ok",
+            data: {
+              invoices: [
+                {
+                  _id: invoiceId,
+                  invoiceId,
+                  type: "monthly",
+                  status: "pending",
+                  amountBilled: 100,
+                  amountRemaining: 900,
+                },
+              ],
+              total: 1,
+            },
+          }),
+        });
+      },
+    );
+
+    await page.route(
+      `**/contract/manager/contracts/invoice/${invoiceId}`,
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            message: "ok",
+            data: {
+              _id: invoiceId,
+              invoiceId,
+              type: "monthly",
+              status: "pending",
+              description: "Pending invoice",
+              files: [],
+              billed: 100,
+              remaining: 900,
+            },
+          }),
+        });
+      },
+    );
+
+    await page.goto(`/dashboard/contract-management/${contractId}`);
+    await page.getByRole("tab", { name: "Invoice" }).click();
+    await page.getByTestId("view-invoice-detail").click();
+
+    await expect(page.getByTestId("invoice-details-sheet")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Reject" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Approve" })).toBeVisible();
+  });
 });
 

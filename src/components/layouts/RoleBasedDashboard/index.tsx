@@ -935,21 +935,37 @@ export const RoleBasedDashboard: React.FC = () => {
             <CycleTimeCard
               values={cmCycleTimeValues}
               bottleneck={contractManagerCycleTime?.bottleneck}
+              selectedRange={chartFilters["cycle-time"] ?? "ytd"}
+              onRangeChange={(value) => handleFilterChange("cycle-time", value)}
             />
             <InvoiceStatusCard
               approved={contractManagerInvoiceStatus?.approved}
               pending={contractManagerInvoiceStatus?.pending}
               rejected={contractManagerInvoiceStatus?.rejected}
+              selectedRange={chartFilters["invoice-status"] ?? "ytd"}
+              onRangeChange={(value) =>
+                handleFilterChange("invoice-status", value)
+              }
             />
             <SpendCard
               committed={contractManagerCommittedVsActualSpend?.committed}
               actual={contractManagerCommittedVsActualSpend?.actual}
               currency={contractManagerTotalCards?.totalContractValue?.currency}
+              selectedRange={chartFilters["committed-vs-actual"] ?? "ytd"}
+              onRangeChange={(value) =>
+                handleFilterChange("committed-vs-actual", value)
+              }
             />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <VendorsValueCard rows={contractManagerVendorContractValue} />
+            <VendorsValueCard
+              rows={contractManagerVendorContractValue}
+              selectedRange={chartFilters["vendor-contract-value"] ?? "ytd"}
+              onRangeChange={(value) =>
+                handleFilterChange("vendor-contract-value", value)
+              }
+            />
             <ProjectValueCard rows={contractManagerProjectContractValue} />
           </div>
 

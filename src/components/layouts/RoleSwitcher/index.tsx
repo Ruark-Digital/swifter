@@ -25,6 +25,11 @@ const roleConfig: Record<UserRole, { label: string; icon: React.ComponentType<{ 
     icon: Briefcase,
     color: 'bg-green-100 text-green-800'
   },
+  project_manager: {
+    label: 'Project Manager',
+    icon: FileText,
+    color: 'bg-slate-100 text-slate-800'
+  },
   approver: {
     label: 'Approver',
     icon: UserCheck,

@@ -11,10 +11,12 @@ type Props = { isActive?: boolean };
 
 const ComplianceTabContent: React.FC<Props> = ({ isActive }) => {
   const { id: contractId } = useParams<{ id: string }>();
-  const { isVendor, isManager, isAdmin, isApprover, isViewOnly } = useUserRole();
+  const { isVendor, isProjectManager, isManager, isAdmin, isApprover, isViewOnly } =
+    useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
 
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/compliance`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/compliance`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/compliance`;
     if (isManager) return `/contract/manager/contracts/${contractId}/compliance`;
     if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/compliance`;

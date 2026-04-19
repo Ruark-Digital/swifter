@@ -16,15 +16,16 @@ type Props = {
 };
 
 const InvoiceTabContent: React.FC<Props> = ({ contractId, isActive }) => {
-  const { isApprover, isVendor, isManager, isAdmin, isViewOnly } =
+  const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
     useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
 
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/invoice`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/invoice`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/invoice`;
     if (isManager) return `/contract/manager/contracts/${contractId}/invoice`;
     if (isAdmin || isViewOnly)
@@ -78,7 +79,7 @@ const InvoiceTabContent: React.FC<Props> = ({ contractId, isActive }) => {
     <TabsContent value="invoice" className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-slate-900">Invoice</h3>
-        {isVendor && (
+        {isContractVendorLike && (
           <CreateInvoiceDialog
             contractId={contractId}
             trigger={

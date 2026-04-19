@@ -14,10 +14,12 @@ import type { DeliverablesStats } from "../components/DeliverablesStatsCards";
 
 const DeliverablesTabContent: React.FC = () => {
   const { id: contractId } = useParams<{ id: string }>();
-  const { isApprover, isVendor, isManager, isAdmin, isViewOnly } = useUserRole();
+  const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
+    useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
 
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/deliverables`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/deliverables`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/deliverables`;
     if (isManager) return `/contract/manager/contracts/${contractId}/deliverables`;
     if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/deliverables`;
@@ -65,7 +67,8 @@ const DeliverablesTabContent: React.FC = () => {
   });
 
   const rows: DeliverableRow[] = React.useMemo(() => {
-    const items: any[] = listRes?.data?.data || listRes?.data || [];
+    const raw = listRes?.data?.data ?? listRes?.data ?? [];
+    const items: any[] = Array.isArray(raw) ? raw : [];
     return items.map((it) => ({
       id: it?.deliverableId ?? "-",
       title: it?.title ?? "-",
@@ -85,7 +88,9 @@ const DeliverablesTabContent: React.FC = () => {
           ? "Rejected"
           : it?.status === "pending"
             ? "Pending"
-            : "Under Review") as DeliverableRow["status"],
+            : it?.submissionStatus === "submitted"
+              ? "Under Review"
+              : "Pending") as DeliverableRow["status"],
     }));
   }, [listRes]);
 

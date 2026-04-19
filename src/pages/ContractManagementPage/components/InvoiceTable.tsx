@@ -99,10 +99,13 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
 
   const invoice = data?.data;
 
-  const canApprove = ((invoice?.approverStatus || "").toLowerCase() === "pending");
+  const pendingSignal = (invoice?.approverStatus || invoice?.status || "")
+    .toLowerCase()
+    .trim();
 
-  const canManagerAct =
-    isManager && ((invoice?.approverStatus || "").toLowerCase() === "pending");
+  const canApprove = pendingSignal === "pending";
+
+  const canManagerAct = isManager && pendingSignal === "pending";
 
 
   const approveInvoiceMutation = useMutation<

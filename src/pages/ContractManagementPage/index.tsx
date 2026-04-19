@@ -291,8 +291,10 @@ const mapVendorContractsToRows = (
 };
 
 const ContractManagementPage: React.FC = () => {
-  const { isVendor, isApprover, isViewOnly, isCompanyAdmin } = useUserRole();
-  const managerQueriesEnabled = !isVendor && !isApprover;
+  const { isVendor, isProjectManager, isApprover, isViewOnly, isCompanyAdmin } =
+    useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
+  const managerQueriesEnabled = !isContractVendorLike && !isApprover;
   const approverQueriesEnabled = isApprover;
 
   const { data: statsData } = useContractsStats(managerQueriesEnabled);
@@ -305,9 +307,9 @@ const ContractManagementPage: React.FC = () => {
   );
   const { data: approverContractsData, isLoading: isApproverContractsLoading } =
     useApproverContracts(approverQueriesEnabled);
-  const { data: vendorStatsData } = useVendorContractsStats(isVendor);
+  const { data: vendorStatsData } = useVendorContractsStats(isContractVendorLike);
   const { data: vendorContractsData, isLoading: isVendorContractsLoading } =
-    useVendorContracts(isVendor);
+    useVendorContracts(isContractVendorLike);
 
   const stats = isApprover ? approverStatsData?.data : statsData?.data;
   const statsCounts = stats
@@ -340,7 +342,7 @@ const ContractManagementPage: React.FC = () => {
         robots="noindex, nofollow"
       />
 
-      {isVendor ? (
+      {isContractVendorLike ? (
         <>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

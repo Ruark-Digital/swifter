@@ -19,11 +19,17 @@ type Row = {
 
 type Props = {
   rows?: Row[];
+  selectedRange?: string;
+  onRangeChange?: (value: string) => void;
 };
 
 const MAX_VENDOR_LABEL_LENGTH = 14;
 
-export const VendorsValueCard: React.FC<Props> = ({ rows }) => {
+export const VendorsValueCard: React.FC<Props> = ({
+  rows,
+  selectedRange = "ytd",
+  onRangeChange,
+}) => {
   const data = (rows && rows.length > 0
     ? rows
     : [
@@ -54,7 +60,11 @@ export const VendorsValueCard: React.FC<Props> = ({ rows }) => {
             <span className="inline-block w-3 h-3 rounded-sm bg-[#E5E7EB]" />
           </div>
         </div>
-        <Tabs value="ytd" className="w-full">
+        <Tabs
+          value={selectedRange}
+          onValueChange={(value) => onRangeChange?.(value)}
+          className="w-full"
+        >
           <TabsList className="bg-transparent p-0 gap-2">
             <TabsTrigger
               value="ytd"

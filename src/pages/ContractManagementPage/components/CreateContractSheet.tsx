@@ -129,7 +129,7 @@ export const schema = yup.object({
     ),
   duration: yup.string().optional(),
   termType: yup.string().optional(),
-  documents: yup.array().optional(),
+  documents: yup.array().nullable().optional(),
   deliverables: yup
     .array(
       yup.object({

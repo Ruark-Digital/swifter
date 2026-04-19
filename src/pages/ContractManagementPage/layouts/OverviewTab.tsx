@@ -766,7 +766,9 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
 
   const qc = useQueryClient();
   const { success } = useToastHandler();
-  const { isVendor, isApprover, isViewOnly, isCompanyAdmin } = useUserRole();
+  const { isVendor, isProjectManager, isApprover, isViewOnly, isCompanyAdmin } =
+    useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
 
   const projectName =
     typeof contract.project === "string"
@@ -849,7 +851,7 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
   };
 
   const renderView = () => {
-    if (isVendor) return <VendorView {...viewProps} />;
+    if (isContractVendorLike) return <VendorView {...viewProps} />;
     if (isApprover) return <ApproverView {...viewProps} />;
     if (isCompanyAdmin) return <VendorView {...viewProps} />;
     if (isViewOnly) return <ManagerView {...viewProps} />;
@@ -869,7 +871,7 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
             </Button>
           ) : null}
 
-          {!isVendor && !isApprover && !isViewOnly && !isCompanyAdmin && (
+          {!isContractVendorLike && !isApprover && !isViewOnly && !isCompanyAdmin && (
             <Button
               onClick={() => setEditingContractId(contract?._id ?? null)}
               disabled={contract?.status === "publish"}
