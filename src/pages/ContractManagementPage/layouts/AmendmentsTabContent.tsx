@@ -30,6 +30,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToastHandler } from "@/hooks/useToaster";
 import { postRequest } from "@/lib/axiosInstance";
 import type { UploadURLs } from "../lib/contractChanges";
+import type { ApiResponse, ApiResponseError } from "@/types";
 
 type CreateAmendmentFormValues = {
   amendmentTitle: string;
@@ -56,7 +57,7 @@ type ContractAmendmentFile = {
   name: string;
   url: string;
   type: string;
-  size: string;
+  size: number;
 };
 
 type CreateAmendmentPayload = {
