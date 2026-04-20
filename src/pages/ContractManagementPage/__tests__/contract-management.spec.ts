@@ -474,6 +474,10 @@ test.describe("Contract Management Page (roles)", () => {
       .click();
     await page.getByText("Construction").click();
 
+    await createDialog.getByRole("combobox", { name: "Currency" }).click();
+    await page.getByPlaceholder("Search currency...").fill("CAD");
+    await page.getByText(/^CAD\b/).first().click();
+
     const ratingBlock = page
       .locator("div")
       .filter({ hasText: "Complexity Rating (1-10)" })
@@ -791,6 +795,10 @@ test.describe("Contract Management Page (roles)", () => {
     await createDialog.getByRole("combobox", { name: "Category" }).click();
     await page.getByRole("option", { name: "Legal" }).click();
 
+    await createDialog.getByRole("combobox", { name: "Currency" }).click();
+    await page.getByPlaceholder("Search currency...").fill("CAD");
+    await page.getByText(/^CAD\b/).first().click();
+
     await createDialog.getByText("5", { exact: true }).click();
 
     await createDialog.getByTestId("description-input").fill("A test description");
@@ -989,6 +997,10 @@ test.describe("Contract Management Page (roles)", () => {
 
     await createDialog.getByRole("combobox", { name: "Category" }).click();
     await page.getByRole("option", { name: "Legal" }).click();
+
+    await createDialog.getByRole("combobox", { name: "Currency" }).click();
+    await page.getByPlaceholder("Search currency...").fill("CAD");
+    await page.getByText(/^CAD\b/).first().click();
 
     await createDialog.getByText("5", { exact: true }).click();
     await createDialog.getByTestId("description-input").fill("A test description");

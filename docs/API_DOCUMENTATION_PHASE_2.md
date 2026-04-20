@@ -60,6 +60,10 @@
             "type": "string",
             "description": "Business division ID"
           },
+          "currency": {
+            "type": "string",
+            "description": "contracct currency - default CAD"
+          },
           "contractType": {
             "type": "string",
             "description": "Contract type ID"
@@ -563,6 +567,410 @@
           }
         }
       },
+      "ContractServiceListItem": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "66c2f22e9f4e2b0012345678"
+          },
+          "contractId": {
+            "type": "string",
+            "nullable": true,
+            "example": "CTR-2026-001"
+          },
+          "title": {
+            "type": "string",
+            "example": "Bridge Inspection"
+          },
+          "contractValue": {
+            "type": "number",
+            "nullable": true,
+            "example": 125000
+          },
+          "status": {
+            "type": "string",
+            "example": "active"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "contractRelationship": {
+            "type": "string",
+            "enum": [
+              "standalone",
+              "project",
+              "msa_project"
+            ],
+            "nullable": true
+          },
+          "projectManager": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "name": {
+                "type": "string",
+                "nullable": true,
+                "example": "Jane Project Manager"
+              }
+            }
+          }
+        }
+      },
+      "ApiResponseContractServiceList": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "integer",
+            "example": 200
+          },
+          "message": {
+            "type": "string",
+            "example": "Contracts fetched successfully"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "contracts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ContractServiceListItem"
+                }
+              },
+              "totalContracts": {
+                "type": "integer",
+                "example": 12
+              }
+            }
+          }
+        }
+      },
+      "VendorContractServiceListItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "66c2f22e9f4e2b0012345678"
+          },
+          "contractType": {
+            "type": "string",
+            "enum": [
+              "Contract"
+            ],
+            "example": "Contract"
+          },
+          "contractId": {
+            "type": "string",
+            "nullable": true,
+            "example": "CTR-2026-001"
+          },
+          "title": {
+            "type": "string",
+            "example": "Bridge Inspection"
+          },
+          "contractValue": {
+            "type": "number",
+            "nullable": true,
+            "example": 125000
+          },
+          "status": {
+            "type": "string",
+            "example": "active"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "contractRelationship": {
+            "type": "string",
+            "enum": [
+              "standalone",
+              "project",
+              "msa_project"
+            ],
+            "nullable": true
+          },
+          "projectManager": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "name": {
+                "type": "string",
+                "nullable": true,
+                "example": "Jane Project Manager"
+              }
+            }
+          }
+        }
+      },
+      "ApiResponseVendorContractServiceList": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "integer",
+            "example": 200
+          },
+          "message": {
+            "type": "string",
+            "example": "Contracts fetched successfully"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "contractType": {
+                "type": "string",
+                "enum": [
+                  "Contract"
+                ],
+                "example": "Contract"
+              },
+              "contracts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/VendorContractServiceListItem"
+                }
+              },
+              "totalContracts": {
+                "type": "integer",
+                "example": 7
+              }
+            }
+          }
+        }
+      },
+      "ContractServicePerson": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ContractServiceApprover": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ContractServiceDetail": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "contractId": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "contractRelationship": {
+            "type": "string",
+            "enum": [
+              "standalone",
+              "project",
+              "msa_project"
+            ]
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "contigency": {
+            "type": "string",
+            "nullable": true
+          },
+          "holdBackReleased": {
+            "type": "number",
+            "example": 15000
+          },
+          "savingAmount": {
+            "type": "number",
+            "example": 4500
+          },
+          "creator": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "_id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              },
+              "email": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "company": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "_id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "vendor": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "_id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "projectManager": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "user": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "_id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              },
+              "status": {
+                "type": "string",
+                "nullable": true
+              },
+              "actionedAt": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              }
+            }
+          },
+          "internalTeam": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContractServicePerson"
+            }
+          },
+          "approvers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContractServiceApprover"
+            }
+          },
+          "assignContract": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string",
+                  "nullable": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "ApiResponseContractServiceDetail": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "integer",
+            "example": 200
+          },
+          "message": {
+            "type": "string",
+            "example": "Contract fetched successfully"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ContractServiceDetail"
+          }
+        }
+      },
       "ContractApproverSummary": {
         "type": "object",
         "properties": {
@@ -849,6 +1257,424 @@
                 }
               }
             }
+          }
+        }
+      },
+      "MsaContractServiceListItem": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "66c2f22e9f4e2b0012345678"
+          },
+          "msaContractId": {
+            "type": "string",
+            "nullable": true,
+            "example": "MSA-2026-001"
+          },
+          "title": {
+            "type": "string",
+            "example": "Master Services Agreement"
+          },
+          "contractValue": {
+            "type": "number",
+            "nullable": true,
+            "example": 250000
+          },
+          "status": {
+            "type": "string",
+            "example": "active"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "contractRelationship": {
+            "type": "string",
+            "enum": [
+              "standalone",
+              "project",
+              "msa_project"
+            ],
+            "nullable": true
+          },
+          "projectManager": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "name": {
+                "type": "string",
+                "nullable": true,
+                "example": "Jane Project Manager"
+              }
+            }
+          }
+        }
+      },
+      "ApiResponseMsaContractServiceList": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "integer",
+            "example": 200
+          },
+          "message": {
+            "type": "string",
+            "example": "MSA contracts fetched successfully"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "contracts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/MsaContractServiceListItem"
+                }
+              },
+              "totalContracts": {
+                "type": "integer",
+                "example": 12
+              }
+            }
+          }
+        }
+      },
+      "VendorMsaContractServiceListItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "66c2f22e9f4e2b0012345678"
+          },
+          "contractType": {
+            "type": "string",
+            "enum": [
+              "MsaContract"
+            ],
+            "example": "MsaContract"
+          },
+          "msaContractId": {
+            "type": "string",
+            "nullable": true,
+            "example": "MSA-2026-001"
+          },
+          "title": {
+            "type": "string",
+            "example": "Master Services Agreement"
+          },
+          "contractValue": {
+            "type": "number",
+            "nullable": true,
+            "example": 250000
+          },
+          "status": {
+            "type": "string",
+            "example": "active"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "contractRelationship": {
+            "type": "string",
+            "enum": [
+              "standalone",
+              "project",
+              "msa_project"
+            ],
+            "nullable": true
+          },
+          "projectManager": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "name": {
+                "type": "string",
+                "nullable": true,
+                "example": "Jane Project Manager"
+              }
+            }
+          }
+        }
+      },
+      "ApiResponseVendorMsaContractServiceList": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "integer",
+            "example": 200
+          },
+          "message": {
+            "type": "string",
+            "example": "MSA contracts fetched successfully"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "contractType": {
+                "type": "string",
+                "enum": [
+                  "MsaContract"
+                ],
+                "example": "MsaContract"
+              },
+              "contracts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/VendorMsaContractServiceListItem"
+                }
+              },
+              "totalContracts": {
+                "type": "integer",
+                "example": 5
+              }
+            }
+          }
+        }
+      },
+      "MsaContractServicePerson": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "MsaContractServiceApprover": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "MsaContractServiceDetail": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "msaContractId": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "contractRelationship": {
+            "type": "string",
+            "enum": [
+              "standalone",
+              "project",
+              "msa_project"
+            ],
+            "nullable": true
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "contigency": {
+            "type": "string",
+            "nullable": true
+          },
+          "holdBackReleased": {
+            "type": "number",
+            "example": 15000
+          },
+          "savingAmount": {
+            "type": "number",
+            "example": 4500
+          },
+          "creator": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "_id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              },
+              "email": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "company": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "_id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "vendor": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "_id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "msaType": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "_id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "projectManager": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "user": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "_id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              },
+              "status": {
+                "type": "string",
+                "nullable": true
+              },
+              "actionedAt": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              }
+            }
+          },
+          "internalTeam": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MsaContractServicePerson"
+            }
+          },
+          "approvers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MsaContractServiceApprover"
+            }
+          },
+          "assignContract": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string",
+                  "nullable": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "ApiResponseMsaContractServiceDetail": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "integer",
+            "example": 200
+          },
+          "message": {
+            "type": "string",
+            "example": "MSA contract fetched successfully"
+          },
+          "data": {
+            "$ref": "#/components/schemas/MsaContractServiceDetail"
           }
         }
       },
@@ -1548,13 +2374,12 @@
           "description": {
             "type": "string"
           },
-          "issueRfi": {
-            "type": "string",
-            "example": "The RFI issue Mongo ObjectId"
-          },
           "deadline": {
             "type": "string",
             "format": "date-time"
+          },
+          "responder": {
+            "type": "string"
           },
           "files": {
             "type": "array",
@@ -2373,6 +3198,12 @@
           "description": {
             "type": "string"
           },
+          "responders": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "files": {
             "type": "array",
             "items": {
@@ -2477,18 +3308,14 @@
       },
       "ContractAmendmentDTO": {
         "type": "object",
+        "required": [
+          "title",
+          "description",
+          "changes"
+        ],
         "properties": {
           "title": {
             "type": "string"
-          },
-          "impact": {
-            "type": "string",
-            "enum": [
-              "time",
-              "cost",
-              "time_cost",
-              "others"
-            ]
           },
           "description": {
             "type": "string"
@@ -2499,13 +3326,23 @@
           "others": {
             "type": "string"
           },
-          "chnages": {
+          "changes": {
             "type": "array",
             "items": {
               "type": "object",
+              "required": [
+                "field",
+                "value"
+              ],
               "properties": {
                 "field": {
-                  "type": "string"
+                  "type": "string",
+                  "enum": [
+                    "time",
+                    "cost",
+                    "time_cost",
+                    "others"
+                  ]
                 },
                 "value": {
                   "type": "string"
@@ -2517,12 +3354,19 @@
             "type": "array",
             "items": {
               "type": "object",
+              "required": [
+                "name",
+                "url",
+                "type",
+                "size"
+              ],
               "properties": {
                 "name": {
                   "type": "string"
                 },
                 "url": {
-                  "type": "string"
+                  "type": "string",
+                  "format": "uri"
                 },
                 "type": {
                   "type": "string"
@@ -2794,7 +3638,7 @@
     }
   ],
   "paths": {
-    "/approver/personnel/contract/{contractId}": {
+    "/approver/contracts/{contractId}/personnel": {
       "get": {
         "summary": "List contract personnel by contract",
         "description": "Returns users in the company eligible for contract-related roles.",
@@ -2899,6 +3743,1023 @@
         }
       }
     },
+    "/approver/contracts/dashboard/vendor-summary": {
+      "get": {
+        "summary": "Vendor performance summary (portfolio)",
+        "tags": [
+          "Approver - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vendor performance summary fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/dashboard/renewals": {
+      "get": {
+        "summary": "Renewals and expiry timeline (portfolio)",
+        "tags": [
+          "Approver - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Renewals and expiry timeline fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/dashboard/clause-intelligence": {
+      "get": {
+        "summary": "Clause intelligence (portfolio)",
+        "tags": [
+          "Approver - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Clause intelligence fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/dashboard/cards/total": {
+      "get": {
+        "summary": "Total contract dashboard cards (portfolio)",
+        "tags": [
+          "Approver - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          },
+          {
+            "in": "query",
+            "name": "vendorId",
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "description": "Optional vendor filter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Total contract dashboard card fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/dashboard/cards/ytd": {
+      "get": {
+        "summary": "YTD contract dashboard cards (portfolio)",
+        "tags": [
+          "Approver - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "YTD contract dashboard card fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/dashboard/action-logs": {
+      "get": {
+        "summary": "Dashboard action logs (portfolio)",
+        "tags": [
+          "Approver - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          },
+          {
+            "in": "query",
+            "name": "vendorId",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard action logs fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/dashboard/general-updates": {
+      "get": {
+        "summary": "Dashboard general updates (portfolio)",
+        "tags": [
+          "Approver - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          },
+          {
+            "in": "query",
+            "name": "vendorId",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard general updates fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/dashboard/cycle-time": {
+      "get": {
+        "summary": "Dashboard cycle time per stage (portfolio)",
+        "tags": [
+          "Approver - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard cycle time fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/dashboard/invoice-status": {
+      "get": {
+        "summary": "Dashboard invoice status (portfolio)",
+        "tags": [
+          "Approver - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "default": "30"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard invoice status fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/dashboard/committed-vs-actual": {
+      "get": {
+        "summary": "Dashboard committed vs actual spend (portfolio)",
+        "tags": [
+          "Approver - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "default": "30"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard committed vs actual spend fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/dashboard/vendor-contract-value": {
+      "get": {
+        "summary": "Dashboard value by vendor (portfolio)",
+        "tags": [
+          "Approver - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "default": "30"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard vendor contract values fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/dashboard/project-contract-value": {
+      "get": {
+        "summary": "Dashboard value by project (portfolio)",
+        "tags": [
+          "Approver - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "default": "30"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard project contract values fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/dashboard/risk-distribution": {
+      "get": {
+        "summary": "Dashboard risk distribution (portfolio)",
+        "tags": [
+          "Approver - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "default": "30"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard risk distribution fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/dashboard/changes-order-impact": {
+      "get": {
+        "summary": "Dashboard change order impact (portfolio)",
+        "tags": [
+          "Approver - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "default": "30"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard change order impact fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/dashboard/category-value": {
+      "get": {
+        "summary": "Dashboard contract category values (portfolio)",
+        "tags": [
+          "Approver - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "default": "30"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard contract category values fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/dashboard/compliance-status": {
+      "get": {
+        "summary": "Dashboard compliance status (portfolio)",
+        "tags": [
+          "Approver - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "default": "30"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard compliance status fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/dashboard/contract-status": {
+      "get": {
+        "summary": "Dashboard contract status distribution (portfolio)",
+        "tags": [
+          "Approver - Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "default": "30"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard contract status fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/{contractId}/dashboard/overview": {
+      "get": {
+        "summary": "Get contract overview dashboard",
+        "tags": [
+          "Approver - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract overview fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/{contractId}/dashboard/alerts": {
+      "get": {
+        "summary": "Get contract alerts dashboard",
+        "tags": [
+          "Approver - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract alerts fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/{contractId}/dashboard/clause-legal-analysis": {
+      "get": {
+        "summary": "Get clause legal analysis dashboard",
+        "tags": [
+          "Approver - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Clause legal analysis fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/{contractId}/dashboard/financial-statement": {
+      "get": {
+        "summary": "Get financial statement dashboard",
+        "tags": [
+          "Approver - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Financial statement fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/{contractId}/dashboard/deliverable-status": {
+      "get": {
+        "summary": "Get deliverable status dashboard",
+        "tags": [
+          "Approver - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deliverable status fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/{contractId}/dashboard/activities": {
+      "get": {
+        "summary": "Get contract activity dashboard",
+        "tags": [
+          "Approver - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "default": "YTD"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract activities fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/{contractId}/dashboard/delivery-summary": {
+      "get": {
+        "summary": "Get delivery summary dashboard",
+        "tags": [
+          "Approver - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range",
+            "schema": {
+              "type": "string",
+              "default": "YTD"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deliverable summary fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/{contractId}/dashboard/vendor-kpi": {
+      "get": {
+        "summary": "Get vendor KPI dashboard",
+        "tags": [
+          "Approver - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vendor KPI fetched successfully"
+          }
+        }
+      }
+    },
+    "/approver/contracts/{contractId}/dashboard/attachment": {
+      "get": {
+        "summary": "Get attachment dashboard",
+        "tags": [
+          "Approver - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Contract",
+                "MsaContract"
+              ],
+              "default": "Contract"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attachment fetched successfully"
+          }
+        }
+      }
+    },
     "/approver/contracts": {
       "get": {
         "summary": "List contracts",
@@ -2962,35 +4823,37 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "docs": {
-                          "type": "array",
-                          "items": {
-                            "$ref": "#/components/schemas/IContract"
-                          }
-                        },
-                        "totalDocs": {
-                          "type": "integer"
-                        },
-                        "limit": {
-                          "type": "integer"
-                        },
-                        "page": {
-                          "type": "integer"
-                        },
-                        "totalPages": {
-                          "type": "integer"
-                        }
-                      }
-                    }
-                  }
+                  "$ref": "#/components/schemas/ApiResponseContractServiceList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             }
@@ -3027,21 +4890,50 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/IContract"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ApiResponseContractServiceDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
                 }
               }
             }
           },
           "404": {
-            "description": "Contract not found"
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
           }
         }
       }
@@ -3819,7 +5711,7 @@
         }
       }
     },
-    "/approver/contracts/{contractId}/change/stats": {
+    "/approver/contracts/{contractId}/changes/stats": {
       "get": {
         "summary": "Get contract change statistics",
         "description": "Returns statistics of changes for a specific contract",
@@ -3864,7 +5756,7 @@
         }
       }
     },
-    "/approver/contracts/{contractId}/change": {
+    "/approver/contracts/{contractId}/changes": {
       "get": {
         "summary": "List contract changes",
         "description": "Returns a list of changes for a specific contract with pagination and filtering",
@@ -3963,7 +5855,7 @@
         }
       }
     },
-    "/approver/contracts/{contractId}/change/{changeId}": {
+    "/approver/contracts/{contractId}/changes/{changeId}": {
       "get": {
         "summary": "Get a contract change by ID",
         "description": "Returns details of a specific contract change",
@@ -4017,7 +5909,7 @@
         }
       }
     },
-    "/approver/contracts/{contractId}/change/{changeId}/comment": {
+    "/approver/contracts/{contractId}/changes/{changeId}/comment": {
       "get": {
         "summary": "Get comments for a contract change",
         "description": "Returns a list of comments for a specific contract change",
@@ -4136,7 +6028,7 @@
         }
       }
     },
-    "/approver/contracts/change/{changeId}/comment/{commentId}/reply": {
+    "/approver/contracts/changes/{changeId}/comment/{commentId}/reply": {
       "post": {
         "summary": "Reply to a contract change comment",
         "description": "Adds a reply to a specific comment on a contract change",
@@ -4200,7 +6092,7 @@
         }
       }
     },
-    "/approver/contracts/{contractId}/change/{changeId}/approve/status": {
+    "/approver/contracts/{contractId}/changes/{changeId}/approve/status": {
       "get": {
         "summary": "Check if contract change can be approved",
         "description": "Checks if the current user can approve the contract change at the current level",
@@ -4259,7 +6151,7 @@
         }
       }
     },
-    "/approver/contracts/{contractId}/change/{changeId}/approve": {
+    "/approver/contracts/{contractId}/changes/{changeId}/approve": {
       "post": {
         "summary": "Approve or reject a contract change",
         "description": "Submit an approval action (approve/reject) for the contract change",
@@ -7967,15 +9859,37 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    },
-                    "data": {
-                      "type": "object"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ApiResponseMsaContractServiceList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             }
@@ -8012,21 +9926,50 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    },
-                    "data": {
-                      "type": "object"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ApiResponseMsaContractServiceDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
                 }
               }
             }
           },
           "404": {
-            "description": "Contract not found"
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
           }
         }
       }
@@ -8374,7 +10317,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/change/stats": {
+    "/approver/msa-contract/{contractId}/changes/stats": {
       "get": {
         "summary": "Get MSA contract change statistics",
         "description": "Returns statistics of changes for a specific MSA contract.",
@@ -8419,7 +10362,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/change": {
+    "/approver/msa-contract/{contractId}/changes": {
       "get": {
         "summary": "List MSA contract changes",
         "description": "Returns a list of changes for a specific MSA contract with pagination and filtering.",
@@ -8498,7 +10441,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/change/{changeId}": {
+    "/approver/msa-contract/{contractId}/changes/{changeId}": {
       "get": {
         "summary": "Get an MSA contract change by ID",
         "description": "Returns details of a specific MSA contract change.",
@@ -8552,7 +10495,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/change/{changeId}/comment": {
+    "/approver/msa-contract/{contractId}/changes/{changeId}/comment": {
       "get": {
         "summary": "Get comments for an MSA contract change",
         "description": "Returns a list of comments for a specific MSA contract change.",
@@ -8638,7 +10581,7 @@
         }
       }
     },
-    "/approver/msa-contract/change/{changeId}/comment/{commentId}/reply": {
+    "/approver/msa-contract/changes/{changeId}/comment/{commentId}/reply": {
       "post": {
         "summary": "Reply to an MSA contract change comment",
         "description": "Adds a reply to a specific comment on an MSA contract change.",
@@ -8687,7 +10630,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/change/{changeId}/approve/status": {
+    "/approver/msa-contract/{contractId}/changes/{changeId}/approve/status": {
       "get": {
         "summary": "Check if MSA contract change can be approved",
         "description": "Checks if the current user can approve the MSA contract change at the current level.",
@@ -8726,7 +10669,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/change/{changeId}/approve": {
+    "/approver/msa-contract/{contractId}/changes/{changeId}/approve": {
       "post": {
         "summary": "Approve or reject an MSA contract change",
         "description": "Submit an approval action (approve/reject) for the MSA contract change.",
@@ -10731,15 +12674,7 @@
             "name": "name",
             "schema": {
               "type": "string",
-              "enum": [
-                "draft",
-                "pending_approval",
-                "active",
-                "completed",
-                "suspended",
-                "expired",
-                "terminated"
-              ]
+              "default": 1
             },
             "description": "Case-insensitive partial match by project name"
           },
@@ -10748,6 +12683,7 @@
             "name": "date",
             "schema": {
               "type": "string",
+              "default": 10,
               "format": "date"
             },
             "description": "Return projects having `startDate \u003E= date` (ISO 8601)"
@@ -10757,7 +12693,6 @@
             "name": "status",
             "schema": {
               "type": "string",
-              "format": "date",
               "enum": [
                 "active",
                 "completed",
@@ -10781,6 +12716,7 @@
             "name": "page",
             "schema": {
               "type": "integer",
+              "format": "date",
               "minimum": 1,
               "default": 1
             },
@@ -11068,11 +13004,8 @@
           }
         ],
         "x-roles": [
-          "view_only",
-          "approver",
-          "company_admin",
           "contract_manager",
-          "procurement"
+          "company_admin"
         ],
         "responses": {
           "200": {
@@ -11461,11 +13394,10 @@
                   "type": "object",
                   "properties": {
                     "message": {
-                      "type": "string",
-                      "example": "MSA contracts fetched successfully"
+                      "type": "string"
                     },
                     "data": {
-                      "type": "object",
+                      "type": "array",
                       "items": {
                         "$ref": "#/components/schemas/ContractChangeApprover",
                         "properties": {
@@ -11478,19 +13410,41 @@
                         }
                       }
                     }
-                  }
+                  },
+                  "$ref": "#/components/schemas/ApiResponseMsaContractServiceList"
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthenticated user"
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Forbidden – user lacks required role"
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server error"
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -12069,7 +14023,209 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseContractList"
+                  "$ref": "#/components/schemas/ApiResponseContractServiceList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/vendor/{vendorId}/project-managers": {
+      "get": {
+        "summary": "List project managers for a vendor",
+        "description": "Returns project managers associated with the provided vendor identifier (vendor id, vendor code, vendor user email, or vendor user name).",
+        "tags": [
+          "ContractManager - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vendorId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Vendor identifier (id, vendorId, email, or name)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project managers fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Project managers fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/contracts/me": {
+      "get": {
+        "summary": "List my contracts",
+        "description": "Returns a paginated list of contracts accessible to the authenticated contract manager.",
+        "tags": [
+          "ContractManager - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by contract status"
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by contract category"
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Filter by date (YYYY-MM-DD)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contracts fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseContractServiceList"
                 }
               }
             }
@@ -12143,7 +14299,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseContract"
+                  "$ref": "#/components/schemas/ApiResponseContractServiceDetail"
                 },
                 "examples": {
                   "success": {
@@ -12361,10 +14517,10 @@
         }
       }
     },
-    "/manager/contracts/{contractId}/compliance/{type}/{typeId}/approve": {
+    "/manager/contracts/{contractId}/compliance/approve": {
       "post": {
         "summary": "Approve or reject a contract compliance item",
-        "description": "Submit an approval action for a policy or security compliance entry.",
+        "description": "Submit an approval action for a compliance entry.",
         "tags": [
           "ContractManager - Contract Compliance"
         ],
@@ -12387,28 +14543,6 @@
               "type": "string"
             },
             "description": "Contract ID"
-          },
-          {
-            "in": "path",
-            "name": "type",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "policy",
-                "security"
-              ]
-            },
-            "description": "Compliance item type"
-          },
-          {
-            "in": "path",
-            "name": "typeId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Policy ID or security type ID"
           }
         ],
         "requestBody": {
@@ -16880,6 +19014,104 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a contract claim",
+        "description": "Creates a new contract claim for the specified contract.",
+        "tags": [
+          "ContractManager - Contract Claim"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "company_admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract identifier"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IContractClaim"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract claim created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract claim created successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ContractClaimDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract not found"
+          },
+          "422": {
+            "description": "Validation error"
           },
           "500": {
             "description": "Server error",
@@ -24896,28 +27128,40 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "MSA contracts fetched successfully"
-                    },
-                    "data": {
-                      "type": "object"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ApiResponseMsaContractServiceList"
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthenticated user"
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Forbidden – user lacks required role"
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server error"
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
           }
         }
       }
@@ -25011,31 +27255,50 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "MSA contract fetched successfully"
-                    },
-                    "data": {
-                      "type": "object"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ApiResponseMsaContractServiceDetail"
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthenticated user"
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Forbidden – user lacks required role"
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Contract not found"
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server error"
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
           }
         }
       }
@@ -25074,31 +27337,50 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Linked contract fetched successfully"
-                    },
-                    "data": {
-                      "type": "object"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ApiResponseContractServiceDetail"
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthenticated user"
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Forbidden – user lacks required role"
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Contract not found"
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server error"
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
           }
         }
       }
@@ -25876,10 +28158,10 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/compliance/{type}/{typeId}/approve": {
+    "/manager/msa-contract/{contractId}/compliance/approve": {
       "post": {
         "summary": "Approve or reject an MSA contract compliance item",
-        "description": "Submit an approval action for a policy or security compliance entry.",
+        "description": "Submit an approval action for a compliance entry.",
         "tags": [
           "ContractManager - MSA Contract Compliance"
         ],
@@ -25902,28 +28184,6 @@
               "type": "string"
             },
             "description": "MSA Contract ID"
-          },
-          {
-            "in": "path",
-            "name": "type",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "policy",
-                "security"
-              ]
-            },
-            "description": "Compliance item type"
-          },
-          {
-            "in": "path",
-            "name": "typeId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Policy ID or security type ID"
           }
         ],
         "requestBody": {
@@ -27895,6 +30155,178 @@
         }
       }
     },
+    "/manager/msa-contracts/{contractId}/amendments/stats": {
+      "get": {
+        "summary": "Get amendment statistics",
+        "description": "Returns statistics for contract amendments.",
+        "tags": [
+          "ContractManager - Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Amendment stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "accepted": {
+                          "type": "integer"
+                        },
+                        "all": {
+                          "type": "integer"
+                        },
+                        "rejected": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/msa-contracts/{contractId}/amendments": {
+      "get": {
+        "summary": "List amendments",
+        "description": "List all amendments for a contract.",
+        "tags": [
+          "ContractManager - Contract Amendment"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "contract_manager",
+          "procurement"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Amendments fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractAmendmentDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden – user lacks required role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/manager/msa-contract/{contractId}/amendments": {
       "post": {
         "summary": "Create amendment",
@@ -28725,45 +31157,55 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Contracts fetched successfully"
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "contracts": {
-                          "type": "array",
-                          "items": {
-                            "$ref": "#/components/schemas/ContractDTO"
-                          }
-                        },
-                        "totalContracts": {
-                          "type": "integer"
-                        }
-                      }
-                    }
-                  }
+                  "$ref": "#/components/schemas/ApiResponseContractServiceList"
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server error"
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
           }
         }
       }
     },
-    "/user/contracts/{contractId}/change/stats": {
+    "/user/contracts/{contractId}/changes/stats": {
       "get": {
         "summary": "Get contract change statistics",
         "description": "Returns statistics for changes associated with a specific contract.",
@@ -28839,7 +31281,7 @@
         }
       }
     },
-    "/user/contracts/{contractId}/change": {
+    "/user/contracts/{contractId}/changes": {
       "get": {
         "summary": "List contract changes",
         "description": "Returns a paginated list of changes for a specific contract.",
@@ -28943,7 +31385,7 @@
         }
       }
     },
-    "/user/contracts/{contractId}/change/{changeId}": {
+    "/user/contracts/{contractId}/changes/{changeId}": {
       "get": {
         "summary": "Get contract change details",
         "description": "Returns detailed information for a specific contract change.",
@@ -29011,7 +31453,7 @@
         }
       }
     },
-    "/user/contracts/{contractId}/change/{changeId}/comment": {
+    "/user/contracts/{contractId}/changes/{changeId}/comment": {
       "get": {
         "summary": "Get contract change comments",
         "description": "Returns comments for a specific contract change.",
@@ -30319,32 +32761,50 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Contract fetched successfully"
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/ContractDTO"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ApiResponseContractServiceDetail"
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Contract not found"
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server error"
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
           }
         }
       }
@@ -32147,29 +34607,40 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "MSA contracts fetched successfully"
-                    },
-                    "data": {
-                      "type": "object"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ApiResponseMsaContractServiceList"
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server error"
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
           }
         }
       }
@@ -32203,37 +34674,55 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "MSA contract fetched successfully"
-                    },
-                    "data": {
-                      "type": "object"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ApiResponseMsaContractServiceDetail"
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Contract not found"
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server error"
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
           }
         }
       }
     },
-    "/user/msa-contract/{contractId}/change/stats": {
+    "/user/msa-contract/{contractId}/changes/stats": {
       "get": {
         "summary": "Get MSA contract change statistics",
         "description": "Returns statistics for changes associated with a specific MSA contract.",
@@ -32290,7 +34779,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/change": {
+    "/user/msa-contract/{contractId}/changes": {
       "get": {
         "summary": "List MSA contract changes",
         "description": "Returns a paginated list of changes for a specific MSA contract.",
@@ -32381,7 +34870,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/change/{changeId}": {
+    "/user/msa-contract/{contractId}/changes/{changeId}": {
       "get": {
         "summary": "Get MSA contract change details",
         "description": "Returns detailed information for a specific MSA contract change.",
@@ -32447,7 +34936,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/change/{changeId}/comment": {
+    "/user/msa-contract/{contractId}/changes/{changeId}/comment": {
       "get": {
         "summary": "Get MSA contract change comments",
         "description": "Returns comments for a specific MSA contract change.",
@@ -33742,7 +36231,7 @@
         }
       }
     },
-    "/vendor/personnel/contract/{contractId}": {
+    "/vendor/contracts/{contractId}/personnel": {
       "get": {
         "summary": "List contract personnel by contract",
         "description": "Returns users in the company eligible for contract-related roles.",
@@ -34096,7 +36585,7 @@
     "/vendor/contracts": {
       "get": {
         "summary": "List vendor contracts",
-        "description": "Returns a paginated list of contracts for the authenticated vendor.",
+        "description": "Returns a paginated list of standard vendor contracts for the authenticated vendor. This endpoint only returns non-MSA contracts and labels the payload with contractType = Contract.",
         "tags": [
           "Vendor - Contract"
         ],
@@ -34104,6 +36593,9 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-roles": [
+          "vendor"
         ],
         "parameters": [
           {
@@ -34163,28 +36655,191 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVendorContractServiceList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contracts/me": {
+      "get": {
+        "summary": "List project  manager contracts",
+        "description": "Returns a paginated list of standard vendor contracts for the authenticated vendor. This endpoint only returns non-MSA contracts and labels the payload with contractType = Contract.",
+        "tags": [
+          "Vendor - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-roles": [
+          "vendor"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "completed",
+                "terminated",
+                "suspended",
+                "expired"
+              ]
+            },
+            "description": "Filter by contract status"
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by contract category"
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Filter by date (YYYY-MM-DD)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contracts fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVendorContractServiceList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contracts/{contractId}/kpis": {
+      "get": {
+        "summary": "List contract KPIs",
+        "description": "Returns KPI entries for a specific vendor contract.",
+        "tags": [
+          "Vendor - Contract Kpis"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract identifier"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "KPI type filter"
+          },
+          {
+            "in": "query",
+            "name": "startDate",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "KPI range start date"
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "KPI range end date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract KPIs fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
                   "type": "object",
                   "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
+                    "status": {
+                      "type": "integer",
+                      "example": 200
                     },
                     "message": {
                       "type": "string",
-                      "example": "Contracts fetched successfully"
+                      "example": "Contract KPIs fetched successfully"
                     },
                     "data": {
-                      "type": "object",
-                      "properties": {
-                        "contracts": {
-                          "type": "array",
-                          "items": {
-                            "$ref": "#/components/schemas/ContractDTO"
-                          }
-                        },
-                        "totalContracts": {
-                          "type": "integer"
-                        }
+                      "type": "array",
+                      "items": {
+                        "type": "object"
                       }
                     }
                   }
@@ -34195,8 +36850,287 @@
           "401": {
             "description": "Unauthorized"
           },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Contract not found"
+          },
           "500": {
             "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contracts/{contractId}/kpis/{kpiId}": {
+      "get": {
+        "summary": "Get contract KPI details",
+        "description": "Returns a single KPI entry for a specific vendor contract.",
+        "tags": [
+          "Vendor - Contract Kpis"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract identifier"
+          },
+          {
+            "in": "path",
+            "name": "kpiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "KPI identifier"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "KPI type filter"
+          },
+          {
+            "in": "query",
+            "name": "startDate",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "KPI range start date"
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "KPI range end date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract KPI fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract KPI fetched successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Contract KPI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contracts/{contractId}/approve": {
+      "post": {
+        "summary": "Approve or reject a contract as vendor",
+        "description": "Allows the authenticated vendor assigned to the contract to approve or reject it while it is pending approval.",
+        "tags": [
+          "Vendor - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalActionDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract approval processed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract approval processed successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Contract or vendor not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contracts/{contractId}/project-managers/{projectManagerId}/assign": {
+      "post": {
+        "summary": "Assign a project manager to a contract",
+        "description": "Assigns a vendor project manager to the specified contract.",
+        "tags": [
+          "Vendor - Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "projectManagerId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Project manager ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project manager assigned to contract successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Project manager assigned to contract successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract or project manager not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
           }
         }
       }
@@ -34256,9 +37190,7 @@
             "description": "Server error"
           }
         }
-      }
-    },
-    "/vendor/contracts/{contractId}/compliance/{typeId}": {
+      },
       "patch": {
         "summary": "Update a contract compliance item",
         "description": "Updates compliance files and description for a policy or security item.",
@@ -34279,15 +37211,6 @@
               "type": "string"
             },
             "description": "Contract ID"
-          },
-          {
-            "in": "path",
-            "name": "typeId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Policy ID or security type ID"
           }
         ],
         "requestBody": {
@@ -35053,7 +37976,7 @@
         }
       }
     },
-    "/vendor/contracts/change/{changeId}/comment/{commentId}/reply": {
+    "/vendor/contracts/changes/{changeId}/comment/{commentId}/reply": {
       "post": {
         "summary": "Reply to a contract change comment",
         "description": "Adds a reply to a specific comment on a contract change.",
@@ -35168,7 +38091,7 @@
         }
       }
     },
-    "/vendor/contracts/{contractId}/change/stats": {
+    "/vendor/contracts/{contractId}/changes/stats": {
       "get": {
         "summary": "Get contract change statistics",
         "description": "Returns statistics for changes associated with a specific contract.",
@@ -35244,7 +38167,7 @@
         }
       }
     },
-    "/vendor/contracts/{contractId}/change": {
+    "/vendor/contracts/{contractId}/changes": {
       "get": {
         "summary": "List contract changes",
         "description": "Returns a paginated list of changes for a specific contract.",
@@ -35470,7 +38393,7 @@
         }
       }
     },
-    "/vendor/contracts/{contractId}/change/{changeId}": {
+    "/vendor/contracts/{contractId}/changes/{changeId}": {
       "get": {
         "summary": "Get contract change details",
         "description": "Returns detailed information for a specific contract change.",
@@ -35538,7 +38461,7 @@
         }
       }
     },
-    "/vendor/contracts/{contractId}/change/{changeId}/comment": {
+    "/vendor/contracts/{contractId}/changes/{changeId}/comment": {
       "get": {
         "summary": "Get contract change comments",
         "description": "Returns comments for a specific contract change.",
@@ -36107,6 +39030,94 @@
           },
           "404": {
             "description": "Contract RFI not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/vendor/contracts/{contractId}/rfi/{rfiId}/response": {
+      "get": {
+        "summary": "Get RFI responses",
+        "description": "Returns responses for a specific RFI.",
+        "tags": [
+          "Vendor - Contract RFI"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The contract ID"
+          },
+          {
+            "in": "path",
+            "name": "rfiId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The RFI ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract RFI responses fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Contract RFI response fetched successfully"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContractRfiResponseDTO"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "Contract RFI response fetched successfully",
+                  "data": [
+                    {
+                      "description": "We will proceed with the revised finish order.",
+                      "files": [
+                        {
+                          "name": "finish-order.pdf",
+                          "url": "https://files.example.com/finish-order.pdf",
+                          "type": "application/pdf",
+                          "size": "178245"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract RFI response not found"
           },
           "500": {
             "description": "Server error"
@@ -37481,32 +40492,50 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Contract fetched successfully"
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/ContractDTO"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ApiResponseContractServiceDetail"
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Contract not found"
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server error"
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
           }
         }
       }
@@ -39645,7 +42674,7 @@
     "/vendor/msa-contract": {
       "get": {
         "summary": "List vendor MSA contracts",
-        "description": "Returns a paginated list of MSA contracts for the authenticated vendor.",
+        "description": "Returns a paginated list of vendor MSA contracts for the authenticated vendor. This endpoint only returns MSA contracts and labels the payload with contractType = MsaContract.",
         "tags": [
           "Vendor - MSA Contract"
         ],
@@ -39653,6 +42682,9 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-roles": [
+          "vendor"
         ],
         "parameters": [
           {
@@ -39705,11 +42737,196 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVendorMsaContractServiceList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/approve": {
+      "post": {
+        "summary": "Approve or reject an MSA contract as project manager",
+        "description": "Allows the authenticated vendor project manager assigned to the MSA contract to approve or reject it while it is pending approval.",
+        "tags": [
+          "Vendor - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalActionDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MSA contract approval processed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
                   "type": "object",
                   "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
                     "message": {
                       "type": "string",
-                      "example": "MSA contracts fetched successfully"
+                      "example": "MSA contract approval processed successfully"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract or vendor not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vendor/msa-contract/{contractId}/project-managers/{projectManagerId}/assign": {
+      "post": {
+        "summary": "Assign a project manager to an MSA contract",
+        "description": "Assigns a vendor project manager to the specified MSA contract.",
+        "tags": [
+          "Vendor - MSA Contract"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MSA Contract ID"
+          },
+          {
+            "in": "path",
+            "name": "projectManagerId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Project manager ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project manager assigned to MSA contract successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Project manager assigned to MSA contract successfully"
                     },
                     "data": {
                       "type": "object"
@@ -39720,10 +42937,44 @@
             }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contract or project manager not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server error"
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
           }
         }
       }
@@ -39757,28 +43008,50 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "MSA contract fetched successfully"
-                    },
-                    "data": {
-                      "type": "object"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ApiResponseMsaContractServiceDetail"
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeError"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Contract not found"
+            "description": "Contract not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server error"
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
           }
         }
       }
@@ -39951,9 +43224,7 @@
             "description": "Server error"
           }
         }
-      }
-    },
-    "/vendor/msa-contract/{contractId}/compliance/{typeId}": {
+      },
       "patch": {
         "summary": "Update an MSA contract compliance item",
         "description": "Updates compliance files and description for a policy or security item.",
@@ -39974,15 +43245,6 @@
               "type": "string"
             },
             "description": "MSA Contract ID"
-          },
-          {
-            "in": "path",
-            "name": "typeId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Policy ID or security type ID"
           }
         ],
         "requestBody": {
@@ -41963,6 +45225,10 @@
     {
       "name": "Approver - Contract Report",
       "description": "Contract report management for approvers"
+    },
+    {
+      "name": "Approver - Dashboard",
+      "description": "Approver portfolio dashboard endpoints"
     },
     {
       "name": "Approver - MSA Contract",
