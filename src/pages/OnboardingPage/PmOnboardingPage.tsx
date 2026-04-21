@@ -130,7 +130,7 @@ const PmOnboardingPage = () => {
   >({
     mutationKey: ["pmRegister"],
     mutationFn: async (data) =>
-      await postRequest({ url: "/onboarding/pm-accept", payload: data }),
+      await postRequest({ url: "/onboarding/vendor-pm-accept", payload: data }),
   });
 
   const onSubmit = async (data: PmFormState) => {
