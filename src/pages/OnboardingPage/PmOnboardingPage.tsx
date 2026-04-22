@@ -176,7 +176,7 @@ const PmOnboardingPage = () => {
           {...{
             control: forge.control,
             onSubmit: onSubmit,
-            debug: true,
+            // debug: true,
           }}
         >
           <PmOnboardingForm />
