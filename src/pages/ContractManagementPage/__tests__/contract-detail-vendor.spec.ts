@@ -26,12 +26,12 @@ test.describe("Vendor Contract Detail", () => {
     await seedAuth(page, "vendor");
 
     // Mock vendor API
-    await page.route("**/vendor/contract/c1", async (route) => {
+    await page.route("**/contract/vendor/contracts/c1", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          status: true,
+          status: 200,
           message: "ok",
           data: {
             _id: "c1",

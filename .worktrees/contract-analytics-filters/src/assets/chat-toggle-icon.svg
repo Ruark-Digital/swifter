@@ -1,0 +1,5 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="64" height="64" rx="16" fill="#7C3AED"/>
+<path d="M32 20L36.2426 28.4853L46 32L36.2426 35.5147L32 44L27.7574 35.5147L18 32L27.7574 28.4853L32 20Z" fill="white"/>
+<text x="32" y="54" text-anchor="middle" fill="#1F2937" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="500">Chat with AI</text>
+</svg>

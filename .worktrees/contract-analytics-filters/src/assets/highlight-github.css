@@ -1,0 +1,83 @@
+/* Minimal GitHub-like Highlight.js theme (light + dark) */
+.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 0.75rem;
+  background: #f6f8fa;
+  color: #24292e;
+  border-radius: 0.5rem;
+}
+
+/* Tokens */
+.hljs-comment,
+.hljs-quote { color: #6a737d; }
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-subst { color: #d73a49; font-weight: 600; }
+
+.hljs-number,
+.hljs-literal,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-doctag { color: #005cc5; }
+
+.hljs-string,
+.hljs-title,
+.hljs-section,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-meta-keyword { color: #032f62; }
+
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-type,
+.hljs-params,
+.hljs-attribute { color: #6f42c1; }
+
+.hljs-bullet,
+.hljs-code,
+.hljs-addition { color: #22863a; }
+
+.hljs-symbol,
+.hljs-link,
+.hljs-deletion { color: #b31d28; }
+
+.hljs-meta { color: #b1b7eb; }
+
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 700; }
+
+/* Dark mode */
+.dark .hljs {
+  background: #0b1220;
+  color: #e6edf3;
+}
+.dark .hljs-comment,
+.dark .hljs-quote { color: #8b949e; }
+.dark .hljs-keyword,
+.dark .hljs-selector-tag,
+.dark .hljs-subst { color: #ff7b72; font-weight: 600; }
+.dark .hljs-number,
+.dark .hljs-literal,
+.dark .hljs-variable,
+.dark .hljs-template-variable,
+.dark .hljs-doctag { color: #79c0ff; }
+.dark .hljs-string,
+.dark .hljs-title,
+.dark .hljs-section,
+.dark .hljs-selector-id,
+.dark .hljs-selector-class,
+.dark .hljs-meta-keyword { color: #a5d6ff; }
+.dark .hljs-built_in,
+.dark .hljs-builtin-name,
+.dark .hljs-type,
+.dark .hljs-params,
+.dark .hljs-attribute { color: #d2a8ff; }
+.dark .hljs-bullet,
+.dark .hljs-code,
+.dark .hljs-addition { color: #7ee787; }
+.dark .hljs-symbol,
+.dark .hljs-link,
+.dark .hljs-deletion { color: #ffa198; }
+.dark .hljs-meta { color: #c9d1d9; }
