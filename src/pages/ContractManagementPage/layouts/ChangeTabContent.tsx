@@ -75,7 +75,9 @@ const ChangeTabContent: React.FC<Props> = ({
   isActive,
   actionsDisabled,
 }) => {
-  const { isVendor, isManager, isApprover, isAdmin, isViewOnly } = useUserRole();
+  const { isVendor, isProjectManager, isManager, isApprover, isAdmin, isViewOnly } =
+    useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const [activeTab, setActiveTab] = React.useState<ChangeTabValue>("all");
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -83,7 +85,7 @@ const ChangeTabContent: React.FC<Props> = ({
   });
 
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/change`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/change`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/change`;
     if (isManager) return `/contract/manager/contracts/${contractId}/changes`;
     if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/change`;
@@ -163,7 +165,7 @@ const ChangeTabContent: React.FC<Props> = ({
           >
             <Share2 className="mr-2 h-4 w-4" /> Export Report
           </Button>
-          {(isManager || isVendor) && (
+          {(isManager || isContractVendorLike) && (
             <CreateChangeDialog
               trigger={
                 <Button

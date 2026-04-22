@@ -65,6 +65,60 @@ test.describe("Contract Detail (workflow)", () => {
     });
   });
 
+  test("[dark mode] contract detail uses theme-aware classes", async ({
+    page,
+  }) => {
+    test.setTimeout(120000);
+    await page.addInitScript(() => {
+      document.documentElement.classList.add("dark");
+    });
+
+    const contractId = "c-dark-1";
+
+    await page.route("**/contract/manager/contracts**", async (route) => {
+      const url = route.request().url();
+      if (url.includes(`/contract/manager/contracts/${contractId}`)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: 200,
+            message: "Contract fetched successfully",
+            data: {
+              _id: contractId,
+              title: "Dark Mode Contract",
+              status: "active",
+            },
+          }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: [],
+        }),
+      });
+    });
+
+    await page.goto("/", { waitUntil: "commit" });
+    await page.goto(`/dashboard/contract-management/${contractId}`, {
+      waitUntil: "commit",
+    });
+
+    const heading = page.getByRole("heading", { name: "Dark Mode Contract" });
+    await expect(heading).toBeVisible({ timeout: 60000 });
+    await expect(heading).toHaveClass(/text-foreground/);
+
+    const statusBadge = page.locator("div", { hasText: /^Active$/ }).first();
+    await expect(statusBadge).toBeVisible();
+    await expect(statusBadge).toHaveClass(/dark:bg-green-900/);
+  });
+
   test("renders contract header from Contract Manager list endpoint", async ({ page }) => {
     const contractId = "c-123";
 
@@ -122,7 +176,7 @@ test.describe("Contract Detail (workflow)", () => {
     await expect(page.locator("text=Failed to load contract details.")).toBeVisible({ timeout: 15000 });
   });
 
-  test("renders company admin overview with view-only contract endpoint", async ({ page }) => {
+  test("renders company admin overview with company admin contract endpoint", async ({ page }) => {
     await seedAuth(page, "company_admin");
     const contractId = "c-admin";
 
@@ -137,7 +191,7 @@ test.describe("Contract Detail (workflow)", () => {
           body: JSON.stringify({
             status: 200,
             message: "ok",
-            data: { _id: contractId, title: "Manager Contract", status: "active" },
+            data: { _id: contractId, title: "Company Admin Contract", status: "active" },
           }),
         });
       }
@@ -184,8 +238,8 @@ test.describe("Contract Detail (workflow)", () => {
     await expect(page.getByText("Edit Contract")).toHaveCount(0);
     await expect(page.getByText("Deviation Scale")).toBeVisible();
     await expect(page.getByText("Project Name")).toHaveCount(0);
-    expect(viewOnlyRequests).toBe(1);
-    expect(managerDetailRequests).toBe(0);
+    expect(viewOnlyRequests).toBe(0);
+    expect(managerDetailRequests).toBe(1);
   });
 
   test("renders rate sheet summary in the details sheet", async ({ page }) => {
@@ -275,6 +329,102 @@ test.describe("Contract Detail (workflow)", () => {
     await expect(page.getByText("Skilled Trades")).toBeVisible();
     await expect(page.getByText("Electrician")).toBeVisible();
     await expect(page.getByText("$120")).toBeVisible();
+  });
+
+  test("contract manager can approve/reject pending invoice from invoice details", async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    const contractId = "c-123";
+    const invoiceId = "inv-1";
+
+    await page.route("**/contract/manager/contracts/*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "Contract fetched successfully",
+          data: { _id: contractId, title: "Unit Test Contract", status: "active" },
+        }),
+      });
+    });
+
+    await page.route(
+      `**/contract/manager/contracts/${contractId}/invoice/stats`,
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            message: "ok",
+            data: { approved: 0, pending: 1, rejected: 0, draft: 0 },
+          }),
+        });
+      },
+    );
+
+    await page.route(
+      `**/contract/manager/contracts/${contractId}/invoice**`,
+      async (route) => {
+        const url = route.request().url();
+        if (url.includes("/stats")) {
+          await route.fallback();
+          return;
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            message: "ok",
+            data: {
+              invoices: [
+                {
+                  _id: invoiceId,
+                  invoiceId,
+                  type: "monthly",
+                  status: "pending",
+                  amountBilled: 100,
+                  amountRemaining: 900,
+                },
+              ],
+              total: 1,
+            },
+          }),
+        });
+      },
+    );
+
+    await page.route(
+      `**/contract/manager/contracts/invoice/${invoiceId}`,
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            message: "ok",
+            data: {
+              _id: invoiceId,
+              invoiceId,
+              type: "monthly",
+              status: "pending",
+              description: "Pending invoice",
+              files: [],
+              billed: 100,
+              remaining: 900,
+            },
+          }),
+        });
+      },
+    );
+
+    await page.goto(`/dashboard/contract-management/${contractId}`);
+    await page.getByRole("tab", { name: "Invoice" }).click();
+    await page.getByTestId("view-invoice-detail").click();
+
+    await expect(page.getByTestId("invoice-details-sheet")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Reject" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Approve" })).toBeVisible();
   });
 });
 

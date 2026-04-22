@@ -50,6 +50,7 @@ export const schema = yup.object({
   awardedSolicitation: yup.string().optional(),
   type: yup.string().required("Contract type is required"),
   category: yup.string().required("Category is required"),
+  currency: yup.string().required("Currency is required"),
   manager: yup.string().optional(),
   projectManager: yup.string().optional(),
   jobTitle: yup.string().optional(),
@@ -129,7 +130,7 @@ export const schema = yup.object({
     ),
   duration: yup.string().optional(),
   termType: yup.string().optional(),
-  documents: yup.array().optional(),
+  documents: yup.array().nullable().optional(),
   deliverables: yup
     .array(
       yup.object({
@@ -191,6 +192,7 @@ export const defaultValues = {
   awardedSolicitation: "",
   type: "",
   category: "",
+  currency: "",
   manager: "",
   projectManager: "",
   jobTitle: "",
@@ -708,6 +710,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       "awardedSolicitation",
       "type",
       "category",
+      "currency",
       "manager",
       "jobTitle",
       "contractId",
@@ -973,6 +976,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         contractType: data.type,
         contractRelationship: relationship,
         businessDivision: data.businessDivision,
+        currency: data.currency,
         projectId:
           relationship === "project" ? data.project || undefined : undefined,
         msaContractId:

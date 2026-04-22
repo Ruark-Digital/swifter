@@ -34,24 +34,24 @@ export const useForge = <
   });
   
   // Use useForm with the created formControl to maintain the same interface
-  const methods = useForm<TFieldValues>({ formControl });
+  const methods = useForm<TFieldValues>({
+    formControl,
+    shouldUnregister: (props as any).shouldUnregister,
+  });
 
   const hasFields =
     (typeof fields !== "undefined" && fields?.length !== 0) ?? false;
 
-  // Initialize enhanced validation properties on the control
-  const enhancedControl = {
-    ...methods.control,
-    hasFields,
-    fields,
-    _validationStrategy: validationStrategy || 'progressive',
-    _fieldConfigs: fieldConfigs || [],
-    _useEnhancedValidation: useEnhancedValidation || false,
-    _smartEmptyHandling: smartEmptyHandling || false,
-    _progressiveValidation: progressiveValidation || false,
-    _debounceValidation: debounceValidation || false,
-    _contextAware: contextAware || false,
-  };
+  const enhancedControl = methods.control as any;
+  enhancedControl.hasFields = hasFields;
+  enhancedControl.fields = fields;
+  enhancedControl._validationStrategy = validationStrategy || "progressive";
+  enhancedControl._fieldConfigs = fieldConfigs || [];
+  enhancedControl._useEnhancedValidation = useEnhancedValidation || false;
+  enhancedControl._smartEmptyHandling = smartEmptyHandling || false;
+  enhancedControl._progressiveValidation = progressiveValidation || false;
+  enhancedControl._debounceValidation = debounceValidation || false;
+  enhancedControl._contextAware = contextAware || false;
 
   return { 
     ...methods, 

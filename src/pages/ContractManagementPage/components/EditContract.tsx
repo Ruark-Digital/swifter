@@ -87,6 +87,7 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
     resolver: yupResolver(createSchema),
     defaultValues: createDefaults,
     mode: "onChange",
+    shouldUnregister: false,
   });
 
   const [step, setStep] = React.useState(1);
@@ -147,12 +148,39 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
   React.useEffect(() => {
     const contract = contractRes?.data?.data;
     if (!contract) return;
-    const relationship =
-      contract.contractRelationship === "msa_project" ? "msa" :
-      contract.contractRelationship === "standalone" ? "standalone" : "project";
+    const relationship = (
+      contract.contractRelationship === "msa" ||
+      contract.contractRelationship === "msa_project" ||
+      contract.contractRelationship === "standalone" ||
+      contract.contractRelationship === "project"
+        ? contract.contractRelationship
+        : "project"
+    ) as "msa" | "msa_project" | "standalone" | "project";
 
-    const paymentTermId = contract.paymentTerms?._id ?? "";
-    const termTypeId = contract.contractTerm?._id ?? "";
+    const paymentTerms = paymentTermsQuery.data?.data ?? [];
+    const paymentTermKey =
+      typeof contract.paymentTerms === "string"
+        ? contract.paymentTerms
+        : contract.paymentTerms?._id || contract.paymentTerms?.name || "";
+    const paymentTermId =
+      paymentTerms.find(
+        (it) => it._id === paymentTermKey || it.name === paymentTermKey,
+      )?._id ||
+      (typeof contract.paymentTerms === "string"
+        ? contract.paymentTerms
+        : contract.paymentTerms?._id ?? "");
+
+    const termTypes = termTypesQuery.data?.data ?? [];
+    const termTypeKey =
+      typeof contract.contractTerm === "string"
+        ? contract.contractTerm
+        : contract.contractTerm?._id || contract.contractTerm?.name || "";
+    const termTypeId =
+      termTypes.find((it) => it._id === termTypeKey || it.name === termTypeKey)
+        ?._id ||
+      (typeof contract.contractTerm === "string"
+        ? contract.contractTerm
+        : contract.contractTerm?._id ?? "");
 
     const documents =
       (contract.files ?? []).map((f) => ({
@@ -166,6 +194,14 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       (contract.deliverables ?? []).map((d) => ({
         name: d.name,
         dueDate: d.dueDate ? new Date(d.dueDate) : undefined,
+      })) ?? [];
+
+    const milestones =
+      (contract.milestone ?? []).map((m: any) => ({
+        name: m?.name ?? m?.milestoneName ?? "",
+        amount: m?.amount ?? m?.milestoneAmount ?? "",
+        dueDate: m?.dueDate ? new Date(m.dueDate) : undefined,
+        deliverable: m?.deliverable ?? "",
       })) ?? [];
 
     const approvalGroups =
@@ -198,13 +234,22 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       ...createDefaults,
       name: contract.title ?? "",
       relationship,
-      project: contract.project?._id ?? "",
-      awardedSolicitation: contract.solicitation?._id ?? "",
+      project:
+        typeof contract.project === "string"
+          ? contract.project
+          : contract.project?._id ?? "",
+      awardedSolicitation:
+        typeof contract.solicitation === "string"
+          ? contract.solicitation
+          : contract.solicitation?._id ?? "",
       type: contract.contractType?._id ?? "",
       category: contract.category ?? "",
       manager: contract.managers?.[0] ?? "",
       jobTitle: contract.jobTitle ?? "",
-      vendor: contract.vendor?._id ?? "",
+      vendor:
+        typeof contract.vendor === "string"
+          ? contract.vendor
+          : contract.vendor?._id ?? "",
       personnel: (contract.vendorPersonnel ?? []).map((p) => ({
         id: p._id ?? p.email ?? "",
         text: p.name || p.email || p._id || "",
@@ -237,7 +282,10 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
         role: t.role ?? "",
         phone: (t as any).phone ?? "",
       })),
-      businessDivision: contract.businessDivision?._id ?? "",
+      businessDivision:
+        typeof contract.businessDivision === "string"
+          ? contract.businessDivision
+          : contract.businessDivision?._id ?? "",
       contractId: contract.contractId ?? "",
       description: contract.description ?? "",
       visibility: contract.visibility ?? "",
@@ -255,6 +303,7 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       duration: contract.duration ? String(contract.duration) : "",
       deliverables,
       documents,
+      milestones,
       draftStartDate: contract.contractFormationStage?.draft?.startDate ? new Date(contract.contractFormationStage.draft.startDate) : undefined,
       draftEndDate: contract.contractFormationStage?.draft?.endDate ? new Date(contract.contractFormationStage.draft.endDate) : undefined,
       reviewStartDate: contract.contractFormationStage?.review?.startDate ? new Date(contract.contractFormationStage.review.startDate) : undefined,
@@ -274,9 +323,7 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       rating: contract.rating ?? 5,
     }
 
-    console.log(payload);
-
-    reset(payload);
+    reset(payload, { keepDirtyValues: true });
   }, [contractRes?.data?.data, paymentTermsQuery.data?.data, termTypesQuery.data?.data, reset]);
 
   const typeOptions = React.useMemo(

@@ -46,24 +46,15 @@ async function seedAuth(page: Page) {
 test.describe("Edit Contract", () => {
   test.beforeEach(async ({ page }) => {
     await seedAuth(page);
-    await page.route("**/api/v1/**", async (route) => {
-      const url = route.request().url();
-      if (url.includes("/contract/manager/contracts/")) {
-        await route.fallback();
-        return;
-      }
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ status: 200, message: "ok", data: [] }),
-      });
-    });
   });
 
   test("updates contract via PUT and shows success", async ({ page }) => {
+    test.setTimeout(120000);
     const contractId = "c-123";
+    const errors: string[] = [];
+    page.on("pageerror", (err) => errors.push(err.stack || err.message));
 
-    await page.route(`**/contract/manager/contracts/${contractId}`, async (route) => {
+    await page.route(`**/contract/manager/contracts/${contractId}**`, async (route) => {
       if (route.request().method().toUpperCase() === "GET") {
         await route.fulfill({
           status: 200,
@@ -121,7 +112,7 @@ test.describe("Edit Contract", () => {
               files: [],
               currentApprovalLevel: 0,
               approvers: [],
-              status: "publish",
+              status: "draft",
               datePublished: new Date().toISOString(),
               timezone: "UTC",
               isDeleted: false,
@@ -141,6 +132,13 @@ test.describe("Edit Contract", () => {
       const body = route.request().postDataJSON();
       expect(body.title).toBe("Edited Title");
       expect(body.contractRelationship).toBe("project");
+      expect(body.businessDivision).toBe("BD");
+      expect(body.projectId).toBe("p1");
+      expect(body.solicitationId).toBe("s1");
+      expect(body.contractPaymentTerm).toBe("pt1");
+      expect(body.paymentTerm).toBe("Net 30");
+      expect(body.contractTermType).toBe("tt1");
+      expect(body.termType).toBe("Fixed");
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -188,18 +186,65 @@ test.describe("Edit Contract", () => {
       });
     });
 
+    await page.route("**/api/v1/**", async (route) => {
+      const url = route.request().url();
+      const passthrough = [
+        `/contract/manager/contracts/${contractId}`,
+        "/contract/manager/types",
+        "/contract/manager/payment-terms",
+        "/contract/manager/terms",
+        "/contract/manager/personnel",
+        "/contract/manager/awarded-solicitation",
+      ];
+      if (passthrough.some((p) => url.includes(p))) {
+        await route.fallback();
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: 200, message: "ok", data: [] }),
+      });
+    });
+
     await page.goto(`/dashboard/contract-management/${contractId}`);
-    await page.getByRole("tab", { name: "Documents" }).click();
-    await page.getByRole("button", { name: "Edit Contract" }).click();
-    await expect(page.getByTestId("edit-contract-sheet")).toBeVisible();
+    if (errors.length > 0) {
+      throw new Error(errors.join("\n"));
+    }
+    await expect(
+      page.getByRole("heading", { name: "Original Title" }),
+    ).toBeVisible({ timeout: 30000 });
+    await page.waitForTimeout(1000);
+    await page.evaluate(() => {
+      const buttons = Array.from(document.querySelectorAll("button"));
+      const btn = buttons.find(
+        (b) => (b.textContent || "").trim() === "Edit Contract",
+      ) as HTMLButtonElement | undefined;
+      btn?.click();
+    });
+    await expect(page.getByTestId("edit-contract-sheet")).toBeVisible({
+      timeout: 30000,
+    });
+    const sheet = page.getByTestId("edit-contract-sheet");
 
-    // Change title field: relies on Step1BasicInfo input name="name"
-    const nameInput = page.locator('input[name="name"]');
+    const putReq = page.waitForRequest(
+      (req) =>
+        req.method() === "PUT" &&
+        req.url().includes("/contract/manager/contracts"),
+      { timeout: 30000 },
+    );
+
+    const nameInput = sheet.getByTestId("contract-name-input");
     await nameInput.fill("Edited Title");
-    // Ctrl+S to save
-    await page.keyboard.press("Control+S");
+    await expect(nameInput).toHaveValue("Edited Title");
+    await sheet.getByRole("button", { name: "Continue" }).click();
+    await sheet.getByRole("button", { name: "Save Changes" }).click();
+    await putReq;
 
-    await expect(page.getByText("Contract updated successfully")).toBeVisible();
+    await expect(page.getByText("Contract updated successfully")).toBeVisible({
+      timeout: 30000,
+    });
     await expect(page.getByTestId("edit-contract-sheet")).toBeHidden({ timeout: 5000 });
   });
 });

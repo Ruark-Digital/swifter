@@ -3,6 +3,7 @@ import { AxiosResponse, AxiosError } from "axios";
 export type UserRole =
   | "evaluator"
   | "vendor"
+  | "project_manager"
   | "approver"
   | "view_only"
   | "company_admin"

@@ -6,12 +6,16 @@ type Props = {
   committed?: number;
   actual?: number;
   currency?: string;
+  selectedRange?: string;
+  onRangeChange?: (value: string) => void;
 };
 
 export const SpendCard: React.FC<Props> = ({
   committed = 0,
   actual = 0,
   currency = "USD",
+  selectedRange = "ytd",
+  onRangeChange,
 }) => {
   const safeCommitted = Number.isFinite(committed) ? committed : 0;
   const safeActual = Number.isFinite(actual) ? actual : 0;
@@ -29,7 +33,11 @@ export const SpendCard: React.FC<Props> = ({
         <CardTitle className="text-[16px] font-semibold text-[#030712]">
           Committed vs Actual Spend
         </CardTitle>
-        <Tabs value="ytd" className="w-full">
+        <Tabs
+          value={selectedRange}
+          onValueChange={(value) => onRangeChange?.(value)}
+          className="w-full"
+        >
           <TabsList className="bg-transparent p-0 gap-2">
             <TabsTrigger className="rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467]" value="ytd">
               YTD
@@ -108,4 +116,3 @@ export const SpendCard: React.FC<Props> = ({
     </Card>
   );
 };
-

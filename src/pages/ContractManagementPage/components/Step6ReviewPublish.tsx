@@ -14,6 +14,15 @@ import { useUser } from "@/store/authSlice";
 
 type Props = { control: Control<any> };
 
+function extractList<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (Array.isArray((value as any)?.docs)) return (value as any).docs as T[];
+  if (Array.isArray((value as any)?.data)) return (value as any).data as T[];
+  if (Array.isArray((value as any)?.vendors))
+    return (value as any).vendors as T[];
+  return [];
+}
+
 const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
   const currentUser = useUser();
   const name = useWatch({ control, name: "name" });
@@ -69,36 +78,36 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
   });
 
   const resolvedType = React.useMemo(() => {
-    const options = Array.isArray(typesRes?.data?.data)
-      ? typesRes.data.data
-      : [];
+    const options = extractList<{ _id?: string; name?: string }>(
+      typesRes?.data?.data,
+    );
     const byId = options.find(
       (item: { _id?: string; name?: string }) => item?._id === type,
     );
     return byId?.name || type;
   }, [type, typesRes?.data?.data]);
   const resolvedCategory = React.useMemo(() => {
-    const options = Array.isArray(categoriesRes?.data?.data)
-      ? categoriesRes.data.data
-      : [];
+    const options = extractList<{ _id?: string; name?: string }>(
+      categoriesRes?.data?.data,
+    );
     const byId = options.find(
       (item: { _id?: string; name?: string }) => item?._id === category,
     );
     return byId?.name || category;
   }, [categoriesRes?.data?.data, category]);
   const resolvedPaymentTerm = React.useMemo(() => {
-    const options = Array.isArray(paymentTermsRes?.data?.data)
-      ? paymentTermsRes.data.data
-      : [];
+    const options = extractList<{ _id?: string; name?: string }>(
+      paymentTermsRes?.data?.data,
+    );
     const byId = options.find(
       (item: { _id?: string; name?: string }) => item?._id === paymentTerm,
     );
     return byId?.name || paymentTerm;
   }, [paymentTerm, paymentTermsRes?.data?.data]);
   const resolvedVendor = React.useMemo(() => {
-    const options = Array.isArray(vendorsRes?.data?.data)
-      ? vendorsRes.data.data
-      : [];
+    const options = extractList<any>(vendorsRes?.data?.data).map((item) =>
+      item?.vendor ? item.vendor : item,
+    ) as { _id?: string; name?: string; email?: string }[];
     const byId = options.find(
       (item: { _id?: string; name?: string; email?: string }) => {
         return item?._id === vendor || item?.email === vendor;
@@ -106,7 +115,7 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
     );
     return byId?.name || byId?.email || vendor;
   }, [vendor, vendorsRes?.data?.data]);
-  const resolvedManager = manager || currentUser?.name;
+  const resolvedManager = manager || currentUser?.name || currentUser?.email;
 
   const formatDate = (value?: Date | null) => {
     if (!value) return "Not specified";

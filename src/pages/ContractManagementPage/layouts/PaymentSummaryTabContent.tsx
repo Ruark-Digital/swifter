@@ -561,7 +561,8 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
   contract,
   isActive,
 }) => {
-  const { isVendor, isManager, isApprover } = useUserRole();
+  const { isVendor, isProjectManager, isManager, isApprover } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
 
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
@@ -593,7 +594,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
         });
         return res.data as { message?: string; data?: any[] };
       }
-      if (isVendor) {
+      if (isContractVendorLike) {
         const res = await getRequest({
           url: `/contract/vendor/contracts/${contractId}/payment-holdbacks`,
         });
@@ -602,7 +603,9 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
       return { data: [] as any[] };
     },
     enabled:
-      Boolean(contractId) && !!isActive && (isManager || isApprover || isVendor),
+      Boolean(contractId) &&
+      !!isActive &&
+      (isManager || isApprover || isContractVendorLike),
     staleTime: 60000,
     retry: false,
   });
@@ -623,7 +626,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
         });
         return res.data as { message?: string; data?: any[] };
       }
-      if (isVendor) {
+      if (isContractVendorLike) {
         const res = await getRequest({
           url: `/contract/vendor/contracts/${contractId}/payment-savings`,
         });
@@ -632,7 +635,9 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
       return { data: [] as any[] };
     },
     enabled:
-      Boolean(contractId) && !!isActive && (isManager || isApprover || isVendor),
+      Boolean(contractId) &&
+      !!isActive &&
+      (isManager || isApprover || isContractVendorLike),
     staleTime: 60000,
     retry: false,
   });
@@ -898,7 +903,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
           />
           {!holdbacksLoading &&
             !savingsLoading &&
-            isVendor &&
+            isContractVendorLike &&
             milestoneRows.length === 0 && (
               <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
                 No milestones found.
@@ -919,7 +924,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
               row.dueDate,
             ]}
           />
-          {!holdbacksLoading && isVendor && holdbackRows.length === 0 && (
+          {!holdbacksLoading && isContractVendorLike && holdbackRows.length === 0 && (
             <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
               No holdback releases available.
             </div>

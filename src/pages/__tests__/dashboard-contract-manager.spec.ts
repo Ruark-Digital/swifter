@@ -521,4 +521,61 @@ test.describe("Dashboard (Contract Manager)", () => {
     await expect(chartCard.locator("tspan", { hasText: "TechServices Incorporated" })).toHaveCount(0);
     await expect(chartCard.locator("tspan", { hasText: "Global Consulting Group" })).toHaveCount(0);
   });
+
+  test("contract analytics filter triggers vendor contract value refetch", async ({
+    page,
+  }) => {
+    await seedAuth(page, "contract_manager");
+    const seenRanges: string[] = [];
+    page.on("request", (req) => {
+      const url = req.url();
+      if (!url.includes("/contract/manager/contracts/dashboard/vendor-contract-value")) {
+        return;
+      }
+      seenRanges.push(new URL(url).searchParams.get("range") ?? "");
+    });
+
+    await mockContractManagerDashboardEndpoints(page);
+
+    const initialReqPromise = page.waitForRequest((req) =>
+      req.url().includes("/contract/manager/contracts/dashboard/vendor-contract-value"),
+    );
+
+    await page.goto("/dashboard");
+    await page.getByRole("tab", { name: "Analytics" }).click();
+
+    const initialReq = await initialReqPromise;
+    expect(new URL(initialReq.url()).searchParams.get("range")).toBe("YTD");
+
+    const cardTitle = page.getByText("Contract Value by vendors").first();
+    const card = cardTitle
+      .locator('xpath=ancestor::*[contains(@class,"rounded-2xl")]')
+      .first();
+
+    const refetchReqPromise = page.waitForRequest((req) => {
+      if (
+        !req
+          .url()
+          .includes("/contract/manager/contracts/dashboard/vendor-contract-value")
+      )
+        return false;
+      return new URL(req.url()).searchParams.get("range") === "12months";
+    });
+
+    await card.getByRole("tab", { name: "12 months" }).click();
+    await refetchReqPromise;
+
+    expect(seenRanges).toContain("12months");
+  });
+
+  test("formats total contract value with compact notation", async ({ page }) => {
+    await seedAuth(page, "contract_manager");
+    await mockContractManagerDashboardEndpoints(page);
+
+    await page.goto("/dashboard");
+
+    await expect(page.getByText("Total Contract Value")).toBeVisible();
+    await expect(page.getByText("12500000")).toHaveCount(0);
+    await expect(page.getByText("12.5M")).toBeVisible();
+  });
 });

@@ -3,12 +3,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartConfig } from "@/components/ui/chart";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 
-type Props = { approved?: number; pending?: number; rejected?: number };
+type Props = {
+  approved?: number;
+  pending?: number;
+  rejected?: number;
+  selectedRange?: string;
+  onRangeChange?: (value: string) => void;
+};
 
 export const InvoiceStatusCard: React.FC<Props> = ({
   approved = 98,
   pending = 34,
   rejected = 12,
+  selectedRange = "ytd",
+  onRangeChange,
 }) => {
   const data = [
     { name: "Approved", value: approved, color: "#10b981" },
@@ -22,7 +30,11 @@ export const InvoiceStatusCard: React.FC<Props> = ({
         <CardTitle className="text-[16px] font-semibold text-[#030712]">
           Invoice Status
         </CardTitle>
-        <Tabs value="ytd" className="w-full">
+        <Tabs
+          value={selectedRange}
+          onValueChange={(value) => onRangeChange?.(value)}
+          className="w-full"
+        >
           <TabsList className="bg-transparent p-0 gap-2">
             <TabsTrigger
               className="rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467]"

@@ -17,7 +17,7 @@ import AmendmentsTable, {
   type AmendmentRow,
 } from "../components/AmendmentsTable";
 import { useQuery } from "@tanstack/react-query";
-import type { ApiResponse, ApiResponseError } from "@/types";
+import { parseFileSize } from "@/lib/utils";
 import {
   type ContractAmendmentDTO,
   type ContractAmendmentStatsDTO,
@@ -30,6 +30,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToastHandler } from "@/hooks/useToaster";
 import { postRequest } from "@/lib/axiosInstance";
 import type { UploadURLs } from "../lib/contractChanges";
+import type { ApiResponse, ApiResponseError } from "@/types";
 
 type CreateAmendmentFormValues = {
   amendmentTitle: string;
@@ -50,13 +51,13 @@ type CreateAmendmentFormValues = {
   files: File[] | null;
 };
 
-type ContractAmendmentChange = { field: string; value: string };
+type ContractAmendmentChange = { field: string; value: string | number };
 
 type ContractAmendmentFile = {
   name: string;
   url: string;
   type: string;
-  size: string;
+  size: number;
 };
 
 type CreateAmendmentPayload = {
@@ -196,7 +197,7 @@ export const CreateAmendmentDialog: React.FC<{
               name: firstUploaded.name || file.name,
               url: firstUploaded.url,
               type: firstUploaded.type || file.type,
-              size: firstUploaded.size || file.size.toString(),
+              size: parseFileSize(firstUploaded.size) || file.size,
             };
           }),
         );
@@ -224,9 +225,12 @@ export const CreateAmendmentDialog: React.FC<{
     }
     if (data.impactType === "cost" || data.impactType === "time_cost") {
       if (data.costImpactAmount) {
+        const numValue = typeof data.costImpactAmount === "string" 
+          ? parseFloat(data.costImpactAmount) 
+          : data.costImpactAmount;
         changes.push({
           field: "cost",
-          value: String(data.costImpactAmount),
+          value: numValue,
         });
       }
     }
@@ -244,7 +248,10 @@ export const CreateAmendmentDialog: React.FC<{
         });
       }
       if (data.costEnabled && data.otherCost) {
-        changes.push({ field: "cost", value: String(data.otherCost) });
+        const numValue = typeof data.otherCost === "string"
+          ? parseFloat(data.otherCost)
+          : data.otherCost;
+        changes.push({ field: "cost", value: numValue });
       }
     }
 
@@ -695,11 +702,12 @@ const AmendmentsTabContent: React.FC<Props> = ({
   isActive,
   actionsDisabled,
 }) => {
-  const { isApprover, isVendor, isManager, isAdmin, isViewOnly } =
+  const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
     useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
 
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/amendment`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/amendment`;
     if (isApprover)
       return `/contract/approver/contracts/${contractId}/amendment`;
     if (isManager)

@@ -5,9 +5,16 @@ import { cn } from "@/lib/utils";
 type Props = {
   values?: { draft: number; review: number; approval: number; execution: number };
   bottleneck?: { stage: string; days: number; reason: string };
+  selectedRange?: string;
+  onRangeChange?: (value: string) => void;
 };
 
-export const CycleTimeCard: React.FC<Props> = ({ values, bottleneck }) => {
+export const CycleTimeCard: React.FC<Props> = ({
+  values,
+  bottleneck,
+  selectedRange = "ytd",
+  onRangeChange,
+}) => {
   const v = values || { draft: 5, review: 8, approval: 12, execution: 6 };
   const max = Math.max(...Object.values(v), 12);
   const pct = (x: number) => Math.round((x / max) * 100);
@@ -35,7 +42,11 @@ export const CycleTimeCard: React.FC<Props> = ({ values, bottleneck }) => {
             Average Cycle Time per Stage
           </CardTitle>
         </div>
-        <Tabs value="ytd" className="w-full">
+        <Tabs
+          value={selectedRange}
+          onValueChange={(value) => onRangeChange?.(value)}
+          className="w-full"
+        >
           <TabsList className="bg-transparent p-0 gap-2">
             <TabsTrigger
               value="ytd"

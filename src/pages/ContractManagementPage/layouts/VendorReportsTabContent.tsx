@@ -317,13 +317,14 @@ function VendorReportsTabContent({
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 300);
-  const { isVendor, isApprover, isManager, isAdmin, isViewOnly } =
+  const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } =
     useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const [openCreate, setOpenCreate] = useState(false);
   const [openSuccess, setOpenSuccess] = useState(false);
 
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}`;
     if (isApprover) return `/contract/approver/contracts/${contractId}`;
     if (isManager) return `/contract/manager/contracts/${contractId}`;
     if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}`;
@@ -411,7 +412,7 @@ function VendorReportsTabContent({
         <h2 className="text-lg font-semibold text-slate-900">
           Vendor’s Reports
         </h2>
-        {isVendor && (
+        {isContractVendorLike && (
           <Dialog open={openCreate} onOpenChange={setOpenCreate}>
             <DialogTrigger asChild>
               <Button className="h-10 rounded-xl bg-[#2A4467] text-white">
