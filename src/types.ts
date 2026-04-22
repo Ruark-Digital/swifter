@@ -56,6 +56,7 @@ export type User = {
   isAi: boolean;
   isDeleted: boolean;
   contactEmail: string;
+  projectmanagerId?: string;
 };
 
 export type ApiError = {
@@ -124,6 +125,14 @@ export interface Vendor {
   };
 }
 
+export interface ProjectManager {
+  user: {
+    _id: string;
+    name: string;
+  };
+  status: string;
+}
+
 export interface ContractDetail {
   contractFormationStage: ContractFormationStage;
   _id:                    string;
@@ -152,6 +161,7 @@ export interface ContractDetail {
   holdBack:               number;
   holdBackBank:           number;
   paymentTerms:           Company;
+  projectManager:         ProjectManager;
   paymentStructure:       string;
   deliverables:           ContractDeliverable[];
   insurance:              ContractInsurance;

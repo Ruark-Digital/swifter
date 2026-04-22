@@ -232,11 +232,11 @@ const ContractDetailPage: React.FC = () => {
   const user = useUser();
 
   const isContractProjectManager = Boolean(
-    user?._id && (contractData as any)?.projectManager?.user?._id === user._id,
+    user?.projectmanagerId &&
+    contractData?.projectManager?.user?._id === user.projectmanagerId,
   );
   const isContractProjectManagerPending =
-    (contractData as any)?.projectManager?.status === "pending";
-  console.log({ isContractProjectManager, isContractProjectManagerPending, user });
+    contractData?.projectManager?.status === "pending";
 
   const canProjectManagerApprove =
     isContractProjectManager &&
