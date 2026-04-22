@@ -16,11 +16,11 @@ const TEST_VENDOR = {
 
 // Helper function to login
 async function login(page: Page) {
-  await page.goto('/login');
+  await page.goto('/');
   await page.fill('[data-testid="email-input"]', TEST_USER.email);
   await page.fill('[data-testid="password-input"]', TEST_USER.password);
   await page.click('[data-testid="login-button"]');
-  await page.waitForURL('/dashboard');
+  await page.waitForURL(/\/dashboard.*/);
 }
 
 // Helper function to navigate to vendor management page
