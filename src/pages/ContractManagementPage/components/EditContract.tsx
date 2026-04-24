@@ -57,7 +57,7 @@ const toNumberOrUndefined = (value: unknown) => {
   if (typeof value === "string") {
     const trimmed = value.trim();
     if (!trimmed) return undefined;
-    const match = trimmed.match(/^(-?\\d+(?:\\.\\d+)?)\\s*([a-zA-Z]+)?$/);
+    const match = trimmed.match(/^(-?\d+(?:\.\d+)?)\s*([a-zA-Z]+)?$/);
     if (!match) return undefined;
     const numeric = Number(match[1]);
     if (!Number.isFinite(numeric)) return undefined;
@@ -78,6 +78,56 @@ const toNumberOrUndefined = (value: unknown) => {
   }
   const num = Number(value as any);
   return Number.isFinite(num) ? num : undefined;
+};
+
+export type ContractApprovalGroupInput = {
+  name?: string | null;
+  approvers?: unknown[];
+  approvalLevel?: string;
+  amount?: unknown;
+};
+
+export const buildContractApproversPayload = (
+  approvalGroups: ContractApprovalGroupInput[] | undefined,
+) => {
+  const groups = approvalGroups ?? [];
+
+  return groups
+    .map((g, index) => {
+      const groupName = typeof g?.name === "string" ? g.name.trim() : "";
+      const user = (g?.approvers ?? [])
+        .map((u: any) => u?.value ?? u)
+        .filter(Boolean) as string[];
+
+      if (!groupName || user.length === 0) return null;
+
+      const parsedLevel = g?.approvalLevel ? Number(g.approvalLevel) : undefined;
+      const level =
+        typeof parsedLevel === "number" && Number.isFinite(parsedLevel)
+          ? parsedLevel
+          : index + 1;
+
+      const amount = toNumberOrUndefined(g?.amount);
+
+      return {
+        user,
+        groupName,
+        level,
+        ...(amount !== undefined ? { amount } : {}),
+      };
+    })
+    .filter(Boolean) as Array<{
+    user: string[];
+    groupName: string;
+    level: number;
+    amount?: number;
+  }>;
+};
+
+export const resolveContractSaveStatus = (
+  currentStatus: unknown,
+): "draft" | "publish" => {
+  return currentStatus === "draft" ? "draft" : "publish";
 };
 
 const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdated }) => {
@@ -394,7 +444,7 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
     },
   });
 
-  const buildPayload = React.useCallback((data: yup.InferType<typeof createSchema>) => {
+  const buildPayload = React.useCallback((data: yup.InferType<typeof createSchema>, status: "draft" | "publish") => {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
     const relationship =
       data.relationship === "msa"
@@ -414,20 +464,9 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
     if (data.paymentStructure === "milestone") paymentStructureEnum = "Milestone";
     if (data.paymentStructure === "lump_sum") paymentStructureEnum = "Progress Draw";
 
-    const approvers =
-      (data.approvalGroups ?? []).flatMap((g) => {
-        const lvl = g.approvalLevel ? Number(g.approvalLevel) : undefined;
-        const amountValue = toNumberOrUndefined(g.amount);
-        const userIds = (g.approvers ?? [])
-          .map((u: any) => u?.value ?? u)
-          .filter(Boolean);
-        return {
-          user: userIds,
-          groupName: g.name,
-          level: lvl,
-          amount: amountValue,
-        };
-      }) ?? [];
+    const approvers = buildContractApproversPayload(
+      data.approvalGroups as ContractApprovalGroupInput[] | undefined,
+    );
 
     const milestone =
       data.paymentStructure === "milestone"
@@ -568,7 +607,7 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       insurance: insurancePayload,
       contractFormationStage,
       rating: data.rating || 5,
-      status: "publish",
+      status,
       approvers,
       signatories: signatories && signatories.length > 0 ? signatories : undefined,
     };
@@ -655,7 +694,8 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       if (e.key === "s" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         const vals = getValues();
-        const payload = buildPayload(vals as yup.InferType<typeof createSchema>);
+        const status = resolveContractSaveStatus(contractRes?.data?.data?.status);
+        const payload = buildPayload(vals as yup.InferType<typeof createSchema>, status);
         setLastPayload(payload);
         mutation.mutate(payload);
       } else if (e.key === "Escape") {
@@ -665,7 +705,7 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [open, getValues, buildPayload, mutation, onOpenChange]);
+  }, [open, getValues, buildPayload, mutation, onOpenChange, contractRes?.data?.data?.status]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -698,7 +738,7 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
               {STEP_TITLES[step - 1]}
             </p>
             <Forge control={control} onSubmit={(data) => {
-              const payload = buildPayload(data as any);
+              const payload = buildPayload(data as any, "publish");
               setLastPayload(payload);
               mutation.mutate(payload);
             }} className="mt-4 space-y-6">
@@ -765,7 +805,10 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
                     className=" h-12 rounded-xl"
                     onClick={() => {
                       const vals = getValues();
-                      const payload = buildPayload(vals as any);
+                      const status = resolveContractSaveStatus(
+                        contractRes?.data?.data?.status,
+                      );
+                      const payload = buildPayload(vals as any, status);
                       setLastPayload(payload);
                       mutation.mutate(payload);
                     }}

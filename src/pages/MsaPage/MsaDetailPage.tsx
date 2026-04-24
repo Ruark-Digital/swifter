@@ -1,10 +1,11 @@
 import React from "react";
 import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { SEOWrapper } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -18,7 +19,8 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUserRole } from "@/hooks/useUserRole";
-import { getRequest } from "@/lib/axiosInstance";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
+import { Textarea } from "@/components/ui/textarea";
 import Overview from "./layouts/Overview";
 import LinkedContracts from "./layouts/LinkedContracts";
 import PaymentSummary from "./layouts/PaymentSummary";
@@ -37,6 +39,8 @@ import Reports from "./layouts/Reports";
 import NcrLog from "./layouts/NcrLog";
 import { Share2 } from "lucide-react";
 import { Status } from "./components/StatusBadge";
+import { useUser } from "@/store/authSlice";
+import type { ApiResponseError } from "@/types";
 
 type TabKey =
   | "overview"
@@ -245,6 +249,7 @@ export interface MSAContractDetail {
   __v: number;
   holdBackReleased: number;
   savingAmount: number;
+  projectManager?: { status?: string; user?: { _id?: string } };
 }
 
 export interface Approver {
@@ -337,10 +342,18 @@ const MsaDetailPage: React.FC = () => {
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
-  const { isVendor, isApprover, isViewOnly, isManager } = useUserRole();
+  const { isVendor, isApprover, isViewOnly, isManager, isProjectManager } =
+    useUserRole();
   const queryKey = useUserQueryKey(["msa-contract-detail", id]);
+  const approveStatusQueryKey = useUserQueryKey(["msa-approve-status", id]);
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = React.useState<TabKey>("overview");
   const [topTab, setTopTab] = React.useState<"details" | "linked">("details");
+  const [approvalDialogOpen, setApprovalDialogOpen] = React.useState(false);
+  const [approvalAction, setApprovalAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [comment, setComment] = React.useState("");
 
   const {
     data: msaResponse,
@@ -349,7 +362,7 @@ const MsaDetailPage: React.FC = () => {
   } = useQuery({
     queryKey,
     queryFn: async () => {
-      const base = isVendor
+      const base = isVendor || isProjectManager
         ? "/contract/vendor"
         : isApprover
           ? "/contract/approver"
@@ -390,6 +403,73 @@ const MsaDetailPage: React.FC = () => {
     return ALL_TABS;
   }, [isApprover, isVendor, isViewOnly, isManager]);
 
+  const msa = msaResponse?.data?.data as MSAContractDetail | undefined;
+
+  const user = useUser();
+  const isMsaProjectManager = Boolean(
+    user?.projectmanagerId &&
+      msa?.projectManager?.user?._id === user.projectmanagerId,
+  );
+  const isMsaProjectManagerPending = msa?.projectManager?.status === "pending";
+  const canProjectManagerApprove =
+    isMsaProjectManager &&
+    isMsaProjectManagerPending &&
+    msa?.status === "pending_approval";
+
+  const { data: approveStatusResponse } = useQuery({
+    queryKey: [approveStatusQueryKey[0], msa?._id],
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `/contract/approver/msa-contract/${msa?._id ?? ""}/approve/status`,
+      });
+      return res.data as { data?: { status?: string } };
+    },
+    enabled: Boolean(msa?._id) && isApprover && msa?.status === "pending_approval",
+    staleTime: 60000,
+    retry: false,
+  });
+
+  const canApprove = approveStatusResponse?.data?.status === "pending";
+  const hasApprovedOrRejected =
+    approveStatusResponse?.data?.status === "approved" ||
+    approveStatusResponse?.data?.status === "rejected";
+
+  const approvalMutation = useMutation({
+    mutationFn: async (action: "approved" | "rejected") => {
+      const payload = { action, comment };
+      const url = canProjectManagerApprove
+        ? `/contract/vendor/msa-contract/${msa?._id ?? ""}/approve`
+        : `/contract/approver/msa-contract/${msa?._id ?? ""}/approve`;
+      const res = await postRequest({ url, payload });
+      return res.data as { message?: string };
+    },
+    onSuccess: (res, action) => {
+      toastHandler.success(
+        `MSA ${action === "approved" ? "approved" : "rejected"} successfully`,
+        res?.message ?? "Success",
+      );
+      queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({
+        queryKey: [approveStatusQueryKey[0], msa?._id],
+      });
+      setApprovalDialogOpen(false);
+      setApprovalAction(null);
+      setComment("");
+    },
+    onError: (err: ApiResponseError) => {
+      toastHandler.error("Failed to update MSA status", err);
+    },
+  });
+
+  const handleApprovalAction = (action: "approved" | "rejected") => {
+    setApprovalAction(action);
+    setApprovalDialogOpen(true);
+  };
+
+  const submitApproval = () => {
+    if (approvalAction) approvalMutation.mutate(approvalAction);
+  };
+
   if (isLoading) {
     return (
       <PageLoader
@@ -415,8 +495,6 @@ const MsaDetailPage: React.FC = () => {
       </div>
     );
   }
-
-  const msa = msaResponse?.data?.data as MSAContractDetail | undefined;
 
   if (!msa) {
     return (
@@ -484,6 +562,26 @@ const MsaDetailPage: React.FC = () => {
         </div>
         <Badge className={status?.className}>{status?.label}</Badge>
       </div>
+
+      {((isApprover && canApprove && !hasApprovedOrRejected) ||
+        canProjectManagerApprove) && (
+        <div className="flex items-center gap-4">
+          <Button
+            variant="default"
+            className="bg-[#2A4467] hover:bg-[#2A4467]/90"
+            onClick={() => handleApprovalAction("approved")}
+          >
+            Approve Contract
+          </Button>
+          <Button
+            variant="outline"
+            className="bg-[#F3F4F6] border-[#E5E7EB]"
+            onClick={() => handleApprovalAction("rejected")}
+          >
+            Reject Contract
+          </Button>
+        </div>
+      )}
 
       <Tabs
         value={topTab}
@@ -648,6 +746,47 @@ const MsaDetailPage: React.FC = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {approvalAction === "approved" ? "Approve Contract" : "Reject Contract"}
+            </DialogTitle>
+            <DialogDescription>
+              {approvalAction === "approved"
+                ? "Are you sure you want to approve this contract? This action cannot be undone."
+                : "Please provide a reason for rejecting this contract."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <Textarea
+              placeholder="Add a comment (optional)"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              className="resize-none"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setApprovalDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={submitApproval}
+              disabled={approvalMutation.isPending}
+              variant={approvalAction === "rejected" ? "destructive" : "default"}
+            >
+              {approvalMutation.isPending
+                ? "Processing..."
+                : approvalAction === "approved"
+                  ? "Approve"
+                  : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

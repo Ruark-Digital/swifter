@@ -1062,14 +1062,9 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
   const handleOpenChange = React.useCallback(
     (nextOpen: boolean) => {
-      if (!nextOpen) {
-        reset(defaultValues);
-        setStep(1);
-        clearSession();
-      }
       setOpen(nextOpen);
     },
-    [clearSession, reset],
+    [],
   );
 
   return (

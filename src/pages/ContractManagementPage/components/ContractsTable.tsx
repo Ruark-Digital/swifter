@@ -129,6 +129,8 @@ type ContractsTableProps = {
   totalCount?: number;
   isReadOnly?: boolean;
   disableActions?: boolean;
+  pagination?: PaginationState;
+  setPagination?: React.Dispatch<React.SetStateAction<PaginationState>>;
 };
 
 const ContractsTable: React.FC<ContractsTableProps> = ({
@@ -137,12 +139,16 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
   totalCount,
   isReadOnly,
   disableActions,
+  pagination: paginationProp,
+  setPagination: setPaginationProp,
 }) => {
   const [search, setSearch] = React.useState("");
-  const [pagination, setPagination] = React.useState<PaginationState>({
+  const [localPagination, setLocalPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
+  const pagination = paginationProp ?? localPagination;
+  const setPagination = setPaginationProp ?? setLocalPagination;
 
   const tableColumns = React.useMemo(() => {
     if (!isReadOnly && !disableActions) return columns;
@@ -173,7 +179,10 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                 <Input
                   placeholder="Search contract"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                  }}
                   data-testid="search-input"
                   className="h-10 w-[260px]"
                   disabled={isReadOnly}

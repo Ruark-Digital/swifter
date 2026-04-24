@@ -1,5 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
+import type { PaginationState } from "@tanstack/react-table";
 import { SEOWrapper } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ type ContractApi = {
   contractId: string;
   title: string;
   category?: string;
+  contractRelationship?: string;
   status:
     | "draft"
     | "pending_approval"
@@ -39,6 +41,7 @@ type ContractApi = {
   createdAt?: string;
   vendor?: { name?: string; id?: string };
   creator?: { name?: string; email?: string; _id?: string };
+  projectManager?: { name?: string };
   contractValue?: number;
 };
 
@@ -62,7 +65,7 @@ type ContractStatsResponse = {
 type ContractListResponse = {
   status: number;
   message: string;
-  data: { contracts: ContractApi[]; totalContracts: 0 };
+  data: { contracts: ContractApi[]; totalContracts: number };
 };
 
 type ApproverContractListResponse = {
@@ -129,12 +132,24 @@ const useContractsStats = (enabled = true) => {
   });
 };
 
-const useAllContracts = (enabled = true) => {
-  const queryKey = useUserQueryKey(["contracts-all"]);
+const useAllContracts = (pagination: PaginationState, enabled = true) => {
+  const queryKey = useUserQueryKey([
+    "contracts-all",
+    pagination.pageIndex,
+    pagination.pageSize,
+  ]);
   return useQuery<ContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
-      const res = await getRequest({ url: "/contract/manager/contracts" });
+      const res = await getRequest({
+        url: "/contract/manager/contracts",
+        config: {
+          params: {
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+          },
+        },
+      });
       return res.data as ContractListResponse;
     },
     enabled,
@@ -142,12 +157,24 @@ const useAllContracts = (enabled = true) => {
   });
 };
 
-const useMyContracts = (enabled = true) => {
-  const queryKey = useUserQueryKey(["contracts-me"]);
+const useMyContracts = (pagination: PaginationState, enabled = true) => {
+  const queryKey = useUserQueryKey([
+    "contracts-me",
+    pagination.pageIndex,
+    pagination.pageSize,
+  ]);
   return useQuery<ContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
-      const res = await getRequest({ url: "/contract/manager/contracts/me" });
+      const res = await getRequest({
+        url: "/contract/manager/contracts/me",
+        config: {
+          params: {
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+          },
+        },
+      });
       return res.data as ContractListResponse;
     },
     enabled,
@@ -170,12 +197,24 @@ const useApproverContractsStats = (enabled = true) => {
   });
 };
 
-const useApproverContracts = (enabled = true) => {
-  const queryKey = useUserQueryKey(["approver-contracts"]);
+const useApproverContracts = (pagination: PaginationState, enabled = true) => {
+  const queryKey = useUserQueryKey([
+    "approver-contracts",
+    pagination.pageIndex,
+    pagination.pageSize,
+  ]);
   return useQuery<ApproverContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
-      const res = await getRequest({ url: "/contract/approver/contracts" });
+      const res = await getRequest({
+        url: "/contract/approver/contracts",
+        config: {
+          params: {
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+          },
+        },
+      });
       return res.data as ApproverContractListResponse;
     },
     enabled,
@@ -196,12 +235,24 @@ const useVendorContractsStats = (enabled = true) => {
   });
 };
 
-const useVendorContracts = (enabled = true) => {
-  const queryKey = useUserQueryKey(["vendor-contracts"]);
+const useVendorContracts = (pagination: PaginationState, enabled = true) => {
+  const queryKey = useUserQueryKey([
+    "vendor-contracts",
+    pagination.pageIndex,
+    pagination.pageSize,
+  ]);
   return useQuery<VendorContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
-      const res = await getRequest({ url: "/contract/vendor/contracts" });
+      const res = await getRequest({
+        url: "/contract/vendor/contracts",
+        config: {
+          params: {
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+          },
+        },
+      });
       return res.data as VendorContractListResponse;
     },
     enabled,
@@ -237,7 +288,7 @@ const mapContractsToRows = (contracts?: ContractApi[]): ContractRow[] => {
       contractId: c.contractId,
       title: c.title,
       code: c._id,
-      vendor: c.vendor?.name ?? "-",
+      vendor: c.vendor?.name ?? c.projectManager?.name ?? "-",
       value: `$${value}`,
       owner: c.creator?.name ?? "-",
       published: c.createdAt
@@ -297,19 +348,39 @@ const ContractManagementPage: React.FC = () => {
   const managerQueriesEnabled = !isContractVendorLike && !isApprover;
   const approverQueriesEnabled = isApprover;
 
+  const [allPagination, setAllPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [myPagination, setMyPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [approverPagination, setApproverPagination] =
+    React.useState<PaginationState>({
+      pageIndex: 0,
+      pageSize: 10,
+    });
+  const [vendorPagination, setVendorPagination] =
+    React.useState<PaginationState>({
+      pageIndex: 0,
+      pageSize: 10,
+    });
+
   const { data: statsData } = useContractsStats(managerQueriesEnabled);
   const { data: allContractsData, isLoading: isAllContractsLoading } =
-    useAllContracts(managerQueriesEnabled);
+    useAllContracts(allPagination, managerQueriesEnabled);
   const { data: myContractsData, isLoading: isMyContractsLoading } =
-    useMyContracts(managerQueriesEnabled);
+    useMyContracts(myPagination, managerQueriesEnabled);
   const { data: approverStatsData } = useApproverContractsStats(
     approverQueriesEnabled,
   );
   const { data: approverContractsData, isLoading: isApproverContractsLoading } =
-    useApproverContracts(approverQueriesEnabled);
-  const { data: vendorStatsData } = useVendorContractsStats(isContractVendorLike);
+    useApproverContracts(approverPagination, approverQueriesEnabled);
+  const { data: vendorStatsData } =
+    useVendorContractsStats(isContractVendorLike);
   const { data: vendorContractsData, isLoading: isVendorContractsLoading } =
-    useVendorContracts(isContractVendorLike);
+    useVendorContracts(vendorPagination, isContractVendorLike);
 
   const stats = isApprover ? approverStatsData?.data : statsData?.data;
   const statsCounts = stats
@@ -379,6 +450,8 @@ const ContractManagementPage: React.FC = () => {
             isLoading={isVendorContractsLoading}
             totalCount={vendorContractsData?.data.totalContracts}
             isReadOnly={isViewOnly}
+            pagination={vendorPagination}
+            setPagination={setVendorPagination}
           />
         </>
       ) : (
@@ -422,6 +495,8 @@ const ContractManagementPage: React.FC = () => {
               rows={approverContractsRows}
               isLoading={isApproverContractsLoading}
               totalCount={approverContractsData?.data.totalContracts}
+              pagination={approverPagination}
+              setPagination={setApproverPagination}
               // isReadOnly={true}
               // disableActions={isApprover}
             />
@@ -449,8 +524,10 @@ const ContractManagementPage: React.FC = () => {
                 <ContractsTable
                   rows={allContractsRows}
                   isLoading={isAllContractsLoading}
-                  totalCount={allContractsRows.length}
+                  totalCount={allContractsData?.data.totalContracts}
                   isReadOnly={isViewOnly}
+                  pagination={allPagination}
+                  setPagination={setAllPagination}
                   // disableActions={isCompanyAdmin}
                 />
               </TabsContent>
@@ -458,8 +535,10 @@ const ContractManagementPage: React.FC = () => {
                 <ContractsTable
                   rows={myContractsRows}
                   isLoading={isMyContractsLoading}
-                  totalCount={myContractsRows.length}
+                  totalCount={myContractsData?.data.totalContracts}
                   isReadOnly={isViewOnly}
+                  pagination={myPagination}
+                  setPagination={setMyPagination}
                   // disableActions={isCompanyAdmin}
                 />
               </TabsContent>

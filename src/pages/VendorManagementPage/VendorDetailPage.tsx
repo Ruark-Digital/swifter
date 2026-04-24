@@ -95,7 +95,7 @@ const StatusBadge = ({
     <Badge
       className={`${getStatusColor(
         status,
-        isSuspended
+        isSuspended,
       )} border-0 text-xs px-2 py-1 rounded-md`}
     >
       {displayStatus}
@@ -133,7 +133,9 @@ const OverviewTab = ({ vendor }: { vendor: VendorDetail }) => {
           Registration Date
         </h4>
         <p className="text-sm text-gray-900 font-medium dark:text-gray-200">
-          {vendor.createdAt ? formatDateTZ(vendor.createdAt, "MMMM d, yyyy") : "N/A"}
+          {vendor.createdAt
+            ? formatDateTZ(vendor.createdAt, "MMMM d, yyyy")
+            : "N/A"}
         </p>
       </div>
 
@@ -216,7 +218,7 @@ const DocumentsTab = ({
                 <div className="flex items-start gap-3 flex-1">
                   <div className="flex-shrink-0">
                     {getFileIcon(
-                      getFileExtension(document.name, document.fileType)
+                      getFileExtension(document.name, document.fileType),
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -241,7 +243,7 @@ const DocumentsTab = ({
                     variant="ghost"
                     size="icon"
                     className={cn(
-                      "h-8 w-8 p-0 bg-gray-100 rounded-full hover:bg-gray-200"
+                      "h-8 w-8 p-0 bg-gray-100 rounded-full hover:bg-gray-200",
                     )}
                     title="View"
                     onClick={() => onViewDocument(document)}
@@ -342,7 +344,7 @@ const SubmissionsTab = ({
             ? formatDateTZ(
                 row?.original?.createdAt,
                 "dd MMMM, yyyy hh:mm aaa",
-                (row?.original as any)?.timezone
+                (row?.original as any)?.timezone,
               )
             : "N/A"}
         </span>
@@ -468,7 +470,11 @@ const ProjectManagersTab = ({
   const [selectedProjectManager, setSelectedProjectManager] =
     useState<VendorProjectManager | null>(null);
 
-  const remindInviteMutation = useMutation<ApiResponse<any>, ApiResponseError, string>({
+  const remindInviteMutation = useMutation<
+    ApiResponse<any>,
+    ApiResponseError,
+    string
+  >({
     mutationKey: ["remindInvite"],
     mutationFn: async (email: string) =>
       await postRequest({
@@ -478,7 +484,7 @@ const ProjectManagersTab = ({
     onSuccess: (result) => {
       toast.success(
         "Resend Invite",
-        result.data.message ?? "Invite resent successfully"
+        result.data.message ?? "Invite resent successfully",
       );
       setConfirmOpen(false);
       setSelectedProjectManager(null);
@@ -494,7 +500,9 @@ const ProjectManagersTab = ({
       header: "Name",
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="font-medium">{row.original.name || row.original.email}</span>
+          <span className="font-medium">
+            {row.original.name || row.original.email}
+          </span>
           <span className="text-sm text-gray-500">{row.original.email}</span>
         </div>
       ),
@@ -502,7 +510,9 @@ const ProjectManagersTab = ({
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <span className="capitalize">{row.original.status}</span>,
+      cell: ({ row }) => (
+        <span className="capitalize">{row.original.status}</span>
+      ),
     },
     {
       accessorKey: "createdAt",
@@ -512,7 +522,7 @@ const ProjectManagersTab = ({
           ? formatDateTZ(
               row.original.createdAt,
               "dd MMMM, yyyy hh:mm aaa",
-              (row.original as any)?.timezone
+              (row.original as any)?.timezone,
             )
           : "N/A",
     },
@@ -529,6 +539,7 @@ const ProjectManagersTab = ({
           <DropdownMenuContent align="end" className="w-44 rounded-2xl">
             <DropdownMenuItem
               className="p-3"
+              disabled={row.original.status === "active"}
               onClick={() => {
                 setSelectedProjectManager(row.original);
                 setConfirmOpen(true);
@@ -642,7 +653,9 @@ export const VendorDetailPage = () => {
   };
 
   // Handle document viewing
-  const handleViewDocument = (document: NonNullable<VendorDetail["documents"]>[0]) => {
+  const handleViewDocument = (
+    document: NonNullable<VendorDetail["documents"]>[0],
+  ) => {
     setSelectedDocument(document);
     setViewerOpen(true);
   };
@@ -827,6 +840,7 @@ export const VendorDetailPage = () => {
             value="project-managers"
             className="mt-0 border-0 p-0"
             data-testid="vendor-project-managers-content"
+            forceMount
           >
             <ProjectManagersTab projectManagers={projectManagers} />
           </TabsContent>

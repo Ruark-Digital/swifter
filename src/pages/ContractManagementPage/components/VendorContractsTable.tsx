@@ -144,6 +144,8 @@ type VendorContractsTableProps = {
   isLoading?: boolean;
   totalCount?: number;
   isReadOnly?: boolean;
+  pagination?: PaginationState;
+  setPagination?: React.Dispatch<React.SetStateAction<PaginationState>>;
 };
 
 const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
@@ -151,12 +153,16 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
   isLoading,
   totalCount,
   isReadOnly,
+  pagination: paginationProp,
+  setPagination: setPaginationProp,
 }) => {
   const [search, setSearch] = React.useState("");
-  const [pagination, setPagination] = React.useState<PaginationState>({
+  const [localPagination, setLocalPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
+  const pagination = paginationProp ?? localPagination;
+  const setPagination = setPaginationProp ?? setLocalPagination;
 
   const tableColumns = React.useMemo(() => {
     if (!isReadOnly) return columns;
@@ -188,7 +194,10 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
                 <Input
                   placeholder="Search contract"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                  }}
                   data-testid="vendor-search-input"
                   className="h-10 w-[260px]"
                   disabled={isReadOnly}

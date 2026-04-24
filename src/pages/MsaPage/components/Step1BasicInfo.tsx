@@ -4,6 +4,7 @@ import {
   TextInput,
   TextSelect,
   TextArea,
+  TextSelectWithSearch,
 } from "@/components/layouts/FormInputs";
 import { useQuery } from "@tanstack/react-query";
 import { businessDivisionApi } from "@/pages/BusinessDivisionsPage/api/businessDivisionApi";
@@ -109,6 +110,60 @@ const Step1BasicInfo: React.FC<Props> = ({ typeOptions, isLoadingTypes }) => {
       value: division._id,
     }));
   }, [divisionsRes]);
+
+  const currencyOptions = React.useMemo(() => {
+    const supportedValuesOf = (Intl as any).supportedValuesOf as
+      | undefined
+      | ((type: string) => string[]);
+
+    const supportedCurrencies =
+      typeof supportedValuesOf === "function" ? supportedValuesOf("currency") : [];
+
+    const fallbackCurrencies = ["CAD", "USD", "EUR", "GBP"];
+
+    const codes =
+      Array.isArray(supportedCurrencies) && supportedCurrencies.length > 0
+        ? supportedCurrencies
+        : fallbackCurrencies;
+
+    const displayNames =
+      typeof (Intl as any).DisplayNames === "function"
+        ? new (Intl as any).DisplayNames(["en"], { type: "currency" })
+        : null;
+
+    const getCurrencyName = (code: string) => {
+      try {
+        const name = displayNames?.of(code);
+        if (typeof name === "string" && name.trim() && name !== code) return name;
+      } catch (err) {
+        void err;
+      }
+
+      try {
+        const parts = new Intl.NumberFormat("en", {
+          style: "currency",
+          currency: code,
+          currencyDisplay: "name",
+        }).formatToParts(0);
+        const name = parts.find((p) => p.type === "currency")?.value;
+        if (typeof name === "string" && name.trim() && name !== code) return name;
+      } catch (err) {
+        void err;
+      }
+
+      return undefined;
+    };
+
+    return Array.from(new Set(codes))
+      .map((code) => {
+        const name = getCurrencyName(code);
+        return {
+          value: code,
+          label: name ? `${code} — ${name}` : code,
+        };
+      })
+      .sort((a, b) => a.value.localeCompare(b.value));
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -235,6 +290,17 @@ const Step1BasicInfo: React.FC<Props> = ({ typeOptions, isLoadingTypes }) => {
         component={TextSelect}
         options={businessDivisionOptions}
         data-testid="msa-business-division-select"
+      />
+
+      <Forger
+        name="currency"
+        label="Currency"
+        placeholder="Select currency"
+        searchPlaceholder="Search currency..."
+        emptyMessage="No currency found."
+        component={TextSelectWithSearch}
+        options={currencyOptions}
+        data-testid="msa-currency-select"
       />
     </div>
   );

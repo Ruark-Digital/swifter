@@ -1,5 +1,6 @@
 import React from "react";
 import { useWatch, Control } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 import {
   Accordion,
   AccordionContent,
@@ -7,8 +8,18 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
+import { getRequest } from "@/lib/axiosInstance";
 
 type Props = { control: Control<any> };
+
+function extractList<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (Array.isArray((value as any)?.docs)) return (value as any).docs as T[];
+  if (Array.isArray((value as any)?.data)) return (value as any).data as T[];
+  if (Array.isArray((value as any)?.vendors))
+    return (value as any).vendors as T[];
+  return [];
+}
 
 const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
   const name = useWatch({ control, name: "name" });
@@ -35,6 +46,48 @@ const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
   const approvalGroups = useWatch({ control, name: "approvalGroups" }) as
     | { name?: string | null; approvers?: unknown; approvalLevel?: string }[]
     | undefined;
+
+  const { data: typesRes } = useQuery({
+    queryKey: ["msaReview", "types"],
+    queryFn: async () => await getRequest({ url: "/contract/manager/types" }),
+    staleTime: 60000,
+  });
+  const { data: paymentTermsRes } = useQuery({
+    queryKey: ["msaReview", "paymentTerms"],
+    queryFn: async () =>
+      await getRequest({ url: "/contract/manager/payment-terms" }),
+    staleTime: 60000,
+  });
+  const { data: vendorsRes } = useQuery({
+    queryKey: ["msaReview", "vendors"],
+    queryFn: async () =>
+      await getRequest({ url: "/procurement/solicitations/vendors" }),
+    staleTime: 60000,
+  });
+
+  const resolvedType = React.useMemo(() => {
+    const options = extractList<{ _id?: string; name?: string }>(
+      (typesRes as any)?.data?.data,
+    );
+    const byId = options.find((item) => item?._id === type);
+    return byId?.name || type;
+  }, [type, typesRes]);
+  const resolvedPaymentTerm = React.useMemo(() => {
+    const options = extractList<{ _id?: string; name?: string }>(
+      (paymentTermsRes as any)?.data?.data,
+    );
+    const byId = options.find((item) => item?._id === paymentTerm);
+    return byId?.name || paymentTerm;
+  }, [paymentTerm, paymentTermsRes]);
+  const resolvedVendor = React.useMemo(() => {
+    const options = extractList<{ _id?: string; name?: string; email?: string }>(
+      (vendorsRes as any)?.data?.data,
+    );
+    const byId = options.find((item) => item?._id === vendor);
+    if (byId) return byId?.name || byId?.email || vendor;
+    const byEmail = options.find((item) => item?.email === vendor);
+    return byEmail?.name || byEmail?.email || vendor;
+  }, [vendor, vendorsRes]);
 
   const formatDate = (value?: Date | null) => {
     if (!value) return "Not specified";
@@ -72,7 +125,9 @@ const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
                 </div>
                 <div>
                   <p className="text-slate-500">Contract Type</p>
-                  <p className="text-slate-800">{type || "Not specified"}</p>
+                  <p className="text-slate-800">
+                    {resolvedType || "Not specified"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-slate-500">Complexity Rating</p>
@@ -106,7 +161,9 @@ const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
                   </div>
                   <div>
                     <p className="text-slate-500">Vendor</p>
-                    <p className="text-slate-800">{vendor || "Not specified"}</p>
+                    <p className="text-slate-800">
+                      {resolvedVendor || "Not specified"}
+                    </p>
                   </div>
                 </>
               ) : (
@@ -133,7 +190,9 @@ const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
                 </div>
                 <div>
                   <p className="text-slate-500">Payment Term</p>
-                  <p className="text-slate-800">{paymentTerm || "Not specified"}</p>
+                  <p className="text-slate-800">
+                    {resolvedPaymentTerm || "Not specified"}
+                  </p>
                 </div>
               </div>
               {hasMilestones ? (

@@ -1,6 +1,12 @@
 import { test, expect, Page } from "@playwright/test";
 
-type SeedRole = "vendor" | "procurement" | "contract_manager" | "approver" | "view_only";
+type SeedRole =
+  | "vendor"
+  | "procurement"
+  | "contract_manager"
+  | "approver"
+  | "view_only"
+  | "project_manager";
 
 async function seedAuth(page: Page, role: SeedRole) {
   await page.addInitScript((roleName) => {
@@ -34,6 +40,7 @@ async function seedAuth(page: Page, role: SeedRole) {
           isAi: false,
           isDeleted: false,
           contactEmail: "test@swiftpro.com",
+          ...(roleName === "project_manager" ? { projectmanagerId: "pm-1" } : {}),
         },
         token: "test-token",
         refresh: null,
@@ -164,5 +171,86 @@ test.describe("MSA Page (stats)", () => {
     await page.goto("/dashboard/msa");
 
     await expect(page.locator('[data-testid="create-msa-button"]')).toHaveCount(0);
+  });
+});
+
+test.describe("MSA Detail (project manager approval)", () => {
+  test.setTimeout(60_000);
+
+  test.beforeEach(async ({ page }) => {
+    await page.route("**/api/v1/**", async (route) => {
+      const url = route.request().url();
+
+      if (
+        url.includes("/contract/vendor/msa-contract/msa-1") &&
+        route.request().method() === "GET"
+      ) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            message: "ok",
+            data: {
+              _id: "msa-1",
+              title: "MSA One",
+              msaContractId: "MSA-001",
+              status: "pending_approval",
+              currency: "CAD",
+              rating: 5,
+              internalTeam: [],
+              vendorPersonnel: [],
+              files: [],
+              approvers: [],
+              currentApprovalLevel: 1,
+              projectManager: { status: "pending", user: { _id: "pm-1" } },
+            },
+          }),
+        });
+        return;
+      }
+
+      if (
+        url.includes("/contract/vendor/msa-contract/msa-1/approve") &&
+        route.request().method() === "POST"
+      ) {
+        const body = route.request().postDataJSON() as any;
+        expect(body.action).toBe("approved");
+        expect(body.comment).toBe("LGTM");
+
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ message: "ok" }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ message: "ok", data: [] }),
+      });
+    });
+  });
+
+  test("shows approval buttons and calls vendor approval endpoint", async ({ page }) => {
+    await seedAuth(page, "project_manager");
+
+    await page.goto("/dashboard/msa/msa-1");
+
+    await expect(page.getByRole("button", { name: "Approve Contract" })).toBeVisible();
+    await page.getByRole("button", { name: "Approve Contract" }).click();
+
+    await page.getByPlaceholder("Add a comment (optional)").fill("LGTM");
+
+    const approveReq = page.waitForRequest(
+      (req) =>
+        req.url().includes("/contract/vendor/msa-contract/msa-1/approve") &&
+        req.method() === "POST",
+      { timeout: 15000 },
+    );
+
+    await page.getByRole("button", { name: "Approve" }).click();
+    await approveReq;
   });
 });

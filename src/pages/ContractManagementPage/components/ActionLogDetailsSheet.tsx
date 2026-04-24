@@ -6,13 +6,14 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+// import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Share2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { contractManagerApi } from "../api/contractManagerApi";
 import { useParams } from "react-router-dom";
 import { format } from "date-fns";
+// import { ContractStatusBadge } from "./StatusBadge";
 
 type ActionLogItem = {
   actionId: string;
@@ -41,10 +42,10 @@ const LabelRow = ({
   value: React.ReactNode;
   highlight?: boolean;
 }) => (
-  <div className="grid grid-cols-2 gap-3 py-2">
-    <span className="text-sm text-slate-500">{label}</span>
+  <div className="py-2">
+    <span className="text-sm text-slate-500 block">{label}</span>
     <span
-      className={`text-sm ${
+      className={`text-sm block ${
         highlight ? "font-semibold text-slate-900" : "text-slate-800"
       }`}
     >
@@ -100,25 +101,6 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
     enabled: !!action && !!contractId && isOpen,
   });
 
-  const getStatusColor = (status?: string) => {
-    switch (status?.toLowerCase()) {
-      case "approved":
-      case "accepted":
-      case "completed":
-      case "open":
-        return "bg-green-100 text-green-700";
-      case "rejected":
-      case "cancelled":
-        return "bg-red-100 text-red-700";
-      case "pending":
-      case "under review":
-      case "draft":
-        return "bg-yellow-100 text-yellow-700";
-      default:
-        return "bg-slate-100 text-slate-700";
-    }
-  };
-
   const renderContent = () => {
     if (isLoading)
       return <div className="p-4 text-center">Loading details...</div>;
@@ -140,8 +122,8 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
         ? format(new Date(submissionDateValue), "dd MMM yyyy")
         : `${action?.dateLine1 || ""} ${action?.dateLine2 || ""}`.trim() || "-";
 
-    const statusText =
-      anyData.meta?.status|| "Unknown";
+    // const statusText =
+    //   anyData.meta?.status|| "Unknown";
 
     const files = [] as File[];
 
@@ -188,14 +170,12 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
                   }
                 />
                 <LabelRow label="Submission Date" value={submissionDate} />
-                <LabelRow
+                {/* <LabelRow
                   label="Status"
                   value={
-                    <Badge className={getStatusColor(statusText)}>
-                      {statusText}
-                    </Badge>
+                    <ContractStatusBadge status={statusText} />
                   }
-                />
+                /> */}
               </div>
             </div>
 
