@@ -48,6 +48,7 @@ import { Badge } from "@/components/ui/badge";
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
 };
 

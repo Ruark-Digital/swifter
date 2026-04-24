@@ -388,7 +388,7 @@ function VendorReportsTabContent({
     { accessorKey: "submissionDate", header: "Submission Date" },
     {
       id: "actions",
-      header: () => <div className="text-right">Actions</div>,
+      header: () => <div className="">Actions</div>,
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <ReportDetailsSheet

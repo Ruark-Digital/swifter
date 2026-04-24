@@ -756,6 +756,7 @@ const ApproverView: React.FC<ViewProps> = ({
 
 type Props = {
   contract: ContractDetail;
+  currency?: string;
   status: { label: string; className: string };
 };
 

@@ -103,7 +103,14 @@ test.describe("Create MSA (API integration)", () => {
           body: JSON.stringify({
             status: 200,
             message: "ok",
-            data: [{ _id: "u-1", firstName: "Alex", lastName: "Smith", email: "a@b.com" }],
+            data: [
+              {
+                _id: "u-1",
+                firstName: "Alex",
+                lastName: "Smith",
+                email: "a@b.com",
+              },
+            ],
           }),
         });
         return;
@@ -116,19 +123,31 @@ test.describe("Create MSA (API integration)", () => {
           body: JSON.stringify({
             status: 200,
             message: "ok",
-            data: [{ name: "file.pdf", url: "https://cdn.example.com/file.pdf", type: "application/pdf", size: "123" }],
+            data: [
+              {
+                name: "file.pdf",
+                url: "https://cdn.example.com/file.pdf",
+                type: "application/pdf",
+                size: "123",
+              },
+            ],
           }),
         });
         return;
       }
 
-      if (url.includes("/contract/manager/msa-contract") && route.request().method() === "POST") {
+      if (
+        url.includes("/contract/manager/msa-contract") &&
+        route.request().method() === "POST"
+      ) {
         const body = route.request().postDataJSON() as any;
 
         expect(body.contractRelationship).toBe("msa_project");
-        expect(body.contractType).toBe("type-1");
+        expect(body.msaType).toBe("type-1");
+        expect(body.contractType).toBeUndefined();
         expect(body.category).toBe("Master Service Agreement");
         expect(body.status).toBe("publish");
+        expect(body.currency).toBe("USD");
 
         expect(body.contigency).toBeUndefined();
         expect(body.holdBack).toBeUndefined();
@@ -142,7 +161,11 @@ test.describe("Create MSA (API integration)", () => {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify({ status: 200, message: "ok", data: { _id: "msa-1" } }),
+          body: JSON.stringify({
+            status: 200,
+            message: "ok",
+            data: { _id: "msa-1" },
+          }),
         });
         return;
       }
@@ -155,17 +178,42 @@ test.describe("Create MSA (API integration)", () => {
     });
   });
 
-  test("submits pruned payload and respects dependent visibility rules", async ({ page }) => {
+  test("submits pruned payload and respects dependent visibility rules", async ({
+    page,
+  }) => {
     await seedAuth(page, "contract_manager");
 
     await page.goto("/dashboard/msa");
 
     await page.locator('[data-testid="create-msa-button"]').click();
 
-    await expect(page.locator('[data-testid="create-msa-dialog"]')).toBeVisible();
+    await expect(
+      page.locator('[data-testid="create-msa-dialog"]'),
+    ).toBeVisible();
+    await expect(page.locator('[role="dialog"]')).toHaveClass(
+      /sm:max-w-\[525px\]/,
+    );
 
-    await page.getByPlaceholder("Enter MSA name").fill("MSA One");
-    await page.locator('select[name="type"]').selectOption("type-1");
+    await page.locator('[data-testid="msa-name-input"]').fill("Test MSA");
+
+    const msaTypeTrigger = page
+      .locator('[data-slot="select-trigger"]')
+      .filter({ hasText: "Select MSA type" })
+      .first();
+    await expect(msaTypeTrigger).toBeVisible();
+    await msaTypeTrigger.click();
+    await page
+      .getByRole("option", { name: "Master Service Agreement", exact: true })
+      .click();
+
+    await page.locator('[data-testid="msa-currency-select"]').click();
+    await page.getByPlaceholder("Search currency...").fill("USD");
+    await page
+      .locator('[data-slot="command-item"]')
+      .filter({ hasText: /^USD/ })
+      .first()
+      .click();
+
     await page
       .locator('[data-testid="create-msa-dialog"]')
       .getByText("1", { exact: true })
@@ -174,17 +222,50 @@ test.describe("Create MSA (API integration)", () => {
 
     await page.getByRole("button", { name: "Continue" }).click();
 
-    for (let i = 0; i < 6; i += 1) {
-      await page.getByRole("button", { name: "Continue" }).click();
-    }
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
+
+    const paymentTermTrigger = page
+      .locator('[data-slot="select-trigger"]')
+      .filter({ hasText: "Select payment term" })
+      .first();
+    await expect(paymentTermTrigger).toBeVisible();
+    await paymentTermTrigger.click();
+    await page.getByRole("option", { name: "NET 30", exact: true }).click();
 
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByRole("button", { name: "Send for Approval" })).toBeVisible();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
+
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(
+      page.getByRole("button", { name: "Send for Approval" }),
+    ).toBeVisible();
     await page.getByRole("button", { name: "Send for Approval" }).click();
+
+    const createDialog = page.locator('[data-testid="create-msa-dialog"]');
+    await expect(
+      createDialog.getByText("Master Service Agreement", { exact: true }),
+    ).toBeVisible();
+    await expect(createDialog.getByText("type-1", { exact: true })).toHaveCount(
+      0,
+    );
+
+    await createDialog
+      .getByRole("button", { name: "3. Contract Value & Payments" })
+      .click();
+    await expect(
+      createDialog.getByText("NET 30", { exact: true }),
+    ).toBeVisible();
+    await expect(createDialog.getByText("pay-1", { exact: true })).toHaveCount(
+      0,
+    );
 
     const createRequest = page.waitForRequest(
       (req) =>
-        req.url().includes("/contract/manager/msa-contract") && req.method() === "POST",
+        req.url().includes("/contract/manager/msa-contract") &&
+        req.method() === "POST",
       { timeout: 15000 },
     );
 
@@ -194,4 +275,3 @@ test.describe("Create MSA (API integration)", () => {
     await createRequest;
   });
 });
-

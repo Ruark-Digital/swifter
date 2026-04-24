@@ -5,7 +5,7 @@ import { TabsContent } from "@/components/ui/tabs";
 import AnalyticsTab from "../components/AnalyticsTab";
 import { getRequest } from "@/lib/axiosInstance";
 
-type Props = { isActive?: boolean };
+type Props = { isActive?: boolean; currency?: string };
 
 const DEFAULT_CONTRACT_TYPE = "Contract" as const;
 type AnalyticsRange = "YTD" | 90 | 60 | 7;

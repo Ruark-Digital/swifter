@@ -552,6 +552,7 @@ const UpdateSavingsDialog: React.FC<{
 
 type Props = {
   contractId: string;
+  currency?: string;
   contract?: ContractDetail | null;
   isActive?: boolean;
 };
@@ -794,68 +795,68 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
       <div className="space-y-6">
         <div className="grid grid-cols-3 gap-x-6 gap-y-6">
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-[18px] leading-7 text-[#6B6B6B]">
+            <div className="text-sm leading-7 text-[#6B6B6B]">
               Contract Value
             </div>
-            <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
               {contractValue}
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-[18px] leading-7 text-[#6B6B6B]">
+            <div className="text-sm leading-7 text-[#6B6B6B]">
               Contigency
             </div>
-            <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
               {contigency}
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-[18px] leading-7 text-[#6B6B6B]">Holdback</div>
-            <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-sm leading-7 text-[#6B6B6B]">Holdback</div>
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
               {holdbackValue}
             </div>
           </div>
 
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-[18px] leading-7 text-[#6B6B6B]">
+            <div className="text-sm leading-7 text-[#6B6B6B]">
               Holdback Amount
             </div>
-            <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
               {holdbackAmount}
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-[18px] leading-7 text-[#6B6B6B]">
+            <div className="text-sm leading-7 text-[#6B6B6B]">
               Holdback Released
             </div>
-            <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
               {holdbackReleased}
             </div>
           </div>
           {isManager && (
             <div className="flex flex-col justify-center gap-4">
-              <div className="text-[18px] leading-7 text-[#6B6B6B]">
+              <div className="text-sm leading-7 text-[#6B6B6B]">
                 Savings Realized
               </div>
-              <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
+              <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
                 {savingAmount}
               </div>
             </div>
           )}
 
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-[18px] leading-7 text-[#6B6B6B]">
+            <div className="text-sm leading-7 text-[#6B6B6B]">
               Payment Structure
             </div>
-            <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
               {paymentStructure}
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-[18px] leading-7 text-[#6B6B6B]">
+            <div className="text-sm leading-7 text-[#6B6B6B]">
               Payment Term
             </div>
-            <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
               {paymentTerm}
             </div>
           </div>

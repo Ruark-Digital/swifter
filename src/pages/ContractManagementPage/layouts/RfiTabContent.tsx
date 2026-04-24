@@ -406,6 +406,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
 };

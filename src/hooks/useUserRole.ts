@@ -15,12 +15,12 @@ export const useUserRole = () => {
 
     try {
       const raw = window.localStorage.getItem("auth");
-      if (!raw) return "procurement";
+      if (!raw) return "view_only";
       const parsed = JSON.parse(raw);
       const persistedRoleName = parsed?.state?.user?.role?.name;
-      return persistedRoleName || "procurement";
+      return persistedRoleName || "view_only";
     } catch {
-      return "procurement";
+      return "view_only";
     }
   }, [user?.role?.name]);
 

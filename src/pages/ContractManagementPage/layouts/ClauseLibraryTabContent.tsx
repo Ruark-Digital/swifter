@@ -22,22 +22,32 @@ function RiskPill({
   children: string;
 }) {
   const bg =
-    tone === "low" ? "bg-[#DCFCE7]" : tone === "medium" ? "bg-[#FEF9C3]" : "bg-[#FEE2E2]";
+    tone === "low"
+      ? "bg-[#DCFCE7]"
+      : tone === "medium"
+        ? "bg-[#FEF9C3]"
+        : "bg-[#FEE2E2]";
   const text =
-    tone === "low" ? "text-[#166534]" : tone === "medium" ? "text-[#854D0E]" : "text-[#991B1B]";
+    tone === "low"
+      ? "text-[#166534]"
+      : tone === "medium"
+        ? "text-[#854D0E]"
+        : "text-[#991B1B]";
   return (
     <div className={`inline-flex rounded px-2 py-1 ${bg}`}>
-      <span className={`text-xs font-semibold leading-4 ${text}`}>{children}</span>
+      <span className={`text-xs font-semibold leading-4 ${text}`}>
+        {children}
+      </span>
     </div>
   );
 }
 
-
-
 function RatesValuesBlock({ children }: { children: React.ReactNode }) {
   return (
     <div className="rounded border-l-4 border-[#22C55E] bg-[#F0FDF4] px-2 py-3">
-      <div className="text-sm font-semibold leading-5 text-[#14532D]">💰 Rates & Values</div>
+      <div className="text-sm font-semibold leading-5 text-[#14532D]">
+        💰 Rates & Values
+      </div>
       <div className="mt-2">{children}</div>
     </div>
   );
@@ -99,7 +109,9 @@ function CategoryCard({
             <div className="text-[18px] font-semibold leading-7 text-[#030712]">
               {title}
             </div>
-            <div className="text-sm leading-5 text-[#4B5563]">{clausesCount}</div>
+            <div className="text-sm leading-5 text-[#4B5563]">
+              {clausesCount}
+            </div>
           </div>
         </div>
 
@@ -124,32 +136,47 @@ function CategoryCard({
   );
 }
 
-function ClauseCard({ title, risk, riskTone, summary, fullDetails, ratesValues }: ClauseCardProps) {
+function ClauseCard({
+  title,
+  risk,
+  riskTone,
+  summary,
+  fullDetails,
+  ratesValues,
+}: ClauseCardProps) {
   return (
     <div className="flex flex-col gap-3 border-b border-[#F3F4F6] px-5 py-5">
       <div className="flex items-start justify-between">
-        <div className="text-base font-semibold leading-6 text-[#111827]">{title}</div>
+        <div className="text-base font-semibold leading-6 text-[#111827]">
+          {title}
+        </div>
         <RiskPill tone={riskTone}>{risk}</RiskPill>
       </div>
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-col rounded border-l-4 border-[#3B82F6] bg-[#EFF6FF] px-2 py-3">
-          <div className="text-sm font-semibold leading-5 text-[#1E3A8A]">📋 Summary</div>
+          <div className="text-sm font-semibold leading-5 text-[#1E3A8A]">
+            📋 Summary
+          </div>
           <div className="mt-1 text-sm leading-5 text-[#374151]">{summary}</div>
         </div>
 
         {ratesValues && <RatesValuesBlock>{ratesValues}</RatesValuesBlock>}
 
         <div className="rounded bg-[#F9FAFB] p-3">
-          <div className="text-sm font-semibold leading-5 text-[#111827]">📄 Full Details</div>
-          <div className="mt-1 text-sm leading-5 text-[#374151]">{fullDetails}</div>
+          <div className="text-sm font-semibold leading-5 text-[#111827]">
+            📄 Full Details
+          </div>
+          <div className="mt-1 text-sm leading-5 text-[#374151]">
+            {fullDetails}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-type Props = { isActive?: boolean };
+type Props = { isActive?: boolean; currency?: string };
 
 type ClauseLibraryResponse = {
   status?: number;
@@ -188,11 +215,13 @@ type ClauseLibraryResponse = {
 
 const sectionIconMap: Record<string, { iconSrc: string; iconBg: string }> = {
   general_terms: {
-    iconSrc: "/assets/contract-management/clause-library/icon-general-terms.svg",
+    iconSrc:
+      "/assets/contract-management/clause-library/icon-general-terms.svg",
     iconBg: "#3B82F615",
   },
   financial_terms: {
-    iconSrc: "/assets/contract-management/clause-library/icon-financial-terms.svg",
+    iconSrc:
+      "/assets/contract-management/clause-library/icon-financial-terms.svg",
     iconBg: "#10B98115",
   },
   schedule_milestones: {
@@ -217,10 +246,13 @@ const sectionIconMap: Record<string, { iconSrc: string; iconBg: string }> = {
   },
 };
 
-const toRiskDisplay = (risk?: string): { risk: ClauseCardProps["risk"]; riskTone: ClauseCardProps["riskTone"] } => {
+const toRiskDisplay = (
+  risk?: string,
+): { risk: ClauseCardProps["risk"]; riskTone: ClauseCardProps["riskTone"] } => {
   const normalized = (risk || "").toLowerCase();
   if (normalized === "high") return { risk: "HIGH RISK", riskTone: "high" };
-  if (normalized === "medium") return { risk: "MEDIUM RISK", riskTone: "medium" };
+  if (normalized === "medium")
+    return { risk: "MEDIUM RISK", riskTone: "medium" };
   return { risk: "LOW RISK", riskTone: "low" };
 };
 
@@ -257,7 +289,10 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
 
   const contract = data?.data?.contract;
   const summary = data?.data?.summary;
-  const sections = React.useMemo(() => data?.data?.sections ?? [], [data?.data?.sections]);
+  const sections = React.useMemo(
+    () => data?.data?.sections ?? [],
+    [data?.data?.sections],
+  );
 
   const filteredSections = React.useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -271,7 +306,10 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
               clause.title,
               clause.summary,
               ...(clause.details || []),
-              ...(clause.values?.flatMap((v) => [v.label, String(v.value ?? "")]) || []),
+              ...(clause.values?.flatMap((v) => [
+                v.label,
+                String(v.value ?? ""),
+              ]) || []),
             ]
               .join(" ")
               .toLowerCase();
@@ -286,7 +324,9 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
       <div className="flex max-w-[1152px] flex-col gap-4 bg-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
-            <div className="text-2xl font-bold leading-8 text-[#2563EB]">Clause Library</div>
+            <div className="text-2xl font-bold leading-8 text-[#2563EB]">
+              Clause Library
+            </div>
             <div className="text-sm leading-5 text-[#4B5563]">
               Contract Cheat Sheet - Quick Reference Guide
             </div>
@@ -299,14 +339,18 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
               src="/assets/contract-management/clause-library/export-pdf.svg"
               className="h-[18px] w-[18px]"
             />
-            <span className="pl-2 text-base leading-6 text-white">Export PDF</span>
+            <span className="pl-2 text-base leading-6 text-white">
+              Export PDF
+            </span>
           </button>
         </div>
 
         <div className="flex items-center justify-between rounded-lg border border-[#BFDBFE] bg-[linear-gradient(90deg,#EFF6FF_0%,#FAF5FF_100%)] p-[15px]">
           <div className="inline-flex items-center">
             <div className="inline-flex flex-col">
-              <div className="text-xs leading-4 text-[#4B5563]">Contract ID</div>
+              <div className="text-xs leading-4 text-[#4B5563]">
+                Contract ID
+              </div>
               <div className="text-base font-semibold leading-6 text-[#030712]">
                 {contract?.contractId || "—"}
               </div>
@@ -315,7 +359,9 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
               <div className="h-8 w-px bg-[#D1D5DB]" />
             </div>
             <div className="inline-flex flex-col pl-6">
-              <div className="text-xs leading-4 text-[#4B5563]">Contract Name</div>
+              <div className="text-xs leading-4 text-[#4B5563]">
+                Contract Name
+              </div>
               <div className="text-base font-semibold leading-6 text-[#030712]">
                 {contract?.title || "—"}
               </div>
@@ -383,7 +429,8 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
           ) : (
             filteredSections.map((section) => {
               const icon = sectionIconMap[section.id || ""] || {
-                iconSrc: "/assets/contract-management/clause-library/icon-other-terms.svg",
+                iconSrc:
+                  "/assets/contract-management/clause-library/icon-other-terms.svg",
                 iconBg: "#64748B15",
               };
               return (
@@ -418,9 +465,13 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
                           fullDetails={
                             clause.details && clause.details.length > 0
                               ? clause.details.map((d, index) => (
-                                  <React.Fragment key={`${clause.id || clause.title}-detail-${index}`}>
+                                  <React.Fragment
+                                    key={`${clause.id || clause.title}-detail-${index}`}
+                                  >
                                     {d}
-                                    {index < clause.details!.length - 1 ? <br /> : null}
+                                    {index < clause.details!.length - 1 ? (
+                                      <br />
+                                    ) : null}
                                   </React.Fragment>
                                 ))
                               : "Not specified"
@@ -437,25 +488,33 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
 
         <div className="flex w-full justify-center gap-4">
           <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] bg-white p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
-            <div className="text-center text-sm leading-5 text-[#4B5563]">Total Clauses</div>
+            <div className="text-center text-sm leading-5 text-[#4B5563]">
+              Total Clauses
+            </div>
             <div className="text-center text-[30px] font-bold leading-9 text-[#2563EB]">
               {summary?.total ?? 0}
             </div>
           </div>
           <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] bg-white p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
-            <div className="text-center text-sm leading-5 text-[#4B5563]">High Risk</div>
+            <div className="text-center text-sm leading-5 text-[#4B5563]">
+              High Risk
+            </div>
             <div className="text-center text-[30px] font-bold leading-9 text-[#DC2626]">
               {summary?.high ?? 0}
             </div>
           </div>
           <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] bg-white p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
-            <div className="text-center text-sm leading-5 text-[#4B5563]">Medium Risk</div>
+            <div className="text-center text-sm leading-5 text-[#4B5563]">
+              Medium Risk
+            </div>
             <div className="text-center text-[30px] font-bold leading-9 text-[#CA8A04]">
               {summary?.medium ?? 0}
             </div>
           </div>
           <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] bg-white p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
-            <div className="text-center text-sm leading-5 text-[#4B5563]">Low Risk</div>
+            <div className="text-center text-sm leading-5 text-[#4B5563]">
+              Low Risk
+            </div>
             <div className="text-center text-[30px] font-bold leading-9 text-[#16A34A]">
               {summary?.low ?? 0}
             </div>
@@ -467,4 +526,3 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
 };
 
 export default ClauseLibraryTabContent;
-

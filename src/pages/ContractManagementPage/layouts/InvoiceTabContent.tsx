@@ -12,6 +12,7 @@ import CreateInvoiceDialog from "../components/CreateInvoiceDialog";
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
 };
 
