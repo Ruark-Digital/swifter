@@ -9,6 +9,7 @@ import SubmitLemDialog from "../components/SubmitLemDialog";
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
 };
 

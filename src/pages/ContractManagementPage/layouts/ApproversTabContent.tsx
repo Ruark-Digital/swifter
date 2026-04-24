@@ -11,6 +11,7 @@ import { contractManagerApi } from "../api/contractManagerApi";
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
 };
 

@@ -10,6 +10,7 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { useQueryClient } from "@tanstack/react-query";
 
 type Props = {
+  currency?: string;
   files?: ContractDetail["files"];
   contractId?: string;
   onUpdated?: (contract: ContractDetail) => void;

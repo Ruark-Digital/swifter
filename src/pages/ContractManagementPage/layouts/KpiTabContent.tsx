@@ -7,6 +7,7 @@ import { format } from "date-fns";
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
 };
 

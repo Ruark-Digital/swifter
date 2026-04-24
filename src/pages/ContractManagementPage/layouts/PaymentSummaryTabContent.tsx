@@ -552,6 +552,7 @@ const UpdateSavingsDialog: React.FC<{
 
 type Props = {
   contractId: string;
+  currency?: string;
   contract?: ContractDetail | null;
   isActive?: boolean;
 };

@@ -693,6 +693,7 @@ export const CreateAmendmentDialog: React.FC<{
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
 };

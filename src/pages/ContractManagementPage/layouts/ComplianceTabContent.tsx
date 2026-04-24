@@ -7,7 +7,7 @@ import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SEOWrapper } from "@/components/SEO";
 
-type Props = { isActive?: boolean };
+type Props = { isActive?: boolean; currency?: string };
 
 const ComplianceTabContent: React.FC<Props> = ({ isActive }) => {
   const { id: contractId } = useParams<{ id: string }>();
