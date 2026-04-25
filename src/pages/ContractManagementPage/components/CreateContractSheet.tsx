@@ -35,6 +35,7 @@ import { pruneEmptyValuesDeep } from "@/lib/pruneEmptyValuesDeep";
 import {
   isEmailLike,
   isObjectIdLike,
+  toApproverUserKeyOrUndefined,
   toIdStringOrUndefined,
   toPersonnelOrUndefined,
 } from "@/lib/contractFormValues";
@@ -828,9 +829,8 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         (data.approvalGroups ?? []).filter(item => item.name && item.approvers?.length).flatMap((g, i) => {
           const lvl = g.approvalLevel ? Number(g.approvalLevel) : i + 1;
           const amountValue = toNumberOrUndefined(g.amount);
-          // API expects user as array of strings
           const userIds = (g.approvers ?? [])
-            .map((u: any) => u?.value ?? u)
+            .map((u: any) => toApproverUserKeyOrUndefined(u))
             .filter(Boolean);
           return {
             user: userIds,

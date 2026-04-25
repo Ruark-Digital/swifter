@@ -104,7 +104,7 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
         (p) => p._id === id || p.policyId === id,
       );
     } else {
-      return complianceData.security?.find((s) => s.id === id);
+      return complianceData.security?.find((s) => s._id === id || s.id === id);
     }
   }, [data, complianceData, type, id]);
 
@@ -188,24 +188,32 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
                   value={detail?.policyName || detail?.securityType || "—"}
                 />
                 <LabelValue
-                  label="Limit"
+                  label={type === "policy" ? "Limit" : "Amount"}
                   value={
-                    detail?.value
-                      ? `$${Number(detail.value).toLocaleString()}M`
-                      : "—"
+                    type === "policy"
+                      ? detail?.value
+                        ? `$${Number(detail.value).toLocaleString()}`
+                        : "—"
+                      : detail?.amount
+                        ? Number(detail.amount).toLocaleString()
+                        : "—"
                   }
                 />
                 <LabelValue
                   label={type === "policy" ? "Policy ID" : "Security ID"}
-                  value={detail?.policyId || detail?.id || "—"}
+                  value={detail?.policyId || detail?.securityTypeId || detail?.id || "—"}
                 />
                 <LabelValue
-                    label="Submission Date"
-                    value={
-                      detail?.createdAt
+                  label={type === "policy" ? "Submission Date" : "Due Date"}
+                  value={
+                    type === "policy"
+                      ? detail?.createdAt
                         ? format(new Date(detail.createdAt), "dd MMM yyyy")
                         : "-"
-                    }
+                      : detail?.dueDate
+                        ? format(new Date(detail.dueDate), "dd MMM yyyy")
+                        : "-"
+                  }
                 />
               </div>
 

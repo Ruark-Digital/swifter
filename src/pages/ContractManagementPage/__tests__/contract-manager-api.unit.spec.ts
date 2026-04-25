@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createContractManagerApi } from "../api/contractManagerApi";
+import { createVendorApi } from "../api/vendorApi";
 
 type Spy<TArgs> = {
   calls: TArgs[];
@@ -348,5 +349,39 @@ test.describe("contractManagerApi (unit)", () => {
       complianceApproveFailed = true;
     }
     expect(complianceApproveFailed).toBe(true);
+  });
+});
+
+test.describe("vendorApi (unit)", () => {
+  test("calls correct change endpoints", async () => {
+    const getSpy = createAsyncSpy<{ url: string; config?: unknown }>();
+    const postSpy = createAsyncSpy<{ url: string; payload: unknown; config?: unknown }>();
+    const api = createVendorApi({ get: getSpy.fn, post: postSpy.fn });
+
+    await api.getChangeStats("c3");
+    expect(getSpy.calls.at(-1)).toEqual({
+      url: "/contract/vendor/contracts/c3/changes/stats",
+    });
+
+    await api.listChanges("c3", {
+      title: "x",
+      type: "request",
+      page: 2,
+      limit: 10,
+    });
+    expect(getSpy.calls.at(-1)).toEqual({
+      url: "/contract/vendor/contracts/c3/changes?title=x&type=request&page=2&limit=10",
+    });
+
+    const createPayload = {
+      title: "t",
+      description: "d",
+      type: "request",
+    };
+    await api.createChange("c3", createPayload as never);
+    expect(postSpy.calls.at(-1)).toEqual({
+      url: "/contract/vendor/contracts/c3/changes",
+      payload: createPayload,
+    });
   });
 });

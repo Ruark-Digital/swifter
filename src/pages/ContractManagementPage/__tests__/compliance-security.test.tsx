@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ComplianceSecurityTab from "../components/ComplianceSecurityTab";
 
 vi.mock("react-router-dom", async () => {
@@ -79,7 +80,7 @@ describe("Compliance & Security", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Contract Security"));
+    fireEvent.click(screen.getByRole("button", { name: "Contract Security" }));
     expect(await screen.findByText("SEC-001")).toBeInTheDocument();
   });
 
@@ -89,24 +90,27 @@ describe("Compliance & Security", () => {
     >("../components/ComplianceDetailsSheet");
     const ComplianceDetailsSheet = actual.default;
 
+    const queryClient = new QueryClient();
     render(
-      <ComplianceDetailsSheet
-        trigger={<button>Open</button>}
-        type="security"
-        id="sec-1"
-        contractId=""
-        basePath="/contract/manager/contracts/contract-1/compliance"
-        data={
-          {
-            _id: "sec-1",
-            securityTypeId: "SEC-001",
-            securityType: "Bond",
-            amount: 5000,
-            dueDate: "2026-06-01T00:00:00.000Z",
-            status: "Pending",
-          } as any
-        }
-      />,
+      <QueryClientProvider client={queryClient}>
+        <ComplianceDetailsSheet
+          trigger={<button>Open</button>}
+          type="security"
+          id="sec-1"
+          contractId=""
+          basePath="/contract/manager/contracts/contract-1/compliance"
+          data={
+            {
+              _id: "sec-1",
+              securityTypeId: "SEC-001",
+              securityType: "Bond",
+              amount: 5000,
+              dueDate: "2026-06-01T00:00:00.000Z",
+              status: "Pending",
+            } as any
+          }
+        />
+      </QueryClientProvider>,
     );
 
     fireEvent.click(screen.getByText("Open"));
