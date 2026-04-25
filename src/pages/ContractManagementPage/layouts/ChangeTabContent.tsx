@@ -86,7 +86,7 @@ const ChangeTabContent: React.FC<Props> = ({
   });
 
   const getBasePath = () => {
-    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/change`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/changes`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/change`;
     if (isManager) return `/contract/manager/contracts/${contractId}/changes`;
     if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/change`;

@@ -288,7 +288,7 @@ const mapContractsToRows = (contracts?: ContractApi[]): ContractRow[] => {
       contractId: c.contractId,
       title: c.title,
       code: c._id,
-      vendor: c.vendor?.name ?? c.projectManager?.name ?? "-",
+      vendor: c.projectManager?.name ?? c.vendor?.name ?? "-",
       value: `$${value}`,
       owner: c.creator?.name ?? "-",
       published: c.createdAt

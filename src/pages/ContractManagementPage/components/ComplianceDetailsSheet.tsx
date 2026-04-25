@@ -110,8 +110,8 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
 
   const detail = (fetchedDetail || data) as any;
 
-  if(isLoading){
-    return <Spinner />
+  if (isLoading) {
+    return <Spinner />;
   }
 
   const handleAction = async (action: "approved" | "rejected") => {
@@ -181,18 +181,25 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
               </TabsTrigger> */}
             </TabsList>
 
-            <TabsContent value="overview" className="pt-8 space-y-8 overflow-auto">
+            <TabsContent
+              value="overview"
+              className="pt-8 space-y-8 overflow-auto"
+            >
               <div className="grid grid-cols-2 gap-y-8 gap-x-12">
                 <LabelValue
                   label={type === "policy" ? "Policy Name" : "Security Type"}
                   value={detail?.policyName || detail?.securityType || "—"}
                 />
                 <LabelValue
-                  label="Limit"
+                  label={type === "policy" ? "Limit" : "Amount"}
                   value={
-                    detail?.value
-                      ? `$${Number(detail.value).toLocaleString()}M`
-                      : "—"
+                    type === "policy"
+                      ? detail?.value
+                        ? `$${Number(detail.value).toLocaleString()}`
+                        : "—"
+                      : detail?.amount
+                        ? Number(detail.amount).toLocaleString()
+                        : "—"
                   }
                 />
                 <LabelValue
@@ -200,12 +207,16 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
                   value={detail?.policyId || detail?.id || "—"}
                 />
                 <LabelValue
-                    label="Submission Date"
-                    value={
-                      detail?.createdAt
+                  label={type === "policy" ? "Submission Date" : "Due Date"}
+                  value={
+                    type === "policy"
+                      ? detail?.createdAt
                         ? format(new Date(detail.createdAt), "dd MMM yyyy")
                         : "-"
-                    }
+                      : detail?.expiryDate
+                        ? format(new Date(detail.expiryDate), "dd MMM yyyy")
+                        : "-"
+                  }
                 />
               </div>
 
@@ -252,22 +263,22 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
             !["published", "approved"].includes(
               detail?.status?.toLowerCase(),
             ) && (
-            <div className="flex gap-4 pt-8 sticky bottom-0 bg-white pb-2 border-t border-slate-100 mt-auto">
-              <Button
-                variant="outline"
-                className="flex-1  rounded-xl border-slate-200 bg-slate-50 text-slate-900 font-bold text-lg hover:bg-slate-100"
-                onClick={() => handleAction("rejected")}
-              >
-                Reject
-              </Button>
-              <Button
-                className="flex-1 rounded-xl bg-[#2A4467] text-white font-bold text-lg hover:bg-[#1f3552]"
-                onClick={() => handleAction("approved")}
-              >
-                Approve
-              </Button>
-            </div>
-          )}
+              <div className="flex gap-4 pt-8 sticky bottom-0 bg-white pb-2 border-t border-slate-100 mt-auto">
+                <Button
+                  variant="outline"
+                  className="flex-1  rounded-xl border-slate-200 bg-slate-50 text-slate-900 font-bold text-lg hover:bg-slate-100"
+                  onClick={() => handleAction("rejected")}
+                >
+                  Reject
+                </Button>
+                <Button
+                  className="flex-1 rounded-xl bg-[#2A4467] text-white font-bold text-lg hover:bg-[#1f3552]"
+                  onClick={() => handleAction("approved")}
+                >
+                  Approve
+                </Button>
+              </div>
+            )}
         </div>
       </SheetContent>
     </Sheet>

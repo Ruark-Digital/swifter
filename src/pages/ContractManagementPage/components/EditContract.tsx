@@ -29,6 +29,7 @@ import type { ContractDetail, ApiResponseError } from "@/types";
 import { schema as createSchema, defaultValues as createDefaults } from "@/pages/ContractManagementPage/components/CreateContractSheet";
 import { format } from "date-fns";
 import { X } from "lucide-react";
+import { toApproverUserKeyOrUndefined } from "@/lib/contractFormValues";
 
 type Props = {
   open: boolean;
@@ -96,7 +97,7 @@ export const buildContractApproversPayload = (
     .map((g, index) => {
       const groupName = typeof g?.name === "string" ? g.name.trim() : "";
       const user = (g?.approvers ?? [])
-        .map((u: any) => u?.value ?? u)
+        .map((u: any) => toApproverUserKeyOrUndefined(u))
         .filter(Boolean) as string[];
 
       if (!groupName || user.length === 0) return null;

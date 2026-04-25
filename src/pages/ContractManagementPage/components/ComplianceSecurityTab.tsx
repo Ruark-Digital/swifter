@@ -237,7 +237,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
 
       return {
         id: s.id || "",
-        securityId: s.id || "-", // Using id as securityId if not provided
+        securityId: s.id || "-",
         securityType: s.securityType || "-",
         amount: formatMoneyNoSymbol(s.amount),
         dueDate,

@@ -8,11 +8,26 @@ import {
   ManagerListRfisQuery,
 } from "./contractManagerApi";
 
+type VendorContractPersonnelDTO = {
+  _id?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  role?: Array<{ name?: string }> | { name?: string } | string;
+  phone?: string;
+};
+
 type GetParams = { url: string; config?: AxiosRequestConfig };
+type PostParams = { url: string; payload: unknown; config?: AxiosRequestConfig };
+type VendorApiClient = {
+  get: (params: GetParams) => Promise<{ data: unknown }>;
+  post?: (params: PostParams) => Promise<{ data: unknown }>;
+};
 
 export const createVendorApi = (
-  client = {
+  client: VendorApiClient = {
     get: (params: GetParams) => getRequest(params),
+    post: (params: PostParams) => postRequest(params),
   },
 ) => ({
   getContract: async (contractId: string) => {
@@ -23,7 +38,7 @@ export const createVendorApi = (
   },
   getChangeStats: async (contractId: string) => {
     const res = await client.get({
-      url: `/vendor/contracts/${contractId}/change/stats`,
+      url: `/contract/vendor/contracts/${contractId}/changes/stats`,
     });
     return res as ApiResponse<{
       all: number;
@@ -44,8 +59,8 @@ export const createVendorApi = (
     if (query?.limit) qs.set("limit", String(query.limit));
     const url =
       qs.toString().length > 0
-        ? `/vendor/contracts/${contractId}/change?${qs.toString()}`
-        : `/vendor/contracts/${contractId}/change`;
+        ? `/contract/vendor/contracts/${contractId}/changes?${qs.toString()}`
+        : `/contract/vendor/contracts/${contractId}/changes`;
     const res = await client.get({ url });
     return res as ApiResponse<{ changes?: ContractChangeDTO[]; total?: number }>;
   },
@@ -60,8 +75,9 @@ export const createVendorApi = (
       files?: { name: string; url: string; type: string; size: number }[];
     },
   ) => {
-    const res = await postRequest({
-      url: `/vendor/contracts/${contractId}/change`,
+    const post = client.post ?? ((params: PostParams) => postRequest(params));
+    const res = await post({
+      url: `/contract/vendor/contracts/${contractId}/changes`,
       payload,
     });
     return res as ApiResponse<any>;
@@ -146,7 +162,7 @@ export const createVendorApi = (
     const res = await client.get({
       url: `/contract/vendor/contracts/${contractId}/personnel`,
     });
-    return res;
+    return res as ApiResponse<VendorContractPersonnelDTO[]>;
   },
   approveContract: async (
     contractId: string,

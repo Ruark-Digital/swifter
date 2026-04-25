@@ -140,14 +140,6 @@ export const getNavigationForRole = (
             ],
           }
         : undefined,
-      modules?.vendorManagement
-        ? {
-            icon: Users,
-            title: "Vendor Management",
-            to: "/dashboard/vendor",
-            active: currentPath.startsWith("/dashboard/vendor"),
-          }
-        : undefined,
       {
         icon: User2,
         title: "Profile",

@@ -191,7 +191,7 @@ test.describe("Create MSA (API integration)", () => {
       page.locator('[data-testid="create-msa-dialog"]'),
     ).toBeVisible();
     await expect(page.locator('[role="dialog"]')).toHaveClass(
-      /sm:max-w-\[525px\]/,
+      /sm:max-w-\[550px\]/,
     );
 
     await page.locator('[data-testid="msa-name-input"]').fill("Test MSA");
@@ -273,5 +273,13 @@ test.describe("Create MSA (API integration)", () => {
     await page.getByRole("button", { name: "Publish" }).click();
 
     await createRequest;
+
+    await page.locator('[data-testid="create-msa-button"]').click();
+    await expect(
+      page.locator('[data-testid="create-msa-dialog"]'),
+    ).toBeVisible();
+    await expect(page.locator('[role="dialog"]')).toHaveClass(
+      /sm:max-w-\[550px\]/,
+    );
   });
 });
