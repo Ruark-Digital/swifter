@@ -104,14 +104,14 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
         (p) => p._id === id || p.policyId === id,
       );
     } else {
-      return complianceData.security?.find((s) => s._id === id || s.id === id);
+      return complianceData.security?.find((s) => s.id === id);
     }
   }, [data, complianceData, type, id]);
 
   const detail = (fetchedDetail || data) as any;
 
-  if(isLoading){
-    return <Spinner />
+  if (isLoading) {
+    return <Spinner />;
   }
 
   const handleAction = async (action: "approved" | "rejected") => {
@@ -181,7 +181,10 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
               </TabsTrigger> */}
             </TabsList>
 
-            <TabsContent value="overview" className="pt-8 space-y-8 overflow-auto">
+            <TabsContent
+              value="overview"
+              className="pt-8 space-y-8 overflow-auto"
+            >
               <div className="grid grid-cols-2 gap-y-8 gap-x-12">
                 <LabelValue
                   label={type === "policy" ? "Policy Name" : "Security Type"}
@@ -201,7 +204,7 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
                 />
                 <LabelValue
                   label={type === "policy" ? "Policy ID" : "Security ID"}
-                  value={detail?.policyId || detail?.securityTypeId || detail?.id || "—"}
+                  value={detail?.policyId || detail?.id || "—"}
                 />
                 <LabelValue
                   label={type === "policy" ? "Submission Date" : "Due Date"}
@@ -210,8 +213,8 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
                       ? detail?.createdAt
                         ? format(new Date(detail.createdAt), "dd MMM yyyy")
                         : "-"
-                      : detail?.dueDate
-                        ? format(new Date(detail.dueDate), "dd MMM yyyy")
+                      : detail?.expiryDate
+                        ? format(new Date(detail.expiryDate), "dd MMM yyyy")
                         : "-"
                   }
                 />
@@ -260,22 +263,22 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
             !["published", "approved"].includes(
               detail?.status?.toLowerCase(),
             ) && (
-            <div className="flex gap-4 pt-8 sticky bottom-0 bg-white pb-2 border-t border-slate-100 mt-auto">
-              <Button
-                variant="outline"
-                className="flex-1  rounded-xl border-slate-200 bg-slate-50 text-slate-900 font-bold text-lg hover:bg-slate-100"
-                onClick={() => handleAction("rejected")}
-              >
-                Reject
-              </Button>
-              <Button
-                className="flex-1 rounded-xl bg-[#2A4467] text-white font-bold text-lg hover:bg-[#1f3552]"
-                onClick={() => handleAction("approved")}
-              >
-                Approve
-              </Button>
-            </div>
-          )}
+              <div className="flex gap-4 pt-8 sticky bottom-0 bg-white pb-2 border-t border-slate-100 mt-auto">
+                <Button
+                  variant="outline"
+                  className="flex-1  rounded-xl border-slate-200 bg-slate-50 text-slate-900 font-bold text-lg hover:bg-slate-100"
+                  onClick={() => handleAction("rejected")}
+                >
+                  Reject
+                </Button>
+                <Button
+                  className="flex-1 rounded-xl bg-[#2A4467] text-white font-bold text-lg hover:bg-[#1f3552]"
+                  onClick={() => handleAction("approved")}
+                >
+                  Approve
+                </Button>
+              </div>
+            )}
         </div>
       </SheetContent>
     </Sheet>
