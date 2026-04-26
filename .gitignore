@@ -10,3 +10,4 @@ playwright-report
 /test-results
 .tmp_docx_extract
 .worktrees
+Test Credentials.md

@@ -797,6 +797,68 @@ test.describe("Contract Management Page (roles)", () => {
     expect(managerRequests).toBe(0);
   });
 
+  test("renders company value in vendor contracts table when API returns company", async ({
+    page,
+  }) => {
+    await seedAuth(page, "vendor");
+    await mockVendorEndpoints(page);
+
+    await page.unroute("**/contract/vendor/contracts?**");
+    await page.unroute("**/contract/vendor/contracts");
+    const fulfillVendorContracts = async (route: any) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          message: "ok",
+          data: {
+            contracts: [
+              {
+                id: "v-contract-1",
+                title: "Vendor Contract A",
+                contractId: "VCA-001",
+                status: "active",
+                contractValue: 7000000,
+                contractRelationship: "project",
+                company: { name: "Acme Engineering Ltd" },
+                createdAt: "2026-04-25T00:00:00.000Z",
+                endDate: "2026-06-30T00:00:00.000Z",
+              },
+            ],
+            totalContracts: 1,
+          },
+        }),
+      });
+    };
+    await page.route("**/contract/vendor/contracts?**", fulfillVendorContracts);
+    await page.route("**/contract/vendor/contracts", fulfillVendorContracts);
+
+    const statsResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes("/contract/vendor/contracts/stats") &&
+        res.status() === 200,
+      { timeout: 15000 },
+    );
+    const listResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes("/contract/vendor/contracts") &&
+        !res.url().includes("/stats") &&
+        res.status() === 200,
+      { timeout: 15000 },
+    );
+
+    await page.goto("/dashboard/contract-management", { waitUntil: "commit" });
+    await statsResponse;
+    await listResponse;
+
+    await expect(
+      page.locator('[data-testid="vendor-contracts-table"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="vendor-contracts-table"]'),
+    ).toContainText("Acme Engineering Ltd");
+  });
+
   test("renders approver view and uses approver endpoints", async ({
     page,
   }) => {

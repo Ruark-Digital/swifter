@@ -294,13 +294,13 @@ export function DataTable<T = unknown>({
               {createPageNumbers(
                 table.getPageCount(),
                 table.getState().pagination.pageIndex + 1
-              ).map((page) =>
+              ).map((page, index) =>
                 typeof page === "string" ? (
-                  <PaginationItem>
+                  <PaginationItem key={`ellipsis-${index}`}>
                     <PaginationEllipsis />
                   </PaginationItem>
                 ) : (
-                  <PaginationItem>
+                  <PaginationItem key={page}>
                     <PaginationLink
                       href="#"
                       isActive={activePage === page}
