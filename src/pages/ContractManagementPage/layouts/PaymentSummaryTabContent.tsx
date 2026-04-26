@@ -305,7 +305,7 @@ const UpdateSavingsDialog: React.FC<{
         name: string;
         url: string;
         type: string;
-        size: number;
+        size: string;
       }[] = [];
 
       if (data.files && data.files.length > 0) {
@@ -319,7 +319,7 @@ const UpdateSavingsDialog: React.FC<{
                 name: data.files![index].name,
                 url: res.data?.data?.[0].url,
                 type: getSimpleFileExtension(data.files![index].name).toUpperCase(),
-                size: data.files![index].size,
+                size: res.data?.data?.[0].size ?? "",
               };
             }
             return null;

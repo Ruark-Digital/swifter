@@ -57,7 +57,7 @@ type ContractAmendmentFile = {
   name: string;
   url: string;
   type: string;
-  size: number;
+  size: string;
 };
 
 type CreateAmendmentPayload = {
@@ -197,7 +197,7 @@ export const CreateAmendmentDialog: React.FC<{
               name: firstUploaded.name || file.name,
               url: firstUploaded.url,
               type: firstUploaded.type || file.type,
-              size: parseFileSize(firstUploaded.size) || file.size,
+              size: firstUploaded.size ?? "",
             };
           }),
         );
