@@ -556,7 +556,8 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   const toast = useToastHandler();
   // const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { isVendor, isManager, isApprover } = useUserRole();
+  const { isVendor, isProjectManager, isManager, isApprover } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
 
   const detailQueryKey = [
     "contract-amendment-detail",
@@ -949,7 +950,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
             </TabsContent>
 
             {/* Edit Submission appears for vendor on rejected 'Other Combination' */}
-            {isVendor && isOtherCombination && vendorRejected && (
+            {isContractVendorLike && isOtherCombination && vendorRejected && (
               <div className="px-6 pb-6">
                 <button
                   type="button"
@@ -968,7 +969,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
           </Tabs>
         </div>
 
-        {isVendor && detail?.vendorStatus === "pending" && (
+        {isContractVendorLike && detail?.vendorStatus === "pending" && (
           <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] bg-white p-6">
             <div className="flex gap-6">
               <VendorRejectDialog

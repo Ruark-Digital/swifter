@@ -58,7 +58,8 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   contractId,
   invoiceId,
 }) => {
-  const { isVendor, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
+  const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
@@ -78,7 +79,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
       if (isApprover) {
         return await approverApi.getInvoiceDetail(contractId, invoiceId);
       }
-      if (isVendor) {
+      if (isContractVendorLike) {
         const res = await vendorApi.getInvoiceDetail(contractId, invoiceId);
         return { message: res.data.message, data: res.data.data };
       }

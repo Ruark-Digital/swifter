@@ -154,7 +154,8 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
   const [open, setOpen] = React.useState(false);
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [selectedDoc, setSelectedDoc] = React.useState<DocType | null>(null);
-  const { isApprover, isVendor } = useUserRole();
+  const { isApprover, isVendor, isProjectManager } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const user = useUser();
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
@@ -463,7 +464,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
             </Tabs>
           </div>
 
-          {isApprover || isVendor ? (
+          {isApprover || isContractVendorLike ? (
             <div className="flex w-full gap-3 pt-2">
               {!latestCapa?._id ? (
                 <Button
@@ -474,7 +475,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                   Cancel
                 </Button>
               ) : null}
-              {latestCapa?._id && (isApprover || isVendor) ? (
+              {latestCapa?._id && (isApprover || isContractVendorLike) ? (
                 <>
                   <Button
                     variant="outline"

@@ -59,8 +59,9 @@ const ClaimDetailsSheet: React.FC<Props> = ({
   open: controlledOpen,
   onOpenChange: setControlledOpen,
 }) => {
-  const { isManager, isApprover, isVendor, isAdmin, isViewOnly } =
+  const { isManager, isApprover, isVendor, isProjectManager, isAdmin, isViewOnly } =
     useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const [internalOpen, setInternalOpen] = React.useState(false);
 
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -68,7 +69,7 @@ const ClaimDetailsSheet: React.FC<Props> = ({
 
   const roleBasePath = React.useMemo(() => {
     if (basePath) return basePath;
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/claim`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/claim`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/claim`;
     if (isManager) return `/contract/manager/contracts/${contractId}/claims`;
     if (isAdmin || isViewOnly)
@@ -78,7 +79,7 @@ const ClaimDetailsSheet: React.FC<Props> = ({
     basePath,
     isManager,
     isApprover,
-    isVendor,
+    isContractVendorLike,
     isAdmin,
     isViewOnly,
     contractId,

@@ -47,7 +47,8 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
   const [activeView, setActiveView] = React.useState<"policy" | "security">(
     "policy",
   );
-  const { isVendor } = useUserRole();
+  const { isVendor, isProjectManager } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
 
   const formatMoneyNoSymbol = (value: unknown) => {
     const num = Number(value);
@@ -120,7 +121,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         },
       },
     ],
-    [isVendor, contractId, basePath],
+    [isContractVendorLike, contractId, basePath],
   );
 
   const securityColumns = useMemo<ColumnDef<SecurityRow>[]>(
@@ -207,7 +208,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         },
       },
     ],
-    [isVendor, contractId, basePath],
+    [isContractVendorLike, contractId, basePath],
   );
 
   const policyRows: PolicyRow[] = useMemo(() => {
@@ -281,7 +282,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
           Compliance & Security Details
         </h3>
         <div className="flex items-center gap-3">
-          {isVendor && (
+          {isContractVendorLike && (
             <SubmitPolicyDialog
               type={activeView}
               contractId={contractId || ""}
