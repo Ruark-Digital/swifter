@@ -50,6 +50,13 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
   const { isVendor, isProjectManager } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
 
+  const hasFiles = useMemo(() => {
+    if (activeView === "policy") {
+      return data?.policy?.some((p) => (p.files?.length ?? 0) > 0) ?? false;
+    }
+    return data?.security?.some((s) => (s.files?.length ?? 0) > 0) ?? false;
+  }, [activeView, data?.policy, data?.security]);
+
   const formatMoneyNoSymbol = (value: unknown) => {
     const num = Number(value);
     if (!Number.isFinite(num)) return "-";
@@ -282,7 +289,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
           Compliance & Security Details
         </h3>
         <div className="flex items-center gap-3">
-          {isContractVendorLike && (
+          {isContractVendorLike && !hasFiles && (
             <SubmitPolicyDialog
               type={activeView}
               contractId={contractId || ""}
