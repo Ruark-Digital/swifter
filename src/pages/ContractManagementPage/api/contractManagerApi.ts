@@ -607,39 +607,43 @@ export type ContractComplianceDTO = {
     coverage?: number;
     security?: boolean;
     expDate?: string;
-    securityType?: Array<{ id?: string; name?: string }>;
+    securityType?: Array<{
+      securityTypeId?: string;
+      securityType?: string;
+      amount?: number;
+      dueDate?: string;
+      _id?: string;
+    }>;
     insuranceStatus?: "pending" | "approved" | "rejected";
     securityStatus?: "pending" | "approved" | "rejected";
+    submissionDate?: string;
+    files?: Array<{
+      name?: string;
+      url?: string;
+      type?: string;
+      size?: string;
+      _id?: string;
+      uploadedAt?: string;
+    }>;
   };
   policy?: Array<{
     _id?: string;
     policyId?: string;
     policyName?: string;
-    value?: string;
+    value?: number;
     status?: string;
     description?: string;
     createdAt?: string;
-    files?: Array<{
-      name?: string;
-      url?: string;
-      type?: string;
-      size?: string;
-    }>;
   }>;
   security?: Array<{
-    id?: string;
+    _id?: string;
+    securityTypeId?: string;
     securityType?: string;
-    amount?: string;
-    expiryDate?: string;
+    amount?: number;
+    dueDate?: string;
     status?: string;
     description?: string;
     createdAt?: string;
-    files?: Array<{
-      name?: string;
-      url?: string;
-      type?: string;
-      size?: string;
-    }>;
   }>;
 };
 

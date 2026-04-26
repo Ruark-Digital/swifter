@@ -50,12 +50,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
   const { isVendor, isProjectManager } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
 
-  const hasFiles = useMemo(() => {
-    if (activeView === "policy") {
-      return data?.policy?.some((p) => (p.files?.length ?? 0) > 0) ?? false;
-    }
-    return data?.security?.some((s) => (s.files?.length ?? 0) > 0) ?? false;
-  }, [activeView, data?.policy, data?.security]);
+  const hasFiles = (data?.details?.files?.length ?? 0) > 0;
 
   const formatMoneyNoSymbol = (value: unknown) => {
     const num = Number(value);
@@ -232,20 +227,20 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
   const securityRows: SecurityRow[] = useMemo(() => {
     if (!data?.security) return [];
     return data.security.map((s) => {
-      const dueDate = s.expiryDate
-        ? format(new Date(s.expiryDate), "dd MMM yyyy")
+      const dueDate = s.dueDate
+        ? format(new Date(s.dueDate), "dd MMM yyyy")
         : "-";
       let dueIn = "-";
-      if (s.expiryDate) {
-        const days = differenceInDays(new Date(s.expiryDate), new Date());
+      if (s.dueDate) {
+        const days = differenceInDays(new Date(s.dueDate), new Date());
         if (days > 0) dueIn = `${days} days`;
         else if (days === 0) dueIn = "Today";
         else dueIn = "Overdue";
       }
 
       return {
-        id: s.id || "",
-        securityId: s.id || "-",
+        id: s._id || "",
+        securityId: s.securityTypeId || s._id || "-",
         securityType: s.securityType || "-",
         amount: formatMoneyNoSymbol(s.amount),
         dueDate,
