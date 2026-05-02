@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X } from "lucide-react";
 import { useWatch } from "react-hook-form";
+import { useUser } from "@/store/authSlice";
+import { getExchangeRate } from "@/lib/currencyUtils";
 import {
   toIdStringOrUndefined,
   toPersonnelOrUndefined,
@@ -207,6 +209,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
   const qc = useQueryClient();
   const toast = useToastHandler();
+  const currentUser = useUser();
   const msaQueryKeyPrefix = useUserQueryKey(["msa"]);
 
   const typesQuery = useQuery({
@@ -550,6 +553,28 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
       return;
     }
     const payload = await buildPayload(data, status);
+    const baseCurrency = currentUser?.currency;
+    const selectedCurrency = (payload as any)?.currency;
+    if (
+      typeof baseCurrency === "string" &&
+      typeof selectedCurrency === "string" &&
+      baseCurrency &&
+      selectedCurrency &&
+      baseCurrency !== selectedCurrency
+    ) {
+      try {
+        (payload as any).currencyRate = await getExchangeRate(
+          baseCurrency,
+          selectedCurrency,
+        );
+      } catch (err) {
+        toast.error(
+          "Failed to create MSA",
+          err instanceof Error ? err.message : "Unable to fetch currency rate",
+        );
+        return;
+      }
+    }
     await createMutation.mutateAsync(payload);
   };
 

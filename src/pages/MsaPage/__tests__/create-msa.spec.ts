@@ -17,6 +17,7 @@ async function seedAuth(page: Page, role: SeedRole) {
           name: "Test User",
           role: { _id: "role-1", name: roleName, __v: 0 },
           companyId: { name: "Test Co", _id: "company-1" },
+          currency: "CAD",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           status: "active",
@@ -54,6 +55,19 @@ async function seedAuth(page: Page, role: SeedRole) {
 test.describe("Create MSA (API integration)", () => {
   test.setTimeout(60_000);
   test.beforeEach(async ({ page }) => {
+    const mockedFxRate = 1.2345;
+    await page.route("https://api.exchangerate-api.com/v4/latest/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          rates: {
+            USD: mockedFxRate,
+          },
+        }),
+      });
+    });
+
     await page.route("**/api/v1/**", async (route) => {
       const url = route.request().url();
 
@@ -195,6 +209,7 @@ test.describe("Create MSA (API integration)", () => {
         expect(body.status).toBe("publish");
         expect(body.businessDivision).toBeDefined();
         expect(body.currency).toBe("USD");
+        expect(body.currencyRate).toBe(mockedFxRate);
 
         expect(body.contigency).toBeUndefined();
         expect(body.holdBack).toBeUndefined();
