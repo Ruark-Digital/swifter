@@ -237,13 +237,15 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
         <StatCard title="Under Review" value={stats.underReview} tone="yellow" />
       </div>
 
-      <DeliverablesTable
-        contractId={contractId}
-        rows={rows}
-        isLoading={Boolean(listLoading || statsLoading)}
-        isApprover={isApprover}
-        basePath={basePath}
-      />
+      {contractId ? (
+        <DeliverablesTable
+          contractId={contractId}
+          rows={rows}
+          isLoading={Boolean(listLoading || statsLoading)}
+          isApprover={isApprover}
+          basePath={basePath}
+        />
+      ) : null}
     </TabsContent>
   );
 };
