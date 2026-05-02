@@ -950,6 +950,9 @@ test.describe("Contract Management Page (roles)", () => {
 
     expect(payload.status).toBe("draft");
     expect(payload.approvers ?? []).toEqual([]);
+    expect(Array.isArray(payload.files)).toBe(true);
+    expect(payload.files.length).toBeGreaterThan(0);
+    expect(typeof payload.files[0]?.size).toBe("string");
 
     await expect(
       page.locator('[data-testid="create-contract-sheet"]'),

@@ -70,6 +70,7 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
   const {
     isApprover,
     isVendor,
+    isProjectManager,
     isManager,
     isCompanyAdmin,
     isSuperAdmin,
@@ -101,13 +102,22 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
 
   const basePath = React.useMemo(() => {
     if (!contractId) return "";
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/deliverables`;
+    if (isVendor || isProjectManager)
+      return `/contract/vendor/contracts/${contractId}/deliverables`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/deliverables`;
     if (isManager || isCompanyAdminLike)
       return `/contract/manager/contracts/${contractId}/deliverables`;
     if (isViewOnly) return `/contract/user/contracts/${contractId}/deliverables`;
     return `/contract/user/contracts/${contractId}/deliverables`;
-  }, [contractId, isApprover, isCompanyAdminLike, isManager, isVendor, isViewOnly]);
+  }, [
+    contractId,
+    isApprover,
+    isCompanyAdminLike,
+    isManager,
+    isVendor,
+    isProjectManager,
+    isViewOnly,
+  ]);
 
   const listQueryKey = useUserQueryKey(["msa-deliverables", contractId, basePath]);
   const statsQueryKey = useUserQueryKey(["msa-deliverables-stats", contractId, basePath]);

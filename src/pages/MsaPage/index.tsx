@@ -66,9 +66,16 @@ type MsaStatsResponse = {
 };
 
 const MsaPage: React.FC = () => {
-  const { isManager, isApprover, isVendor, isCompanyAdmin, isSuperAdmin } =
-    useUserRole();
+  const {
+    isManager,
+    isApprover,
+    isVendor,
+    isProjectManager,
+    isCompanyAdmin,
+    isSuperAdmin,
+  } = useUserRole();
   const isManagerLike = isManager || isCompanyAdmin || isSuperAdmin;
+  const isVendorLike = isVendor || isProjectManager;
 
   const [allPagination, setAllPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -87,7 +94,7 @@ const MsaPage: React.FC = () => {
     ? "/contract/manager/msa-contract"
     : isApprover
       ? "/contract/approver/msa-contract"
-      : isVendor
+      : isVendorLike
         ? "/contract/vendor/msa-contract"
         : "/contract/user/msa-contract";
 
@@ -97,7 +104,7 @@ const MsaPage: React.FC = () => {
     ? "/contract/manager/msa-contract/stats"
     : isApprover
       ? "/contract/approver/msa-contract/stats"
-      : isVendor
+      : isVendorLike
         ? "/contract/vendor/msa-contract/stats"
         : "/contract/user/msa-contract/stats";
 

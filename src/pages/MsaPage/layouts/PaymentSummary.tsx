@@ -85,7 +85,8 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
   msa,
   isActive,
 }) => {
-  const { isVendor, isApprover, isViewOnly, isManager } = useUserRole();
+  const { isVendor, isProjectManager, isApprover, isViewOnly, isManager } =
+    useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ holdbacks?: unknown; savings?: unknown }>(
@@ -99,11 +100,11 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
   const savingsQueryKey = useUserQueryKey(["msa-payment-savings", contractId]);
 
   const apiPrefix = React.useMemo(() => {
-    if (isVendor) return "/contract/vendor";
+    if (isVendor || isProjectManager) return "/contract/vendor";
     if (isApprover) return "/contract/approver";
     if (isViewOnly) return "/contract/user";
     return "/contract/manager";
-  }, [isApprover, isVendor, isViewOnly]);
+  }, [isApprover, isVendor, isProjectManager, isViewOnly]);
 
   const {
     data: holdbacksResponse,

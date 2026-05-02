@@ -407,7 +407,7 @@ const MsaDetailPage: React.FC = () => {
       return ALL_TABS.filter((t) =>
         ROLE_TAB_WHITELIST.approver.includes(t.key),
       );
-    if (isVendor)
+    if (isVendor || isProjectManager)
       return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.vendor.includes(t.key));
     if (isViewOnly)
       return ALL_TABS.filter((t) =>
@@ -416,7 +416,7 @@ const MsaDetailPage: React.FC = () => {
     if (isManager)
       return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
     return ALL_TABS;
-  }, [isApprover, isVendor, isViewOnly, isManager]);
+  }, [isApprover, isVendor, isProjectManager, isViewOnly, isManager]);
 
   const msa = msaResponse?.data?.data as MSAContractDetail | undefined;
 

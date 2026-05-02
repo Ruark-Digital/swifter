@@ -126,3 +126,38 @@ export const toPersonnelOrUndefined = (value: unknown) => {
 
   return undefined;
 };
+
+export const toFileMetaOrUndefined = (value: unknown) => {
+  if (!value) return undefined;
+
+  const direct = value as any;
+  const name = typeof direct?.name === "string" ? direct.name : undefined;
+  const url = typeof direct?.url === "string" ? direct.url : undefined;
+  const type = typeof direct?.type === "string" ? direct.type : undefined;
+
+  if (!name || !url || !type) return undefined;
+
+  const sizeRaw = direct?.size;
+  const size =
+    typeof sizeRaw === "string"
+      ? sizeRaw.trim() || undefined
+      : typeof sizeRaw === "number"
+        ? Number.isFinite(sizeRaw)
+          ? String(sizeRaw)
+          : undefined
+        : sizeRaw === null || sizeRaw === undefined
+          ? undefined
+          : (() => {
+              const cleaned = String(sizeRaw).trim().replace(/[^0-9.]/g, "");
+              if (!cleaned) return undefined;
+              const num = Number(cleaned);
+              return Number.isFinite(num) ? String(num) : undefined;
+            })();
+
+  return {
+    name,
+    url,
+    type,
+    ...(size ? { size } : {}),
+  };
+};

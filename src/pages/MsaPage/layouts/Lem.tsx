@@ -14,7 +14,8 @@ type Props = {
 };
 
 const Lem: React.FC<Props> = ({ contractId, isActive }) => {
-  const { isApprover, isManager, isVendor, isAdmin, isViewOnly } = useUserRole();
+  const { isApprover, isManager, isVendor, isProjectManager, isAdmin, isViewOnly } =
+    useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
@@ -22,12 +23,21 @@ const Lem: React.FC<Props> = ({ contractId, isActive }) => {
   const [debounced, setDebounced] = React.useState("");
 
   const basePath = React.useMemo(() => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/lems`;
+    if (isVendor || isProjectManager)
+      return `/contract/vendor/contracts/${contractId}/lems`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/lems`;
     if (isManager) return `/contract/manager/contracts/${contractId}/lems`;
     if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/lems`;
     return `/contract/user/contracts/${contractId}/lems`;
-  }, [contractId, isAdmin, isApprover, isManager, isVendor, isViewOnly]);
+  }, [
+    contractId,
+    isAdmin,
+    isApprover,
+    isManager,
+    isVendor,
+    isProjectManager,
+    isViewOnly,
+  ]);
 
   const lemQueryKey = useUserQueryKey(["msa-lem-list", contractId, debounced, basePath]);
 

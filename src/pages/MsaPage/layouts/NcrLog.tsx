@@ -251,19 +251,29 @@ const NcrDetailsSheet = ({
 };
 
 const NcrLog: React.FC<Props> = ({ contractId, isActive }) => {
-  const { isApprover, isVendor, isManager, isAdmin, isViewOnly } = useUserRole();
+  const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
+    useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ stats?: unknown; list?: unknown }>({});
   const [search, setSearch] = React.useState("");
 
   const basePath = React.useMemo(() => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/ncrs`;
+    if (isVendor || isProjectManager)
+      return `/contract/vendor/contracts/${contractId}/ncrs`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/ncrs`;
     if (isManager) return `/contract/manager/contracts/${contractId}/ncrs`;
     if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/ncrs`;
     return `/contract/user/contracts/${contractId}/ncrs`;
-  }, [contractId, isAdmin, isApprover, isManager, isVendor, isViewOnly]);
+  }, [
+    contractId,
+    isAdmin,
+    isApprover,
+    isManager,
+    isVendor,
+    isProjectManager,
+    isViewOnly,
+  ]);
 
   const listQueryKey = useUserQueryKey(["msa-ncr-list", contractId, basePath]);
   const statsQueryKey = useUserQueryKey(["msa-ncr-stats", contractId, basePath]);

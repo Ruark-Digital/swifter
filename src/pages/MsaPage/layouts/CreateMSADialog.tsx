@@ -24,6 +24,7 @@ import { useWatch } from "react-hook-form";
 import {
   toIdStringOrUndefined,
   toPersonnelOrUndefined,
+  toFileMetaOrUndefined,
 } from "@/lib/contractFormValues";
 import Step1BasicInfo from "../components/Step1BasicInfo";
 import Step2ContractTeam from "../components/Step2ContractTeam";
@@ -295,16 +296,8 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
 
       const files =
         (data.documents ?? [])
-          .map((f: any) => ({
-            name: typeof f?.name === "string" ? f.name : undefined,
-            url: typeof f?.url === "string" ? f.url : undefined,
-            type: typeof f?.type === "string" ? f.type : undefined,
-            size:
-              typeof f?.size === "number"
-                ? f.size
-                : toNumberOrUndefined(f?.size),
-          }))
-          .filter((f) => Boolean(f?.name && f?.url && f?.type)) ?? [];
+          .map((f: any) => toFileMetaOrUndefined(f))
+          .filter(Boolean) ?? [];
 
       const paymentStructure =
         data.paymentStructure === "milestone"

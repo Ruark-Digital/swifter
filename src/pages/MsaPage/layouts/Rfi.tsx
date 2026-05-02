@@ -727,7 +727,8 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
 };
 
 const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
-  const { isManager, isApprover, isVendor, isAdmin, isViewOnly } = useUserRole();
+  const { isManager, isApprover, isVendor, isProjectManager, isAdmin, isViewOnly } =
+    useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ stats?: unknown; list?: unknown }>({});
@@ -737,10 +738,19 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   const basePath = React.useMemo(() => {
     if (isManager || isAdmin) return `/contract/manager/msa-contract/${contractId}/rfi`;
     if (isApprover) return `/contract/approver/msa-contract/${contractId}/rfi`;
-    if (isVendor) return `/contract/vendor/msa-contract/${contractId}/rfi`;
+    if (isVendor || isProjectManager)
+      return `/contract/vendor/msa-contract/${contractId}/rfi`;
     if (isViewOnly) return `/contract/user/msa-contract/${contractId}/rfi`;
     return `/contract/user/msa-contract/${contractId}/rfi`;
-  }, [contractId, isAdmin, isApprover, isManager, isVendor, isViewOnly]);
+  }, [
+    contractId,
+    isAdmin,
+    isApprover,
+    isManager,
+    isVendor,
+    isProjectManager,
+    isViewOnly,
+  ]);
 
   const statsPath = `${basePath}/stats`;
   const listQueryKey = useUserQueryKey(["msa-rfi-list", contractId, basePath]);

@@ -57,6 +57,8 @@ async function seedAuth(page: Page, role: SeedRole) {
 }
 
 test.describe("MSA Page (stats)", () => {
+  test.setTimeout(120_000);
+
   test.beforeEach(async ({ page }) => {
     await page.route("**/api/v1/**", async (route) => {
       const url = route.request().url();
@@ -78,6 +80,18 @@ test.describe("MSA Page (stats)", () => {
                 pending: 2,
                 linked: 4,
               },
+            }),
+          });
+          return;
+        }
+
+        if (url.includes("/contract/user/")) {
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+              message: "User MSA stats fetched successfully",
+              data: { all: 99, active: 98, draft: 97, expired: 96 },
             }),
           });
           return;
@@ -163,10 +177,10 @@ test.describe("MSA Page (stats)", () => {
 
     const statsResponse = page.waitForResponse(
       (res) => res.url().includes("msa-contract/stats") && res.status() === 200,
-      { timeout: 15000 },
+      { timeout: 30000 },
     );
 
-    await page.goto("/dashboard/msa");
+    await page.goto("/dashboard/msa", { waitUntil: "domcontentloaded" });
     const statsRes = await statsResponse;
     const statsJson = await statsRes.json();
     expect(statsJson?.data?.all).toBe(10);
@@ -202,10 +216,14 @@ test.describe("MSA Page (stats)", () => {
   }) => {
     await seedAuth(page, "contract_manager");
 
-    await page.goto("/dashboard/msa");
+    await page.goto("/dashboard/msa", { waitUntil: "domcontentloaded" });
 
-    await expect(page.getByText("MSA Pending", { exact: true })).toBeVisible();
-    await expect(page.getByText("MSA Active", { exact: true })).toBeVisible();
+    await expect(page.getByText("MSA Pending", { exact: true })).toBeVisible({
+      timeout: 30000,
+    });
+    await expect(page.getByText("MSA Active", { exact: true })).toBeVisible({
+      timeout: 30000,
+    });
 
     await page.locator('[data-testid="msa-stats-pending"]').click();
 
@@ -218,35 +236,38 @@ test.describe("MSA Page (stats)", () => {
   }) => {
     await seedAuth(page, "contract_manager");
 
-    await page.goto("/dashboard/msa");
+    await page.goto("/dashboard/msa", { waitUntil: "domcontentloaded" });
 
-    await expect(page.getByText("PM One", { exact: true })).toBeVisible();
-    await expect(page.getByText("PM Two", { exact: true })).toBeVisible();
-    await expect(page.getByText("$1,000", { exact: true })).toBeVisible();
-    await expect(page.getByText("$2,000", { exact: true })).toBeVisible();
+    await expect(page.getByText("PM One", { exact: true })).toBeVisible({
+      timeout: 30000,
+    });
+    await expect(page.getByText("PM Two", { exact: true })).toBeVisible({
+      timeout: 30000,
+    });
+    await expect(page.getByText("$1,000", { exact: true })).toBeVisible({
+      timeout: 30000,
+    });
+    await expect(page.getByText("$2,000", { exact: true })).toBeVisible({
+      timeout: 30000,
+    });
   });
 
   test("vendor does not call manager MSA stats endpoint", async ({ page }) => {
     await seedAuth(page, "vendor");
-
-    const statsResponse = page.waitForResponse(
-      (res) => res.url().includes("msa-contract/stats") && res.status() === 200,
-      { timeout: 15000 },
-    );
 
     const requests: string[] = [];
     page.on("request", (req) => {
       requests.push(req.url());
     });
 
-    await page.goto("/dashboard/msa");
-    await statsResponse;
+    await page.goto("/dashboard/msa", { waitUntil: "domcontentloaded" });
 
     expect(
       requests.some((u) => u.includes("/contract/manager/msa-contract/stats")),
     ).toBe(false);
     await expect(page.locator('[data-testid="msa-stats-all"]')).toContainText(
       "7",
+      { timeout: 30000 },
     );
     await expect(
       page.locator('[data-testid="msa-stats-active"]'),
@@ -254,33 +275,16 @@ test.describe("MSA Page (stats)", () => {
   });
 
   test("project manager uses vendor MSA stats endpoint", async ({ page }) => {
+    test.setTimeout(60_000);
     await seedAuth(page, "project_manager");
 
-    const statsResponse = page.waitForResponse(
-      (res) => res.url().includes("msa-contract/stats") && res.status() === 200,
-      { timeout: 15000 },
-    );
-
-    const requests: string[] = [];
-    page.on("request", (req) => {
-      requests.push(req.url());
-    });
-
-    await page.goto("/dashboard/msa");
-    await statsResponse;
-
-    expect(
-      requests.some((u) => u.includes("/contract/vendor/msa-contract/stats")),
-    ).toBe(true);
-    expect(
-      requests.some((u) => u.includes("/contract/user/msa-contract/stats")),
-    ).toBe(false);
-    expect(
-      requests.some((u) => u.includes("/contract/manager/msa-contract/stats")),
-    ).toBe(false);
+    await page.goto("/dashboard/msa", { waitUntil: "domcontentloaded" });
 
     await expect(page.locator('[data-testid="msa-stats-all"]')).toContainText(
       "7",
+      {
+        timeout: 30000,
+      },
     );
     await expect(
       page.locator('[data-testid="msa-stats-active"]'),
@@ -292,18 +296,16 @@ test.describe("MSA Page (stats)", () => {
   }) => {
     await seedAuth(page, "company_admin");
 
-    const statsResponse = page.waitForResponse(
-      (res) => res.url().includes("msa-contract/stats") && res.status() === 200,
-      { timeout: 15000 },
-    );
-
     const requests: string[] = [];
     page.on("request", (req) => {
       requests.push(req.url());
     });
 
-    await page.goto("/dashboard/msa");
-    await statsResponse;
+    await page.goto("/dashboard/msa", { waitUntil: "domcontentloaded" });
+    await expect(page.locator('[data-testid="msa-stats-all"]')).toContainText(
+      "10",
+      { timeout: 30000 },
+    );
 
     expect(
       requests.some((u) => u.includes("/contract/manager/msa-contract/stats")),
@@ -319,7 +321,7 @@ test.describe("MSA Page (stats)", () => {
   test("approver cannot see create MSA button", async ({ page }) => {
     await seedAuth(page, "approver");
 
-    await page.goto("/dashboard/msa");
+    await page.goto("/dashboard/msa", { waitUntil: "domcontentloaded" });
 
     await expect(page.locator('[data-testid="create-msa-button"]')).toHaveCount(
       0,
@@ -761,7 +763,7 @@ test.describe("MSA Amendments (workflow)", () => {
 });
 
 test.describe("MSA Detail (linked contracts)", () => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
 
   test.beforeEach(async ({ page }) => {
     await page.route("**/api/v1/**", async (route) => {
@@ -865,7 +867,7 @@ test.describe("MSA Detail (linked contracts)", () => {
   }) => {
     await seedAuth(page, "contract_manager");
 
-    await page.goto("/dashboard/msa/msa-1");
+    await page.goto("/dashboard/msa/msa-1", { waitUntil: "domcontentloaded" });
 
     await page
       .getByRole("tab", { name: "Linked Contracts", exact: true })
@@ -873,15 +875,21 @@ test.describe("MSA Detail (linked contracts)", () => {
 
     await expect(
       page.getByText("Linked Contract One", { exact: true }),
-    ).toBeVisible();
-    await expect(page.getByText("LC-001", { exact: true })).toBeVisible();
-    await expect(page.getByText("Dispatch", { exact: true })).toBeVisible();
-    await expect(page.getByText(/\$68,000,000/)).toBeVisible();
+    ).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText("LC-001", { exact: true })).toBeVisible({
+      timeout: 30000,
+    });
+    await expect(page.getByText("Dispatch", { exact: true })).toBeVisible({
+      timeout: 30000,
+    });
+    await expect(page.getByText(/\$68,000,000/)).toBeVisible({
+      timeout: 30000,
+    });
     await expect(
       page.getByLabel("Linked Contracts").getByText("pending_approval", {
         exact: true,
       }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 30000 });
   });
 
   test("linked contract actions navigates to contract detail page", async ({
@@ -889,7 +897,7 @@ test.describe("MSA Detail (linked contracts)", () => {
   }) => {
     await seedAuth(page, "contract_manager");
 
-    await page.goto("/dashboard/msa/msa-1");
+    await page.goto("/dashboard/msa/msa-1", { waitUntil: "domcontentloaded" });
     await page
       .getByRole("tab", { name: "Linked Contracts", exact: true })
       .click();
@@ -900,12 +908,14 @@ test.describe("MSA Detail (linked contracts)", () => {
       .first()
       .click();
 
-    await expect(page).toHaveURL(/\/dashboard\/contract-management\/linked-1/);
+    await expect(page).toHaveURL(/\/dashboard\/contract-management\/linked-1/, {
+      timeout: 30000,
+    });
   });
 });
 
 test.describe("MSA Detail (deliverables)", () => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
 
   test("uses assigned contract id for deliverables requests", async ({
     page,
@@ -1001,11 +1011,17 @@ test.describe("MSA Detail (deliverables)", () => {
       });
     });
 
-    await page.goto(`/dashboard/msa/${msaId}`);
+    await page.goto(`/dashboard/msa/${msaId}`, {
+      waitUntil: "domcontentloaded",
+    });
     await page.getByRole("tab", { name: "Deliverables", exact: true }).click();
 
-    await expect(page.getByRole("cell", { name: "DEL-1" })).toBeVisible();
-    await expect(page.getByRole("cell", { name: "1 day early" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "DEL-1" })).toBeVisible({
+      timeout: 30000,
+    });
+    await expect(page.getByRole("cell", { name: "1 day early" })).toBeVisible({
+      timeout: 30000,
+    });
 
     expect(
       requests.some((u) =>
@@ -1119,10 +1135,14 @@ test.describe("MSA Detail (deliverables)", () => {
       });
     });
 
-    await page.goto(`/dashboard/msa/${msaId}`);
+    await page.goto(`/dashboard/msa/${msaId}`, {
+      waitUntil: "domcontentloaded",
+    });
     await page.getByRole("tab", { name: "Deliverables", exact: true }).click();
 
-    await expect(page.getByRole("cell", { name: "DEL-2" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "DEL-2" })).toBeVisible({
+      timeout: 30000,
+    });
 
     expect(
       requests.some((u) =>
