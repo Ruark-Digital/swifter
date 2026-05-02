@@ -31,7 +31,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { X } from "lucide-react";
 import { format } from "date-fns";
 import { useClearSession } from "@/store/solicitationFileSlice";
+import { useUser } from "@/store/authSlice";
 import { pruneEmptyValuesDeep } from "@/lib/pruneEmptyValuesDeep";
+import { getExchangeRate } from "@/lib/currencyUtils";
 import {
   isEmailLike,
   isObjectIdLike,
@@ -592,6 +594,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
   const qc = useQueryClient();
   const clearSession = useClearSession();
   const { success, error } = useToastHandler();
+  const currentUser = useUser();
 
   const typesQuery = useQuery<ApiListResponse<ContractType>>({
     queryKey: useUserQueryKey(["contract-types"]),
@@ -1064,10 +1067,38 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       formData: CreateContractFormData,
       status: "draft" | "publish" = "publish",
     ) => {
-      const payload = buildPayload(formData, status);
-      mutation.mutate(payload);
+      const submitAsync = async () => {
+        const payload = buildPayload(formData, status) as any;
+
+        const baseCurrency = currentUser?.currency;
+        const selectedCurrency = payload?.currency;
+        if (
+          typeof baseCurrency === "string" &&
+          typeof selectedCurrency === "string" &&
+          baseCurrency &&
+          selectedCurrency &&
+          baseCurrency !== selectedCurrency
+        ) {
+          try {
+            payload.currencyRate = await getExchangeRate(
+              baseCurrency,
+              selectedCurrency,
+            );
+          } catch (err) {
+            error(
+              "Failed to create contract",
+              err instanceof Error ? err.message : "Unable to fetch currency rate",
+            );
+            return;
+          }
+        }
+
+        mutation.mutate(payload);
+      };
+
+      void submitAsync();
     },
-    [buildPayload, mutation],
+    [buildPayload, currentUser?.currency, error, mutation],
   );
 
   const resetAndClose = React.useCallback(() => {

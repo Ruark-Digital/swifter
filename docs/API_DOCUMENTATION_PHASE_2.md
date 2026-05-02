@@ -404,6 +404,7 @@ MSA (Master Services Agreement) contracts are umbrella contracts that can have l
 | ------ | -------------------------------------------------------- | ---------------------------------- |
 | `GET`  | `/manager/msa-contract/{contractId}/invoice`             | List MSA contract invoices         |
 | `GET`  | `/manager/msa-contract/{contractId}/invoice/{invoiceId}` | Get MSA contract invoice details   |
+| `POST` | `/manager/msa-contracts/{contractId}/invoice/{invoiceId}/approve` | Approve or reject a contract invoice (Manager) |
 | `GET`  | `/manager/msa-contract/{contractId}/invoice/stats`       | Get MSA contract invoice statistics |
 
 #### KPIs
@@ -1302,8 +1303,6 @@ All accept `?type=Contract|MsaContract`.
 | `GET`   | `/vendor/contracts/{contractId}/personnel`                                  | Personnel list            |
 | `GET`   | `/vendor/contracts/{contractId}/payment-holdbacks`                          | List holdbacks            |
 | `GET`   | `/vendor/contracts/payment-holdbacks/{holdBackId}`                          | Holdback detail           |
-| `GET`   | `/vendor/contracts/{contractId}/payment-savings`                            | List savings              |
-| `GET`   | `/vendor/contracts/payment-savings/{savingId}`                              | Saving detail             |
 | `GET`   | `/vendor/contracts/{contractId}/kpis`                                       | List KPIs                 |
 | `GET`   | `/vendor/contracts/{contractId}/kpis/{kpiId}`                               | KPI detail                |
 | `GET`   | `/vendor/contracts/{contractId}/compliance`                                 | Compliance details        |
@@ -1320,8 +1319,6 @@ All accept `?type=Contract|MsaContract`.
 | `POST`  | `/vendor/msa-contract/{contractId}/project-managers/{projectManagerId}/assign` | Assign PM           |
 | `GET`   | `/vendor/msa-contract/{contractId}/payment-holdbacks`                          | List holdbacks      |
 | `GET`   | `/vendor/msa-contract/payment-holdbacks/{holdBackId}`                          | Holdback detail     |
-| `GET`   | `/vendor/msa-contract/{contractId}/payment-savings`                            | List savings        |
-| `GET`   | `/vendor/msa-contract/payment-savings/{savingId}`                              | Saving detail       |
 | `GET`   | `/vendor/msa-contract/{contractId}/compliance`                                 | Compliance details  |
 | `PATCH` | `/vendor/msa-contract/{contractId}/compliance`                                 | Update compliance   |
 
@@ -1534,10 +1531,6 @@ View-only users have read access to all data but cannot create or approve anythi
 | `GET`  | `/user/msa-contract/stats`                          | MSA contract counts |
 | `GET`  | `/user/msa-contract`                                | List MSA contracts  |
 | `GET`  | `/user/msa-contract/{contractId}`                   | MSA contract detail |
-| `GET`  | `/user/msa-contract/{contractId}/payment-holdbacks` | Holdbacks           |
-| `GET`  | `/user/msa-contract/payment-holdbacks/{holdBackId}` | Holdback detail     |
-| `GET`  | `/user/msa-contract/{contractId}/payment-savings`   | Savings             |
-| `GET`  | `/user/msa-contract/payment-savings/{savingId}`     | Saving detail       |
 | `GET`  | `/user/msa-contract/{contractId}/compliance`        | Compliance details  |
 
 ***
@@ -1603,10 +1596,6 @@ Read-only access to all sub-resources under `/user/...`.
 | `GET`  | `/user/msa-contract/{contractId}/invoice`                            | List MSA contract invoices |
 | `GET`  | `/user/msa-contract/{contractId}/invoice/stats`                      | Get MSA contract invoice statistics |
 | `GET`  | `/user/msa-contract/{contractId}/invoice/{invoiceId}`                | Get MSA contract invoice details |
-| `GET`  | `/user/msa-contract/{contractId}/payment-holdbacks`                  | List holdbacks |
-| `GET`  | `/user/msa-contract/payment-holdbacks/{holdBackId}`                  | Get holdback details |
-| `GET`  | `/user/msa-contract/{contractId}/payment-savings`                    | List savings |
-| `GET`  | `/user/msa-contract/payment-savings/{savingId}`                      | Get saving details |
 | `GET`  | `/user/msa-contract/{contractId}/rfi`                                | List contract RFIs |
 | `GET`  | `/user/msa-contract/{contractId}/rfi/stats`                          | Get MSA contract RFI statistics |
 | `GET`  | `/user/msa-contract/{contractId}/rfi/{rfiId}`                        | Get a specific RFI |
@@ -1695,7 +1684,7 @@ const provider = new WebsocketProvider(
 
 ## 31. Schemas
 
-Schemas are derived from `swagger-phase-2.json`.
+Schemas are derived from `swagger.json`.
 
 ### AddApproversDTO
 
