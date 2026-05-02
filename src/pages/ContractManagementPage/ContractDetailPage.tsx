@@ -372,7 +372,7 @@ const ContractDetailPage: React.FC = () => {
     approveStatusResponse?.data?.data?.status === "N/A";
 
   const triggerClass =
-    "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3";
+    "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3 text-sm";
 
   return (
     <div className="space-y-8 pt-5">
@@ -553,15 +553,15 @@ const ContractDetailPage: React.FC = () => {
 
         <ClauseLibraryTabContent
           currency={contract?.currency}
-          isActive={activeTab === "clause-library"} />
+          isActive={activeTab === "clause-library"}
+        />
 
         <VendorReportsTabContent
           contractId={contract?._id ?? ""}
           isActive={activeTab === "reports"}
         />
 
-        <ActionLogTabContent
-          isActive={activeTab === "action-log"} />
+        <ActionLogTabContent isActive={activeTab === "action-log"} />
       </Tabs>
 
       <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>

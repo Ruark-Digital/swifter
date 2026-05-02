@@ -4,6 +4,15 @@ import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ComplianceSecurityTab from "../components/ComplianceSecurityTab";
 
+let mockedUserRole = {
+  userRole: "view_only",
+  isVendor: false,
+  isProjectManager: false,
+  isApprover: false,
+  isManager: false,
+  isAdmin: false,
+};
+
 vi.mock("react-router-dom", async () => {
   const actual =
     await vi.importActual<typeof import("react-router-dom")>(
@@ -17,11 +26,7 @@ vi.mock("react-router-dom", async () => {
 
 vi.mock("@/hooks/useUserRole", () => {
   return {
-    useUserRole: () => ({
-      isVendor: false,
-      isManager: false,
-      isAdmin: false,
-    }),
+    useUserRole: () => mockedUserRole,
   };
 });
 
@@ -52,31 +57,209 @@ vi.mock("../components/ComplianceDetailsSheet", () => {
 });
 
 describe("Compliance & Security", () => {
-  it("shows security id in the security table", async () => {
+  it("shows submit policies button only when policy status is pending or rejected for vendor/project manager", async () => {
+    mockedUserRole = {
+      userRole: "vendor",
+      isVendor: true,
+      isProjectManager: false,
+      isApprover: false,
+      isManager: false,
+      isAdmin: false,
+    };
+
+    const baseProps = {
+      basePath: "/contract/vendor/contracts/contract-1/compliance",
+      data: {
+        details: {
+          policyStatus: { status: "submitted" },
+          securityStatus: { status: "pending" },
+        },
+        policy: [],
+        security: [],
+      } as any,
+    };
+
+    const queryClient = new QueryClient();
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <ComplianceSecurityTab {...baseProps} />
+      </QueryClientProvider>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Submit Policies" }),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <ComplianceSecurityTab
+          {...baseProps}
+          data={
+            {
+              ...baseProps.data,
+              details: { ...baseProps.data.details, policyStatus: { status: "pending" } },
+            } as any
+          }
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Submit Policies" }),
+    ).toBeInTheDocument();
+
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <ComplianceSecurityTab
+          {...baseProps}
+          data={
+            {
+              ...baseProps.data,
+              details: { ...baseProps.data.details, policyStatus: { status: "rejected" } },
+            } as any
+          }
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Submit Policies" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows submit security button only when security status is pending or rejected for vendor/project manager", async () => {
+    mockedUserRole = {
+      userRole: "project_manager",
+      isVendor: false,
+      isProjectManager: true,
+      isApprover: false,
+      isManager: false,
+      isAdmin: false,
+    };
+
+    const queryClient = new QueryClient();
     render(
-      <ComplianceSecurityTab
-        basePath="/contract/manager/contracts/contract-1/compliance"
-        data={
-          {
-            details: {
-              coverage: 1,
-              security: true,
-              expDate: "2026-01-01T00:00:00.000Z",
-              securityType: [{ id: "st-1", name: "Bond" }],
-            },
-            policy: [],
-            security: [
-              {
-                id: "SEC-001",
-                securityType: "Bond",
-                amount: 5000,
-                expiryDate: "2026-06-01T00:00:00.000Z",
-                status: "Pending",
-              } as any,
-            ],
-          } as any
-        }
-      />,
+      <QueryClientProvider client={queryClient}>
+        <ComplianceSecurityTab
+          basePath="/contract/vendor/contracts/contract-1/compliance"
+          data={
+            {
+              details: {
+                policyStatus: { status: "pending" },
+                securityStatus: { status: "approved" },
+              },
+              policy: [],
+              security: [],
+            } as any
+          }
+        />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Contract Security" }));
+
+    expect(
+      screen.queryByRole("button", { name: "Submit Security" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows approve/reject only for contract_manager", async () => {
+    const queryClient = new QueryClient();
+
+    mockedUserRole = {
+      userRole: "contract_manager",
+      isVendor: false,
+      isProjectManager: false,
+      isApprover: false,
+      isManager: true,
+      isAdmin: false,
+    };
+
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <ComplianceSecurityTab
+          basePath="/contract/manager/contracts/contract-1/compliance"
+          data={
+            {
+              details: {
+                policyStatus: { status: "submitted" },
+                securityStatus: { status: "submitted" },
+              },
+              policy: [],
+              security: [],
+            } as any
+          }
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reject" })).toBeInTheDocument();
+
+    mockedUserRole = {
+      userRole: "approver",
+      isVendor: false,
+      isProjectManager: false,
+      isApprover: true,
+      isManager: false,
+      isAdmin: false,
+    };
+
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <ComplianceSecurityTab
+          basePath="/contract/approver/contracts/contract-1/compliance"
+          data={
+            {
+              details: {
+                policyStatus: { status: "submitted" },
+                securityStatus: { status: "submitted" },
+              },
+              policy: [],
+              security: [],
+            } as any
+          }
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Approve" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Reject" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows security id in the security table", async () => {
+    const queryClient = new QueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ComplianceSecurityTab
+          basePath="/contract/manager/contracts/contract-1/compliance"
+          data={
+            {
+              details: {
+                coverage: 1,
+                security: true,
+                expDate: "2026-01-01T00:00:00.000Z",
+                securityType: [{ id: "st-1", name: "Bond" }],
+              },
+              policy: [],
+              security: [
+                {
+                  _id: "sec-1",
+                  securityTypeId: "SEC-001",
+                  securityType: "Bond",
+                  amount: 5000,
+                  dueDate: "2026-06-01T00:00:00.000Z",
+                  status: "Pending",
+                } as any,
+              ],
+            } as any
+          }
+        />
+      </QueryClientProvider>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Contract Security" }));
@@ -101,10 +284,10 @@ describe("Compliance & Security", () => {
           basePath="/contract/manager/contracts/contract-1/compliance"
           data={
             {
-              id: "SEC-001",
+              securityTypeId: "SEC-001",
               securityType: "Bond",
               amount: 5000,
-              expiryDate: "2026-06-01T00:00:00.000Z",
+              dueDate: "2026-06-01T00:00:00.000Z",
               status: "Pending",
             } as any
           }

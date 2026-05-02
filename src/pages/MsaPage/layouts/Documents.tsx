@@ -31,18 +31,19 @@ const Documents: React.FC<DocumentsProps> = ({
   files,
   isActive,
 }) => {
-  const { isVendor, isApprover, isViewOnly, isManager } = useUserRole();
+  const { isVendor, isProjectManager, isApprover, isViewOnly, isManager } =
+    useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
   const documentsQueryKey = useUserQueryKey(["msa-documents", contractId]);
 
   const rolePrefix = React.useMemo(() => {
-    if (isVendor) return "/contract/vendor";
+    if (isVendor || isProjectManager) return "/contract/vendor";
     if (isApprover) return "/contract/approver";
     if (isViewOnly) return "/contract/user";
     return "/contract/manager";
-  }, [isApprover, isVendor, isViewOnly]);
+  }, [isApprover, isVendor, isProjectManager, isViewOnly]);
 
   const {
     data: documentsResponse,

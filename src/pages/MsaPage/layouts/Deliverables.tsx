@@ -11,10 +11,11 @@ import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import type { ApiResponseError } from "@/types";
 import DeliverablesTable, {
   type DeliverableRow,
+  type KPIDetail,
 } from "@/pages/ContractManagementPage/components/DeliverablesTable";
 
 type Props = {
-  contractId: string;
+  contractId?: string;
   isActive?: boolean;
 };
 
@@ -66,18 +67,57 @@ const StatCard = ({
 };
 
 const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
-  const { isApprover, isVendor, isManager, isAdmin, isViewOnly } = useUserRole();
+  const {
+    isApprover,
+    isVendor,
+    isProjectManager,
+    isManager,
+    isCompanyAdmin,
+    isSuperAdmin,
+    isViewOnly,
+  } = useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ list?: unknown; stats?: unknown }>({});
+  const isCompanyAdminLike = isCompanyAdmin || isSuperAdmin;
+
+  const normalizeKpi = React.useCallback((value: unknown): KPIDetail => {
+    if (typeof value === "string") {
+      return { kpi: 0, kpiDays: 0, kpiText: value, kpiStatus: "none" };
+    }
+    const v = (value ?? {}) as any;
+    const kpiText =
+      typeof v?.kpiText === "string"
+        ? v.kpiText
+        : typeof v?.kpi === "string"
+          ? v.kpi
+          : "-";
+    return {
+      kpi: Number(v?.kpi ?? 0),
+      kpiDays: Number(v?.kpiDays ?? 0),
+      kpiText,
+      kpiStatus: typeof v?.kpiStatus === "string" ? v.kpiStatus : "none",
+    };
+  }, []);
 
   const basePath = React.useMemo(() => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/deliverables`;
+    if (!contractId) return "";
+    if (isVendor || isProjectManager)
+      return `/contract/vendor/contracts/${contractId}/deliverables`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/deliverables`;
-    if (isManager) return `/contract/manager/contracts/${contractId}/deliverables`;
-    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/deliverables`;
+    if (isManager || isCompanyAdminLike)
+      return `/contract/manager/contracts/${contractId}/deliverables`;
+    if (isViewOnly) return `/contract/user/contracts/${contractId}/deliverables`;
     return `/contract/user/contracts/${contractId}/deliverables`;
-  }, [contractId, isAdmin, isApprover, isManager, isVendor, isViewOnly]);
+  }, [
+    contractId,
+    isApprover,
+    isCompanyAdminLike,
+    isManager,
+    isVendor,
+    isProjectManager,
+    isViewOnly,
+  ]);
 
   const listQueryKey = useUserQueryKey(["msa-deliverables", contractId, basePath]);
   const statsQueryKey = useUserQueryKey(["msa-deliverables-stats", contractId, basePath]);
@@ -141,17 +181,21 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
           : it?.submissionStatus === "late"
             ? "Late"
             : "Pending") as DeliverableRow["submissionStatus"],
-      kpi: it?.kpi?.kpiText ?? it?.kpi ?? "",
+      kpi: normalizeKpi(it?.kpi),
       status:
         (it?.status === "approved"
           ? "Approved"
           : it?.status === "rejected"
             ? "Rejected"
-            : it?.status === "pending"
-              ? "Pending"
-              : "Under Review") as DeliverableRow["status"],
+            : it?.status === "under_review"
+              ? "Under Review"
+              : it?.status === "late"
+                ? "Late"
+                : it?.status === "pending"
+                  ? "Pending"
+                  : "Under Review") as DeliverableRow["status"],
     }));
-  }, [listRes]);
+  }, [listRes, normalizeKpi]);
 
   const stats = React.useMemo(() => {
     const payload = (statsRes as any)?.data;
@@ -193,13 +237,15 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
         <StatCard title="Under Review" value={stats.underReview} tone="yellow" />
       </div>
 
-      <DeliverablesTable
-        contractId={contractId}
-        rows={rows}
-        isLoading={Boolean(listLoading || statsLoading)}
-        isApprover={isApprover}
-        basePath={basePath}
-      />
+      {contractId ? (
+        <DeliverablesTable
+          contractId={contractId}
+          rows={rows}
+          isLoading={Boolean(listLoading || statsLoading)}
+          isApprover={isApprover}
+          basePath={basePath}
+        />
+      ) : null}
     </TabsContent>
   );
 };

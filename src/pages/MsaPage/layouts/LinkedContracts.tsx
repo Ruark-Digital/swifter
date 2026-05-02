@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/layouts/SearchInput";
 import { DropdownFilters } from "@/components/layouts/SolicitationFilters";
 import { MoreVertical } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export type LinkedContractRow = {
+  id: string;
   title: string;
   code: string;
   company: string;
@@ -14,7 +16,7 @@ export type LinkedContractRow = {
   value?: string;
   published?: string;
   endDate?: string;
-  status: "Active" | "Terminated" | "Closed" | "Suspended";
+  status: string;
 };
 
 type Props = {
@@ -23,10 +25,16 @@ type Props = {
 };
 
 const statusTone = (s: LinkedContractRow["status"]) => {
-  if (s === "Active") return "bg-[#43A0471A] text-[#43A047]";
-  if (s === "Terminated") return "bg-[#E539351A] text-[#E53935]";
-  if (s === "Closed") return "bg-[#6B72801A] text-[#6B7280]";
-  if (s === "Suspended") return "bg-[#F59E0B1A] text-[#F59E0B]";
+  const normalized = String(s ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+
+  if (normalized === "active") return "bg-[#43A0471A] text-[#43A047]";
+  if (normalized === "terminated") return "bg-[#E539351A] text-[#E53935]";
+  if (normalized === "closed") return "bg-[#6B72801A] text-[#6B7280]";
+  if (normalized === "suspended") return "bg-[#F59E0B1A] text-[#F59E0B]";
+  if (normalized === "pending_approval") return "bg-[#F59E0B1A] text-[#F59E0B]";
   return "bg-[#E5E7EB] text-[#374151]";
 };
 
@@ -56,7 +64,9 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
         header: "Contracts",
         cell: ({ row }) => (
           <div className="flex flex-col">
-            <span className="font-medium text-slate-900">{row.original.title}</span>
+            <span className="font-medium text-slate-900">
+              {row.original.title}
+            </span>
             <span className="text-xs text-slate-500">{row.original.code}</span>
           </div>
         ),
@@ -80,7 +90,9 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
         header: "Value",
         cell: ({ getValue }) => {
           const v = getValue<string | undefined>();
-          return <span className="font-semibold text-slate-900">{v ?? "-"}</span>;
+          return (
+            <span className="font-semibold text-slate-900">{v ?? "-"}</span>
+          );
         },
       },
       {
@@ -105,7 +117,9 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
         cell: ({ getValue }) => {
           const s = getValue<LinkedContractRow["status"]>();
           return (
-            <div className={`inline-flex h-7 items-center rounded-full px-3 text-xs font-semibold ${statusTone(s)}`}>
+            <div
+              className={`inline-flex h-7 items-center rounded-full px-3 text-xs font-semibold ${statusTone(s)}`}
+            >
               {s}
             </div>
           );
@@ -114,9 +128,14 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
       {
         id: "actions",
         header: "Actions",
-        cell: () => (
-          <Button variant="ghost" className="h-8 w-8 p-0">
-            <MoreVertical className="h-4 w-4 text-slate-500" />
+        cell: ({ row }) => (
+          <Button variant="ghost" className="h-8 w-8 p-0" asChild>
+            <Link
+              to={`/dashboard/contract-management/${row.original.id}`}
+              aria-label="View Contract"
+            >
+              <MoreVertical className="h-4 w-4 text-slate-500" />
+            </Link>
           </Button>
         ),
       },
@@ -172,10 +191,16 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
       data={filtered}
       columns={columns}
       header={() => (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3">
-            <div className="text-sm font-semibold text-slate-700">Contracts</div>
-            <SearchInput placeholder="contract" searchQuery={search} setSearchQuery={setSearch} />
+            <div className="text-sm font-semibold text-slate-700">
+              Contracts
+            </div>
+            <SearchInput
+              placeholder="contract"
+              searchQuery={search}
+              setSearchQuery={setSearch}
+            />
           </div>
           <DropdownFilters filters={filters as any} />
         </div>
@@ -202,4 +227,3 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
 };
 
 export default LinkedContracts;
-

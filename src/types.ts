@@ -41,6 +41,7 @@ export type User = {
   email: string;
   name: string;
   role: Role;
+  currency?: string;
   status: string;
   module: Modules;
   updatedAt: string;
@@ -140,6 +141,7 @@ export interface ContractDetail {
   project:                Company;
   solicitation:           Company;
   vendor:                 Company;
+  msaContract?:           { _id: string; title: string };
   vendorPersonnel:        VendorPersonnel[];
   creator:                Creator;
   contractType:           Company;

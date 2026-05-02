@@ -749,6 +749,7 @@ export const TextTimeInput = (
 
 type TextCurrencyInputProps = Omit<TextInputProps, "onChange"> & {
   onChange: (value: number | string) => void;
+  currency?: string;
 };
 
 export const TextCurrencyInput = (props: TextCurrencyInputProps) => {
@@ -766,7 +767,23 @@ export const TextCurrencyInput = (props: TextCurrencyInputProps) => {
     placeholder,
     className,
     id,
+    currency,
   } = props;
+  const currencyPrefix = (() => {
+    if (!currency) return "$";
+    try {
+      const parts = new Intl.NumberFormat("en", {
+        style: "currency",
+        currency,
+        currencyDisplay: "narrowSymbol",
+      }).formatToParts(0);
+      const symbol = parts.find((p) => p.type === "currency")?.value;
+      return symbol ? `${symbol} ` : `${currency} `;
+    } catch (err) {
+      void err;
+      return "$";
+    }
+  })();
 
   return (
     <div
@@ -795,7 +812,7 @@ export const TextCurrencyInput = (props: TextCurrencyInputProps) => {
           value={value}
           onBlur={onBlur}
           decimalsLimit={2}
-          prefix="$"
+          prefix={currencyPrefix}
           defaultValue={1000}
           onValueChange={(value) => onChange?.(value ?? "")}
           placeholder={placeholder}

@@ -146,6 +146,8 @@ type VendorContractsTableProps = {
   isReadOnly?: boolean;
   pagination?: PaginationState;
   setPagination?: React.Dispatch<React.SetStateAction<PaginationState>>;
+  statusFilter?: string;
+  onStatusFilterChange?: (status: string) => void;
 };
 
 const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
@@ -155,6 +157,8 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
   isReadOnly,
   pagination: paginationProp,
   setPagination: setPaginationProp,
+  statusFilter,
+  onStatusFilterChange,
 }) => {
   const [search, setSearch] = React.useState("");
   const [localPagination, setLocalPagination] = React.useState<PaginationState>({
@@ -170,16 +174,36 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
   }, [isReadOnly]);
 
   const filteredRows = React.useMemo(() => {
-    if (!search) return rows;
-    const query = search.toLowerCase();
-    return rows.filter((row) => {
-      return (
-        row.title.toLowerCase().includes(query) ||
-        row.code.toLowerCase().includes(query)
-      );
-    });
-  }, [rows, search]);
+    let result = rows;
 
+    if (search) {
+      const query = search.toLowerCase();
+      result = result.filter((row) => {
+        return (
+          row.title.toLowerCase().includes(query) ||
+          row.code.toLowerCase().includes(query)
+        );
+      });
+    }
+
+    if (statusFilter && statusFilter !== "all") {
+      result = result.filter((row) => {
+        if (statusFilter === "closed") {
+          return ["Closed", "Expired", "Cancelled"].includes(row.status);
+        }
+        return row.status.toLowerCase() === statusFilter.toLowerCase();
+      });
+    }
+
+    return result;
+  }, [rows, search, statusFilter]);
+
+  const handleFilterChange = (filters: any) => {
+    const status = filters.find((f: any) => f.title === "Status")?.value;
+    if (status && onStatusFilterChange) {
+      onStatusFilterChange(status);
+    }
+  };
 
   return (
     <div data-testid="vendor-contracts-table">
@@ -235,6 +259,7 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
                       title: "Status",
                       showIcon: true,
                       options: [
+                        { label: "All", value: "all" },
                         { label: "Active", value: "active" },
                         { label: "Suspended", value: "suspended" },
                         { label: "Closed", value: "closed" },
@@ -244,11 +269,13 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
                     {
                       title: "Category",
                       options: [
+                        { label: "All", value: "all" },
                         { label: "Software", value: "software" },
                         { label: "Construction", value: "construction" },
                       ],
                     },
                   ]}
+                  onFilterChange={handleFilterChange}
                 />
               </div>
             </div>

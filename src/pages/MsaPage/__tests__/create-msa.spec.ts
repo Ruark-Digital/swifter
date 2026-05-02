@@ -116,6 +116,36 @@ test.describe("Create MSA (API integration)", () => {
         return;
       }
 
+      if (url.includes("/procurement/solicitations/vendors")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: 200,
+            message: "ok",
+            data: [{ _id: "vendor-1", name: "Vendor One", email: "v@co.com" }],
+          }),
+        });
+        return;
+      }
+
+      if (
+        url.includes(
+          "/contract/manager/contracts/vendor/vendor-1/project-managers",
+        )
+      ) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: 200,
+            message: "ok",
+            data: [{ id: "pm-1", name: "PM One", email: "pm@co.com" }],
+          }),
+        });
+        return;
+      }
+
       if (url.includes("/upload")) {
         await route.fulfill({
           status: 200,
@@ -136,17 +166,34 @@ test.describe("Create MSA (API integration)", () => {
         return;
       }
 
+      if (url.includes("/contract/manager/business-division")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: 200,
+            message: "ok",
+            data: {
+              docs: [{ _id: "div-1", name: "Engineering", location: "" }],
+            },
+          }),
+        });
+        return;
+      }
+
       if (
         url.includes("/contract/manager/msa-contract") &&
         route.request().method() === "POST"
       ) {
         const body = route.request().postDataJSON() as any;
 
-        expect(body.contractRelationship).toBe("msa_project");
         expect(body.msaType).toBe("type-1");
+        expect(body.projectManager).toBe("pm-1");
         expect(body.contractType).toBeUndefined();
-        expect(body.category).toBe("Master Service Agreement");
+        expect(body.contractRelationship).toBeUndefined();
+        expect(body.category).toBeUndefined();
         expect(body.status).toBe("publish");
+        expect(body.businessDivision).toBeDefined();
         expect(body.currency).toBe("USD");
 
         expect(body.contigency).toBeUndefined();
@@ -214,6 +261,13 @@ test.describe("Create MSA (API integration)", () => {
       .first()
       .click();
 
+    await page.locator('[data-testid="msa-business-division-select"]').click();
+    await page.waitForSelector('[role="listbox"]', { state: "visible" });
+    await page
+      .locator('[role="listbox"]')
+      .getByRole("option", { name: "Engineering", exact: true })
+      .click();
+
     await page
       .locator('[data-testid="create-msa-dialog"]')
       .getByText("1", { exact: true })
@@ -221,6 +275,26 @@ test.describe("Create MSA (API integration)", () => {
       .click();
 
     await page.getByRole("button", { name: "Continue" }).click();
+
+    const vendorSelect = page.getByRole("button", {
+      name: /select vendor or type email/i,
+    });
+    await vendorSelect.click();
+    await page
+      .locator('[data-slot="command-item"]')
+      .filter({ hasText: "Vendor One" })
+      .first()
+      .click();
+
+    const pmSelect = page.getByRole("button", {
+      name: /select project manager or type email/i,
+    });
+    await pmSelect.click();
+    await page
+      .locator('[data-slot="command-item"]')
+      .filter({ hasText: "PM One" })
+      .first()
+      .click();
 
     await page.getByRole("button", { name: "Continue" }).click();
     await page.getByRole("button", { name: "Continue" }).click();
@@ -281,5 +355,161 @@ test.describe("Create MSA (API integration)", () => {
     await expect(page.locator('[role="dialog"]')).toHaveClass(
       /sm:max-w-\[550px\]/,
     );
+  });
+
+  test("disables past dates in date pickers (future-only)", async ({
+    page,
+  }) => {
+    await seedAuth(page, "contract_manager");
+
+    await page.goto("/dashboard/msa");
+    await page.locator('[data-testid="create-msa-button"]').click();
+
+    await expect(
+      page.locator('[data-testid="create-msa-dialog"]'),
+    ).toBeVisible();
+
+    await page.locator('[data-testid="msa-name-input"]').fill("Test MSA");
+
+    const msaTypeTrigger = page
+      .locator('[data-slot="select-trigger"]')
+      .filter({ hasText: "Select MSA type" })
+      .first();
+    await msaTypeTrigger.click();
+    await page
+      .getByRole("option", { name: "Master Service Agreement", exact: true })
+      .click();
+
+    await page.locator('[data-testid="msa-currency-select"]').click();
+    await page.getByPlaceholder("Search currency...").fill("USD");
+    await page
+      .locator('[data-slot="command-item"]')
+      .filter({ hasText: /^USD/ })
+      .first()
+      .click();
+
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
+
+    const effectiveDateTrigger = page
+      .getByText("Contract Effective Date")
+      .locator("..")
+      .getByRole("button")
+      .first();
+    await effectiveDateTrigger.click();
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayDay = String(yesterday.getDate());
+
+    const calendarPopup = page
+      .locator('[data-state="open"]')
+      .filter({ has: page.getByRole("grid") })
+      .first();
+
+    const dayButton = calendarPopup
+      .locator("button")
+      .filter({ hasText: new RegExp(`^${yesterdayDay}$`) })
+      .first();
+
+    await expect(dayButton).toBeVisible();
+    await expect(dayButton).toBeDisabled();
+  });
+
+  test("shows loading indicator when publishing contract", async ({ page }) => {
+    await seedAuth(page, "contract_manager");
+
+    await page.goto("/dashboard/msa");
+
+    await page.locator('[data-testid="create-msa-button"]').click();
+
+    await expect(
+      page.locator('[data-testid="create-msa-dialog"]'),
+    ).toBeVisible();
+
+    await page.locator('[data-testid="msa-name-input"]').fill("Test MSA");
+
+    const msaTypeTrigger = page
+      .locator('[data-slot="select-trigger"]')
+      .filter({ hasText: "Select MSA type" })
+      .first();
+    await msaTypeTrigger.click();
+    await page
+      .getByRole("option", { name: "Master Service Agreement", exact: true })
+      .click();
+
+    await page.locator('[data-testid="msa-currency-select"]').click();
+    await page.getByPlaceholder("Search currency...").fill("USD");
+    await page
+      .locator('[data-slot="command-item"]')
+      .filter({ hasText: /^USD/ })
+      .first()
+      .click();
+
+    await page.locator('[data-testid="msa-business-division-select"]').click();
+    await page.waitForSelector('[role="listbox"]', { state: "visible" });
+    await page
+      .getByRole("option", { name: "Engineering", exact: true })
+      .click();
+
+    await page
+      .locator('[data-testid="create-msa-dialog"]')
+      .getByText("1", { exact: true })
+      .first()
+      .click();
+
+    for (let i = 0; i < 5; i++) {
+      await page.getByRole("button", { name: "Continue" }).click();
+    }
+
+    const paymentTermTrigger = page
+      .locator('[data-slot="select-trigger"]')
+      .filter({ hasText: "Select payment term" })
+      .first();
+    await paymentTermTrigger.click();
+    await page.getByRole("option", { name: "NET 30", exact: true }).click();
+
+    for (let i = 0; i < 4; i++) {
+      await page.getByRole("button", { name: "Continue" }).click();
+    }
+
+    await expect(page.getByRole("button", { name: "Publish" })).toBeVisible();
+
+    let slowFulfill = false;
+    await page.route("**/contract/manager/msa-contract", async (route) => {
+      if (route.request().method() === "POST") {
+        if (!slowFulfill) {
+          slowFulfill = true;
+          await page.waitForTimeout(500);
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: 200,
+            message: "ok",
+            data: { _id: "msa-1" },
+          }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: 200, message: "ok", data: [] }),
+      });
+    });
+
+    const publishButton = page.getByRole("button", { name: "Publish" });
+    await publishButton.click();
+
+    const isDisabled = await publishButton.isDisabled();
+    const buttonHtml = await publishButton.evaluate((el) => el.innerHTML);
+    const hasLoadingState =
+      isDisabled ||
+      buttonHtml.includes("spinner") ||
+      buttonHtml.includes("loading");
+
+    expect(hasLoadingState).toBeTruthy();
   });
 });

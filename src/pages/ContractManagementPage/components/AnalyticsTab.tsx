@@ -630,11 +630,11 @@ const AnalyticsTab: React.FC<Props> = ({
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 items-start lg:grid-cols-3 gap-6">
         {/* Deliverable Status */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
+        <div className="bg-white p-6 rounded-xl border shadow-sm flex flex-col">
           <h3 className="font-semibold text-slate-800 mb-6">Deliverable Status</h3>
-          <div className="relative h-48">
+          <div className="relative h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -670,7 +670,7 @@ const AnalyticsTab: React.FC<Props> = ({
         </div>
 
         {/* Activities */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
+        <div className="bg-white p-6 rounded-xl border shadow-sm flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-semibold text-slate-800">Activities</h3>
             <div className="flex gap-2 text-xs">
@@ -691,12 +691,21 @@ const AnalyticsTab: React.FC<Props> = ({
               ))}
             </div>
           </div>
-          <div className="h-48">
+          <div className="h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={activityChartData}>
+              <LineChart
+                data={activityChartData}
+                margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10 }}
+                  width={20}
+                  mirror
+                />
                 <Tooltip />
                 <Line type="monotone" dataKey="change" stroke="#3B82F6" strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="claims" stroke="#10B981" strokeWidth={2} dot={false} />

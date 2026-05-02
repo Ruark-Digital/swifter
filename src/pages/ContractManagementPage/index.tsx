@@ -81,6 +81,7 @@ type VendorContractApi = {
   id: string;
   title: string;
   contractId: string;
+  contractRelationship?: "standalone" | "project" | "msa_project" | "msa";
   contractValue?: number;
   status:
     | "active"
@@ -95,7 +96,29 @@ type VendorContractApi = {
   startDate?: string;
   endDate?: string;
   createdAt?: string;
+  company?: string | { name?: string };
   vendor?: { name?: string };
+};
+
+const mapContractRelationshipLabel = (
+  relationship?: "standalone" | "project" | "msa_project" | "msa",
+): string => {
+  if (relationship === "standalone") return "Stand-Alone Project";
+  if (relationship === "project") return "Link to Project";
+  if (relationship === "msa_project" || relationship === "msa") {
+    return "Link to MSA";
+  }
+  return "-";
+};
+
+const mapCompanyLabel = (
+  company?: string | { name?: string },
+  vendor?: { name?: string },
+): string => {
+  if (typeof company === "string" && company.trim()) return company;
+  if (company && typeof company === "object" && company.name) return company.name;
+  if (vendor?.name) return vendor.name;
+  return "-";
 };
 
 type VendorStatsResponse = {
@@ -329,8 +352,8 @@ const mapVendorContractsToRows = (
       contractId: c.contractId,
       title: c.title,
       code: c.contractId,
-      company: c.vendor?.name ?? "-",
-      contractRelationship: "-",
+      company: mapCompanyLabel(c.company, c.vendor),
+      contractRelationship: mapContractRelationshipLabel(c.contractRelationship),
       value,
       published: c.createdAt
         ? formatDate(c.createdAt, "dd MMM yyyy")
@@ -366,6 +389,7 @@ const ContractManagementPage: React.FC = () => {
       pageIndex: 0,
       pageSize: 10,
     });
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
 
   const { data: statsData } = useContractsStats(managerQueriesEnabled);
   const { data: allContractsData, isLoading: isAllContractsLoading } =
@@ -429,6 +453,7 @@ const ContractManagementPage: React.FC = () => {
           </div>
 
           <VendorStatsCards
+            onStatusClick={(status) => setStatusFilter(status)}
             counts={
               vendorStatsData?.data
                 ? {
@@ -452,6 +477,8 @@ const ContractManagementPage: React.FC = () => {
             isReadOnly={isViewOnly}
             pagination={vendorPagination}
             setPagination={setVendorPagination}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
           />
         </>
       ) : (
@@ -488,7 +515,10 @@ const ContractManagementPage: React.FC = () => {
             </div>
           </div>
 
-          <StatsCards counts={statsCounts} />
+          <StatsCards
+            counts={statsCounts}
+            onStatusClick={(status) => setStatusFilter(status)}
+          />
 
           {isApprover ? (
             <ContractsTable
@@ -497,6 +527,8 @@ const ContractManagementPage: React.FC = () => {
               totalCount={approverContractsData?.data.totalContracts}
               pagination={approverPagination}
               setPagination={setApproverPagination}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
               // isReadOnly={true}
               // disableActions={isApprover}
             />
@@ -504,6 +536,7 @@ const ContractManagementPage: React.FC = () => {
             <Tabs
               defaultValue="all"
               className="w-full bg-transparent space-y-4"
+              onValueChange={() => setStatusFilter("all")}
             >
               <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
                 <TabsTrigger
@@ -528,6 +561,8 @@ const ContractManagementPage: React.FC = () => {
                   isReadOnly={isViewOnly}
                   pagination={allPagination}
                   setPagination={setAllPagination}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
                   // disableActions={isCompanyAdmin}
                 />
               </TabsContent>
@@ -539,6 +574,8 @@ const ContractManagementPage: React.FC = () => {
                   isReadOnly={isViewOnly}
                   pagination={myPagination}
                   setPagination={setMyPagination}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
                   // disableActions={isCompanyAdmin}
                 />
               </TabsContent>

@@ -58,7 +58,8 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   contractId,
   invoiceId,
 }) => {
-  const { isVendor, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
+  const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
@@ -78,7 +79,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
       if (isApprover) {
         return await approverApi.getInvoiceDetail(contractId, invoiceId);
       }
-      if (isVendor) {
+      if (isContractVendorLike) {
         const res = await vendorApi.getInvoiceDetail(contractId, invoiceId);
         return { message: res.data.message, data: res.data.data };
       }
@@ -115,11 +116,14 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   >({
     mutationKey: ["approveInvoice", contractId, invoiceId],
     mutationFn: async (action) => {
+      const comment = action === "approved"
+        ? "Invoice approved via bulk action"
+        : "Invoice rejected via bulk action";
       if (isManager) {
-        await contractManagerApi.approveInvoice(contractId, invoiceId, { action });
+        await contractManagerApi.approveInvoice(contractId, invoiceId, { action, comment });
         return;
       }
-      await approverApi.approveInvoice(contractId, invoiceId, { action });
+      await approverApi.approveInvoice(contractId, invoiceId, { action, comment });
     },
     onSuccess: async (_, action) => {
       toastHandler.success(
@@ -526,7 +530,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
-                placeholder="Search changes"
+                placeholder="Search invoices"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-10 w-[260px] pl-9"

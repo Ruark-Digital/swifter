@@ -13,6 +13,7 @@ import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { getRequest } from "@/lib/axiosInstance";
 import type { MsaRow } from "./components/MsaTable";
 import { ApiResponse, ApiResponseError } from "@/types";
+import type { PaginationState } from "@tanstack/react-table";
 
 type MsaStatsData = Partial<{
   all: number;
@@ -43,6 +44,8 @@ export interface Contract {
   status: string;
   createdAt: string;
   vendor: Vendor;
+  category?: string;
+  projectManager?: { name?: string } | string;
 }
 
 export interface Creator {
@@ -54,7 +57,7 @@ export interface Creator {
 export interface Vendor {
   name: string;
   email: string;
-  id: string
+  id: string;
 }
 
 type MsaStatsResponse = {
@@ -63,24 +66,45 @@ type MsaStatsResponse = {
 };
 
 const MsaPage: React.FC = () => {
-  const hasData = true;
-  const { isManager, isApprover, isVendor } = useUserRole();
+  const {
+    isManager,
+    isApprover,
+    isVendor,
+    isProjectManager,
+    isCompanyAdmin,
+    isSuperAdmin,
+  } = useUserRole();
+  const isManagerLike = isManager || isCompanyAdmin || isSuperAdmin;
+  const isVendorLike = isVendor || isProjectManager;
 
-  const listUrl = isManager
+  const [allPagination, setAllPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [myPagination, setMyPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = React.useState<string>("all");
+  const [dateFilter, setDateFilter] = React.useState<string>("all");
+
+  const listUrl = isManagerLike
     ? "/contract/manager/msa-contract"
     : isApprover
       ? "/contract/approver/msa-contract"
-      : isVendor
+      : isVendorLike
         ? "/contract/vendor/msa-contract"
         : "/contract/user/msa-contract";
 
   const myListUrl = isManager ? "/contract/manager/msa-contract/me" : undefined;
 
-  const statsUrl = isManager
+  const statsUrl = isManagerLike
     ? "/contract/manager/msa-contract/stats"
     : isApprover
       ? "/contract/approver/msa-contract/stats"
-      : isVendor
+      : isVendorLike
         ? "/contract/vendor/msa-contract/stats"
         : "/contract/user/msa-contract/stats";
 
@@ -94,26 +118,30 @@ const MsaPage: React.FC = () => {
   });
 
   const allQuery = useQuery<ApiResponse<MSAResponseData>, ApiResponseError>({
-    queryKey: useUserQueryKey(["msa", "list", listUrl, { page: 1, limit: 50 }]),
+    queryKey: useUserQueryKey(["msa", "list", listUrl, allPagination]),
     queryFn: async () =>
       await getRequest({
         url: listUrl,
-        config: { params: { page: 1, limit: 50 } },
+        config: {
+          params: {
+            page: allPagination.pageIndex + 1,
+            limit: allPagination.pageSize,
+          },
+        },
       }),
   });
 
   const mineQuery = useQuery<ApiResponse<MSAResponseData>, ApiResponseError>({
-    queryKey: useUserQueryKey([
-      "msa",
-      "list",
-      "me",
-      myListUrl,
-      { page: 1, limit: 50 },
-    ]),
+    queryKey: useUserQueryKey(["msa", "list", "me", myListUrl, myPagination]),
     queryFn: async () =>
       await getRequest({
         url: myListUrl as string,
-        config: { params: { page: 1, limit: 50 } },
+        config: {
+          params: {
+            page: myPagination.pageIndex + 1,
+            limit: myPagination.pageSize,
+          },
+        },
       }),
     enabled: Boolean(myListUrl),
   });
@@ -123,12 +151,18 @@ const MsaPage: React.FC = () => {
       id: String(it?._id ?? "-"),
       title: String(it?.title ?? "-"),
       code: String(it?.msaContractId ?? "-"),
-      vendor: String(it?.vendor?.name ?? "-"),
-      value: undefined,
+      vendor:
+        typeof it?.projectManager === "string"
+          ? String(it.projectManager || "-")
+          : String(it?.projectManager?.name ?? "-"),
+      value: Number.isFinite(it?.contractValue)
+        ? `$${it.contractValue.toLocaleString()}`
+        : undefined,
       owner: String(it?.creator?.name ?? "-"),
       published: it?.createdAt || undefined,
       endDate: it?.endDate || undefined,
       status: String(it?.status ?? "Draft") as MsaRow["status"],
+      category: it?.category,
     }));
 
   const extractItems = (res: MSAResponseData): Contract[] => {
@@ -154,6 +188,15 @@ const MsaPage: React.FC = () => {
     linked: stats?.linked ?? stats?.linkedContracts ?? 0,
   };
 
+  const allTotalCount = allQuery.data?.data?.data?.totalContracts ?? 0;
+  const myTotalCount = mineQuery.data?.data?.data?.totalContracts ?? 0;
+
+  const hasData =
+    allRows.length > 0 ||
+    myRows.length > 0 ||
+    allQuery.isLoading ||
+    mineQuery.isLoading;
+
   return (
     <div className="space-y-8 pt-5">
       <SEOWrapper
@@ -178,7 +221,12 @@ const MsaPage: React.FC = () => {
         </div>
       </div>
 
-      <StatsCards counts={counts} />
+      <StatsCards
+        counts={counts}
+        onStatusClick={(status) => {
+          setStatusFilter(status);
+        }}
+      />
 
       {hasData ? (
         <Tabs defaultValue="all" className="w-full bg-transparent space-y-4">
@@ -197,10 +245,34 @@ const MsaPage: React.FC = () => {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="all">
-            <MsaTable rows={allRows} />
+            <MsaTable
+              rows={allRows}
+              totalCount={allTotalCount}
+              pagination={allPagination}
+              setPagination={setAllPagination}
+              isLoading={allQuery.isLoading}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              categoryFilter={categoryFilter}
+              onCategoryFilterChange={setCategoryFilter}
+              dateFilter={dateFilter}
+              onDateFilterChange={setDateFilter}
+            />
           </TabsContent>
           <TabsContent value="mine">
-            <MsaTable rows={myRows} />
+            <MsaTable
+              rows={myRows}
+              totalCount={myTotalCount}
+              pagination={myPagination}
+              setPagination={setMyPagination}
+              isLoading={mineQuery.isLoading}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              categoryFilter={categoryFilter}
+              onCategoryFilterChange={setCategoryFilter}
+              dateFilter={dateFilter}
+              onDateFilterChange={setDateFilter}
+            />
           </TabsContent>
         </Tabs>
       ) : (

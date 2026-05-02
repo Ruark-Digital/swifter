@@ -113,7 +113,10 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
 
   const approveInvoiceMutation = useMutation({
     mutationFn: async (status: NonNullable<ApprovalActionDTO["action"]>) => {
-      const payload: ApprovalActionDTO = { action: status };
+      const comment = status === "approved"
+        ? "Invoice approved via bulk action"
+        : "Invoice rejected via bulk action";
+      const payload: ApprovalActionDTO = { action: status, comment };
       const res = await postRequest({
         url: `${basePath}/${invoiceId}/approve`,
         payload,
@@ -367,7 +370,8 @@ const formatCurrency = (value?: number) => {
 };
 
 const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
-  const { isManager, isApprover, isVendor, isAdmin, isViewOnly } = useUserRole();
+  const { isManager, isApprover, isVendor, isProjectManager, isAdmin, isViewOnly } =
+    useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ stats?: unknown; list?: unknown }>({});
@@ -376,10 +380,19 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
   const basePath = React.useMemo(() => {
     if (isManager || isAdmin) return `/contract/manager/msa-contract/${contractId}/invoice`;
     if (isApprover) return `/contract/approver/msa-contract/${contractId}/invoice`;
-    if (isVendor) return `/contract/vendor/msa-contract/${contractId}/invoice`;
+    if (isVendor || isProjectManager)
+      return `/contract/vendor/msa-contract/${contractId}/invoice`;
     if (isViewOnly) return `/contract/user/msa-contract/${contractId}/invoice`;
     return `/contract/user/msa-contract/${contractId}/invoice`;
-  }, [contractId, isAdmin, isApprover, isManager, isVendor, isViewOnly]);
+  }, [
+    contractId,
+    isAdmin,
+    isApprover,
+    isManager,
+    isVendor,
+    isProjectManager,
+    isViewOnly,
+  ]);
 
   const statsPath = `${basePath}/stats`;
   const statsQueryKey = useUserQueryKey(["msa-invoices-stats", contractId, statsPath]);
@@ -587,7 +600,7 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search changes"
+                placeholder="Search invoices"
                 className="h-12 rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
               />
             </div>

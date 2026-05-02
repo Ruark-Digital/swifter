@@ -8,6 +8,7 @@ type StatProps = {
   value: number | string;
   tone: "gray" | "green" | "red" | "yellow";
   testId: string;
+  onClick?: () => void;
 };
 
 const toneClasses: Record<StatProps["tone"], { wrap: string; icon: string }> = {
@@ -17,10 +18,20 @@ const toneClasses: Record<StatProps["tone"], { wrap: string; icon: string }> = {
   yellow: { wrap: "bg-yellow-50", icon: "text-yellow-600" },
 };
 
-const StatCard: React.FC<StatProps> = ({ title, value, tone, testId }) => {
+const StatCard: React.FC<StatProps> = ({
+  title,
+  value,
+  tone,
+  testId,
+  onClick,
+}) => {
   const c = toneClasses[tone];
   return (
-    <Card data-testid={testId} className="border-slate-200">
+    <Card
+      data-testid={testId}
+      className={`border-slate-200 ${onClick ? "cursor-pointer hover:border-[#2A4467] transition-colors" : ""}`}
+      onClick={onClick}
+    >
       <CardContent className="p-6 flex items-center justify-between">
         <div className="space-y-1">
           <p className="text-sm text-slate-600">{title}</p>
@@ -31,7 +42,10 @@ const StatCard: React.FC<StatProps> = ({ title, value, tone, testId }) => {
           aria-hidden
         >
           <div className="rounded-full bg-white/70 h-12 w-12 flex items-center justify-center shadow-sm">
-            <HugeiconsIcon icon={FolderLibraryIcon} className={`h-8 w-8 ${c.icon}`} />
+            <HugeiconsIcon
+              icon={FolderLibraryIcon}
+              className={`h-8 w-8 ${c.icon}`}
+            />
           </div>
         </div>
       </CardContent>
@@ -50,7 +64,12 @@ type Counts = {
   linked: number | string;
 };
 
-const StatsCards: React.FC<{ counts?: Partial<Counts> }> = ({ counts }) => {
+type StatsCardsProps = {
+  counts?: Partial<Counts>;
+  onStatusClick?: (status: string) => void;
+};
+
+const StatsCards: React.FC<StatsCardsProps> = ({ counts, onStatusClick }) => {
   const c = {
     all: counts?.all ?? 0,
     active: counts?.active ?? 0,
@@ -64,17 +83,63 @@ const StatsCards: React.FC<{ counts?: Partial<Counts> }> = ({ counts }) => {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      <StatCard title="All MSA" value={c.all} tone="gray" testId="msa-stats-all" />
-      <StatCard title="Active" value={c.active} tone="green" testId="msa-stats-active" />
-      <StatCard title="Draft" value={c.draft} tone="gray" testId="msa-stats-draft" />
-      <StatCard title="Suspended" value={c.suspended} tone="red" testId="msa-stats-suspended" />
-      <StatCard title="Expired" value={c.expired} tone="red" testId="msa-stats-expired" />
-      <StatCard title="Terminated" value={c.terminated} tone="red" testId="msa-stats-terminated" />
-      <StatCard title="Pending Approval" value={c.pending} tone="yellow" testId="msa-stats-pending" />
-      <StatCard title="Linked Contracts" value={c.linked} tone="gray" testId="msa-stats-linked" />
+      <StatCard
+        title="All MSA"
+        value={c.all}
+        tone="gray"
+        testId="msa-stats-all"
+        onClick={() => onStatusClick?.("all")}
+      />
+      <StatCard
+        title="Active"
+        value={c.active}
+        tone="green"
+        testId="msa-stats-active"
+        onClick={() => onStatusClick?.("active")}
+      />
+      <StatCard
+        title="Draft"
+        value={c.draft}
+        tone="gray"
+        testId="msa-stats-draft"
+        onClick={() => onStatusClick?.("draft")}
+      />
+      <StatCard
+        title="Suspended"
+        value={c.suspended}
+        tone="red"
+        testId="msa-stats-suspended"
+        onClick={() => onStatusClick?.("suspended")}
+      />
+      <StatCard
+        title="Expired"
+        value={c.expired}
+        tone="red"
+        testId="msa-stats-expired"
+        onClick={() => onStatusClick?.("expired")}
+      />
+      <StatCard
+        title="Terminated"
+        value={c.terminated}
+        tone="red"
+        testId="msa-stats-terminated"
+        onClick={() => onStatusClick?.("terminated")}
+      />
+      <StatCard
+        title="Pending Approval"
+        value={c.pending}
+        tone="yellow"
+        testId="msa-stats-pending"
+        onClick={() => onStatusClick?.("pending_approval")}
+      />
+      <StatCard
+        title="Linked Contracts"
+        value={c.linked}
+        tone="gray"
+        testId="msa-stats-linked"
+      />
     </div>
   );
 };
 
 export default StatsCards;
-

@@ -124,6 +124,14 @@ async function mockCreateContractMeta(page: Page) {
     });
   });
 
+  await page.route("**/contract/manager/msa-contract**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ message: "ok", data: { contracts: [] } }),
+    });
+  });
+
   await page.route("**/contract/manager/payment-terms**", async (route) => {
     await route.fulfill({
       status: 200,
@@ -445,6 +453,134 @@ test.describe("Contract Management Page (roles)", () => {
     ).toBeVisible({ timeout: 30000 });
   });
 
+  test('filters "Pending Approval" status via stats card using pending_approval token', async ({
+    page,
+  }) => {
+    await seedAuth(page, "contract_manager");
+    await mockContractManagerEndpoints(page);
+
+    await page.unroute("**/contract/manager/contracts/stats");
+    await page.route("**/contract/manager/contracts/stats", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: {
+            all: 2,
+            draft: 0,
+            pending_approval: 1,
+            active: 1,
+            completed: 0,
+            suspended: 0,
+            expired: 0,
+            terminated: 0,
+          },
+        }),
+      });
+    });
+
+    await page.unroute("**/contract/manager/contracts?**");
+    await page.unroute("**/contract/manager/contracts");
+    await page.route("**/contract/manager/contracts?**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: {
+            contracts: [
+              {
+                _id: "c-pending",
+                contractId: "COND-PENDING",
+                title: "Contract Pending",
+                status: "pending_approval",
+                createdAt: "2026-04-24T11:28:01.584Z",
+                creator: {
+                  _id: "u-1",
+                  name: "Test User",
+                  email: "test@swiftpro.com",
+                },
+              },
+              {
+                _id: "c-active",
+                contractId: "COND-ACTIVE",
+                title: "Contract Active",
+                status: "active",
+                createdAt: "2026-04-24T11:28:01.584Z",
+                creator: {
+                  _id: "u-1",
+                  name: "Test User",
+                  email: "test@swiftpro.com",
+                },
+              },
+            ],
+            totalContracts: 2,
+          },
+        }),
+      });
+    });
+    await page.route("**/contract/manager/contracts", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: {
+            contracts: [
+              {
+                _id: "c-pending",
+                contractId: "COND-PENDING",
+                title: "Contract Pending",
+                status: "pending_approval",
+                createdAt: "2026-04-24T11:28:01.584Z",
+                creator: {
+                  _id: "u-1",
+                  name: "Test User",
+                  email: "test@swiftpro.com",
+                },
+              },
+              {
+                _id: "c-active",
+                contractId: "COND-ACTIVE",
+                title: "Contract Active",
+                status: "active",
+                createdAt: "2026-04-24T11:28:01.584Z",
+                creator: {
+                  _id: "u-1",
+                  name: "Test User",
+                  email: "test@swiftpro.com",
+                },
+              },
+            ],
+            totalContracts: 2,
+          },
+        }),
+      });
+    });
+
+    await page.goto("/dashboard/contract-management", { waitUntil: "commit" });
+
+    await expect(
+      page.getByRole("link", { name: "Contract Pending", exact: true }),
+    ).toBeVisible({ timeout: 30000 });
+    await expect(
+      page.getByRole("link", { name: "Contract Active", exact: true }),
+    ).toBeVisible({ timeout: 30000 });
+
+    await page.locator('[data-testid="contracts-stats-pending"]').click();
+
+    await expect(
+      page.getByRole("link", { name: "Contract Pending", exact: true }),
+    ).toBeVisible({ timeout: 30000 });
+    await expect(
+      page.getByRole("link", { name: "Contract Active", exact: true }),
+    ).toHaveCount(0);
+  });
+
   test("create contract keeps draft on outside close, resets on cancel/close", async ({
     page,
   }) => {
@@ -488,6 +624,72 @@ test.describe("Contract Management Page (roles)", () => {
     await expect(contractNameInput).toHaveValue("");
 
     await page.getByRole("button", { name: "Close" }).click();
+  });
+
+  test("create contract shows MSA selector for MSA relationships and hides MSA category", async ({
+    page,
+  }) => {
+    test.setTimeout(120000);
+    await seedAuth(page, "contract_manager");
+    await mockContractManagerEndpoints(page);
+    await mockCreateContractMeta(page);
+
+    await page.route("**/contract/manager/msa-contract**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          message: "ok",
+          data: { contracts: [{ _id: "msa-1", title: "MSA 1" }] },
+        }),
+      });
+    });
+
+    await page.goto("/dashboard/contract-management", { waitUntil: "commit" });
+
+    await expect(
+      page.getByRole("heading", { name: "Contract Management" }),
+    ).toBeVisible({ timeout: 60000 });
+
+    await page
+      .getByRole("button", { name: "Create Contracts" })
+      .click({ timeout: 60000 });
+
+    const createDialog = page.getByRole("dialog", { name: "Create Contract" });
+    const relationshipSelect = createDialog
+      .getByText("Contract Relationship")
+      .locator("..")
+      .getByRole("combobox")
+      .first();
+
+    await relationshipSelect.click();
+    await page.getByRole("option", { name: "Link to MSA" }).click();
+
+    const selectMsa = createDialog
+      .getByText("Select MSA")
+      .locator("..")
+      .getByRole("combobox")
+      .first();
+    const selectProject = createDialog
+      .getByText("Select Project")
+      .locator("..")
+      .getByRole("combobox")
+      .first();
+
+    await expect(selectMsa).toBeVisible({ timeout: 30000 });
+    await expect(selectProject).toHaveCount(0);
+    await expect(createDialog.getByText("Select MSA Category")).toHaveCount(0);
+
+    await selectMsa.click();
+    await expect(page.getByRole("option", { name: "MSA 1" })).toBeVisible();
+    await page.getByRole("option", { name: "MSA 1" }).click();
+
+    await relationshipSelect.click();
+    await page.getByRole("option", { name: "Link to Project & MSA" }).click();
+
+    await expect(selectMsa).toBeVisible({ timeout: 30000 });
+    await expect(selectProject).toBeVisible({ timeout: 30000 });
+    await expect(createDialog.getByText("Select MSA Category")).toHaveCount(0);
   });
 
   test("save as draft works after selecting approval group", async ({
@@ -748,6 +950,9 @@ test.describe("Contract Management Page (roles)", () => {
 
     expect(payload.status).toBe("draft");
     expect(payload.approvers ?? []).toEqual([]);
+    expect(Array.isArray(payload.files)).toBe(true);
+    expect(payload.files.length).toBeGreaterThan(0);
+    expect(typeof payload.files[0]?.size).toBe("string");
 
     await expect(
       page.locator('[data-testid="create-contract-sheet"]'),
@@ -795,6 +1000,68 @@ test.describe("Contract Management Page (roles)", () => {
     ).toHaveCount(0);
     await expect(page.getByText("Export")).toHaveCount(0);
     expect(managerRequests).toBe(0);
+  });
+
+  test("renders company value in vendor contracts table when API returns company", async ({
+    page,
+  }) => {
+    await seedAuth(page, "vendor");
+    await mockVendorEndpoints(page);
+
+    await page.unroute("**/contract/vendor/contracts?**");
+    await page.unroute("**/contract/vendor/contracts");
+    const fulfillVendorContracts = async (route: any) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          message: "ok",
+          data: {
+            contracts: [
+              {
+                id: "v-contract-1",
+                title: "Vendor Contract A",
+                contractId: "VCA-001",
+                status: "active",
+                contractValue: 7000000,
+                contractRelationship: "project",
+                company: { name: "Acme Engineering Ltd" },
+                createdAt: "2026-04-25T00:00:00.000Z",
+                endDate: "2026-06-30T00:00:00.000Z",
+              },
+            ],
+            totalContracts: 1,
+          },
+        }),
+      });
+    };
+    await page.route("**/contract/vendor/contracts?**", fulfillVendorContracts);
+    await page.route("**/contract/vendor/contracts", fulfillVendorContracts);
+
+    const statsResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes("/contract/vendor/contracts/stats") &&
+        res.status() === 200,
+      { timeout: 15000 },
+    );
+    const listResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes("/contract/vendor/contracts") &&
+        !res.url().includes("/stats") &&
+        res.status() === 200,
+      { timeout: 15000 },
+    );
+
+    await page.goto("/dashboard/contract-management", { waitUntil: "commit" });
+    await statsResponse;
+    await listResponse;
+
+    await expect(
+      page.locator('[data-testid="vendor-contracts-table"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="vendor-contracts-table"]'),
+    ).toContainText("Acme Engineering Ltd");
   });
 
   test("renders approver view and uses approver endpoints", async ({
@@ -1329,5 +1596,366 @@ test.describe("Contract Management Page (roles)", () => {
     await expect(
       page.getByText("Milestone due date is required"),
     ).toBeVisible();
+  });
+
+  test("shows API error message when sending amendment for approval fails", async ({
+    page,
+  }) => {
+    test.setTimeout(120000);
+    await seedAuth(page, "contract_manager");
+
+    const contractId = "contract-1";
+    const amendmentId = "amendment-1";
+    const now = new Date().toISOString();
+
+    await page.route(
+      `**/contract/manager/contracts/${contractId}`,
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: 200,
+            message: "ok",
+            data: {
+              _id: contractId,
+              title: "Test Contract",
+              status: "active",
+              contractRelationship: "standalone",
+              timezone: "UTC",
+              startDate: now,
+              endDate: now,
+              createdAt: now,
+              updatedAt: now,
+              creator: {
+                name: "Contract Manager",
+                email: "cm@test.com",
+                role: "manager",
+              },
+              vendor: { name: "Acme Vendor" },
+              internalTeam: [],
+              vendorPersonnel: [],
+            },
+          }),
+        });
+      },
+    );
+
+    const basePath = `/contract/manager/contracts/${contractId}/amendments`;
+
+    await page.route(`**${basePath}/stats`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: { all: 1, pending: 1, accepted: 0, rejected: 0 },
+        }),
+      });
+    });
+
+    await page.route(`**${basePath}`, async (route) => {
+      if (route.request().method() !== "GET") {
+        await route.fallback();
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: [
+            {
+              _id: amendmentId,
+              amendmentId: "AM-1",
+              title: "Time Impact Amendment",
+              status: "pending",
+              vendorStatus: "accepted",
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.route(`**${basePath}/${amendmentId}`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            _id: amendmentId,
+            contractRef: contractId,
+            contractRefModel: "Contract",
+            approverStatus: "pending",
+            vendorStatus: "accepted",
+            assignApprover: false,
+            amendmentId: "AM-1",
+            company: "company-1",
+            status: "pending",
+            title: "Time Impact Amendment",
+            impact: "time",
+            description: "Test amendment",
+            changes: [],
+            submittedBy: { _id: "user-1", email: "submitter@test.com" },
+            files: [],
+            approvers: [],
+            statusHistory: [],
+            __v: 0,
+          },
+        }),
+      });
+    });
+
+    await page.route(
+      `**/contract/manager/contracts/${contractId}/approvers`,
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: 200,
+            message: "ok",
+            data: [
+              {
+                approverId: "approver-1",
+                name: "Approver One",
+                email: "approver.one@test.com",
+                userRef: "user-approver-1",
+                role: "Legal",
+                approvalLevels: [5],
+                totalAssignments: 0,
+                assignedApprovals: "",
+                approvedCount: 0,
+                rejectedCount: 0,
+                pendingCount: 0,
+                totalCount: 0,
+                status: "active",
+              },
+            ],
+          }),
+        });
+      },
+    );
+
+    await page.route(
+      `**${basePath}/${amendmentId}/approvers`,
+      async (route) => {
+        if (route.request().method() !== "POST") {
+          await route.fallback();
+          return;
+        }
+        await route.fulfill({
+          status: 400,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: "fail",
+            message: "Vendor must accept the amendment first",
+          }),
+        });
+      },
+    );
+
+    await page.goto(`/dashboard/contract-management/${contractId}`, {
+      waitUntil: "commit",
+    });
+
+    await page.getByRole("tab", { name: "Amendments" }).click();
+    await expect(page.getByTestId("amendments-table")).toBeVisible({
+      timeout: 30000,
+    });
+
+    await page.getByRole("button", { name: "View" }).first().click();
+    await expect(page.getByText("Amendment Details")).toBeVisible({
+      timeout: 30000,
+    });
+
+    await page.getByRole("button", { name: "Assign Approval" }).click();
+    const assignDialog = page
+      .locator('[role="dialog"]')
+      .filter({ hasText: "Send for Approval" })
+      .first();
+
+    await expect(assignDialog).toBeVisible({ timeout: 30000 });
+    await assignDialog.getByRole("combobox").first().click();
+    await page.getByRole("option", { name: "Approval Level 5" }).click();
+    await assignDialog.getByRole("button", { name: "Assign" }).first().click();
+    await assignDialog
+      .getByRole("button", { name: "Send for Approval" })
+      .click();
+
+    const toastDescription = page.locator(".text-sm.opacity-90", {
+      hasText: "Vendor must accept the amendment first",
+    });
+    await expect(toastDescription).toBeVisible({ timeout: 30000 });
+    await page.screenshot({
+      path: "test-results/amendment-send-for-approval-error.png",
+      fullPage: true,
+    });
+  });
+
+  test("hides Assign Approval until vendor accepts a time-impact amendment", async ({
+    page,
+  }) => {
+    test.setTimeout(120000);
+    await seedAuth(page, "contract_manager");
+
+    const consoleErrors: string[] = [];
+    const failedRequests: Array<{
+      url: string;
+      status?: number;
+      failure?: string;
+    }> = [];
+
+    page.on("pageerror", (err) => {
+      consoleErrors.push(err.message);
+    });
+    page.on("console", (msg) => {
+      if (msg.type() === "error") consoleErrors.push(msg.text());
+    });
+    page.on("requestfailed", (req) => {
+      failedRequests.push({
+        url: req.url(),
+        failure: req.failure()?.errorText,
+      });
+    });
+    page.on("response", (res) => {
+      if (res.status() >= 400)
+        failedRequests.push({ url: res.url(), status: res.status() });
+    });
+
+    const contractId = "contract-2";
+    const amendmentId = "amendment-2";
+    const now = new Date().toISOString();
+
+    await page.route(
+      `**/contract/manager/contracts/${contractId}`,
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: 200,
+            message: "ok",
+            data: {
+              _id: contractId,
+              title: "Test Contract 2",
+              status: "active",
+              contractRelationship: "standalone",
+              timezone: "UTC",
+              startDate: now,
+              endDate: now,
+              createdAt: now,
+              updatedAt: now,
+              creator: {
+                name: "Contract Manager",
+                email: "cm@test.com",
+                role: "manager",
+              },
+              vendor: { name: "Acme Vendor" },
+              internalTeam: [],
+              vendorPersonnel: [],
+            },
+          }),
+        });
+      },
+    );
+
+    const basePath = `/contract/manager/contracts/${contractId}/amendments`;
+
+    await page.route(`**${basePath}/stats`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: { all: 1, pending: 1, accepted: 0, rejected: 0 },
+        }),
+      });
+    });
+
+    await page.route(`**${basePath}`, async (route) => {
+      if (route.request().method() !== "GET") {
+        await route.fallback();
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: [
+            {
+              _id: amendmentId,
+              amendmentId: "AM-2",
+              title: "Pending Vendor Amendment",
+              status: "pending",
+              vendorStatus: "pending",
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.route(`**${basePath}/${amendmentId}`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            _id: amendmentId,
+            contractRef: contractId,
+            contractRefModel: "Contract",
+            approverStatus: "pending",
+            vendorStatus: "pending",
+            assignApprover: false,
+            amendmentId: "AM-2",
+            company: "company-1",
+            status: "pending",
+            title: "Pending Vendor Amendment",
+            impact: "time",
+            description: "Test amendment",
+            changes: [],
+            submittedBy: { _id: "user-1", email: "submitter@test.com" },
+            files: [],
+            approvers: [],
+            statusHistory: [],
+            __v: 0,
+          },
+        }),
+      });
+    });
+
+    await page.goto(`/dashboard/contract-management/${contractId}`, {
+      waitUntil: "commit",
+    });
+
+    await page.getByRole("tab", { name: "Amendments" }).click();
+    await expect(page.getByTestId("amendments-table")).toBeVisible({
+      timeout: 30000,
+    });
+
+    await page.getByRole("button", { name: "View" }).first().click();
+    await expect(page.getByText("Amendment Details")).toBeVisible({
+      timeout: 30000,
+    });
+
+    await expect(
+      page.getByRole("button", { name: "Assign Approval" }),
+    ).toHaveCount(0);
+
+    await page.screenshot({
+      path: "test-results/qa-amendment-assign-gating.png",
+      fullPage: true,
+    });
+
+    const unexpectedConsoleErrors = consoleErrors.filter(
+      (text) => !text.includes('unique "key" prop'),
+    );
+    expect(unexpectedConsoleErrors).toEqual([]);
+    expect(failedRequests).toEqual([]);
   });
 });

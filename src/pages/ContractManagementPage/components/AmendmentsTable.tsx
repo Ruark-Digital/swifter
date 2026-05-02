@@ -35,7 +35,6 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { DocType, DocumentItem } from "./DocumentItem";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 // import { useNavigate } from "react-router-dom";
-import { approverApi } from "../api/approverApi";
 
 export type AmendmentRow = {
   id: string;
@@ -187,11 +186,11 @@ const VendorAcceptDialog: React.FC<{
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="w-[498px] h-[260px] p-4 rounded-2xl border-0 flex flex-col items-center justify-center gap-6">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#E53935] text-[#E53935]">
-          <X className="h-8 w-8" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-green-600 text-green-600">
+          <Check className="h-8 w-8" />
         </div>
         <div className="text-center text-base font-semibold text-[#0F0F0F]">
-          Submission Accepted!
+          Accept this Amendment?
         </div>
         <div className="flex w-full gap-6">
           <button
@@ -199,15 +198,15 @@ const VendorAcceptDialog: React.FC<{
             onClick={onClose}
             className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F]"
           >
-            Close
+            Cancel
           </button>
           <button
             type="button"
             disabled={isPending}
             onClick={onConfirm}
-            className="flex-1 rounded-xl bg-[#2A4467] h-11 text-base font-semibold text-white disabled:opacity-60"
+            className="flex-1 rounded-xl bg-green-600 h-11 text-base font-semibold text-white disabled:opacity-60"
           >
-            {isPending ? "Processing..." : "View Details"}
+            {isPending ? "Processing..." : "Confirm Accept"}
           </button>
         </div>
       </DialogContent>
@@ -373,7 +372,12 @@ const AssignApprovalDialog: React.FC<{
       setSearch("");
     },
     onError: (error: any) => {
-      toast.error("Error", error?.message || "Failed to assign approvers");
+      toast.error(
+        "Error",
+        error?.response?.data?.message ??
+          error?.message ??
+          "Failed to assign approvers",
+      );
     },
   });
 
@@ -556,7 +560,8 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   const toast = useToastHandler();
   // const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { isVendor, isManager, isApprover } = useUserRole();
+  const { isVendor, isProjectManager, isManager, isApprover } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
 
   const detailQueryKey = [
     "contract-amendment-detail",
@@ -577,9 +582,13 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   });
 
   const { data: canApproveRes } = useQuery({
-    queryKey: ["amendment-approve-status", contractId, amendmentId],
-    queryFn: () =>
-      approverApi.getAmendmentApproveStatus(contractId, amendmentId),
+    queryKey: ["amendment-approve-status", contractId, basePath, amendmentId],
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${basePath}/${amendmentId}/approve/status`,
+      });
+      return res.data as { message?: string; data?: { status?: boolean } };
+    },
     enabled: open && isApprover,
     staleTime: 60_000,
   });
@@ -600,6 +609,9 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
     normalizedImpact === "others" || normalizedImpact === "other combination";
   const vendorRejected =
     (detail?.vendorStatus ?? "").toString().toLowerCase() === "rejected";
+  const vendorAccepted =
+    (detail?.vendorStatus ?? "").toString().toLowerCase() === "accepted" ||
+    (detail?.vendorStatus ?? "").toString().toLowerCase() === "approved";
   const vendorReason =
     // prefer explicit vendor reason fields if available, otherwise fallback
     (detail as any)?.vendorReason ||
@@ -644,7 +656,9 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
     onError: (error: any) => {
       toast.error(
         "Error",
-        error?.message || "Failed to update amendment status",
+        error?.response?.data?.message ??
+          error?.message ??
+          "Failed to update amendment status",
       );
     },
   });
@@ -666,7 +680,9 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
     onError: (error: any) => {
       toast.error(
         "Error",
-        error?.message || "Failed to submit approval decision",
+        error?.response?.data?.message ??
+          error?.message ??
+          "Failed to submit approval decision",
       );
     },
   });
@@ -910,7 +926,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                 </div>
               </div>
 
-              {isManager && hasTimeImpact && !hasApprovals && (
+              {isManager && hasTimeImpact && vendorAccepted && !hasApprovals && (
                 <>
                   <div className="flex items-start gap-3 rounded-2xl border border-[#2A44671A] bg-[#F8F8F8] p-4">
                     <div className="flex h-8 w-10 items-center justify-center rounded-full border border-[#EF4444] text-[#EF4444]">
@@ -949,7 +965,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
             </TabsContent>
 
             {/* Edit Submission appears for vendor on rejected 'Other Combination' */}
-            {isVendor && isOtherCombination && vendorRejected && (
+            {isContractVendorLike && isOtherCombination && vendorRejected && (
               <div className="px-6 pb-6">
                 <button
                   type="button"
@@ -968,7 +984,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
           </Tabs>
         </div>
 
-        {isVendor && detail?.vendorStatus === "pending" && (
+        {isContractVendorLike && detail?.vendorStatus === "pending" && (
           <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] bg-white p-6">
             <div className="flex gap-6">
               <VendorRejectDialog

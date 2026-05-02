@@ -77,7 +77,7 @@ const approvalActionSchema: yup.ObjectSchema<ApprovalActionDTO> = yup
       .mixed<NonNullable<ApprovalActionDTO["action"]>>()
       .oneOf(["approved", "rejected"] as const)
       .required(),
-    comment: yup.string().optional(),
+    comment: yup.string().min(1, "Comment is required").required(),
   })
   .required();
 
@@ -355,8 +355,8 @@ export type ContractChangeStatsDTO = {
 };
 
 export type ApprovalActionDTO = {
-  action?: "approved" | "rejected";
-  comment?: string;
+  action: "approved" | "rejected";
+  comment: string;
 };
 
 export type ContractChangeCommentDTO = {
@@ -607,39 +607,82 @@ export type ContractComplianceDTO = {
     coverage?: number;
     security?: boolean;
     expDate?: string;
-    securityType?: Array<{ id?: string; name?: string }>;
+    policyStatus?: {
+      status?: "pending" | "submitted" | "approved" | "rejected";
+      submissionDate?: string;
+      description?: string | null;
+      files?: Array<{
+        name?: string;
+        url?: string;
+        type?: string;
+        size?: string;
+        uploadedAt?: string;
+      }>;
+      manager?: {
+        user?: string;
+        status?: "pending" | "approved" | "rejected";
+        comment?: string | null;
+        actionedAt?: string;
+      };
+    };
+    securityType?: Array<{
+      securityTypeId?: string;
+      securityType?: string;
+      amount?: number;
+      dueDate?: string;
+      _id?: string;
+    }>;
     insuranceStatus?: "pending" | "approved" | "rejected";
-    securityStatus?: "pending" | "approved" | "rejected";
+    securityStatus?:
+      | "pending"
+      | "approved"
+      | "rejected"
+      | {
+          status?: "pending" | "submitted" | "approved" | "rejected";
+          submissionDate?: string;
+          description?: string | null;
+          files?: Array<{
+            name?: string;
+            url?: string;
+            type?: string;
+            size?: string;
+            uploadedAt?: string;
+          }>;
+          manager?: {
+            user?: string;
+            status?: "pending" | "approved" | "rejected";
+            comment?: string | null;
+            actionedAt?: string;
+          };
+        };
+    submissionDate?: string;
+    files?: Array<{
+      name?: string;
+      url?: string;
+      type?: string;
+      size?: string;
+      _id?: string;
+      uploadedAt?: string;
+    }>;
   };
   policy?: Array<{
     _id?: string;
     policyId?: string;
     policyName?: string;
-    value?: string;
+    value?: number;
     status?: string;
     description?: string;
     createdAt?: string;
-    files?: Array<{
-      name?: string;
-      url?: string;
-      type?: string;
-      size?: string;
-    }>;
   }>;
   security?: Array<{
-    id?: string;
+    _id?: string;
+    securityTypeId?: string;
     securityType?: string;
-    amount?: string;
-    expiryDate?: string;
+    amount?: number;
+    dueDate?: string;
     status?: string;
     description?: string;
     createdAt?: string;
-    files?: Array<{
-      name?: string;
-      url?: string;
-      type?: string;
-      size?: string;
-    }>;
   }>;
 };
 

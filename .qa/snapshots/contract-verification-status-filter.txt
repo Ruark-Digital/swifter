@@ -1,0 +1,4 @@
+uid=104_0 RootWebArea "SwiftPro - Professional eProcurement Portal" url="http://localhost:5173/dashboard/contract-management?page=2"
+  uid=108_0 menu "Status" focusable focused orientation="vertical"
+    uid=108_1 menuitem "Active"
+    uid=108_2 menuitem "Draft"

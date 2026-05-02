@@ -24,6 +24,7 @@ import { useWatch } from "react-hook-form";
 import {
   toIdStringOrUndefined,
   toPersonnelOrUndefined,
+  toFileMetaOrUndefined,
 } from "@/lib/contractFormValues";
 import Step1BasicInfo from "../components/Step1BasicInfo";
 import Step2ContractTeam from "../components/Step2ContractTeam";
@@ -295,16 +296,8 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
 
       const files =
         (data.documents ?? [])
-          .map((f: any) => ({
-            name: typeof f?.name === "string" ? f.name : undefined,
-            url: typeof f?.url === "string" ? f.url : undefined,
-            type: typeof f?.type === "string" ? f.type : undefined,
-            size:
-              typeof f?.size === "number"
-                ? f.size
-                : toNumberOrUndefined(f?.size),
-          }))
-          .filter((f) => Boolean(f?.name && f?.url && f?.type)) ?? [];
+          .map((f: any) => toFileMetaOrUndefined(f))
+          .filter(Boolean) ?? [];
 
       const paymentStructure =
         data.paymentStructure === "milestone"
@@ -463,13 +456,12 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
 
       const payload = {
         title: data.name,
-        category: "Master Service Agreement",
         msaType: data.type,
-        contractRelationship: "msa_project",
         currency: data.currency,
         msaContractId: data.msaId || undefined,
         description: data.description,
         jobTitle: data.jobTitle,
+        projectManager: data.projectManager || undefined,
         vendor: (() => {
           const vendorRaw =
             typeof data.vendor === "string" ? data.vendor.trim() : "";
@@ -536,11 +528,10 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
     },
     onSuccess: () => {
       toast.success("MSA created successfully", "Your MSA has been created.");
-      qc.refetchQueries({ queryKey: msaQueryKeyPrefix });
+      qc.invalidateQueries({ queryKey: msaQueryKeyPrefix });
       setOpen(false);
       setStep(1);
       reset(defaultValues);
-      qc.invalidateQueries({ queryKey: msaQueryKeyPrefix });
     },
     onError: (err: any) => {
       toast.error("Failed to create MSA", err);
@@ -697,6 +688,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
                   }}
                   className="h-12 px-10 rounded-xl"
                   disabled={createMutation.isPending}
+                  isLoading={createMutation.isPending}
                 >
                   {step === 9 ? "Publish" : "Continue"}
                 </Button>

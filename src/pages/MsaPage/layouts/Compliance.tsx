@@ -1,5 +1,5 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/layouts/DataTable";
@@ -9,9 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToastHandler } from "@/hooks/useToaster";
-import { getRequest } from "@/lib/axiosInstance";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { cn } from "@/lib/utils";
-import { Search, Share2 } from "lucide-react";
+import { Check, Search, Share2, X } from "lucide-react";
 import type { ApiResponseError } from "@/types";
 import type { ContractComplianceDTO } from "@/pages/ContractManagementPage/api/contractManagerApi";
 import ComplianceDetailsSheet from "@/pages/ContractManagementPage/components/ComplianceDetailsSheet";
@@ -72,16 +72,25 @@ const getStatusTone = (status?: string) => {
 };
 
 const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
-  const { isVendor, isApprover, isManager, isAdmin, isViewOnly } =
+  const {
+    isVendor,
+    isProjectManager,
+    isApprover,
+    isManager,
+    isAdmin,
+    isViewOnly,
+    userRole,
+  } =
     useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
   const [search, setSearch] = React.useState("");
   const [activeTab, setActiveTab] = React.useState<"policy" | "security">("policy");
+  const queryClient = useQueryClient();
 
   const basePath = React.useMemo(() => {
-    if (isVendor)
+    if (isVendor || isProjectManager)
       return `/contract/vendor/msa-contract/${contractId}/compliance`;
     if (isApprover)
       return `/contract/approver/msa-contract/${contractId}/compliance`;
@@ -90,7 +99,15 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
     if (isAdmin || isViewOnly)
       return `/contract/user/msa-contract/${contractId}/compliance`;
     return `/contract/user/msa-contract/${contractId}/compliance`;
-  }, [contractId, isAdmin, isApprover, isManager, isVendor, isViewOnly]);
+  }, [
+    contractId,
+    isAdmin,
+    isApprover,
+    isManager,
+    isProjectManager,
+    isVendor,
+    isViewOnly,
+  ]);
 
   const queryKey = useUserQueryKey(["msa-compliance", contractId, basePath]);
 
@@ -133,8 +150,8 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
   const securityRows = React.useMemo<SecurityRow[]>(
     () =>
       (complianceData?.security ?? []).map((security) => ({
-        id: security.id || "",
-        securityId: security.id || "-",
+        id: security._id || security.securityTypeId || "",
+        securityId: security._id || security.securityTypeId || "-",
         securityType: security.securityType || "-",
         amount: formatCurrencyCompact(security.amount),
         status: security.status || "Pending",
@@ -186,32 +203,6 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
         id: "actions",
         header: "Action",
         cell: ({ row }) => {
-          const status = row.original.status.toLowerCase();
-          const isPending =
-            status === "pending" || status === "pending submission";
-          const isRejected = status === "rejected";
-          const canSubmit = isVendor && (isPending || isRejected);
-
-          if (canSubmit) {
-            return (
-              <SubmitPolicyDialog
-                type="policy"
-                id={row.original.id}
-                contractId={contractId}
-                basePath={basePath}
-                title={row.original.policyName}
-                trigger={
-                  <Button
-                    variant="link"
-                    className="text-[#43A047] font-semibold p-0 h-auto"
-                  >
-                    {isRejected ? "Resubmit" : "Submit"}
-                  </Button>
-                }
-              />
-            );
-          }
-
           return (
             <ComplianceDetailsSheet
               type="policy"
@@ -231,7 +222,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
         },
       },
     ],
-    [basePath, contractId, isVendor],
+    [basePath, contractId],
   );
 
   const securityColumns = React.useMemo<ColumnDef<SecurityRow>[]>(
@@ -258,32 +249,6 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
         id: "actions",
         header: "Action",
         cell: ({ row }) => {
-          const status = row.original.status.toLowerCase();
-          const isPending =
-            status === "pending" || status === "pending submission";
-          const isRejected = status === "rejected";
-          const canSubmit = isVendor && (isPending || isRejected);
-
-          if (canSubmit) {
-            return (
-              <SubmitPolicyDialog
-                type="security"
-                id={row.original.id}
-                contractId={contractId}
-                basePath={basePath}
-                title={row.original.securityType}
-                trigger={
-                  <Button
-                    variant="link"
-                    className="text-[#43A047] font-semibold p-0 h-auto"
-                  >
-                    {isRejected ? "Resubmit" : "Submit"}
-                  </Button>
-                }
-              />
-            );
-          }
-
           return (
             <ComplianceDetailsSheet
               type="security"
@@ -303,12 +268,63 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
         },
       },
     ],
-    [basePath, contractId, isVendor],
+    [basePath, contractId],
   );
 
+  const isContractManager = userRole === "contract_manager";
+  const isVendorOrProjectManager = isVendor || isProjectManager;
+
   const securityTypeCount = complianceData?.details?.securityType?.length || 0;
-  const insuranceStatus = complianceData?.details?.insuranceStatus || "pending";
-  const securityStatus = complianceData?.details?.securityStatus || "pending";
+
+  const getCategoryStatus = React.useCallback(
+    (type: "policy" | "security") => {
+      if (type === "policy") {
+        const status = complianceData?.details?.policyStatus?.status;
+        if (status) return status;
+        return complianceData?.details?.insuranceStatus;
+      }
+
+      const raw = complianceData?.details?.securityStatus as unknown;
+      if (typeof raw === "string") return raw;
+      if (raw && typeof raw === "object" && "status" in raw) {
+        return (raw as { status?: string }).status;
+      }
+      return undefined;
+    },
+    [complianceData?.details],
+  );
+
+  const insuranceStatus = String(getCategoryStatus("policy") || "pending");
+  const securityStatus = String(getCategoryStatus("security") || "pending");
+
+  const canSubmitActiveCategory = React.useMemo(() => {
+    if (!isVendorOrProjectManager) return false;
+    const status = String(getCategoryStatus(activeTab) || "").toLowerCase();
+    if (!status) return false;
+    return status === "pending" || status === "rejected";
+  }, [activeTab, getCategoryStatus, isVendorOrProjectManager]);
+
+  const approveMutation = useMutation({
+    mutationFn: async (action: "approved" | "rejected") => {
+      const endpoint = `/manager/msa-contract/${contractId}/compliance/${activeTab}/approve`;
+      const comment =
+        action === "approved"
+          ? `Approved all ${activeTab} items via bulk action`
+          : `Rejected all ${activeTab} items via bulk action`;
+      const res = await postRequest({ url: endpoint, payload: { action, comment } });
+      return res.data as { message?: string };
+    },
+    onSuccess: (res, action) => {
+      toastHandler.success("Success", res?.message ?? `Compliance ${action}`);
+      queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (err: ApiResponseError) => {
+      toastHandler.error("Failed to update compliance status", err);
+    },
+  });
+
+  const handleApprove = () => approveMutation.mutate("approved");
+  const handleReject = () => approveMutation.mutate("rejected");
 
   return (
     <TabsContent value="compliance" className="space-y-8">
@@ -316,13 +332,51 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
         <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
           Compliance & Security Details
         </h3>
-        <Button
-          variant="outline"
-          className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F]"
-        >
-          <Share2 className="mr-2 h-5 w-5" />
-          Export Report
-        </Button>
+        <div className="flex items-center gap-3">
+          {isContractManager && (
+            <>
+              <Button
+                variant="outline"
+                className="h-12 rounded-xl border-red-200 px-5 text-base font-semibold text-red-600 hover:bg-red-50 hover:text-red-700"
+                onClick={handleReject}
+                disabled={approveMutation.isPending}
+              >
+                <X className="mr-2 h-5 w-5" />
+                Reject
+              </Button>
+              <Button
+                className="h-12 rounded-xl bg-green-600 px-5 text-base font-semibold text-white hover:bg-green-700"
+                onClick={handleApprove}
+                disabled={approveMutation.isPending}
+              >
+                <Check className="mr-2 h-5 w-5" />
+                Approve
+              </Button>
+            </>
+          )}
+
+          {isVendorOrProjectManager && canSubmitActiveCategory && (
+            <SubmitPolicyDialog
+              type={activeTab}
+              contractId={contractId}
+              basePath={basePath}
+              title={`Submit ${activeTab === "policy" ? "Policies" : "Security"}`}
+              trigger={
+                <Button className="h-12 rounded-xl bg-[#2A4467] px-5 text-base font-semibold text-white hover:bg-[#1f3552]">
+                  Submit {activeTab === "policy" ? "Policies" : "Security"}
+                </Button>
+              }
+            />
+          )}
+
+          <Button
+            variant="outline"
+            className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F]"
+          >
+            <Share2 className="mr-2 h-5 w-5" />
+            Export Report
+          </Button>
+        </div>
       </div>
 
       {isLoading && (

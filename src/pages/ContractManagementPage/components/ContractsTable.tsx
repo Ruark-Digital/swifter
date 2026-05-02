@@ -49,7 +49,9 @@ const columns: ColumnDef<ContractRow>[] = [
         >
           {row.original.title}
         </a>
-        <span className="text-xs text-slate-500">{row.original.contractId}</span>
+        <span className="text-xs text-slate-500">
+          {row.original.contractId}
+        </span>
       </div>
     ),
   },
@@ -69,10 +71,16 @@ const columns: ColumnDef<ContractRow>[] = [
     cell: ({ row }) => (
       <div className="text-xs text-slate-500">
         {row.original.published && (
-          <div><span className="text-black font-bold">Published:</span> {row.original.published}</div>
+          <div>
+            <span className="text-black font-bold">Published:</span>{" "}
+            {row.original.published}
+          </div>
         )}
         {row.original.endDate && (
-          <div><span className="text-black font-bold">End Date:</span> {row.original.endDate}</div>
+          <div>
+            <span className="text-black font-bold">End Date:</span>{" "}
+            {row.original.endDate}
+          </div>
         )}
       </div>
     ),
@@ -86,10 +94,10 @@ const columns: ColumnDef<ContractRow>[] = [
         s === "Active" || s === "Publish"
           ? "bg-green-100 text-green-700"
           : s === "Draft"
-          ? "bg-slate-100 text-slate-700"
-          : s === "Pending Approval"
-          ? "bg-yellow-100 text-yellow-700"
-          : "bg-red-100 text-red-700";
+            ? "bg-slate-100 text-slate-700"
+            : s === "Pending Approval"
+              ? "bg-yellow-100 text-yellow-700"
+              : "bg-red-100 text-red-700";
       return (
         <span
           data-testid="contract-status-badge"
@@ -106,7 +114,13 @@ const columns: ColumnDef<ContractRow>[] = [
     cell: ({ row }) => (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" data-testid="project-actions-dropdown">⋮</Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            data-testid="project-actions-dropdown"
+          >
+            ⋮
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem asChild>
@@ -131,6 +145,8 @@ type ContractsTableProps = {
   disableActions?: boolean;
   pagination?: PaginationState;
   setPagination?: React.Dispatch<React.SetStateAction<PaginationState>>;
+  statusFilter?: string;
+  onStatusFilterChange?: (status: string) => void;
 };
 
 const ContractsTable: React.FC<ContractsTableProps> = ({
@@ -141,14 +157,22 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
   disableActions,
   pagination: paginationProp,
   setPagination: setPaginationProp,
+  statusFilter,
+  onStatusFilterChange,
 }) => {
   const [search, setSearch] = React.useState("");
-  const [localPagination, setLocalPagination] = React.useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 10,
-  });
+  const [localPagination, setLocalPagination] = React.useState<PaginationState>(
+    {
+      pageIndex: 0,
+      pageSize: 10,
+    },
+  );
   const pagination = paginationProp ?? localPagination;
   const setPagination = setPaginationProp ?? setLocalPagination;
+
+  const normalizeStatus = React.useCallback((value?: string) => {
+    return (value ?? "").trim().toLowerCase().replace(/\s+/g, "_");
+  }, []);
 
   const tableColumns = React.useMemo(() => {
     if (!isReadOnly && !disableActions) return columns;
@@ -156,15 +180,33 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
   }, [isReadOnly, disableActions]);
 
   const filteredRows = React.useMemo(() => {
-    if (!search) return rows;
-    const query = search.toLowerCase();
-    return rows.filter((row) => {
-      return (
-        row.title.toLowerCase().includes(query) ||
-        row.code.toLowerCase().includes(query)
-      );
-    });
-  }, [rows, search]);
+    let result = rows;
+
+    if (search) {
+      const query = search.toLowerCase();
+      result = result.filter((row) => {
+        return (
+          row.title.toLowerCase().includes(query) ||
+          row.code.toLowerCase().includes(query)
+        );
+      });
+    }
+
+    if (statusFilter && statusFilter !== "all") {
+      result = result.filter((row) => {
+        return normalizeStatus(row.status) === normalizeStatus(statusFilter);
+      });
+    }
+
+    return result;
+  }, [rows, search, statusFilter, normalizeStatus]);
+
+  const handleFilterChange = (filters: any) => {
+    const status = filters.find((f: any) => f.title === "Status")?.value;
+    if (status && onStatusFilterChange) {
+      onStatusFilterChange(status);
+    }
+  };
 
   return (
     <div data-testid="contracts-table">
@@ -220,24 +262,36 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                       title: "Status",
                       showIcon: true,
                       options: [
+                        { label: "All", value: "all" },
                         { label: "Active", value: "active" },
                         { label: "Draft", value: "draft" },
+                        { label: "Suspended", value: "suspended" },
+                        { label: "Expired", value: "expired" },
+                        { label: "Terminated", value: "terminated" },
+                        {
+                          label: "Pending Approval",
+                          value: "pending_approval",
+                        },
                       ],
                     },
                     {
                       title: "Category",
                       options: [
+                        { label: "All", value: "all" },
                         { label: "Software", value: "software" },
                         { label: "Construction", value: "construction" },
                       ],
                     },
                   ]}
+                  onFilterChange={handleFilterChange}
                 />
               </div>
             </div>
           </div>
         )}
-        emptyPlaceholder={<EmptyState isReadOnly={isReadOnly || disableActions} />}
+        emptyPlaceholder={
+          <EmptyState isReadOnly={isReadOnly || disableActions} />
+        }
         classNames={{
           container:
             "bg-white dark:bg-slate-950 rounded-xl px-3 border border-gray-300 dark:border-slate-600",
@@ -248,7 +302,6 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
           disableSelection: true,
           isLoading,
           totalCounts: totalCount ?? filteredRows.length,
-          manualPagination: true,
           pagination,
           setPagination,
         }}

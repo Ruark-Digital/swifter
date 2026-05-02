@@ -67,13 +67,13 @@ export type UploadURLs = {
 
 export const toContractChangeFileItem = (
   file: File,
-  uploaded: Pick<UploadURLs, "name" | "url" | "type">
-): { name: string; url: string; type: string; size: number } => {
+  uploaded: Pick<UploadURLs, "name" | "url" | "type" | "size">
+): { name: string; url: string; type: string; size: string } => {
   return {
     name: uploaded.name || file.name,
     url: uploaded.url,
     type: uploaded.type || file.type,
-    size: file.size,
+    size: uploaded.size ?? "",
   };
 };
 

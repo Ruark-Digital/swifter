@@ -88,14 +88,12 @@ function CategoryCard({
   iconBg,
   title,
   clausesCount,
-  showUpdateButton,
   children,
 }: {
   iconSrc: string;
   iconBg: string;
   title: string;
   clausesCount: string;
-  showUpdateButton: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -116,14 +114,6 @@ function CategoryCard({
         </div>
 
         <div className="flex items-center gap-4">
-          {showUpdateButton && (
-            <button
-              type="button"
-              className="h-[52px] w-[208px] rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] px-[15px] py-[14px] text-base font-semibold leading-6 text-[#0F0F0F]"
-            >
-              Update Clause
-            </button>
-          )}
           <img
             src="/assets/contract-management/clause-library/chevron-down.svg"
             className="h-6 w-6"
@@ -182,6 +172,9 @@ type ClauseLibraryResponse = {
   status?: number;
   message?: string;
   data?: {
+    analysisReady?: boolean;
+    sectionSummariesReady?: boolean;
+    overallRiskLevel?: "high" | "medium" | "low" | "none";
     contract?: {
       title?: string;
       contractId?: string;
@@ -440,7 +433,6 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
                   iconBg={icon.iconBg}
                   title={section.title || "Section"}
                   clausesCount={`${section.clauses?.length || 0} clauses`}
-                  showUpdateButton={true}
                 >
                   <div className="flex flex-col">
                     {(section.clauses || []).map((clause) => {

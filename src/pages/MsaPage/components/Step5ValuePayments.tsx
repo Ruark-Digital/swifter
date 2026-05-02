@@ -9,6 +9,7 @@ import {
 } from "@/components/layouts/FormInputs";
 import { useWatch, Control } from "react-hook-form";
 import { CreateMsaFormData } from "../layouts/CreateMSADialog";
+import { startOfDay } from "date-fns";
 
 type Props = {
   control: Control<CreateMsaFormData>;
@@ -21,6 +22,8 @@ const Step5ValuePayments: React.FC<Props> = ({
   paymentTermOptions,
   isLoadingPaymentTerms,
 }) => {
+  const today = React.useMemo(() => startOfDay(new Date()), []);
+  const currency = useWatch({ control, name: "currency" });
   const paymentStructure = useWatch({ control, name: "paymentStructure" });
   const deliverables = useWatch({
     control,
@@ -46,6 +49,7 @@ const Step5ValuePayments: React.FC<Props> = ({
         label="Contract Value ($)"
         placeholder="Enter contract value"
         component={TextCurrencyInput}
+        currency={currency}
         containerClass="md:col-span-2"
         helperText=">$5m = High Risk , >$1-5m = Medium, <$1m = Low Risk"
       />
@@ -54,6 +58,7 @@ const Step5ValuePayments: React.FC<Props> = ({
         label="Contingency (only visible internally)"
         placeholder="Enter contingency"
         component={TextCurrencyInput}
+        currency={currency}
       />
       <Forger
         name="holdback"
@@ -79,7 +84,9 @@ const Step5ValuePayments: React.FC<Props> = ({
           {fields.map((field, index) => (
             <div key={field.id} className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-slate-700">Milestone Name</p>
+                <p className="text-sm font-medium text-slate-700">
+                  Milestone Name
+                </p>
                 <button
                   type="button"
                   className="text-xs text-red-600"
@@ -101,12 +108,14 @@ const Step5ValuePayments: React.FC<Props> = ({
                   label="Amount ($)"
                   placeholder="Enter amount"
                   component={TextCurrencyInput}
+                  currency={currency}
                 />
                 <Forger
                   name={`milestones.${index}.dueDate`}
                   label="Due Date"
                   component={TextDatePicker}
                   placeholder="Select due date"
+                  minDate={today}
                 />
                 <Forger
                   name={`milestones.${index}.deliverable`}

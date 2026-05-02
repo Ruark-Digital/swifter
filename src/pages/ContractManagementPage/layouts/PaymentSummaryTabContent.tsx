@@ -30,7 +30,7 @@ import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
-import  Spinner  from "@/components/ui/Spinner";
+import Spinner from "@/components/ui/Spinner";
 
 type HoldbackReleaseRow = {
   releaseId: string;
@@ -116,7 +116,7 @@ const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
       // <div className="flex justify-center py-4">
       <HoldbackDetailsSheet
         holdBackId={row.getValue<string>("releaseId")}
-          currency={row.getValue<string>("currency")}
+        currency={row.getValue<string>("currency")}
         trigger={
           <button
             type="button"
@@ -198,7 +198,6 @@ const savingsRealizedColumns: ColumnDef<SavingsRealizedRow>[] = [
     ),
   },
 ];
-
 
 type UpdateSavingsFormValues = {
   title: string;
@@ -305,7 +304,7 @@ const UpdateSavingsDialog: React.FC<{
         name: string;
         url: string;
         type: string;
-        size: number;
+        size: string;
       }[] = [];
 
       if (data.files && data.files.length > 0) {
@@ -319,7 +318,7 @@ const UpdateSavingsDialog: React.FC<{
                 name: data.files![index].name,
                 url: res.data?.data?.[0].url,
                 type: getSimpleFileExtension(data.files![index].name).toUpperCase(),
-                size: data.files![index].size,
+                size: res.data?.data?.[0].size ?? "",
               };
             }
             return null;
@@ -338,7 +337,10 @@ const UpdateSavingsDialog: React.FC<{
       await createMutation.mutateAsync(payload);
     } catch (error) {
       console.error("Error submitting savings:", error);
-      toastHandler.error("Submission Failed", "An error occurred while submitting the form. Please try again.");
+      toastHandler.error(
+        "Submission Failed",
+        "An error occurred while submitting the form. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -557,7 +559,7 @@ type Props = {
   isActive?: boolean;
 };
 
-const PaymentSummaryTabContent: React.FC<Props> = ({ 
+const PaymentSummaryTabContent: React.FC<Props> = ({
   contractId,
   contract,
   isActive,
@@ -680,7 +682,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
 
   const holdbackRows = React.useMemo<HoldbackReleaseRow[]>(() => {
     const holdbacks = holdbacksResponse?.data ?? [];
-    
+
     return holdbacks.map((holdback) => ({
       releaseId: holdback.holdBackId ?? `-`,
       currency,
@@ -803,9 +805,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-sm leading-7 text-[#6B6B6B]">
-              Contigency
-            </div>
+            <div className="text-sm leading-7 text-[#6B6B6B]">Contigency</div>
             <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
               {contigency}
             </div>
@@ -853,9 +853,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-sm leading-7 text-[#6B6B6B]">
-              Payment Term
-            </div>
+            <div className="text-sm leading-7 text-[#6B6B6B]">Payment Term</div>
             <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
               {paymentTerm}
             </div>
@@ -925,11 +923,13 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
               row.dueDate,
             ]}
           />
-          {!holdbacksLoading && isContractVendorLike && holdbackRows.length === 0 && (
-            <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
-              No holdback releases available.
-            </div>
-          )}
+          {!holdbacksLoading &&
+            isContractVendorLike &&
+            holdbackRows.length === 0 && (
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+                No holdback releases available.
+              </div>
+            )}
         </TabsContent>
 
         {(isManager || isApprover) && (

@@ -34,14 +34,15 @@ type SavingsDetailDTO = {
 
 const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, basePath, currency = "USD" }) => {
   const [open, setOpen] = React.useState(false);
-  const { isVendor, isApprover, isManager } = useUserRole();
+  const { isVendor, isProjectManager, isApprover, isManager } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const toast = useToastHandler();
 
   const rolePrefix = React.useMemo(() => {
     if (basePath) return basePath;
-    const role = isManager ? "manager" : isApprover ? "approver" : isVendor ? "vendor" : "user";
+    const role = isManager ? "manager" : isApprover ? "approver" : isContractVendorLike ? "vendor" : "user";
     return `/contract/${role}/contracts/payment-savings`;
-  }, [basePath, isApprover, isManager, isVendor]);
+  }, [basePath, isApprover, isManager, isContractVendorLike]);
 
   const { data: detailRes, isLoading, isError, error } = useQuery<{
     message?: string;

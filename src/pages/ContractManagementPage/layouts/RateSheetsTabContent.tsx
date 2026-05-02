@@ -436,8 +436,23 @@ export interface SheetElement {
 
 const EMPTY_RATE_SHEET_SUMMARY: Summary[] = [];
 
+const RATE_SHEET_SUMMARY_INITIAL_ROWS = 50;
+const RATE_SHEET_SUMMARY_ROW_STEP = 150;
+const RATE_SHEET_SUMMARY_INITIAL_GROUPS = 3;
+const RATE_SHEET_SUMMARY_GROUP_STEP = 3;
+const RATE_SHEET_SUMMARY_INITIAL_SHEETS = 2;
+const RATE_SHEET_SUMMARY_SHEET_STEP = 3;
+
 const RateSheetSummaryTable = React.memo(
   ({ headers, rows }: { headers: string[]; rows: SheetElement["rows"] }) => {
+    const [visibleRowCount, setVisibleRowCount] = React.useState(
+      RATE_SHEET_SUMMARY_INITIAL_ROWS,
+    );
+
+    React.useEffect(() => {
+      setVisibleRowCount(RATE_SHEET_SUMMARY_INITIAL_ROWS);
+    }, [rows]);
+
     const headerCells = React.useMemo(
       () =>
         headers.map((h) => (
@@ -449,7 +464,9 @@ const RateSheetSummaryTable = React.memo(
     );
 
     const bodyRows = React.useMemo(() => {
-      if (rows.length === 0) {
+      const visibleRows = rows.slice(0, visibleRowCount);
+
+      if (visibleRows.length === 0) {
         return (
           <tr className="border-t border-[#E5E7EB]">
             <td className="px-4 py-3 text-[#6B7280]" colSpan={headers.length}>
@@ -459,7 +476,7 @@ const RateSheetSummaryTable = React.memo(
         );
       }
 
-      return rows.map((r, rowIndex) => (
+      return visibleRows.map((r, rowIndex) => (
         <tr key={rowIndex} className="border-t border-[#E5E7EB]">
           {headers.map((h) => (
             <td
@@ -471,16 +488,36 @@ const RateSheetSummaryTable = React.memo(
           ))}
         </tr>
       ));
-    }, [headers, rows]);
+    }, [headers, rows, visibleRowCount]);
 
     return (
       <div className="overflow-x-auto rounded-lg border border-[#E5E7EB] bg-white">
-        <table className="w-full text-left text-sm">
+        <table className="min-w-max w-full text-left text-sm">
           <thead className="bg-[#F9FAFB] text-xs font-semibold text-[#6B7280]">
             <tr>{headerCells}</tr>
           </thead>
           <tbody>{bodyRows}</tbody>
         </table>
+        {rows.length > visibleRowCount && (
+          <div className="flex items-center justify-between border-t border-[#E5E7EB] px-4 py-3">
+            <div className="text-xs font-medium text-[#6B7280]">
+              Showing {Math.min(rows.length, visibleRowCount).toLocaleString()} of{" "}
+              {rows.length.toLocaleString()} rows
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-8 rounded-md px-3 text-xs font-semibold"
+              onClick={() => {
+                setVisibleRowCount((current) =>
+                  Math.min(rows.length, current + RATE_SHEET_SUMMARY_ROW_STEP),
+                );
+              }}
+            >
+              Show more rows
+            </Button>
+          </div>
+        )}
       </div>
     );
   },
@@ -511,6 +548,19 @@ const RateSheetSummarySheet = React.memo(
 const RateSheetSummaryGroup = React.memo(
   ({ group }: { group: Summary }) => {
     const sheets = group?.sheets || [];
+    const [visibleSheetCount, setVisibleSheetCount] = React.useState(
+      RATE_SHEET_SUMMARY_INITIAL_SHEETS,
+    );
+    const [isPending, startTransition] = React.useTransition();
+
+    React.useEffect(() => {
+      setVisibleSheetCount(RATE_SHEET_SUMMARY_INITIAL_SHEETS);
+    }, [group]);
+
+    const visibleSheets = React.useMemo(
+      () => sheets.slice(0, visibleSheetCount),
+      [sheets, visibleSheetCount],
+    );
 
     return (
       <div className="space-y-4">
@@ -518,13 +568,35 @@ const RateSheetSummaryGroup = React.memo(
           {group?.name || "Summary"}
         </div>
         <div className="space-y-5">
-          {sheets.map((s, sheetIndex) => (
+          {visibleSheets.map((s, sheetIndex) => (
             <RateSheetSummarySheet
               key={`${s?.sheetName || "sheet"}-${sheetIndex}`}
               sheet={s}
             />
           ))}
         </div>
+        {sheets.length > visibleSheetCount && (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-8 rounded-md px-3 text-xs font-semibold"
+              disabled={isPending}
+              onClick={() => {
+                startTransition(() => {
+                  setVisibleSheetCount((current) =>
+                    Math.min(
+                      sheets.length,
+                      current + RATE_SHEET_SUMMARY_SHEET_STEP,
+                    ),
+                  );
+                });
+              }}
+            >
+              Show more sheets
+            </Button>
+          </div>
+        )}
       </div>
     );
   },
@@ -539,18 +611,54 @@ const RateSheetSummaryTab = React.memo(
     detailLoading: boolean;
     summary: Summary[];
   }) => {
+    const [visibleGroupCount, setVisibleGroupCount] = React.useState(
+      RATE_SHEET_SUMMARY_INITIAL_GROUPS,
+    );
+    const [isPending, startTransition] = React.useTransition();
+
+    React.useEffect(() => {
+      setVisibleGroupCount(RATE_SHEET_SUMMARY_INITIAL_GROUPS);
+    }, [summary]);
+
+    const visibleGroups = React.useMemo(
+      () => summary.slice(0, visibleGroupCount),
+      [summary, visibleGroupCount],
+    );
+
     return (
       <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-6 text-sm text-[#6B7280]">
         {detailLoading ? (
           <div>Loading summary...</div>
         ) : summary.length > 0 ? (
           <div className="space-y-6 text-[#111827]">
-            {summary.map((group, groupIndex) => (
+            {visibleGroups.map((group, groupIndex) => (
               <RateSheetSummaryGroup
                 key={`${group?.name || "summary"}-${groupIndex}`}
                 group={group}
               />
             ))}
+            {summary.length > visibleGroupCount && (
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-8 rounded-md px-3 text-xs font-semibold"
+                  disabled={isPending}
+                  onClick={() => {
+                    startTransition(() => {
+                      setVisibleGroupCount((current) =>
+                        Math.min(
+                          summary.length,
+                          current + RATE_SHEET_SUMMARY_GROUP_STEP,
+                        ),
+                      );
+                    });
+                  }}
+                >
+                  Show more groups
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           <div>No summary available.</div>
@@ -572,24 +680,25 @@ const RateSheetDetailsSheet: React.FC<{
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
   const { isManager } = useUserRole();
+  const rateSheetId = row.sheetId || row.id;
 
   const { data: detailRes, isLoading: detailLoading } = useQuery({
-    queryKey: ["rate-sheet-detail", basePath, contractId, row.sheetId],
+    queryKey: ["rate-sheet-detail", basePath, contractId, rateSheetId],
     queryFn: async () => {
       const res = await getRequest({
-        url: `${basePath}/${row.sheetId}`,
+        url: `${basePath}/${rateSheetId}`,
       });
       const sheet = res?.data?.data?.sheet as RateSheetDetailResponseSheet;
       return sheet ?? null;
     },
-    enabled: open && !!contractId && !!row.sheetId && !!basePath,
+    enabled: open && !!contractId && !!rateSheetId && !!basePath,
   });
 
   const { mutate: mutateApproval, isPending: isApproving } = useMutation({
-    mutationKey: ["approveRateSheet", contractId, row.id],
+    mutationKey: ["approveRateSheet", contractId, rateSheetId],
     mutationFn: async (action: "approved" | "rejected") => {
       return await postRequest({
-        url: `${basePath}/${row.id}/approve`,
+        url: `${basePath}/${rateSheetId}/approve`,
         payload: { action, comment: "" },
       });
     },
@@ -602,7 +711,7 @@ const RateSheetDetailsSheet: React.FC<{
         queryKey: ["rate-sheets", contractId, basePath],
       });
       queryClient.invalidateQueries({
-        queryKey: ["rate-sheet-detail", basePath, contractId, row.id],
+        queryKey: ["rate-sheet-detail", basePath, contractId, rateSheetId],
       });
     },
     onError: (err: any) => {
@@ -621,7 +730,7 @@ const RateSheetDetailsSheet: React.FC<{
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-2xl rounded-2xl overflow-y-auto [&>button]:hidden"
+        className="w-[95vw] sm:max-w-5xl rounded-2xl overflow-y-auto [&>button]:hidden"
       >
         <div className="space-y-6" data-testid="rate-sheet-details-sheet">
           <SheetHeader className="space-y-0">
@@ -854,8 +963,8 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       const raw = (res as any)?.data?.data ?? [];
       const items = Array.isArray(raw) ? raw : [];
       const rows: RateSheetRow[] = items.map((it: any) => ({
-        id: it?.rateId || it?._id || "",
-        sheetId: it?.sheetId || "",
+        id: it?.sheetId || it?.rateId || it?._id || "",
+        sheetId: it?.sheetId || it?.rateId || it?._id || "",
         title: it?.title || "",
         amount:
           typeof it?.amount === "number"
@@ -876,7 +985,7 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
     const q = search.trim().toLowerCase();
     if (!q) return source;
     return source.filter((row) =>
-      [row.id, row.title].some((v) => v.toLowerCase().includes(q)),
+      [row.sheetId, row.title].some((v) => v.toLowerCase().includes(q)),
     );
   }, [data, search]);
 

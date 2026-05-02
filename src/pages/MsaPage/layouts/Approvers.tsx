@@ -151,18 +151,20 @@ const ApproverDetailsSheet = ({
 };
 
 const Approvers: React.FC<Props> = ({ contractId, isActive }) => {
-  const { isManager, isApprover, isVendor, isViewOnly } = useUserRole();
+  const { isManager, isApprover, isVendor, isProjectManager, isViewOnly } =
+    useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
 
   const basePath = React.useMemo(() => {
-    if (isVendor) return `/contract/vendor/msa-contract/${contractId}`;
+    if (isVendor || isProjectManager)
+      return `/contract/vendor/msa-contract/${contractId}`;
     if (isApprover) return `/contract/approver/msa-contract/${contractId}`;
     if (isViewOnly) return `/contract/user/msa-contract/${contractId}`;
     if (isManager) return `/contract/manager/msa-contract/${contractId}`;
     return `/contract/manager/msa-contract/${contractId}`;
-  }, [contractId, isApprover, isManager, isVendor, isViewOnly]);
+  }, [contractId, isApprover, isManager, isVendor, isProjectManager, isViewOnly]);
 
   const queryKey = useUserQueryKey(["msa-approvers", contractId, basePath]);
 

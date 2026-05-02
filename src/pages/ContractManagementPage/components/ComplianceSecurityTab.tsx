@@ -4,7 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Share2, Search } from "lucide-react";
+import { Share2, Search, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ContractComplianceDTO } from "../api/contractManagerApi";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -12,6 +12,9 @@ import { format, differenceInDays } from "date-fns";
 import ComplianceDetailsSheet from "./ComplianceDetailsSheet";
 import SubmitPolicyDialog from "./SubmitPolicyDialog";
 import { useParams } from "react-router-dom";
+import { postRequest } from "@/lib/axiosInstance";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToastHandler } from "@/hooks/useToaster";
 
 export type PolicyRow = {
   id: string;
@@ -35,25 +38,94 @@ interface ComplianceSecurityTabProps {
   isLoading?: boolean;
   data?: ContractComplianceDTO;
   basePath: string;
+  currency?: string;
 }
 
 const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
   isLoading,
   data,
   basePath,
+  currency,
 }) => {
   const { id: contractId } = useParams<{ id: string }>();
   const [search, setSearch] = React.useState("");
   const [activeView, setActiveView] = React.useState<"policy" | "security">(
     "policy",
   );
-  const { isVendor } = useUserRole();
+  const { isVendor, isProjectManager, userRole } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
+  const queryClient = useQueryClient();
+  const toast = useToastHandler();
+
+  const hasFiles = (data?.details?.files?.length ?? 0) > 0;
+  const isContractManager = userRole === "contract_manager";
+
+  const getSubmissionStatus = (type: "policy" | "security") => {
+    if (type === "policy") {
+      const status = data?.details?.policyStatus?.status;
+      if (status) return status;
+      return data?.details?.insuranceStatus;
+    }
+
+    const raw = data?.details?.securityStatus as unknown;
+    if (typeof raw === "string") return raw;
+    if (raw && typeof raw === "object" && "status" in raw) {
+      return (raw as { status?: string }).status;
+    }
+    return undefined;
+  };
+
+  const canSubmitActive = React.useMemo(() => {
+    if (!isContractVendorLike) return false;
+    const status = getSubmissionStatus(activeView);
+    if (!status) return !hasFiles;
+    const normalized = String(status).toLowerCase();
+    return normalized === "pending" || normalized === "rejected";
+  }, [activeView, hasFiles, isContractVendorLike, data?.details]);
 
   const formatMoneyNoSymbol = (value: unknown) => {
     const num = Number(value);
     if (!Number.isFinite(num)) return "-";
-    return num.toLocaleString("en-US", { maximumFractionDigits: 0 });
+    const locale = "en-US";
+    const fractionDigits = 0;
+    if (currency) {
+      return new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: currency,
+        maximumFractionDigits: fractionDigits,
+      }).format(num);
+    }
+    return num.toLocaleString(locale, {
+      maximumFractionDigits: fractionDigits,
+    });
   };
+
+  const approveMutation = useMutation({
+    mutationFn: async (action: "approved" | "rejected") => {
+      const type = activeView === "policy" ? "policy" : "security";
+      const endpoint = `/manager/contracts/${contractId}/compliance/${type}/approve`;
+      const comment =
+        action === "approved"
+          ? `Approved all ${activeView} items via bulk action`
+          : `Rejected all ${activeView} items via bulk action`;
+      return postRequest({
+        url: endpoint,
+        payload: { action, comment },
+      });
+    },
+    onSuccess: (_, action) => {
+      toast.success("Success", `Compliance ${activeView} ${action}`);
+      queryClient.invalidateQueries({
+        queryKey: ["contract-compliance", contractId, basePath],
+      });
+    },
+    onError: (error: any) => {
+      toast.error("Error", error?.message || "Failed to update status");
+    },
+  });
+
+  const handleApprove = () => approveMutation.mutate("approved");
+  const handleReject = () => approveMutation.mutate("rejected");
 
   const columns = useMemo<ColumnDef<PolicyRow>[]>(
     () => [
@@ -107,6 +179,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
               id={row.original.id}
               contractId={contractId || ""}
               basePath={basePath}
+              currency={currency}
               trigger={
                 <Button
                   variant="link"
@@ -120,7 +193,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         },
       },
     ],
-    [isVendor, contractId, basePath],
+    [isContractVendorLike, contractId, basePath],
   );
 
   const securityColumns = useMemo<ColumnDef<SecurityRow>[]>(
@@ -194,6 +267,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
               id={row.original.id}
               contractId={contractId || ""}
               basePath={basePath}
+              currency={currency}
               trigger={
                 <Button
                   variant="link"
@@ -207,7 +281,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         },
       },
     ],
-    [isVendor, contractId, basePath],
+    [isContractVendorLike, contractId, basePath],
   );
 
   const policyRows: PolicyRow[] = useMemo(() => {
@@ -224,20 +298,20 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
   const securityRows: SecurityRow[] = useMemo(() => {
     if (!data?.security) return [];
     return data.security.map((s) => {
-      const dueDate = s.expiryDate
-        ? format(new Date(s.expiryDate), "dd MMM yyyy")
+      const dueDate = s.dueDate
+        ? format(new Date(s.dueDate), "dd MMM yyyy")
         : "-";
       let dueIn = "-";
-      if (s.expiryDate) {
-        const days = differenceInDays(new Date(s.expiryDate), new Date());
+      if (s.dueDate) {
+        const days = differenceInDays(new Date(s.dueDate), new Date());
         if (days > 0) dueIn = `${days} days`;
         else if (days === 0) dueIn = "Today";
         else dueIn = "Overdue";
       }
 
       return {
-        id: s.id || "",
-        securityId: s.id || "-",
+        id: s._id || "",
+        securityId: s.securityTypeId || s._id || "-",
         securityType: s.securityType || "-",
         amount: formatMoneyNoSymbol(s.amount),
         dueDate,
@@ -281,7 +355,28 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
           Compliance & Security Details
         </h3>
         <div className="flex items-center gap-3">
-          {isVendor && (
+          {isContractManager && (
+            <>
+              <Button
+                variant="outline"
+                className="text-red-600 border-red-300 hover:bg-red-50 hover:text-red-700"
+                onClick={handleReject}
+                disabled={approveMutation.isPending}
+              >
+                <X className="mr-2 h-4 w-4" />
+                Reject
+              </Button>
+              <Button
+                className="bg-green-600 text-white hover:bg-green-700"
+                onClick={handleApprove}
+                disabled={approveMutation.isPending}
+              >
+                <Check className="mr-2 h-4 w-4" />
+                Approve
+              </Button>
+            </>
+          )}
+          {canSubmitActive && (
             <SubmitPolicyDialog
               type={activeView}
               contractId={contractId || ""}
@@ -330,8 +425,17 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
           <div className="space-y-1">
             <p className="text-sm text-slate-500">Security Type</p>
             <p className="text-base font-semibold text-slate-900">
-              {data?.details?.securityType?.map((t) => t.name).join(", ") ||
-                "-"}
+              {data?.details?.securityType &&
+              Array.isArray(data.details.securityType)
+                ? data.details.securityType
+                    .map((t) => t.securityType)
+                    .filter(Boolean)
+                    .join(", ")
+                : data?.details?.securityType &&
+                    typeof data.details.securityType === "object"
+                  ? (data.details.securityType as { securityType?: string })
+                      .securityType || "-"
+                  : "-"}
             </p>
           </div>
         </div>

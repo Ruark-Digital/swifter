@@ -214,4 +214,71 @@ test.describe("Vendor Contract Detail", () => {
     await expect(page.getByRole("cell", { name: "Pending" }).first()).toBeVisible();
     await expect(page.getByText("Under Review")).toHaveCount(0);
   });
+
+  test("deliverables render KPI text, map under_review status, and search does not crash", async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    await seedAuth(page, "vendor");
+
+    const errors: string[] = [];
+    page.on("pageerror", (err) => errors.push(err.message));
+    page.on("console", (msg) => {
+      if (msg.type() === "error") errors.push(msg.text());
+    });
+
+    await page.route("**/api/v1/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: 200, message: "ok", data: [] }),
+      });
+    });
+
+    await page.route("**/contract/vendor/contracts/c1/deliverables/stats", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          message: "ok",
+          data: { total: 1, submitted: 0, pending: 1, late: 0 },
+        }),
+      });
+    });
+
+    await page.route("**/contract/vendor/contracts/c1/deliverables", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          message: "ok",
+          data: [
+            {
+              deliverableId: "d1",
+              title: "Deliverable 1",
+              date: "2025-01-10",
+              submissionStatus: "pending",
+              status: "under_review",
+              kpi: {
+                kpi: 3,
+                kpiDays: 3,
+                kpiText: "3 days early",
+                kpiStatus: "early",
+              },
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.goto("/dashboard/contract-management/c1");
+    await page.getByRole("tab", { name: "Deliverables" }).click();
+
+    await expect(page.getByRole("cell", { name: "3 days early" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "Under Review" }).first()).toBeVisible();
+
+    await page.getByPlaceholder("Search").fill("3 days");
+    await expect(page.locator('[data-testid="deliverables-table"]')).toBeVisible();
+    expect(errors).toEqual([]);
+  });
 });

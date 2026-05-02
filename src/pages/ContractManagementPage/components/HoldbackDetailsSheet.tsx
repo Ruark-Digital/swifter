@@ -58,7 +58,8 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
 }) => {
   const toast = useToastHandler();
   const [open, setOpen] = React.useState(false);
-  const { isVendor, isApprover, isManager } = useUserRole();
+  const { isVendor, isProjectManager, isApprover, isManager } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
 
   const rolePrefix = React.useMemo(() => {
     if (basePath) return basePath; // allow parent override
@@ -66,12 +67,12 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
       ? "manager"
       : isApprover
         ? "approver"
-        : isVendor
+        : isContractVendorLike
           ? "vendor"
           : "user";
     // detail endpoints use /contract/<role>/contracts/payment-holdbacks/<id>
     return `/contract/${role}/contracts/payment-holdbacks`;
-  }, [basePath, isApprover, isManager, isVendor]);
+  }, [basePath, isApprover, isManager, isContractVendorLike]);
 
   const queryKey = ["contract-holdback-detail", rolePrefix, holdBackId];
   const { data: detailRes, isLoading, isError, error } = useQuery<{

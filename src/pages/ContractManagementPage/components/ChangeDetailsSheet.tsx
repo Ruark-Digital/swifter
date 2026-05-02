@@ -74,8 +74,9 @@ const ChangeDetailsSheet: React.FC<Props> = ({
 }) => {
   const toast = useToastHandler();
   const qc = useQueryClient();
-  const { isManager, isApprover, isVendor, isAdmin, isViewOnly } =
+  const { isManager, isApprover, isVendor, isProjectManager, isAdmin, isViewOnly } =
     useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const [internalOpen, setInternalOpen] = React.useState(false);
 
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -85,10 +86,10 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     if (basePath) return basePath;
     if (isManager) return "/contract/manager/contracts";
     if (isApprover) return "/contract/approver/contracts";
-    if (isVendor) return "/contract/vendor/contracts";
+    if (isContractVendorLike) return "/contract/vendor/contracts";
     if (isAdmin || isViewOnly) return "/contract/user/contracts";
     return "/contract/user/contracts";
-  }, [basePath, isManager, isApprover, isVendor, isAdmin, isViewOnly]);
+  }, [basePath, isManager, isApprover, isContractVendorLike, isAdmin, isViewOnly]);
 
   const isClaim = roleBasePath.includes("/claim");
 

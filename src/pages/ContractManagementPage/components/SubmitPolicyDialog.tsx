@@ -39,6 +39,7 @@ const SubmitPolicyDialog: React.FC<SubmitPolicyDialogProps> = ({
   trigger,
   type,
   id,
+  contractId,
   basePath,
 }) => {
   const [open, setOpen] = React.useState(false);
@@ -87,7 +88,7 @@ const SubmitPolicyDialog: React.FC<SubmitPolicyDialogProps> = ({
     },
     onSuccess: () => {
       toast.success("Success", "Compliance document submitted successfully");
-      queryClient.invalidateQueries({ queryKey: ["contract-compliance"] });
+      queryClient.invalidateQueries({ queryKey: ["contract-compliance", contractId, basePath] });
       setOpen(false);
       reset();
     },
