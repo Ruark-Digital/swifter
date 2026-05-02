@@ -30,6 +30,8 @@ const createContractInputSchema: yup.ObjectSchema<CreateContractInput> = yup
     msaContractId: yup.string().optional(),
     solicitationId: yup.string().optional(),
     businessDivision: yup.string().optional(),
+    currency: yup.string().optional(),
+    currencyRate: yup.number().optional(),
     contractPaymentTerm: yup.string().optional(),
     contractTermType: yup.string().optional(),
     contractId: yup.string().optional(),
@@ -549,6 +551,8 @@ export type CreateContractInput = {
   msaContractId?: string;
   solicitationId?: string;
   businessDivision?: string;
+  currency?: string;
+  currencyRate?: number;
   contractPaymentTerm?: string;
   contractTermType?: string;
   contractId?: string;

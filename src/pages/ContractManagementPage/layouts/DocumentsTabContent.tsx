@@ -47,7 +47,7 @@ const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, ef
 
       <DocumentsStatsCard count={files?.length ?? 0} />
 
-      <DocumentsList files={files} effectiveDate={effectiveDate} />
+      <DocumentsList files={files} effectiveDate={effectiveDate} contractId={contractId} />
 
       {editingContractId !== null && (
         <EditContract

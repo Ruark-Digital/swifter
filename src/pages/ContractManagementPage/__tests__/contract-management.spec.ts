@@ -17,6 +17,7 @@ async function seedAuth(page: Page, role: SeedRole) {
         name: "Test User",
         role: { _id: "role-1", name: role, __v: 0 },
         companyId: { name: "Test Co", _id: "company-1" },
+        currency: "CAD",
         createdAt: now,
         updatedAt: now,
         status: "active",
@@ -441,6 +442,19 @@ test.describe("Contract Management Page (roles)", () => {
     await page.route("**/contract/manager/contracts?**", fulfillContracts);
     await page.route("**/contract/manager/contracts", fulfillContracts);
 
+    const mockedFxRate = 1.2345;
+    await page.route("https://api.exchangerate-api.com/v4/latest/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          rates: {
+            USD: mockedFxRate,
+          },
+        }),
+      });
+    });
+
     await page.goto("/dashboard/contract-management", { waitUntil: "commit" });
 
     await expect(page.locator('[data-testid="search-input"]')).toBeVisible({
@@ -829,6 +843,19 @@ test.describe("Contract Management Page (roles)", () => {
     await page.route("**/contract/manager/contracts?**", fulfillContracts);
     await page.route("**/contract/manager/contracts", fulfillContracts);
 
+    const mockedFxRate = 1.2345;
+    await page.route("https://api.exchangerate-api.com/v4/latest/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          rates: {
+            USD: mockedFxRate,
+          },
+        }),
+      });
+    });
+
     await page.goto("/dashboard/contract-management", { waitUntil: "commit" });
 
     await page
@@ -866,9 +893,9 @@ test.describe("Contract Management Page (roles)", () => {
     await page.getByText("Construction").click();
 
     await createDialog.getByRole("combobox", { name: "Currency" }).click();
-    await page.getByPlaceholder("Search currency...").fill("CAD");
+    await page.getByPlaceholder("Search currency...").fill("USD");
     await page
-      .getByText(/^CAD\b/)
+      .getByText(/^USD\b/)
       .first()
       .click();
 
@@ -949,6 +976,8 @@ test.describe("Contract Management Page (roles)", () => {
     const payload = req.postDataJSON() as any;
 
     expect(payload.status).toBe("draft");
+    expect(payload.currency).toBe("USD");
+    expect(payload.currencyRate).toBe(mockedFxRate);
     expect(payload.approvers ?? []).toEqual([]);
     expect(Array.isArray(payload.files)).toBe(true);
     expect(payload.files.length).toBeGreaterThan(0);

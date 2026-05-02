@@ -25,7 +25,7 @@ import "@/pages/CollaborationToolPage/collaboration.css";
 import { createCollab } from "../collab/useYooptaYjs";
 import Table from "@yoopta/table";
 import { useNavigate } from "react-router-dom";
-import { XIcon, History } from "lucide-react";
+import { XIcon, History, Save, MessageSquarePlus } from "lucide-react";
 import VersionHistoryModal, { Version } from "./VersionHistoryModal";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUser } from "@/store/authSlice";
@@ -82,6 +82,12 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
   const [isVersionModalOpen, setIsVersionModalOpen] = React.useState(false);
   const [versions, setVersions] = React.useState<Version[]>([]);
   const didImportRef = useRef(false);
+  const draftKey = useMemo(
+    () => `ct:draft:${collabMeta?.roomId ?? "collab:editor"}`,
+    [collabMeta?.roomId]
+  );
+  const autosaveTimerRef = useRef<number | null>(null);
+  const autosaveValueRef = useRef<unknown>(null);
 
   const handleSaveVersion = useCallback(() => {
     const newVersion: Version = {
@@ -115,6 +121,49 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
       toast.error("Version restore failed", message);
     }
   }, [editor, toast]);
+
+  const handleEditorChange = useCallback(
+    (value: unknown) => {
+      autosaveValueRef.current = value;
+      if (autosaveTimerRef.current !== null) {
+        window.clearTimeout(autosaveTimerRef.current);
+      }
+      autosaveTimerRef.current = window.setTimeout(() => {
+        try {
+          window.localStorage.setItem(draftKey, JSON.stringify(autosaveValueRef.current));
+        } catch {
+          // ignore storage failures
+        }
+      }, 2000);
+    },
+    [draftKey]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (autosaveTimerRef.current !== null) {
+        window.clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (didImportRef.current) return;
+    const current = editor.getEditorValue();
+    if (current && Object.keys(current).length > 0) return;
+
+    const rawDraft = window.localStorage.getItem(draftKey);
+    if (!rawDraft) return;
+
+    try {
+      const draft = JSON.parse(rawDraft);
+      editor.setEditorValue(draft);
+      didImportRef.current = true;
+    } catch {
+      // ignore invalid drafts
+    }
+  }, [draftKey, editor]);
   const collab = useMemo(() => {
     const wsUrl = collabMeta?.wsUrl || import.meta.env.VITE_YWS_URL || "ws://localhost:1234";
     let resolvedWsUrl = wsUrl;
@@ -164,34 +213,53 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
       const importState = collab.doc.getMap<string>("ct:import");
       const clientId = String(collab.doc.clientID);
 
-      if (importState.get("imported") === "true") return;
+      const current = editor.getEditorValue();
+      if (current && Object.keys(current).length > 0) {
+        importState.set("imported", "true");
+        if (importState.get("lock") === clientId) {
+          importState.delete("lock");
+        }
+        didImportRef.current = true;
+        return;
+      }
 
-      if (!importState.get("lock")) {
-        importState.set("lock", clientId);
+      const claimLock = () => {
+        if (!importState.get("lock")) {
+          importState.set("lock", clientId);
+        }
+        return importState.get("lock") === clientId;
+      };
+
+      if (!claimLock()) {
+        for (let attempt = 0; attempt < 25; attempt += 1) {
+          if (!active) return;
+          await new Promise<void>((resolve) => {
+            window.setTimeout(() => resolve(), 100);
+          });
+          if (claimLock()) break;
+        }
       }
 
       if (importState.get("lock") !== clientId) return;
 
-      const current = editor.getEditorValue();
-      if (current && Object.keys(current).length > 0) {
+      try {
+        const { convertFileUrlToYoopta } = await import("@/lib/fileToYoopta");
+        const content = await convertFileUrlToYoopta(
+          editor,
+          importMeta.sourceUrl,
+          importMeta.fileName,
+          importMeta.fileType
+        );
+
+        if (!active) return;
+        editor.setEditorValue(content);
         importState.set("imported", "true");
-        importState.delete("lock");
-        return;
+        didImportRef.current = true;
+      } finally {
+        if (importState.get("lock") === clientId) {
+          importState.delete("lock");
+        }
       }
-
-      const { convertFileUrlToYoopta } = await import("@/lib/fileToYoopta");
-      const content = await convertFileUrlToYoopta(
-        editor,
-        importMeta.sourceUrl,
-        importMeta.fileName,
-        importMeta.fileType
-      );
-
-      if (!active) return;
-      editor.setEditorValue(content);
-      importState.set("imported", "true");
-      importState.delete("lock");
-      didImportRef.current = true;
     })().catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
       toast.error("Import failed", message);
@@ -212,7 +280,8 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
             onClick={handleSaveVersion}
             aria-label="Save Version"
           >
-            Save Version
+            <Save className="w-4 h-4" />
+            <span className="sr-only">Save Version</span>
           </button>
           <button
             className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors flex items-center gap-1"
@@ -220,7 +289,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
             aria-label="View Version History"
           >
             <History className="w-4 h-4" />
-            History
+            <span className="sr-only">History</span>
           </button>
           <button
             className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 transition-colors"
@@ -235,7 +304,8 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
             }}
             aria-label="Add Inline Comment"
           >
-            Add Comment
+            <MessageSquarePlus className="w-4 h-4" />
+            <span className="sr-only">Add Inline Comment</span>
           </button>
           <div
             className="ct-dismiss-pill cursor-pointer"
@@ -251,6 +321,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
           plugins={collabPlugins}
           marks={MARKS}
           tools={TOOLS}
+          onChange={(value) => handleEditorChange(value)}
           placeholder="Type text.."
           className="yoopta-editor w-full"
           style={{ width: "100%", paddingBottom: "120px" }}

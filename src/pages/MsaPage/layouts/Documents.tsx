@@ -114,7 +114,7 @@ const Documents: React.FC<DocumentsProps> = ({
 
       <DocumentsStatsCard count={resolvedFiles.length} />
 
-      <DocumentsList files={resolvedFiles} effectiveDate={effectiveDate} />
+      <DocumentsList files={resolvedFiles} effectiveDate={effectiveDate} contractId={contractId} />
     </TabsContent>
   );
 };

@@ -18,9 +18,10 @@ type Doc = {
 type Props = {
   files?: ContractDocument[];
   effectiveDate?: string;
+  contractId?: string;
 };
 
-const DocumentsList: React.FC<Props> = ({ files, effectiveDate }) => {
+const DocumentsList: React.FC<Props> = ({ files, effectiveDate, contractId }) => {
   const navigate = useNavigate();
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [selectedDoc, setSelectedDoc] = React.useState<Doc | null>(null);
@@ -82,6 +83,7 @@ const DocumentsList: React.FC<Props> = ({ files, effectiveDate }) => {
           <DocumentItem 
             key={d.id}
             d={d}
+            contractId={contractId}
             canEdit={canEdit}
             navigate={navigate}
             handlePreview={handlePreview}
