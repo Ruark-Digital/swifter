@@ -5,7 +5,14 @@ import { SEOWrapper } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -230,6 +237,7 @@ export interface MSAContractDetail {
   holdBackBank: number;
   paymentStructure: string;
   deliverables: string[];
+  assignContract?: Array<{ _id?: string; name?: string }>;
   insurance: string;
   startDate: Date;
   endDate: Date;
@@ -342,8 +350,14 @@ const MsaDetailPage: React.FC = () => {
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
-  const { isVendor, isApprover, isViewOnly, isManager, isProjectManager } =
-    useUserRole();
+  const {
+    isVendor,
+    isApprover,
+    isViewOnly,
+    isManager,
+    isProjectManager,
+    isCompanyAdmin,
+  } = useUserRole();
   const queryKey = useUserQueryKey(["msa-contract-detail", id]);
   const approveStatusQueryKey = useUserQueryKey(["msa-approve-status", id]);
   const queryClient = useQueryClient();
@@ -362,13 +376,14 @@ const MsaDetailPage: React.FC = () => {
   } = useQuery({
     queryKey,
     queryFn: async () => {
-      const base = isVendor || isProjectManager
-        ? "/contract/vendor"
-        : isApprover
-          ? "/contract/approver"
-          : isViewOnly
-            ? "/contract/user"
-            : "/contract/manager";
+      const base =
+        isVendor || isProjectManager
+          ? "/contract/vendor"
+          : isApprover
+            ? "/contract/approver"
+            : isViewOnly
+              ? "/contract/user"
+              : "/contract/manager";
       return getRequest({ url: `${base}/msa-contract/${id ?? ""}` });
     },
     enabled: !!id,
@@ -405,10 +420,74 @@ const MsaDetailPage: React.FC = () => {
 
   const msa = msaResponse?.data?.data as MSAContractDetail | undefined;
 
+  const canFetchLinkedContracts = (isManager || isCompanyAdmin) && Boolean(id);
+  const linkedContractsQueryKey = useUserQueryKey(["msa-linked-contract", id]);
+
+  const { data: linkedContractsResponse, isLoading: isLinkedContractsLoading } =
+    useQuery({
+      queryKey: linkedContractsQueryKey,
+      queryFn: async () => {
+        return getRequest({
+          url: `/contract/manager/msa-contract/${id ?? ""}/linked-contract`,
+        });
+      },
+      enabled:
+        canFetchLinkedContracts &&
+        (topTab === "linked" || activeTab === "deliverables"),
+      staleTime: 60_000,
+      retry: false,
+    });
+
+  const deliverablesContractId = React.useMemo(() => {
+    const assignedId = msa?.assignContract?.[0]?._id
+      ? String(msa.assignContract[0]._id)
+      : undefined;
+    if (assignedId) return assignedId;
+
+    const raw = (linkedContractsResponse?.data as any)?.data;
+    const linkedId = Array.isArray(raw) ? raw?.[0]?._id : raw?._id;
+    return linkedId ? String(linkedId) : undefined;
+  }, [linkedContractsResponse?.data, msa?.assignContract]);
+
+  const formatMoney = React.useCallback(
+    (value?: unknown, currency?: string) => {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return undefined;
+      try {
+        return new Intl.NumberFormat(undefined, {
+          style: "currency",
+          currency: currency ?? "USD",
+          maximumFractionDigits: 0,
+        }).format(num);
+      } catch {
+        return `$${num.toLocaleString()}`;
+      }
+    },
+    [],
+  );
+
+  const linkedContractRows = React.useMemo(() => {
+    const raw = (linkedContractsResponse?.data as any)?.data;
+    if (!raw) return [];
+
+    const items = Array.isArray(raw) ? raw : [raw];
+    return items.filter(Boolean).map((it: any) => ({
+      title: String(it?.title ?? "-"),
+      code: String(it?.contractId ?? "-"),
+      id: String(it?._id ?? ""),
+      company: String(it?.company?.name ?? "-"),
+      relationship: String(it?.contractRelationship ?? "-"),
+      value: formatMoney(it?.contractValue, it?.currency),
+      published: it?.datePublished ? formatDate(it.datePublished) : undefined,
+      endDate: it?.endDate ? formatDate(it.endDate) : undefined,
+      status: String(it?.status ?? "-"),
+    }));
+  }, [formatMoney, linkedContractsResponse?.data]);
+
   const user = useUser();
   const isMsaProjectManager = Boolean(
     user?.projectmanagerId &&
-      msa?.projectManager?.user?._id === user.projectmanagerId,
+    msa?.projectManager?.user?._id === user.projectmanagerId,
   );
   const isMsaProjectManagerPending = msa?.projectManager?.status === "pending";
   const canProjectManagerApprove =
@@ -424,7 +503,8 @@ const MsaDetailPage: React.FC = () => {
       });
       return res.data as { data?: { status?: string } };
     },
-    enabled: Boolean(msa?._id) && isApprover && msa?.status === "pending_approval",
+    enabled:
+      Boolean(msa?._id) && isApprover && msa?.status === "pending_approval",
     staleTime: 60000,
     retry: false,
   });
@@ -565,7 +645,7 @@ const MsaDetailPage: React.FC = () => {
 
       {((isApprover && canApprove && !hasApprovedOrRejected) ||
         canProjectManagerApprove) && (
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 ">
           <Button
             variant="default"
             className="bg-[#2A4467] hover:bg-[#2A4467]/90"
@@ -588,16 +668,16 @@ const MsaDetailPage: React.FC = () => {
         onValueChange={(v) => setTopTab(v as "details" | "linked")}
         className="w-full space-y-4"
       >
-        <TabsList className="bg-transparent p-0 gap-2">
+        <TabsList className="gap-2 p-2 bg-gray-200 rounded-full dark:bg-gray-800">
           <TabsTrigger
             value="details"
-            className="rounded-full px-4 py-2 text-sm font-semibold border border-[#E5E7EB] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467]"
+            className="rounded-full px-4 py-4 text-sm font-semibold border border-[#E5E7EB] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467]"
           >
             MSA Details
           </TabsTrigger>
           <TabsTrigger
             value="linked"
-            className="rounded-full px-4 py-2 text-sm font-semibold border border-[#E5E7EB] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467]"
+            className="rounded-full px-4 py-4 text-sm font-semibold border border-[#E5E7EB] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467]"
           >
             Linked Contracts
           </TabsTrigger>
@@ -717,7 +797,7 @@ const MsaDetailPage: React.FC = () => {
             <NcrLog contractId={id ?? ""} isActive={activeTab === "ncr-log"} />
 
             <Deliverables
-              contractId={id ?? ""}
+              contractId={deliverablesContractId}
               isActive={activeTab === "deliverables"}
             />
 
@@ -729,7 +809,7 @@ const MsaDetailPage: React.FC = () => {
             />
 
             <Reports contractId={id ?? ""} isActive={activeTab === "reports"} />
-            
+
             <Kpi contractId={id ?? ""} isActive={activeTab === "kpi"} />
 
             <PaymentSummary
@@ -742,7 +822,10 @@ const MsaDetailPage: React.FC = () => {
 
         <TabsContent value="linked">
           <div className="pt-4">
-            <LinkedContracts rows={[]} />
+            <LinkedContracts
+              rows={linkedContractRows}
+              isLoading={isLinkedContractsLoading}
+            />
           </div>
         </TabsContent>
       </Tabs>
@@ -751,7 +834,9 @@ const MsaDetailPage: React.FC = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {approvalAction === "approved" ? "Approve Contract" : "Reject Contract"}
+              {approvalAction === "approved"
+                ? "Approve Contract"
+                : "Reject Contract"}
             </DialogTitle>
             <DialogDescription>
               {approvalAction === "approved"
@@ -770,13 +855,18 @@ const MsaDetailPage: React.FC = () => {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setApprovalDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setApprovalDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button
               onClick={submitApproval}
               disabled={approvalMutation.isPending}
-              variant={approvalAction === "rejected" ? "destructive" : "default"}
+              variant={
+                approvalAction === "rejected" ? "destructive" : "default"
+              }
             >
               {approvalMutation.isPending
                 ? "Processing..."

@@ -5,6 +5,7 @@ import { Share2 } from "lucide-react";
 import DeliverablesStatsCards from "../components/DeliverablesStatsCards";
 import DeliverablesTable, {
   DeliverableRow,
+  KPIDetail,
 } from "../components/DeliverablesTable";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
@@ -14,16 +15,44 @@ import type { DeliverablesStats } from "../components/DeliverablesStatsCards";
 
 const DeliverablesTabContent: React.FC = () => {
   const { id: contractId } = useParams<{ id: string }>();
-  const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
-    useUserRole();
+  const {
+    isApprover,
+    isVendor,
+    isProjectManager,
+    isManager,
+    isCompanyAdmin,
+    isSuperAdmin,
+    isViewOnly,
+  } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
+  const isCompanyAdminLike = isCompanyAdmin || isSuperAdmin;
+
+  const normalizeKpi = React.useCallback((value: unknown): KPIDetail => {
+    if (typeof value === "string") {
+      return { kpi: 0, kpiDays: 0, kpiText: value, kpiStatus: "none" };
+    }
+    const v = (value ?? {}) as any;
+    const kpiText =
+      typeof v?.kpiText === "string"
+        ? v.kpiText
+        : typeof v?.kpi === "string"
+          ? v.kpi
+          : "-";
+    return {
+      kpi: Number(v?.kpi ?? 0),
+      kpiDays: Number(v?.kpiDays ?? 0),
+      kpiText,
+      kpiStatus: typeof v?.kpiStatus === "string" ? v.kpiStatus : "none",
+    };
+  }, []);
 
   const getBasePath = () => {
     if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/deliverables`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/deliverables`;
-    if (isManager) return `/contract/manager/contracts/${contractId}/deliverables`;
-    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/deliverables`;
-    return `/contract/user/contracts/${contractId}/deliverables`; // Default fallback
+    if (isManager || isCompanyAdminLike)
+      return `/contract/manager/contracts/${contractId}/deliverables`;
+    if (isViewOnly) return `/contract/user/contracts/${contractId}/deliverables`;
+    return `/contract/user/contracts/${contractId}/deliverables`;
   };
 
   const basePath = getBasePath();
@@ -80,19 +109,23 @@ const DeliverablesTabContent: React.FC = () => {
           : it?.submissionStatus === "late"
           ? "Late"
           : "Pending") as DeliverableRow["submissionStatus"],
-      kpi: it?.kpi?.kpiText ?? it?.kpi ?? "-",
+      kpi: normalizeKpi(it?.kpi),
       status:
         (it?.status === "approved"
           ? "Approved"
           : it?.status === "rejected"
-          ? "Rejected"
-          : it?.status === "pending"
-            ? "Pending"
-            : it?.submissionStatus === "submitted"
+            ? "Rejected"
+            : it?.status === "under_review"
               ? "Under Review"
-              : "Pending") as DeliverableRow["status"],
+              : it?.status === "late"
+                ? "Late"
+                : it?.status === "pending"
+                  ? "Pending"
+                  : it?.submissionStatus === "submitted"
+                    ? "Under Review"
+                    : "Pending") as DeliverableRow["status"],
     }));
-  }, [listRes]);
+  }, [listRes, normalizeKpi]);
 
   const stats: DeliverablesStats = React.useMemo(() => {
     const data = statsRes?.data?.data || statsRes?.data;

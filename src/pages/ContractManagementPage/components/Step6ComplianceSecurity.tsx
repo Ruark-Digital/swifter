@@ -4,11 +4,12 @@ import {
   TextDatePicker,
   TextInput,
   TextSelect,
-  TextCurrencyInput
+  TextCurrencyInput,
 } from "@/components/layouts/FormInputs";
 import { useWatch, Control } from "react-hook-form";
 import { CreateContractFormData } from "./CreateContractSheet";
 import { Button } from "@/components/ui/button";
+import { startOfDay } from "date-fns";
 import {
   Accordion,
   AccordionItem,
@@ -21,6 +22,8 @@ type Props = {
 };
 
 const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
+  const today = React.useMemo(() => startOfDay(new Date()), []);
+  const currency = useWatch({ control, name: "currency" });
   const security = useWatch({ control, name: "contractSecurity" });
   const {
     fields: policyFields,
@@ -54,6 +57,7 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
               label="Expiry Date"
               component={TextDatePicker}
               placeholder="Select expiry date"
+              minDate={today}
               containerClass="md:col-span-2"
             />
             {policyFields.map((field, index) => (
@@ -81,6 +85,7 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
                     name={`insurancePolicies.${index}.limit`}
                     component={TextCurrencyInput}
                     placeholder="Enter Value/Amount"
+                    currency={currency}
                   />
                 </div>
               </React.Fragment>
@@ -163,12 +168,14 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
                         label="Amount"
                         placeholder="Enter Amount"
                         component={TextCurrencyInput}
+                        currency={currency}
                       />
                       <Forger
                         name={`securities.${index}.dueDate`}
                         label="Due Date"
                         component={TextDatePicker}
                         placeholder="Enter Date"
+                        minDate={today}
                         containerClass="md:col-span-2"
                       />
                     </div>

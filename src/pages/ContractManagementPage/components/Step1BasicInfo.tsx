@@ -20,10 +20,12 @@ import { businessDivisionApi } from "@/pages/BusinessDivisionsPage/api/businessD
 import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
+import { getExchangeRate } from "@/lib/currencyUtils";
 
 type Props = {
   typeOptions: Array<{ label: string; value: string }>;
   projectOptions: Array<{ label: string; value: string }>;
+  msaOptions: Array<{ label: string; value: string }>;
   awardedOptions: Array<{
     label: string;
     value: string;
@@ -101,11 +103,14 @@ const ComplexityRating = ({
 const Step1BasicInfo: React.FC<Props> = ({
   typeOptions,
   projectOptions,
+  msaOptions,
   awardedOptions,
 }) => {
   const { isManager } = useUserRole();
   const currentUser = useUser();
+  const userCurrency = currentUser?.currency;
   const relationship = useWatch({ name: "relationship" });
+  const selectedCurrency = useWatch({ name: "currency" });
   const { data: divisionsRes, isLoading: isLoadingDivisions } = useQuery<
     Awaited<ReturnType<typeof businessDivisionApi.listDivisions>>
   >({
@@ -193,6 +198,18 @@ const Step1BasicInfo: React.FC<Props> = ({
       .sort((a, b) => a.value.localeCompare(b.value));
   }, []);
 
+  const showRateConversion = userCurrency && selectedCurrency && userCurrency !== selectedCurrency;
+
+  const { data: exchangeRate, isLoading: isLoadingRate } = useQuery({
+    queryKey: ["exchangeRate", userCurrency, selectedCurrency],
+    queryFn: async () => {
+      if (!userCurrency || !selectedCurrency || userCurrency === selectedCurrency) return null;
+      return getExchangeRate(userCurrency, selectedCurrency);
+    },
+    enabled: !!showRateConversion,
+    staleTime: 5 * 60 * 1000,
+  });
+
   return (
     <div className="mt-4 space-y-4">
       <Forger
@@ -240,21 +257,11 @@ const Step1BasicInfo: React.FC<Props> = ({
       {relationship === "msa" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Forger
-            name="msaCategory"
-            label="Select MSA Category"
-            placeholder="Construction Services ..."
+            name="msaContractId"
+            label="Select MSA"
+            placeholder="Select MSA"
             component={TextSelect}
-            options={[
-              { label: "Construction Services", value: "construction" },
-              { label: "IT Services", value: "it" },
-            ]}
-          />
-          <Forger
-            name="project" // Using project field for MSA ID based on existing logic, or need a new field? existing logic uses 'project' for MSA ID in buildPayload
-            label="Select project"
-            placeholder="Select Solicitation"
-            component={TextSelect}
-            options={projectOptions} // Assuming MSA options are passed here or need separate props
+            options={msaOptions}
           />
         </div>
       )}
@@ -263,24 +270,12 @@ const Step1BasicInfo: React.FC<Props> = ({
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
-              name="msaCategory"
-              label="Select MSA Category"
-              placeholder="Construction Services ..."
-              component={TextSelect}
-              options={[
-                { label: "Construction Services", value: "construction" },
-                { label: "IT Services", value: "it" },
-              ]}
-            />
-            <Forger
-              name="msaId" // Separate field for MSA when both are present
+              name="msaContractId"
               label="Select MSA"
               placeholder="Select MSA"
               component={TextSelect}
-              options={[]}
+              options={msaOptions}
             />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="project"
               label="Select Project"
@@ -288,6 +283,8 @@ const Step1BasicInfo: React.FC<Props> = ({
               component={TextSelect}
               options={projectOptions}
             />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="awardedSolicitation"
               label="Select Awarded Solicitation (Optional)"
@@ -408,6 +405,23 @@ const Step1BasicInfo: React.FC<Props> = ({
         component={TextSelectWithSearch}
         options={currencyOptions}
       />
+
+      {showRateConversion && (
+        <div className="mt-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-md">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-blue-600 font-medium">Rate Conversion:</span>
+            {isLoadingRate ? (
+              <span className="text-slate-500">Loading...</span>
+            ) : exchangeRate ? (
+              <span className="text-slate-700">
+                1 {userCurrency} = {exchangeRate.toFixed(4)} {selectedCurrency}
+              </span>
+            ) : (
+              <span className="text-slate-500">Unable to fetch rate</span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

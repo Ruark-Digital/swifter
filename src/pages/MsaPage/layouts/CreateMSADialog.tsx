@@ -463,13 +463,12 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
 
       const payload = {
         title: data.name,
-        category: "Master Service Agreement",
         msaType: data.type,
-        contractRelationship: "msa_project",
         currency: data.currency,
         msaContractId: data.msaId || undefined,
         description: data.description,
         jobTitle: data.jobTitle,
+        projectManager: data.projectManager || undefined,
         vendor: (() => {
           const vendorRaw =
             typeof data.vendor === "string" ? data.vendor.trim() : "";
@@ -536,11 +535,10 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
     },
     onSuccess: () => {
       toast.success("MSA created successfully", "Your MSA has been created.");
-      qc.refetchQueries({ queryKey: msaQueryKeyPrefix });
+      qc.invalidateQueries({ queryKey: msaQueryKeyPrefix });
       setOpen(false);
       setStep(1);
       reset(defaultValues);
-      qc.invalidateQueries({ queryKey: msaQueryKeyPrefix });
     },
     onError: (err: any) => {
       toast.error("Failed to create MSA", err);
@@ -697,6 +695,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
                   }}
                   className="h-12 px-10 rounded-xl"
                   disabled={createMutation.isPending}
+                  isLoading={createMutation.isPending}
                 >
                   {step === 9 ? "Publish" : "Continue"}
                 </Button>

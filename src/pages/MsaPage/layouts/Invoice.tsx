@@ -113,7 +113,10 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
 
   const approveInvoiceMutation = useMutation({
     mutationFn: async (status: NonNullable<ApprovalActionDTO["action"]>) => {
-      const payload: ApprovalActionDTO = { action: status };
+      const comment = status === "approved"
+        ? "Invoice approved via bulk action"
+        : "Invoice rejected via bulk action";
+      const payload: ApprovalActionDTO = { action: status, comment };
       const res = await postRequest({
         url: `${basePath}/${invoiceId}/approve`,
         payload,
@@ -587,7 +590,7 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search changes"
+                placeholder="Search invoices"
                 className="h-12 rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
               />
             </div>

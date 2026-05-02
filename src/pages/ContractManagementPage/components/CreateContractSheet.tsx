@@ -57,6 +57,7 @@ export const schema = yup.object({
   jobTitle: yup.string().optional(),
   businessDivision: yup.string().required("Business Division is required"),
   contractId: yup.string().optional(),
+  msaContractId: yup.string().optional(),
   description: yup.string().required("Description is required"),
   vendor: yup
     .string()
@@ -199,6 +200,7 @@ export const defaultValues = {
   jobTitle: "",
   businessDivision: "",
   contractId: "",
+  msaContractId: "",
   description: "",
   vendor: "",
   personnel: [],
@@ -628,6 +630,17 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     staleTime: 60_000,
   });
 
+  const msaQuery = useQuery({
+    queryKey: useUserQueryKey(["msa-contracts-all"]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: "/contract/manager/msa-contract",
+      });
+      return res.data;
+    },
+    staleTime: 60_000,
+  });
+
   // Projects list (reuse existing service)
   const { data: projectsData } = useProjectsList({ limit: 50, page: 1 });
 
@@ -676,6 +689,14 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     [awardedQuery.data?.data],
   );
 
+  const msaOptions = React.useMemo(() => {
+    const contracts = msaQuery.data?.data?.contracts || [];
+    return contracts.map((c: any) => ({
+      label: c.title || "Untitled MSA",
+      value: c._id,
+    }));
+  }, [msaQuery.data?.data?.contracts]);
+
   const mutation = useMutation({
     mutationFn: async (payload: any) => {
       const res = await postRequest({
@@ -715,6 +736,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       "manager",
       "jobTitle",
       "contractId",
+      "msaContractId",
       "rating",
       "description",
       "businessDivision",
@@ -803,7 +825,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
       const relationship =
-        data.relationship === "msa"
+        data.relationship === "msa" || data.relationship === "msa_project"
           ? "msa_project"
           : data.relationship === "standalone"
             ? "standalone"
@@ -885,10 +907,10 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
             name: typeof f?.name === "string" ? f.name : undefined,
             url: typeof f?.url === "string" ? f.url : undefined,
             type: typeof f?.type === "string" ? f.type : undefined,
-            size:
-              typeof f?.size === "number"
-                ? f.size
-                : toNumberOrUndefined(f?.size),
+            size: f?.size,
+              // typeof f?.size === "number"
+              //   ? f.size
+              //   : toNumberOrUndefined(f?.size),
           }))
           .filter((f) => Boolean(f?.name && f?.url && f?.type)) ?? [];
 
@@ -978,10 +1000,12 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         businessDivision: data.businessDivision,
         currency: data.currency,
         projectId:
-          relationship === "project" ? data.project || undefined : undefined,
+          relationship === "project" || relationship === "msa_project"
+            ? data.project || undefined
+            : undefined,
         msaContractId:
           relationship === "msa_project"
-            ? data.project || undefined
+            ? data.msaContractId || undefined
             : undefined,
         solicitationId: data.awardedSolicitation || undefined,
         contractId: data.contractId || undefined,
@@ -1107,6 +1131,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
                   typeOptions={typeOptions}
                   projectOptions={projectOptions}
                   awardedOptions={awardedOptions}
+                  msaOptions={msaOptions}
                 />
               )}
 

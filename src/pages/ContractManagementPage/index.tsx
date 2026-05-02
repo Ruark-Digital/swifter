@@ -389,6 +389,7 @@ const ContractManagementPage: React.FC = () => {
       pageIndex: 0,
       pageSize: 10,
     });
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
 
   const { data: statsData } = useContractsStats(managerQueriesEnabled);
   const { data: allContractsData, isLoading: isAllContractsLoading } =
@@ -452,6 +453,7 @@ const ContractManagementPage: React.FC = () => {
           </div>
 
           <VendorStatsCards
+            onStatusClick={(status) => setStatusFilter(status)}
             counts={
               vendorStatsData?.data
                 ? {
@@ -475,6 +477,8 @@ const ContractManagementPage: React.FC = () => {
             isReadOnly={isViewOnly}
             pagination={vendorPagination}
             setPagination={setVendorPagination}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
           />
         </>
       ) : (
@@ -511,7 +515,10 @@ const ContractManagementPage: React.FC = () => {
             </div>
           </div>
 
-          <StatsCards counts={statsCounts} />
+          <StatsCards
+            counts={statsCounts}
+            onStatusClick={(status) => setStatusFilter(status)}
+          />
 
           {isApprover ? (
             <ContractsTable
@@ -520,6 +527,8 @@ const ContractManagementPage: React.FC = () => {
               totalCount={approverContractsData?.data.totalContracts}
               pagination={approverPagination}
               setPagination={setApproverPagination}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
               // isReadOnly={true}
               // disableActions={isApprover}
             />
@@ -527,6 +536,7 @@ const ContractManagementPage: React.FC = () => {
             <Tabs
               defaultValue="all"
               className="w-full bg-transparent space-y-4"
+              onValueChange={() => setStatusFilter("all")}
             >
               <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
                 <TabsTrigger
@@ -551,6 +561,8 @@ const ContractManagementPage: React.FC = () => {
                   isReadOnly={isViewOnly}
                   pagination={allPagination}
                   setPagination={setAllPagination}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
                   // disableActions={isCompanyAdmin}
                 />
               </TabsContent>
@@ -562,6 +574,8 @@ const ContractManagementPage: React.FC = () => {
                   isReadOnly={isViewOnly}
                   pagination={myPagination}
                   setPagination={setMyPagination}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
                   // disableActions={isCompanyAdmin}
                 />
               </TabsContent>

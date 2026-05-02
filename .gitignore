@@ -10,4 +10,7 @@ playwright-report
 /test-results
 .tmp_docx_extract
 .worktrees
-Test Credentials.md
+Test-credentials.md
+# QA output (screenshots + reports)
+.qa/screenshots/
+.qa/reports/

@@ -7,7 +7,7 @@ type Spy<TArgs> = {
   fn: (args: TArgs) => Promise<{ data: unknown }>;
 };
 
-const createAsyncSpy = <TArgs,>(impl?: (args: TArgs) => unknown): Spy<TArgs> => {
+const createAsyncSpy = <TArgs>(impl?: (args: TArgs) => unknown): Spy<TArgs> => {
   const calls: TArgs[] = [];
   const fn = async (args: TArgs) => {
     calls.push(args);
@@ -19,9 +19,21 @@ const createAsyncSpy = <TArgs,>(impl?: (args: TArgs) => unknown): Spy<TArgs> => 
 test.describe("contractManagerApi (unit)", () => {
   test("validates request payloads before sending", async () => {
     const getSpy = createAsyncSpy<{ url: string; config?: unknown }>();
-    const postSpy = createAsyncSpy<{ url: string; payload: unknown; config?: unknown }>();
-    const putSpy = createAsyncSpy<{ url: string; payload: unknown; config?: unknown }>();
-    const deleteSpy = createAsyncSpy<{ url: string; payload?: unknown; config?: unknown }>();
+    const postSpy = createAsyncSpy<{
+      url: string;
+      payload: unknown;
+      config?: unknown;
+    }>();
+    const putSpy = createAsyncSpy<{
+      url: string;
+      payload: unknown;
+      config?: unknown;
+    }>();
+    const deleteSpy = createAsyncSpy<{
+      url: string;
+      payload?: unknown;
+      config?: unknown;
+    }>();
 
     const api = createContractManagerApi({
       get: getSpy.fn,
@@ -51,9 +63,21 @@ test.describe("contractManagerApi (unit)", () => {
 
   test("calls correct endpoints and passes payload/params", async () => {
     const getSpy = createAsyncSpy<{ url: string; config?: unknown }>();
-    const postSpy = createAsyncSpy<{ url: string; payload: unknown; config?: unknown }>();
-    const putSpy = createAsyncSpy<{ url: string; payload: unknown; config?: unknown }>();
-    const deleteSpy = createAsyncSpy<{ url: string; payload?: unknown; config?: unknown }>();
+    const postSpy = createAsyncSpy<{
+      url: string;
+      payload: unknown;
+      config?: unknown;
+    }>();
+    const putSpy = createAsyncSpy<{
+      url: string;
+      payload: unknown;
+      config?: unknown;
+    }>();
+    const deleteSpy = createAsyncSpy<{
+      url: string;
+      payload?: unknown;
+      config?: unknown;
+    }>();
 
     const api = createContractManagerApi({
       get: getSpy.fn,
@@ -119,7 +143,12 @@ test.describe("contractManagerApi (unit)", () => {
       url: "/contract/manager/contracts/c3/changes/stats",
     });
 
-    await api.listChanges("c3", { title: "x", type: "order", page: 2, limit: 10 });
+    await api.listChanges("c3", {
+      title: "x",
+      type: "order",
+      page: 2,
+      limit: 10,
+    });
     expect(getSpy.calls.at(-1)).toEqual({
       url: "/contract/manager/contracts/c3/changes",
       config: { params: { title: "x", type: "order", page: 2, limit: 10 } },
@@ -131,13 +160,17 @@ test.describe("contractManagerApi (unit)", () => {
     });
 
     const changeCreatePayload = { title: "Change" };
-    await api.createChangeRequest("d1", "Contract", changeCreatePayload as never);
+    await api.createChangeRequest(
+      "d1",
+      "Contract",
+      changeCreatePayload as never,
+    );
     expect(postSpy.calls.at(-1)).toEqual({
       url: "/contract/manager/contracts/d1/change/Contract",
       payload: changeCreatePayload,
     });
 
-    const approvalPayload = { action: "approved" };
+    const approvalPayload = { action: "approved", comment: "ok" };
     await api.approveChange("chg1", approvalPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
       url: "/contract/manager/contracts/changes/chg1/approve",
@@ -178,7 +211,12 @@ test.describe("contractManagerApi (unit)", () => {
       url: "/contract/manager/contracts/c4/claims/stats",
     });
 
-    await api.listClaims("c4", { title: "t", type: "dispute", page: 1, limit: 5 });
+    await api.listClaims("c4", {
+      title: "t",
+      type: "dispute",
+      page: 1,
+      limit: 5,
+    });
     expect(getSpy.calls.at(-1)).toEqual({
       url: "/contract/manager/contracts/c4/claims",
       config: { params: { title: "t", type: "dispute", page: 1, limit: 5 } },
@@ -287,7 +325,12 @@ test.describe("contractManagerApi (unit)", () => {
       payload: rfiPayload,
     });
 
-    await api.listRfis("c7", { title: "q", status: "open", page: 1, limit: 10 });
+    await api.listRfis("c7", {
+      title: "q",
+      status: "open",
+      page: 1,
+      limit: 10,
+    });
     expect(getSpy.calls.at(-1)).toEqual({
       url: "/contract/manager/contracts/c7/rfis",
       config: { params: { title: "q", status: "open", page: 1, limit: 10 } },
@@ -334,8 +377,16 @@ test.describe("contractManagerApi (unit)", () => {
       url: "/contract/manager/contracts/c9/compliance",
     });
 
-    const complianceApprovalPayload = { action: "approved", comment: "Looks good" };
-    await api.approveComplianceItem("c9", "policy", "pol1", complianceApprovalPayload as never);
+    const complianceApprovalPayload = {
+      action: "approved",
+      comment: "Looks good",
+    };
+    await api.approveComplianceItem(
+      "c9",
+      "policy",
+      "pol1",
+      complianceApprovalPayload as never,
+    );
     expect(postSpy.calls.at(-1)).toEqual({
       url: "/contract/manager/contracts/c9/compliance/policy/pol1/approve",
       payload: complianceApprovalPayload,
@@ -355,7 +406,11 @@ test.describe("contractManagerApi (unit)", () => {
 test.describe("vendorApi (unit)", () => {
   test("calls correct change endpoints", async () => {
     const getSpy = createAsyncSpy<{ url: string; config?: unknown }>();
-    const postSpy = createAsyncSpy<{ url: string; payload: unknown; config?: unknown }>();
+    const postSpy = createAsyncSpy<{
+      url: string;
+      payload: unknown;
+      config?: unknown;
+    }>();
     const api = createVendorApi({ get: getSpy.fn, post: postSpy.fn });
 
     await api.getChangeStats("c3");

@@ -57,6 +57,9 @@ export const TextSelect = (props: TextSelectProps & Partial<ForgerSlotProps>) =>
     ...selectProps
   } = props;
 
+  const dataTestId = selectProps['data-testid'];
+  delete selectProps['data-testid'];
+
   const handleValueChange = (selectedValue: string) => {
     if (onChange) {
       // For Forge compatibility
@@ -86,7 +89,8 @@ export const TextSelect = (props: TextSelectProps & Partial<ForgerSlotProps>) =>
         name={name}
         {...selectProps}
       >
-        <SelectTrigger 
+        <SelectTrigger
+          data-testid={dataTestId}
           className={`w-full !h-12 border border-gray-300 rounded-lg px-4 focus:border-[#2A4467] focus:ring-[#2A4467] text-gray-900 dark:!text-gray-200 ${
             error ? "border-red-500" : ""
           }`}

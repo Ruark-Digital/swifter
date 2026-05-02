@@ -29,6 +29,7 @@ interface ComplianceDetailsSheetProps {
   id: string;
   contractId: string;
   basePath: string;
+  currency?: string;
   data?: PolicyItem | SecurityItem;
 }
 
@@ -75,6 +76,7 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
   id,
   contractId,
   basePath,
+  currency,
   data,
 }) => {
   const { isManager, isAdmin } = useUserRole();
@@ -92,6 +94,23 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
 
   const complianceData = complianceRes?.data;
 
+  const formatMoney = (value: unknown) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return "—";
+    const locale = "en-US";
+    const fractionDigits = 0;
+    if (currency) {
+      return new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: currency,
+        maximumFractionDigits: fractionDigits,
+      }).format(num);
+    }
+    return num.toLocaleString(locale, {
+      maximumFractionDigits: fractionDigits,
+    });
+  };
+
   const fetchedDetail = React.useMemo(() => {
     if (data) return data;
     if (!complianceData) return undefined;
@@ -101,7 +120,9 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
         (p) => p._id === id || p.policyId === id,
       );
     } else {
-      return complianceData.security?.find((s) => s._id === id || s.securityTypeId === id);
+      return complianceData.security?.find(
+        (s) => s._id === id || s.securityTypeId === id,
+      );
     }
   }, [data, complianceData, type, id]);
 
@@ -168,7 +189,10 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview" className="pt-6 space-y-6 overflow-auto">
+            <TabsContent
+              value="overview"
+              className="pt-6 space-y-6 overflow-auto"
+            >
               <div className="grid grid-cols-2 gap-y-6 gap-x-12">
                 <LabelValue
                   label={type === "policy" ? "Policy Name" : "Security Type"}
@@ -178,17 +202,18 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
                   label={type === "policy" ? "Limit" : "Amount"}
                   value={
                     type === "policy"
-                      ? detail?.value
-                        ? `$${Number(detail.value).toLocaleString()}`
-                        : "—"
-                      : detail?.amount
-                        ? `$${Number(detail.amount).toLocaleString()}`
-                        : "—"
+                      ? formatMoney(detail?.value)
+                      : formatMoney(detail?.amount)
                   }
                 />
                 <LabelValue
                   label={type === "policy" ? "Policy ID" : "Security ID"}
-                  value={detail?.policyId || detail?.securityTypeId || detail?._id || "—"}
+                  value={
+                    detail?.policyId ||
+                    detail?.securityTypeId ||
+                    detail?._id ||
+                    "—"
+                  }
                 />
                 <LabelValue
                   label={type === "policy" ? "Submission Date" : "Due Date"}
@@ -206,14 +231,37 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
 
               <div className="space-y-2">
                 <p className="text-xs text-slate-500 font-medium">Status</p>
-                <Badge className="bg-green-50 text-green-600 hover:bg-green-50 border-none px-3 py-1 text-xs font-bold rounded-lg capitalize">
-                  {detail?.status || "Pending"}
-                </Badge>
+                {(() => {
+                  const s = detail?.status || "Pending";
+                  let tone = "bg-gray-100 text-gray-700";
+                  if (
+                    s?.toLowerCase() === "approved" ||
+                    s?.toLowerCase() === "submitted"
+                  )
+                    tone = "bg-green-100 text-green-700";
+                  if (
+                    s?.toLowerCase() === "pending" ||
+                    s?.toLowerCase() === "pending submission"
+                  )
+                    tone = "bg-yellow-100 text-yellow-700";
+                  if (s?.toLowerCase() === "rejected")
+                    tone = "bg-red-100 text-red-700";
+                  return (
+                    <Badge
+                      variant="secondary"
+                      className={`font-medium ${tone}`}
+                    >
+                      {s}
+                    </Badge>
+                  );
+                })()}
               </div>
 
               {detail?.description && (
                 <div className="space-y-1">
-                  <p className="text-xs text-slate-500 font-medium">Description</p>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Description
+                  </p>
                   <p className="text-sm text-slate-700 leading-relaxed font-medium">
                     {detail.description}
                   </p>
@@ -221,7 +269,9 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
               )}
 
               <div className="space-y-3 pt-2">
-                <h3 className="text-sm font-bold text-slate-900">Attached Documents</h3>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Attached Documents
+                </h3>
                 <div className="grid grid-cols-1 gap-3">
                   {files.map((file, idx) => (
                     <DocumentCard
@@ -243,7 +293,9 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
 
           {(isManager || isAdmin) &&
             hasFiles &&
-            !["published", "approved"].includes(detail?.status?.toLowerCase()) && (
+            !["published", "approved"].includes(
+              detail?.status?.toLowerCase(),
+            ) && (
               <div className="flex gap-4 pt-6 sticky bottom-0 bg-white pb-2 border-t border-slate-100 mt-auto">
                 <Button
                   variant="outline"

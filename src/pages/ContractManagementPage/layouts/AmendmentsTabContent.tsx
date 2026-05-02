@@ -17,7 +17,6 @@ import AmendmentsTable, {
   type AmendmentRow,
 } from "../components/AmendmentsTable";
 import { useQuery } from "@tanstack/react-query";
-import { parseFileSize } from "@/lib/utils";
 import {
   type ContractAmendmentDTO,
   type ContractAmendmentStatsDTO,

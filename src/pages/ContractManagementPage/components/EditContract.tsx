@@ -221,6 +221,23 @@ const EditContract: React.FC<Props> = ({
     staleTime: 60_000,
   });
 
+  const msaQuery = useQuery({
+    queryKey: useUserQueryKey(["msa-contracts-all"]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: "/contract/manager/msa-contract",
+      });
+      return res.data as {
+        status: number;
+        message: string;
+        data: {
+          contracts: { _id: string; title: string }[];
+        };
+      };
+    },
+    staleTime: 60_000,
+  });
+
   const { data: contractRes } = useQuery({
     queryKey: useUserQueryKey(["contract-manager-contracts", contractId]),
     queryFn: () => contractManagerApi.getContract(contractId),
@@ -328,6 +345,10 @@ const EditContract: React.FC<Props> = ({
         typeof contract.project === "string"
           ? contract.project
           : (contract.project?._id ?? ""),
+      msaContractId:
+        typeof contract.msaContract === "string"
+          ? contract.msaContract
+          : contract.msaContract?._id || "",
       awardedSolicitation:
         typeof contract.solicitation === "string"
           ? contract.solicitation
@@ -497,6 +518,14 @@ const EditContract: React.FC<Props> = ({
     [awardedQuery.data?.data],
   );
 
+  const msaOptions = React.useMemo(() => {
+    const contracts = msaQuery.data?.data?.contracts || [];
+    return contracts.map((c: any) => ({
+      label: c.title || "Untitled MSA",
+      value: c._id,
+    }));
+  }, [msaQuery.data?.data?.contracts]);
+
   const mutation = useMutation({
     mutationKey: ["contractManager", "contracts", "update", contractId],
     mutationFn: async (payload: any) => {
@@ -528,7 +557,7 @@ const EditContract: React.FC<Props> = ({
     (data: yup.InferType<typeof createSchema>, status: "draft" | "publish") => {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
       const relationship =
-        data.relationship === "msa"
+        data.relationship === "msa" || data.relationship === "msa_project"
           ? "msa_project"
           : data.relationship === "standalone"
             ? "standalone"
@@ -672,10 +701,12 @@ const EditContract: React.FC<Props> = ({
         contractRelationship: relationship,
         businessDivision: data.businessDivision,
         projectId:
-          relationship === "project" ? data.project || undefined : undefined,
+          relationship === "project" || relationship === "msa_project"
+            ? data.project || undefined
+            : undefined,
         msaContractId:
           relationship === "msa_project"
-            ? data.project || undefined
+            ? data.msaContractId || undefined
             : undefined,
         solicitationId: data.awardedSolicitation || undefined,
         contractId: data.contractId || undefined,
@@ -733,6 +764,7 @@ const EditContract: React.FC<Props> = ({
       "manager",
       "jobTitle",
       "contractId",
+      "msaContractId",
       "rating",
       "description",
       "businessDivision",
@@ -874,6 +906,7 @@ const EditContract: React.FC<Props> = ({
                   typeOptions={typeOptions}
                   projectOptions={projectOptions}
                   awardedOptions={awardedOptions}
+                  msaOptions={msaOptions}
                 />
               )}
               {step === 2 && <Step2ContractTeam />}
