@@ -81,9 +81,11 @@ const FilesListItem = ({
 export function CreateVendorReportForm({
   onSuccess,
   contractId,
+  disabled,
 }: {
   onSuccess?: () => void;
   contractId: string;
+  disabled?: boolean;
 }) {
   const { control, handleSubmit, setValue, watch, reset } =
     useForge<FormValues>({
@@ -128,6 +130,7 @@ export function CreateVendorReportForm({
   });
 
   const submit = handleSubmit(async (values) => {
+    if (disabled) return;
     setSubmitting(true);
     try {
       let filesPayload:
@@ -306,7 +309,7 @@ export function CreateVendorReportForm({
         </DialogClose>
         <Button
           onClick={submit}
-          disabled={submitting}
+          disabled={submitting || disabled}
           className="h-12 flex-1 rounded-xl bg-[#2A4467] text-white"
         >
           Create Report
@@ -319,16 +322,22 @@ export function CreateVendorReportForm({
 export default function CreateVendorReportDialog({
   onSuccess,
   contractId,
+  disabled,
 }: {
   onSuccess?: () => void;
   contractId: string;
+  disabled?: boolean;
 }) {
   return (
     <DialogContent
       className="rounded-2xl p-8"
       showCloseButton={false}
     >
-      <CreateVendorReportForm onSuccess={onSuccess} contractId={contractId} />
+      <CreateVendorReportForm
+        onSuccess={onSuccess}
+        contractId={contractId}
+        disabled={disabled}
+      />
     </DialogContent>
   );
 }

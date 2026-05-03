@@ -559,6 +559,7 @@ const ContractDetailPage: React.FC = () => {
         <VendorReportsTabContent
           contractId={contract?._id ?? ""}
           isActive={activeTab === "reports"}
+          contractStatus={contract?.status}
         />
 
         <ActionLogTabContent isActive={activeTab === "action-log"} />

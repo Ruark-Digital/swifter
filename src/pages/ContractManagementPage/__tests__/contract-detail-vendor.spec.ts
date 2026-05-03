@@ -1,7 +1,9 @@
 import { test, expect, Page } from "@playwright/test";
 
-async function seedAuth(page: Page, role: "vendor") {
-  await page.addInitScript((roleName) => {
+type SeedRole = "vendor" | "project_manager";
+
+async function seedAuth(page: Page, role: SeedRole) {
+  await page.addInitScript((roleName: SeedRole) => {
     const auth = {
       state: {
         user: {
@@ -11,6 +13,9 @@ async function seedAuth(page: Page, role: "vendor") {
           role: { _id: "role-1", name: roleName, __v: 0 },
           companyId: { name: "Test Co", _id: "company-1" },
           status: "active",
+          ...(roleName === "project_manager"
+            ? { projectmanagerId: "pm-1" }
+            : {}),
         },
         token: "test-token",
         refresh: null,
@@ -75,6 +80,140 @@ test.describe("Vendor Contract Detail", () => {
     
     // Check Project Name is hidden (since I hid it for vendor)
     await expect(page.getByText("Project Name")).toBeHidden();
+  });
+
+  test("disables Create Report while contract is pending approval (vendor)", async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    await seedAuth(page, "vendor");
+
+    await page.route("**/api/v1/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: 200, message: "ok", data: [] }),
+      });
+    });
+
+    await page.route("**/contract/vendor/contracts/c1", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: {
+            _id: "c1",
+            title: "Vendor Contract",
+            contractId: "CON-V-1",
+            status: "pending_approval",
+          },
+        }),
+      });
+    });
+
+    await page.route("**/contract/vendor/contracts/c1/reports**", async (route) => {
+      const url = route.request().url();
+      if (url.includes("/stats")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ status: 200, message: "ok", data: { total: 0 } }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: { reports: [], total: 0 },
+        }),
+      });
+    });
+
+    await page.goto("/dashboard/contract-management/c1", {
+      waitUntil: "domcontentloaded",
+    });
+
+    await expect(page.getByText("Pending Approval").first()).toBeVisible();
+
+    const reportsTab = page.getByRole("tab", { name: "Vendor’s Reports" });
+    await expect(reportsTab).toBeVisible();
+    await reportsTab.click({ timeout: 60000 });
+
+    const createReportButton = page.getByRole("button", { name: "Create Report" });
+    await expect(createReportButton).toBeVisible();
+    await expect(createReportButton).toBeDisabled();
+  });
+
+  test("disables Create Report while contract is pending approval (project manager)", async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    await seedAuth(page, "project_manager");
+
+    await page.route("**/api/v1/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: 200, message: "ok", data: [] }),
+      });
+    });
+
+    await page.route("**/contract/vendor/contracts/c1", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: {
+            _id: "c1",
+            title: "Vendor Contract",
+            contractId: "CON-V-1",
+            status: "pending_approval",
+          },
+        }),
+      });
+    });
+
+    await page.route("**/contract/vendor/contracts/c1/reports**", async (route) => {
+      const url = route.request().url();
+      if (url.includes("/stats")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ status: 200, message: "ok", data: { total: 0 } }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: { reports: [], total: 0 },
+        }),
+      });
+    });
+
+    await page.goto("/dashboard/contract-management/c1", {
+      waitUntil: "domcontentloaded",
+    });
+
+    await expect(page.getByText("Pending Approval").first()).toBeVisible();
+
+    const reportsTab = page.getByRole("tab", { name: "Vendor’s Reports" });
+    await expect(reportsTab).toBeVisible();
+    await reportsTab.click({ timeout: 60000 });
+
+    const createReportButton = page.getByRole("button", { name: "Create Report" });
+    await expect(createReportButton).toBeVisible();
+    await expect(createReportButton).toBeDisabled();
   });
 
   test("invoice create dialog shows correct description placeholder", async ({
