@@ -39,6 +39,7 @@ interface ComplianceSecurityTabProps {
   data?: ContractComplianceDTO;
   basePath: string;
   currency?: string;
+  actionsDisabled?: boolean;
 }
 
 const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
@@ -46,6 +47,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
   data,
   basePath,
   currency,
+  actionsDisabled,
 }) => {
   const { id: contractId } = useParams<{ id: string }>();
   const [search, setSearch] = React.useState("");
@@ -57,7 +59,22 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
   const queryClient = useQueryClient();
   const toast = useToastHandler();
 
-  const hasFiles = (data?.details?.files?.length ?? 0) > 0;
+  const hasFiles = React.useMemo(() => {
+    const details = data?.details;
+    if (!details) return false;
+
+    if (activeView === "policy") {
+      return (
+        (details.policyStatus?.files?.length ?? details.files?.length ?? 0) > 0
+      );
+    }
+
+    const raw = details.securityStatus as unknown;
+    if (raw && typeof raw === "object" && "files" in raw) {
+      return ((raw as { files?: unknown[] }).files?.length ?? 0) > 0;
+    }
+    return (details.files?.length ?? 0) > 0;
+  }, [activeView, data?.details]);
   const isContractManager = userRole === "contract_manager";
 
   const getSubmissionStatus = (type: "policy" | "security") => {
@@ -134,7 +151,9 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         accessorKey: "policyName",
         header: "Policy Name",
         cell: ({ getValue }) => (
-          <span className="text-slate-700">{getValue<string>()}</span>
+          <span className="text-slate-700 dark:text-slate-300">
+            {getValue<string>()}
+          </span>
         ),
       },
       {
@@ -149,18 +168,23 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         header: "Status",
         cell: ({ getValue }) => {
           const s = getValue<string>();
-          let tone = "bg-gray-100 text-gray-700";
+          let tone =
+            "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300";
           if (
             s?.toLowerCase() === "approved" ||
             s?.toLowerCase() === "submitted"
           )
-            tone = "bg-green-100 text-green-700";
+            tone =
+              "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
           if (
             s?.toLowerCase() === "pending" ||
             s?.toLowerCase() === "pending submission"
           )
-            tone = "bg-yellow-100 text-yellow-700";
-          if (s?.toLowerCase() === "rejected") tone = "bg-red-100 text-red-700";
+            tone =
+              "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300";
+          if (s?.toLowerCase() === "rejected")
+            tone =
+              "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300";
 
           return (
             <Badge variant="secondary" className={`font-medium ${tone}`}>
@@ -180,6 +204,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
               contractId={contractId || ""}
               basePath={basePath}
               currency={currency}
+              actionsDisabled={!!actionsDisabled}
               trigger={
                 <Button
                   variant="link"
@@ -203,7 +228,9 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         accessorKey: "securityType",
         header: "Security Type",
         cell: ({ getValue }) => (
-          <span className="text-slate-700">{getValue<string>()}</span>
+          <span className="text-slate-700 dark:text-slate-300">
+            {getValue<string>()}
+          </span>
         ),
       },
       {
@@ -219,15 +246,21 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         cell: ({ row }) => (
           <div className="flex flex-col text-sm">
             <div>
-              <span className="text-slate-500 mr-1">Due Date:</span>
-              <span className="font-medium text-slate-900">
+              <span className="text-slate-500 dark:text-slate-400 mr-1">
+                Due Date:
+              </span>
+              <span className="font-medium text-slate-900 dark:text-slate-100">
                 {row.original.dueDate}
               </span>
             </div>
             {row.original.dueIn && row.original.dueIn !== "-" && (
               <div>
-                <span className="text-slate-500 mr-1">Due in:</span>
-                <span className="text-slate-900">{row.original.dueIn}</span>
+                <span className="text-slate-500 dark:text-slate-400 mr-1">
+                  Due in:
+                </span>
+                <span className="text-slate-900 dark:text-slate-100">
+                  {row.original.dueIn}
+                </span>
               </div>
             )}
           </div>
@@ -238,18 +271,23 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         header: "Status",
         cell: ({ getValue }) => {
           const s = getValue<string>();
-          let tone = "bg-gray-100 text-gray-700";
+          let tone =
+            "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300";
           if (
             s?.toLowerCase() === "approved" ||
             s?.toLowerCase() === "submitted"
           )
-            tone = "bg-green-100 text-green-700";
+            tone =
+              "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
           if (
             s?.toLowerCase() === "pending" ||
             s?.toLowerCase() === "pending submission"
           )
-            tone = "bg-yellow-100 text-yellow-700";
-          if (s?.toLowerCase() === "rejected") tone = "bg-red-100 text-red-700";
+            tone =
+              "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300";
+          if (s?.toLowerCase() === "rejected")
+            tone =
+              "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300";
           return (
             <Badge variant="secondary" className={`font-medium ${tone}`}>
               {s}
@@ -268,6 +306,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
               contractId={contractId || ""}
               basePath={basePath}
               currency={currency}
+              actionsDisabled={!!actionsDisabled}
               trigger={
                 <Button
                   variant="link"
@@ -351,7 +390,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
     <div className="space-y-8">
       {/* Header Section */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-slate-800">
+        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
           Compliance & Security Details
         </h3>
         <div className="flex items-center gap-3">
@@ -361,7 +400,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
                 variant="outline"
                 className="text-red-600 border-red-300 hover:bg-red-50 hover:text-red-700"
                 onClick={handleReject}
-                disabled={approveMutation.isPending}
+                disabled={approveMutation.isPending || !!actionsDisabled}
               >
                 <X className="mr-2 h-4 w-4" />
                 Reject
@@ -369,7 +408,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
               <Button
                 className="bg-green-600 text-white hover:bg-green-700"
                 onClick={handleApprove}
-                disabled={approveMutation.isPending}
+                disabled={approveMutation.isPending || !!actionsDisabled}
               >
                 <Check className="mr-2 h-4 w-4" />
                 Approve
@@ -383,7 +422,10 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
               basePath={basePath}
               title={`Submit ${activeView === "policy" ? "Policies" : "Security"}`}
               trigger={
-                <Button className="bg-[#2A4467] text-white hover:bg-[#1f3552]">
+                <Button
+                  className="bg-[#2A4467] text-white hover:bg-[#1f3552]"
+                  disabled={!!actionsDisabled}
+                >
                   Submit {activeView === "policy" ? "Policies" : "Security"}
                 </Button>
               }
@@ -399,32 +441,40 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="space-y-8">
           <div className="space-y-1">
-            <p className="text-sm text-slate-500">Insurance Coverage</p>
-            <p className="text-base font-semibold text-slate-900">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Insurance Coverage
+            </p>
+            <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
               {data?.details?.coverage
                 ? `${data.details.coverage} Coverages`
                 : "-"}
             </p>
           </div>
           <div className="space-y-1">
-            <p className="text-sm text-slate-500">Contract Security</p>
-            <p className="text-base font-semibold text-slate-900">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Contract Security
+            </p>
+            <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
               {data?.details?.security ? "Yes" : "No"}
             </p>
           </div>
         </div>
         <div className="space-y-8">
           <div className="space-y-1">
-            <p className="text-sm text-slate-500">Insurance Expiry Date</p>
-            <p className="text-base font-semibold text-slate-900">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Insurance Expiry Date
+            </p>
+            <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
               {data?.details?.expDate
                 ? format(new Date(data.details.expDate), "dd MMM yyyy")
                 : "-"}
             </p>
           </div>
           <div className="space-y-1">
-            <p className="text-sm text-slate-500">Security Type</p>
-            <p className="text-base font-semibold text-slate-900">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Security Type
+            </p>
+            <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
               {data?.details?.securityType &&
               Array.isArray(data.details.securityType)
                 ? data.details.securityType
@@ -445,14 +495,14 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
       <div className="space-y-6">
         {/* Custom Toggle */}
         <div className="flex items-center gap-4">
-          <div className="bg-slate-100 p-1 rounded-full inline-flex">
+          <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-full inline-flex">
             <button
               onClick={() => setActiveView("policy")}
               className={cn(
                 "px-4 py-2 rounded-full text-sm font-medium transition-colors",
                 activeView === "policy"
-                  ? "bg-[#1E293B] text-white"
-                  : "text-slate-500 hover:text-slate-900",
+                  ? "bg-[#1E293B] text-white dark:bg-slate-200 dark:text-slate-900"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100",
               )}
             >
               Insurance Coverage
@@ -462,8 +512,8 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
               className={cn(
                 "px-4 py-2 rounded-full text-sm font-medium transition-colors",
                 activeView === "security"
-                  ? "bg-[#1E293B] text-white"
-                  : "text-slate-500 hover:text-slate-900",
+                  ? "bg-[#1E293B] text-white dark:bg-slate-200 dark:text-slate-900"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100",
               )}
             >
               Contract Security
@@ -472,34 +522,58 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         </div>
 
         {/* Search and Table */}
-        <div className="space-y-4 border border-slate-300 rounded-md">
+        <div className="space-y-4 border border-slate-300 dark:border-slate-700 rounded-md">
           <div className="flex items-center gap-4 p-4">
-            <div className="font-medium text-slate-700 w-20">
+            <div className="font-medium text-slate-700 dark:text-slate-200 w-20">
               {activeView === "policy" ? "Policy" : "Security"}
             </div>
             <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
               <Input
                 placeholder="Search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-white"
+                className="pl-9 bg-white dark:bg-slate-950 dark:text-slate-100 dark:border-slate-700 dark:placeholder:text-slate-500"
               />
             </div>
           </div>
 
-          <div className="border rounded-md bg-white">
+          <div className="border rounded-md bg-white dark:bg-slate-900 dark:border-slate-700">
             {activeView === "policy" ? (
               <DataTable<PolicyRow>
                 data={filteredPolicyRows}
                 columns={columns}
                 options={{ disableSelection: true, disablePagination: true }}
+                classNames={{
+                  container: "[&>div:last-child]:hidden",
+                  table: "border-spacing-y-0",
+                  tHeader: "bg-[#F9FAFB] dark:bg-slate-900",
+                  tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-700",
+                  tBody: "bg-white dark:bg-slate-900",
+                  tRow: "border-b border-[#E5E7EB] dark:border-slate-700",
+                  tHead:
+                    "px-6 py-3 text-sm font-semibold text-[#2A4467] dark:text-slate-200",
+                  tCell:
+                    "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
+                }}
               />
             ) : (
               <DataTable<SecurityRow>
                 data={filteredSecurityRows}
                 columns={securityColumns}
                 options={{ disableSelection: true, disablePagination: true }}
+                classNames={{
+                  container: "[&>div:last-child]:hidden",
+                  table: "border-spacing-y-0",
+                  tHeader: "bg-[#F9FAFB] dark:bg-slate-900",
+                  tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-700",
+                  tBody: "bg-white dark:bg-slate-900",
+                  tRow: "border-b border-[#E5E7EB] dark:border-slate-700",
+                  tHead:
+                    "px-6 py-3 text-sm font-semibold text-[#2A4467] dark:text-slate-200",
+                  tCell:
+                    "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
+                }}
               />
             )}
           </div>

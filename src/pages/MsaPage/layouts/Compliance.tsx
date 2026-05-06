@@ -23,6 +23,7 @@ type Props = {
   contractId: string;
   isActive?: boolean;
   contract?: ContractComplianceDTO;
+  actionsDisabled?: boolean;
 };
 
 type PolicyRow = {
@@ -62,16 +63,17 @@ const formatCurrencyCompact = (value?: string | number) => {
 const getStatusTone = (status?: string) => {
   const normalized = status?.toLowerCase();
   if (normalized === "approved" || normalized === "submitted") {
-    return "bg-[#EAF7EE] text-[#43A047]";
+    return "bg-[#EAF7EE] text-[#43A047] dark:bg-green-900/30 dark:text-green-300";
   }
   if (normalized === "pending" || normalized === "pending submission") {
-    return "bg-[#FFF8E1] text-[#F4B400]";
+    return "bg-[#FFF8E1] text-[#F4B400] dark:bg-yellow-900/30 dark:text-yellow-300";
   }
-  if (normalized === "rejected") return "bg-[#FEECEC] text-[#E53935]";
-  return "bg-gray-100 text-gray-700";
+  if (normalized === "rejected")
+    return "bg-[#FEECEC] text-[#E53935] dark:bg-red-900/30 dark:text-red-300";
+  return "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-200";
 };
 
-const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
+const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   const {
     isVendor,
     isProjectManager,
@@ -209,6 +211,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
               id={row.original.id}
               contractId={contractId}
               basePath={basePath}
+              actionsDisabled={actionsDisabled}
               trigger={
                 <Button
                   variant="link"
@@ -222,7 +225,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
         },
       },
     ],
-    [basePath, contractId],
+    [basePath, contractId, actionsDisabled],
   );
 
   const securityColumns = React.useMemo<ColumnDef<SecurityRow>[]>(
@@ -255,6 +258,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
               id={row.original.id}
               contractId={contractId}
               basePath={basePath}
+              actionsDisabled={actionsDisabled}
               trigger={
                 <Button
                   variant="link"
@@ -268,7 +272,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
         },
       },
     ],
-    [basePath, contractId],
+    [basePath, contractId, actionsDisabled],
   );
 
   const isContractManager = userRole === "contract_manager";
@@ -329,7 +333,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
   return (
     <TabsContent value="compliance" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
+        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-slate-900 dark:text-slate-100">
           Compliance & Security Details
         </h3>
         <div className="flex items-center gap-3">
@@ -339,7 +343,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
                 variant="outline"
                 className="h-12 rounded-xl border-red-200 px-5 text-base font-semibold text-red-600 hover:bg-red-50 hover:text-red-700"
                 onClick={handleReject}
-                disabled={approveMutation.isPending}
+                disabled={approveMutation.isPending || !!actionsDisabled}
               >
                 <X className="mr-2 h-5 w-5" />
                 Reject
@@ -347,7 +351,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
               <Button
                 className="h-12 rounded-xl bg-green-600 px-5 text-base font-semibold text-white hover:bg-green-700"
                 onClick={handleApprove}
-                disabled={approveMutation.isPending}
+                disabled={approveMutation.isPending || !!actionsDisabled}
               >
                 <Check className="mr-2 h-5 w-5" />
                 Approve
@@ -362,7 +366,10 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
               basePath={basePath}
               title={`Submit ${activeTab === "policy" ? "Policies" : "Security"}`}
               trigger={
-                <Button className="h-12 rounded-xl bg-[#2A4467] px-5 text-base font-semibold text-white hover:bg-[#1f3552]">
+                <Button
+                  className="h-12 rounded-xl bg-[#2A4467] px-5 text-base font-semibold text-white hover:bg-[#1f3552]"
+                  disabled={!!actionsDisabled}
+                >
                   Submit {activeTab === "policy" ? "Policies" : "Security"}
                 </Button>
               }
@@ -371,7 +378,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
 
           <Button
             variant="outline"
-            className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F]"
+            className="h-12 rounded-xl border-[#E5E7EB] dark:border-slate-700 px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 dark:bg-transparent"
           >
             <Share2 className="mr-2 h-5 w-5" />
             Export Report
@@ -426,34 +433,34 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
           value={activeTab}
           onValueChange={(v) => setActiveTab(v as "policy" | "security")}
         >
-          <TabsList className="bg-[#F3F4F6] rounded-full p-1 h-auto">
+          <TabsList className="bg-[#F3F4F6] dark:bg-slate-800 rounded-full p-1 h-auto">
             <TabsTrigger
               value="policy"
-              className="rounded-full px-6 py-2 text-sm font-semibold data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:shadow-none text-[#6B6B6B]"
+              className="rounded-full px-6 py-2 text-sm font-semibold data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:shadow-none text-[#6B6B6B] dark:text-slate-200"
             >
               Insurance Coverage
             </TabsTrigger>
             <TabsTrigger
               value="security"
-              className="rounded-full px-6 py-2 text-sm font-semibold data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:shadow-none text-[#6B6B6B]"
+              className="rounded-full px-6 py-2 text-sm font-semibold data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:shadow-none text-[#6B6B6B] dark:text-slate-200"
             >
               Contract Security
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="policy" className="mt-0">
-            <div className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
-              <div className="flex items-center gap-4 border-b border-[#E9E9EB] px-6 py-4">
-                <div className="text-base font-semibold text-[#0F0F0F]">
+            <div className="overflow-hidden rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-900">
+              <div className="flex items-center gap-4 border-b border-[#E9E9EB] dark:border-slate-700 px-6 py-4">
+                <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
                   Policy
                 </div>
                 <div className="relative w-[320px]">
-                  <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B]" />
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />
                   <Input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Search"
-                    className="h-12 rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
+                    className="h-12 rounded-lg border border-[#E5E7EB] dark:border-slate-700 pl-9 text-sm text-[#0F0F0F] dark:text-slate-100 placeholder:text-[#6B6B6B] dark:placeholder:text-slate-400 bg-white dark:bg-slate-950"
                   />
                 </div>
               </div>
@@ -464,30 +471,32 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
                 classNames={{
                   container: "[&>div:last-child]:hidden",
                   table: "border-spacing-y-0",
-                  tHeader: "bg-[#F9FAFB]",
-                  tHeadRow: "border-b border-[#E5E7EB]",
-                  tBody: "bg-white",
-                  tRow: "border-b border-[#E5E7EB]",
-                  tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467]",
-                  tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+                  tHeader: "bg-[#F9FAFB] dark:bg-slate-900",
+                  tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-700",
+                  tBody: "bg-white dark:bg-slate-900",
+                  tRow: "border-b border-[#E5E7EB] dark:border-slate-700",
+                  tHead:
+                    "px-6 py-3 text-sm font-semibold text-[#2A4467] dark:text-slate-200",
+                  tCell:
+                    "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
                 }}
               />
             </div>
           </TabsContent>
 
           <TabsContent value="security" className="mt-0">
-            <div className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
-              <div className="flex items-center gap-4 border-b border-[#E9E9EB] px-6 py-4">
-                <div className="text-base font-semibold text-[#0F0F0F]">
+            <div className="overflow-hidden rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-900">
+              <div className="flex items-center gap-4 border-b border-[#E9E9EB] dark:border-slate-700 px-6 py-4">
+                <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
                   Security
                 </div>
                 <div className="relative w-[320px]">
-                  <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B]" />
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />
                   <Input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Search"
-                    className="h-12 rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
+                    className="h-12 rounded-lg border border-[#E5E7EB] dark:border-slate-700 pl-9 text-sm text-[#0F0F0F] dark:text-slate-100 placeholder:text-[#6B6B6B] dark:placeholder:text-slate-400 bg-white dark:bg-slate-950"
                   />
                 </div>
               </div>
@@ -498,12 +507,14 @@ const Compliance: React.FC<Props> = ({ contractId, isActive }) => {
                 classNames={{
                   container: "[&>div:last-child]:hidden",
                   table: "border-spacing-y-0",
-                  tHeader: "bg-[#F9FAFB]",
-                  tHeadRow: "border-b border-[#E5E7EB]",
-                  tBody: "bg-white",
-                  tRow: "border-b border-[#E5E7EB]",
-                  tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467]",
-                  tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+                  tHeader: "bg-[#F9FAFB] dark:bg-slate-900",
+                  tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-700",
+                  tBody: "bg-white dark:bg-slate-900",
+                  tRow: "border-b border-[#E5E7EB] dark:border-slate-700",
+                  tHead:
+                    "px-6 py-3 text-sm font-semibold text-[#2A4467] dark:text-slate-200",
+                  tCell:
+                    "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
                 }}
               />
             </div>

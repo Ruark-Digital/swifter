@@ -7,9 +7,17 @@ import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SEOWrapper } from "@/components/SEO";
 
-type Props = { isActive?: boolean; currency?: string };
+type Props = {
+  isActive?: boolean;
+  currency?: string;
+  actionsDisabled?: boolean;
+};
 
-const ComplianceTabContent: React.FC<Props> = ({ isActive, currency }) => {
+const ComplianceTabContent: React.FC<Props> = ({
+  isActive,
+  currency,
+  actionsDisabled,
+}) => {
   const { id: contractId } = useParams<{ id: string }>();
   const {
     isVendor,
@@ -61,6 +69,7 @@ const ComplianceTabContent: React.FC<Props> = ({ isActive, currency }) => {
         data={complianceData?.data}
         basePath={basePath}
         currency={currency}
+        actionsDisabled={actionsDisabled}
       />
     </TabsContent>
   );

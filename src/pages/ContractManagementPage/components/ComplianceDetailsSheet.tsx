@@ -31,6 +31,7 @@ interface ComplianceDetailsSheetProps {
   basePath: string;
   currency?: string;
   data?: PolicyItem | SecurityItem;
+  actionsDisabled?: boolean;
 }
 
 const LabelValue = ({ label, value }: { label: string; value: string }) => (
@@ -44,10 +45,12 @@ const DocumentCard = ({
   name,
   type,
   size,
+  url,
 }: {
   name: string;
   type: string;
   size: string;
+  url?: string;
 }) => (
   <div className="flex items-center gap-3 p-4 border border-slate-200 rounded-xl bg-white shadow-sm">
     <div className="h-10 w-10 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400">
@@ -60,12 +63,29 @@ const DocumentCard = ({
       </p>
     </div>
     <div className="flex items-center gap-2">
-      <button className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+      <a
+        href={url || "#"}
+        target="_blank"
+        rel="noreferrer"
+        className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
+        aria-disabled={!url}
+        onClick={(e) => {
+          if (!url) e.preventDefault();
+        }}
+      >
         <Eye className="h-4 w-4" />
-      </button>
-      <button className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+      </a>
+      <a
+        href={url || "#"}
+        download
+        className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
+        aria-disabled={!url}
+        onClick={(e) => {
+          if (!url) e.preventDefault();
+        }}
+      >
         <Download className="h-4 w-4" />
-      </button>
+      </a>
     </div>
   </div>
 );
@@ -78,8 +98,9 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
   basePath,
   currency,
   data,
+  actionsDisabled,
 }) => {
-  const { isManager, isAdmin } = useUserRole();
+  const { isManager, isSuperAdmin } = useUserRole();
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
@@ -128,8 +149,20 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
 
   const detail = (fetchedDetail || data) as any;
 
-  // Files live on details, shared across all items
-  const files = complianceData?.details?.files ?? [];
+  const files = React.useMemo(() => {
+    const details = complianceData?.details;
+    if (!details) return [];
+
+    if (type === "policy") {
+      return details.policyStatus?.files ?? details.files ?? [];
+    }
+
+    const raw = details.securityStatus as unknown;
+    if (raw && typeof raw === "object" && "files" in raw) {
+      return (raw as { files?: NonNullable<typeof details.files> }).files ?? [];
+    }
+    return details.files ?? [];
+  }, [complianceData?.details, type]);
   const hasFiles = files.length > 0;
 
   if (isLoading) {
@@ -219,9 +252,17 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
                   label={type === "policy" ? "Submission Date" : "Due Date"}
                   value={
                     type === "policy"
-                      ? detail?.createdAt
-                        ? format(new Date(detail.createdAt), "dd MMM yyyy")
-                        : "—"
+                      ? complianceData?.details?.policyStatus?.submissionDate
+                        ? format(
+                            new Date(
+                              complianceData.details.policyStatus
+                                .submissionDate,
+                            ),
+                            "dd MMM yyyy",
+                          )
+                        : detail?.createdAt
+                          ? format(new Date(detail.createdAt), "dd MMM yyyy")
+                          : "—"
                       : detail?.dueDate
                         ? format(new Date(detail.dueDate), "dd MMM yyyy")
                         : "—"
@@ -275,10 +316,11 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
                 <div className="grid grid-cols-1 gap-3">
                   {files.map((file, idx) => (
                     <DocumentCard
-                      key={file._id || idx}
+                      key={file.name || idx}
                       name={file.name || "Document"}
                       type={file.type || "pdf"}
                       size={file.size || "—"}
+                      url={file.url}
                     />
                   ))}
                   {!hasFiles && (
@@ -291,11 +333,12 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
             </TabsContent>
           </Tabs>
 
-          {(isManager || isAdmin) &&
+          {(isManager || isSuperAdmin) &&
             hasFiles &&
             !["published", "approved"].includes(
               detail?.status?.toLowerCase(),
-            ) && (
+            ) &&
+            !actionsDisabled && (
               <div className="flex gap-4 pt-6 sticky bottom-0 bg-white pb-2 border-t border-slate-100 mt-auto">
                 <Button
                   variant="outline"

@@ -473,6 +473,7 @@ const ContractDetailPage: React.FC = () => {
         <ComplianceTabContent
           currency={contract?.currency}
           isActive={activeTab === "compliance"}
+          actionsDisabled={actionsDisabled}
         />
 
         <ChangeTabContent
