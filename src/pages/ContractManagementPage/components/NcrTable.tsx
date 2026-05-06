@@ -352,12 +352,14 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                 >
                   Overview
                 </TabsTrigger>
-                <TabsTrigger
-                  value="capa"
-                  className="data-[state=active]:border-[#6941C6] data-[state=active]:text-[#6941C6] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-                >
-                  Corrective &amp; Preventive Action Plan
-                </TabsTrigger>
+                {detail?.capa && detail.capa.length > 0 && (
+                  <TabsTrigger
+                    value="capa"
+                    className="data-[state=active]:border-[#6941C6] data-[state=active]:text-[#6941C6] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                  >
+                    Corrective &amp; Preventive Action Plan
+                  </TabsTrigger>
+                )}
                 <TabsTrigger
                   value="comments"
                   className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
@@ -423,38 +425,40 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                 ) : null}
               </TabsContent>
 
-              <TabsContent value="capa" className="space-y-10">
-                <div className="space-y-4">
-                  <div className="text- text-[#6B7280]">
-                    Corrective &amp; Preventive Action Plan
+              {detail?.capa && detail.capa.length > 0 && (
+                <TabsContent value="capa" className="space-y-10">
+                  <div className="space-y-4">
+                    <div className="text- text-[#6B7280]">
+                      Corrective &amp; Preventive Action Plan
+                    </div>
+                    <div className="text-base font-semibold leading-[1.5] text-[#0F0F0F]">
+                      {latestCapa?.description ?? description}
+                    </div>
                   </div>
-                  <div className="text-base font-semibold leading-[1.5] text-[#0F0F0F]">
-                    {latestCapa?.description ?? description}
-                  </div>
-                </div>
 
-                <div className="space-y-4">
-                  <div className="text-base font-semibold text-[#0F0F0F]">
-                    Attached Documents
+                  <div className="space-y-4">
+                    <div className="text-base font-semibold text-[#0F0F0F]">
+                      Attached Documents
+                    </div>
+                    {capaDocs.length > 0 ? (
+                      <div className="grid gap-3 sm:grid-cols-1">
+                        {capaDocs.map((doc) => (
+                          <DocumentItem
+                            key={doc.id}
+                            d={doc}
+                            handlePreview={handlePreview}
+                            handleDownload={handleDownload}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+                        No attached documents.
+                      </div>
+                    )}
                   </div>
-                  {capaDocs.length > 0 ? (
-                    <div className="grid gap-3 sm:grid-cols-1">
-                      {capaDocs.map((doc) => (
-                        <DocumentItem
-                          key={doc.id}
-                          d={doc}
-                          handlePreview={handlePreview}
-                          handleDownload={handleDownload}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border border-dashed border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
-                      No attached documents.
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
+                </TabsContent>
+              )}
 
               <TabsContent value="comments" className="space-y-4">
                 <div className="rounded-xl border border-[#E5E7EB] p-4 text-sm text-[#6B7280]">

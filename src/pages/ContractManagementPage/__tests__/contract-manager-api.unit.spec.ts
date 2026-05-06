@@ -222,48 +222,48 @@ test.describe("contractManagerApi (unit)", () => {
       config: { params: { title: "t", type: "dispute", page: 1, limit: 5 } },
     });
 
-    await api.getClaimDetail("cl1");
+    await api.getClaimDetail("c4", "cl1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/claims/cl1",
+      url: "/contract/manager/contracts/c4/claims/cl1",
     });
 
-    await api.approveClaim("cl1", approvalPayload as never);
+    await api.approveClaim("c4", "cl1", approvalPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/claims/cl1/approve",
+      url: "/contract/manager/contracts/c4/claims/cl1/approve",
       payload: approvalPayload,
     });
 
-    await api.getClaimApproveStatus("cl1");
+    await api.getClaimApproveStatus("c4", "cl1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/claims/cl1/approve/status",
+      url: "/contract/manager/contracts/c4/claims/cl1/approve/status",
     });
 
-    await api.listClaimComments("cl1");
+    await api.listClaimComments("c4", "cl1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/claims/cl1/comments",
+      url: "/contract/manager/contracts/c4/claims/cl1/comments",
     });
 
-    await api.addClaimComment("cl1", "c4", commentPayload as never);
+    await api.addClaimComment("c4", "cl1", commentPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/claims/cl1/comments/c4",
+      url: "/contract/manager/contracts/c4/claims/cl1/comments",
       payload: commentPayload,
     });
 
-    await api.replyClaimComment("cl1", "cm2", replyPayload as never);
+    await api.replyClaimComment("c4", "cl1", "cm2", replyPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/claims/cl1/comments/cm2/reply",
+      url: "/contract/manager/contracts/c4/claims/cl1/comments/cm2/reply",
       payload: replyPayload,
     });
 
-    await api.listClaimApprovers("cl1");
+    await api.listClaimApprovers("c4", "cl1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/claims/cl1/approvers",
+      url: "/contract/manager/contracts/c4/claims/cl1/approvers",
     });
 
     const approversPayload = { userIds: ["u1", "u2"] };
-    await api.sendClaimToApprovers("cl1", approversPayload);
+    await api.sendClaimToApprovers("c4", "cl1", approversPayload);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/claims/cl1/approvers",
+      url: "/contract/manager/contracts/c4/claims/cl1/approvers",
       payload: approversPayload,
     });
 
@@ -366,9 +366,9 @@ test.describe("contractManagerApi (unit)", () => {
     });
 
     const rfiReplyPayload = { content: "r" };
-    await api.replyRfiComment("rfi1", "cm1", rfiReplyPayload as never);
+    await api.replyRfiComment("c4", "rfi1", "cm1", rfiReplyPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/rfis/rfi1/comment/cm1/reply",
+      url: "/contract/manager/contracts/c4/rfis/rfi1/comment/cm1/reply",
       payload: rfiReplyPayload,
     });
 
