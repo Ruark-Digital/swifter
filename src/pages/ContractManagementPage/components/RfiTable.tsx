@@ -180,7 +180,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     },
   });
 
-  const rfiDetail = rfiDetailRes?.data?.contractRfi as unknown as any;
+  const rfiDetail = (rfiDetailRes?.data?.contractRfi ?? rfiDetailRes?.data ?? rfiDetailRes) as unknown as any;
   const rfiTitle = rfiDetail?.title ?? rfi?.title ?? "-";
   const rfiDescription = rfiDetail?.description ?? rfi?.description ?? "-";
   const rfiStatus = rfi?.status ?? "-";

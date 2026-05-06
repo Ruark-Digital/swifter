@@ -228,7 +228,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   );
 
   const canLoadComments =
-    open && !!contractId && !!changeId && (isManager || isApprover);
+    open && !!contractId && !!changeId && (isManager || isApprover || isContractVendorLike);
 
   const { data: commentsRes, isLoading: isCommentsLoading } = useQuery({
     queryKey: commentsQueryKey,
@@ -237,6 +237,8 @@ const ChangeDetailsSheet: React.FC<Props> = ({
         ? usesListBasePath
           ? `${roleBasePath}/${contractId}/changes/${changeId}/comments`
           : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
+        : roleBasePath.includes("/vendor/")
+        ? `${roleBasePath}/${contractId}/changes/${changeId}/comments`
         : usesListBasePath
           ? `${roleBasePath}/${changeId}/comment`
           : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
@@ -259,6 +261,8 @@ const ChangeDetailsSheet: React.FC<Props> = ({
         ? usesListBasePath
           ? `${roleBasePath}/${contractId}/changes/${changeId}/comments`
           : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
+        : roleBasePath.includes("/vendor/")
+        ? `${roleBasePath}/${contractId}/changes/${changeId}/comments`
         : usesListBasePath
           ? `${roleBasePath}/${changeId}/comment`
           : `${roleBasePath}/${contractId}/change/${changeId}/comment`;

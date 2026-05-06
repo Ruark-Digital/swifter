@@ -235,7 +235,7 @@ export const CreateAmendmentDialog: React.FC<{
     }
     if (data.impactType === "others") {
       if (data.scopeEnabled && data.scope) {
-        changes.push({ field: "scope", value: String(data.scope) });
+        changes.push({ field: "others", value: String(data.scope) });
       }
       if (data.expiryEnabled && data.newExpiryDate) {
         changes.push({

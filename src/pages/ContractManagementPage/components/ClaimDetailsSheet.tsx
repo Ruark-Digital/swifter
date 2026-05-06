@@ -9,10 +9,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Share2, ArrowLeft } from "lucide-react";
+import { Share2, ArrowLeft, Send } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
-import { useQuery } from "@tanstack/react-query";
-import { getRequest } from "@/lib/axiosInstance";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import {
   formatFileSize,
@@ -20,6 +20,7 @@ import {
   getSimpleFileExtension,
 } from "@/lib/fileUtils";
 import Spinner from "@/components/ui/Spinner";
+import { useToastHandler } from "@/hooks/useToaster";
 
 type Props = {
   trigger?: React.ReactNode;
@@ -59,17 +60,27 @@ const ClaimDetailsSheet: React.FC<Props> = ({
   open: controlledOpen,
   onOpenChange: setControlledOpen,
 }) => {
-  const { isManager, isApprover, isVendor, isProjectManager, isAdmin, isViewOnly } =
-    useUserRole();
+  const {
+    isManager,
+    isApprover,
+    isVendor,
+    isProjectManager,
+    isAdmin,
+    isViewOnly,
+  } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
   const [internalOpen, setInternalOpen] = React.useState(false);
+  const [comment, setComment] = React.useState("");
+  const queryClient = useQueryClient();
+  const toast = useToastHandler();
 
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = setControlledOpen ?? setInternalOpen;
 
   const roleBasePath = React.useMemo(() => {
     if (basePath) return basePath;
-    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/claim`;
+    if (isContractVendorLike)
+      return `/contract/vendor/contracts/${contractId}/claim`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/claim`;
     if (isManager) return `/contract/manager/contracts/${contractId}/claims`;
     if (isAdmin || isViewOnly)
@@ -100,6 +111,42 @@ const ClaimDetailsSheet: React.FC<Props> = ({
     enabled: open && !!contractId && !!claimId,
     staleTime: 60_000,
   });
+
+  const commentsQueryKey = React.useMemo(
+    () => ["contract-claim-comments", roleBasePath, claimId],
+    [roleBasePath, claimId],
+  );
+
+  const { data: commentsRes } = useQuery({
+    queryKey: commentsQueryKey,
+    queryFn: async () => {
+      const url = `${roleBasePath}/${claimId}/comment`;
+      const res = await getRequest({ url });
+      return (res as any)?.data;
+    },
+    enabled: open && !!contractId && !!claimId && isContractVendorLike,
+    staleTime: 60_000,
+  });
+
+  const addCommentMutation = useMutation({
+    mutationFn: async (commentText: string) => {
+      const url = `${roleBasePath}/${claimId}/comment`;
+      return await postRequest({ url, payload: { comment: commentText } });
+    },
+    onSuccess: () => {
+      setComment("");
+      queryClient.invalidateQueries({ queryKey: commentsQueryKey });
+      toast.success("Success", "Comment added successfully");
+    },
+    onError: (error: any) => {
+      toast.error(
+        "Error",
+        error?.response?.data?.message ?? "Failed to add comment",
+      );
+    },
+  });
+
+  const comments = commentsRes ?? [];
 
   const detail = (detailRes as any)?.data ?? (detailRes as any);
 
@@ -252,6 +299,77 @@ const ClaimDetailsSheet: React.FC<Props> = ({
                             handleDownload={handleDownload}
                           />
                         ))}
+                      </div>
+                    </section>
+                  </>
+                )}
+
+                {isContractVendorLike && (
+                  <>
+                    <Separator />
+                    <section>
+                      <h3 className="text-base font-semibold text-slate-900 mb-4">
+                        Comments
+                      </h3>
+                      {comments.length > 0 ? (
+                        <div className="space-y-3 mb-4">
+                          {comments.map((c: any, idx: number) => (
+                            <div
+                              key={c.id || idx}
+                              className="bg-slate-50 rounded-lg p-3"
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-sm font-medium text-slate-700">
+                                  {c.commentedBy?.name ||
+                                    c.commentedBy?.email ||
+                                    "User"}
+                                </span>
+                                <span className="text-xs text-slate-400">
+                                  {c.createdAt
+                                    ? new Date(c.createdAt).toLocaleDateString()
+                                    : ""}
+                                </span>
+                              </div>
+                              <p className="text-sm text-slate-600">
+                                {c.comment}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-500 mb-4">
+                          No comments yet.
+                        </p>
+                      )}
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Add a comment..."
+                          value={comment}
+                          onChange={(e) => setComment(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (
+                              e.key === "Enter" &&
+                              comment.trim() &&
+                              !addCommentMutation.isPending
+                            ) {
+                              addCommentMutation.mutate(comment);
+                            }
+                          }}
+                          className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            comment.trim() && addCommentMutation.mutate(comment)
+                          }
+                          disabled={
+                            !comment.trim() || addCommentMutation.isPending
+                          }
+                          className="bg-[#2A4467]"
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
                       </div>
                     </section>
                   </>

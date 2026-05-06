@@ -736,6 +736,7 @@ export interface User {
 
 
 export interface ContractLogDTO {
+  logId?:   string;
   actionId:  string;
   module:    LogModule;
   user:      string;
@@ -973,29 +974,33 @@ export const createContractManagerApi = (
         data?: { changes?: ContractClaimDTO[]; total?: number };
       };
     },
-    getClaimDetail: async (claimId: string) => {
+    getClaimDetail: async (contractId: string, claimId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/claims/${claimId}`,
       });
       return res.data as { message?: string; data?: ContractClaimDTO };
     },
-    approveClaim: async (claimId: string, payload: ApprovalActionDTO) => {
+    approveClaim: async (
+      contractId: string,
+      claimId: string,
+      payload: ApprovalActionDTO,
+    ) => {
       await assertValid(approvalActionSchema, payload);
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/approve`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/claims/${claimId}/approve`,
         payload,
       });
       return res.data as { message?: string };
     },
-    getClaimApproveStatus: async (claimId: string) => {
+    getClaimApproveStatus: async (contractId: string, claimId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/approve/status`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/claims/${claimId}/approve/status`,
       });
       return res.data as { message?: string; data?: { status?: string } };
     },
-    listClaimComments: async (claimId: string) => {
+    listClaimComments: async (contractId: string, claimId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/comments`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/claims/${claimId}/comments`,
       });
       return res.data as {
         message?: string;
@@ -1003,39 +1008,41 @@ export const createContractManagerApi = (
       };
     },
     addClaimComment: async (
-      claimId: string,
       contractId: string,
+      claimId: string,
       payload: ContractChangeCommentDTO,
     ) => {
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/comments/${contractId}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/claims/${claimId}/comments`,
         payload,
       });
       return res.data as { message?: string; data?: ContractCommentDTO };
     },
     replyClaimComment: async (
+      contractId: string,
       claimId: string,
       commentId: string,
       payload: ContractChangeReplyDTO,
     ) => {
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/comments/${commentId}/reply`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/claims/${claimId}/comments/${commentId}/reply`,
         payload,
       });
       return res.data as { message?: string; data?: ContractCommentDTO };
     },
-    listClaimApprovers: async (claimId: string) => {
+    listClaimApprovers: async (contractId: string, claimId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/approvers`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/claims/${claimId}/approvers`,
       });
       return res.data as { message?: string; data?: ContractChangeApprover[] };
     },
     sendClaimToApprovers: async (
+      contractId: string,
       claimId: string,
       payload: { userIds: string[] },
     ) => {
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/approvers`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/claims/${claimId}/approvers`,
         payload,
       });
       return res.data as { message?: string; data?: ContractClaimDTO };
@@ -1246,12 +1253,13 @@ export const createContractManagerApi = (
       return res.data as { message?: string; data?: ContractCommentDTO };
     },
     replyRfiComment: async (
+      contractId: string,
       rfiId: string,
       commentId: string,
       payload: ContractChangeReplyDTO,
     ) => {
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/rfis/${rfiId}/comment/${commentId}/reply`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/rfis/${rfiId}/comment/${commentId}/reply`,
         payload,
       });
       return res.data as { message?: string; data?: ContractCommentDTO };
