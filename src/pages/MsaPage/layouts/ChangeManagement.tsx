@@ -82,11 +82,7 @@ const ChangeManagement: React.FC<Props> = ({
     isViewOnly,
   ]);
 
-  const listBasePath = React.useMemo(
-    () =>
-      isManager || isAdmin ? `${rolePrefix}/changes` : `${rolePrefix}/change`,
-    [isAdmin, isManager, rolePrefix],
-  );
+  const listBasePath = React.useMemo(() => `${rolePrefix}/changes`, [rolePrefix]);
 
   const statsQueryKey = useUserQueryKey([
     "msaChanges",
@@ -256,7 +252,7 @@ const ChangeManagement: React.FC<Props> = ({
   );
 
   const stats = statsRes?.data;
-  const canCreateChange = isManager || isAdmin;
+  const canCreateChange = isManager || isAdmin || isProjectManager || isVendor;
 
   return (
     <MainTabsContent value="change" className="space-y-8">
@@ -283,7 +279,7 @@ const ChangeManagement: React.FC<Props> = ({
                 </Button>
               }
               contractId={contractId}
-              isManager
+              isManager={isManager || isAdmin}
               documentType="MsaContract"
             />
           )}

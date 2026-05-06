@@ -159,7 +159,7 @@ export const createApproverApi = (
   },
   getChangeStats: async (contractId: string) => {
     const res = await client.get({
-      url: `/contract/approver/contracts/${contractId}/change/stats`,
+      url: `/contract/approver/contracts/${contractId}/changes/stats`,
     });
     return res.data as { message?: string; data?: ContractChangeStatsDTO };
   },
@@ -168,7 +168,7 @@ export const createApproverApi = (
     query?: { title?: string; type?: string; page?: number; limit?: number },
   ) => {
     const res = await client.get({
-      url: `/contract/approver/contracts/${contractId}/change`,
+      url: `/contract/approver/contracts/${contractId}/changes`,
       config: query ? { params: query } : undefined,
     });
     return res as ApiResponse<{
@@ -178,7 +178,7 @@ export const createApproverApi = (
   },
   getChangeDetail: async (contractId: string, changeId: string) => {
     const res = await client.get({
-      url: `/contract/approver/contracts/${contractId}/change/${changeId}`,
+      url: `/contract/approver/contracts/${contractId}/changes/${changeId}`,
     });
     return res.data as { message?: string; data?: ContractChangeDTO };
   },

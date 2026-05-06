@@ -83,6 +83,24 @@ export const createVendorApi = (
     });
     return res as ApiResponse<any>;
   },
+  createMsaChange: async (
+    contractId: string,
+    payload: {
+      title: string;
+      description: string;
+      type: "request" | "order" | "proposal";
+      proposalCategory?: string;
+      urgency?: "low" | "medium" | "high";
+      files?: { name: string; url: string; type: string; size: number }[];
+    },
+  ) => {
+    const post = client.post ?? ((params: PostParams) => postRequest(params));
+    const res = await post({
+      url: `/contract/vendor/msa-contract/${contractId}/changes`,
+      payload,
+    });
+    return res as ApiResponse<any>;
+  },
   listChangeComments: async (contractId: string, changeId: string) => {
     const res = await client.get({
       url: `/contract/vendor/contracts/${contractId}/changes/${changeId}/comments`,

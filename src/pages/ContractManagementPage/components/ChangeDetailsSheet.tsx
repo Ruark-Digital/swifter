@@ -163,7 +163,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
       }
       const url = usesListBasePath
         ? `${roleBasePath}/${changeId}/approve`
-        : `${roleBasePath}/changes/${changeId}/approve`;
+        : `${roleBasePath}/${contractId}/changes/${changeId}/approve`;
       return await postRequest({
         url,
         payload: { action, comment: "" },
@@ -233,15 +233,14 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const { data: commentsRes, isLoading: isCommentsLoading } = useQuery({
     queryKey: commentsQueryKey,
     queryFn: async () => {
-      const url = roleBasePath.includes("/manager/")
-        ? usesListBasePath
-          ? `${roleBasePath}/${contractId}/changes/${changeId}/comments`
-          : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
-        : roleBasePath.includes("/vendor/")
-        ? `${roleBasePath}/${contractId}/changes/${changeId}/comments`
-        : usesListBasePath
-          ? `${roleBasePath}/${changeId}/comment`
-          : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
+      const url =
+        roleBasePath.includes("/manager/") || roleBasePath.includes("/vendor/")
+          ? usesListBasePath
+            ? `${roleBasePath}/${changeId}/comments`
+            : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
+          : usesListBasePath
+            ? `${roleBasePath}/${changeId}/comment`
+            : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
       const res = await getRequest({ url });
       return (res as any)?.data;
     },
@@ -257,15 +256,14 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     mutationFn: async (content: string) => {
       if (!content.trim()) return;
       const payload = { content };
-      const url = roleBasePath.includes("/manager/")
-        ? usesListBasePath
-          ? `${roleBasePath}/${contractId}/changes/${changeId}/comments`
-          : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
-        : roleBasePath.includes("/vendor/")
-        ? `${roleBasePath}/${contractId}/changes/${changeId}/comments`
-        : usesListBasePath
-          ? `${roleBasePath}/${changeId}/comment`
-          : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
+      const url =
+        roleBasePath.includes("/manager/") || roleBasePath.includes("/vendor/")
+          ? usesListBasePath
+            ? `${roleBasePath}/${changeId}/comments`
+            : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
+          : usesListBasePath
+            ? `${roleBasePath}/${changeId}/comment`
+            : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
       await postRequest({ url, payload });
     },
     onSuccess: () => {

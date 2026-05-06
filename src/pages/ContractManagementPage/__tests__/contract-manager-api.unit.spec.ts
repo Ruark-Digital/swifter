@@ -171,20 +171,20 @@ test.describe("contractManagerApi (unit)", () => {
     });
 
     const approvalPayload = { action: "approved", comment: "ok" };
-    await api.approveChange("chg1", approvalPayload as never);
+    await api.approveChange("c1", "chg1", approvalPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/changes/chg1/approve",
+      url: "/contract/manager/contracts/c1/changes/chg1/approve",
       payload: approvalPayload,
     });
 
-    await api.getChangeApproveStatus("chg1");
+    await api.getChangeApproveStatus("c1", "chg1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/changes/chg1/approve/status",
+      url: "/contract/manager/contracts/c1/changes/chg1/approve/status",
     });
 
-    await api.listChangeApprovers("chg1");
+    await api.listChangeApprovers("c1", "chg1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/changes/chg1/approvers",
+      url: "/contract/manager/contracts/c1/changes/chg1/approvers",
     });
 
     await api.listChangeComments("c2", "chg1");
