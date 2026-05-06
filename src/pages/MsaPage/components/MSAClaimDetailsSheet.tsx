@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Share2, ArrowLeft, Send } from "lucide-react";
+import { Send } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
@@ -21,6 +21,7 @@ import {
 } from "@/lib/fileUtils";
 import Spinner from "@/components/ui/Spinner";
 import { useToastHandler } from "@/hooks/useToaster";
+import { cn } from "@/lib/utils";
 
 type Props = {
   claimId?: string;
@@ -44,7 +45,7 @@ type Detail = {
     id?: string;
     name?: string;
     url?: string;
-    size?: number;
+    size?: string | number;
     type?: string;
   }>;
 };
@@ -65,7 +66,7 @@ const MSAClaimDetailsSheet: React.FC<Props> = ({
   roleBasePath,
   children,
 }) => {
-  const { isManager, isApprover, isVendor, isProjectManager, isAdmin, isViewOnly } =
+  const { isVendor, isProjectManager } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
   const [internalOpen, setInternalOpen] = React.useState(false);
@@ -127,7 +128,29 @@ const MSAClaimDetailsSheet: React.FC<Props> = ({
   const comments = commentsRes ?? [];
   const detail = detailRes ?? {};
 
-  const docs = detail?.documents ?? [];
+  const docs: DocType[] = React.useMemo(() => {
+    const source = Array.isArray(detail?.documents) ? detail.documents : [];
+    return source.map((file: any, index: number) => {
+      const ext = getSimpleFileExtension(file?.name || "").toUpperCase();
+      const rawSize = file?.size;
+      const sizeLabel =
+        typeof rawSize === "number"
+          ? formatFileSize(rawSize)
+          : typeof rawSize === "string" && Number.isFinite(Number(rawSize))
+            ? formatFileSize(Number(rawSize))
+            : typeof rawSize === "string"
+              ? rawSize
+              : "—";
+      return {
+        id: `${file?.name || "attachment"}-${index}`,
+        name: file?.name || "Attachment",
+        type: ext,
+        size: sizeLabel,
+        url: file?.url,
+        icon: getFileIcon(ext),
+      };
+    });
+  }, [detail?.documents]);
 
   const formatImpact = (d: Detail) => {
     const parts: string[] = [];
@@ -140,12 +163,12 @@ const MSAClaimDetailsSheet: React.FC<Props> = ({
     return parts.length > 0 ? parts.join(" + ") : "-";
   };
 
-  const handlePreview = (doc: (typeof docs)[0]) => {
+  const handlePreview = (doc: DocType) => {
     if (!doc?.url) return;
     window.open(doc.url, "_blank");
   };
 
-  const handleDownload = (doc: (typeof docs)[0]) => {
+  const handleDownload = (doc: DocType) => {
     if (!doc?.url) return;
     const a = document.createElement("a");
     a.href = doc.url;
