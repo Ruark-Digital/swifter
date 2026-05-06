@@ -96,7 +96,6 @@ const ROLE_TAB_WHITELIST: Record<
 > = {
   approver: [
     "overview",
-    "compliance",
     "documents",
     "amendments",
     "lem",
@@ -145,7 +144,6 @@ const ROLE_TAB_WHITELIST: Record<
   ],
   "view only": [
     "overview",
-    "compliance",
     "documents",
     "amendments",
     "lem",
@@ -767,7 +765,7 @@ const MsaDetailPage: React.FC = () => {
             <Compliance
               contractId={id ?? ""}
               isActive={activeTab === "compliance"}
-              // contract={msa?.}
+              actionsDisabled={msa?.status === "pending_approval"}
             />
 
             <ChangeManagement
