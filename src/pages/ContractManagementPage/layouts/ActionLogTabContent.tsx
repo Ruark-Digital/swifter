@@ -200,7 +200,6 @@ const ActionLogTabContent: React.FC<Props> = () => {
             data={rows}
             columns={columns}
             classNames={{
-              container: "[&>div:last-child]:hidden",
               table: "border-collapse border-spacing-0",
               tHeader: "bg-transparent",
               tHeadRow: "bg-slate-50/50 hover:bg-slate-50/50",
