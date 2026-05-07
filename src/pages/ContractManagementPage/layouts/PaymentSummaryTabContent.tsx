@@ -560,6 +560,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
 }) => {
   const { isVendor, isProjectManager, isManager, isApprover } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
+  const isPendingApproval = contract?.status === "pending_approval";
 
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
@@ -752,7 +753,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
             Export Report
           </button>
 
-          {isManager && (
+          {isManager && !isPendingApproval && (
             <div className="inline-flex items-start gap-6">
               <UpdateSavingsDialog
                 contractId={contractId}

@@ -88,6 +88,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
   const { isVendor, isProjectManager, isApprover, isViewOnly, isManager } =
     useUserRole();
   const isVendorLike = isVendor || isProjectManager;
+  const isPendingApproval = (msa as any)?.status === "pending_approval";
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ holdbacks?: unknown; savings?: unknown }>(
@@ -299,7 +300,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
             <Share2 className="h-5 w-5" />
             Export Report
           </button>
-          {isManager && (
+          {isManager && !isPendingApproval && (
             <>
               <button
                 type="button"
