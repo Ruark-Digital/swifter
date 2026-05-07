@@ -14,9 +14,14 @@ type Props = {
   contractId: string;
   currency?: string;
   isActive?: boolean;
+  actionsDisabled?: boolean;
 };
 
-const InvoiceTabContent: React.FC<Props> = ({ contractId, isActive }) => {
+const InvoiceTabContent: React.FC<Props> = ({
+  contractId,
+  isActive,
+  actionsDisabled,
+}) => {
   const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
@@ -80,7 +85,7 @@ const InvoiceTabContent: React.FC<Props> = ({ contractId, isActive }) => {
     <TabsContent value="invoice" className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-slate-900">Invoice</h3>
-        {isContractVendorLike && (
+        {isContractVendorLike && !actionsDisabled && (
           <CreateInvoiceDialog
             contractId={contractId}
             trigger={
