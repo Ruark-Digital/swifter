@@ -11,6 +11,8 @@ import PaymentSummaryMilestonesTable, {
   type PaymentMilestoneRow,
 } from "@/pages/ContractManagementPage/components/PaymentSummaryMilestonesTable";
 import { LabelItem } from "../components/LabelItem";
+import MsaReleaseHoldbackDialog from "../components/MsaReleaseHoldbackDialog";
+import MsaUpdateSavingsDialog from "../components/MsaUpdateSavingsDialog";
 
 type PaymentSummaryProps = {
   contractId: string;
@@ -302,18 +304,28 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
           </button>
           {isManager && !isPendingApproval && (
             <>
-              <button
-                type="button"
-                className="inline-flex h-12 items-center rounded-xl text-sm border border-[#E5E7EB] bg-[#F3F4F6] px-5 font-semibold text-[#0F0F0F]"
-              >
-                Update Saving
-              </button>
-              <button
-                type="button"
-                className="inline-flex h-12 items-center rounded-xl text-sm bg-[#2A4467] px-5 font-semibold text-white"
-              >
-                Release Holdback
-              </button>
+              <MsaUpdateSavingsDialog
+                contractId={contractId}
+                trigger={
+                  <button
+                    type="button"
+                    className="inline-flex h-12 items-center rounded-xl text-sm border border-[#E5E7EB] bg-[#F3F4F6] px-5 font-semibold text-[#0F0F0F]"
+                  >
+                    Update Saving
+                  </button>
+                }
+              />
+              <MsaReleaseHoldbackDialog
+                contractId={contractId}
+                trigger={
+                  <button
+                    type="button"
+                    className="inline-flex h-12 items-center rounded-xl text-sm bg-[#2A4467] px-5 font-semibold text-white"
+                  >
+                    Release Holdback
+                  </button>
+                }
+              />
             </>
           )}
         </div>
