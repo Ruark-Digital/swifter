@@ -233,8 +233,9 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const { data: commentsRes, isLoading: isCommentsLoading } = useQuery({
     queryKey: commentsQueryKey,
     queryFn: async () => {
-      const url =
-        roleBasePath.includes("/manager/") || roleBasePath.includes("/vendor/")
+      const url = roleBasePath.includes("/vendor/")
+        ? `/vendor/contracts/${contractId}/changes/${changeId}/comment`
+        : roleBasePath.includes("/manager/")
           ? usesListBasePath
             ? `${roleBasePath}/${changeId}/comments`
             : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
@@ -256,8 +257,9 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     mutationFn: async (content: string) => {
       if (!content.trim()) return;
       const payload = { content };
-      const url =
-        roleBasePath.includes("/manager/") || roleBasePath.includes("/vendor/")
+      const url = roleBasePath.includes("/vendor/")
+        ? `/vendor/contracts/${contractId}/changes/${changeId}/comment`
+        : roleBasePath.includes("/manager/")
           ? usesListBasePath
             ? `${roleBasePath}/${changeId}/comments`
             : `${roleBasePath}/${contractId}/changes/${changeId}/comments`

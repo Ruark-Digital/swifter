@@ -17,6 +17,7 @@ import { DocumentItem, type DocType } from "./DocumentItem";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { formatDate } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
+import { getHoldbackStatusBadgeProps } from "../lib/holdbacks";
 
 type Props = {
   trigger: React.ReactNode;
@@ -100,6 +101,10 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
   }, [error, isError, toast]);
 
   const detail = detailRes?.data;
+  const statusBadge = React.useMemo(
+    () => getHoldbackStatusBadgeProps(detail?.status),
+    [detail?.status],
+  );
 
   const mappedDocs: DocType[] = (detail?.files ?? []).map((f) => {
     const extension = getFileExtension(f.name || "", f.type || "");
@@ -260,8 +265,10 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
                     <div className="text-xs font-medium text-[#9CA3AF]">
                       Status
                     </div>
-                    <Badge className="w-fit rounded-full bg-[#FEF9C3] px-4 py-1 text-xs font-semibold text-[#CA8A04] hover:bg-[#FEF9C3]">
-                      Pending
+                    <Badge
+                      className={`w-fit rounded-full px-4 py-1 text-xs font-semibold ${statusBadge.className}`}
+                    >
+                      {statusBadge.label}
                     </Badge>
                   </div>
                 </div>

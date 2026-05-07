@@ -103,7 +103,7 @@ export const createVendorApi = (
   },
   listChangeComments: async (contractId: string, changeId: string) => {
     const res = await client.get({
-      url: `/contract/vendor/contracts/${contractId}/changes/${changeId}/comments`,
+      url: `/vendor/contracts/${contractId}/changes/${changeId}/comment`,
     });
     return res as ApiResponse<{ data?: ContractChangeCommentDTO[] }>;
   },
@@ -114,7 +114,7 @@ export const createVendorApi = (
   ) => {
     const post = client.post ?? ((params: PostParams) => postRequest(params));
     const res = await post({
-      url: `/contract/vendor/contracts/${contractId}/changes/${changeId}/comments`,
+      url: `/vendor/contracts/${contractId}/changes/${changeId}/comment`,
       payload,
     });
     return res as ApiResponse<ContractChangeCommentDTO>;
