@@ -87,6 +87,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
 }) => {
   const { isVendor, isProjectManager, isApprover, isViewOnly, isManager } =
     useUserRole();
+  const isVendorLike = isVendor || isProjectManager;
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ holdbacks?: unknown; savings?: unknown }>(
@@ -135,7 +136,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
       });
       return res.data as { message?: string; data?: PaymentSavingApi[] };
     },
-    enabled: Boolean(contractId) && !!isActive,
+    enabled: Boolean(contractId) && !!isActive && !isVendorLike,
     staleTime: 60000,
     retry: false,
   });
@@ -355,12 +356,14 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
           >
             Holdback Release
           </TabsTrigger>
-          <TabsTrigger
-            value="saving-realized"
-            className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
-          >
-            Saving Reaized
-          </TabsTrigger>
+          {!isVendorLike && (
+            <TabsTrigger
+              value="saving-realized"
+              className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            >
+              Saving Reaized
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="milestones">
@@ -401,25 +404,27 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
           )}
         </TabsContent>
 
-        <TabsContent value="saving-realized">
-          <PaymentSummaryMilestonesTable<SavingRealizedRow>
-            title="Savings Realized"
-            rows={savingRows}
-            columns={savingsColumns}
-            getRowSearchValues={(row) => [
-              row.savingsId,
-              row.savingsTitle,
-              row.category,
-              row.amount,
-              row.dateSubmitted,
-            ]}
-          />
-          {savingRows.length === 0 && (
-            <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
-              No savings records found.
-            </div>
-          )}
-        </TabsContent>
+        {!isVendorLike && (
+          <TabsContent value="saving-realized">
+            <PaymentSummaryMilestonesTable<SavingRealizedRow>
+              title="Savings Realized"
+              rows={savingRows}
+              columns={savingsColumns}
+              getRowSearchValues={(row) => [
+                row.savingsId,
+                row.savingsTitle,
+                row.category,
+                row.amount,
+                row.dateSubmitted,
+              ]}
+            />
+            {savingRows.length === 0 && (
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+                No savings records found.
+              </div>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
     </TabsContent>
   );
