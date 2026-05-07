@@ -50,6 +50,25 @@ export const shouldShowChangeDecisionActions = (type: string | undefined) => {
   return type !== "directive";
 };
 
+export const getManagerApproveChangeUrl = ({
+  roleBasePath,
+  contractId,
+  changeId,
+}: {
+  roleBasePath: string;
+  contractId: string;
+  changeId: string;
+}) => {
+  const prefix = "/contract/manager/contracts";
+  const base = roleBasePath.includes(prefix) ? roleBasePath : prefix;
+
+  const contractBase = base.endsWith(`/${contractId}/changes`)
+    ? base
+    : `${prefix}/${contractId}/changes`;
+
+  return `${contractBase}/${changeId}/approve`;
+};
+
 export type ManagerCreateChangeDialogValues = {
   changeName: string;
   changeType: string;

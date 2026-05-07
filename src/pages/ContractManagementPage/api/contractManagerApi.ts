@@ -267,6 +267,7 @@ export interface ContractHoldBackDTO {
   company:          string;
   amount:           number;
   holdBackId:       string;
+  invoiceId?:       string;
   type:             string;
   status:           string;
   approvedBy:       string;

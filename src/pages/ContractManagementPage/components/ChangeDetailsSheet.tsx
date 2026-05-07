@@ -30,7 +30,10 @@ import {
   getFileIcon,
   getSimpleFileExtension,
 } from "@/lib/fileUtils";
-import { shouldShowChangeDecisionActions } from "../lib/contractChanges";
+import {
+  getManagerApproveChangeUrl,
+  shouldShowChangeDecisionActions,
+} from "../lib/contractChanges";
 import { formatDate } from "date-fns";
 import Spinner from "@/components/ui/Spinner";
 
@@ -161,9 +164,11 @@ const ChangeDetailsSheet: React.FC<Props> = ({
           "Change approve endpoint is not available for this role.",
         );
       }
-      const url = usesListBasePath
-        ? `${roleBasePath}/${changeId}/approve`
-        : `${roleBasePath}/${contractId}/changes/${changeId}/approve`;
+      const url = getManagerApproveChangeUrl({
+        roleBasePath,
+        contractId,
+        changeId,
+      });
       return await postRequest({
         url,
         payload: { action, comment: "" },
