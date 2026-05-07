@@ -9,17 +9,25 @@ import { type ManagerListInvoicesQuery } from "../api/contractManagerApi";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import CreateInvoiceDialog from "../components/CreateInvoiceDialog";
+import { useDebounceValue } from "usehooks-ts";
 
 type Props = {
   contractId: string;
   currency?: string;
   isActive?: boolean;
+  actionsDisabled?: boolean;
 };
 
-const InvoiceTabContent: React.FC<Props> = ({ contractId, isActive }) => {
+const InvoiceTabContent: React.FC<Props> = ({
+  contractId,
+  isActive,
+  actionsDisabled,
+}) => {
   const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
+  const [invoiceIdSearch, setInvoiceIdSearch] = React.useState("");
+  const [debouncedInvoiceIdSearch] = useDebounceValue(invoiceIdSearch, 500);
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -35,6 +43,10 @@ const InvoiceTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   };
 
   const basePath = getBasePath();
+
+  React.useEffect(() => {
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, [invoiceIdSearch]);
 
   const { data: statsRes, isLoading: isStatsLoading } = useQuery({
     queryKey: ["contractInvoices", "stats", contractId, basePath],
@@ -54,6 +66,7 @@ const InvoiceTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       pagination.pageIndex,
       pagination.pageSize,
       basePath,
+      debouncedInvoiceIdSearch,
     ],
     queryFn: async () => {
       const query: ManagerListInvoicesQuery = {
@@ -64,6 +77,8 @@ const InvoiceTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       const params = new URLSearchParams();
       if (query.page) params.append("page", String(query.page));
       if (query.limit) params.append("limit", String(query.limit));
+      if (debouncedInvoiceIdSearch)
+        params.append("invoiceId", debouncedInvoiceIdSearch);
 
       const response = await getRequest({
         url: `${basePath}?${params.toString()}`,
@@ -80,7 +95,7 @@ const InvoiceTabContent: React.FC<Props> = ({ contractId, isActive }) => {
     <TabsContent value="invoice" className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-slate-900">Invoice</h3>
-        {isContractVendorLike && (
+        {isContractVendorLike && !actionsDisabled && (
           <CreateInvoiceDialog
             contractId={contractId}
             trigger={
@@ -101,6 +116,8 @@ const InvoiceTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         pagination={pagination}
         setPagination={setPagination}
         contractId={contractId}
+        invoiceIdSearch={invoiceIdSearch}
+        setInvoiceIdSearch={setInvoiceIdSearch}
       />
     </TabsContent>
   );

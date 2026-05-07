@@ -267,6 +267,7 @@ export interface ContractHoldBackDTO {
   company:          string;
   amount:           number;
   holdBackId:       string;
+  invoiceId?:       string;
   type:             string;
   status:           string;
   approvedBy:       string;
@@ -322,7 +323,7 @@ export type ContractChangeManagerDTO = {
     type?: string;
     size?: number;
   }>;
-  type?: "directive" | "order";
+  type?: "directive" | "proposal";
 };
 
 export type ContractChangeDTO = {
@@ -906,23 +907,27 @@ export const createContractManagerApi = (
       });
       return res.data as { message?: string; data?: ContractChangeDTO };
     },
-    approveChange: async (changeId: string, payload: ApprovalActionDTO) => {
+    approveChange: async (
+      contractId: string,
+      changeId: string,
+      payload: ApprovalActionDTO,
+    ) => {
       await assertValid(approvalActionSchema, payload);
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/changes/${changeId}/approve`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/changes/${changeId}/approve`,
         payload,
       });
       return res.data as { message?: string };
     },
-    getChangeApproveStatus: async (changeId: string) => {
+    getChangeApproveStatus: async (contractId: string, changeId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/changes/${changeId}/approve/status`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/changes/${changeId}/approve/status`,
       });
       return res.data as { message?: string; data?: { status?: string } };
     },
-    listChangeApprovers: async (changeId: string) => {
+    listChangeApprovers: async (contractId: string, changeId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/changes/${changeId}/approvers`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/changes/${changeId}/approvers`,
       });
       return res.data as { message?: string; data?: ContractChangeApprover[] };
     },

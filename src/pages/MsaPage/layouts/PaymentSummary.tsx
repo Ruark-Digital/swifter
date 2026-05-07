@@ -11,6 +11,8 @@ import PaymentSummaryMilestonesTable, {
   type PaymentMilestoneRow,
 } from "@/pages/ContractManagementPage/components/PaymentSummaryMilestonesTable";
 import { LabelItem } from "../components/LabelItem";
+import MsaReleaseHoldbackDialog from "../components/MsaReleaseHoldbackDialog";
+import MsaUpdateSavingsDialog from "../components/MsaUpdateSavingsDialog";
 
 type PaymentSummaryProps = {
   contractId: string;
@@ -87,6 +89,8 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
 }) => {
   const { isVendor, isProjectManager, isApprover, isViewOnly, isManager } =
     useUserRole();
+  const isVendorLike = isVendor || isProjectManager;
+  const isPendingApproval = (msa as any)?.status === "pending_approval";
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ holdbacks?: unknown; savings?: unknown }>(
@@ -135,7 +139,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
       });
       return res.data as { message?: string; data?: PaymentSavingApi[] };
     },
-    enabled: Boolean(contractId) && !!isActive,
+    enabled: Boolean(contractId) && !!isActive && !isVendorLike,
     staleTime: 60000,
     retry: false,
   });
@@ -298,20 +302,30 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
             <Share2 className="h-5 w-5" />
             Export Report
           </button>
-          {isManager && (
+          {isManager && !isPendingApproval && (
             <>
-              <button
-                type="button"
-                className="inline-flex h-12 items-center rounded-xl text-sm border border-[#E5E7EB] bg-[#F3F4F6] px-5 font-semibold text-[#0F0F0F]"
-              >
-                Update Saving
-              </button>
-              <button
-                type="button"
-                className="inline-flex h-12 items-center rounded-xl text-sm bg-[#2A4467] px-5 font-semibold text-white"
-              >
-                Release Holdback
-              </button>
+              <MsaUpdateSavingsDialog
+                contractId={contractId}
+                trigger={
+                  <button
+                    type="button"
+                    className="inline-flex h-12 items-center rounded-xl text-sm border border-[#E5E7EB] bg-[#F3F4F6] px-5 font-semibold text-[#0F0F0F]"
+                  >
+                    Update Saving
+                  </button>
+                }
+              />
+              <MsaReleaseHoldbackDialog
+                contractId={contractId}
+                trigger={
+                  <button
+                    type="button"
+                    className="inline-flex h-12 items-center rounded-xl text-sm bg-[#2A4467] px-5 font-semibold text-white"
+                  >
+                    Release Holdback
+                  </button>
+                }
+              />
             </>
           )}
         </div>
@@ -355,12 +369,14 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
           >
             Holdback Release
           </TabsTrigger>
-          <TabsTrigger
-            value="saving-realized"
-            className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
-          >
-            Saving Reaized
-          </TabsTrigger>
+          {!isVendorLike && (
+            <TabsTrigger
+              value="saving-realized"
+              className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            >
+              Saving Reaized
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="milestones">
@@ -401,25 +417,27 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
           )}
         </TabsContent>
 
-        <TabsContent value="saving-realized">
-          <PaymentSummaryMilestonesTable<SavingRealizedRow>
-            title="Savings Realized"
-            rows={savingRows}
-            columns={savingsColumns}
-            getRowSearchValues={(row) => [
-              row.savingsId,
-              row.savingsTitle,
-              row.category,
-              row.amount,
-              row.dateSubmitted,
-            ]}
-          />
-          {savingRows.length === 0 && (
-            <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
-              No savings records found.
-            </div>
-          )}
-        </TabsContent>
+        {!isVendorLike && (
+          <TabsContent value="saving-realized">
+            <PaymentSummaryMilestonesTable<SavingRealizedRow>
+              title="Savings Realized"
+              rows={savingRows}
+              columns={savingsColumns}
+              getRowSearchValues={(row) => [
+                row.savingsId,
+                row.savingsTitle,
+                row.category,
+                row.amount,
+                row.dateSubmitted,
+              ]}
+            />
+            {savingRows.length === 0 && (
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+                No savings records found.
+              </div>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
     </TabsContent>
   );

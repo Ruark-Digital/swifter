@@ -285,6 +285,69 @@ test.describe("Vendor Contract Detail", () => {
     await expect(page.getByPlaceholder("Duration")).toHaveCount(0);
   });
 
+  test("hides Create Invoice while contract is pending approval (vendor)", async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    await seedAuth(page, "vendor");
+
+    await page.route("**/api/v1/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: 200, message: "ok", data: [] }),
+      });
+    });
+
+    await page.route("**/contract/vendor/contracts/c1", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: {
+            _id: "c1",
+            title: "Vendor Contract",
+            contractId: "CON-V-1",
+            status: "pending_approval",
+          },
+        }),
+      });
+    });
+
+    await page.route("**/contract/vendor/contracts/c1/invoice**", async (route) => {
+      const url = route.request().url();
+      if (url.includes("/stats")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            message: "ok",
+            data: { approved: 0, pending: 0, rejected: 0, draft: 0 },
+          }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          message: "ok",
+          data: { invoices: [], total: 0 },
+        }),
+      });
+    });
+
+    await page.goto("/dashboard/contract-management/c1");
+
+    const invoiceTab = page.getByRole("tab", { name: "Invoice" });
+    await expect(invoiceTab).toBeVisible();
+    await invoiceTab.click();
+
+    await expect(page.getByRole("button", { name: "Create Invoice" })).toBeHidden();
+  });
+
   test("deliverables default to Pending when status is missing and not submitted", async ({
     page,
   }) => {

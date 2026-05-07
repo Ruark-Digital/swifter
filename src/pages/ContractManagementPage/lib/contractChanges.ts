@@ -25,7 +25,7 @@ export const getCreateChangeTypeOptionsForRole = ({
 }): Array<{ value: ContractChangeType; label: string }> => {
   if (isManager) {
     return [
-      { value: "order", label: "Change Order" },
+      { value: "proposal", label: "Change Proposal" },
       { value: "directive", label: "Change Directive" },
     ];
   }
@@ -48,6 +48,25 @@ export const getCreateChangeTypeOptionsForRole = ({
 
 export const shouldShowChangeDecisionActions = (type: string | undefined) => {
   return type !== "directive";
+};
+
+export const getManagerApproveChangeUrl = ({
+  roleBasePath,
+  contractId,
+  changeId,
+}: {
+  roleBasePath: string;
+  contractId: string;
+  changeId: string;
+}) => {
+  const prefix = "/contract/manager/contracts";
+  const base = roleBasePath.includes(prefix) ? roleBasePath : prefix;
+
+  const contractBase = base.endsWith(`/${contractId}/changes`)
+    ? base
+    : `${prefix}/${contractId}/changes`;
+
+  return `${contractBase}/${changeId}/approve`;
 };
 
 export type ManagerCreateChangeDialogValues = {
@@ -82,14 +101,14 @@ export const toManagerCreateChangePayload = (
 ): {
   title?: string;
   description?: string;
-  type?: "directive" | "order";
+  type?: "directive" | "proposal";
   urgency?: "low" | "medium" | "high";
   files?: Array<{ name: string; url: string; type: string; size: number }>;
 } => {
   const payload: {
     title?: string;
     description?: string;
-    type?: "directive" | "order";
+    type?: "directive" | "proposal";
     urgency?: "low" | "medium" | "high";
     files?: Array<{ name: string; url: string; type: string; size: number }>;
   } = {
@@ -99,9 +118,9 @@ export const toManagerCreateChangePayload = (
 
   if (
     values.changeType === "directive" ||
-    values.changeType === "order"
+    values.changeType === "proposal"
   ) {
-    payload.type = values.changeType as "directive" | "order";
+    payload.type = values.changeType as "directive" | "proposal";
   }
 
   if (values.urgency === "low" || values.urgency === "medium" || values.urgency === "high") {

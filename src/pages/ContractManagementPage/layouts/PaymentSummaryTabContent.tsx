@@ -28,6 +28,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
+import { getHoldbackStatusBadgeProps } from "../lib/holdbacks";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import Spinner from "@/components/ui/Spinner";
@@ -81,20 +82,13 @@ const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
     header: () => <div className="w-[120px] text-center">Status</div>,
     cell: ({ getValue }) => {
       const value = getValue<string>();
-      const normalized = value?.toLowerCase();
-      const styles =
-        normalized === "approved"
-          ? "bg-[#EAF7EE] text-[#16A34A]"
-          : normalized === "pending"
-            ? "bg-[#FEF9C3] text-[#CA8A04]"
-            : "bg-[#F3F4F6] text-[#6B7280]";
-      const label = value || "-";
+      const badge = getHoldbackStatusBadgeProps(value);
       return (
         <div className="flex w-[120px] justify-center py-4">
           <div
-            className={`inline-flex items-center justify-center rounded-full px-4 py-1 text-sm font-semibold ${styles}`}
+            className={`inline-flex items-center justify-center rounded-full px-4 py-1 text-sm font-semibold ${badge.className}`}
           >
-            {label}
+            {badge.label}
           </div>
         </div>
       );
@@ -566,6 +560,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
 }) => {
   const { isVendor, isProjectManager, isManager, isApprover } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
+  const isPendingApproval = contract?.status === "pending_approval";
 
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
@@ -758,7 +753,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
             Export Report
           </button>
 
-          {isManager && (
+          {isManager && !isPendingApproval && (
             <div className="inline-flex items-start gap-6">
               <UpdateSavingsDialog
                 contractId={contractId}
