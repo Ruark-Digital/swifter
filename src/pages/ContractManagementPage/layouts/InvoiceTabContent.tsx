@@ -9,6 +9,7 @@ import { type ManagerListInvoicesQuery } from "../api/contractManagerApi";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import CreateInvoiceDialog from "../components/CreateInvoiceDialog";
+import { useDebounceValue } from "usehooks-ts";
 
 type Props = {
   contractId: string;
@@ -25,6 +26,8 @@ const InvoiceTabContent: React.FC<Props> = ({
   const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
+  const [invoiceIdSearch, setInvoiceIdSearch] = React.useState("");
+  const [debouncedInvoiceIdSearch] = useDebounceValue(invoiceIdSearch, 500);
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -40,6 +43,10 @@ const InvoiceTabContent: React.FC<Props> = ({
   };
 
   const basePath = getBasePath();
+
+  React.useEffect(() => {
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, [invoiceIdSearch]);
 
   const { data: statsRes, isLoading: isStatsLoading } = useQuery({
     queryKey: ["contractInvoices", "stats", contractId, basePath],
@@ -59,6 +66,7 @@ const InvoiceTabContent: React.FC<Props> = ({
       pagination.pageIndex,
       pagination.pageSize,
       basePath,
+      debouncedInvoiceIdSearch,
     ],
     queryFn: async () => {
       const query: ManagerListInvoicesQuery = {
@@ -69,6 +77,8 @@ const InvoiceTabContent: React.FC<Props> = ({
       const params = new URLSearchParams();
       if (query.page) params.append("page", String(query.page));
       if (query.limit) params.append("limit", String(query.limit));
+      if (debouncedInvoiceIdSearch)
+        params.append("invoiceId", debouncedInvoiceIdSearch);
 
       const response = await getRequest({
         url: `${basePath}?${params.toString()}`,
@@ -106,6 +116,8 @@ const InvoiceTabContent: React.FC<Props> = ({
         pagination={pagination}
         setPagination={setPagination}
         contractId={contractId}
+        invoiceIdSearch={invoiceIdSearch}
+        setInvoiceIdSearch={setInvoiceIdSearch}
       />
     </TabsContent>
   );

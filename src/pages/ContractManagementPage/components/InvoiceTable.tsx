@@ -390,6 +390,8 @@ type InvoiceTableProps = {
   pagination: PaginationState;
   setPagination: React.Dispatch<React.SetStateAction<PaginationState>>;
   contractId: string;
+  invoiceIdSearch: string;
+  setInvoiceIdSearch: (next: string) => void;
 };
 
 const InvoiceTable: React.FC<InvoiceTableProps> = ({
@@ -399,9 +401,9 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
   pagination,
   setPagination,
   contractId,
+  invoiceIdSearch,
+  setInvoiceIdSearch,
 }) => {
-  const [search, setSearch] = React.useState("");
-
   const columns = React.useMemo<ColumnDef<InvoiceRow>[]>(() => {
     return [
       { accessorKey: "id", header: "Invoice ID" },
@@ -506,33 +508,21 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
     });
   }, [rows]);
 
-  const filteredRows = React.useMemo(() => {
-    if (!search) return invoiceRows;
-    const query = search.toLowerCase();
-    return invoiceRows.filter((row) =>
-      [row.id, row.type].some((value) =>
-        value.toLowerCase().includes(query)
-      )
-    );
-  }, [invoiceRows, search]);
-
 
   return (
     <div className="space-y-4" data-testid="invoice-table">
       <DataTable<InvoiceRow>
-        data={filteredRows}
+        data={invoiceRows}
         columns={columns}
         header={() => (
           <div className="flex items-center gap-3 w-full border-b border-[#E5E7EB] px-5 py-4">
-            <span className="text-sm font-medium text-slate-900">
-              Invoices
-            </span>
+            <span className="text-sm font-medium text-slate-900">Invoices</span>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
                 placeholder="Search invoices"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={invoiceIdSearch}
+                onChange={(e) => setInvoiceIdSearch(e.target.value)}
                 className="h-10 w-[260px] pl-9"
               />
             </div>
@@ -542,7 +532,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
           disableSelection: true,
           isLoading,
           manualPagination: true,
-          totalCounts: totalCount ?? filteredRows.length,
+          totalCounts: totalCount ?? invoiceRows.length,
           setPagination,
           pagination,
         }}
@@ -558,6 +548,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
       />
     </div>
   );
+
 };
 
 export default InvoiceTable;
