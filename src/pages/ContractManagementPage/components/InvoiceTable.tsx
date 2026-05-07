@@ -30,7 +30,7 @@ export type InvoiceRow = {
   type: string;
   billed: string;
   remaining: string;
-  status: "Approved" | "Pending" | "Rejected" | "Draft";
+  status: "Approved" | "Pending" | "Rejected" | "Draft" | "Active";
 };
 
 type InvoiceDetailsSheetProps = {
@@ -104,7 +104,20 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
     .toLowerCase()
     .trim();
 
-  const canApprove = pendingSignal === "pending";
+  const { data: approveStatusData, isLoading: isApproveStatusLoading } = useQuery<
+    { message?: string; data?: { status?: boolean } },
+    ApiResponseError
+  >({
+    queryKey: ["invoiceApproveStatus", contractId, invoiceId],
+    queryFn: async () => {
+      return await approverApi.getInvoiceApproveStatus(contractId, invoiceId);
+    },
+    enabled: open && Boolean(contractId) && Boolean(invoiceId) && isApprover,
+    staleTime: 30000,
+  });
+
+  const canApprove =
+    pendingSignal === "pending" && approveStatusData?.data?.status === true;
 
   const canManagerAct = isManager && pendingSignal === "pending";
 
@@ -345,7 +358,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
             </div>
           ) : null}
 
-          {(isApprover && canApprove) ? (
+          {isApprover && canApprove && !isApproveStatusLoading ? (
             <div className="flex gap-3 pt-6">
               <Button
                 variant="outline"
@@ -436,6 +449,8 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
           const tone =
             s === "Approved"
               ? "bg-green-100 text-green-700"
+              : s === "Active"
+                ? "bg-blue-100 text-blue-700"
               : s === "Pending"
                 ? "bg-yellow-100 text-yellow-700"
                 : s === "Draft"
@@ -492,6 +507,8 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
       const status: InvoiceRow["status"] =
         inv.status === "approved"
           ? "Approved"
+          : inv.status === "active"
+            ? "Active"
           : inv.status === "rejected"
             ? "Rejected"
             : inv.status === "draft"

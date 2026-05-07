@@ -442,13 +442,15 @@ export type ContractInvoiceDTO = {
   _id?: string;
   invoiceId?: string;
   title?: string;
-  type?: "progress draw" | "monthly payment" | "milestone payment";
+  type?: "progress draw" | "monthly payment" | "milestone payment" | "holdback";
   taxCode?: string;
   taxValue?: number;
   description?: string;
+  fileType?: "manual" | "file";
   inputType?: "manual" | "file";
   amount?: number;
-  status?: "pending" | "approved" | "rejected" | "draft";
+  status?: "pending" | "approved" | "rejected" | "draft" | "active";
+  lem?: unknown;
   files?: Array<{
     name?: string;
     url?: string;

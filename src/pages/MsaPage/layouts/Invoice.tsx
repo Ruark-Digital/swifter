@@ -357,6 +357,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
 const statusTone = (status?: string) => {
   const normalized = status?.toLowerCase();
   if (normalized === "approved") return "bg-[#EAF7EE] text-[#43A047]";
+  if (normalized === "active") return "bg-[#E6F0FF] text-[#2563EB]";
   if (normalized === "pending") return "bg-[#FFF8E1] text-[#F4B400]";
   if (normalized === "rejected") return "bg-[#FEECEC] text-[#E53935]";
   if (normalized === "draft") return "bg-slate-100 text-slate-700";
