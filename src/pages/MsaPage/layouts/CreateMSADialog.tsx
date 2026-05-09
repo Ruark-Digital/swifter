@@ -594,7 +594,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
       <DialogContent
         className={cn(
           "rounded-2xl p-6 gap-6 max-h-[90vh] overflow-y-auto",
-          step === 8 ? "sm:max-w-5xl" : "sm:max-w-[550px]",
+          step === 8 ? "sm:max-w-5xl" : "sm:max-w-[580px]",
         )}
       >
         <div className="flex items-start justify-between">
