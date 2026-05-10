@@ -20,12 +20,20 @@ import {
   Highlight,
 } from "@yoopta/marks";
 import { CommentMark } from "../collab/CommentMark";
+import { InsertionMark, DeletionMark } from "../collab/RedlineMarks";
 import { cn } from "@/lib/utils";
 import "@/pages/CollaborationToolPage/collaboration.css";
 import { createCollab } from "../collab/useYooptaYjs";
 import Table from "@yoopta/table";
 import { useNavigate } from "react-router-dom";
-import { XIcon, History, Save, MessageSquarePlus } from "lucide-react";
+import { XIcon, History, Save, MessageSquarePlus, Plus, Minus, Sparkles } from "lucide-react";
+import AiSuggestionsPanel from "./AiSuggestionsPanel";
+import { extractRedlines, replaceRedline, type RedlineSpan } from "../collab/redlineScan";
+import {
+  useAiRedlineSuggestions,
+  type AiRedlineSuggestion,
+} from "../collab/useAiRedlineSuggestions";
+import { useSearchParams } from "react-router-dom";
 import VersionHistoryModal, { Version } from "./VersionHistoryModal";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUser } from "@/store/authSlice";
@@ -46,12 +54,158 @@ const PLUGINS = [
   Table,
 ];
 
-const MARKS = [Bold, Italic, Underline, Strike, CodeMark, Highlight, CommentMark];
+const MARKS = [
+  Bold,
+  Italic,
+  Underline,
+  Strike,
+  CodeMark,
+  Highlight,
+  CommentMark,
+  InsertionMark,
+  DeletionMark,
+];
 
-const TOOLS = {
-  Toolbar: { tool: Toolbar, render: DefaultToolbarRender },
-  ActionMenu: { tool: ActionMenu, render: DefaultActionMenuRender },
-  LinkTool: { tool: LinkTool, render: DefaultLinkToolRender },
+type ToolbarRenderProps = Parameters<typeof DefaultToolbarRender>[0] & {
+  editor?: { formats?: Record<string, { update: (attrs: any) => void }> };
+};
+
+type RedlineToolbarRenderProps = ToolbarRenderProps & {
+  authorName: string;
+  authorId: string;
+};
+
+const RedlineToolbarRender = (props: RedlineToolbarRenderProps) => {
+  const { authorName, authorId, ...rest } = props;
+  const applyRedline = (kind: "insertion" | "deletion") => {
+    const editor = (rest as any).editor as
+      | { formats?: Record<string, { update: (attrs: any) => void }> }
+      | undefined;
+    const redlineId = crypto.randomUUID();
+    editor?.formats?.[kind]?.update({
+      redlineId,
+      author: authorName,
+      authorId,
+      createdAt: new Date().toISOString(),
+    });
+    window.dispatchEvent(
+      new CustomEvent("ct-add-redline", {
+        detail: { redlineId, kind },
+      }),
+    );
+  };
+  return (
+    <div className="ct-toolbar-fused">
+      <DefaultToolbarRender {...(rest as any)} />
+      <button
+        type="button"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          applyRedline("insertion");
+        }}
+        title="Mark as insertion (redline)"
+        aria-label="Mark as insertion"
+        className="yoopta-toolbar-item yoopta-toolbar-item-mark"
+      >
+        <Plus className="w-4 h-4" strokeWidth={2} />
+      </button>
+      <button
+        type="button"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          applyRedline("deletion");
+        }}
+        title="Mark as deletion (redline)"
+        aria-label="Mark as deletion"
+        className="yoopta-toolbar-item yoopta-toolbar-item-mark"
+      >
+        <Minus className="w-4 h-4" strokeWidth={2} />
+      </button>
+    </div>
+  );
+};
+
+type FloatingCommentActionProps = {
+  containerRef: React.RefObject<HTMLDivElement>;
+  onAddComment: () => void;
+};
+
+const FloatingCommentAction: React.FC<FloatingCommentActionProps> = ({
+  containerRef,
+  onAddComment,
+}) => {
+  const [pos, setPos] = React.useState<{ top: number; left: number } | null>(
+    null,
+  );
+
+  React.useEffect(() => {
+    const compute = () => {
+      const sel = window.getSelection();
+      const container = containerRef.current;
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0 || !container) {
+        setPos(null);
+        return;
+      }
+      const anchor = sel.anchorNode;
+      if (!anchor || !container.contains(anchor)) {
+        setPos(null);
+        return;
+      }
+      const rect = sel.getRangeAt(0).getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) {
+        setPos(null);
+        return;
+      }
+      const containerRect = container.getBoundingClientRect();
+      // pin to the right edge of the selection (Google Docs style),
+      // but clamp inside the canvas so the page never has to scroll
+      // horizontally to reveal the button.
+      const BUTTON = 32;
+      const GAP = 12;
+      const desiredLeft = rect.right - containerRect.left + GAP;
+      const maxLeft = container.clientWidth - BUTTON - 4;
+      const left = Math.max(0, Math.min(desiredLeft, maxLeft));
+      setPos({
+        top: rect.top - containerRect.top + rect.height / 2,
+        left,
+      });
+    };
+    const onChange = () => window.requestAnimationFrame(compute);
+    document.addEventListener("selectionchange", onChange);
+    window.addEventListener("scroll", onChange, true);
+    window.addEventListener("resize", onChange);
+    return () => {
+      document.removeEventListener("selectionchange", onChange);
+      window.removeEventListener("scroll", onChange, true);
+      window.removeEventListener("resize", onChange);
+    };
+  }, [containerRef]);
+
+  if (!pos) return null;
+  return (
+    <button
+      type="button"
+      onMouseDown={(e) => {
+        // preserve selection until after the click handler runs
+        e.preventDefault();
+      }}
+      onClick={() => {
+        onAddComment();
+        setPos(null);
+      }}
+      aria-label="Add comment to selection"
+      title="Add comment"
+      style={{
+        position: "absolute",
+        top: pos.top,
+        left: pos.left,
+        transform: "translateY(-50%)",
+      }}
+      className="z-50 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 shadow-md text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+    >
+      <MessageSquarePlus className="w-4 h-4" />
+    </button>
+  );
 };
 
 interface EditorPanelProps {
@@ -81,6 +235,78 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
   const user = useUser();
   const [isVersionModalOpen, setIsVersionModalOpen] = React.useState(false);
   const [versions, setVersions] = React.useState<Version[]>([]);
+  const [searchParams] = useSearchParams();
+  const contractId = searchParams.get("contractId") || undefined;
+  const aiMutation = useAiRedlineSuggestions(contractId);
+  const [aiOpen, setAiOpen] = React.useState(false);
+  type AiItem = {
+    redline: RedlineSpan;
+    suggestion?: AiRedlineSuggestion;
+    state: "pending" | "approved" | "dismissed";
+  };
+  const [aiItems, setAiItems] = React.useState<AiItem[]>([]);
+
+  const runAiSuggestions = React.useCallback(async () => {
+    const redlines = extractRedlines(editor.getEditorValue() as any);
+    if (redlines.length === 0) {
+      setAiItems([]);
+      return;
+    }
+    const suggestions = await aiMutation.mutateAsync(redlines);
+    const byId = new Map(suggestions.map((s) => [s.redlineId, s]));
+    setAiItems(
+      redlines.map((r) => ({
+        redline: r,
+        suggestion: byId.get(r.redlineId),
+        state: "pending" as const,
+      })),
+    );
+  }, [aiMutation, editor]);
+
+  const handleOpenAi = React.useCallback(() => {
+    setAiOpen(true);
+    if (aiItems.length === 0) {
+      void runAiSuggestions();
+    }
+  }, [aiItems.length, runAiSuggestions]);
+
+  const handleApproveAi = React.useCallback(
+    (item: AiItem) => {
+      if (!item.suggestion) return;
+      const next = replaceRedline(
+        editor.getEditorValue() as any,
+        item.redline.redlineId,
+        item.suggestion.suggestion,
+      );
+      editor.setEditorValue(next as any);
+      setAiItems((prev) =>
+        prev.map((p) =>
+          p.redline.redlineId === item.redline.redlineId
+            ? { ...p, state: "approved" }
+            : p,
+        ),
+      );
+    },
+    [editor],
+  );
+
+  const handleDismissAi = React.useCallback((item: AiItem) => {
+    setAiItems((prev) =>
+      prev.map((p) =>
+        p.redline.redlineId === item.redline.redlineId
+          ? { ...p, state: "dismissed" }
+          : p,
+      ),
+    );
+  }, []);
+
+  const aiStatus: "idle" | "loading" | "ready" | "error" = aiMutation.isPending
+    ? "loading"
+    : aiMutation.isError
+      ? "error"
+      : aiItems.length > 0 || aiMutation.isSuccess
+        ? "ready"
+        : "idle";
   const didImportRef = useRef(false);
   const draftKey = useMemo(
     () => `ct:draft:${collabMeta?.roomId ?? "collab:editor"}`,
@@ -88,6 +314,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
   );
   const autosaveTimerRef = useRef<number | null>(null);
   const autosaveValueRef = useRef<unknown>(null);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
 
   const handleSaveVersion = useCallback(() => {
     const newVersion: Version = {
@@ -188,6 +415,25 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
   }, [collabMeta?.disable, collabMeta?.roomId, collabMeta?.token, collabMeta?.wsUrl]);
 
   const collabPlugins = useMemo(() => collab.wrapPluginsWithCollab(PLUGINS), [collab]);
+
+  const tools = useMemo(() => {
+    const authorName = user?.name || "Unknown User";
+    const authorId = user?._id || user?.email || "";
+    return {
+      Toolbar: {
+        tool: Toolbar,
+        render: (props: any) => (
+          <RedlineToolbarRender
+            {...props}
+            authorName={authorName}
+            authorId={authorId}
+          />
+        ),
+      },
+      ActionMenu: { tool: ActionMenu, render: DefaultActionMenuRender },
+      LinkTool: { tool: LinkTool, render: DefaultLinkToolRender },
+    };
+  }, [user?._id, user?.email, user?.name]);
   const handleNavigateBack = useCallback(() => {
     navigate(-1);
   }, [navigate]);
@@ -292,20 +538,13 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
             <span className="sr-only">History</span>
           </button>
           <button
-            className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 transition-colors"
-            onClick={() => {
-              const commentId = crypto.randomUUID();
-              editor.formats.comment.update({ commentId });
-              window.dispatchEvent(
-                new CustomEvent("ct-add-inline-comment", {
-                  detail: { commentId },
-                })
-              );
-            }}
-            aria-label="Add Inline Comment"
+            className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200 transition-colors flex items-center gap-1"
+            onClick={handleOpenAi}
+            aria-label="AI Polish redlines"
+            title="AI Polish — suggest professional rephrases for redlines"
           >
-            <MessageSquarePlus className="w-4 h-4" />
-            <span className="sr-only">Add Inline Comment</span>
+            <Sparkles className="w-4 h-4" />
+            <span className="sr-only">AI Polish</span>
           </button>
           <div
             className="ct-dismiss-pill cursor-pointer"
@@ -315,16 +554,32 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
           </div>
         </div>
       </div>
-      <div className="ct-editor-canvas pl-[4.5rem] mt-5">
+      <div
+        ref={canvasRef}
+        className="ct-editor-canvas pl-[4.5rem] mt-5"
+        style={{ position: "relative", overflowX: "clip" }}
+      >
         <YooptaEditor
           editor={editor}
           plugins={collabPlugins}
           marks={MARKS}
-          tools={TOOLS}
+          tools={tools}
           onChange={(value) => handleEditorChange(value)}
           placeholder="Type text.."
           className="yoopta-editor w-full"
           style={{ width: "100%", paddingBottom: "120px" }}
+        />
+        <FloatingCommentAction
+          containerRef={canvasRef}
+          onAddComment={() => {
+            const commentId = crypto.randomUUID();
+            editor.formats.comment.update({ commentId });
+            window.dispatchEvent(
+              new CustomEvent("ct-add-inline-comment", {
+                detail: { commentId },
+              }),
+            );
+          }}
         />
       </div>
       <VersionHistoryModal
@@ -332,6 +587,16 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
         onClose={() => setIsVersionModalOpen(false)}
         versions={versions}
         onRestore={handleRestoreVersion}
+      />
+      <AiSuggestionsPanel
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        status={aiStatus}
+        errorMessage={(aiMutation.error as Error | undefined)?.message}
+        items={aiItems}
+        onApprove={handleApproveAi}
+        onDismiss={handleDismissAi}
+        onRetry={runAiSuggestions}
       />
     </div>
   );
