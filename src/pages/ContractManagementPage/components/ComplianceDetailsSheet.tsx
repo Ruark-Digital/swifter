@@ -150,6 +150,9 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
   const detail = (fetchedDetail || data) as any;
 
   const files = React.useMemo(() => {
+    const itemFiles = (detail as { files?: any[] } | undefined)?.files;
+    if (itemFiles && itemFiles.length > 0) return itemFiles;
+
     const details = complianceData?.details;
     if (!details) return [];
 
@@ -162,7 +165,7 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
       return (raw as { files?: NonNullable<typeof details.files> }).files ?? [];
     }
     return details.files ?? [];
-  }, [complianceData?.details, type]);
+  }, [complianceData?.details, type, detail]);
   const hasFiles = files.length > 0;
 
   if (isLoading) {

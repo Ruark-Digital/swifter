@@ -87,7 +87,7 @@ export const ChangePlanDialog = ({ subscriptionId, currentPlan, children }: Chan
   const planOptions = plansData?.data?.data.data
     ?.filter(plan => plan._id !== currentPlan._id)
     ?.map(plan => ({
-      label: `${plan.name} - $${plan.price}/${plan.maxUsers} users`,
+      label: plan.name,
       value: plan._id,
     })) || [];
 
