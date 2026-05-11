@@ -298,4 +298,27 @@ test.describe("LEM role actions", () => {
       sheet.getByRole("button", { name: "Reject Change" }),
     ).toBeVisible();
   });
+
+  test("contract_manager does not call lem approve/status for gating", async ({
+    page,
+  }) => {
+    const contractId = "lem-manager-no-approve-status";
+    await seedAuth(page, "contract_manager");
+    await mockContractDetailAndLems(page, "contract_manager", contractId);
+
+    let approveStatusCallCount = 0;
+    await page.route("**/approve/status", async (route) => {
+      approveStatusCallCount += 1;
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ status: 500, message: "unexpected" }),
+      });
+    });
+
+    await page.goto(`/dashboard/contract-management/${contractId}`);
+    await openLemDetailsSheet(page);
+
+    expect(approveStatusCallCount).toBe(0);
+  });
 });

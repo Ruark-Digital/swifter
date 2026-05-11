@@ -34,7 +34,7 @@ import Step3Timeline from "../components/Step3Timeline";
 import Step4Deliverables from "../components/Step4Deliverables";
 import Step5ValuePayments from "../components/Step5ValuePayments";
 import Step6ComplianceSecurity from "../components/Step6ComplianceSecurity";
-import Step7Documents from "../components/Step7Documents";
+import Step4Form from "@/pages/SolicitationManagementPage/components/Step4Form";
 import Step8ApprovalLevel from "../components/Step8ApprovalLevel";
 import Step9ReviewPublish from "../components/Step9ReviewPublish";
 
@@ -479,7 +479,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
         contractAmount: data.contractValue
           ? Number(String(data.contractValue).replace(/[^0-9.]/g, ""))
           : undefined,
-        contigency:
+        contingency:
           data.contingency === null || data.contingency === undefined
             ? undefined
             : typeof data.contingency === "string"
@@ -594,7 +594,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
       <DialogContent
         className={cn(
           "rounded-2xl p-6 gap-6 max-h-[90vh] overflow-y-auto",
-          step === 8 ? "sm:max-w-5xl" : "sm:max-w-[550px]",
+          step === 8 ? "sm:max-w-5xl" : "sm:max-w-[580px]",
         )}
       >
         <div className="flex items-start justify-between">
@@ -647,7 +647,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
             />
           )}
           {step === 6 && <Step6ComplianceSecurity control={control} />}
-          {step === 7 && <Step7Documents />}
+          {step === 7 && <Step4Form control={control} documents={[]} />}
           {step === 8 && <Step8ApprovalLevel control={control} />}
           {step === 9 && <Step9ReviewPublish control={control} />}
 

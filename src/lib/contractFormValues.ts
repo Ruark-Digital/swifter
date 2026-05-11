@@ -137,22 +137,22 @@ export const toFileMetaOrUndefined = (value: unknown) => {
 
   if (!name || !url || !type) return undefined;
 
-  const sizeRaw = direct?.size;
-  const size =
-    typeof sizeRaw === "string"
-      ? sizeRaw.trim() || undefined
-      : typeof sizeRaw === "number"
-        ? Number.isFinite(sizeRaw)
-          ? String(sizeRaw)
-          : undefined
-        : sizeRaw === null || sizeRaw === undefined
-          ? undefined
-          : (() => {
-              const cleaned = String(sizeRaw).trim().replace(/[^0-9.]/g, "");
-              if (!cleaned) return undefined;
-              const num = Number(cleaned);
-              return Number.isFinite(num) ? String(num) : undefined;
-            })();
+  // const sizeRaw = direct?.size;
+  const size = direct?.size
+    // typeof sizeRaw === "string"
+    //   ? sizeRaw.trim() || undefined
+    //   : typeof sizeRaw === "number"
+    //     ? Number.isFinite(sizeRaw)
+    //       ? String(sizeRaw)
+    //       : undefined
+    //     : sizeRaw === null || sizeRaw === undefined
+    //       ? undefined
+    //       : (() => {
+    //           const cleaned = String(sizeRaw).trim().replace(/[^0-9.]/g, "");
+    //           if (!cleaned) return undefined;
+    //           const num = Number(cleaned);
+    //           return Number.isFinite(num) ? String(num) : undefined;
+    //         })();
 
   return {
     name,

@@ -581,38 +581,6 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
     // retry: false,
   });
 
-  const { data: canApproveRes } = useQuery({
-    queryKey: ["amendment-approve-status", contractId, basePath, amendmentId],
-    queryFn: async () => {
-      const res = await getRequest({
-        url: `${basePath}/${amendmentId}/approve/status`,
-      });
-      return res.data as { message?: string; data?: { status?: boolean } };
-    },
-    enabled: open && isApprover,
-    staleTime: 60_000,
-  });
-
-  const { data: canManagerApproveRes } = useQuery({
-    queryKey: [
-      "amendment-manager-approve-status",
-      contractId,
-      basePath,
-      amendmentId,
-    ],
-    queryFn: async () => {
-      const res = await getRequest({
-        url: `${basePath}/${amendmentId}/approve/status`,
-      });
-      return res.data as { message?: string; data?: { status?: boolean } };
-    },
-    enabled: open && isManager,
-    staleTime: 60_000,
-  });
-
-  const canApprove = Boolean(canApproveRes?.data?.status);
-  const canManagerApprove = Boolean(canManagerApproveRes?.data?.status);
-
   const detail = detailRes?.data;
   const title = detail?.title || summary.amendmentTitle;
   const displayId = detail?.amendmentId || summary.amendmentId;
@@ -915,7 +883,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
 
               <div className="space-y-3">
                 <div className="text-sm text-[#6B7280]">Attached Documents</div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-1">
                   {(detail?.files ?? []).map((f, idx) => {
                     const fileExtension = getFileExtension(
                       f.name ?? "",
@@ -948,40 +916,21 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                 hasTimeImpact &&
                 vendorAccepted &&
                 !hasApprovals && (
-                  <>
-                    <div className="flex items-start gap-3 rounded-2xl border border-[#2A44671A] bg-[#F8F8F8] p-4">
-                      <div className="flex h-8 w-10 items-center justify-center rounded-full border border-[#EF4444] text-[#EF4444]">
-                        <AlertTriangle className="h-4 w-4" />
-                      </div>
-
-                      <div className="space-y-1">
-                        <div className="text-sm font-semibold text-[#0F0F0F]">
-                          Action needed
-                        </div>
-                        <div className="text-sm text-[#626262]">
-                          This amendment includes a time impact, but no approver
-                          has been assigned to review time-related impacts.
-                        </div>
-                      </div>
+                  <div className="flex items-start gap-3 rounded-2xl border border-[#2A44671A] bg-[#F8F8F8] p-4">
+                    <div className="flex h-8 w-10 items-center justify-center rounded-full border border-[#EF4444] text-[#EF4444]">
+                      <AlertTriangle className="h-4 w-4" />
                     </div>
 
-                    {!detail?.assignApprover && (
-                      <AssignApprovalDialog
-                        contractId={contractId}
-                        basePath={basePath}
-                        amendmentId={amendmentId}
-                        onAssigned={invalidateAll}
-                        trigger={
-                          <button
-                            type="button"
-                            className="h-11 w-fit px-6 rounded-xl bg-[#2A4467] text-sm font-semibold text-white"
-                          >
-                            Assign Approval
-                          </button>
-                        }
-                      />
-                    )}
-                  </>
+                    <div className="space-y-1">
+                      <div className="text-sm font-semibold text-[#0F0F0F]">
+                        Action needed
+                      </div>
+                      <div className="text-sm text-[#626262]">
+                        This amendment includes a time impact, but no approver
+                        has been assigned to review time-related impacts.
+                      </div>
+                    </div>
+                  </div>
                 )}
             </TabsContent>
 
@@ -1042,7 +991,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
           </div>
         )}
 
-        {isApprover && detail?.approverStatus === "pending" && canApprove && (
+        {isApprover && detail?.approverStatus === "pending" && (
           <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] bg-white p-6">
             <div className="flex gap-6">
               <button
@@ -1065,30 +1014,26 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
           </div>
         )}
 
-        {isManager &&
-          detail?.approverStatus === "pending" &&
-          canManagerApprove && (
-            <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] bg-white p-6">
-              <div className="flex gap-6">
-                <button
-                  type="button"
-                  disabled={approverActionMutation.isPending}
-                  onClick={() => approverActionMutation.mutate("rejected")}
-                  className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F] disabled:opacity-60"
-                >
-                  Reject
-                </button>
-                <button
-                  type="button"
-                  disabled={approverActionMutation.isPending}
-                  onClick={() => approverActionMutation.mutate("approved")}
-                  className="flex-1 rounded-xl bg-[#2A4467] h-11 text-base font-semibold text-white disabled:opacity-60"
-                >
-                  Approve
-                </button>
-              </div>
+        {isManager && !hasApprovals && !isTimeImpact && (
+          <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] bg-white p-6">
+            <div className="flex justify-end">
+              <AssignApprovalDialog
+                contractId={contractId}
+                basePath={basePath}
+                amendmentId={amendmentId}
+                onAssigned={invalidateAll}
+                trigger={
+                  <button
+                    type="button"
+                    className="h-11 px-6 rounded-xl bg-[#2A4467] text-sm font-semibold text-white"
+                  >
+                    Assign Approval
+                  </button>
+                }
+              />
             </div>
-          )}
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );

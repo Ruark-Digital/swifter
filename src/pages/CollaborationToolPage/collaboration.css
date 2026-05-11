@@ -245,3 +245,42 @@
   overflow: hidden;
 }
 
+/*
+ * Fuse the Yoopta toolbar pill with our redline buttons so insertion / deletion
+ * sit in the same row as bold / italic / underline.
+ */
+.ct-toolbar-fused {
+  display: inline-flex;
+  align-items: stretch;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  padding: 4px;
+  gap: 2px;
+}
+/* drop Yoopta's own chrome so the outer wrapper provides the pill */
+.ct-toolbar-fused > .yoopta-toolbar-root {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+}
+.ct-toolbar-fused > .yoopta-toolbar-item-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 6px;
+  border-radius: 6px;
+  color: #1f2937;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.ct-toolbar-fused > .yoopta-toolbar-item-mark:hover {
+  background: #f1f5f9;
+}
+

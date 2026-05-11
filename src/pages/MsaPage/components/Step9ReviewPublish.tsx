@@ -1,6 +1,7 @@
 import React from "react";
 import { useWatch, Control } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
+import { useUser } from "@/store/authSlice";
 import {
   Accordion,
   AccordionContent,
@@ -22,12 +23,15 @@ function extractList<T>(value: unknown): T[] {
 }
 
 const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
+  const currentUser = useUser();
   const name = useWatch({ control, name: "name" });
   const type = useWatch({ control, name: "type" });
   const description = useWatch({ control, name: "description" });
   const rating = useWatch({ control, name: "rating" });
 
-  const manager = useWatch({ control, name: "manager" });
+  const managerRaw = useWatch({ control, name: "manager" });
+  const manager = managerRaw || currentUser?.name || currentUser?.email;
+  const currency = useWatch({ control, name: "currency" }) as string | undefined;
   const vendor = useWatch({ control, name: "vendor" });
   const contractValue = useWatch({ control, name: "contractValue" });
   const paymentStructure = useWatch({ control, name: "paymentStructure" });
@@ -96,7 +100,14 @@ const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
 
   const formatAmount = (value: unknown) => {
     if (value == null || value === "") return "Not specified";
-    if (typeof value === "number") return value.toLocaleString();
+    const numeric = typeof value === "number" ? value : Number(String(value).replace(/[^0-9.]/g, ""));
+    if (Number.isFinite(numeric)) {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: currency || "CAD",
+        maximumFractionDigits: 2,
+      }).format(numeric);
+    }
     return String(value);
   };
 

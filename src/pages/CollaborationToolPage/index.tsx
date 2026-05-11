@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SEOWrapper } from "@/components/SEO";
 import SidebarPanel from "./components/SidebarPanel";
 import "@/pages/CollaborationToolPage/collaboration.css";
@@ -6,6 +6,10 @@ import { useSearchParams } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { useToken, useUser } from "@/store/authSlice";
 import { useCollaborationStore } from "./store/useCollaborationStore";
+import {
+  useContractMentionables,
+  type Mentionable,
+} from "./collab/useContractMentionables";
 
 type SidebarAttachment = {
   filename: string;
@@ -19,6 +23,9 @@ type SidebarFeed = {
   message: string;
   showDot?: boolean;
   attachment?: SidebarAttachment | null;
+  redlineId?: string | null;
+  parentId?: string | null;
+  replies?: SidebarFeed[];
 };
 
 type LocalComment = {
@@ -26,6 +33,10 @@ type LocalComment = {
   author: string;
   createdAt: string;
   content: string;
+  parentId?: string | null;
+  redlineId?: string | null;
+  redlineKind?: "insertion" | "deletion" | null;
+  mentions?: Mentionable[];
 };
 
 const EditorPane = lazy(() => import("./components/EditorPanel"));
@@ -43,13 +54,30 @@ const toTimestamp = (value?: string | Date) => {
   }).format(date);
 };
 
-const mapLocalCommentsToFeed = (comments: LocalComment[]): SidebarFeed[] =>
-  comments.map((comment) => ({
-    id: comment.id,
-    name: comment.author || "Unknown User",
-    timestamp: toTimestamp(comment.createdAt),
-    message: comment.content,
-  }));
+const mapLocalCommentsToFeed = (comments: LocalComment[]): SidebarFeed[] => {
+  const byParent = new Map<string, LocalComment[]>();
+  for (const c of comments) {
+    if (!c.parentId) continue;
+    const list = byParent.get(c.parentId) ?? [];
+    list.push(c);
+    byParent.set(c.parentId, list);
+  }
+  return comments
+    .filter((c) => !c.parentId)
+    .map((comment) => ({
+      id: comment.id,
+      name: comment.author || "Unknown User",
+      timestamp: toTimestamp(comment.createdAt),
+      message: comment.content,
+      redlineId: comment.redlineId ?? null,
+      replies: (byParent.get(comment.id) ?? []).map((r) => ({
+        id: r.id,
+        name: r.author || "Unknown User",
+        timestamp: toTimestamp(r.createdAt),
+        message: r.content,
+      })),
+    }));
+};
 
 const readLocalComments = (storageKey: string): LocalComment[] => {
   try {
@@ -96,6 +124,13 @@ const CollaborationToolPage: React.FC = () => {
   );
 
   const [localComments, setLocalComments] = useState<LocalComment[]>([]);
+  const pendingMentionsRef = useRef<Mentionable[]>([]);
+  const pendingRedlineRef = useRef<{
+    redlineId: string;
+    kind: "insertion" | "deletion";
+  } | null>(null);
+
+  const { data: mentionables = [] } = useContractMentionables(contractId);
 
   useEffect(() => {
     if (!commentsStorageKey) {
@@ -162,9 +197,44 @@ const CollaborationToolPage: React.FC = () => {
     [sourceUrl, fileName, fileType]
   );
 
-  const handleCommentChange = useCallback((value: string) => {
-    setCommentInput(value);
-  }, []);
+  useEffect(() => {
+    const onRedline = (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | { redlineId?: string; kind?: "insertion" | "deletion" }
+        | undefined;
+      if (!detail?.redlineId || !detail?.kind) return;
+      pendingRedlineRef.current = {
+        redlineId: detail.redlineId,
+        kind: detail.kind,
+      };
+      setActiveTab("comments");
+    };
+    const onInlineComment = (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | { commentId?: string }
+        | undefined;
+      if (!detail?.commentId) return;
+      pendingRedlineRef.current = {
+        redlineId: detail.commentId,
+        kind: "insertion",
+      };
+      setActiveTab("comments");
+    };
+    window.addEventListener("ct-add-redline", onRedline);
+    window.addEventListener("ct-add-inline-comment", onInlineComment);
+    return () => {
+      window.removeEventListener("ct-add-redline", onRedline);
+      window.removeEventListener("ct-add-inline-comment", onInlineComment);
+    };
+  }, [setActiveTab]);
+
+  const handleCommentChange = useCallback(
+    (value: string, mentions: Mentionable[]) => {
+      setCommentInput(value);
+      pendingMentionsRef.current = mentions;
+    },
+    [],
+  );
 
   const handleTabChange = useCallback(
     (tab: "comments" | "log") => {
@@ -175,27 +245,38 @@ const CollaborationToolPage: React.FC = () => {
 
   const canWriteComment = Boolean(contractId);
 
-  const handleSubmitComment = useCallback(() => {
-    if (!canWriteComment || !commentsStorageKey) return;
+  const handleSubmitComment = useCallback(
+    (parentId?: string | null) => {
+      if (!canWriteComment || !commentsStorageKey) return;
 
-    const trimmed = commentInput.trim();
-    if (!trimmed) return;
+      const trimmed = commentInput.trim();
+      if (!trimmed) return;
 
-    const next: LocalComment = {
-      id: crypto.randomUUID(),
-      author: user?.name || "Unknown User",
-      createdAt: new Date().toISOString(),
-      content: trimmed,
-    };
+      const redline = pendingRedlineRef.current;
+      const next: LocalComment = {
+        id: crypto.randomUUID(),
+        author: user?.name || "Unknown User",
+        createdAt: new Date().toISOString(),
+        content: trimmed,
+        parentId: parentId ?? null,
+        // only the root comment of a thread carries the redline link
+        redlineId: parentId ? null : redline?.redlineId ?? null,
+        redlineKind: parentId ? null : redline?.kind ?? null,
+        mentions: pendingMentionsRef.current,
+      };
 
-    setLocalComments((prev) => {
-      const updated = [next, ...prev];
-      writeLocalComments(commentsStorageKey, updated);
-      return updated;
-    });
+      setLocalComments((prev) => {
+        const updated = [next, ...prev];
+        writeLocalComments(commentsStorageKey, updated);
+        return updated;
+      });
 
-    setCommentInput("");
-  }, [canWriteComment, commentInput, commentsStorageKey, user?.name]);
+      setCommentInput("");
+      pendingMentionsRef.current = [];
+      if (!parentId) pendingRedlineRef.current = null;
+    },
+    [canWriteComment, commentInput, commentsStorageKey, user?.name],
+  );
 
   return (
     <>
@@ -223,6 +304,7 @@ const CollaborationToolPage: React.FC = () => {
           canWriteComment={canWriteComment}
           isSubmittingComment={false}
           useFallbackFeed={false}
+          mentionables={mentionables}
         />
       </div>
     </>

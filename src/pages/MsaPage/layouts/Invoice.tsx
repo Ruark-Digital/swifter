@@ -77,7 +77,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
   statsQueryKey,
   invoicesQueryKey,
 }) => {
-  const { isApprover } = useUserRole();
+  const { isApprover, isManager } = useUserRole();
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
@@ -117,8 +117,11 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
         ? "Invoice approved via bulk action"
         : "Invoice rejected via bulk action";
       const payload: ApprovalActionDTO = { action: status, comment };
+      const approvePath = isManager
+        ? `/contract/manager/msa-contracts/${contractId}/invoice/${invoiceId}/approve`
+        : `${basePath}/${invoiceId}/approve`;
       const res = await postRequest({
-        url: `${basePath}/${invoiceId}/approve`,
+        url: approvePath,
         payload,
       });
       return res.data;
@@ -160,6 +163,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
   const canApprove = Boolean(
     approveStatusRes && (approveStatusRes.data?.status ?? approveStatusRes.status),
   );
+  const canManagerAct = isManager && invoice?.status === "pending";
 
   const statusLabel =
     invoice?.status === "approved"
@@ -335,6 +339,24 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
                 {approveInvoiceMutation.isPending ? "Processing..." : "Approve"}
               </Button>
             </div>
+          ) : canManagerAct ? (
+            <div className="flex gap-3 pt-6">
+              <Button
+                variant="outline"
+                className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                disabled={approveInvoiceMutation.isPending}
+                onClick={() => approveInvoiceMutation.mutate("rejected")}
+              >
+                {approveInvoiceMutation.isPending ? "Processing..." : "Reject"}
+              </Button>
+              <Button
+                className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
+                disabled={approveInvoiceMutation.isPending}
+                onClick={() => approveInvoiceMutation.mutate("approved")}
+              >
+                {approveInvoiceMutation.isPending ? "Processing..." : "Approve"}
+              </Button>
+            </div>
           ) : null}
         </div>
       </SheetContent>
@@ -357,6 +379,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
 const statusTone = (status?: string) => {
   const normalized = status?.toLowerCase();
   if (normalized === "approved") return "bg-[#EAF7EE] text-[#43A047]";
+  if (normalized === "active") return "bg-[#E6F0FF] text-[#2563EB]";
   if (normalized === "pending") return "bg-[#FFF8E1] text-[#F4B400]";
   if (normalized === "rejected") return "bg-[#FEECEC] text-[#E53935]";
   if (normalized === "draft") return "bg-slate-100 text-slate-700";
@@ -565,7 +588,7 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
         <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
           Invoice
         </h3>
-        {isVendor && (
+        {(isVendor || isProjectManager) && (
           <CreateInvoiceDialog
             contractId={contractId}
             createPath={basePath}

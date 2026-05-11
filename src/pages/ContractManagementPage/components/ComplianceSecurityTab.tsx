@@ -100,6 +100,20 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
     return normalized === "pending" || normalized === "rejected";
   }, [activeView, hasFiles, isContractVendorLike, data?.details]);
 
+  const canManagerActOnActive = React.useMemo(() => {
+    if (!isContractManager) return false;
+    if (!hasFiles) return false;
+    const status = getSubmissionStatus(activeView);
+    if (!status) return false;
+    const normalized = String(status).toLowerCase();
+    return (
+      normalized === "submitted" ||
+      normalized === "pending approval" ||
+      normalized === "pending_approval" ||
+      normalized === "awaiting approval"
+    );
+  }, [activeView, hasFiles, isContractManager, data?.details]);
+
   const formatMoneyNoSymbol = (value: unknown) => {
     const num = Number(value);
     if (!Number.isFinite(num)) return "-";
@@ -120,7 +134,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
   const approveMutation = useMutation({
     mutationFn: async (action: "approved" | "rejected") => {
       const type = activeView === "policy" ? "policy" : "security";
-      const endpoint = `/manager/contracts/${contractId}/compliance/${type}/approve`;
+      const endpoint = `contract/manager/contracts/${contractId}/compliance/${type}/approve`;
       const comment =
         action === "approved"
           ? `Approved all ${activeView} items via bulk action`
@@ -394,7 +408,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
           Compliance & Security Details
         </h3>
         <div className="flex items-center gap-3">
-          {isContractManager && (
+          {canManagerActOnActive && (
             <>
               <Button
                 variant="outline"

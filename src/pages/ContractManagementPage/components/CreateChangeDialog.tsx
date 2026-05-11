@@ -52,7 +52,7 @@ const CreateChangeDialog: React.FC<Props> = ({
     () => getCreateChangeTypeOptionsForRole({ isManager, isVendor: !isManager }),
     [isManager],
   );
-  const defaultChangeType = isManager ? "proposal" : "request";
+  const defaultChangeType = isManager ? "directive" : "request";
 
   const { control, reset } = useForge({
     defaultValues: {

@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import "@/pages/CollaborationToolPage/collaboration.css";
 import type { CollaborationTab } from "../store/useCollaborationStore";
 import type { CommentsFeedItem } from "./CommentsTab";
+import type { Mentionable } from "../collab/useContractMentionables";
 
 const CommentsTab = lazy(() => import("./CommentsTab"));
 const LogTab = lazy(() => import("./LogTab"));
@@ -29,11 +30,12 @@ interface SidebarPanelProps {
   hasVisitedLog: boolean;
   onTabChange: (tab: CollaborationTab) => void;
   commentValue?: string;
-  onCommentChange?: (value: string) => void;
-  onCommentSubmit?: () => void;
+  onCommentChange?: (value: string, mentions: Mentionable[]) => void;
+  onCommentSubmit?: (parentId?: string | null) => void;
   canWriteComment?: boolean;
   isSubmittingComment?: boolean;
   useFallbackFeed?: boolean;
+  mentionables?: Mentionable[];
 }
 
 const fallbackComments: Feed[] = [
@@ -89,6 +91,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   canWriteComment = false,
   isSubmittingComment = false,
   useFallbackFeed = false,
+  mentionables = [],
 }) => {
   const avatarPublic = "/assets/collaboration/avatar-user.png";
   const commentsFeed: CommentsFeedItem[] = useFallbackFeed ? fallbackComments : comments;
@@ -150,6 +153,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
                 onCommentSubmit={onCommentSubmit}
                 canWriteComment={canWriteComment}
                 isSubmittingComment={isSubmittingComment}
+                mentionables={mentionables}
               />
             </Suspense>
           </div>

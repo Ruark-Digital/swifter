@@ -1031,7 +1031,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
               ? data.contractValue
               : undefined
             : toNumberOrUndefined(data.contractValue),
-        contigency: data.contingency || undefined,
+        contingency: data.contingency || undefined,
         holdBack,
         contractPaymentTerm: data.paymentTerm || undefined,
         paymentTerm: paymentTermName || undefined,

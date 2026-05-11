@@ -25,8 +25,8 @@ export const getCreateChangeTypeOptionsForRole = ({
 }): Array<{ value: ContractChangeType; label: string }> => {
   if (isManager) {
     return [
-      { value: "proposal", label: "Change Proposal" },
       { value: "directive", label: "Change Directive" },
+      { value: "order", label: "Change Order" },
     ];
   }
 
@@ -101,14 +101,14 @@ export const toManagerCreateChangePayload = (
 ): {
   title?: string;
   description?: string;
-  type?: "directive" | "proposal";
+  type?: "directive" | "order";
   urgency?: "low" | "medium" | "high";
   files?: Array<{ name: string; url: string; type: string; size: number }>;
 } => {
   const payload: {
     title?: string;
     description?: string;
-    type?: "directive" | "proposal";
+    type?: "directive" | "order";
     urgency?: "low" | "medium" | "high";
     files?: Array<{ name: string; url: string; type: string; size: number }>;
   } = {
@@ -118,9 +118,9 @@ export const toManagerCreateChangePayload = (
 
   if (
     values.changeType === "directive" ||
-    values.changeType === "proposal"
+    values.changeType === "order"
   ) {
-    payload.type = values.changeType as "directive" | "proposal";
+    payload.type = values.changeType as "directive" | "order";
   }
 
   if (values.urgency === "low" || values.urgency === "medium" || values.urgency === "high") {

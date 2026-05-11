@@ -1084,6 +1084,10 @@ export class DashboardDataTransformer {
         { name: "Admin", value: 0 },
         { name: "Procurement Lead", value: 0 },
         { name: "Vendor", value: 0 },
+        { name: "Project Manager", value: 0 },
+        { name: "View Only", value: 0 },
+        { name: "Contract Manager", value: 0 },
+        { name: "Approver", value: 0 },
       ]);
     }
 
@@ -1093,6 +1097,10 @@ export class DashboardDataTransformer {
       company_admin: "Company Admin",
       evaluator: "Evaluator",
       vendor: "Vendor",
+      project_manager: "Project Manager",
+      view_only: "View Only",
+      contract_manager: "Contract Manager",
+      approver: "Approver",
     };
 
     const chartData = data.map((item) => ({
