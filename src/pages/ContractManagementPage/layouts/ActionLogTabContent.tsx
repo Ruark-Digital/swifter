@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
+import type { PaginationState } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { contractManagerApi, LogModule } from "../api/contractManagerApi";
@@ -32,12 +33,28 @@ const ActionLogTabContent: React.FC<Props> = () => {
   const [selectedAction, setSelectedAction] = useState<ActionLogRow | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 20,
+  });
   const { isManager, isProcurement } = useUserRole()
+
+  const listQuery = React.useMemo(() => {
+    const query = searchQuery.trim();
+    const isLogIdQuery = /^ACT-\d+/i.test(query);
+
+    return {
+      page: pagination.pageIndex + 1,
+      limit: pagination.pageSize,
+      logId: query && isLogIdQuery ? query : undefined,
+      module: query && !isLogIdQuery ? query : undefined,
+    };
+  }, [pagination, searchQuery]);
 
   // 1. Fetch action logs
   const { data: logsData, isLoading } = useQuery({
-    queryKey: ["contractLogs", contractId],
-    queryFn: () => contractManagerApi.listLogs(contractId!, { limit: 100 }), // Fetch more items
+    queryKey: ["contractLogs", contractId, listQuery],
+    queryFn: () => contractManagerApi.listLogs(contractId!, listQuery),
     enabled: !!contractId && (isManager || isProcurement),
   });
 
@@ -70,7 +87,7 @@ const ActionLogTabContent: React.FC<Props> = () => {
       else if (log.actor?.name) roleName = log.actor.name;
 
       return {
-        actionId: log.actionId || log._id || "Unknown",
+        actionId: log.logId || log.actionId || log._id || "Unknown",
         module: modStr,
         description: "No description",
         actorName: userName,
@@ -84,17 +101,7 @@ const ActionLogTabContent: React.FC<Props> = () => {
     }).sort((a: any, b: any) => b.rawDate.getTime() - a.rawDate.getTime());
   }, [logsData]);
 
-  const filteredRows = useMemo(() => {
-    if (!searchQuery) return rows;
-    const lowerQuery = searchQuery.toLowerCase();
-    return rows.filter(
-      (row) =>
-        row.description.toLowerCase().includes(lowerQuery) ||
-        row.module.toLowerCase().includes(lowerQuery) ||
-        row.actorName.toLowerCase().includes(lowerQuery) ||
-        row.reference.toLowerCase().includes(lowerQuery)
-    );
-  }, [rows, searchQuery]);
+  const totalCount = logsData?.data?.total ?? rows.length;
 
   const columns: ColumnDef<ActionLogRow>[] = [
     {
@@ -180,17 +187,19 @@ const ActionLogTabContent: React.FC<Props> = () => {
               placeholder="Search log"
               className="h-10 pl-9 text-sm placeholder:text-slate-400"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+              }}
             />
           </div>
         </div>
 
         <div className="p-0">
           <DataTable<ActionLogRow>
-            data={filteredRows}
+            data={rows}
             columns={columns}
             classNames={{
-              container: "[&>div:last-child]:hidden",
               table: "border-collapse border-spacing-0",
               tHeader: "bg-transparent",
               tHeadRow: "bg-slate-50/50 hover:bg-slate-50/50",
@@ -198,10 +207,12 @@ const ActionLogTabContent: React.FC<Props> = () => {
               tCell: "p-4 text-slate-700",
             }}
             options={{
-              disablePagination: false, // Enabled pagination as list might grow
+              disablePagination: false,
               disableSelection: true,
               isLoading: isLoading,
-              totalCounts: filteredRows.length,
+              totalCounts: totalCount,
+              pagination,
+              setPagination: setPagination,
             }}
           />
         </div>

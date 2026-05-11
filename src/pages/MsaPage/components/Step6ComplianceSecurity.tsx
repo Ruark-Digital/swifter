@@ -9,6 +9,7 @@ import {
 import { useWatch, Control } from "react-hook-form";
 import { CreateMsaFormData } from "../layouts/CreateMSADialog";
 import { Button } from "@/components/ui/button";
+import { startOfDay } from "date-fns";
 import {
   Accordion,
   AccordionItem,
@@ -21,16 +22,26 @@ type Props = {
 };
 
 const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
+  const today = React.useMemo(() => startOfDay(new Date()), []);
+  const currency = useWatch({ control, name: "currency" });
   const security = useWatch({ control, name: "contractSecurity" });
-  const { fields: policyFields, append: appendPolicy, remove: removePolicy } = useFieldArray({
+  const {
+    fields: policyFields,
+    append: appendPolicy,
+    remove: removePolicy,
+  } = useFieldArray({
     control,
     name: "insurancePolicies",
-    inputProps: []
+    inputProps: [],
   });
-  const { fields: secFields, append: appendSec, remove: removeSec } = useFieldArray({
+  const {
+    fields: secFields,
+    append: appendSec,
+    remove: removeSec,
+  } = useFieldArray({
     control,
     name: "securities",
-    inputProps: []
+    inputProps: [],
   });
 
   return (
@@ -46,6 +57,7 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
               label="Expiry Date"
               component={TextDatePicker}
               placeholder="Select expiry date"
+              minDate={today}
               containerClass="md:col-span-2"
             />
             {policyFields.map((field, index) => (
@@ -71,8 +83,9 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
                   </div>
                   <Forger
                     name={`insurancePolicies.${index}.limit`}
-                    component={TextInput}
+                    component={TextCurrencyInput}
                     placeholder="Enter limit"
+                    currency={currency}
                   />
                 </div>
               </React.Fragment>
@@ -113,7 +126,9 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
                 {secFields.map((field, index) => (
                   <div key={field.id} className="md:col-span-2 space-y-2">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-slate-700">Amount</p>
+                      <p className="text-sm font-medium text-slate-700">
+                        Amount
+                      </p>
                       <button
                         type="button"
                         className="text-xs text-red-600"
@@ -129,9 +144,15 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
                         placeholder="Enter Security"
                         component={TextSelect}
                         options={[
-                          { label: "Letter of Credit", value: "letter_of_credit" },
+                          {
+                            label: "Letter of Credit",
+                            value: "letter_of_credit",
+                          },
                           { label: "Bank Guarantee", value: "bank_guarantee" },
-                          { label: "Performance Bond", value: "performance_bond" },
+                          {
+                            label: "Performance Bond",
+                            value: "performance_bond",
+                          },
                           { label: "Material Bond", value: "material_bond" },
                           { label: "Labour Bond", value: "labour_bond" },
                         ]}
@@ -141,12 +162,14 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
                         label="Amount"
                         placeholder="Enter Amount"
                         component={TextCurrencyInput}
+                        currency={currency}
                       />
                       <Forger
                         name={`securities.${index}.dueDate`}
                         label="Due Date"
                         component={TextDatePicker}
                         placeholder="Select due date"
+                        minDate={today}
                         containerClass="md:col-span-2"
                       />
                     </div>
@@ -156,7 +179,9 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => appendSec({ type: "", amount: "", dueDate: undefined })}
+                    onClick={() =>
+                      appendSec({ type: "", amount: "", dueDate: undefined })
+                    }
                   >
                     + Add Security
                   </Button>

@@ -1,7 +1,8 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import FeedItem from "./FeedItem";
 import WriteComment from "./WriteComment";
 import VirtualizedFeedList from "./VirtualizedFeedList";
+import type { Mentionable } from "../collab/useContractMentionables";
 
 type FeedAttachment = {
   filename: string;
@@ -15,37 +16,21 @@ export type CommentsFeedItem = {
   message: string;
   showDot?: boolean;
   attachment?: FeedAttachment | null;
+  parentId?: string | null;
+  redlineId?: string | null;
+  mentions?: Mentionable[];
+  replies?: CommentsFeedItem[];
 };
 
 type CommentsTabProps = {
   avatarPublic: string;
   comments: CommentsFeedItem[];
   commentValue?: string;
-  onCommentChange?: (value: string) => void;
-  onCommentSubmit?: () => void;
+  onCommentChange?: (value: string, mentions: Mentionable[]) => void;
+  onCommentSubmit?: (parentId?: string | null) => void;
   canWriteComment?: boolean;
   isSubmittingComment?: boolean;
-};
-
-const areCommentFeedsEqual = (prev: CommentsFeedItem[], next: CommentsFeedItem[]) => {
-  if (prev === next) return true;
-  if (prev.length !== next.length) return false;
-  for (let i = 0; i < prev.length; i += 1) {
-    const p = prev[i];
-    const n = next[i];
-    if (
-      p.id !== n.id ||
-      p.name !== n.name ||
-      p.timestamp !== n.timestamp ||
-      p.message !== n.message ||
-      p.showDot !== n.showDot ||
-      p.attachment?.filename !== n.attachment?.filename ||
-      p.attachment?.size !== n.attachment?.size
-    ) {
-      return false;
-    }
-  }
-  return true;
+  mentionables?: Mentionable[];
 };
 
 const CommentsTab: React.FC<CommentsTabProps> = ({
@@ -56,17 +41,54 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
   onCommentSubmit,
   canWriteComment = false,
   isSubmittingComment = false,
+  mentionables = [],
 }) => {
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+
+  const handleSubmit = useCallback(() => {
+    onCommentSubmit?.(replyTo);
+    setReplyTo(null);
+  }, [onCommentSubmit, replyTo]);
+
   const renderCommentItem = useCallback(
     (comment: CommentsFeedItem) => (
-      <FeedItem
-        avatarSrc={avatarPublic}
-        name={comment.name}
-        timestamp={comment.timestamp}
-        message={comment.message}
-        attachment={comment.attachment}
-        showDot={comment.showDot}
-      />
+      <div className="space-y-2">
+        <FeedItem
+          avatarSrc={avatarPublic}
+          name={comment.name}
+          timestamp={comment.timestamp}
+          message={comment.message}
+          attachment={comment.attachment}
+          showDot={comment.showDot}
+        />
+        <div className="pl-12 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setReplyTo(comment.id)}
+            className="text-xs font-semibold text-blue-600 hover:underline"
+          >
+            Reply
+          </button>
+          {comment.redlineId && (
+            <span className="text-xs text-amber-600">redline thread</span>
+          )}
+        </div>
+        {comment.replies && comment.replies.length > 0 && (
+          <div className="pl-12 border-l-2 border-slate-200 ml-6 space-y-2">
+            {comment.replies.map((r) => (
+              <FeedItem
+                key={r.id}
+                avatarSrc={avatarPublic}
+                name={r.name}
+                timestamp={r.timestamp}
+                message={r.message}
+                attachment={r.attachment}
+                showDot={r.showDot}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     ),
     [avatarPublic],
   );
@@ -76,24 +98,39 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
       <div className="ct-section-header">
         <span className="ct-section-title">Comments and activity</span>
         <div className="ct-avatars-cluster">
-          <img src={avatarPublic} alt="Kate" className="ct-avatar-cluster-item" />
-          <img src={avatarPublic} alt="Kate" className="ct-avatar-cluster-item second" />
-          <img src={avatarPublic} alt="Kate" className="ct-avatar-cluster-item second" />
+          <img src={avatarPublic} alt="" className="ct-avatar-cluster-item" />
+          <img src={avatarPublic} alt="" className="ct-avatar-cluster-item second" />
+          <img src={avatarPublic} alt="" className="ct-avatar-cluster-item second" />
         </div>
       </div>
+
+      {replyTo && (
+        <div className="flex items-center justify-between bg-slate-100 px-3 py-1 rounded text-xs text-slate-600 mb-1">
+          <span>Replying to comment</span>
+          <button
+            type="button"
+            onClick={() => setReplyTo(null)}
+            className="font-semibold text-red-500 hover:underline"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       <WriteComment
         value={commentValue}
         onChange={onCommentChange}
-        onSubmit={onCommentSubmit}
+        onSubmit={handleSubmit}
         disabled={!canWriteComment}
         isSubmitting={isSubmittingComment}
+        mentionables={mentionables}
+        placeholder={replyTo ? "Write a reply… use @ to tag" : "Write a Comment… use @ to tag"}
       />
 
       <VirtualizedFeedList
         className="ct-feed mt-5"
-        items={comments}
-        itemHeight={96}
+        items={comments.filter((c) => !c.parentId)}
+        itemHeight={140}
         getItemKey={(item) => item.id}
         renderItem={renderCommentItem}
       />
@@ -101,13 +138,4 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
   );
 };
 
-const arePropsEqual = (prev: CommentsTabProps, next: CommentsTabProps) =>
-  prev.avatarPublic === next.avatarPublic &&
-  prev.commentValue === next.commentValue &&
-  prev.canWriteComment === next.canWriteComment &&
-  prev.isSubmittingComment === next.isSubmittingComment &&
-  prev.onCommentChange === next.onCommentChange &&
-  prev.onCommentSubmit === next.onCommentSubmit &&
-  areCommentFeedsEqual(prev.comments, next.comments);
-
-export default React.memo(CommentsTab, arePropsEqual);
+export default React.memo(CommentsTab);

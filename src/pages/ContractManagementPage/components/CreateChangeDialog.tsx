@@ -52,7 +52,7 @@ const CreateChangeDialog: React.FC<Props> = ({
     () => getCreateChangeTypeOptionsForRole({ isManager, isVendor: !isManager }),
     [isManager],
   );
-  const defaultChangeType = isManager ? "order" : "request";
+  const defaultChangeType = isManager ? "directive" : "request";
 
   const { control, reset } = useForge({
     defaultValues: {
@@ -112,15 +112,19 @@ const CreateChangeDialog: React.FC<Props> = ({
         );
         return res;
       }
-      const res = await vendorApi.createChange(contractId, payload as any);
+      const res =
+        documentType === "MsaContract"
+          ? await vendorApi.createMsaChange(contractId, payload as any)
+          : await vendorApi.createChange(contractId, payload as any);
       return res;
     },
     onSuccess: async () => {
       toastHandler.success("Change Request", "Change request submitted successfully");
       setOpen(false);
       reset();
-      await queryClient.invalidateQueries({ queryKey: ["contractChanges"] });
-      await queryClient.invalidateQueries({ queryKey: ["contractChanges", "stats"] });
+      const listKey = documentType === "MsaContract" ? "msaChanges" : "contractChanges";
+      await queryClient.invalidateQueries({ queryKey: [listKey] });
+      await queryClient.invalidateQueries({ queryKey: [listKey, "stats"] });
     },
     onError: (error: ApiResponseError) => {
       toastHandler.error("Change Request", error);
@@ -162,9 +166,9 @@ const CreateChangeDialog: React.FC<Props> = ({
           })
         );
 
-        const filesPayload = uploadedItems.filter(
-          (item): item is { name: string; url: string; type: string; size: number } => Boolean(item)
-        );
+        const filesPayload = uploadedItems
+          .filter((item): item is { name: string; url: string; type: string; size: string } => Boolean(item))
+          .map((item) => ({ ...item, size: Number(item.size) || 0 }));
         if (filesPayload.length) {
           payload.files = filesPayload;
         }

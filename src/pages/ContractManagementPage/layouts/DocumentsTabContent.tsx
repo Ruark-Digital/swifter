@@ -10,6 +10,7 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { useQueryClient } from "@tanstack/react-query";
 
 type Props = {
+  currency?: string;
   files?: ContractDetail["files"];
   contractId?: string;
   onUpdated?: (contract: ContractDetail) => void;
@@ -46,7 +47,7 @@ const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, ef
 
       <DocumentsStatsCard count={files?.length ?? 0} />
 
-      <DocumentsList files={files} effectiveDate={effectiveDate} />
+      <DocumentsList files={files} effectiveDate={effectiveDate} contractId={contractId} />
 
       {editingContractId !== null && (
         <EditContract

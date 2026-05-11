@@ -31,11 +31,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { X } from "lucide-react";
 import { format } from "date-fns";
 import { useClearSession } from "@/store/solicitationFileSlice";
+import { useUser } from "@/store/authSlice";
 import { pruneEmptyValuesDeep } from "@/lib/pruneEmptyValuesDeep";
+import { getExchangeRate } from "@/lib/currencyUtils";
 import {
   isEmailLike,
   isObjectIdLike,
+  toApproverUserKeyOrUndefined,
   toIdStringOrUndefined,
+  toFileMetaOrUndefined,
   toPersonnelOrUndefined,
 } from "@/lib/contractFormValues";
 
@@ -56,6 +60,7 @@ export const schema = yup.object({
   jobTitle: yup.string().optional(),
   businessDivision: yup.string().required("Business Division is required"),
   contractId: yup.string().optional(),
+  msaContractId: yup.string().optional(),
   description: yup.string().required("Description is required"),
   vendor: yup
     .string()
@@ -198,6 +203,7 @@ export const defaultValues = {
   jobTitle: "",
   businessDivision: "",
   contractId: "",
+  msaContractId: "",
   description: "",
   vendor: "",
   personnel: [],
@@ -588,6 +594,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
   const qc = useQueryClient();
   const clearSession = useClearSession();
   const { success, error } = useToastHandler();
+  const currentUser = useUser();
 
   const typesQuery = useQuery<ApiListResponse<ContractType>>({
     queryKey: useUserQueryKey(["contract-types"]),
@@ -623,6 +630,17 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         url: "/contract/manager/awarded-solicitation",
       });
       return res.data as ApiListResponse<AwardedVendorItem>;
+    },
+    staleTime: 60_000,
+  });
+
+  const msaQuery = useQuery({
+    queryKey: useUserQueryKey(["msa-contracts-all"]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: "/contract/manager/msa-contract",
+      });
+      return res.data;
     },
     staleTime: 60_000,
   });
@@ -675,6 +693,14 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     [awardedQuery.data?.data],
   );
 
+  const msaOptions = React.useMemo(() => {
+    const contracts = msaQuery.data?.data?.contracts || [];
+    return contracts.map((c: any) => ({
+      label: c.title || "Untitled MSA",
+      value: c._id,
+    }));
+  }, [msaQuery.data?.data?.contracts]);
+
   const mutation = useMutation({
     mutationFn: async (payload: any) => {
       const res = await postRequest({
@@ -714,6 +740,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       "manager",
       "jobTitle",
       "contractId",
+      "msaContractId",
       "rating",
       "description",
       "businessDivision",
@@ -802,7 +829,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
       const relationship =
-        data.relationship === "msa"
+        data.relationship === "msa" || data.relationship === "msa_project"
           ? "msa_project"
           : data.relationship === "standalone"
             ? "standalone"
@@ -828,9 +855,8 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         (data.approvalGroups ?? []).filter(item => item.name && item.approvers?.length).flatMap((g, i) => {
           const lvl = g.approvalLevel ? Number(g.approvalLevel) : i + 1;
           const amountValue = toNumberOrUndefined(g.amount);
-          // API expects user as array of strings
           const userIds = (g.approvers ?? [])
-            .map((u: any) => u?.value ?? u)
+            .map((u: any) => toApproverUserKeyOrUndefined(u))
             .filter(Boolean);
           return {
             user: userIds,
@@ -881,16 +907,8 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
       const files =
         (data.documents ?? [])
-          .map((f: any) => ({
-            name: typeof f?.name === "string" ? f.name : undefined,
-            url: typeof f?.url === "string" ? f.url : undefined,
-            type: typeof f?.type === "string" ? f.type : undefined,
-            size:
-              typeof f?.size === "number"
-                ? f.size
-                : toNumberOrUndefined(f?.size),
-          }))
-          .filter((f) => Boolean(f?.name && f?.url && f?.type)) ?? [];
+          .map((f: any) => toFileMetaOrUndefined(f))
+          .filter(Boolean) ?? [];
 
       const awardedMatch = awardedQuery.data?.data?.find(
         (a) => a._id === data.awardedSolicitation,
@@ -978,10 +996,12 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         businessDivision: data.businessDivision,
         currency: data.currency,
         projectId:
-          relationship === "project" ? data.project || undefined : undefined,
+          relationship === "project" || relationship === "msa_project"
+            ? data.project || undefined
+            : undefined,
         msaContractId:
           relationship === "msa_project"
-            ? data.project || undefined
+            ? data.msaContractId || undefined
             : undefined,
         solicitationId: data.awardedSolicitation || undefined,
         contractId: data.contractId || undefined,
@@ -1011,7 +1031,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
               ? data.contractValue
               : undefined
             : toNumberOrUndefined(data.contractValue),
-        contigency: data.contingency || undefined,
+        contingency: data.contingency || undefined,
         holdBack,
         contractPaymentTerm: data.paymentTerm || undefined,
         paymentTerm: paymentTermName || undefined,
@@ -1047,10 +1067,38 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       formData: CreateContractFormData,
       status: "draft" | "publish" = "publish",
     ) => {
-      const payload = buildPayload(formData, status);
-      mutation.mutate(payload);
+      const submitAsync = async () => {
+        const payload = buildPayload(formData, status) as any;
+
+        const baseCurrency = currentUser?.currency;
+        const selectedCurrency = payload?.currency;
+        if (
+          typeof baseCurrency === "string" &&
+          typeof selectedCurrency === "string" &&
+          baseCurrency &&
+          selectedCurrency &&
+          baseCurrency !== selectedCurrency
+        ) {
+          try {
+            payload.currencyRate = await getExchangeRate(
+              baseCurrency,
+              selectedCurrency,
+            );
+          } catch (err) {
+            error(
+              "Failed to create contract",
+              err instanceof Error ? err.message : "Unable to fetch currency rate",
+            );
+            return;
+          }
+        }
+
+        mutation.mutate(payload);
+      };
+
+      void submitAsync();
     },
-    [buildPayload, mutation],
+    [buildPayload, currentUser?.currency, error, mutation],
   );
 
   const resetAndClose = React.useCallback(() => {
@@ -1062,14 +1110,9 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
   const handleOpenChange = React.useCallback(
     (nextOpen: boolean) => {
-      if (!nextOpen) {
-        reset(defaultValues);
-        setStep(1);
-        clearSession();
-      }
       setOpen(nextOpen);
     },
-    [clearSession, reset],
+    [],
   );
 
   return (
@@ -1112,6 +1155,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
                   typeOptions={typeOptions}
                   projectOptions={projectOptions}
                   awardedOptions={awardedOptions}
+                  msaOptions={msaOptions}
                 />
               )}
 

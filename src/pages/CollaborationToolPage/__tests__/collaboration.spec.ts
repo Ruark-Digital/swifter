@@ -42,6 +42,35 @@ test.describe("Collaboration Tool", () => {
     await expect(page.getByText("Log")).toBeVisible();
   });
 
+  test("allows typing a contract-level comment when contractId is present", async ({ page }) => {
+    await seedAuth(page);
+    await page.goto("/collaboration-tool?contractId=contract-1");
+
+    const input = page.getByLabel("Write a Comment");
+    await expect(input).toBeEnabled();
+
+    await input.fill("Hello from contract comment");
+    await input.press("Enter");
+
+    await expect(page.getByText("Hello from contract comment")).toBeVisible();
+  });
+
+  test("notifies when offline and back online", async ({ page }) => {
+    await seedAuth(page);
+    await page.goto("/collaboration-tool?contractId=contract-1");
+    await page.waitForTimeout(100);
+
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event("offline"));
+    });
+    await expect(page.getByText("You're offline", { exact: true }).first()).toBeVisible();
+
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event("online"));
+    });
+    await expect(page.getByText("Back online")).toBeVisible();
+  });
+
   test("keeps tab switch below interaction budget", async ({ page }) => {
     await seedAuth(page);
     await page.goto("/collaboration-tool");

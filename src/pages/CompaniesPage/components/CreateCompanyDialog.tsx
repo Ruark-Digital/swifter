@@ -1,3 +1,4 @@
+import React from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,13 +12,19 @@ import {
   TextTagInput,
 } from "@/components/layouts/FormInputs/TextInput";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
+import { TextSelectWithSearch } from "@/components/layouts/FormInputs/TextSelectWithSearch";
 import { useForge, Forger, Forge } from "@/lib/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { postRequest, getRequest } from "@/lib/axiosInstance";
-import { ApiList, ApiResponse, ApiResponseError, SubscriptionPlan } from "@/types";
+import {
+  ApiList,
+  ApiResponse,
+  ApiResponseError,
+  SubscriptionPlan,
+} from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import * as yup from "yup";
 
@@ -25,14 +32,19 @@ const schema = yup.object().shape({
   name: yup.string().required("Company name is required"),
   domain: yup.string().required("Company domain is required"),
   planName: yup.string().required("Subscription plan is required"),
-  duration: yup.number().positive().integer().required("Subscription duration is required"),
+  duration: yup
+    .number()
+    .positive()
+    .integer()
+    .required("Subscription duration is required"),
+  currency: yup.string().required("Currency is required"),
   adminEmails: yup
     .array()
     .of(
       yup.object().shape({
         id: yup.string().required(),
         text: yup.string().email().required(),
-      })
+      }),
     )
     .min(1, "At least one admin is required")
     .max(3, "Maximum 3 admins allowed"),
@@ -52,12 +64,15 @@ const CreateCompanyDialog = () => {
       domain: "",
       planName: "",
       duration: 1,
+      currency: "",
       adminEmails: [],
     },
   });
 
   // Fetch subscription plans
-  const { data: plansData, isLoading: plansLoading } = useQuery<ApiResponse<ApiList<SubscriptionPlan>>>({
+  const { data: plansData, isLoading: plansLoading } = useQuery<
+    ApiResponse<ApiList<SubscriptionPlan>>
+  >({
     queryKey: ["subscriptionPlans"],
     queryFn: async () => {
       return await getRequest({ url: "/subscriptions/plans" });
@@ -77,9 +92,12 @@ const CreateCompanyDialog = () => {
         domain: data.domain,
         planName: data.planName,
         duration: data.duration,
-        adminEmails: data.adminEmails?.map(admin => admin.text), // Extract email addresses
+        adminEmails: data.adminEmails?.map((admin) => admin.text), // Extract email addresses
       };
-      return await postRequest({ url: "/onboarding/company", payload: transformedData });
+      return await postRequest({
+        url: "/onboarding/company",
+        payload: transformedData,
+      });
     },
     onSuccess: () => {
       toast.success("Success", "Company created successfully");
@@ -92,7 +110,7 @@ const CreateCompanyDialog = () => {
       const err = error as ApiResponseError;
       toast.error(
         "Error",
-        err?.response?.data?.message ?? "Failed to create company"
+        err?.response?.data?.message ?? "Failed to create company",
       );
     },
   });
@@ -102,10 +120,11 @@ const CreateCompanyDialog = () => {
   };
 
   // Transform subscription plans data for select options
-  const subscriptionOptions = plansData?.data?.data.data?.map?.(plan => ({
-    label: `${plan.name}`,
-    value: plan.name,
-  })) || [];
+  const subscriptionOptions =
+    plansData?.data?.data.data?.map?.((plan) => ({
+      label: `${plan.name}`,
+      value: plan.name,
+    })) || [];
 
   const subscriptionDurationOptions = [
     { label: "1 year", value: 1 },
@@ -114,6 +133,64 @@ const CreateCompanyDialog = () => {
     { label: "4 years", value: 4 },
     { label: "5 years", value: 5 },
   ];
+
+  const currencyOptions = React.useMemo(() => {
+    const supportedValuesOf = (Intl as any).supportedValuesOf as
+      | undefined
+      | ((type: string) => string[]);
+
+    const supportedCurrencies =
+      typeof supportedValuesOf === "function"
+        ? supportedValuesOf("currency")
+        : [];
+
+    const fallbackCurrencies = ["CAD", "USD", "EUR", "GBP"];
+
+    const codes =
+      Array.isArray(supportedCurrencies) && supportedCurrencies.length > 0
+        ? supportedCurrencies
+        : fallbackCurrencies;
+
+    const displayNames =
+      typeof (Intl as any).DisplayNames === "function"
+        ? new (Intl as any).DisplayNames(["en"], { type: "currency" })
+        : null;
+
+    const getCurrencyName = (code: string) => {
+      try {
+        const name = displayNames?.of(code);
+        if (typeof name === "string" && name.trim() && name !== code)
+          return name;
+      } catch (err) {
+        void err;
+      }
+
+      try {
+        const parts = new Intl.NumberFormat("en", {
+          style: "currency",
+          currency: code,
+          currencyDisplay: "name",
+        }).formatToParts(0);
+        const name = parts.find((p) => p.type === "currency")?.value;
+        if (typeof name === "string" && name.trim() && name !== code)
+          return name;
+      } catch (err) {
+        void err;
+      }
+
+      return undefined;
+    };
+
+    return Array.from(new Set(codes))
+      .map((code) => {
+        const name = getCurrencyName(code);
+        return {
+          value: code,
+          label: name ? `${code} — ${name}` : code,
+        };
+      })
+      .sort((a, b) => a.value.localeCompare(b.value));
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -160,6 +237,16 @@ const CreateCompanyDialog = () => {
             label="Subscription Duration"
             placeholder="Select Duration"
             options={subscriptionDurationOptions}
+          />
+
+          <Forger
+            name="currency"
+            label="Currency"
+            placeholder="Select currency"
+            searchPlaceholder="Search currency..."
+            emptyMessage="No currency found."
+            component={TextSelectWithSearch}
+            options={currencyOptions}
           />
 
           <Forger

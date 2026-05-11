@@ -55,10 +55,18 @@ const normalizeStatus = (
   assignedApprovals?: string,
 ): "Completed" | "Pending" => {
   const normalized = value?.toLowerCase();
-  if (normalized === "completed" || normalized === "approved") return "Completed";
+  if (normalized === "completed" || normalized === "approved")
+    return "Completed";
   if (assignedApprovals) {
-    const [done, total] = assignedApprovals.split("/").map((part) => Number(part.trim()));
-    if (Number.isFinite(done) && Number.isFinite(total) && total > 0 && done >= total) {
+    const [done, total] = assignedApprovals
+      .split("/")
+      .map((part) => Number(part.trim()));
+    if (
+      Number.isFinite(done) &&
+      Number.isFinite(total) &&
+      total > 0 &&
+      done >= total
+    ) {
       return "Completed";
     }
   }
@@ -111,7 +119,9 @@ const ApproverDetailsSheet = ({
           </SheetHeader>
           <div className="space-y-6">
             <div className="flex items-start justify-between">
-              <div className="text-base font-semibold text-[#0F0F0F]">Approver Details</div>
+              <div className="text-base font-semibold text-[#0F0F0F]">
+                Approver Details
+              </div>
               <span
                 className={cn(
                   "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
@@ -127,7 +137,10 @@ const ApproverDetailsSheet = ({
                 label="Contact"
                 value={
                   row.email !== "-" ? (
-                    <a className="text-[#2563EB] underline" href={`mailto:${row.email}`}>
+                    <a
+                      className="text-[#2563EB] underline"
+                      href={`mailto:${row.email}`}
+                    >
                       {row.email}
                     </a>
                   ) : (
@@ -136,11 +149,19 @@ const ApproverDetailsSheet = ({
                 }
               />
               <LabelRow label="Role" value={row.role || "-"} />
-              <LabelRow label="Approval Level" value={row.approvalLevel || "-"} />
-              <LabelRow label="Assigned Approvals" value={row.assignedApprovals || "-"} />
+              <LabelRow
+                label="Approval Level"
+                value={row.approvalLevel || "-"}
+              />
+              <LabelRow
+                label="Assigned Approvals"
+                value={row.assignedApprovals || "-"}
+              />
               <LabelRow
                 label="Last Updated"
-                value={createdAt ? formatDateTZ(createdAt, "MMMM dd, yyyy") : "N/A"}
+                value={
+                  createdAt ? formatDateTZ(createdAt, "MMMM dd, yyyy") : "N/A"
+                }
               />
             </div>
           </div>
@@ -151,26 +172,44 @@ const ApproverDetailsSheet = ({
 };
 
 const Approvers: React.FC<Props> = ({ contractId, isActive }) => {
-  const { isManager, isApprover, isVendor, isViewOnly } = useUserRole();
+  const { isManager, isApprover, isVendor, isProjectManager, isViewOnly } =
+    useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
 
   const basePath = React.useMemo(() => {
-    if (isVendor) return `/contract/vendor/msa-contract/${contractId}`;
+    if (isVendor || isProjectManager)
+      return `/contract/vendor/msa-contract/${contractId}`;
     if (isApprover) return `/contract/approver/msa-contract/${contractId}`;
     if (isViewOnly) return `/contract/user/msa-contract/${contractId}`;
     if (isManager) return `/contract/manager/msa-contract/${contractId}`;
     return `/contract/manager/msa-contract/${contractId}`;
-  }, [contractId, isApprover, isManager, isVendor, isViewOnly]);
+  }, [
+    contractId,
+    isApprover,
+    isManager,
+    isVendor,
+    isProjectManager,
+    isViewOnly,
+  ]);
 
-  const queryKey = useUserQueryKey(["msa-approvers", contractId, basePath]);
+  const approversPath = React.useMemo(
+    () => `${basePath}/approvers`,
+    [basePath],
+  );
+
+  const queryKey = useUserQueryKey([
+    "msa-approvers",
+    contractId,
+    approversPath,
+  ]);
 
   const { data, isLoading, error } = useQuery({
     queryKey,
     queryFn: async () => {
-      const response = await getRequest({ url: basePath });
-      return response.data as { data?: { approvers?: any[] } | any };
+      const response = await getRequest({ url: approversPath });
+      return response.data as { data?: any[] | { approvers?: any[] } | any };
     },
     enabled: Boolean(contractId) && !!isActive,
     staleTime: 60000,
@@ -190,11 +229,13 @@ const Approvers: React.FC<Props> = ({ contractId, isActive }) => {
 
   const rows = React.useMemo<ApproverRow[]>(() => {
     const payload = (data as any)?.data;
-    const groups = Array.isArray(payload?.approvers)
-      ? payload.approvers
-      : Array.isArray(payload?.data?.approvers)
-        ? payload.data.approvers
-        : [];
+    const groups = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.approvers)
+        ? payload.approvers
+        : Array.isArray(payload?.data?.approvers)
+          ? payload.data.approvers
+          : [];
 
     const mapped = groups.flatMap((group: any, groupIndex: number) => {
       const users = Array.isArray(group?.user) ? group.user : [];
@@ -267,7 +308,10 @@ const Approvers: React.FC<Props> = ({ contractId, isActive }) => {
               {row.original.name}
             </p>
             {row.original.email !== "-" ? (
-              <a href={`mailto:${row.original.email}`} className="text-sm text-[#3B82F6] underline">
+              <a
+                href={`mailto:${row.original.email}`}
+                className="text-sm text-[#3B82F6] underline"
+              >
                 {row.original.email}
               </a>
             ) : null}
@@ -356,7 +400,9 @@ const Approvers: React.FC<Props> = ({ contractId, isActive }) => {
           tCell: "px-6 py-4 text-sm text-[#2A4467] align-top",
         }}
         emptyPlaceholder={
-          <div className="px-6 py-8 text-sm text-slate-500">No approvers found.</div>
+          <div className="px-6 py-8 text-sm text-slate-500">
+            No approvers found.
+          </div>
         }
       />
     </TabsContent>

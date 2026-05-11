@@ -25,8 +25,8 @@ export const getCreateChangeTypeOptionsForRole = ({
 }): Array<{ value: ContractChangeType; label: string }> => {
   if (isManager) {
     return [
-      { value: "order", label: "Change Order" },
       { value: "directive", label: "Change Directive" },
+      { value: "order", label: "Change Order" },
     ];
   }
 
@@ -50,6 +50,25 @@ export const shouldShowChangeDecisionActions = (type: string | undefined) => {
   return type !== "directive";
 };
 
+export const getManagerApproveChangeUrl = ({
+  roleBasePath,
+  contractId,
+  changeId,
+}: {
+  roleBasePath: string;
+  contractId: string;
+  changeId: string;
+}) => {
+  const prefix = "/contract/manager/contracts";
+  const base = roleBasePath.includes(prefix) ? roleBasePath : prefix;
+
+  const contractBase = base.endsWith(`/${contractId}/changes`)
+    ? base
+    : `${prefix}/${contractId}/changes`;
+
+  return `${contractBase}/${changeId}/approve`;
+};
+
 export type ManagerCreateChangeDialogValues = {
   changeName: string;
   changeType: string;
@@ -67,13 +86,13 @@ export type UploadURLs = {
 
 export const toContractChangeFileItem = (
   file: File,
-  uploaded: Pick<UploadURLs, "name" | "url" | "type">
-): { name: string; url: string; type: string; size: number } => {
+  uploaded: Pick<UploadURLs, "name" | "url" | "type" | "size">
+): { name: string; url: string; type: string; size: string } => {
   return {
     name: uploaded.name || file.name,
     url: uploaded.url,
     type: uploaded.type || file.type,
-    size: file.size,
+    size: uploaded.size ?? "",
   };
 };
 

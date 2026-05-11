@@ -7,19 +7,37 @@ import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SEOWrapper } from "@/components/SEO";
 
-type Props = { isActive?: boolean };
+type Props = {
+  isActive?: boolean;
+  currency?: string;
+  actionsDisabled?: boolean;
+};
 
-const ComplianceTabContent: React.FC<Props> = ({ isActive }) => {
+const ComplianceTabContent: React.FC<Props> = ({
+  isActive,
+  currency,
+  actionsDisabled,
+}) => {
   const { id: contractId } = useParams<{ id: string }>();
-  const { isVendor, isProjectManager, isManager, isAdmin, isApprover, isViewOnly } =
-    useUserRole();
+  const {
+    isVendor,
+    isProjectManager,
+    isManager,
+    isAdmin,
+    isApprover,
+    isViewOnly,
+  } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
 
   const getBasePath = () => {
-    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/compliance`;
-    if (isApprover) return `/contract/approver/contracts/${contractId}/compliance`;
-    if (isManager) return `/contract/manager/contracts/${contractId}/compliance`;
-    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/compliance`;
+    if (isContractVendorLike)
+      return `/contract/vendor/contracts/${contractId}/compliance`;
+    if (isApprover)
+      return `/contract/approver/contracts/${contractId}/compliance`;
+    if (isManager)
+      return `/contract/manager/contracts/${contractId}/compliance`;
+    if (isAdmin || isViewOnly)
+      return `/contract/user/contracts/${contractId}/compliance`;
     return `/contract/user/contracts/${contractId}/compliance`;
   };
 
@@ -45,11 +63,13 @@ const ComplianceTabContent: React.FC<Props> = ({ isActive }) => {
         description="Manage contract compliance, insurance coverage, and security requirements."
         robots="noindex, nofollow"
       />
-      
-      <ComplianceSecurityTab 
+
+      <ComplianceSecurityTab
         isLoading={isLoading}
         data={complianceData?.data}
         basePath={basePath}
+        currency={currency}
+        actionsDisabled={actionsDisabled}
       />
     </TabsContent>
   );

@@ -21,16 +21,22 @@ import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X } from "lucide-react";
 import { useWatch } from "react-hook-form";
-import { toIdStringOrUndefined, toPersonnelOrUndefined } from "@/lib/contractFormValues";
+import { useUser } from "@/store/authSlice";
+import { getExchangeRate } from "@/lib/currencyUtils";
+import {
+  toIdStringOrUndefined,
+  toPersonnelOrUndefined,
+  toFileMetaOrUndefined,
+} from "@/lib/contractFormValues";
 import Step1BasicInfo from "../components/Step1BasicInfo";
 import Step2ContractTeam from "../components/Step2ContractTeam";
 import Step3Timeline from "../components/Step3Timeline";
 import Step4Deliverables from "../components/Step4Deliverables";
 import Step5ValuePayments from "../components/Step5ValuePayments";
 import Step6ComplianceSecurity from "../components/Step6ComplianceSecurity";
+import Step4Form from "@/pages/SolicitationManagementPage/components/Step4Form";
 import Step8ApprovalLevel from "../components/Step8ApprovalLevel";
 import Step9ReviewPublish from "../components/Step9ReviewPublish";
-import Step4Form from "@/pages/SolicitationManagementPage/components/Step4Form";
 
 type Props = {
   trigger: React.ReactNode;
@@ -39,6 +45,7 @@ type Props = {
 const schema = yup.object({
   name: yup.string().required("MSA name is required"),
   type: yup.string().required("MSA type is required"),
+  currency: yup.string().required("Currency is required"),
   manager: yup.string().optional(),
   projectManager: yup.string().optional(),
   jobTitle: yup.string().optional(),
@@ -128,6 +135,7 @@ export type CreateMsaFormData = yup.InferType<typeof schema>;
 const defaultValues: CreateMsaFormData = {
   name: "",
   type: "",
+  currency: "CAD",
   manager: "",
   projectManager: "",
   jobTitle: "",
@@ -201,6 +209,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
   const qc = useQueryClient();
   const toast = useToastHandler();
+  const currentUser = useUser();
   const msaQueryKeyPrefix = useUserQueryKey(["msa"]);
 
   const typesQuery = useQuery({
@@ -232,9 +241,12 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
 
   const validateStep = async (currentStep: number) => {
     if (currentStep === 1) {
-      const ok = await formTrigger(["name", "type", "rating"] as any, {
-        shouldFocus: true,
-      });
+      const ok = await formTrigger(
+        ["name", "type", "currency", "rating"] as any,
+        {
+          shouldFocus: true,
+        },
+      );
       return ok;
     }
     return true;
@@ -251,7 +263,10 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
   const termTypeOptions = React.useMemo(
     () =>
       Array.isArray(termTypesQuery.data?.data)
-        ? termTypesQuery.data!.data!.map((t) => ({ label: t.name, value: t._id }))
+        ? termTypesQuery.data!.data!.map((t) => ({
+            label: t.name,
+            value: t._id,
+          }))
         : [],
     [termTypesQuery.data],
   );
@@ -259,7 +274,10 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
   const paymentTermOptions = React.useMemo(
     () =>
       Array.isArray(paymentTermsQuery.data?.data)
-        ? paymentTermsQuery.data!.data!.map((t) => ({ label: t.name, value: t._id }))
+        ? paymentTermsQuery.data!.data!.map((t) => ({
+            label: t.name,
+            value: t._id,
+          }))
         : [],
     [paymentTermsQuery.data],
   );
@@ -270,7 +288,8 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
 
       const toNumberOrUndefined = (value: any) => {
         if (value === null || value === undefined) return undefined;
-        if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+        if (typeof value === "number")
+          return Number.isFinite(value) ? value : undefined;
         if (typeof value !== "string") return undefined;
         const cleaned = value.trim().replace(/[^0-9.]/g, "");
         if (!cleaned) return undefined;
@@ -280,13 +299,8 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
 
       const files =
         (data.documents ?? [])
-          .map((f: any) => ({
-            name: typeof f?.name === "string" ? f.name : undefined,
-            url: typeof f?.url === "string" ? f.url : undefined,
-            type: typeof f?.type === "string" ? f.type : undefined,
-            size: typeof f?.size === "number" ? f.size : toNumberOrUndefined(f?.size),
-          }))
-          .filter((f) => Boolean(f?.name && f?.url && f?.type)) ?? [];
+          .map((f: any) => toFileMetaOrUndefined(f))
+          .filter(Boolean) ?? [];
 
       const paymentStructure =
         data.paymentStructure === "milestone"
@@ -302,30 +316,41 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
             .filter((d) => d?.name)
             .map((d) => ({
               name: d.name,
-              dueDate: d.dueDate ? format(d.dueDate, "yyyy-MM-dd'T'HH:mm:ss'Z'") : undefined,
+              dueDate: d.dueDate
+                ? format(d.dueDate, "yyyy-MM-dd'T'HH:mm:ss'Z'")
+                : undefined,
             }))
         : undefined;
 
       const milestone =
         data.paymentStructure === "milestone" && Array.isArray(data.milestones)
           ? data.milestones
-              .filter((m) => m?.name || m?.amount || m?.dueDate || m?.deliverable)
+              .filter(
+                (m) => m?.name || m?.amount || m?.dueDate || m?.deliverable,
+              )
               .map((m) => ({
-                amount: m.amount ? Number(String(m.amount).replace(/[^0-9.]/g, "")) : undefined,
-                dueDate: m.dueDate ? format(m.dueDate, "yyyy-MM-dd'T'HH:mm:ss'Z'") : undefined,
+                amount: m.amount
+                  ? Number(String(m.amount).replace(/[^0-9.]/g, ""))
+                  : undefined,
+                dueDate: m.dueDate
+                  ? format(m.dueDate, "yyyy-MM-dd'T'HH:mm:ss'Z'")
+                  : undefined,
                 name: m.name,
                 deliverable: m.deliverable
                   ? {
                       name: m.deliverable,
-                      dueDate:
-                        Array.isArray(data.deliverables)
-                          ? data.deliverables.find((d) => d.name === m.deliverable)?.dueDate
-                            ? format(
-                                data.deliverables.find((d) => d.name === m.deliverable)!.dueDate!,
-                                "yyyy-MM-dd'T'HH:mm:ss'Z'",
-                              )
-                            : undefined
-                          : undefined,
+                      dueDate: Array.isArray(data.deliverables)
+                        ? data.deliverables.find(
+                            (d) => d.name === m.deliverable,
+                          )?.dueDate
+                          ? format(
+                              data.deliverables.find(
+                                (d) => d.name === m.deliverable,
+                              )!.dueDate!,
+                              "yyyy-MM-dd'T'HH:mm:ss'Z'",
+                            )
+                          : undefined
+                        : undefined,
                     }
                   : undefined,
               }))
@@ -343,7 +368,8 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
             .filter(Boolean)
         : undefined;
 
-      const formatDate = (d: any) => (d ? format(d, "yyyy-MM-dd'T'HH:mm:ss") : undefined);
+      const formatDate = (d: any) =>
+        d ? format(d, "yyyy-MM-dd'T'HH:mm:ss") : undefined;
 
       const contractSecurityType =
         data.contractSecurity === "yes"
@@ -355,11 +381,15 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
                       ...(toNumberOrUndefined(data.securityAmount) !== undefined
                         ? { amount: toNumberOrUndefined(data.securityAmount) }
                         : {}),
-                      dueDate: data.securityDueDate ? formatDate(data.securityDueDate) : undefined,
+                      dueDate: data.securityDueDate
+                        ? formatDate(data.securityDueDate)
+                        : undefined,
                     },
                   ]
                 : []),
-              ...((Array.isArray(data.securities) ? data.securities : []) as any[])
+              ...(
+                (Array.isArray(data.securities) ? data.securities : []) as any[]
+              )
                 .map((s) => ({
                   securityType: s?.type,
                   ...(toNumberOrUndefined(s?.amount) !== undefined
@@ -367,18 +397,25 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
                     : {}),
                   dueDate: s?.dueDate ? formatDate(s.dueDate) : undefined,
                 }))
-                .filter((s) => s.securityType || s.amount !== undefined || s.dueDate),
+                .filter(
+                  (s) => s.securityType || s.amount !== undefined || s.dueDate,
+                ),
             ]
           : [];
 
       const insurancePayload = {
         insurance: data.contractSecurity === "yes" ? "Yes" : "No",
         contractSecurity: data.contractSecurity === "yes",
-        expiryDate: data.insuranceExpiryDate ? formatDate(data.insuranceExpiryDate) : undefined,
+        expiryDate: data.insuranceExpiryDate
+          ? formatDate(data.insuranceExpiryDate)
+          : undefined,
         contractSecurityType,
         policy: Array.isArray(data.insurancePolicies)
           ? (data.insurancePolicies ?? [])
-              .map((p) => ({ policyName: p?.name, limit: toNumberOrUndefined(p?.limit) }))
+              .map((p) => ({
+                policyName: p?.name,
+                limit: toNumberOrUndefined(p?.limit),
+              }))
               .filter((p) => p.policyName || p.limit)
           : undefined,
       };
@@ -402,30 +439,35 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
         },
       };
 
-       const approvers =
-        (data.approvalGroups ?? []).filter(item => item.name && item.approvers?.length).flatMap((g, i) => {
-          const lvl = g.approvalLevel ? Number(g.approvalLevel) : i + 1;
-          const amountValue = toNumberOrUndefined(g.amount);
-          // API expects user as array of strings
-          const userIds = (g.approvers ?? [])
-            .map((u: any) => u?.value ?? u)
-            .filter(Boolean);
-          return {
-            user: userIds,
-            groupName: g.name,
-            level: lvl,
-            amount: amountValue,
-          };
-        }) ?? [];
+      const approvers =
+        (data.approvalGroups ?? [])
+          .filter((item) => item.name && item.approvers?.length)
+          .flatMap((g, i) => {
+            const lvl = g.approvalLevel ? Number(g.approvalLevel) : i + 1;
+            const amountValue = toNumberOrUndefined(g.amount);
+            // API expects user as array of strings
+            const userIds = (g.approvers ?? [])
+              .map((u: any) => u?.value ?? u)
+              .filter(Boolean);
+            return {
+              user: userIds,
+              groupName: g.name,
+              level: lvl,
+              amount: amountValue,
+            };
+          }) ?? [];
 
       const payload = {
         title: data.name,
         msaType: data.type,
+        currency: data.currency,
         msaContractId: data.msaId || undefined,
         description: data.description,
         jobTitle: data.jobTitle,
+        projectManager: data.projectManager || undefined,
         vendor: (() => {
-          const vendorRaw = typeof data.vendor === "string" ? data.vendor.trim() : "";
+          const vendorRaw =
+            typeof data.vendor === "string" ? data.vendor.trim() : "";
           if (!vendorRaw) return undefined;
           const isObjectId = /^[a-f\\d]{24}$/i.test(vendorRaw);
           const isEmail = /.+@.+\\..+/.test(vendorRaw);
@@ -437,7 +479,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
         contractAmount: data.contractValue
           ? Number(String(data.contractValue).replace(/[^0-9.]/g, ""))
           : undefined,
-        contigency:
+        contingency:
           data.contingency === null || data.contingency === undefined
             ? undefined
             : typeof data.contingency === "string"
@@ -451,9 +493,13 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
             : toNumberOrUndefined(data.holdback),
         paymentStructure,
         paymentTerm: data.paymentTerm || undefined,
-        startDate: data.effectiveDate ? formatDate(data.effectiveDate) : undefined,
+        startDate: data.effectiveDate
+          ? formatDate(data.effectiveDate)
+          : undefined,
         endDate: data.endDate ? formatDate(data.endDate) : undefined,
-        duration: data.duration ? Number(String(data.duration).replace(/[^0-9.]/g, "")) : undefined,
+        duration: data.duration
+          ? Number(String(data.duration).replace(/[^0-9.]/g, ""))
+          : undefined,
         termType: data.termType || undefined,
         deliverables,
         milestone,
@@ -463,7 +509,8 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
         insurance: insurancePayload,
         contractFormationStage,
         approvers,
-        signatories: signatories && signatories.length > 0 ? signatories : undefined,
+        signatories:
+          signatories && signatories.length > 0 ? signatories : undefined,
         status,
         files,
       };
@@ -484,23 +531,50 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
     },
     onSuccess: () => {
       toast.success("MSA created successfully", "Your MSA has been created.");
-      qc.refetchQueries({ queryKey: msaQueryKeyPrefix });
+      qc.invalidateQueries({ queryKey: msaQueryKeyPrefix });
       setOpen(false);
       setStep(1);
       reset(defaultValues);
-      qc.invalidateQueries({ queryKey: msaQueryKeyPrefix });
     },
     onError: (err: any) => {
       toast.error("Failed to create MSA", err);
     },
   });
 
-  const submitWithStatus = async (data: CreateMsaFormData, status: "draft" | "publish") => {
+  const submitWithStatus = async (
+    data: CreateMsaFormData,
+    status: "draft" | "publish",
+  ) => {
     if (!data.name || !data.type || !data.rating) {
-      toast.error("Missing required fields", "Please complete required fields before submitting.");
+      toast.error(
+        "Missing required fields",
+        "Please complete required fields before submitting.",
+      );
       return;
     }
     const payload = await buildPayload(data, status);
+    const baseCurrency = currentUser?.currency;
+    const selectedCurrency = (payload as any)?.currency;
+    if (
+      typeof baseCurrency === "string" &&
+      typeof selectedCurrency === "string" &&
+      baseCurrency &&
+      selectedCurrency &&
+      baseCurrency !== selectedCurrency
+    ) {
+      try {
+        (payload as any).currencyRate = await getExchangeRate(
+          baseCurrency,
+          selectedCurrency,
+        );
+      } catch (err) {
+        toast.error(
+          "Failed to create MSA",
+          err instanceof Error ? err.message : "Unable to fetch currency rate",
+        );
+        return;
+      }
+    }
     await createMutation.mutateAsync(payload);
   };
 
@@ -520,7 +594,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
       <DialogContent
         className={cn(
           "rounded-2xl p-6 gap-6 max-h-[90vh] overflow-y-auto",
-          step === 8 ? "sm:max-w-5xl" : "sm:max-w-[500px]",
+          step === 8 ? "sm:max-w-5xl" : "sm:max-w-[580px]",
         )}
       >
         <div className="flex items-start justify-between">
@@ -531,7 +605,9 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
           </DialogHeader>
         </div>
 
-        <p className="text-sm font-medium text-[#0F0F0F]">{STEP_TITLES[step - 1]}</p>
+        <p className="text-sm font-medium text-[#0F0F0F]">
+          {STEP_TITLES[step - 1]}
+        </p>
 
         <SendForApprovalDialog
           control={control}
@@ -542,7 +618,9 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
 
         <Forge
           control={control}
-          onSubmit={(data) => submitWithStatus(data as CreateMsaFormData, "publish")}
+          onSubmit={(data) =>
+            submitWithStatus(data as CreateMsaFormData, "publish")
+          }
           className="space-y-6"
           data-testid="create-msa-dialog"
         >
@@ -569,7 +647,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
             />
           )}
           {step === 6 && <Step6ComplianceSecurity control={control} />}
-          {step === 7 && <Step4Form control={control as any} documents={[]} />}
+          {step === 7 && <Step4Form control={control} documents={[]} />}
           {step === 8 && <Step8ApprovalLevel control={control} />}
           {step === 9 && <Step9ReviewPublish control={control} />}
 
@@ -635,6 +713,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
                   }}
                   className="h-12 px-10 rounded-xl"
                   disabled={createMutation.isPending}
+                  isLoading={createMutation.isPending}
                 >
                   {step === 9 ? "Publish" : "Continue"}
                 </Button>
@@ -672,10 +751,11 @@ const SendForApprovalDialog = React.memo(
         }[]
       | undefined;
 
-    const [selectedApprovalGroup, setSelectedApprovalGroup] = React.useState("");
-    const [assignedApproverIds, setAssignedApproverIds] = React.useState<string[]>(
-      [],
-    );
+    const [selectedApprovalGroup, setSelectedApprovalGroup] =
+      React.useState("");
+    const [assignedApproverIds, setAssignedApproverIds] = React.useState<
+      string[]
+    >([]);
 
     const approvalGroupOptions = React.useMemo(
       () =>
@@ -713,7 +793,9 @@ const SendForApprovalDialog = React.memo(
     const toggleApprover = React.useCallback(
       (approverId: string, checked: boolean) => {
         setAssignedApproverIds((prev) =>
-          checked ? [...prev, approverId] : prev.filter((id) => id !== approverId),
+          checked
+            ? [...prev, approverId]
+            : prev.filter((id) => id !== approverId),
         );
       },
       [],
@@ -760,7 +842,9 @@ const SendForApprovalDialog = React.memo(
                 <select
                   className="w-full h-12 border border-gray-300 rounded-lg px-4 pr-10 text-sm text-slate-700 focus:border-[#2A4467] focus:ring-[#2A4467]"
                   value={selectedApprovalGroup}
-                  onChange={(event) => setSelectedApprovalGroup(event.target.value)}
+                  onChange={(event) =>
+                    setSelectedApprovalGroup(event.target.value)
+                  }
                 >
                   <option value="">Select Group</option>
                   {approvalGroupOptions.map((option) => (
@@ -787,7 +871,10 @@ const SendForApprovalDialog = React.memo(
                 {selectedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
                   const name =
-                    approver?.text || approver?.name || approver?.label || "Unnamed";
+                    approver?.text ||
+                    approver?.name ||
+                    approver?.label ||
+                    "Unnamed";
                   const email = approver?.id || approver?.email || "";
                   const role = approver?.meta?.role
                     ? approver.meta.role
@@ -803,9 +890,13 @@ const SendForApprovalDialog = React.memo(
                         <p className="text-sm font-semibold text-slate-700">
                           {name}
                         </p>
-                        {email && <p className="text-xs text-blue-600 ">{email}</p>}
+                        {email && (
+                          <p className="text-xs text-blue-600 ">{email}</p>
+                        )}
                       </div>
-                      <p className="text-sm text-slate-600 text-center">{role}</p>
+                      <p className="text-sm text-slate-600 text-center">
+                        {role}
+                      </p>
                       <div className="flex items-center justify-center gap-2">
                         <Checkbox
                           checked={assignedApproverIds.includes(approverId)}
@@ -822,7 +913,9 @@ const SendForApprovalDialog = React.memo(
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-900">Assigned Approvers</p>
+              <p className="text-sm font-medium text-slate-900">
+                Assigned Approvers
+              </p>
               <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-slate-50 px-4 py-4">
                 {assignedApprovers.length === 0 && (
                   <p className="text-sm text-slate-500">Search</p>
@@ -830,7 +923,10 @@ const SendForApprovalDialog = React.memo(
                 {assignedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
                   const name =
-                    approver?.text || approver?.name || approver?.label || "Unnamed";
+                    approver?.text ||
+                    approver?.name ||
+                    approver?.label ||
+                    "Unnamed";
                   return (
                     <div
                       key={approverId}

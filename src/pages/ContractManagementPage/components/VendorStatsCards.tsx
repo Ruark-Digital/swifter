@@ -9,6 +9,7 @@ type StatProps = {
   tone: "gray" | "green" | "red";
   testId: string;
   className?: string;
+  onClick?: () => void;
 };
 
 const toneClasses: Record<StatProps["tone"], { wrap: string; icon: string }> = {
@@ -17,10 +18,14 @@ const toneClasses: Record<StatProps["tone"], { wrap: string; icon: string }> = {
   red: { wrap: "bg-red-50", icon: "text-red-500" },
 };
 
-const StatCard: React.FC<StatProps> = ({ title, value, tone, testId, className }) => {
+const StatCard: React.FC<StatProps> = ({ title, value, tone, testId, className, onClick }) => {
   const c = toneClasses[tone];
   return (
-    <Card data-testid={testId} className={cn("border-slate-200", className)}>
+    <Card
+      data-testid={testId}
+      className={cn("border-slate-200", onClick ? "cursor-pointer hover:border-[#2A4467] transition-colors" : "", className)}
+      onClick={onClick}
+    >
       <CardContent className="p-6 flex items-center justify-between">
         <div className="space-y-1">
           <p className="text-sm text-slate-600">{title}</p>
@@ -47,7 +52,12 @@ type VendorCounts = {
   terminated: number | string;
 };
 
-const VendorStatsCards: React.FC<{ counts?: Partial<VendorCounts> }> = ({ counts }) => {
+type VendorStatsCardsProps = {
+  counts?: Partial<VendorCounts>;
+  onStatusClick?: (status: string) => void;
+};
+
+const VendorStatsCards: React.FC<VendorStatsCardsProps> = ({ counts, onStatusClick }) => {
   const c = {
     all: counts?.all ?? 0,
     active: counts?.active ?? 0,
@@ -63,24 +73,28 @@ const VendorStatsCards: React.FC<{ counts?: Partial<VendorCounts> }> = ({ counts
         value={c.all}
         tone="gray"
         testId="vendor-contracts-stats-all"
+        onClick={() => onStatusClick?.("all")}
       />
       <StatCard
         title="Active Contracts"
         value={c.active}
         tone="green"
         testId="vendor-contracts-stats-active"
+        onClick={() => onStatusClick?.("active")}
       />
       <StatCard
         title="Suspended"
         value={c.suspended}
         tone="red"
         testId="vendor-contracts-stats-suspended"
+        onClick={() => onStatusClick?.("suspended")}
       />
       <StatCard
         title="Closed"
         value={c.closed}
         tone="red"
         testId="vendor-contracts-stats-closed"
+        onClick={() => onStatusClick?.("closed")}
       />
       <StatCard
         title="Terminated"
@@ -88,6 +102,7 @@ const VendorStatsCards: React.FC<{ counts?: Partial<VendorCounts> }> = ({ counts
         tone="red"
         testId="vendor-contracts-stats-terminated"
         className="lg:col-start-1"
+        onClick={() => onStatusClick?.("terminated")}
       />
     </div>
   );

@@ -30,7 +30,10 @@ import {
   getFileIcon,
   getSimpleFileExtension,
 } from "@/lib/fileUtils";
-import { shouldShowChangeDecisionActions } from "../lib/contractChanges";
+import {
+  getManagerApproveChangeUrl,
+  shouldShowChangeDecisionActions,
+} from "../lib/contractChanges";
 import { formatDate } from "date-fns";
 import Spinner from "@/components/ui/Spinner";
 
@@ -74,8 +77,9 @@ const ChangeDetailsSheet: React.FC<Props> = ({
 }) => {
   const toast = useToastHandler();
   const qc = useQueryClient();
-  const { isManager, isApprover, isVendor, isAdmin, isViewOnly } =
+  const { isManager, isApprover, isVendor, isProjectManager, isAdmin, isViewOnly } =
     useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const [internalOpen, setInternalOpen] = React.useState(false);
 
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -85,10 +89,10 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     if (basePath) return basePath;
     if (isManager) return "/contract/manager/contracts";
     if (isApprover) return "/contract/approver/contracts";
-    if (isVendor) return "/contract/vendor/contracts";
+    if (isContractVendorLike) return "/contract/vendor/contracts";
     if (isAdmin || isViewOnly) return "/contract/user/contracts";
     return "/contract/user/contracts";
-  }, [basePath, isManager, isApprover, isVendor, isAdmin, isViewOnly]);
+  }, [basePath, isManager, isApprover, isContractVendorLike, isAdmin, isViewOnly]);
 
   const isClaim = roleBasePath.includes("/claim");
 
@@ -160,9 +164,11 @@ const ChangeDetailsSheet: React.FC<Props> = ({
           "Change approve endpoint is not available for this role.",
         );
       }
-      const url = usesListBasePath
-        ? `${roleBasePath}/${changeId}/approve`
-        : `${roleBasePath}/changes/${changeId}/approve`;
+      const url = getManagerApproveChangeUrl({
+        roleBasePath,
+        contractId,
+        changeId,
+      });
       return await postRequest({
         url,
         payload: { action, comment: "" },
@@ -227,18 +233,20 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   );
 
   const canLoadComments =
-    open && !!contractId && !!changeId && (isManager || isApprover);
+    open && !!contractId && !!changeId && (isManager || isApprover || isContractVendorLike);
 
   const { data: commentsRes, isLoading: isCommentsLoading } = useQuery({
     queryKey: commentsQueryKey,
     queryFn: async () => {
-      const url = roleBasePath.includes("/manager/")
-        ? usesListBasePath
-          ? `${roleBasePath}/${contractId}/changes/${changeId}/comments`
-          : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
-        : usesListBasePath
-          ? `${roleBasePath}/${changeId}/comment`
-          : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
+      const url = roleBasePath.includes("/vendor/")
+        ? `/vendor/contracts/${contractId}/changes/${changeId}/comment`
+        : roleBasePath.includes("/manager/")
+          ? usesListBasePath
+            ? `${roleBasePath}/${changeId}/comments`
+            : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
+          : usesListBasePath
+            ? `${roleBasePath}/${changeId}/comment`
+            : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
       const res = await getRequest({ url });
       return (res as any)?.data;
     },
@@ -254,13 +262,15 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     mutationFn: async (content: string) => {
       if (!content.trim()) return;
       const payload = { content };
-      const url = roleBasePath.includes("/manager/")
-        ? usesListBasePath
-          ? `${roleBasePath}/${contractId}/changes/${changeId}/comments`
-          : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
-        : usesListBasePath
-          ? `${roleBasePath}/${changeId}/comment`
-          : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
+      const url = roleBasePath.includes("/vendor/")
+        ? `/vendor/contracts/${contractId}/changes/${changeId}/comment`
+        : roleBasePath.includes("/manager/")
+          ? usesListBasePath
+            ? `${roleBasePath}/${changeId}/comments`
+            : `${roleBasePath}/${contractId}/changes/${changeId}/comments`
+          : usesListBasePath
+            ? `${roleBasePath}/${changeId}/comment`
+            : `${roleBasePath}/${contractId}/change/${changeId}/comment`;
       await postRequest({ url, payload });
     },
     onSuccess: () => {

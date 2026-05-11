@@ -1,7 +1,9 @@
 import { test, expect, Page } from "@playwright/test";
 
-async function seedAuth(page: Page, role: "vendor") {
-  await page.addInitScript((roleName) => {
+type SeedRole = "vendor" | "project_manager";
+
+async function seedAuth(page: Page, role: SeedRole) {
+  await page.addInitScript((roleName: SeedRole) => {
     const auth = {
       state: {
         user: {
@@ -11,6 +13,9 @@ async function seedAuth(page: Page, role: "vendor") {
           role: { _id: "role-1", name: roleName, __v: 0 },
           companyId: { name: "Test Co", _id: "company-1" },
           status: "active",
+          ...(roleName === "project_manager"
+            ? { projectmanagerId: "pm-1" }
+            : {}),
         },
         token: "test-token",
         refresh: null,
@@ -26,12 +31,12 @@ test.describe("Vendor Contract Detail", () => {
     await seedAuth(page, "vendor");
 
     // Mock vendor API
-    await page.route("**/vendor/contract/c1", async (route) => {
+    await page.route("**/contract/vendor/contracts/c1", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          status: true,
+          status: 200,
           message: "ok",
           data: {
             _id: "c1",
@@ -75,6 +80,140 @@ test.describe("Vendor Contract Detail", () => {
     
     // Check Project Name is hidden (since I hid it for vendor)
     await expect(page.getByText("Project Name")).toBeHidden();
+  });
+
+  test("disables Create Report while contract is pending approval (vendor)", async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    await seedAuth(page, "vendor");
+
+    await page.route("**/api/v1/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: 200, message: "ok", data: [] }),
+      });
+    });
+
+    await page.route("**/contract/vendor/contracts/c1", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: {
+            _id: "c1",
+            title: "Vendor Contract",
+            contractId: "CON-V-1",
+            status: "pending_approval",
+          },
+        }),
+      });
+    });
+
+    await page.route("**/contract/vendor/contracts/c1/reports**", async (route) => {
+      const url = route.request().url();
+      if (url.includes("/stats")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ status: 200, message: "ok", data: { total: 0 } }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: { reports: [], total: 0 },
+        }),
+      });
+    });
+
+    await page.goto("/dashboard/contract-management/c1", {
+      waitUntil: "domcontentloaded",
+    });
+
+    await expect(page.getByText("Pending Approval").first()).toBeVisible();
+
+    const reportsTab = page.getByRole("tab", { name: "Vendor’s Reports" });
+    await expect(reportsTab).toBeVisible();
+    await reportsTab.click({ timeout: 60000 });
+
+    const createReportButton = page.getByRole("button", { name: "Create Report" });
+    await expect(createReportButton).toBeVisible();
+    await expect(createReportButton).toBeDisabled();
+  });
+
+  test("disables Create Report while contract is pending approval (project manager)", async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    await seedAuth(page, "project_manager");
+
+    await page.route("**/api/v1/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: 200, message: "ok", data: [] }),
+      });
+    });
+
+    await page.route("**/contract/vendor/contracts/c1", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: {
+            _id: "c1",
+            title: "Vendor Contract",
+            contractId: "CON-V-1",
+            status: "pending_approval",
+          },
+        }),
+      });
+    });
+
+    await page.route("**/contract/vendor/contracts/c1/reports**", async (route) => {
+      const url = route.request().url();
+      if (url.includes("/stats")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ status: 200, message: "ok", data: { total: 0 } }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: { reports: [], total: 0 },
+        }),
+      });
+    });
+
+    await page.goto("/dashboard/contract-management/c1", {
+      waitUntil: "domcontentloaded",
+    });
+
+    await expect(page.getByText("Pending Approval").first()).toBeVisible();
+
+    const reportsTab = page.getByRole("tab", { name: "Vendor’s Reports" });
+    await expect(reportsTab).toBeVisible();
+    await reportsTab.click({ timeout: 60000 });
+
+    const createReportButton = page.getByRole("button", { name: "Create Report" });
+    await expect(createReportButton).toBeVisible();
+    await expect(createReportButton).toBeDisabled();
   });
 
   test("invoice create dialog shows correct description placeholder", async ({
@@ -146,6 +285,69 @@ test.describe("Vendor Contract Detail", () => {
     await expect(page.getByPlaceholder("Duration")).toHaveCount(0);
   });
 
+  test("hides Create Invoice while contract is pending approval (vendor)", async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    await seedAuth(page, "vendor");
+
+    await page.route("**/api/v1/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: 200, message: "ok", data: [] }),
+      });
+    });
+
+    await page.route("**/contract/vendor/contracts/c1", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: {
+            _id: "c1",
+            title: "Vendor Contract",
+            contractId: "CON-V-1",
+            status: "pending_approval",
+          },
+        }),
+      });
+    });
+
+    await page.route("**/contract/vendor/contracts/c1/invoice**", async (route) => {
+      const url = route.request().url();
+      if (url.includes("/stats")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            message: "ok",
+            data: { approved: 0, pending: 0, rejected: 0, draft: 0 },
+          }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          message: "ok",
+          data: { invoices: [], total: 0 },
+        }),
+      });
+    });
+
+    await page.goto("/dashboard/contract-management/c1");
+
+    const invoiceTab = page.getByRole("tab", { name: "Invoice" });
+    await expect(invoiceTab).toBeVisible();
+    await invoiceTab.click();
+
+    await expect(page.getByRole("button", { name: "Create Invoice" })).toBeHidden();
+  });
+
   test("deliverables default to Pending when status is missing and not submitted", async ({
     page,
   }) => {
@@ -213,5 +415,72 @@ test.describe("Vendor Contract Detail", () => {
 
     await expect(page.getByRole("cell", { name: "Pending" }).first()).toBeVisible();
     await expect(page.getByText("Under Review")).toHaveCount(0);
+  });
+
+  test("deliverables render KPI text, map under_review status, and search does not crash", async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    await seedAuth(page, "vendor");
+
+    const errors: string[] = [];
+    page.on("pageerror", (err) => errors.push(err.message));
+    page.on("console", (msg) => {
+      if (msg.type() === "error") errors.push(msg.text());
+    });
+
+    await page.route("**/api/v1/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: 200, message: "ok", data: [] }),
+      });
+    });
+
+    await page.route("**/contract/vendor/contracts/c1/deliverables/stats", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          message: "ok",
+          data: { total: 1, submitted: 0, pending: 1, late: 0 },
+        }),
+      });
+    });
+
+    await page.route("**/contract/vendor/contracts/c1/deliverables", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          message: "ok",
+          data: [
+            {
+              deliverableId: "d1",
+              title: "Deliverable 1",
+              date: "2025-01-10",
+              submissionStatus: "pending",
+              status: "under_review",
+              kpi: {
+                kpi: 3,
+                kpiDays: 3,
+                kpiText: "3 days early",
+                kpiStatus: "early",
+              },
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.goto("/dashboard/contract-management/c1");
+    await page.getByRole("tab", { name: "Deliverables" }).click();
+
+    await expect(page.getByRole("cell", { name: "3 days early" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "Under Review" }).first()).toBeVisible();
+
+    await page.getByPlaceholder("Search").fill("3 days");
+    await expect(page.locator('[data-testid="deliverables-table"]')).toBeVisible();
+    expect(errors).toEqual([]);
   });
 });

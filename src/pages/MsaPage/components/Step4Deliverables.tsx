@@ -4,10 +4,12 @@ import { Forger, useFieldArray } from "@/lib/forge";
 import { TextInput, TextDatePicker } from "@/components/layouts/FormInputs";
 import { Control } from "react-hook-form";
 import { CreateMsaFormData } from "../layouts/CreateMSADialog";
+import { startOfDay } from "date-fns";
 
 type Props = { control: Control<CreateMsaFormData> };
 
 const Step4Deliverables: React.FC<Props> = ({ control }) => {
+  const today = React.useMemo(() => startOfDay(new Date()), []);
   const { fields, append, remove } = useFieldArray({
     control,
     name: "deliverables",
@@ -32,6 +34,7 @@ const Step4Deliverables: React.FC<Props> = ({ control }) => {
               name={`deliverables.${index}.dueDate`}
               label="Due Date"
               component={TextDatePicker}
+              minDate={today}
             />
             {index > 0 && (
               <button

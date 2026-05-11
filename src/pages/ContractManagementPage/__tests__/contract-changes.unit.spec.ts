@@ -30,14 +30,14 @@ test.describe("contractChanges helpers (unit)", () => {
     expect(
       toManagerCreateChangePayload({
         changeName: "Title",
-        changeType: "order",
+        changeType: "proposal",
         urgency: "high",
         description: "Desc",
       })
     ).toEqual({
       title: "Title",
       description: "Desc",
-      type: "order",
+      type: "proposal",
       urgency: "high",
     });
 
@@ -102,7 +102,7 @@ test.describe("contractChanges helpers (unit)", () => {
 
   test("restricts create-change type options by role", async () => {
     expect(getCreateChangeTypeOptionsForRole({ isManager: true, isVendor: false })).toEqual([
-      { value: "order", label: "Change Order" },
+      { value: "proposal", label: "Change Proposal" },
       { value: "directive", label: "Change Directive" },
     ]);
 

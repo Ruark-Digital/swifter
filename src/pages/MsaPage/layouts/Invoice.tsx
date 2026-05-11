@@ -77,7 +77,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
   statsQueryKey,
   invoicesQueryKey,
 }) => {
-  const { isApprover } = useUserRole();
+  const { isApprover, isManager } = useUserRole();
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
@@ -113,9 +113,15 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
 
   const approveInvoiceMutation = useMutation({
     mutationFn: async (status: NonNullable<ApprovalActionDTO["action"]>) => {
-      const payload: ApprovalActionDTO = { action: status };
+      const comment = status === "approved"
+        ? "Invoice approved via bulk action"
+        : "Invoice rejected via bulk action";
+      const payload: ApprovalActionDTO = { action: status, comment };
+      const approvePath = isManager
+        ? `/contract/manager/msa-contracts/${contractId}/invoice/${invoiceId}/approve`
+        : `${basePath}/${invoiceId}/approve`;
       const res = await postRequest({
-        url: `${basePath}/${invoiceId}/approve`,
+        url: approvePath,
         payload,
       });
       return res.data;
@@ -157,6 +163,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
   const canApprove = Boolean(
     approveStatusRes && (approveStatusRes.data?.status ?? approveStatusRes.status),
   );
+  const canManagerAct = isManager && invoice?.status === "pending";
 
   const statusLabel =
     invoice?.status === "approved"
@@ -332,6 +339,24 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
                 {approveInvoiceMutation.isPending ? "Processing..." : "Approve"}
               </Button>
             </div>
+          ) : canManagerAct ? (
+            <div className="flex gap-3 pt-6">
+              <Button
+                variant="outline"
+                className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                disabled={approveInvoiceMutation.isPending}
+                onClick={() => approveInvoiceMutation.mutate("rejected")}
+              >
+                {approveInvoiceMutation.isPending ? "Processing..." : "Reject"}
+              </Button>
+              <Button
+                className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
+                disabled={approveInvoiceMutation.isPending}
+                onClick={() => approveInvoiceMutation.mutate("approved")}
+              >
+                {approveInvoiceMutation.isPending ? "Processing..." : "Approve"}
+              </Button>
+            </div>
           ) : null}
         </div>
       </SheetContent>
@@ -354,6 +379,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
 const statusTone = (status?: string) => {
   const normalized = status?.toLowerCase();
   if (normalized === "approved") return "bg-[#EAF7EE] text-[#43A047]";
+  if (normalized === "active") return "bg-[#E6F0FF] text-[#2563EB]";
   if (normalized === "pending") return "bg-[#FFF8E1] text-[#F4B400]";
   if (normalized === "rejected") return "bg-[#FEECEC] text-[#E53935]";
   if (normalized === "draft") return "bg-slate-100 text-slate-700";
@@ -367,7 +393,8 @@ const formatCurrency = (value?: number) => {
 };
 
 const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
-  const { isManager, isApprover, isVendor, isAdmin, isViewOnly } = useUserRole();
+  const { isManager, isApprover, isVendor, isProjectManager, isAdmin, isViewOnly } =
+    useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ stats?: unknown; list?: unknown }>({});
@@ -376,10 +403,19 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
   const basePath = React.useMemo(() => {
     if (isManager || isAdmin) return `/contract/manager/msa-contract/${contractId}/invoice`;
     if (isApprover) return `/contract/approver/msa-contract/${contractId}/invoice`;
-    if (isVendor) return `/contract/vendor/msa-contract/${contractId}/invoice`;
+    if (isVendor || isProjectManager)
+      return `/contract/vendor/msa-contract/${contractId}/invoice`;
     if (isViewOnly) return `/contract/user/msa-contract/${contractId}/invoice`;
     return `/contract/user/msa-contract/${contractId}/invoice`;
-  }, [contractId, isAdmin, isApprover, isManager, isVendor, isViewOnly]);
+  }, [
+    contractId,
+    isAdmin,
+    isApprover,
+    isManager,
+    isVendor,
+    isProjectManager,
+    isViewOnly,
+  ]);
 
   const statsPath = `${basePath}/stats`;
   const statsQueryKey = useUserQueryKey(["msa-invoices-stats", contractId, statsPath]);
@@ -552,7 +588,7 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
         <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
           Invoice
         </h3>
-        {isVendor && (
+        {(isVendor || isProjectManager) && (
           <CreateInvoiceDialog
             contractId={contractId}
             createPath={basePath}
@@ -587,7 +623,7 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search changes"
+                placeholder="Search invoices"
                 className="h-12 rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
               />
             </div>

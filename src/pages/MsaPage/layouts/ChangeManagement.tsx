@@ -57,7 +57,8 @@ const ChangeManagement: React.FC<Props> = ({
   isActive,
   actionsDisabled,
 }) => {
-  const { isManager, isApprover, isAdmin, isViewOnly, isVendor } = useUserRole();
+  const { isManager, isApprover, isAdmin, isViewOnly, isVendor, isProjectManager } =
+    useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ stats?: unknown; list?: unknown }>({});
@@ -67,16 +68,21 @@ const ChangeManagement: React.FC<Props> = ({
   const rolePrefix = React.useMemo(() => {
     if (isManager || isAdmin) return `/contract/manager/msa-contract/${contractId}`;
     if (isApprover) return `/contract/approver/msa-contract/${contractId}`;
-    if (isVendor) return `/contract/user/msa-contract/${contractId}`;
+    if (isVendor || isProjectManager)
+      return `/contract/vendor/msa-contract/${contractId}`;
     if (isViewOnly) return `/contract/user/msa-contract/${contractId}`;
     return `/contract/user/msa-contract/${contractId}`;
-  }, [contractId, isAdmin, isApprover, isManager, isVendor, isViewOnly]);
+  }, [
+    contractId,
+    isAdmin,
+    isApprover,
+    isManager,
+    isVendor,
+    isProjectManager,
+    isViewOnly,
+  ]);
 
-  const listBasePath = React.useMemo(
-    () =>
-      isManager || isAdmin ? `${rolePrefix}/changes` : `${rolePrefix}/change`,
-    [isAdmin, isManager, rolePrefix],
-  );
+  const listBasePath = React.useMemo(() => `${rolePrefix}/changes`, [rolePrefix]);
 
   const statsQueryKey = useUserQueryKey([
     "msaChanges",
@@ -246,7 +252,7 @@ const ChangeManagement: React.FC<Props> = ({
   );
 
   const stats = statsRes?.data;
-  const canCreateChange = isManager || isAdmin;
+  const canCreateChange = isManager || isAdmin || isProjectManager || isVendor;
 
   return (
     <MainTabsContent value="change" className="space-y-8">
@@ -273,7 +279,7 @@ const ChangeManagement: React.FC<Props> = ({
                 </Button>
               }
               contractId={contractId}
-              isManager
+              isManager={isManager || isAdmin}
               documentType="MsaContract"
             />
           )}

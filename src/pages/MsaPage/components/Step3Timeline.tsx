@@ -9,7 +9,7 @@ import { useForgeValues } from "@/lib/forge";
 import { CreateMsaFormData } from "../layouts/CreateMSADialog";
 import { useWatch } from "react-hook-form";
 import { formatDateTZ } from "@/lib/utils";
-import { differenceInCalendarDays } from "date-fns";
+import { differenceInCalendarDays, startOfDay } from "date-fns";
 
 type Props = {
   termTypeOptions?: Array<{ label: string; value: string }>;
@@ -22,6 +22,11 @@ const Step3Timeline: React.FC<Props> = ({
   isLoadingTermTypes,
   control,
 }) => {
+  const today = React.useMemo(() => startOfDay(new Date()), []);
+  const clampMinDate = React.useCallback(
+    (d?: Date) => (d && d > today ? d : today),
+    [today],
+  );
   const { setValue } = useForgeValues({ control });
   const endDate = useWatch({ control, name: "endDate" });
   const effectiveDate = useWatch({ control, name: "effectiveDate" });
@@ -58,6 +63,7 @@ const Step3Timeline: React.FC<Props> = ({
             placeholder="Select contract effective date"
             component={TextDatePicker}
             showTime
+            minDate={today}
           />
           <p className="text-xs font-semibold text-[#2A4467]">
             Could be in the past, present or future.
@@ -70,7 +76,7 @@ const Step3Timeline: React.FC<Props> = ({
             placeholder="Select end date"
             component={TextDatePicker}
             showTime
-            minDate={effectiveDate}
+            minDate={clampMinDate(effectiveDate)}
           />
         </div>
       </div>
@@ -113,6 +119,7 @@ const Step3Timeline: React.FC<Props> = ({
               label="Start Date"
               placeholder="Select start date"
               component={TextDatePicker}
+              minDate={today}
               maxDate={effectiveDate}
             />
             <Forger
@@ -120,7 +127,7 @@ const Step3Timeline: React.FC<Props> = ({
               label="End Date"
               placeholder="Select end date"
               component={TextDatePicker}
-              minDate={draftStartDate}
+              minDate={clampMinDate(draftStartDate)}
               maxDate={effectiveDate}
             />
           </div>
@@ -134,7 +141,7 @@ const Step3Timeline: React.FC<Props> = ({
               label="Start Date"
               placeholder="Select start date"
               component={TextDatePicker}
-              minDate={draftEndDate || draftStartDate}
+              minDate={clampMinDate(draftEndDate || draftStartDate)}
               maxDate={effectiveDate}
             />
             <Forger
@@ -142,7 +149,7 @@ const Step3Timeline: React.FC<Props> = ({
               label="End Date"
               placeholder="Select end date"
               component={TextDatePicker}
-              minDate={reviewStartDate}
+              minDate={clampMinDate(reviewStartDate)}
               maxDate={effectiveDate}
             />
           </div>
@@ -156,7 +163,7 @@ const Step3Timeline: React.FC<Props> = ({
               label="Start Date"
               placeholder="Select start date"
               component={TextDatePicker}
-              minDate={reviewEndDate || reviewStartDate}
+              minDate={clampMinDate(reviewEndDate || reviewStartDate)}
               maxDate={effectiveDate}
             />
             <Forger
@@ -164,7 +171,7 @@ const Step3Timeline: React.FC<Props> = ({
               label="End Date"
               placeholder="Select end date"
               component={TextDatePicker}
-              minDate={approvalStartDate}
+              minDate={clampMinDate(approvalStartDate)}
               maxDate={effectiveDate}
             />
           </div>
@@ -178,7 +185,7 @@ const Step3Timeline: React.FC<Props> = ({
               label="Start Date"
               placeholder="Select start date"
               component={TextDatePicker}
-              minDate={approvalEndDate || approvalStartDate}
+              minDate={clampMinDate(approvalEndDate || approvalStartDate)}
               maxDate={effectiveDate}
             />
             <Forger
@@ -186,7 +193,7 @@ const Step3Timeline: React.FC<Props> = ({
               label="End Date"
               placeholder="Select end date"
               component={TextDatePicker}
-              minDate={executionStartDate}
+              minDate={clampMinDate(executionStartDate)}
               maxDate={effectiveDate}
             />
           </div>

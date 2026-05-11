@@ -37,6 +37,13 @@ import { DocumentItem, type DocType } from "./DocumentItem";
 import { getFileExtension } from "@/lib/fileUtils";
 import { cn } from "@/lib/utils";
 
+const formatDateValue = (value: unknown) => {
+  if (!value) return "—";
+  const d = value instanceof Date ? value : new Date(value as any);
+  if (Number.isNaN(d.getTime())) return "—";
+  return formatDate(d, "yyyy-MMM-dd");
+};
+
 export type LemRow = {
   id: string;
   title: string;
@@ -71,7 +78,8 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   lemId,
   basePath,
 }) => {
-  const { isVendor } = useUserRole();
+  const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } =
+    useUserRole();
   const { data: lemDetail, isLoading: detailLoading } = useQuery({
     queryKey: ["lem-detail", contractId, lemId, basePath],
     queryFn: async () => {
@@ -96,6 +104,21 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
     a.click();
     window.document.body.removeChild(a);
   };
+
+  const canApproveOrReject =
+    (isApprover || isManager) &&
+    !isAdmin &&
+    !isViewOnly &&
+    !isVendor &&
+    !isProjectManager;
+  const statusRaw =
+    typeof (lemDetail as any)?.status === "string" ? (lemDetail as any).status : "";
+  const statusNormalized = statusRaw.toLowerCase();
+  const isPending =
+    statusNormalized === "pending" ||
+    statusNormalized === "pending_approval" ||
+    statusNormalized === "pending approval";
+  const showApprovalActions = canApproveOrReject && isPending;
 
 
   return (
@@ -194,9 +217,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   <LabelRow
                     label="Submission Date"
                     value={
-                      lemDetail?.createdAt
-                        ? formatDate(lemDetail.createdAt, "yyyy-MMM-dd")
-                        : "—"
+                      detailLoading ? "Loading..." : formatDateValue(lemDetail?.createdAt)
                     }
                   />
                 </div>
@@ -242,7 +263,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
             </Tabs>
           </div>
 
-          {(!isVendor && lemDetail?.approverStatus === "pending") && (
+          {showApprovalActions && (
             <div className="flex gap-3 pt-6">
               <Dialog>
                 <DialogTrigger asChild>
@@ -320,7 +341,7 @@ const createColumns = (
     header: "Submission Date",
     cell: ({ getValue }) => (
       <span className="text-sm text-slate-700">
-        {formatDate(getValue<string>(), "yyyy-MMM-dd")}
+        {formatDateValue(getValue<string>())}
       </span>
     ),
   },
@@ -467,7 +488,7 @@ const RejectLemForm: React.FC<{
         payload: { action: "rejected", comment: data.comment },
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["lems", contractId] });
+      queryClient.invalidateQueries({ queryKey: ["lem-list", contractId] });
       queryClient.invalidateQueries({
         queryKey: ["lem-detail", contractId, lemId],
       });
@@ -542,7 +563,7 @@ const ApproveLemForm: React.FC<{
         payload: { action: "approved", comment: data.note },
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["lems", contractId] });
+      queryClient.invalidateQueries({ queryKey: ["lem-list", contractId] });
       queryClient.invalidateQueries({
         queryKey: ["lem-detail", contractId, lemId],
       });

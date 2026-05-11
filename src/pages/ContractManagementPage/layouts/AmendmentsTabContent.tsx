@@ -17,7 +17,6 @@ import AmendmentsTable, {
   type AmendmentRow,
 } from "../components/AmendmentsTable";
 import { useQuery } from "@tanstack/react-query";
-import { parseFileSize } from "@/lib/utils";
 import {
   type ContractAmendmentDTO,
   type ContractAmendmentStatsDTO,
@@ -57,7 +56,7 @@ type ContractAmendmentFile = {
   name: string;
   url: string;
   type: string;
-  size: number;
+  size: string;
 };
 
 type CreateAmendmentPayload = {
@@ -197,7 +196,7 @@ export const CreateAmendmentDialog: React.FC<{
               name: firstUploaded.name || file.name,
               url: firstUploaded.url,
               type: firstUploaded.type || file.type,
-              size: parseFileSize(firstUploaded.size) || file.size,
+              size: firstUploaded.size ?? "",
             };
           }),
         );
@@ -236,7 +235,7 @@ export const CreateAmendmentDialog: React.FC<{
     }
     if (data.impactType === "others") {
       if (data.scopeEnabled && data.scope) {
-        changes.push({ field: "scope", value: String(data.scope) });
+        changes.push({ field: "others", value: String(data.scope) });
       }
       if (data.expiryEnabled && data.newExpiryDate) {
         changes.push({
@@ -693,6 +692,7 @@ export const CreateAmendmentDialog: React.FC<{
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
 };

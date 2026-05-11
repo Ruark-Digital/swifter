@@ -1,5 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
+import type { PaginationState } from "@tanstack/react-table";
 import { SEOWrapper } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ type ContractApi = {
   contractId: string;
   title: string;
   category?: string;
+  contractRelationship?: string;
   status:
     | "draft"
     | "pending_approval"
@@ -39,6 +41,7 @@ type ContractApi = {
   createdAt?: string;
   vendor?: { name?: string; id?: string };
   creator?: { name?: string; email?: string; _id?: string };
+  projectManager?: { name?: string };
   contractValue?: number;
 };
 
@@ -62,7 +65,7 @@ type ContractStatsResponse = {
 type ContractListResponse = {
   status: number;
   message: string;
-  data: { contracts: ContractApi[]; totalContracts: 0 };
+  data: { contracts: ContractApi[]; totalContracts: number };
 };
 
 type ApproverContractListResponse = {
@@ -78,6 +81,7 @@ type VendorContractApi = {
   id: string;
   title: string;
   contractId: string;
+  contractRelationship?: "standalone" | "project" | "msa_project" | "msa";
   contractValue?: number;
   status:
     | "active"
@@ -92,7 +96,29 @@ type VendorContractApi = {
   startDate?: string;
   endDate?: string;
   createdAt?: string;
+  company?: string | { name?: string };
   vendor?: { name?: string };
+};
+
+const mapContractRelationshipLabel = (
+  relationship?: "standalone" | "project" | "msa_project" | "msa",
+): string => {
+  if (relationship === "standalone") return "Stand-Alone Project";
+  if (relationship === "project") return "Link to Project";
+  if (relationship === "msa_project" || relationship === "msa") {
+    return "Link to MSA";
+  }
+  return "-";
+};
+
+const mapCompanyLabel = (
+  company?: string | { name?: string },
+  vendor?: { name?: string },
+): string => {
+  if (typeof company === "string" && company.trim()) return company;
+  if (company && typeof company === "object" && company.name) return company.name;
+  if (vendor?.name) return vendor.name;
+  return "-";
 };
 
 type VendorStatsResponse = {
@@ -129,12 +155,24 @@ const useContractsStats = (enabled = true) => {
   });
 };
 
-const useAllContracts = (enabled = true) => {
-  const queryKey = useUserQueryKey(["contracts-all"]);
+const useAllContracts = (pagination: PaginationState, enabled = true) => {
+  const queryKey = useUserQueryKey([
+    "contracts-all",
+    pagination.pageIndex,
+    pagination.pageSize,
+  ]);
   return useQuery<ContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
-      const res = await getRequest({ url: "/contract/manager/contracts" });
+      const res = await getRequest({
+        url: "/contract/manager/contracts",
+        config: {
+          params: {
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+          },
+        },
+      });
       return res.data as ContractListResponse;
     },
     enabled,
@@ -142,12 +180,24 @@ const useAllContracts = (enabled = true) => {
   });
 };
 
-const useMyContracts = (enabled = true) => {
-  const queryKey = useUserQueryKey(["contracts-me"]);
+const useMyContracts = (pagination: PaginationState, enabled = true) => {
+  const queryKey = useUserQueryKey([
+    "contracts-me",
+    pagination.pageIndex,
+    pagination.pageSize,
+  ]);
   return useQuery<ContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
-      const res = await getRequest({ url: "/contract/manager/contracts/me" });
+      const res = await getRequest({
+        url: "/contract/manager/contracts/me",
+        config: {
+          params: {
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+          },
+        },
+      });
       return res.data as ContractListResponse;
     },
     enabled,
@@ -170,12 +220,24 @@ const useApproverContractsStats = (enabled = true) => {
   });
 };
 
-const useApproverContracts = (enabled = true) => {
-  const queryKey = useUserQueryKey(["approver-contracts"]);
+const useApproverContracts = (pagination: PaginationState, enabled = true) => {
+  const queryKey = useUserQueryKey([
+    "approver-contracts",
+    pagination.pageIndex,
+    pagination.pageSize,
+  ]);
   return useQuery<ApproverContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
-      const res = await getRequest({ url: "/contract/approver/contracts" });
+      const res = await getRequest({
+        url: "/contract/approver/contracts",
+        config: {
+          params: {
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+          },
+        },
+      });
       return res.data as ApproverContractListResponse;
     },
     enabled,
@@ -196,12 +258,24 @@ const useVendorContractsStats = (enabled = true) => {
   });
 };
 
-const useVendorContracts = (enabled = true) => {
-  const queryKey = useUserQueryKey(["vendor-contracts"]);
+const useVendorContracts = (pagination: PaginationState, enabled = true) => {
+  const queryKey = useUserQueryKey([
+    "vendor-contracts",
+    pagination.pageIndex,
+    pagination.pageSize,
+  ]);
   return useQuery<VendorContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
-      const res = await getRequest({ url: "/contract/vendor/contracts" });
+      const res = await getRequest({
+        url: "/contract/vendor/contracts",
+        config: {
+          params: {
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+          },
+        },
+      });
       return res.data as VendorContractListResponse;
     },
     enabled,
@@ -237,7 +311,7 @@ const mapContractsToRows = (contracts?: ContractApi[]): ContractRow[] => {
       contractId: c.contractId,
       title: c.title,
       code: c._id,
-      vendor: c.vendor?.name ?? "-",
+      vendor: c.projectManager?.name ?? c.vendor?.name ?? "-",
       value: `$${value}`,
       owner: c.creator?.name ?? "-",
       published: c.createdAt
@@ -278,8 +352,8 @@ const mapVendorContractsToRows = (
       contractId: c.contractId,
       title: c.title,
       code: c.contractId,
-      company: c.vendor?.name ?? "-",
-      contractRelationship: "-",
+      company: mapCompanyLabel(c.company, c.vendor),
+      contractRelationship: mapContractRelationshipLabel(c.contractRelationship),
       value,
       published: c.createdAt
         ? formatDate(c.createdAt, "dd MMM yyyy")
@@ -297,19 +371,40 @@ const ContractManagementPage: React.FC = () => {
   const managerQueriesEnabled = !isContractVendorLike && !isApprover;
   const approverQueriesEnabled = isApprover;
 
+  const [allPagination, setAllPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [myPagination, setMyPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [approverPagination, setApproverPagination] =
+    React.useState<PaginationState>({
+      pageIndex: 0,
+      pageSize: 10,
+    });
+  const [vendorPagination, setVendorPagination] =
+    React.useState<PaginationState>({
+      pageIndex: 0,
+      pageSize: 10,
+    });
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
+
   const { data: statsData } = useContractsStats(managerQueriesEnabled);
   const { data: allContractsData, isLoading: isAllContractsLoading } =
-    useAllContracts(managerQueriesEnabled);
+    useAllContracts(allPagination, managerQueriesEnabled);
   const { data: myContractsData, isLoading: isMyContractsLoading } =
-    useMyContracts(managerQueriesEnabled);
+    useMyContracts(myPagination, managerQueriesEnabled);
   const { data: approverStatsData } = useApproverContractsStats(
     approverQueriesEnabled,
   );
   const { data: approverContractsData, isLoading: isApproverContractsLoading } =
-    useApproverContracts(approverQueriesEnabled);
-  const { data: vendorStatsData } = useVendorContractsStats(isContractVendorLike);
+    useApproverContracts(approverPagination, approverQueriesEnabled);
+  const { data: vendorStatsData } =
+    useVendorContractsStats(isContractVendorLike);
   const { data: vendorContractsData, isLoading: isVendorContractsLoading } =
-    useVendorContracts(isContractVendorLike);
+    useVendorContracts(vendorPagination, isContractVendorLike);
 
   const stats = isApprover ? approverStatsData?.data : statsData?.data;
   const statsCounts = stats
@@ -358,6 +453,7 @@ const ContractManagementPage: React.FC = () => {
           </div>
 
           <VendorStatsCards
+            onStatusClick={(status) => setStatusFilter(status)}
             counts={
               vendorStatsData?.data
                 ? {
@@ -379,6 +475,10 @@ const ContractManagementPage: React.FC = () => {
             isLoading={isVendorContractsLoading}
             totalCount={vendorContractsData?.data.totalContracts}
             isReadOnly={isViewOnly}
+            pagination={vendorPagination}
+            setPagination={setVendorPagination}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
           />
         </>
       ) : (
@@ -415,13 +515,20 @@ const ContractManagementPage: React.FC = () => {
             </div>
           </div>
 
-          <StatsCards counts={statsCounts} />
+          <StatsCards
+            counts={statsCounts}
+            onStatusClick={(status) => setStatusFilter(status)}
+          />
 
           {isApprover ? (
             <ContractsTable
               rows={approverContractsRows}
               isLoading={isApproverContractsLoading}
               totalCount={approverContractsData?.data.totalContracts}
+              pagination={approverPagination}
+              setPagination={setApproverPagination}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
               // isReadOnly={true}
               // disableActions={isApprover}
             />
@@ -429,6 +536,7 @@ const ContractManagementPage: React.FC = () => {
             <Tabs
               defaultValue="all"
               className="w-full bg-transparent space-y-4"
+              onValueChange={() => setStatusFilter("all")}
             >
               <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
                 <TabsTrigger
@@ -449,8 +557,12 @@ const ContractManagementPage: React.FC = () => {
                 <ContractsTable
                   rows={allContractsRows}
                   isLoading={isAllContractsLoading}
-                  totalCount={allContractsRows.length}
+                  totalCount={allContractsData?.data.totalContracts}
                   isReadOnly={isViewOnly}
+                  pagination={allPagination}
+                  setPagination={setAllPagination}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
                   // disableActions={isCompanyAdmin}
                 />
               </TabsContent>
@@ -458,8 +570,12 @@ const ContractManagementPage: React.FC = () => {
                 <ContractsTable
                   rows={myContractsRows}
                   isLoading={isMyContractsLoading}
-                  totalCount={myContractsRows.length}
+                  totalCount={myContractsData?.data.totalContracts}
                   isReadOnly={isViewOnly}
+                  pagination={myPagination}
+                  setPagination={setMyPagination}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
                   // disableActions={isCompanyAdmin}
                 />
               </TabsContent>

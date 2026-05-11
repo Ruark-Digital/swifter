@@ -19,6 +19,7 @@ import type {
 } from "@/pages/ContractManagementPage/api/contractManagerApi";
 import ClaimsStatsCards from "@/pages/ContractManagementPage/components/ClaimsStatsCards";
 import RequestClaimDialog from "@/pages/ContractManagementPage/components/RequestClaimDialog";
+import MSAClaimDetailsSheet from "@/pages/MsaPage/components/MSAClaimDetailsSheet";
 
 type Props = {
   contractId: string;
@@ -46,43 +47,72 @@ const formatDate = (value?: string) => {
 const formatImpact = (item: ContractClaimDTO) => {
   const hasTime = typeof item.time === "number" && Number.isFinite(item.time);
   const hasCost = typeof item.cost === "number" && Number.isFinite(item.cost);
-  if (hasTime && hasCost) return `$${(item.cost || 0) / 1000000}M + ${item.time} days`;
+  if (hasTime && hasCost)
+    return `$${(item.cost || 0) / 1000000}M + ${item.time} days`;
   if (hasTime) return `${item.time} days`;
   if (hasCost) return `$${(item.cost || 0) / 1000000}M`;
   return "-";
 };
 
 const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
-  const { isManager, isApprover, isVendor, isAdmin, isViewOnly } = useUserRole();
+  const {
+    isManager,
+    isApprover,
+    isVendor,
+    isProjectManager,
+    isAdmin,
+    isViewOnly,
+  } = useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ stats?: unknown; claims?: unknown }>({});
   const [search, setSearch] = React.useState("");
 
   const basePath = React.useMemo(() => {
-    if (isManager || isAdmin) return `/contract/manager/msa-contract/${contractId}`;
+    if (isManager || isAdmin)
+      return `/contract/manager/msa-contract/${contractId}`;
     if (isApprover) return `/contract/approver/msa-contract/${contractId}`;
-    if (isVendor) return `/contract/vendor/msa-contract/${contractId}`;
+    if (isVendor || isProjectManager)
+      return `/contract/vendor/msa-contract/${contractId}`;
     if (isViewOnly) return `/contract/user/msa-contract/${contractId}`;
     return `/contract/user/msa-contract/${contractId}`;
-  }, [contractId, isAdmin, isApprover, isManager, isVendor, isViewOnly]);
+  }, [
+    contractId,
+    isAdmin,
+    isApprover,
+    isManager,
+    isVendor,
+    isProjectManager,
+    isViewOnly,
+  ]);
 
   const claimsPath = React.useMemo(
-    () =>
-      isManager || isAdmin ? `${basePath}/claims` : `${basePath}/claim`,
+    () => (isManager || isAdmin ? `${basePath}/claims` : `${basePath}/claim`),
     [basePath, isAdmin, isManager],
   );
   const statsPath = `${claimsPath}/stats`;
 
   const createPath = React.useMemo(() => {
-    if (isVendor) return `${basePath}/claim`;
+    if (isVendor || isProjectManager) return `${basePath}/claim`;
     return undefined;
-  }, [basePath, isVendor]);
+  }, [basePath, isVendor, isProjectManager]);
 
-  const claimsQueryKey = useUserQueryKey(["msa-claims", contractId, claimsPath]);
-  const statsQueryKey = useUserQueryKey(["msa-claims-stats", contractId, statsPath]);
+  const claimsQueryKey = useUserQueryKey([
+    "msa-claims",
+    contractId,
+    claimsPath,
+  ]);
+  const statsQueryKey = useUserQueryKey([
+    "msa-claims-stats",
+    contractId,
+    statsPath,
+  ]);
 
-  const { data: statsRes, isLoading: isStatsLoading, error: statsError } = useQuery({
+  const {
+    data: statsRes,
+    isLoading: isStatsLoading,
+    error: statsError,
+  } = useQuery({
     queryKey: statsQueryKey,
     queryFn: async () => {
       const response = await getRequest({ url: statsPath });
@@ -93,7 +123,11 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
     retry: false,
   });
 
-  const { data: claimsRes, isLoading: isClaimsLoading, error: claimsError } = useQuery({
+  const {
+    data: claimsRes,
+    isLoading: isClaimsLoading,
+    error: claimsError,
+  } = useQuery({
     queryKey: claimsQueryKey,
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -167,7 +201,9 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
         id: "impact",
         header: "Impact",
         cell: ({ row }) => (
-          <span className="font-semibold text-slate-900">{formatImpact(row.original)}</span>
+          <span className="font-semibold text-slate-900">
+            {formatImpact(row.original)}
+          </span>
         ),
       },
       {
@@ -201,13 +237,19 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
       {
         id: "actions",
         header: "Actions",
-        cell: () => (
-          <Button
-            variant="link"
-            className="h-auto p-0 font-semibold text-[#43A047] hover:no-underline"
+        cell: ({ row }) => (
+          <MSAClaimDetailsSheet
+            claimId={row.original.claimId}
+            contractId={contractId}
+            roleBasePath={claimsPath}
           >
-            View
-          </Button>
+            <Button
+              variant="link"
+              className="h-auto p-0 font-semibold text-[#43A047] hover:no-underline"
+            >
+              View
+            </Button>
+          </MSAClaimDetailsSheet>
         ),
       },
     ],
@@ -270,7 +312,8 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
           </div>
         )}
         classNames={{
-          container: "overflow-hidden rounded-xl border border-[#E5E7EB] bg-white",
+          container:
+            "overflow-hidden rounded-xl border border-[#E5E7EB] bg-white",
           table: "border-spacing-y-0",
           tHeader: "bg-[#F9FAFB]",
           tHeadRow: "border-b border-[#E5E7EB]",
@@ -280,7 +323,9 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
           tCell: "px-6 py-4 text-sm text-slate-700 align-top",
         }}
         emptyPlaceholder={
-          <div className="px-6 py-8 text-sm text-slate-500">No claims found.</div>
+          <div className="px-6 py-8 text-sm text-slate-500">
+            No claims found.
+          </div>
         }
       />
     </TabsContent>

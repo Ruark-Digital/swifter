@@ -6,7 +6,7 @@ import { useFormContext, useWatch } from "react-hook-form";
 import { Forge, Forger, useForge } from "@/lib/forge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { TextArea, TextCurrencyInput, TextFileUploader, TextSelect } from "@/components/layouts/FormInputs";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { postRequest } from "@/lib/axiosInstance";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
@@ -16,6 +16,7 @@ import { formatFileSize, getSimpleFileExtension } from "@/lib/fileUtils";
 import  Spinner from "@/components/ui/Spinner";
 
 type ReleaseHoldbackFormValues = {
+  invoiceId: string;
   releaseType: string;
   amountToBeReleased: string;
   description: string;
@@ -23,6 +24,7 @@ type ReleaseHoldbackFormValues = {
 };
 
 const schema = yup.object({
+  invoiceId: yup.string().trim().required("Invoice is required"),
   releaseType: yup
     .string()
     .oneOf(["Partial Release", "Full Release"], "Release Type is required")
@@ -93,6 +95,7 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
   const { control, reset, watch } = useForge<ReleaseHoldbackFormValues>({
     resolver: yupResolver(schema) as any,
     defaultValues: {
+      invoiceId: "",
       releaseType: "",
       amountToBeReleased: "",
       description: "",
@@ -101,6 +104,27 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
   });
 
   const releaseType = watch("releaseType");
+
+  const { data: invoicesResponse } = useQuery({
+    queryKey: ["holdbackInvoices", contractId],
+    queryFn: () => contractManagerApi.listInvoices(contractId, { page: 1, limit: 50 }),
+    enabled: open && Boolean(contractId),
+    staleTime: 60000,
+    retry: false,
+  });
+
+  const invoiceOptions = React.useMemo(() => {
+    const invoices = invoicesResponse?.data?.invoices ?? [];
+    return invoices
+      .map((inv: any) => {
+        const value = inv?._id ?? "";
+        const labelSeed = inv?.invoiceId ?? inv?._id ?? "";
+        if (!value || !labelSeed) return null;
+        const label = inv?.title ? `${labelSeed} — ${inv.title}` : `${labelSeed}`;
+        return { label, value };
+      })
+      .filter(Boolean) as { label: string; value: string }[];
+  }, [invoicesResponse?.data?.invoices]);
 
   const { mutateAsync: uploadFile } = useMutation<
     ApiResponse<UploadURLs[]>,
@@ -152,7 +176,7 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
         name: string;
         url: string;
         type: string;
-        size: number;
+        size: string;
       }[] = [];
 
       if (data.files && data.files.length > 0) {
@@ -166,7 +190,7 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
                 name: data.files![index].name,
                 url: res.data?.data?.[0].url,
                 type: getSimpleFileExtension(data.files![index].name).toUpperCase(),
-                size: data.files![index].size,
+                size: res.data?.data?.[0].size ?? "",
               };
             }
             return null;
@@ -175,6 +199,7 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
       }
 
       const payload = {
+        invoiceId: data.invoiceId,
         type: data.releaseType === "Full Release" ? "full" : "partial",
         amount: data.releaseType === "Full Release" ? 0 : Number(data.amountToBeReleased),
         description: data.description,
@@ -220,6 +245,14 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
                 { label: "Partial Release", value: "Partial Release" },
                 { label: "Full Release", value: "Full Release" },
               ]}
+            />
+
+            <Forger
+              name="invoiceId"
+              label="Invoice"
+              component={TextSelect}
+              placeholder="Select Invoice"
+              options={invoiceOptions}
             />
 
             {!isFullRelease && (

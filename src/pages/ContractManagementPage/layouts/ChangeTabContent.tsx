@@ -66,6 +66,7 @@ export interface Manager {
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
 };
@@ -85,11 +86,11 @@ const ChangeTabContent: React.FC<Props> = ({
   });
 
   const getBasePath = () => {
-    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/change`;
-    if (isApprover) return `/contract/approver/contracts/${contractId}/change`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/changes`;
+    if (isApprover) return `/contract/approver/contracts/${contractId}/changes`;
     if (isManager) return `/contract/manager/contracts/${contractId}/changes`;
-    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/change`;
-    return `/contract/user/contracts/${contractId}/change`; // Default fallback
+    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/changes`;
+    return `/contract/user/contracts/${contractId}/changes`; // Default fallback
   };
 
   const basePath = getBasePath();

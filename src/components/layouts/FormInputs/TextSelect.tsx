@@ -16,9 +16,12 @@ export type TextSelectProps = {
   error?: string;
   options: { label: string; value: string; disabled?: boolean }[];
   placeholder?: string;
-  onChange?: ((value: string) => void) | ((event: { target: { name: string; value: string } }) => void);
+  onChange?:
+    | ((value: string) => void)
+    | ((event: { target: { name: string; value: string } }) => void);
   value?: string;
   control?: any;
+  "data-testid"?: string;
 };
 
 export type TextMultiSelectProps = {
@@ -26,9 +29,16 @@ export type TextMultiSelectProps = {
   label?: string | JSX.Element;
   containerClass?: string;
   error?: string;
-  options: { label: string; value: string; searchText?: string; fieldMap?: Record<string, string> }[];
+  options: {
+    label: string;
+    value: string;
+    searchText?: string;
+    fieldMap?: Record<string, string>;
+  }[];
   placeholder?: string;
-  onChange?: ((value: Option[]) => void) | ((event: { target: { name: string; value: Option[] } }) => void);
+  onChange?:
+    | ((value: Option[]) => void)
+    | ((event: { target: { name: string; value: Option[] } }) => void);
   value?: Option[];
   control?: any;
   maxCount?: number;
@@ -40,10 +50,12 @@ export type TextMultiSelectProps = {
   enableMultiTermFilter?: boolean;
   multiTermOperator?: "AND" | "OR";
   searchFieldsPriority?: string[];
-}
+};
 
 // Forge-compatible TextSelect component
-export const TextSelect = (props: TextSelectProps & Partial<ForgerSlotProps>) => {
+export const TextSelect = (
+  props: TextSelectProps & Partial<ForgerSlotProps>,
+) => {
   const {
     label,
     containerClass,
@@ -54,17 +66,22 @@ export const TextSelect = (props: TextSelectProps & Partial<ForgerSlotProps>) =>
     value,
     onChange,
     onBlur,
+    "data-testid": dataTestId,
     ...selectProps
   } = props;
 
   const handleValueChange = (selectedValue: string) => {
     if (onChange) {
       // For Forge compatibility
-      if (typeof onChange === 'function') {
+      if (typeof onChange === "function") {
         onChange(selectedValue);
       } else {
         // For react-hook-form compatibility
-        (onChange as (event: { target: { name: string; value: string } }) => void)({ target: { name: name ?? "", value: selectedValue } });
+        (
+          onChange as (event: {
+            target: { name: string; value: string };
+          }) => void
+        )({ target: { name: name ?? "", value: selectedValue } });
       }
     }
   };
@@ -86,7 +103,8 @@ export const TextSelect = (props: TextSelectProps & Partial<ForgerSlotProps>) =>
         name={name}
         {...selectProps}
       >
-        <SelectTrigger 
+        <SelectTrigger
+          data-testid={dataTestId}
           className={`w-full !h-12 border border-gray-300 rounded-lg px-4 focus:border-[#2A4467] focus:ring-[#2A4467] text-gray-900 dark:!text-gray-200 ${
             error ? "border-red-500" : ""
           }`}
@@ -98,27 +116,35 @@ export const TextSelect = (props: TextSelectProps & Partial<ForgerSlotProps>) =>
           />
         </SelectTrigger>
         <SelectContent className="max-h-60 dark:bg-gray-800 dark:border-gray-600">
-          {options?.filter(item => item.value !== "").map((item) => (
-            <SelectItem 
-              key={item.value} 
-              value={item.value} 
-              disabled={item.disabled}
-              className={`py-3 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700 ${
-                item.disabled ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              {item.label}
-            </SelectItem>
-          ))}
+          {options
+            ?.filter((item) => item.value !== "")
+            .map((item) => (
+              <SelectItem
+                key={item.value}
+                value={item.value}
+                disabled={item.disabled}
+                className={`py-3 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700 ${
+                  item.disabled ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                {item.label}
+              </SelectItem>
+            ))}
         </SelectContent>
       </Select>
-      {error && <span className="text-xs text-red-500 dark:text-red-400 mt-1">{error}</span>}
+      {error && (
+        <span className="text-xs text-red-500 dark:text-red-400 mt-1">
+          {error}
+        </span>
+      )}
     </div>
   );
 };
 
 // Forge-compatible TextMultiSelect component
-export const TextMultiSelect = (props: TextMultiSelectProps & Partial<ForgerSlotProps>) => {
+export const TextMultiSelect = (
+  props: TextMultiSelectProps & Partial<ForgerSlotProps>,
+) => {
   const {
     label,
     containerClass,
@@ -139,28 +165,31 @@ export const TextMultiSelect = (props: TextMultiSelectProps & Partial<ForgerSlot
     searchFieldsPriority,
     ...selectProps
   } = props;
-  
 
   const handleValueChange = (selectedOptions: Option[]) => {
     if (onChange) {
       // For Forge compatibility
-      if (typeof onChange === 'function') {
+      if (typeof onChange === "function") {
         onChange(selectedOptions);
       } else {
         // For react-hook-form compatibility
-        (onChange as (event: { target: { name: string; value: Option[] } }) => void)({
-          target: { name: name ?? "", value: selectedOptions }
+        (
+          onChange as (event: {
+            target: { name: string; value: Option[] };
+          }) => void
+        )({
+          target: { name: name ?? "", value: selectedOptions },
         });
       }
     }
   };
 
   // Convert options to Option format
-  const formattedOptions: Option[] = options.map(option => ({
+  const formattedOptions: Option[] = options.map((option) => ({
     label: option.label,
     value: option.value,
     searchText: option.searchText,
-    fieldMap: option.fieldMap
+    fieldMap: option.fieldMap,
   }));
 
   return (
@@ -182,7 +211,11 @@ export const TextMultiSelect = (props: TextMultiSelectProps & Partial<ForgerSlot
         maxCount={maxCount}
         hideClearAllButton={hideClearAllButton}
         hidePlaceholderWhenSelected={hidePlaceholderWhenSelected}
-        emptyIndicator={emptyIndicator || <p className="text-center text-sm">No results found</p>}
+        emptyIndicator={
+          emptyIndicator || (
+            <p className="text-center text-sm">No results found</p>
+          )
+        }
         creatable={creatable}
         createLabel={createLabel}
         enableMultiTermFilter={enableMultiTermFilter}
@@ -196,7 +229,11 @@ export const TextMultiSelect = (props: TextMultiSelectProps & Partial<ForgerSlot
         }}
         {...selectProps}
       />
-      {error && <span className="text-xs text-red-500 dark:text-red-400 mt-1">{error}</span>}
+      {error && (
+        <span className="text-xs text-red-500 dark:text-red-400 mt-1">
+          {error}
+        </span>
+      )}
     </div>
   );
 };

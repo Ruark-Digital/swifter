@@ -1,0 +1,33 @@
+User-agent: *
+Allow: /
+Allow: /privacy-policy
+Allow: /terms-conditions
+Allow: /disclaimer
+Allow: /contact-us
+
+# Disallow private dashboard pages for non-authenticated users
+Disallow: /dashboard/
+
+# Disallow admin and sensitive areas
+Disallow: /admin/
+Disallow: /api/
+Disallow: /*.json$
+Disallow: /*?*
+
+# Allow specific assets
+Allow: /assets/
+Allow: /src/assets/
+Allow: *.css
+Allow: *.js
+Allow: *.png
+Allow: *.jpg
+Allow: *.jpeg
+Allow: *.gif
+Allow: *.svg
+Allow: *.ico
+
+# Sitemap location
+Sitemap: https://swiftpro.com/sitemap.xml
+
+# Crawl delay (optional)
+Crawl-delay: 1

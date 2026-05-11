@@ -13,12 +13,14 @@ export type DocType = {
 
 export const DocumentItem = ({
   d,
+  contractId,
   canEdit,
   navigate,
   handlePreview,
   handleDownload,
 }: {
   d: DocType;
+  contractId?: string;
   canEdit?: boolean;
   navigate?: (path: string) => void;
   handlePreview?: (d: DocType) => void;
@@ -53,7 +55,7 @@ export const DocumentItem = ({
               title="Edit in Collaboration Tool"
               onClick={() =>
                 navigate?.(
-                  `/collaboration-tool?sourceUrl=${encodeURIComponent(d.url || "")}&fileName=${encodeURIComponent(d.name)}&fileType=${encodeURIComponent(d.type || "")}`,
+                  `/collaboration-tool?sourceUrl=${encodeURIComponent(d.url || "")}&fileName=${encodeURIComponent(d.name)}&fileType=${encodeURIComponent(d.type || "")}${contractId ? `&contractId=${encodeURIComponent(contractId)}` : ""}`,
                 )
               }
             >

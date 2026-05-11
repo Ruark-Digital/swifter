@@ -202,7 +202,7 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
         <div className="space-y-6" data-testid="approver-change-details-sheet">
           <SheetHeader>
             <div className="flex items-center justify-between">
-              <SheetTitle>Amendment Details</SheetTitle>
+              <SheetTitle>Change Details</SheetTitle>
               <Button variant="outline" size="sm">
                 <Share2 className="mr-2 h-4 w-4" /> Export
               </Button>
@@ -232,8 +232,8 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
             <TabsContent value="overview" className="space-y-4">
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <LabelRow label="Amendment Name" value={isDetailLoading ? "" : title} />
-                  <LabelRow label="Amendment ID" value={isDetailLoading ? "" : (detail?.changeId ?? "-")} />
+                  <LabelRow label="Change Name" value={isDetailLoading ? "" : title} />
+                  <LabelRow label="Change ID" value={isDetailLoading ? "" : (detail?.changeId ?? "-")} />
                 </div>
                 <div>
                   <LabelRow label="Impact Type" value={isDetailLoading ? "" : (changeTypeRaw ? changeTypeRaw.charAt(0).toUpperCase() + changeTypeRaw.slice(1) : "-")} />

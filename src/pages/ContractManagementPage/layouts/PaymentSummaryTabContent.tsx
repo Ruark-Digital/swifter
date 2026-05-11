@@ -28,9 +28,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
+import { getHoldbackStatusBadgeProps } from "../lib/holdbacks";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
-import  Spinner  from "@/components/ui/Spinner";
+import Spinner from "@/components/ui/Spinner";
 
 type HoldbackReleaseRow = {
   releaseId: string;
@@ -81,20 +82,13 @@ const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
     header: () => <div className="w-[120px] text-center">Status</div>,
     cell: ({ getValue }) => {
       const value = getValue<string>();
-      const normalized = value?.toLowerCase();
-      const styles =
-        normalized === "approved"
-          ? "bg-[#EAF7EE] text-[#16A34A]"
-          : normalized === "pending"
-            ? "bg-[#FEF9C3] text-[#CA8A04]"
-            : "bg-[#F3F4F6] text-[#6B7280]";
-      const label = value || "-";
+      const badge = getHoldbackStatusBadgeProps(value);
       return (
         <div className="flex w-[120px] justify-center py-4">
           <div
-            className={`inline-flex items-center justify-center rounded-full px-4 py-1 text-sm font-semibold ${styles}`}
+            className={`inline-flex items-center justify-center rounded-full px-4 py-1 text-sm font-semibold ${badge.className}`}
           >
-            {label}
+            {badge.label}
           </div>
         </div>
       );
@@ -116,7 +110,7 @@ const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
       // <div className="flex justify-center py-4">
       <HoldbackDetailsSheet
         holdBackId={row.getValue<string>("releaseId")}
-          currency={row.getValue<string>("currency")}
+        currency={row.getValue<string>("currency")}
         trigger={
           <button
             type="button"
@@ -198,7 +192,6 @@ const savingsRealizedColumns: ColumnDef<SavingsRealizedRow>[] = [
     ),
   },
 ];
-
 
 type UpdateSavingsFormValues = {
   title: string;
@@ -305,7 +298,7 @@ const UpdateSavingsDialog: React.FC<{
         name: string;
         url: string;
         type: string;
-        size: number;
+        size: string;
       }[] = [];
 
       if (data.files && data.files.length > 0) {
@@ -319,7 +312,7 @@ const UpdateSavingsDialog: React.FC<{
                 name: data.files![index].name,
                 url: res.data?.data?.[0].url,
                 type: getSimpleFileExtension(data.files![index].name).toUpperCase(),
-                size: data.files![index].size,
+                size: res.data?.data?.[0].size ?? "",
               };
             }
             return null;
@@ -338,7 +331,10 @@ const UpdateSavingsDialog: React.FC<{
       await createMutation.mutateAsync(payload);
     } catch (error) {
       console.error("Error submitting savings:", error);
-      toastHandler.error("Submission Failed", "An error occurred while submitting the form. Please try again.");
+      toastHandler.error(
+        "Submission Failed",
+        "An error occurred while submitting the form. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -552,17 +548,19 @@ const UpdateSavingsDialog: React.FC<{
 
 type Props = {
   contractId: string;
+  currency?: string;
   contract?: ContractDetail | null;
   isActive?: boolean;
 };
 
-const PaymentSummaryTabContent: React.FC<Props> = ({ 
+const PaymentSummaryTabContent: React.FC<Props> = ({
   contractId,
   contract,
   isActive,
 }) => {
   const { isVendor, isProjectManager, isManager, isApprover } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
+  const isPendingApproval = contract?.status === "pending_approval";
 
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
@@ -679,7 +677,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
 
   const holdbackRows = React.useMemo<HoldbackReleaseRow[]>(() => {
     const holdbacks = holdbacksResponse?.data ?? [];
-    
+
     return holdbacks.map((holdback) => ({
       releaseId: holdback.holdBackId ?? `-`,
       currency,
@@ -755,7 +753,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
             Export Report
           </button>
 
-          {isManager && (
+          {isManager && !isPendingApproval && (
             <div className="inline-flex items-start gap-6">
               <UpdateSavingsDialog
                 contractId={contractId}
@@ -794,68 +792,64 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
       <div className="space-y-6">
         <div className="grid grid-cols-3 gap-x-6 gap-y-6">
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-[18px] leading-7 text-[#6B6B6B]">
+            <div className="text-sm leading-7 text-[#6B6B6B]">
               Contract Value
             </div>
-            <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
               {contractValue}
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-[18px] leading-7 text-[#6B6B6B]">
-              Contigency
-            </div>
-            <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-sm leading-7 text-[#6B6B6B]">Contigency</div>
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
               {contigency}
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-[18px] leading-7 text-[#6B6B6B]">Holdback</div>
-            <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-sm leading-7 text-[#6B6B6B]">Holdback</div>
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
               {holdbackValue}
             </div>
           </div>
 
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-[18px] leading-7 text-[#6B6B6B]">
+            <div className="text-sm leading-7 text-[#6B6B6B]">
               Holdback Amount
             </div>
-            <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
               {holdbackAmount}
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-[18px] leading-7 text-[#6B6B6B]">
+            <div className="text-sm leading-7 text-[#6B6B6B]">
               Holdback Released
             </div>
-            <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
               {holdbackReleased}
             </div>
           </div>
           {isManager && (
             <div className="flex flex-col justify-center gap-4">
-              <div className="text-[18px] leading-7 text-[#6B6B6B]">
+              <div className="text-sm leading-7 text-[#6B6B6B]">
                 Savings Realized
               </div>
-              <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
+              <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
                 {savingAmount}
               </div>
             </div>
           )}
 
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-[18px] leading-7 text-[#6B6B6B]">
+            <div className="text-sm leading-7 text-[#6B6B6B]">
               Payment Structure
             </div>
-            <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
               {paymentStructure}
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-[18px] leading-7 text-[#6B6B6B]">
-              Payment Term
-            </div>
-            <div className="text-[18px] font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-sm leading-7 text-[#6B6B6B]">Payment Term</div>
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
               {paymentTerm}
             </div>
           </div>
@@ -924,11 +918,13 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
               row.dueDate,
             ]}
           />
-          {!holdbacksLoading && isContractVendorLike && holdbackRows.length === 0 && (
-            <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
-              No holdback releases available.
-            </div>
-          )}
+          {!holdbacksLoading &&
+            isContractVendorLike &&
+            holdbackRows.length === 0 && (
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+                No holdback releases available.
+              </div>
+            )}
         </TabsContent>
 
         {(isManager || isApprover) && (

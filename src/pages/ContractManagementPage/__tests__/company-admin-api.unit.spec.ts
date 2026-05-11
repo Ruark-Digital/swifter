@@ -24,7 +24,7 @@ test.describe("companyAdminApi (unit)", () => {
     await api.getContract("c-1", { config });
 
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/user/contract/c-1",
+      url: "/contract/manager/contracts/c-1",
       config,
     });
   });

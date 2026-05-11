@@ -1,10 +1,18 @@
 import React from "react";
 import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { SEOWrapper } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -18,7 +26,8 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUserRole } from "@/hooks/useUserRole";
-import { getRequest } from "@/lib/axiosInstance";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
+import { Textarea } from "@/components/ui/textarea";
 import Overview from "./layouts/Overview";
 import LinkedContracts from "./layouts/LinkedContracts";
 import PaymentSummary from "./layouts/PaymentSummary";
@@ -37,6 +46,8 @@ import Reports from "./layouts/Reports";
 import NcrLog from "./layouts/NcrLog";
 import { Share2 } from "lucide-react";
 import { Status } from "./components/StatusBadge";
+import { useUser } from "@/store/authSlice";
+import type { ApiResponseError } from "@/types";
 
 type TabKey =
   | "overview"
@@ -85,7 +96,6 @@ const ROLE_TAB_WHITELIST: Record<
 > = {
   approver: [
     "overview",
-    "compliance",
     "documents",
     "amendments",
     "lem",
@@ -134,7 +144,6 @@ const ROLE_TAB_WHITELIST: Record<
   ],
   "view only": [
     "overview",
-    "compliance",
     "documents",
     "amendments",
     "lem",
@@ -226,6 +235,7 @@ export interface MSAContractDetail {
   holdBackBank: number;
   paymentStructure: string;
   deliverables: string[];
+  assignContract?: Array<{ _id?: string; name?: string }>;
   insurance: string;
   startDate: Date;
   endDate: Date;
@@ -245,6 +255,7 @@ export interface MSAContractDetail {
   __v: number;
   holdBackReleased: number;
   savingAmount: number;
+  projectManager?: { status?: string; user?: { _id?: string } };
 }
 
 export interface Approver {
@@ -337,10 +348,24 @@ const MsaDetailPage: React.FC = () => {
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
-  const { isVendor, isApprover, isViewOnly, isManager } = useUserRole();
+  const {
+    isVendor,
+    isApprover,
+    isViewOnly,
+    isManager,
+    isProjectManager,
+    isCompanyAdmin,
+  } = useUserRole();
   const queryKey = useUserQueryKey(["msa-contract-detail", id]);
+  const approveStatusQueryKey = useUserQueryKey(["msa-approve-status", id]);
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = React.useState<TabKey>("overview");
   const [topTab, setTopTab] = React.useState<"details" | "linked">("details");
+  const [approvalDialogOpen, setApprovalDialogOpen] = React.useState(false);
+  const [approvalAction, setApprovalAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [comment, setComment] = React.useState("");
 
   const {
     data: msaResponse,
@@ -349,13 +374,14 @@ const MsaDetailPage: React.FC = () => {
   } = useQuery({
     queryKey,
     queryFn: async () => {
-      const base = isVendor
-        ? "/contract/vendor"
-        : isApprover
-          ? "/contract/approver"
-          : isViewOnly
-            ? "/contract/user"
-            : "/contract/manager";
+      const base =
+        isVendor || isProjectManager
+          ? "/contract/vendor"
+          : isApprover
+            ? "/contract/approver"
+            : isViewOnly
+              ? "/contract/user"
+              : "/contract/manager";
       return getRequest({ url: `${base}/msa-contract/${id ?? ""}` });
     },
     enabled: !!id,
@@ -379,7 +405,7 @@ const MsaDetailPage: React.FC = () => {
       return ALL_TABS.filter((t) =>
         ROLE_TAB_WHITELIST.approver.includes(t.key),
       );
-    if (isVendor)
+    if (isVendor || isProjectManager)
       return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.vendor.includes(t.key));
     if (isViewOnly)
       return ALL_TABS.filter((t) =>
@@ -388,7 +414,139 @@ const MsaDetailPage: React.FC = () => {
     if (isManager)
       return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
     return ALL_TABS;
-  }, [isApprover, isVendor, isViewOnly, isManager]);
+  }, [isApprover, isVendor, isProjectManager, isViewOnly, isManager]);
+
+  const msa = msaResponse?.data?.data as MSAContractDetail | undefined;
+
+  const canFetchLinkedContracts = (isManager || isCompanyAdmin) && Boolean(id);
+  const linkedContractsQueryKey = useUserQueryKey(["msa-linked-contract", id]);
+
+  const { data: linkedContractsResponse, isLoading: isLinkedContractsLoading } =
+    useQuery({
+      queryKey: linkedContractsQueryKey,
+      queryFn: async () => {
+        return getRequest({
+          url: `/contract/manager/msa-contract/${id ?? ""}/linked-contract`,
+        });
+      },
+      enabled:
+        canFetchLinkedContracts &&
+        (topTab === "linked" || activeTab === "deliverables"),
+      staleTime: 60_000,
+      retry: false,
+    });
+
+  const deliverablesContractId = React.useMemo(() => {
+    const assignedId = msa?.assignContract?.[0]?._id
+      ? String(msa.assignContract[0]._id)
+      : undefined;
+    if (assignedId) return assignedId;
+
+    const raw = (linkedContractsResponse?.data as any)?.data;
+    const linkedId = Array.isArray(raw) ? raw?.[0]?._id : raw?._id;
+    return linkedId ? String(linkedId) : undefined;
+  }, [linkedContractsResponse?.data, msa?.assignContract]);
+
+  const formatMoney = React.useCallback(
+    (value?: unknown, currency?: string) => {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return undefined;
+      try {
+        return new Intl.NumberFormat(undefined, {
+          style: "currency",
+          currency: currency ?? "USD",
+          maximumFractionDigits: 0,
+        }).format(num);
+      } catch {
+        return `$${num.toLocaleString()}`;
+      }
+    },
+    [],
+  );
+
+  const linkedContractRows = React.useMemo(() => {
+    const raw = (linkedContractsResponse?.data as any)?.data;
+    if (!raw) return [];
+
+    const items = Array.isArray(raw) ? raw : [raw];
+    return items.filter(Boolean).map((it: any) => ({
+      title: String(it?.title ?? "-"),
+      code: String(it?.contractId ?? "-"),
+      id: String(it?._id ?? ""),
+      company: String(it?.company?.name ?? "-"),
+      relationship: String(it?.contractRelationship ?? "-"),
+      value: formatMoney(it?.contractValue, it?.currency),
+      published: it?.datePublished ? formatDate(it.datePublished) : undefined,
+      endDate: it?.endDate ? formatDate(it.endDate) : undefined,
+      status: String(it?.status ?? "-"),
+    }));
+  }, [formatMoney, linkedContractsResponse?.data]);
+
+  const user = useUser();
+  const isMsaProjectManager = Boolean(
+    user?.projectmanagerId &&
+    msa?.projectManager?.user?._id === user.projectmanagerId,
+  );
+  const isMsaProjectManagerPending = msa?.projectManager?.status === "pending";
+  const canProjectManagerApprove =
+    isMsaProjectManager &&
+    isMsaProjectManagerPending &&
+    msa?.status === "pending_approval";
+
+  const { data: approveStatusResponse } = useQuery({
+    queryKey: [approveStatusQueryKey[0], msa?._id],
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `/contract/approver/msa-contract/${msa?._id ?? ""}/approve/status`,
+      });
+      return res.data as { data?: { status?: string } };
+    },
+    enabled:
+      Boolean(msa?._id) && isApprover && msa?.status === "pending_approval",
+    staleTime: 60000,
+    retry: false,
+  });
+
+  const canApprove = approveStatusResponse?.data?.status === "pending";
+  const hasApprovedOrRejected =
+    approveStatusResponse?.data?.status === "approved" ||
+    approveStatusResponse?.data?.status === "rejected";
+
+  const approvalMutation = useMutation({
+    mutationFn: async (action: "approved" | "rejected") => {
+      const payload = { action, comment };
+      const url = canProjectManagerApprove
+        ? `/contract/vendor/msa-contract/${msa?._id ?? ""}/approve`
+        : `/contract/approver/msa-contract/${msa?._id ?? ""}/approve`;
+      const res = await postRequest({ url, payload });
+      return res.data as { message?: string };
+    },
+    onSuccess: (res, action) => {
+      toastHandler.success(
+        `MSA ${action === "approved" ? "approved" : "rejected"} successfully`,
+        res?.message ?? "Success",
+      );
+      queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({
+        queryKey: [approveStatusQueryKey[0], msa?._id],
+      });
+      setApprovalDialogOpen(false);
+      setApprovalAction(null);
+      setComment("");
+    },
+    onError: (err: ApiResponseError) => {
+      toastHandler.error("Failed to update MSA status", err);
+    },
+  });
+
+  const handleApprovalAction = (action: "approved" | "rejected") => {
+    setApprovalAction(action);
+    setApprovalDialogOpen(true);
+  };
+
+  const submitApproval = () => {
+    if (approvalAction) approvalMutation.mutate(approvalAction);
+  };
 
   if (isLoading) {
     return (
@@ -415,8 +573,6 @@ const MsaDetailPage: React.FC = () => {
       </div>
     );
   }
-
-  const msa = msaResponse?.data?.data as MSAContractDetail | undefined;
 
   if (!msa) {
     return (
@@ -485,21 +641,41 @@ const MsaDetailPage: React.FC = () => {
         <Badge className={status?.className}>{status?.label}</Badge>
       </div>
 
+      {((isApprover && canApprove && !hasApprovedOrRejected) ||
+        canProjectManagerApprove) && (
+        <div className="flex items-center gap-4 ">
+          <Button
+            variant="default"
+            className="bg-[#2A4467] hover:bg-[#2A4467]/90"
+            onClick={() => handleApprovalAction("approved")}
+          >
+            Approve Contract
+          </Button>
+          <Button
+            variant="outline"
+            className="bg-[#F3F4F6] border-[#E5E7EB]"
+            onClick={() => handleApprovalAction("rejected")}
+          >
+            Reject Contract
+          </Button>
+        </div>
+      )}
+
       <Tabs
         value={topTab}
         onValueChange={(v) => setTopTab(v as "details" | "linked")}
         className="w-full space-y-4"
       >
-        <TabsList className="bg-transparent p-0 gap-2">
+        <TabsList className="gap-2 p-2 bg-gray-200 rounded-full dark:bg-gray-800">
           <TabsTrigger
             value="details"
-            className="rounded-full px-4 py-2 text-sm font-semibold border border-[#E5E7EB] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467]"
+            className="rounded-full px-4 py-4 text-sm font-semibold border border-[#E5E7EB] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467]"
           >
             MSA Details
           </TabsTrigger>
           <TabsTrigger
             value="linked"
-            className="rounded-full px-4 py-2 text-sm font-semibold border border-[#E5E7EB] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467]"
+            className="rounded-full px-4 py-4 text-sm font-semibold border border-[#E5E7EB] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467]"
           >
             Linked Contracts
           </TabsTrigger>
@@ -589,7 +765,7 @@ const MsaDetailPage: React.FC = () => {
             <Compliance
               contractId={id ?? ""}
               isActive={activeTab === "compliance"}
-              // contract={msa?.}
+              actionsDisabled={msa?.status === "pending_approval"}
             />
 
             <ChangeManagement
@@ -619,7 +795,7 @@ const MsaDetailPage: React.FC = () => {
             <NcrLog contractId={id ?? ""} isActive={activeTab === "ncr-log"} />
 
             <Deliverables
-              contractId={id ?? ""}
+              contractId={deliverablesContractId}
               isActive={activeTab === "deliverables"}
             />
 
@@ -631,7 +807,7 @@ const MsaDetailPage: React.FC = () => {
             />
 
             <Reports contractId={id ?? ""} isActive={activeTab === "reports"} />
-            
+
             <Kpi contractId={id ?? ""} isActive={activeTab === "kpi"} />
 
             <PaymentSummary
@@ -644,10 +820,61 @@ const MsaDetailPage: React.FC = () => {
 
         <TabsContent value="linked">
           <div className="pt-4">
-            <LinkedContracts rows={[]} />
+            <LinkedContracts
+              rows={linkedContractRows}
+              isLoading={isLinkedContractsLoading}
+            />
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {approvalAction === "approved"
+                ? "Approve Contract"
+                : "Reject Contract"}
+            </DialogTitle>
+            <DialogDescription>
+              {approvalAction === "approved"
+                ? "Are you sure you want to approve this contract? This action cannot be undone."
+                : "Please provide a reason for rejecting this contract."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <Textarea
+              placeholder="Add a comment (optional)"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              className="resize-none"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setApprovalDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={submitApproval}
+              disabled={approvalMutation.isPending}
+              variant={
+                approvalAction === "rejected" ? "destructive" : "default"
+              }
+            >
+              {approvalMutation.isPending
+                ? "Processing..."
+                : approvalAction === "approved"
+                  ? "Approve"
+                  : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

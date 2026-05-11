@@ -5,7 +5,7 @@ import { useForgeValues } from "@/lib/forge";
 import { CreateContractFormData } from "./CreateContractSheet";
 import { useWatch } from "react-hook-form";
 import { formatDateTZ } from "@/lib/utils";
-import { differenceInCalendarDays } from 'date-fns';
+import { differenceInCalendarDays, startOfDay } from "date-fns";
 
 
 
@@ -15,6 +15,11 @@ type Props = {
 };
 
 const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
+  const today = React.useMemo(() => startOfDay(new Date()), []);
+  const clampMinDate = React.useCallback(
+    (d?: Date) => (d && d > today ? d : today),
+    [today],
+  );
   const { setValue } = useForgeValues({ control });
   const endDate = useWatch({ control, name: "endDate" });
   const effectiveDate = useWatch({ control, name: "effectiveDate" });
@@ -47,6 +52,7 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
         component={TextDatePicker}
         placeholder="Select Date"
         showTime
+        minDate={today}
         helperText="Could be in the past, present or future."
       />
       
@@ -56,7 +62,7 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
         component={TextDatePicker}
         showTime
         placeholder="Select Date"
-        minDate={effectiveDate}
+        minDate={clampMinDate(effectiveDate)}
       />
       <Forger
         name="duration"
@@ -88,6 +94,7 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
                 label="Start Date"
                 component={TextDatePicker}
                 placeholder="Select Date"
+                minDate={today}
                 maxDate={effectiveDate}
               />
               <Forger
@@ -95,7 +102,7 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
                 label="End Date"
                 component={TextDatePicker}
                 placeholder="Select Date"
-                minDate={draftStartDate}
+                minDate={clampMinDate(draftStartDate)}
                 maxDate={effectiveDate}
               />
             </div>
@@ -108,7 +115,7 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
                 label="Start Date"
                 component={TextDatePicker}
                 placeholder="Select Date"
-                minDate={draftEndDate || draftStartDate}
+                minDate={clampMinDate(draftEndDate || draftStartDate)}
                 maxDate={effectiveDate}
               />
               <Forger
@@ -116,7 +123,7 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
                 label="End Date"
                 component={TextDatePicker}
                 placeholder="Select Date"
-                minDate={reviewStartDate}
+                minDate={clampMinDate(reviewStartDate)}
                 maxDate={effectiveDate}
               />
             </div>
@@ -129,7 +136,7 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
                 label="Start Date"
                 component={TextDatePicker}
                 placeholder="Select Date"
-                minDate={reviewEndDate || reviewStartDate}
+                minDate={clampMinDate(reviewEndDate || reviewStartDate)}
                 maxDate={effectiveDate}
               />
               <Forger
@@ -137,7 +144,7 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
                 label="End Date"
                 component={TextDatePicker}
                 placeholder="Select Date"
-                minDate={approvalStartDate}
+                minDate={clampMinDate(approvalStartDate)}
                 maxDate={effectiveDate}
               />
             </div>
@@ -150,7 +157,7 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
                 label="Start Date"
                 component={TextDatePicker}
                 placeholder="Select Date"
-                minDate={approvalEndDate || approvalStartDate}
+                minDate={clampMinDate(approvalEndDate || approvalStartDate)}
                 maxDate={effectiveDate}
               />
               <Forger
@@ -158,7 +165,7 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
                 label="End Date"
                 component={TextDatePicker}
                 placeholder="Select Date"
-                minDate={executionStartDate}
+                minDate={clampMinDate(executionStartDate)}
                 maxDate={effectiveDate}
               />
             </div>

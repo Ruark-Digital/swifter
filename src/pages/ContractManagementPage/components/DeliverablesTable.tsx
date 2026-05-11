@@ -89,6 +89,9 @@ const getStatusTone = (status?: string) => {
   if (normalized === "pending" || normalized === "under review") {
     return "bg-[#FFF8E1] text-[#F4B400]";
   }
+  if (normalized === "late") {
+    return "bg-[#FEECEC] text-[#E53935]";
+  }
   return "bg-gray-100 text-gray-700";
 };
 
@@ -99,7 +102,7 @@ export type DeliverableRow = {
   date?: string;
   submissionStatus: "Submitted" | "Late" | "Pending";
   kpi: KPIDetail;
-  status: "Approved" | "Rejected" | "Pending" | "Under Review";
+  status: "Approved" | "Rejected" | "Pending" | "Under Review" | "Late";
   approverStatus?: "N/A" | "pending" | "approved" | "rejected";
 };
 
@@ -698,7 +701,13 @@ const columns: ColumnDef<DeliverableRow>[] = [
     ),
   },
   { accessorKey: "submissionStatus", header: "Submission Status" },
-  { accessorKey: "kpi", header: "KPI" },
+  {
+    accessorKey: "kpi",
+    header: "KPI",
+    cell: ({ row }) => (
+      <div className="text-sm text-slate-700">{row.original.kpi?.kpiText ?? "-"}</div>
+    ),
+  },
   {
     accessorKey: "status",
     header: "Status",
@@ -709,6 +718,8 @@ const columns: ColumnDef<DeliverableRow>[] = [
           ? "bg-green-100 text-green-700"
           : s === "Rejected"
             ? "bg-red-100 text-red-600"
+            : s === "Late"
+              ? "bg-red-100 text-red-600"
             : s === "Pending"
               ? "bg-yellow-100 text-yellow-700"
               : "bg-yellow-100 text-yellow-700";
@@ -780,7 +791,7 @@ const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
         row.date,
         row.submissionStatus,
         row.status,
-        row.kpi.kpiText,
+        row.kpi?.kpiText,
       ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(q)),

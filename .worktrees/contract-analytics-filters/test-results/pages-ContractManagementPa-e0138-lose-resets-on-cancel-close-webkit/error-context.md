@@ -1,0 +1,230 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - link [ref=e4]:
+        - /url: "#main-content"
+        - text: Skip to main content
+      - generic [ref=e5]:
+        - img [ref=e8]
+        - list [ref=e12]:
+          - listitem [ref=e13]:
+            - link [ref=e14]:
+              - /url: /dashboard
+              - img [ref=e15]
+              - generic [ref=e18]: Dashboard
+          - listitem [ref=e19]:
+            - link [ref=e20]:
+              - /url: /dashboard/project-management
+              - img [ref=e21]
+              - generic [ref=e23]: Projects
+          - listitem [ref=e24]:
+            - link [ref=e25]:
+              - /url: /dashboard/contract-management
+              - img [ref=e26]
+              - generic [ref=e29]: Contract Management
+            - generic [ref=e31]:
+              - link [ref=e32]:
+                - /url: /dashboard/contract-management
+                - text: Contracts
+              - link [ref=e33]:
+                - /url: /dashboard/msa
+                - text: Master Service Agreements (MSA)
+          - listitem [ref=e34]:
+            - link [ref=e35]:
+              - /url: /dashboard/vendor
+              - img [ref=e36]
+              - generic [ref=e41]: Vendor Management
+          - listitem [ref=e42]:
+            - link [ref=e43]:
+              - /url: /dashboard/profile
+              - img [ref=e44]
+              - generic [ref=e47]: Profile
+        - generic [ref=e50]: Version 1.0.3
+      - main [ref=e51]:
+        - generic [ref=e52]:
+          - heading [level=1] [ref=e54]: Contract Management
+          - generic [ref=e55]:
+            - button [ref=e56]:
+              - img [ref=e57]
+              - generic [ref=e59]: Toggle theme
+            - generic [ref=e60] [cursor=pointer]:
+              - img [ref=e62]
+              - generic [ref=e63]:
+                - generic [ref=e64]: Test User
+                - generic [ref=e65]: contract manager
+              - img [ref=e66]
+        - generic [ref=e72]:
+          - generic [ref=e73]:
+            - heading [level=2] [ref=e75]: Contracts
+            - generic [ref=e76]:
+              - button [ref=e77]:
+                - img [ref=e78]
+                - text: Export
+              - button [expanded] [ref=e84]:
+                - img [ref=e85]
+                - text: Create Contracts
+          - generic [ref=e86]:
+            - generic [ref=e88]:
+              - generic [ref=e89]:
+                - paragraph [ref=e90]: All Contracts
+                - paragraph [ref=e91]: "0"
+              - img [ref=e94]
+            - generic [ref=e98]:
+              - generic [ref=e99]:
+                - paragraph [ref=e100]: Active Contracts
+                - paragraph [ref=e101]: "0"
+              - img [ref=e104]
+            - generic [ref=e108]:
+              - generic [ref=e109]:
+                - paragraph [ref=e110]: Draft Contracts
+                - paragraph [ref=e111]: "0"
+              - img [ref=e114]
+            - generic [ref=e118]:
+              - generic [ref=e119]:
+                - paragraph [ref=e120]: Suspended
+                - paragraph [ref=e121]: "0"
+              - img [ref=e124]
+            - generic [ref=e128]:
+              - generic [ref=e129]:
+                - paragraph [ref=e130]: Expired
+                - paragraph [ref=e131]: "0"
+              - img [ref=e134]
+            - generic [ref=e138]:
+              - generic [ref=e139]:
+                - paragraph [ref=e140]: Terminated
+                - paragraph [ref=e141]: "0"
+              - img [ref=e144]
+            - generic [ref=e148]:
+              - generic [ref=e149]:
+                - paragraph [ref=e150]: Pending Approval
+                - paragraph [ref=e151]: "0"
+              - img [ref=e154]
+          - generic [ref=e157]:
+            - tablist [ref=e158]:
+              - tab [selected] [ref=e159]: All Contracts
+              - tab [ref=e160]: My Contracts
+            - tabpanel [ref=e161]:
+              - generic [ref=e163]:
+                - generic [ref=e164]:
+                  - generic [ref=e167]:
+                    - generic [ref=e168]:
+                      - generic [ref=e169]: Contracts
+                      - textbox [ref=e170]:
+                        - /placeholder: Search contract
+                    - generic [ref=e172]:
+                      - button [ref=e173]:
+                        - img [ref=e174]
+                        - text: Date
+                        - img [ref=e176]
+                      - button [ref=e178]:
+                        - img [ref=e179]
+                        - text: Status
+                        - img [ref=e180]
+                      - button [ref=e182]:
+                        - text: Category
+                        - img [ref=e183]
+                  - generic [ref=e185]:
+                    - img [ref=e187] [cursor=pointer]
+                    - generic [ref=e191]:
+                      - paragraph [ref=e192]: No Contracts Yet
+                      - paragraph [ref=e193]: You don’t have any active contracts at the moment. Click the button below to create your first one and start receiving proposals.
+                    - button [ref=e194]:
+                      - img [ref=e195]
+                      - text: Create Contract
+                - navigation [ref=e198]:
+                  - list [ref=e199]:
+                    - listitem [ref=e200]:
+                      - generic:
+                        - img
+                        - generic: Previous
+                    - listitem [ref=e201]:
+                      - generic:
+                        - generic: Next
+                        - img
+        - generic [ref=e203]:
+          - link [ref=e204]:
+            - /url: http://www.aigproinc.ca
+            - generic [ref=e205]: Powered by AIG Pro Inc
+          - generic [ref=e206]:
+            - link [ref=e207]:
+              - /url: /terms-conditions
+              - text: Terms & Conditions
+            - link [ref=e208]:
+              - /url: /privacy-policy
+              - text: Privacy Policy
+            - link [ref=e209]:
+              - /url: /contact-us
+              - text: Contact Us
+            - link [ref=e210]:
+              - /url: /disclaimer
+              - text: Disclaimer
+    - list
+  - dialog "Create Contract" [ref=e212]:
+    - button "Close" [active] [ref=e213]:
+      - img [ref=e214]
+      - generic [ref=e217]: Close
+    - generic [ref=e218]:
+      - heading "Create Contract" [level=2] [ref=e220]
+      - generic [ref=e221]:
+        - paragraph [ref=e222]: "Step 1 of 9: Basic Information"
+        - generic [ref=e223]:
+          - generic [ref=e224]:
+            - generic [ref=e225]:
+              - generic [ref=e226]: Contract Name
+              - textbox "Enter Title" [ref=e228]
+            - generic [ref=e229]:
+              - generic [ref=e230]: Contract Relationship
+              - combobox [ref=e231]:
+                - generic: Enter Contract Relationship
+                - img
+              - combobox [ref=e232]
+            - generic [ref=e233]:
+              - generic [ref=e234]:
+                - generic [ref=e235]: Contract Type
+                - combobox [ref=e236]:
+                  - generic: Fixed Price/Lump Sum
+                  - img
+                - combobox [ref=e237]
+              - generic [ref=e238]:
+                - generic [ref=e239]: Category
+                - combobox "Category" [ref=e240]:
+                  - generic [ref=e241]: Legal
+                  - img [ref=e242]
+            - generic [ref=e244]:
+              - textbox "Enter Title" [disabled] [ref=e247]: Test User
+              - textbox "Enter Title" [disabled] [ref=e250]: contract_manager
+            - generic [ref=e251]:
+              - generic [ref=e252]: Contract ID/Number (Optional)
+              - textbox "Enter Title" [ref=e254]
+            - generic [ref=e255]:
+              - generic [ref=e256]:
+                - generic [ref=e257]: Complexity Rating (1-10)
+                - button [ref=e258]:
+                  - img [ref=e259]
+              - generic [ref=e261]:
+                - generic [ref=e264] [cursor=pointer]: "1"
+                - generic [ref=e267] [cursor=pointer]: "2"
+                - generic [ref=e270] [cursor=pointer]: "3"
+                - generic [ref=e273] [cursor=pointer]: "4"
+                - generic [ref=e276] [cursor=pointer]: "5"
+                - generic [ref=e279] [cursor=pointer]: "6"
+                - generic [ref=e282] [cursor=pointer]: "7"
+                - generic [ref=e285] [cursor=pointer]: "8"
+                - generic [ref=e288] [cursor=pointer]: "9"
+                - generic [ref=e291] [cursor=pointer]: "10"
+            - generic [ref=e292]:
+              - generic [ref=e293]: Description
+              - textbox "Enter Detail" [ref=e295]
+            - generic [ref=e296]:
+              - generic [ref=e297]: Business Division
+              - combobox [ref=e298]:
+                - generic: Select Division
+                - img
+              - combobox [ref=e299]
+          - generic [ref=e300]:
+            - button "Cancel" [ref=e301]
+            - button "Continue" [ref=e302]
+```

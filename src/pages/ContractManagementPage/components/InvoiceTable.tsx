@@ -30,7 +30,7 @@ export type InvoiceRow = {
   type: string;
   billed: string;
   remaining: string;
-  status: "Approved" | "Pending" | "Rejected" | "Draft";
+  status: "Approved" | "Pending" | "Rejected" | "Draft" | "Active";
 };
 
 type InvoiceDetailsSheetProps = {
@@ -58,7 +58,8 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   contractId,
   invoiceId,
 }) => {
-  const { isVendor, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
+  const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
@@ -78,7 +79,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
       if (isApprover) {
         return await approverApi.getInvoiceDetail(contractId, invoiceId);
       }
-      if (isVendor) {
+      if (isContractVendorLike) {
         const res = await vendorApi.getInvoiceDetail(contractId, invoiceId);
         return { message: res.data.message, data: res.data.data };
       }
@@ -103,7 +104,20 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
     .toLowerCase()
     .trim();
 
-  const canApprove = pendingSignal === "pending";
+  const { data: approveStatusData, isLoading: isApproveStatusLoading } = useQuery<
+    { message?: string; data?: { status?: boolean } },
+    ApiResponseError
+  >({
+    queryKey: ["invoiceApproveStatus", contractId, invoiceId],
+    queryFn: async () => {
+      return await approverApi.getInvoiceApproveStatus(contractId, invoiceId);
+    },
+    enabled: open && Boolean(contractId) && Boolean(invoiceId) && isApprover,
+    staleTime: 30000,
+  });
+
+  const canApprove =
+    pendingSignal === "pending" && approveStatusData?.data?.status === true;
 
   const canManagerAct = isManager && pendingSignal === "pending";
 
@@ -115,11 +129,14 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   >({
     mutationKey: ["approveInvoice", contractId, invoiceId],
     mutationFn: async (action) => {
+      const comment = action === "approved"
+        ? "Invoice approved via bulk action"
+        : "Invoice rejected via bulk action";
       if (isManager) {
-        await contractManagerApi.approveInvoice(contractId, invoiceId, { action });
+        await contractManagerApi.approveInvoice(contractId, invoiceId, { action, comment });
         return;
       }
-      await approverApi.approveInvoice(contractId, invoiceId, { action });
+      await approverApi.approveInvoice(contractId, invoiceId, { action, comment });
     },
     onSuccess: async (_, action) => {
       toastHandler.success(
@@ -341,7 +358,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
             </div>
           ) : null}
 
-          {(isApprover && canApprove) ? (
+          {isApprover && canApprove && !isApproveStatusLoading ? (
             <div className="flex gap-3 pt-6">
               <Button
                 variant="outline"
@@ -386,6 +403,8 @@ type InvoiceTableProps = {
   pagination: PaginationState;
   setPagination: React.Dispatch<React.SetStateAction<PaginationState>>;
   contractId: string;
+  invoiceIdSearch: string;
+  setInvoiceIdSearch: (next: string) => void;
 };
 
 const InvoiceTable: React.FC<InvoiceTableProps> = ({
@@ -395,9 +414,9 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
   pagination,
   setPagination,
   contractId,
+  invoiceIdSearch,
+  setInvoiceIdSearch,
 }) => {
-  const [search, setSearch] = React.useState("");
-
   const columns = React.useMemo<ColumnDef<InvoiceRow>[]>(() => {
     return [
       { accessorKey: "id", header: "Invoice ID" },
@@ -430,6 +449,8 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
           const tone =
             s === "Approved"
               ? "bg-green-100 text-green-700"
+              : s === "Active"
+                ? "bg-blue-100 text-blue-700"
               : s === "Pending"
                 ? "bg-yellow-100 text-yellow-700"
                 : s === "Draft"
@@ -486,6 +507,8 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
       const status: InvoiceRow["status"] =
         inv.status === "approved"
           ? "Approved"
+          : inv.status === "active"
+            ? "Active"
           : inv.status === "rejected"
             ? "Rejected"
             : inv.status === "draft"
@@ -502,33 +525,21 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
     });
   }, [rows]);
 
-  const filteredRows = React.useMemo(() => {
-    if (!search) return invoiceRows;
-    const query = search.toLowerCase();
-    return invoiceRows.filter((row) =>
-      [row.id, row.type].some((value) =>
-        value.toLowerCase().includes(query)
-      )
-    );
-  }, [invoiceRows, search]);
-
 
   return (
     <div className="space-y-4" data-testid="invoice-table">
       <DataTable<InvoiceRow>
-        data={filteredRows}
+        data={invoiceRows}
         columns={columns}
         header={() => (
           <div className="flex items-center gap-3 w-full border-b border-[#E5E7EB] px-5 py-4">
-            <span className="text-sm font-medium text-slate-900">
-              Invoices
-            </span>
+            <span className="text-sm font-medium text-slate-900">Invoices</span>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
-                placeholder="Search changes"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search invoices"
+                value={invoiceIdSearch}
+                onChange={(e) => setInvoiceIdSearch(e.target.value)}
                 className="h-10 w-[260px] pl-9"
               />
             </div>
@@ -538,7 +549,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
           disableSelection: true,
           isLoading,
           manualPagination: true,
-          totalCounts: totalCount ?? filteredRows.length,
+          totalCounts: totalCount ?? invoiceRows.length,
           setPagination,
           pagination,
         }}
@@ -554,6 +565,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
       />
     </div>
   );
+
 };
 
 export default InvoiceTable;

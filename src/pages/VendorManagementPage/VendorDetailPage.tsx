@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { getRequest } from "@/lib/axiosInstance";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError, Vendor } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,8 @@ import { getFileExtension, getFileIcon } from "@/lib/fileUtils.tsx";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { Solicitation } from "../SolicitationManagementPage/SolicitationDetailPage";
 import { formatDateTZ } from "@/lib/utils";
+import { useToastHandler } from "@/hooks/useToaster";
+import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 
 type VendorSubmission = {
   _id: string;
@@ -49,6 +51,18 @@ type VendorDetail = Omit<Vendor, "documents"> & {
     link: string;
     _id: string;
   }[];
+};
+
+type VendorProjectManager = {
+  _id: string;
+  email: string;
+  status: string;
+  name: string;
+  createdAt: string;
+  invite?: {
+    _id: string;
+    email: string;
+  };
 };
 
 // Status badge component
@@ -81,7 +95,7 @@ const StatusBadge = ({
     <Badge
       className={`${getStatusColor(
         status,
-        isSuspended
+        isSuspended,
       )} border-0 text-xs px-2 py-1 rounded-md`}
     >
       {displayStatus}
@@ -119,7 +133,9 @@ const OverviewTab = ({ vendor }: { vendor: VendorDetail }) => {
           Registration Date
         </h4>
         <p className="text-sm text-gray-900 font-medium dark:text-gray-200">
-          {vendor.createdAt ? formatDateTZ(vendor.createdAt, "MMMM d, yyyy") : "N/A"}
+          {vendor.createdAt
+            ? formatDateTZ(vendor.createdAt, "MMMM d, yyyy")
+            : "N/A"}
         </p>
       </div>
 
@@ -202,7 +218,7 @@ const DocumentsTab = ({
                 <div className="flex items-start gap-3 flex-1">
                   <div className="flex-shrink-0">
                     {getFileIcon(
-                      getFileExtension(document.name, document.fileType)
+                      getFileExtension(document.name, document.fileType),
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -227,7 +243,7 @@ const DocumentsTab = ({
                     variant="ghost"
                     size="icon"
                     className={cn(
-                      "h-8 w-8 p-0 bg-gray-100 rounded-full hover:bg-gray-200"
+                      "h-8 w-8 p-0 bg-gray-100 rounded-full hover:bg-gray-200",
                     )}
                     title="View"
                     onClick={() => onViewDocument(document)}
@@ -328,7 +344,7 @@ const SubmissionsTab = ({
             ? formatDateTZ(
                 row?.original?.createdAt,
                 "dd MMMM, yyyy hh:mm aaa",
-                (row?.original as any)?.timezone
+                (row?.original as any)?.timezone,
               )
             : "N/A"}
         </span>
@@ -440,6 +456,164 @@ const SubmissionsTab = ({
   );
 };
 
+const ProjectManagersTab = ({
+  projectManagers,
+}: {
+  projectManagers: VendorProjectManager[];
+}) => {
+  const toast = useToastHandler();
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [selectedProjectManager, setSelectedProjectManager] =
+    useState<VendorProjectManager | null>(null);
+
+  const remindInviteMutation = useMutation<
+    ApiResponse<any>,
+    ApiResponseError,
+    string
+  >({
+    mutationKey: ["remindInvite"],
+    mutationFn: async (email: string) =>
+      await postRequest({
+        url: `/onboarding/remind-invite?email=${encodeURIComponent(email)}`,
+        payload: {},
+      }),
+    onSuccess: (result) => {
+      toast.success(
+        "Resend Invite",
+        result.data.message ?? "Invite resent successfully",
+      );
+      setConfirmOpen(false);
+      setSelectedProjectManager(null);
+    },
+    onError: (error) => {
+      toast.error("Resend Invite", error);
+    },
+  });
+
+  const columns: ColumnDef<VendorProjectManager>[] = [
+    {
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => (
+        <div className="flex flex-col">
+          <span className="font-medium">
+            {row.original.name || row.original.email}
+          </span>
+          <span className="text-sm text-gray-500">{row.original.email}</span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        <span className="capitalize">{row.original.status}</span>
+      ),
+    },
+    {
+      accessorKey: "createdAt",
+      header: "Invited On",
+      cell: ({ row }) =>
+        row.original.createdAt
+          ? formatDateTZ(
+              row.original.createdAt,
+              "dd MMMM, yyyy hh:mm aaa",
+              (row.original as any)?.timezone,
+            )
+          : "N/A",
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44 rounded-2xl">
+            <DropdownMenuItem
+              className="p-3"
+              disabled={row.original.status === "active"}
+              onClick={() => {
+                setSelectedProjectManager(row.original);
+                setConfirmOpen(true);
+              }}
+            >
+              Resend Invite
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
+
+  return (
+    <div className="pt-6" data-testid="project-managers-table">
+      <DataTable
+        data={projectManagers ?? []}
+        columns={columns}
+        header={() => (
+          <div className="flex items-center justify-between border-b border-[#E9E9EB] pb-3 w-full px-6">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <h2
+                    className="text-base font-semibold text-[#0F0F0F] dark:text-gray-400"
+                    style={{ fontFamily: "Quicksand" }}
+                  >
+                    Project Managers ({projectManagers.length})
+                  </h2>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        classNames={{
+          container:
+            "bg-white dark:bg-slate-950 rounded-xl px-3 border border-gray-300 dark:border-gray-700",
+        }}
+        options={{
+          disableSelection: true,
+          isLoading: false,
+          totalCounts: projectManagers.length,
+          manualPagination: false,
+          setPagination,
+          pagination,
+        }}
+      />
+      <ConfirmAlert
+        open={confirmOpen}
+        onClose={(open) => {
+          setConfirmOpen(open);
+          if (!open) {
+            setSelectedProjectManager(null);
+          }
+        }}
+        type="alert"
+        title="Resend Invite"
+        text={
+          selectedProjectManager?.email
+            ? `Resend invite to ${selectedProjectManager.email}?`
+            : "Resend invite?"
+        }
+        primaryButtonText="Resend Invite"
+        secondaryButtonText="Cancel"
+        onPrimaryAction={() => {
+          if (!selectedProjectManager?.email) return;
+          remindInviteMutation.mutate(selectedProjectManager.email);
+        }}
+        primaryButtonLoading={remindInviteMutation.isPending}
+      />
+    </div>
+  );
+};
+
 export const VendorDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -457,7 +631,11 @@ export const VendorDetailPage = () => {
     isLoading,
     error,
   } = useQuery<
-    ApiResponse<{ vendor: VendorDetail; submissions: VendorSubmission[] }>,
+    ApiResponse<{
+      vendor: VendorDetail;
+      submissions: VendorSubmission[];
+      projectmnagers: VendorProjectManager[];
+    }>,
     ApiResponseError
   >({
     queryKey: ["vendor", id],
@@ -468,13 +646,16 @@ export const VendorDetailPage = () => {
 
   const vendor = vendorData?.data?.data.vendor;
   const submissions = vendorData?.data?.data?.submissions ?? [];
+  const projectManagers = vendorData?.data?.data?.projectmnagers ?? [];
 
   const handleBack = () => {
     navigate(-1);
   };
 
   // Handle document viewing
-  const handleViewDocument = (document: NonNullable<VendorDetail["documents"]>[0]) => {
+  const handleViewDocument = (
+    document: NonNullable<VendorDetail["documents"]>[0],
+  ) => {
     setSelectedDocument(document);
     setViewerOpen(true);
   };
@@ -519,7 +700,7 @@ export const VendorDetailPage = () => {
       </div>
 
       {/* Vendor Profile Header */}
-      <div className="p-6">
+      <div className="">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center justify-between mb-6">
@@ -632,6 +813,13 @@ export const VendorDetailPage = () => {
             >
               Submissions
             </TabsTrigger>
+            <TabsTrigger
+              value="project-managers"
+              data-testid="project-managers-tab"
+              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+            >
+              Project Managers
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-0 border-0 p-0">
@@ -646,6 +834,15 @@ export const VendorDetailPage = () => {
             <SubmissionsTab
               {...{ submissions: submissions as VendorSubmission[] }}
             />
+          </TabsContent>
+
+          <TabsContent
+            value="project-managers"
+            className="mt-0 border-0 p-0"
+            data-testid="vendor-project-managers-content"
+            forceMount
+          >
+            <ProjectManagersTab projectManagers={projectManagers} />
           </TabsContent>
         </Tabs>
       </div>

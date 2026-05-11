@@ -1,8 +1,5 @@
 import React from "react";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Forge, useForge } from "@/lib/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -26,9 +23,13 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { useWatch } from "react-hook-form";
 import { contractManagerApi } from "@/pages/ContractManagementPage/api/contractManagerApi";
 import type { ContractDetail, ApiResponseError } from "@/types";
-import { schema as createSchema, defaultValues as createDefaults } from "@/pages/ContractManagementPage/components/CreateContractSheet";
+import {
+  schema as createSchema,
+  defaultValues as createDefaults,
+} from "@/pages/ContractManagementPage/components/CreateContractSheet";
 import { format } from "date-fns";
 import { X } from "lucide-react";
+import { toApproverUserKeyOrUndefined } from "@/lib/contractFormValues";
 
 type Props = {
   open: boolean;
@@ -57,7 +58,7 @@ const toNumberOrUndefined = (value: unknown) => {
   if (typeof value === "string") {
     const trimmed = value.trim();
     if (!trimmed) return undefined;
-    const match = trimmed.match(/^(-?\\d+(?:\\.\\d+)?)\\s*([a-zA-Z]+)?$/);
+    const match = trimmed.match(/^(-?\d+(?:\.\d+)?)\s*([a-zA-Z]+)?$/);
     if (!match) return undefined;
     const numeric = Number(match[1]);
     if (!Number.isFinite(numeric)) return undefined;
@@ -80,10 +81,70 @@ const toNumberOrUndefined = (value: unknown) => {
   return Number.isFinite(num) ? num : undefined;
 };
 
-const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdated }) => {
-  const { control, reset, getValues, trigger: formTrigger } = useForge<
-    yup.InferType<typeof createSchema>
-  >({
+export type ContractApprovalGroupInput = {
+  name?: string | null;
+  approvers?: unknown[];
+  approvalLevel?: string;
+  amount?: unknown;
+};
+
+export const buildContractApproversPayload = (
+  approvalGroups: ContractApprovalGroupInput[] | undefined,
+) => {
+  const groups = approvalGroups ?? [];
+
+  return groups
+    .map((g, index) => {
+      const groupName = typeof g?.name === "string" ? g.name.trim() : "";
+      const user = (g?.approvers ?? [])
+        .map((u: any) => toApproverUserKeyOrUndefined(u))
+        .filter(Boolean) as string[];
+
+      if (!groupName || user.length === 0) return null;
+
+      const parsedLevel = g?.approvalLevel
+        ? Number(g.approvalLevel)
+        : undefined;
+      const level =
+        typeof parsedLevel === "number" && Number.isFinite(parsedLevel)
+          ? parsedLevel
+          : index + 1;
+
+      const amount = toNumberOrUndefined(g?.amount);
+
+      return {
+        user,
+        groupName,
+        level,
+        ...(amount !== undefined ? { amount } : {}),
+      };
+    })
+    .filter(Boolean) as Array<{
+    user: string[];
+    groupName: string;
+    level: number;
+    amount?: number;
+  }>;
+};
+
+export const resolveContractSaveStatus = (
+  currentStatus: unknown,
+): "draft" | "publish" => {
+  return currentStatus === "draft" ? "draft" : "publish";
+};
+
+const EditContract: React.FC<Props> = ({
+  open,
+  onOpenChange,
+  contractId,
+  onUpdated,
+}) => {
+  const {
+    control,
+    reset,
+    getValues,
+    trigger: formTrigger,
+  } = useForge<yup.InferType<typeof createSchema>>({
     resolver: yupResolver(createSchema),
     defaultValues: createDefaults,
     mode: "onChange",
@@ -93,7 +154,9 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
   const [step, setStep] = React.useState(1);
   const qc = useQueryClient();
   const { success, error } = useToastHandler();
-  const [lastError, setLastError] = React.useState<ApiResponseError | null>(null);
+  const [lastError, setLastError] = React.useState<ApiResponseError | null>(
+    null,
+  );
   const [lastPayload, setLastPayload] = React.useState<any | null>(null);
   const [signatories, setSignatories] = React.useState<string[]>([]);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
@@ -104,7 +167,11 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
     queryKey: useUserQueryKey(["contract-types"]),
     queryFn: async () => {
       const res = await getRequest({ url: "/contract/manager/types" });
-      return res.data as { status: number; message: string; data: { _id: string; name: string }[] };
+      return res.data as {
+        status: number;
+        message: string;
+        data: { _id: string; name: string }[];
+      };
     },
     staleTime: 60_000,
   });
@@ -113,7 +180,11 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
     queryKey: useUserQueryKey(["contract-payment-terms"]),
     queryFn: async () => {
       const res = await getRequest({ url: "/contract/manager/payment-terms" });
-      return res.data as { status: number; message: string; data: { _id: string; name: string }[] };
+      return res.data as {
+        status: number;
+        message: string;
+        data: { _id: string; name: string }[];
+      };
     },
     staleTime: 60_000,
   });
@@ -122,7 +193,11 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
     queryKey: useUserQueryKey(["contract-term-types"]),
     queryFn: async () => {
       const res = await getRequest({ url: "/contract/manager/terms" });
-      return res.data as { status: number; message: string; data: { _id: string; name: string }[] };
+      return res.data as {
+        status: number;
+        message: string;
+        data: { _id: string; name: string }[];
+      };
     },
     staleTime: 60_000,
   });
@@ -130,9 +205,34 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
   const awardedQuery = useQuery({
     queryKey: useUserQueryKey(["awarded-solicitations"]),
     queryFn: async () => {
-      const res = await getRequest({ url: "/contract/manager/awarded-solicitation" });
+      const res = await getRequest({
+        url: "/contract/manager/awarded-solicitation",
+      });
       return res.data as {
-        status: number; message: string; data: { _id: string; name: string; vendor: { _id: string; name: string; email: string } }[];
+        status: number;
+        message: string;
+        data: {
+          _id: string;
+          name: string;
+          vendor: { _id: string; name: string; email: string };
+        }[];
+      };
+    },
+    staleTime: 60_000,
+  });
+
+  const msaQuery = useQuery({
+    queryKey: useUserQueryKey(["msa-contracts-all"]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: "/contract/manager/msa-contract",
+      });
+      return res.data as {
+        status: number;
+        message: string;
+        data: {
+          contracts: { _id: string; title: string }[];
+        };
       };
     },
     staleTime: 60_000,
@@ -168,7 +268,7 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       )?._id ||
       (typeof contract.paymentTerms === "string"
         ? contract.paymentTerms
-        : contract.paymentTerms?._id ?? "");
+        : (contract.paymentTerms?._id ?? ""));
 
     const termTypes = termTypesQuery.data?.data ?? [];
     const termTypeKey =
@@ -180,7 +280,7 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
         ?._id ||
       (typeof contract.contractTerm === "string"
         ? contract.contractTerm
-        : contract.contractTerm?._id ?? "");
+        : (contract.contractTerm?._id ?? ""));
 
     const documents =
       (contract.files ?? []).map((f) => ({
@@ -204,24 +304,31 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
         deliverable: m?.deliverable ?? "",
       })) ?? [];
 
-    const approvalGroups =
-      (contract.approvers ?? []).map((a) => ({
-        name: a.group,
-        approvers: (a.user ?? []).map((u, idx) => ({
-          value: u.user,
-          text: u.userRef || `Approver ${idx + 1}`,
-        })),
-        approvalLevel: String(a.level ?? 0),
-        amount: a.amount ?? "",
-      })) ?? [{ name: "", approvers: [], approvalLevel: "0", amount: "" }];
+    const approvalGroups = (contract.approvers ?? []).map((a) => ({
+      name: a.group,
+      approvers: (a.user ?? []).map((u, idx) => ({
+        value: u.user,
+        text: u.userRef || `Approver ${idx + 1}`,
+      })),
+      approvalLevel: String(a.level ?? 0),
+      amount: a.amount ?? "",
+    })) ?? [{ name: "", approvers: [], approvalLevel: "0", amount: "" }];
 
-    const insurancePolicies =
-      (contract.insurance?.policy ?? []).map((p) => ({ name: p.policyName, limit: String(p.value ?? "") })) ?? [{ name: "", limit: "" }];
+    const insurancePolicies = (contract.insurance?.policy ?? []).map((p) => ({
+      name: p.policyName,
+      limit: String(p.value ?? ""),
+    })) ?? [{ name: "", limit: "" }];
 
-    const securityType = contract.insurance?.contractSecurityType?.[0]?.securityType ?? "";
-    const securityAmount = contract.insurance?.contractSecurityType?.[0]?.amount ?? "";
-    const securityDueDate = contract.insurance?.contractSecurityType?.[0]?.dueDate
-      ? new Date(contract.insurance.contractSecurityType[0].dueDate as unknown as string)
+    const securityType =
+      contract.insurance?.contractSecurityType?.[0]?.securityType ?? "";
+    const securityAmount =
+      contract.insurance?.contractSecurityType?.[0]?.amount ?? "";
+    const securityDueDate = contract.insurance?.contractSecurityType?.[0]
+      ?.dueDate
+      ? new Date(
+          contract.insurance.contractSecurityType[0]
+            .dueDate as unknown as string,
+        )
       : undefined;
     const securities =
       (contract.insurance?.contractSecurityType ?? []).slice(1).map((s) => ({
@@ -237,11 +344,15 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       project:
         typeof contract.project === "string"
           ? contract.project
-          : contract.project?._id ?? "",
+          : (contract.project?._id ?? ""),
+      msaContractId:
+        typeof contract.msaContract === "string"
+          ? contract.msaContract
+          : contract.msaContract?._id || "",
       awardedSolicitation:
         typeof contract.solicitation === "string"
           ? contract.solicitation
-          : contract.solicitation?._id ?? "",
+          : (contract.solicitation?._id ?? ""),
       type: contract.contractType?._id ?? "",
       category: contract.category ?? "",
       manager: contract.managers?.[0] ?? "",
@@ -249,13 +360,15 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       vendor:
         typeof contract.vendor === "string"
           ? contract.vendor
-          : contract.vendor?._id ?? "",
+          : (contract.vendor?._id ?? ""),
       personnel: (contract.vendorPersonnel ?? []).map((p) => ({
         id: p._id ?? p.email ?? "",
         text: p.name || p.email || p._id || "",
         meta: {
           email: p.email ?? "",
-          role: Array.isArray(p.role) ? p.role[0]?.name ?? "" : (p.role ?? ""),
+          role: Array.isArray(p.role)
+            ? (p.role[0]?.name ?? "")
+            : (p.role ?? ""),
           phone: (p as any).phone ?? "",
         },
       })),
@@ -263,7 +376,12 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
         id: p._id ?? p.email ?? "",
         name: p.name || "",
         email: p.email ?? "",
-        role: typeof p.role === "string" ? p.role : (Array.isArray(p.role) ? (p.role[0] as any)?.name ?? "" : ""),
+        role:
+          typeof p.role === "string"
+            ? p.role
+            : Array.isArray(p.role)
+              ? ((p.role[0] as any)?.name ?? "")
+              : "",
         phone: (p as any).phone ?? "",
       })),
       internalTeam: (contract.internalTeam ?? []).map((t) => ({
@@ -285,7 +403,7 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       businessDivision:
         typeof contract.businessDivision === "string"
           ? contract.businessDivision
-          : contract.businessDivision?._id ?? "",
+          : (contract.businessDivision?._id ?? ""),
       contractId: contract.contractId ?? "",
       description: contract.description ?? "",
       visibility: contract.visibility ?? "",
@@ -293,27 +411,51 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       contingency: contract.contigency ?? "",
       holdback: String(contract.holdBack ?? ""),
       paymentStructure:
-        contract.paymentStructure === "Monthly" ? "monthly" :
-        contract.paymentStructure === "Milestone" ? "milestone" :
-        contract.paymentStructure === "Progress Draw" ? "lump_sum" : "",
+        contract.paymentStructure === "Monthly"
+          ? "monthly"
+          : contract.paymentStructure === "Milestone"
+            ? "milestone"
+            : contract.paymentStructure === "Progress Draw"
+              ? "lump_sum"
+              : "",
       paymentTerm: paymentTermId,
       termType: termTypeId,
-      effectiveDate: contract.startDate ? new Date(contract.startDate) : undefined,
+      effectiveDate: contract.startDate
+        ? new Date(contract.startDate)
+        : undefined,
       endDate: contract.endDate ? new Date(contract.endDate) : undefined,
       duration: contract.duration ? String(contract.duration) : "",
       deliverables,
       documents,
       milestones,
-      draftStartDate: contract.contractFormationStage?.draft?.startDate ? new Date(contract.contractFormationStage.draft.startDate) : undefined,
-      draftEndDate: contract.contractFormationStage?.draft?.endDate ? new Date(contract.contractFormationStage.draft.endDate) : undefined,
-      reviewStartDate: contract.contractFormationStage?.review?.startDate ? new Date(contract.contractFormationStage.review.startDate) : undefined,
-      reviewEndDate: contract.contractFormationStage?.review?.endDate ? new Date(contract.contractFormationStage.review.endDate) : undefined,
-      approvalStartDate: contract.contractFormationStage?.approval?.startDate ? new Date(contract.contractFormationStage.approval.startDate) : undefined,
-      approvalEndDate: contract.contractFormationStage?.approval?.endDate ? new Date(contract.contractFormationStage.approval.endDate) : undefined,
-      executionStartDate: contract.contractFormationStage?.execution?.startDate ? new Date(contract.contractFormationStage.execution.startDate) : undefined,
-      executionEndDate: contract.contractFormationStage?.execution?.endDate ? new Date(contract.contractFormationStage.execution.endDate) : undefined,
+      draftStartDate: contract.contractFormationStage?.draft?.startDate
+        ? new Date(contract.contractFormationStage.draft.startDate)
+        : undefined,
+      draftEndDate: contract.contractFormationStage?.draft?.endDate
+        ? new Date(contract.contractFormationStage.draft.endDate)
+        : undefined,
+      reviewStartDate: contract.contractFormationStage?.review?.startDate
+        ? new Date(contract.contractFormationStage.review.startDate)
+        : undefined,
+      reviewEndDate: contract.contractFormationStage?.review?.endDate
+        ? new Date(contract.contractFormationStage.review.endDate)
+        : undefined,
+      approvalStartDate: contract.contractFormationStage?.approval?.startDate
+        ? new Date(contract.contractFormationStage.approval.startDate)
+        : undefined,
+      approvalEndDate: contract.contractFormationStage?.approval?.endDate
+        ? new Date(contract.contractFormationStage.approval.endDate)
+        : undefined,
+      executionStartDate: contract.contractFormationStage?.execution?.startDate
+        ? new Date(contract.contractFormationStage.execution.startDate)
+        : undefined,
+      executionEndDate: contract.contractFormationStage?.execution?.endDate
+        ? new Date(contract.contractFormationStage.execution.endDate)
+        : undefined,
       approvalGroups,
-      insuranceExpiryDate: contract.insurance?.expiryDate ? new Date(contract.insurance.expiryDate) : undefined,
+      insuranceExpiryDate: contract.insurance?.expiryDate
+        ? new Date(contract.insurance.expiryDate)
+        : undefined,
       contractSecurity: contract.insurance?.contractSecurity ? "yes" : "no",
       securityType,
       securityAmount: String(securityAmount ?? ""),
@@ -321,10 +463,15 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       insurancePolicies,
       securities,
       rating: contract.rating ?? 5,
-    }
+    };
 
     reset(payload, { keepDirtyValues: true });
-  }, [contractRes?.data?.data, paymentTermsQuery.data?.data, termTypesQuery.data?.data, reset]);
+  }, [
+    contractRes?.data?.data,
+    paymentTermsQuery.data?.data,
+    termTypesQuery.data?.data,
+    reset,
+  ]);
 
   const typeOptions = React.useMemo(
     () =>
@@ -371,6 +518,14 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
     [awardedQuery.data?.data],
   );
 
+  const msaOptions = React.useMemo(() => {
+    const contracts = msaQuery.data?.data?.contracts || [];
+    return contracts.map((c: any) => ({
+      label: c.title || "Untitled MSA",
+      value: c._id,
+    }));
+  }, [msaQuery.data?.data?.contracts]);
+
   const mutation = useMutation({
     mutationKey: ["contractManager", "contracts", "update", contractId],
     mutationFn: async (payload: any) => {
@@ -378,7 +533,11 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
         url: `/contract/manager/contracts/${contractId}`,
         payload,
       });
-      return res.data as { status: number; message: string; data: ContractDetail };
+      return res.data as {
+        status: number;
+        message: string;
+        data: ContractDetail;
+      };
     },
     onSuccess: (res) => {
       success("Contract updated successfully", res.message);
@@ -394,194 +553,207 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
     },
   });
 
-  const buildPayload = React.useCallback((data: yup.InferType<typeof createSchema>) => {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-    const relationship =
-      data.relationship === "msa"
-        ? "msa_project"
-        : data.relationship === "standalone"
-          ? "standalone"
-          : "project";
+  const buildPayload = React.useCallback(
+    (data: yup.InferType<typeof createSchema>, status: "draft" | "publish") => {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+      const relationship =
+        data.relationship === "msa" || data.relationship === "msa_project"
+          ? "msa_project"
+          : data.relationship === "standalone"
+            ? "standalone"
+            : "project";
 
-    const holdBackRaw =
-      typeof data.holdback === "string" && data.holdback.trim().endsWith("%")
-        ? data.holdback.replace("%", "")
-        : data.holdback;
-    const holdBack = toNumberOrUndefined(holdBackRaw);
+      const holdBackRaw =
+        typeof data.holdback === "string" && data.holdback.trim().endsWith("%")
+          ? data.holdback.replace("%", "")
+          : data.holdback;
+      const holdBack = toNumberOrUndefined(holdBackRaw);
 
-    let paymentStructureEnum = undefined;
-    if (data.paymentStructure === "monthly") paymentStructureEnum = "Monthly";
-    if (data.paymentStructure === "milestone") paymentStructureEnum = "Milestone";
-    if (data.paymentStructure === "lump_sum") paymentStructureEnum = "Progress Draw";
+      let paymentStructureEnum = undefined;
+      if (data.paymentStructure === "monthly") paymentStructureEnum = "Monthly";
+      if (data.paymentStructure === "milestone")
+        paymentStructureEnum = "Milestone";
+      if (data.paymentStructure === "lump_sum")
+        paymentStructureEnum = "Progress Draw";
 
-    const approvers =
-      (data.approvalGroups ?? []).flatMap((g) => {
-        const lvl = g.approvalLevel ? Number(g.approvalLevel) : undefined;
-        const amountValue = toNumberOrUndefined(g.amount);
-        const userIds = (g.approvers ?? [])
-          .map((u: any) => u?.value ?? u)
-          .filter(Boolean);
-        return {
-          user: userIds,
-          groupName: g.name,
-          level: lvl,
-          amount: amountValue,
-        };
-      }) ?? [];
+      const approvers = buildContractApproversPayload(
+        data.approvalGroups as ContractApprovalGroupInput[] | undefined,
+      );
 
-    const milestone =
-      data.paymentStructure === "milestone"
-        ? (data.milestones ?? []).map((m) => {
-            const amount = toNumberOrUndefined(m.amount);
-            const dueDate = m.dueDate
-              ? format(m.dueDate, "yyyy-MM-dd'T'HH:mm:ss")
-              : undefined;
-            const deliverableName =
-              typeof m.deliverable === "string" ? m.deliverable.trim() : "";
-            return {
-              ...(amount !== undefined ? { amount } : {}),
-              dueDate,
-              name: m.name,
-              ...(deliverableName
-                ? {
-                    deliverable: {
-                      name: deliverableName,
-                      ...(dueDate ? { dueDate } : {}),
-                    },
-                  }
-                : {}),
-            };
-          })
+      const milestone =
+        data.paymentStructure === "milestone"
+          ? (data.milestones ?? []).map((m) => {
+              const amount = toNumberOrUndefined(m.amount);
+              const dueDate = m.dueDate
+                ? format(m.dueDate, "yyyy-MM-dd'T'HH:mm:ss")
+                : undefined;
+              const deliverableName =
+                typeof m.deliverable === "string" ? m.deliverable.trim() : "";
+              return {
+                ...(amount !== undefined ? { amount } : {}),
+                dueDate,
+                name: m.name,
+                ...(deliverableName
+                  ? {
+                      deliverable: {
+                        name: deliverableName,
+                        ...(dueDate ? { dueDate } : {}),
+                      },
+                    }
+                  : {}),
+              };
+            })
+          : undefined;
+
+      const deliverables =
+        (data.deliverables ?? []).map((d) => ({
+          name: d.name,
+          dueDate: d.dueDate
+            ? format(d.dueDate, "yyyy-MM-dd'T'HH:mm:ss")
+            : undefined,
+        })) ?? [];
+
+      const paymentTermName = paymentTermsQuery.data?.data?.find(
+        (t) => t._id === data.paymentTerm,
+      )?.name;
+      const termTypeName = termTypesQuery.data?.data?.find(
+        (t) => t._id === data.termType,
+      )?.name;
+
+      const files =
+        (data.documents ?? [])
+          .map((f: any) => ({
+            name: typeof f?.name === "string" ? f.name : undefined,
+            url: typeof f?.url === "string" ? f.url : undefined,
+            type: typeof f?.type === "string" ? f.type : undefined,
+            size:
+              typeof f?.size === "number"
+                ? f.size
+                : toNumberOrUndefined(f?.size),
+          }))
+          .filter((f) => Boolean(f?.name && f?.url && f?.type)) ?? [];
+
+      const formatDate = (d: any) =>
+        d ? format(d, "yyyy-MM-dd'T'HH:mm:ss") : undefined;
+
+      const mainSecurityAmount = toNumberOrUndefined(data.securityAmount);
+      const mainSecurityDueDate = data.securityDueDate
+        ? formatDate(data.securityDueDate)
         : undefined;
+      const mainSecurity = data.securityType
+        ? [
+            {
+              securityType: data.securityType,
+              ...(mainSecurityAmount !== undefined
+                ? { amount: mainSecurityAmount }
+                : {}),
+              dueDate: mainSecurityDueDate,
+            },
+          ]
+        : [];
+      const extraSecurities = (data.securities || []).map((s) => {
+        const amount = toNumberOrUndefined(s.amount);
+        return {
+          securityType: s.type,
+          ...(amount !== undefined ? { amount } : {}),
+          dueDate: s.dueDate ? formatDate(s.dueDate) : undefined,
+        };
+      });
 
-    const deliverables =
-      (data.deliverables ?? []).map((d) => ({
-        name: d.name,
-        dueDate: d.dueDate ? format(d.dueDate, "yyyy-MM-dd'T'HH:mm:ss") : undefined,
-      })) ?? [];
-
-    const paymentTermName = paymentTermsQuery.data?.data?.find(
-      (t) => t._id === data.paymentTerm,
-    )?.name;
-    const termTypeName = termTypesQuery.data?.data?.find(
-      (t) => t._id === data.termType,
-    )?.name;
-
-    const files =
-      (data.documents ?? [])
-        .map((f: any) => ({
-          name: typeof f?.name === "string" ? f.name : undefined,
-          url: typeof f?.url === "string" ? f.url : undefined,
-          type: typeof f?.type === "string" ? f.type : undefined,
-          size:
-            typeof f?.size === "number"
-              ? f.size
-              : toNumberOrUndefined(f?.size),
-        }))
-        .filter((f) => Boolean(f?.name && f?.url && f?.type)) ?? [];
-
-    const formatDate = (d: any) => (d ? format(d, "yyyy-MM-dd'T'HH:mm:ss") : undefined);
-
-    const mainSecurityAmount = toNumberOrUndefined(data.securityAmount);
-    const mainSecurityDueDate = data.securityDueDate ? formatDate(data.securityDueDate) : undefined;
-    const mainSecurity = data.securityType
-      ? [
-          {
-            securityType: data.securityType,
-            ...(mainSecurityAmount !== undefined ? { amount: mainSecurityAmount } : {}),
-            dueDate: mainSecurityDueDate,
-          },
-        ]
-      : [];
-    const extraSecurities = (data.securities || []).map((s) => {
-      const amount = toNumberOrUndefined(s.amount);
-      return {
-        securityType: s.type,
-        ...(amount !== undefined ? { amount } : {}),
-        dueDate: s.dueDate ? formatDate(s.dueDate) : undefined,
+      const insurancePayload = {
+        insurance: data.contractSecurity === "yes" ? "Yes" : "No",
+        contractSecurity: data.contractSecurity === "yes",
+        expiryDate: data.insuranceExpiryDate
+          ? formatDate(data.insuranceExpiryDate)
+          : undefined,
+        contractSecurityType: [...mainSecurity, ...extraSecurities],
+        policy: (data.insurancePolicies || []).map((p) => ({
+          policyName: p.name,
+          limit: p.limit,
+        })),
       };
-    });
 
-    const insurancePayload = {
-      insurance: data.contractSecurity === "yes" ? "Yes" : "No",
-      contractSecurity: data.contractSecurity === "yes",
-      expiryDate: data.insuranceExpiryDate ? formatDate(data.insuranceExpiryDate) : undefined,
-      contractSecurityType: [...mainSecurity, ...extraSecurities],
-      policy: (data.insurancePolicies || []).map((p) => ({
-        policyName: p.name,
-        limit: p.limit,
-      })),
-    };
+      const contractFormationStage = {
+        draft: {
+          startDate: formatDate(data.draftStartDate),
+          endDate: formatDate(data.draftEndDate),
+        },
+        review: {
+          startDate: formatDate(data.reviewStartDate),
+          endDate: formatDate(data.reviewEndDate),
+        },
+        approval: {
+          startDate: formatDate(data.approvalStartDate),
+          endDate: formatDate(data.approvalEndDate),
+        },
+        execution: {
+          startDate: formatDate(data.executionStartDate),
+          endDate: formatDate(data.executionEndDate),
+        },
+      };
 
-    const contractFormationStage = {
-      draft: {
-        startDate: formatDate(data.draftStartDate),
-        endDate: formatDate(data.draftEndDate),
-      },
-      review: {
-        startDate: formatDate(data.reviewStartDate),
-        endDate: formatDate(data.reviewEndDate),
-      },
-      approval: {
-        startDate: formatDate(data.approvalStartDate),
-        endDate: formatDate(data.approvalEndDate),
-      },
-      execution: {
-        startDate: formatDate(data.executionStartDate),
-        endDate: formatDate(data.executionEndDate),
-      },
-    };
+      const payload = {
+        title: data.name,
+        description: data.description,
+        category: data.category,
+        timezone: tz,
+        contractType: data.type,
+        contractRelationship: relationship,
+        businessDivision: data.businessDivision,
+        projectId:
+          relationship === "project" || relationship === "msa_project"
+            ? data.project || undefined
+            : undefined,
+        msaContractId:
+          relationship === "msa_project"
+            ? data.msaContractId || undefined
+            : undefined,
+        solicitationId: data.awardedSolicitation || undefined,
+        contractId: data.contractId || undefined,
+        jobTitle: data.jobTitle || undefined,
+        visibility: data.visibility || "private",
+        contractAmount:
+          typeof data.contractValue === "number"
+            ? Number.isFinite(data.contractValue)
+              ? data.contractValue
+              : undefined
+            : toNumberOrUndefined(data.contractValue),
+        contigency: data.contingency || undefined,
+        holdBack,
+        contractPaymentTerm: data.paymentTerm || undefined,
+        paymentTerm: paymentTermName || undefined,
+        paymentStructure: paymentStructureEnum,
+        startDate: formatDate(data.effectiveDate),
+        endDate: formatDate(data.endDate),
+        duration: data.duration ? Number(data.duration) : undefined,
+        contractTermType: data.termType || undefined,
+        termType: termTypeName || undefined,
+        deliverables,
+        milestone,
+        files,
+        insurance: insurancePayload,
+        contractFormationStage,
+        rating: data.rating || 5,
+        status,
+        approvers,
+        signatories:
+          signatories && signatories.length > 0 ? signatories : undefined,
+      };
 
-    const payload = {
-      title: data.name,
-      description: data.description,
-      category: data.category,
-      timezone: tz,
-      contractType: data.type,
-      contractRelationship: relationship,
-      businessDivision: data.businessDivision,
-      projectId: relationship === "project" ? data.project || undefined : undefined,
-      msaContractId: relationship === "msa_project" ? data.project || undefined : undefined,
-      solicitationId: data.awardedSolicitation || undefined,
-      contractId: data.contractId || undefined,
-      jobTitle: data.jobTitle || undefined,
-      visibility: data.visibility || "private",
-      contractAmount:
-        typeof data.contractValue === "number"
-          ? Number.isFinite(data.contractValue)
-            ? data.contractValue
-            : undefined
-          : toNumberOrUndefined(data.contractValue),
-      contigency: data.contingency || undefined,
-      holdBack,
-      contractPaymentTerm: data.paymentTerm || undefined,
-      paymentTerm: paymentTermName || undefined,
-      paymentStructure: paymentStructureEnum,
-      startDate: formatDate(data.effectiveDate),
-      endDate: formatDate(data.endDate),
-      duration: data.duration ? Number(data.duration) : undefined,
-      contractTermType: data.termType || undefined,
-      termType: termTypeName || undefined,
-      deliverables,
-      milestone,
-      files,
-      insurance: insurancePayload,
-      contractFormationStage,
-      rating: data.rating || 5,
-      status: "publish",
-      approvers,
-      signatories: signatories && signatories.length > 0 ? signatories : undefined,
-    };
+      Object.keys(payload).forEach((k) => {
+        if ((payload as any)[k] === undefined) {
+          delete (payload as any)[k];
+        }
+      });
+      return payload;
+    },
+    [paymentTermsQuery.data?.data, signatories, termTypesQuery.data?.data],
+  );
 
-    Object.keys(payload).forEach((k) => {
-      if ((payload as any)[k] === undefined) {
-        delete (payload as any)[k];
-      }
-    });
-    return payload;
-  }, [paymentTermsQuery.data?.data, signatories, termTypesQuery.data?.data]);
-
-  const STEP_FIELDS: Record<number, Array<keyof yup.InferType<typeof createSchema>>> = {
+  const STEP_FIELDS: Record<
+    number,
+    Array<keyof yup.InferType<typeof createSchema>>
+  > = {
     1: [
       "name",
       "relationship",
@@ -592,11 +764,19 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       "manager",
       "jobTitle",
       "contractId",
+      "msaContractId",
       "rating",
       "description",
       "businessDivision",
     ],
-    2: ["manager", "jobTitle", "vendor", "personnel", "internalTeam", "visibility"],
+    2: [
+      "manager",
+      "jobTitle",
+      "vendor",
+      "personnel",
+      "internalTeam",
+      "visibility",
+    ],
     3: [
       "effectiveDate",
       "endDate",
@@ -655,7 +835,13 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       if (e.key === "s" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         const vals = getValues();
-        const payload = buildPayload(vals as yup.InferType<typeof createSchema>);
+        const status = resolveContractSaveStatus(
+          contractRes?.data?.data?.status,
+        );
+        const payload = buildPayload(
+          vals as yup.InferType<typeof createSchema>,
+          status,
+        );
         setLastPayload(payload);
         mutation.mutate(payload);
       } else if (e.key === "Escape") {
@@ -665,7 +851,14 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [open, getValues, buildPayload, mutation, onOpenChange]);
+  }, [
+    open,
+    getValues,
+    buildPayload,
+    mutation,
+    onOpenChange,
+    contractRes?.data?.data?.status,
+  ]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -677,7 +870,9 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
       >
         <div data-testid="edit-contract-sheet" className="space-y-6">
           <div className="px-8 pt-8">
-            <p className="text-xl font-semibold text-slate-900">Edit Contract</p>
+            <p className="text-xl font-semibold text-slate-900">
+              Edit Contract
+            </p>
           </div>
           {lastError && (
             <div className="mx-8 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -697,29 +892,30 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
             <p className="text-sm font-medium text-slate-700">
               {STEP_TITLES[step - 1]}
             </p>
-            <Forge control={control} onSubmit={(data) => {
-              const payload = buildPayload(data as any);
-              setLastPayload(payload);
-              mutation.mutate(payload);
-            }} className="mt-4 space-y-6">
+            <Forge
+              control={control}
+              onSubmit={(data) => {
+                const payload = buildPayload(data as any, "publish");
+                setLastPayload(payload);
+                mutation.mutate(payload);
+              }}
+              className="mt-4 space-y-6"
+            >
               {step === 1 && (
                 <Step1BasicInfo
                   typeOptions={typeOptions}
                   projectOptions={projectOptions}
                   awardedOptions={awardedOptions}
+                  msaOptions={msaOptions}
                 />
               )}
-              {step === 2 && (
-                <Step2ContractTeam
-                  
-                />
-              )}
+              {step === 2 && <Step2ContractTeam />}
               {step === 5 && (
-                  <Step3ValuePayments
-                    control={control}
-                    paymentTermOptions={paymentTermOptions}
-                  />
-                )}
+                <Step3ValuePayments
+                  control={control}
+                  paymentTermOptions={paymentTermOptions}
+                />
+              )}
               {step === 3 && (
                 <Step4Timeline
                   control={control}
@@ -729,10 +925,7 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
               {step === 4 && <Step5Deliverables control={control} />}
               {step === 6 && <Step6ComplianceSecurity control={control} />}
               {step === 7 && (
-                <Step4Form
-                  control={control}
-                  documents={watchedDocuments}
-                />
+                <Step4Form control={control} documents={watchedDocuments} />
               )}
               {step === 8 && <Step7ApprovalLevel control={control} />}
               {step === 9 && <Step8ReviewPublish control={control} />}
@@ -765,7 +958,10 @@ const EditContract: React.FC<Props> = ({ open, onOpenChange, contractId, onUpdat
                     className=" h-12 rounded-xl"
                     onClick={() => {
                       const vals = getValues();
-                      const payload = buildPayload(vals as any);
+                      const status = resolveContractSaveStatus(
+                        contractRes?.data?.data?.status,
+                      );
+                      const payload = buildPayload(vals as any, status);
                       setLastPayload(payload);
                       mutation.mutate(payload);
                     }}
@@ -882,7 +1078,9 @@ const SendForApprovalDialog = React.memo(
     const toggleApprover = React.useCallback(
       (approverId: string, checked: boolean) => {
         setAssignedApproverIds((prev) =>
-          checked ? [...prev, approverId] : prev.filter((id) => id !== approverId),
+          checked
+            ? [...prev, approverId]
+            : prev.filter((id) => id !== approverId),
         );
       },
       [],
@@ -929,7 +1127,9 @@ const SendForApprovalDialog = React.memo(
                 <select
                   className="w-full h-12 border border-gray-300 rounded-lg px-4 pr-10 text-sm text-slate-700 focus:border-[#2A4467] focus:ring-[#2A4467]"
                   value={selectedApprovalGroup}
-                  onChange={(event) => setSelectedApprovalGroup(event.target.value)}
+                  onChange={(event) =>
+                    setSelectedApprovalGroup(event.target.value)
+                  }
                 >
                   <option value="">Select Group</option>
                   {approvalGroupOptions.map((option) => (
@@ -956,7 +1156,10 @@ const SendForApprovalDialog = React.memo(
                 {selectedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
                   const name =
-                    approver?.text || approver?.name || approver?.label || "Unnamed";
+                    approver?.text ||
+                    approver?.name ||
+                    approver?.label ||
+                    "Unnamed";
                   const email = approver?.id || approver?.email || "";
                   const role = approver?.meta?.role
                     ? approver.meta.role
@@ -972,9 +1175,13 @@ const SendForApprovalDialog = React.memo(
                         <p className="text-sm font-semibold text-slate-700">
                           {name}
                         </p>
-                        {email && <p className="text-xs text-blue-600 ">{email}</p>}
+                        {email && (
+                          <p className="text-xs text-blue-600 ">{email}</p>
+                        )}
                       </div>
-                      <p className="text-sm text-slate-600 text-center">{role}</p>
+                      <p className="text-sm text-slate-600 text-center">
+                        {role}
+                      </p>
                       <div className="flex items-center justify-center gap-2">
                         <Checkbox
                           checked={assignedApproverIds.includes(approverId)}
@@ -991,7 +1198,9 @@ const SendForApprovalDialog = React.memo(
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-900">Assigned Approvers</p>
+              <p className="text-sm font-medium text-slate-900">
+                Assigned Approvers
+              </p>
               <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-slate-50 px-4 py-4">
                 {assignedApprovers.length === 0 && (
                   <p className="text-sm text-slate-500">Search</p>
@@ -999,7 +1208,10 @@ const SendForApprovalDialog = React.memo(
                 {assignedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
                   const name =
-                    approver?.text || approver?.name || approver?.label || "Unnamed";
+                    approver?.text ||
+                    approver?.name ||
+                    approver?.label ||
+                    "Unnamed";
                   return (
                     <div
                       key={approverId}

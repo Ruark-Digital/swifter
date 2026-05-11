@@ -40,29 +40,40 @@ const normalizeStatus = (value?: string): AmendmentRow["status"] => {
 };
 
 const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
-  const { isApprover, isVendor, isManager, isViewOnly, isAdmin } = useUserRole();
+  const { isApprover, isVendor, isProjectManager, isManager, isViewOnly, isAdmin } =
+    useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ list?: unknown; stats?: unknown }>({});
 
   const basePath = React.useMemo(() => {
-    if (isVendor) return `/contract/vendor/msa-contract/${contractId}/amendment`;
+    if (isVendor || isProjectManager)
+      return `/contract/vendor/msa-contract/${contractId}/amendment`;
     if (isApprover)
       return `/contract/approver/msa-contract/${contractId}/amendment`;
     if (isManager) return `/contract/manager/msa-contract/${contractId}/amendments`;
     if (isAdmin || isViewOnly)
       return `/contract/user/msa-contract/${contractId}/amendment`;
     return `/contract/user/msa-contract/${contractId}/amendment`;
-  }, [contractId, isAdmin, isApprover, isManager, isVendor, isViewOnly]);
+  }, [
+    contractId,
+    isAdmin,
+    isApprover,
+    isManager,
+    isProjectManager,
+    isVendor,
+    isViewOnly,
+  ]);
 
   const statsBasePath = React.useMemo(() => {
-    if (isVendor) return `/contract/vendor/msa-contract/${contractId}/amendment`;
+    if (isVendor || isProjectManager)
+      return `/contract/vendor/msa-contract/${contractId}/amendment`;
     if (isApprover)
       return `/contract/approver/msa-contract/${contractId}/amendment`;
     if (isAdmin || isViewOnly)
       return `/contract/user/msa-contract/${contractId}/amendment`;
     return "";
-  }, [contractId, isAdmin, isApprover, isVendor, isViewOnly]);
+  }, [contractId, isAdmin, isApprover, isProjectManager, isVendor, isViewOnly]);
 
   const statsQueryKey = useUserQueryKey([
     "msa-amendments-stats",

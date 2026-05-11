@@ -153,7 +153,7 @@ const ROLE_TAB_WHITELIST: Record<
     "ncr-log",
     "compliance",
     "amendments",
-    "rate-sheets"
+    "rate-sheets",
   ],
   manager: ALL_TABS.map((t) => t.key),
   "view only": [
@@ -219,7 +219,8 @@ const ContractDetailPage: React.FC = () => {
 
   const { data: approveStatusResponse } = useQuery({
     queryKey: [approveStatusQueryKey[0], contractsResponse?.data?.data?._id],
-    queryFn: () => approverApi.getApproveStatus(contractsResponse?.data?.data?._id ?? ""),
+    queryFn: () =>
+      approverApi.getApproveStatus(contractsResponse?.data?.data?._id ?? ""),
     enabled:
       !!contractsResponse?.data?.data?._id &&
       isApprover &&
@@ -230,11 +231,14 @@ const ContractDetailPage: React.FC = () => {
 
   const contractData = contractsResponse?.data?.data;
   const user = useUser();
+
   const isContractProjectManager = Boolean(
-    user?._id && (contractData as any)?.projectManager?.user?._id === user._id,
+    user?.projectmanagerId &&
+    contractData?.projectManager?.user?._id === user.projectmanagerId,
   );
   const isContractProjectManagerPending =
-    (contractData as any)?.projectManager?.status === "pending";
+    contractData?.projectManager?.status === "pending";
+
   const canProjectManagerApprove =
     isContractProjectManager &&
     isContractProjectManagerPending &&
@@ -368,7 +372,7 @@ const ContractDetailPage: React.FC = () => {
     approveStatusResponse?.data?.data?.status === "N/A";
 
   const triggerClass =
-    "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3";
+    "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3 text-sm";
 
   return (
     <div className="space-y-8 pt-5">
@@ -409,7 +413,8 @@ const ContractDetailPage: React.FC = () => {
         <Badge className={status?.className}>{status?.label}</Badge>
       </div>
 
-      {((isApprover && canApprove && !hasAprovedorRejected) || canProjectManagerApprove) && (
+      {((isApprover && canApprove && !hasAprovedorRejected) ||
+        canProjectManagerApprove) && (
         <div
           className={cn("flex items-center gap-4", {
             hidden: hasNoAuthorization && !canProjectManagerApprove,
@@ -448,53 +453,73 @@ const ContractDetailPage: React.FC = () => {
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
-        <OverviewTab contract={contract} status={status} />
+        <OverviewTab
+          contract={contract}
+          currency={contract?.currency}
+          status={status}
+        />
 
-        <AnalyticsTabContent isActive={activeTab === "analytics"} />
+        <AnalyticsTabContent
+          currency={contract?.currency}
+          isActive={activeTab === "analytics"}
+        />
 
         <KpiTabContent
           contractId={contract?._id ?? ""}
+          currency={contract?.currency}
           isActive={activeTab === "kpi"}
         />
 
-        <ComplianceTabContent isActive={activeTab === "compliance"} />
+        <ComplianceTabContent
+          currency={contract?.currency}
+          isActive={activeTab === "compliance"}
+          actionsDisabled={actionsDisabled}
+        />
 
         <ChangeTabContent
           contractId={contract?._id ?? ""}
+          currency={contract?.currency}
           isActive={activeTab === "change"}
           actionsDisabled={actionsDisabled}
         />
 
         <ClaimsTabContent
           contractId={contract?._id ?? ""}
+          currency={contract?.currency}
           isActive={activeTab === "claims"}
           actionsDisabled={actionsDisabled}
         />
 
         <ApproversTabContent
           contractId={contract?._id ?? ""}
+          currency={contract?.currency}
           isActive={activeTab === "approvers"}
         />
 
         <InvoiceTabContent
           contractId={contract?._id ?? ""}
+          currency={contract?.currency}
           isActive={activeTab === "invoice"}
+          actionsDisabled={actionsDisabled}
         />
 
         <DeliverablesTabContent />
 
         <RateSheetsTabContent
           contractId={contract?._id ?? ""}
+          currency={contract?.currency}
           isActive={activeTab === "rate-sheets"}
         />
 
         <LemTabContent
           contractId={contract?._id ?? ""}
+          currency={contract?.currency}
           isActive={activeTab === "lem"}
         />
 
         <RfiTabContent
           contractId={contract?._id ?? ""}
+          currency={contract?.currency}
           isActive={activeTab === "rfi"}
           actionsDisabled={actionsDisabled}
         />
@@ -507,6 +532,7 @@ const ContractDetailPage: React.FC = () => {
         />
 
         <DocumentsTabContent
+          currency={contract?.currency}
           files={contract?.files}
           contractId={contract?._id ?? ""}
           effectiveDate={contract?.startDate}
@@ -515,21 +541,27 @@ const ContractDetailPage: React.FC = () => {
 
         <AmendmentsTabContent
           contractId={contract?._id ?? ""}
+          currency={contract?.currency}
           isActive={activeTab === "amendments"}
           actionsDisabled={actionsDisabled}
         />
 
         <PaymentSummaryTabContent
           contractId={contract?._id ?? ""}
+          currency={contract?.currency}
           contract={contract}
           isActive={activeTab === "payment-summary"}
         />
 
-        <ClauseLibraryTabContent isActive={activeTab === "clause-library"} />
+        <ClauseLibraryTabContent
+          currency={contract?.currency}
+          isActive={activeTab === "clause-library"}
+        />
 
         <VendorReportsTabContent
           contractId={contract?._id ?? ""}
           isActive={activeTab === "reports"}
+          contractStatus={contract?.status}
         />
 
         <ActionLogTabContent isActive={activeTab === "action-log"} />
