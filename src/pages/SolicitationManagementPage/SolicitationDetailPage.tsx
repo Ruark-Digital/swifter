@@ -1174,6 +1174,18 @@ export const SolicitationDetailPage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="text-sm font-medium text-gray-500 mb-1 block">
+                        Published Date
+                      </label>
+                      <p className="text-gray-900 dark:text-gray-200 font-medium">
+                        {formatDateTZ(
+                          solicitation.createdAt,
+                          "MMMM dd, yyyy KK:mm a",
+                          solicitation.timezone
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500 mb-1 block">
                         Submission Deadline
                       </label>
                       <p className="text-gray-900 dark:text-gray-200 font-medium">
@@ -1200,6 +1212,14 @@ export const SolicitationDetailPage = () => {
                           </p>
                         </div>
                       )}
+                    <div>
+                      <label className="text-sm font-medium text-gray-500 mb-1 block">
+                        Timezone
+                      </label>
+                      <p className="text-gray-900 dark:text-gray-200 font-medium">
+                        {solicitation.timezone}
+                      </p>
+                    </div>
                     {solicitation.questionDeadline && (
                       <div>
                         <label className="text-sm font-medium text-gray-500 mb-1 block">
@@ -1214,14 +1234,6 @@ export const SolicitationDetailPage = () => {
                         </p>
                       </div>
                     )}
-                    <div>
-                      <label className="text-sm font-medium text-gray-500 mb-1 block">
-                        Timezone
-                      </label>
-                      <p className="text-gray-900 dark:text-gray-200 font-medium">
-                        {solicitation.timezone}
-                      </p>
-                    </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500 mb-1 block">
                         Bid Intent
