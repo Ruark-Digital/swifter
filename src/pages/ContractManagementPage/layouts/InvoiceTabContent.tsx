@@ -118,6 +118,7 @@ const InvoiceTabContent: React.FC<Props> = ({
         contractId={contractId}
         invoiceIdSearch={invoiceIdSearch}
         setInvoiceIdSearch={setInvoiceIdSearch}
+        actionsDisabled={actionsDisabled}
       />
     </TabsContent>
   );

@@ -30,6 +30,7 @@ import { postRequest } from "@/lib/axiosInstance";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
 import { vendorApi } from "../api/vendorApi";
+import type { ContractInvoiceDTO } from "../api/contractManagerApi";
 import { useToastHandler } from "@/hooks/useToaster";
 
 type Props = {
@@ -37,6 +38,24 @@ type Props = {
   contractId: string;
   createPath?: string;
   invalidateQueryKey?: readonly unknown[];
+  mode?: "create" | "edit";
+  invoiceId?: string;
+  initialInvoice?: ContractInvoiceDTO & {
+    items?: Array<{
+      component?: string;
+      description?: string;
+      quantity?: number;
+      unitOfmeasurement?: string;
+      unitPrice?: number;
+    }>;
+  };
+};
+
+const TAX_CODE_TO_FORM: Record<string, string> = {
+  HST: "hst",
+  GST: "gst",
+  "PST/QST": "pst_qst",
+  Others: "others",
 };
 
 type InvoiceItem = {
@@ -575,10 +594,17 @@ const CreateInvoiceDialog: React.FC<Props> = ({
   contractId,
   createPath,
   invalidateQueryKey,
+  mode = "create",
+  invoiceId,
+  initialInvoice,
 }) => {
+  const isEditMode = mode === "edit" && Boolean(invoiceId);
   const [open, setOpen] = React.useState(false);
   const [completeOpen, setCompleteOpen] = React.useState(false);
-  const [invoiceCompleted, setInvoiceCompleted] = React.useState(false);
+  // In edit mode the invoice already exists, so we don't gate submission
+  // behind the "Complete Invoice" sub-dialog (which is only for new manual
+  // invoices that need their item list populated).
+  const [invoiceCompleted, setInvoiceCompleted] = React.useState(isEditMode);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
@@ -625,6 +651,9 @@ const CreateInvoiceDialog: React.FC<Props> = ({
         unitPrice?: number;
       }>;
     }) => {
+      if (isEditMode && invoiceId) {
+        return await vendorApi.updateInvoice(contractId, invoiceId, payload);
+      }
       if (createPath) {
         const res = await postRequest({
           url: createPath,
@@ -635,10 +664,20 @@ const CreateInvoiceDialog: React.FC<Props> = ({
       return await vendorApi.createInvoice(contractId, payload);
     },
     onSuccess: async () => {
-      toastHandler.success("Success", "Invoice submitted successfully");
+      toastHandler.success(
+        "Success",
+        isEditMode
+          ? "Invoice updated successfully"
+          : "Invoice submitted successfully",
+      );
       await queryClient.invalidateQueries({
         queryKey: invalidateQueryKey ?? ["contractInvoices"],
       });
+      if (isEditMode) {
+        await queryClient.invalidateQueries({
+          queryKey: ["contractInvoiceDetail", contractId, invoiceId],
+        });
+      }
       setOpen(false);
       setCompleteOpen(false);
       setInvoiceCompleted(false);
@@ -651,20 +690,75 @@ const CreateInvoiceDialog: React.FC<Props> = ({
     },
   });
 
-  const { control, reset, getValues, setValue, handleSubmit } = useForge<FormValues>({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      invoiceTitle: "",
-      invoiceType: undefined,
+  const editDefaults = React.useMemo<FormValues>(() => {
+    if (!isEditMode || !initialInvoice) {
+      return {
+        invoiceTitle: "",
+        invoiceType: undefined,
+        milestonePayment: undefined,
+        taxCode: undefined,
+        otherTaxValue: "",
+        description: "",
+        uploadMode: "manual",
+        total: 0,
+        invoiceAmount: "",
+      };
+    }
+    const mode: "manual" | "file" =
+      initialInvoice.fileType ?? initialInvoice.inputType ?? "manual";
+    return {
+      invoiceTitle: initialInvoice.title ?? "",
+      invoiceType: initialInvoice.type,
       milestonePayment: undefined,
-      taxCode: undefined,
-      otherTaxValue: "",
-      description: "",
-      uploadMode: "manual",
-      total: 0,
-      invoiceAmount: "",
-    },
-  });
+      taxCode: initialInvoice.taxCode
+        ? TAX_CODE_TO_FORM[initialInvoice.taxCode] ?? initialInvoice.taxCode
+        : undefined,
+      otherTaxValue:
+        typeof initialInvoice.taxValue === "number"
+          ? String(initialInvoice.taxValue)
+          : "",
+      description: initialInvoice.description ?? "",
+      uploadMode: mode,
+      total:
+        mode === "manual" && typeof initialInvoice.amount === "number"
+          ? initialInvoice.amount
+          : 0,
+      invoiceAmount:
+        mode === "file" && typeof initialInvoice.amount === "number"
+          ? String(initialInvoice.amount)
+          : "",
+      items:
+        mode === "manual" && Array.isArray(initialInvoice.items)
+          ? initialInvoice.items.map((it) => ({
+              itemComponent: it.component ?? "",
+              description: it.description ?? "",
+              quantity:
+                typeof it.quantity === "number" ? String(it.quantity) : "",
+              unitMeasurement: it.unitOfmeasurement ?? "",
+              unitPrice:
+                typeof it.unitPrice === "number" ? String(it.unitPrice) : "",
+              total:
+                typeof it.quantity === "number" &&
+                typeof it.unitPrice === "number"
+                  ? String(it.quantity * it.unitPrice)
+                  : "",
+            }))
+          : undefined,
+    };
+  }, [isEditMode, initialInvoice]);
+
+  const { control, reset, getValues, setValue, handleSubmit } =
+    useForge<FormValues>({
+      resolver: yupResolver(schema),
+      defaultValues: editDefaults,
+    });
+
+  React.useEffect(() => {
+    if (open && isEditMode) {
+      reset(editDefaults);
+      setInvoiceCompleted(true);
+    }
+  }, [open, isEditMode, editDefaults, reset]);
 
   const onSubmit = React.useCallback(
     async (values: FormValues) => {
@@ -910,7 +1004,7 @@ const CreateInvoiceDialog: React.FC<Props> = ({
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-4 pt-8">
           <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
-            Create Invoice
+            {isEditMode ? "Edit Invoice" : "Create Invoice"}
           </DialogTitle>
         </div>
 
@@ -975,7 +1069,7 @@ const CreateInvoiceDialog: React.FC<Props> = ({
             <Footer
               onBack={handleBack}
               onPrimary={handlePrimary}
-              primaryLabel={"Create Invoice"}
+              primaryLabel={isEditMode ? "Update Invoice" : "Create Invoice"}
               isSubmitting={isSubmitting}
             />
           </Forge>
