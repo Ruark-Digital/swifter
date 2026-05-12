@@ -136,5 +136,13 @@
     "typescript": "^5.2.2",
     "vite": "^5.3.1",
     "vitest": "^2.1.9"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "core-js",
+      "esbuild",
+      "pdf2html",
+      "sharp"
+    ]
   }
 }

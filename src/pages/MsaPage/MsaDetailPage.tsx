@@ -66,8 +66,7 @@ type TabKey =
   | "rfi"
   | "ncr-log"
   | "approvers"
-  | "reports"
-  | "action-log";
+  | "reports";
 
 const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "overview", label: "Overview" },
@@ -87,7 +86,6 @@ const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "ncr-log", label: "NCR Log" },
   { key: "approvers", label: "Approvers" },
   { key: "reports", label: "Vendor’s Reports" },
-  { key: "action-log", label: "Action Log" },
 ];
 
 const ROLE_TAB_WHITELIST: Record<
@@ -155,7 +153,6 @@ const ROLE_TAB_WHITELIST: Record<
     "ncr-log",
     "approvers",
     "reports",
-    "payment-summary",
   ],
 };
 

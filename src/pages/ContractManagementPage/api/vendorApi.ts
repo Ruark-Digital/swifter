@@ -1,4 +1,4 @@
-import { getRequest, postRequest } from "@/lib/axiosInstance";
+import { getRequest, postRequest, putRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ContractDetail } from "@/types";
 import { AxiosRequestConfig } from "axios";
 import {
@@ -192,6 +192,34 @@ export const createVendorApi = (
   getInvoiceDetail: async (contractId: string, invoiceId: string) => {
     const res = await client.get({
       url: `/contract/vendor/contracts/${contractId}/invoice/${invoiceId}`,
+    });
+    return res as ApiResponse<ContractInvoiceDTO>;
+  },
+  updateInvoice: async (
+    contractId: string,
+    invoiceId: string,
+    payload: Partial<{
+      title: string;
+      description: string;
+      type: "progress draw" | "monthly payment" | "milestone payment" | "holdback";
+      taxCode: "HST" | "GST" | "PST/QST" | "Others";
+      status: "active" | "draft";
+      fileType: "manual" | "file";
+      taxValue: number;
+      amount: number;
+      files: { name: string; url: string; type: string; size: string }[];
+      items: Array<{
+        component?: string;
+        description?: string;
+        quantity?: number;
+        unitOfmeasurement?: string;
+        unitPrice?: number;
+      }>;
+    }>,
+  ) => {
+    const res = await putRequest({
+      url: `/contract/vendor/contracts/${contractId}/invoice/${invoiceId}`,
+      payload,
     });
     return res as ApiResponse<ContractInvoiceDTO>;
   },

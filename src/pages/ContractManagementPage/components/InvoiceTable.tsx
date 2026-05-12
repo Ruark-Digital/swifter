@@ -11,7 +11,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ArrowLeft, Search, Share2, X } from "lucide-react";
+import { ArrowLeft, Edit2, Search, Share2, X } from "lucide-react";
+import CreateInvoiceDialog from "./CreateInvoiceDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ContractInvoiceDTO } from "../api/contractManagerApi";
 import { contractManagerApi } from "../api/contractManagerApi";
@@ -37,6 +38,7 @@ type InvoiceDetailsSheetProps = {
   trigger: React.ReactNode;
   contractId: string;
   invoiceId: string;
+  actionsDisabled?: boolean;
 };
 
 const LabelRow = ({
@@ -57,6 +59,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   trigger,
   contractId,
   invoiceId,
+  actionsDisabled,
 }) => {
   const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
@@ -264,12 +267,33 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                   {invoice?.title ?? "-"}
                 </div>
               </div>
-              <Button
-                variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
-              >
-                <Share2 className="mr-2 h-4 w-4" /> Export
-              </Button>
+              <div className="flex items-center gap-2">
+                {isContractVendorLike &&
+                  !actionsDisabled &&
+                  invoice?.status === "rejected" && (
+                    <CreateInvoiceDialog
+                      contractId={contractId}
+                      mode="edit"
+                      invoiceId={invoiceId}
+                      initialInvoice={invoice as any}
+                      trigger={
+                        <Button
+                          variant="outline"
+                          data-testid="edit-invoice-trigger"
+                          className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#2A4467]"
+                        >
+                          <Edit2 className="mr-2 h-4 w-4" /> Edit
+                        </Button>
+                      }
+                    />
+                  )}
+                <Button
+                  variant="outline"
+                  className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
+                >
+                  <Share2 className="mr-2 h-4 w-4" /> Export
+                </Button>
+              </div>
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2">
@@ -405,6 +429,7 @@ type InvoiceTableProps = {
   contractId: string;
   invoiceIdSearch: string;
   setInvoiceIdSearch: (next: string) => void;
+  actionsDisabled?: boolean;
 };
 
 const InvoiceTable: React.FC<InvoiceTableProps> = ({
@@ -416,6 +441,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
   contractId,
   invoiceIdSearch,
   setInvoiceIdSearch,
+  actionsDisabled,
 }) => {
   const columns = React.useMemo<ColumnDef<InvoiceRow>[]>(() => {
     return [
@@ -473,6 +499,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
             <InvoiceDetailsSheet
               contractId={contractId}
               invoiceId={row.original.id}
+              actionsDisabled={actionsDisabled}
               trigger={
                 <button
                   type="button"
@@ -487,7 +514,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
         ),
       },
     ];
-  }, [contractId]);
+  }, [contractId, actionsDisabled]);
 
   const invoiceRows: InvoiceRow[] = React.useMemo(() => {
     const currencyFormatter = new Intl.NumberFormat(undefined, {
