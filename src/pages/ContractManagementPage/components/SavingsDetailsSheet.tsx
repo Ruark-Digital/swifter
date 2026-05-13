@@ -34,15 +34,18 @@ type SavingsDetailDTO = {
 
 const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, basePath, currency = "USD" }) => {
   const [open, setOpen] = React.useState(false);
-  const { isVendor, isProjectManager, isApprover, isManager } = useUserRole();
-  const isContractVendorLike = isVendor || isProjectManager;
+  const { isApprover, isManager } = useUserRole();
   const toast = useToastHandler();
 
+  // Phase 2 markdown docs only expose savings detail for manager + approver.
+  // Vendor/PM/view-only have no documented savings route — match the list
+  // gating in `PaymentSummaryTabContent` so the URL maps stay consistent.
   const rolePrefix = React.useMemo(() => {
     if (basePath) return basePath;
-    const role = isManager ? "manager" : isApprover ? "approver" : isContractVendorLike ? "vendor" : "user";
-    return `/contract/${role}/contracts/payment-savings`;
-  }, [basePath, isApprover, isManager, isContractVendorLike]);
+    if (isManager) return `/contract/manager/contracts/payment-savings`;
+    if (isApprover) return `/contract/approver/contracts/payment-savings`;
+    return null;
+  }, [basePath, isApprover, isManager]);
 
   const { data: detailRes, isLoading, isError, error } = useQuery<{
     message?: string;
@@ -53,7 +56,7 @@ const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, basePath, cur
       const res = await getRequest({ url: `${rolePrefix}/${savingId}` });
       return res.data as any;
     },
-    enabled: open && Boolean(savingId),
+    enabled: open && Boolean(savingId) && Boolean(rolePrefix),
     staleTime: 60_000,
     retry: false,
   });

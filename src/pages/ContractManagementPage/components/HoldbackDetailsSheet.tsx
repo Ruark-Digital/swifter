@@ -62,17 +62,14 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
   const { isVendor, isProjectManager, isApprover, isManager } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
 
+  // Phase 2 documents `/contract/{manager,approver,vendor}/contracts/payment-holdbacks/{id}`
+  // for holdback detail. View-only has no documented detail route.
   const rolePrefix = React.useMemo(() => {
     if (basePath) return basePath; // allow parent override
-    const role = isManager
-      ? "manager"
-      : isApprover
-        ? "approver"
-        : isContractVendorLike
-          ? "vendor"
-          : "user";
-    // detail endpoints use /contract/<role>/contracts/payment-holdbacks/<id>
-    return `/contract/${role}/contracts/payment-holdbacks`;
+    if (isManager) return `/contract/manager/contracts/payment-holdbacks`;
+    if (isApprover) return `/contract/approver/contracts/payment-holdbacks`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/payment-holdbacks`;
+    return null;
   }, [basePath, isApprover, isManager, isContractVendorLike]);
 
   const queryKey = ["contract-holdback-detail", rolePrefix, holdBackId];
@@ -87,7 +84,7 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
       });
       return res.data as any;
     },
-    enabled: open && Boolean(holdBackId),
+    enabled: open && Boolean(holdBackId) && Boolean(rolePrefix),
     staleTime: 60_000,
     retry: false,
   });
