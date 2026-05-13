@@ -12,21 +12,7 @@ import { CardStats } from "./components/StatsCard";
 import { cn } from "@/lib/utils";
 import { DashboardConfig } from "@/config/dashboardConfig";
 import { PageLoader } from "@/components/ui/PageLoader";
-import { CycleTimeCard } from "./analytics/CycleTimeCard";
-import { InvoiceStatusCard } from "./analytics/InvoiceStatusCard";
-import { SpendCard } from "./analytics/SpendCard";
-import { VendorsValueCard } from "./analytics/VendorsValueCard";
-import { ProjectValueCard } from "./analytics/ProjectValueCard";
-import { RiskDistributionCard } from "./analytics/RiskDistributionCard";
-import { ChangeOrdersImpactCard } from "./analytics/ChangeOrdersImpactCard";
-import { CategoryValueCard } from "./analytics/CategoryValueCard";
-import { ComplianceStatusCard } from "./analytics/ComplianceStatusCard";
-import { ClauseIntelligenceCard } from "./analytics/ClauseIntelligenceCard";
-import { ContractStatusCard } from "./analytics/ContractStatusCard";
-import { VendorPerformanceSummaryCard } from "./analytics/VendorPerformanceSummaryCard";
-import { RenewalsTimelineCard } from "./analytics/RenewalsTimelineCard";
-import { AiInsightsAlerts } from "./analytics/AiInsightsAlerts";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ContractsTabView } from "./ContractsTabView";
 
 const DEFAULT_CHART_FILTER = "12months";
 
@@ -786,16 +772,6 @@ export const RoleBasedDashboard: React.FC = () => {
 
   const isContractAnalyticsRole =
     userRole === "contract_manager" || userRole === "approver";
-  const showCmOverviewTotalContracts =
-    isContractAnalyticsRole &&
-    cmTopTab === "overview" &&
-    cmSubTab === "total-contracts";
-  const showCmOverviewYtdContracts =
-    isContractAnalyticsRole &&
-    cmTopTab === "overview" &&
-    cmSubTab === "ytd-contracts";
-  const showCmAnalytics = isContractAnalyticsRole && cmTopTab === "analytics";
-  const showDefaultStats = !isContractAnalyticsRole || showCmOverviewTotalContracts;
   const canShowMyActions = modules?.myActions === true;
   const canShowGeneralUpdates = modules?.generalUpdatesNotifications === true;
 
@@ -821,84 +797,44 @@ export const RoleBasedDashboard: React.FC = () => {
       </div>
 
       {isContractAnalyticsRole && (
-        <div className="space-y-4">
-          <Tabs
-            value={cmTopTab}
-            onValueChange={(v) =>
-              setCmTopTab((v as "overview" | "analytics") ?? "overview")
-            }
-            className="w-full"
-          >
-            <TabsList className="bg-slate-100 rounded-full p-1.5 gap-3 mb-3 h-12">
-              <TabsTrigger
-                value="overview"
-                className={cn(
-                  "rounded-full px-4 py-2 text-sm",
-                  "data-[state=active]:bg-[#2A4467] data-[state=active]:text-white",
-                  "text-gray-600"
-                )}
-              >
-                Overview
-              </TabsTrigger>
-              <TabsTrigger
-                value="analytics"
-                className={cn(
-                  "rounded-full px-4 py-2 text-sm",
-                  "text-gray-600",
-                  "data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
-                )}
-              >
-                Analytics
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview" className="space-y-4">
-              <Tabs
-                value={cmSubTab}
-                onValueChange={(v) =>
-                  setCmSubTab(
-                    (v as "total-contracts" | "ytd-contracts") ??
-                      "total-contracts"
-                  )
-                }
-                className="w-full"
-              >
-                <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
-                  <TabsTrigger
-                    value="total-contracts"
-                    className={cn(
-                      "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3",
-                    )}
-                  >
-                    Total Contracts
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="ytd-contracts"
-                    className={cn(
-                      "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3",
-                    )}
-                  >
-                    YTD Contracts
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="total-contracts" />
-                
-                <TabsContent value="ytd-contracts">
-                 
-                </TabsContent>
-              </Tabs>
-            </TabsContent>
-
-            <TabsContent value="analytics">
-              
-            </TabsContent>
-          </Tabs>
-        </div>
+        <ContractsTabView
+          topTab={cmTopTab}
+          setTopTab={setCmTopTab}
+          subTab={cmSubTab}
+          setSubTab={setCmSubTab}
+          stats={enhancedDashboardConfig.stats}
+          rows={enhancedDashboardConfig.rows}
+          cmYtdStats={cmYtdStats}
+          cmCycleTimeValues={cmCycleTimeValues}
+          chartFilters={chartFilters}
+          contractManagerTotalCards={contractManagerTotalCards}
+          contractManagerYtdCards={contractManagerYtdCards}
+          contractManagerActionLogs={contractManagerActionLogs}
+          contractManagerGeneralUpdates={contractManagerGeneralUpdates}
+          contractManagerCycleTime={contractManagerCycleTime}
+          contractManagerInvoiceStatus={contractManagerInvoiceStatus}
+          contractManagerCommittedVsActualSpend={contractManagerCommittedVsActualSpend}
+          contractManagerVendorContractValue={contractManagerVendorContractValue}
+          contractManagerProjectContractValue={contractManagerProjectContractValue}
+          contractManagerRiskDistribution={contractManagerRiskDistribution}
+          contractManagerChangeOrderImpact={contractManagerChangeOrderImpact}
+          contractManagerCategoryValue={contractManagerCategoryValue}
+          contractManagerComplianceStatus={contractManagerComplianceStatus}
+          contractManagerClauseIntelligence={contractManagerClauseIntelligence}
+          contractManagerContractStatus={contractManagerContractStatus}
+          contractManagerVendorSummary={contractManagerVendorSummary}
+          contractManagerRenewals={contractManagerRenewals}
+          canShowMyActions={canShowMyActions}
+          canShowGeneralUpdates={canShowGeneralUpdates}
+          onFilterChange={handleFilterChange}
+          getChartFilter={getChartFilter}
+          getChartData={getChartData}
+          onStatCardClick={handleStatCardClick}
+        />
       )}
 
       {/* Stats Cards */}
-      {showDefaultStats && (
+      {!isContractAnalyticsRole && (
         <div
           className={cn(`grid grid-cols-1 md:grid-cols-2 gap-6`, {
             "lg:grid-cols-2": enhancedDashboardConfig.stats.length === 8,
@@ -917,83 +853,9 @@ export const RoleBasedDashboard: React.FC = () => {
           ))}
         </div>
       )}
-      
-      {showCmOverviewYtdContracts && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cmYtdStats.map((stat, index) => (
-              <CardStats
-                key={`cm-ytd-${index}`}
-                {...stat}
-                onClick={() => handleStatCardClick(stat.title)}
-              />
-            ))}
-          </div>
-        )}
-      {showCmAnalytics && (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <CycleTimeCard
-              values={cmCycleTimeValues}
-              bottleneck={contractManagerCycleTime?.bottleneck}
-              selectedRange={chartFilters["cycle-time"] ?? "ytd"}
-              onRangeChange={(value) => handleFilterChange("cycle-time", value)}
-            />
-            <InvoiceStatusCard
-              approved={contractManagerInvoiceStatus?.approved}
-              pending={contractManagerInvoiceStatus?.pending}
-              rejected={contractManagerInvoiceStatus?.rejected}
-              selectedRange={chartFilters["invoice-status"] ?? "ytd"}
-              onRangeChange={(value) =>
-                handleFilterChange("invoice-status", value)
-              }
-            />
-            <SpendCard
-              committed={contractManagerCommittedVsActualSpend?.committed}
-              actual={contractManagerCommittedVsActualSpend?.actual}
-              currency={contractManagerTotalCards?.totalContractValue?.currency}
-              selectedRange={chartFilters["committed-vs-actual"] ?? "ytd"}
-              onRangeChange={(value) =>
-                handleFilterChange("committed-vs-actual", value)
-              }
-            />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <VendorsValueCard
-              rows={contractManagerVendorContractValue}
-              selectedRange={chartFilters["vendor-contract-value"] ?? "ytd"}
-              onRangeChange={(value) =>
-                handleFilterChange("vendor-contract-value", value)
-              }
-            />
-            <ProjectValueCard rows={contractManagerProjectContractValue} />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <RiskDistributionCard values={contractManagerRiskDistribution} />
-            <ChangeOrdersImpactCard data={contractManagerChangeOrderImpact} />
-            <CategoryValueCard rows={contractManagerCategoryValue} />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <ComplianceStatusCard data={contractManagerComplianceStatus} />
-            <ClauseIntelligenceCard data={contractManagerClauseIntelligence} />
-            <ContractStatusCard data={contractManagerContractStatus} />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <VendorPerformanceSummaryCard data={contractManagerVendorSummary} />
-            <RenewalsTimelineCard data={contractManagerRenewals} />
-          </div>
-          <AiInsightsAlerts />
-        </>
-      )}
 
       {/* Activities and Charts Section */}
-      {enhancedDashboardConfig.rows?.map?.((item, rowIndex) => {
-        if (showCmAnalytics) {
-          return null;
-        }
+      {!isContractAnalyticsRole && enhancedDashboardConfig.rows?.map?.((item, rowIndex) => {
         if (item.type === "activity") {
           const gatedActivities = item.properties.filter((activity) => {
             if (activity.id === "my-actions" && !canShowMyActions) {
