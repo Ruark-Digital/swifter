@@ -14,3 +14,4 @@ Test-credentials.md
 # QA output (screenshots + reports)
 .qa/screenshots/
 .qa/reports/
+.worktrees
