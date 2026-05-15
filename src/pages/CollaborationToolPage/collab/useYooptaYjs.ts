@@ -9,6 +9,8 @@ export type CollabConfig = {
   wsUrl: string;
   roomId: string;
   disable?: boolean;
+  /** JWT injected as `?token=` query param when the WS handshake runs. */
+  token?: string;
 };
 
 const THROTTLE_INTERVAL_MS = Math.floor(1000 / 30);
@@ -72,12 +74,50 @@ const installAwarenessThrottle = (provider?: WebsocketProvider) => {
   };
 };
 
+// y-websocket builds the handshake URL as `${wsUrl}/${roomId}?<params>` —
+// but the collab server's canonical endpoint is `${wsUrl}/collab?doc=…`
+// and the token must travel through the `Sec-WebSocket-Protocol` header
+// (URL query strings leak to access logs / referers per COLLAB_WS.md).
+//
+// y-websocket invokes its `WebSocketPolyfill` with `new` — it must be a
+// class, not a factory function. We build a per-room subclass of
+// WebSocket that rewrites the URL into the canonical form and stamps
+// the bearer as the second subprotocol value (`access_token`, `<jwt>`).
+const makeAuthWebSocketClass = (
+  token: string | undefined,
+  docName: string,
+): typeof WebSocket => {
+  return class CollabAuthSocket extends WebSocket {
+    constructor(url: string | URL, protocols?: string | string[]) {
+      const raw = typeof url === "string" ? url : url.toString();
+      let finalUrl = raw;
+      try {
+        const u = new URL(raw);
+        if (!u.pathname.startsWith("/collab")) {
+          u.pathname = "/collab";
+          u.searchParams.set("doc", docName);
+          finalUrl = u.toString();
+        }
+      } catch {
+        // Fall back to the unmodified URL if it's not parsable.
+      }
+      const finalProtocols = token ? ["access_token", token] : protocols;
+      super(finalUrl, finalProtocols);
+    }
+  } as unknown as typeof WebSocket;
+};
+
 export function createCollab(config: CollabConfig) {
   const doc = new Y.Doc();
   const persistence = new IndexeddbPersistence(config.roomId, doc);
   const provider = config.disable
     ? undefined
-    : new WebsocketProvider(config.wsUrl, config.roomId, doc);
+    : new WebsocketProvider(config.wsUrl, config.roomId, doc, {
+        WebSocketPolyfill: makeAuthWebSocketClass(
+          config.token,
+          config.roomId,
+        ),
+      });
   const cleanupAwarenessThrottle = installAwarenessThrottle(provider);
   let cachedLocalState = provider?.awareness.getLocalState() ?? null;
 

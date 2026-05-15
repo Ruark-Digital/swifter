@@ -43,7 +43,7 @@ const statusTone = (status?: string) => {
   if (normalized === "approved") return "bg-[#EAF7EE] text-[#43A047]";
   if (normalized === "pending") return "bg-[#FFF8E1] text-[#F4B400]";
   if (normalized === "rejected") return "bg-[#FEECEC] text-[#E53935]";
-  return "bg-slate-100 text-slate-700";
+  return "bg-slate-100 text-slate-700 dark:text-slate-300";
 };
 
 const formatChangeValue = (value?: number) => {
@@ -175,14 +175,14 @@ const ChangeManagement: React.FC<Props> = ({
         accessorKey: "changeId",
         header: "Change ID",
         cell: ({ getValue }) => (
-          <span className="font-medium text-slate-900">{getValue<string>() || "-"}</span>
+          <span className="font-medium text-slate-900 dark:text-slate-100">{getValue<string>() || "-"}</span>
         ),
       },
       {
         accessorKey: "title",
         header: "Change Title",
         cell: ({ getValue }) => (
-          <span className="font-medium text-slate-900">{getValue<string>() || "-"}</span>
+          <span className="font-medium text-slate-900 dark:text-slate-100">{getValue<string>() || "-"}</span>
         ),
       },
       {
@@ -257,13 +257,13 @@ const ChangeManagement: React.FC<Props> = ({
   return (
     <MainTabsContent value="change" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
+        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F] dark:text-slate-100">
           Change Management
         </h3>
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
-            className="h-12 rounded-xl border-[#E5E7EB] px-5 text-sm font-semibold text-[#0F0F0F]"
+            className="h-12 rounded-xl border-[#E5E7EB] px-5 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
           >
             <Share2 className="mr-2 h-5 w-5" />
             Export Report
@@ -272,7 +272,7 @@ const ChangeManagement: React.FC<Props> = ({
             <CreateChangeDialog
               trigger={
                 <Button
-                  className="h-12 rounded-xl bg-[#F3F4F6] px-5 text-sm font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB]"
+                  className="h-12 rounded-xl bg-[#F3F4F6] px-5 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100 hover:bg-[#E5E7EB]"
                   disabled={!!actionsDisabled}
                 >
                   Create Change
@@ -337,14 +337,14 @@ const ChangeManagement: React.FC<Props> = ({
             }}
             header={() => (
               <div className="flex items-center gap-4 border-b border-[#E9E9EB] px-6 py-4">
-                <div className="text-base font-semibold text-[#0F0F0F]">Changes</div>
+                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">Changes</div>
                 <div className="relative w-[320px]">
-                  <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B]" />
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />
                   <Input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Search changes"
-                    className="h-12 rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
+                    className="h-12 rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] dark:text-slate-100 placeholder:text-[#6B6B6B] dark:text-slate-400"
                   />
                 </div>
               </div>
@@ -356,11 +356,11 @@ const ChangeManagement: React.FC<Props> = ({
               tHeadRow: "border-b border-[#E5E7EB]",
               tBody: "bg-white",
               tRow: "border-b border-[#E5E7EB]",
-              tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467]",
-              tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+              tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467] dark:text-blue-300",
+              tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-300 align-top",
             }}
             emptyPlaceholder={
-              <div className="px-6 py-8 text-sm text-slate-500">No changes found.</div>
+              <div className="px-6 py-8 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">No changes found.</div>
             }
           />
         </TabsContent>

@@ -9,13 +9,23 @@ export type Mentionable = {
   role?: string;
 };
 
+type RawRole = string | { name?: string; _id?: string } | undefined | null;
 type RawMember = {
   _id?: string;
   id?: string;
   email?: string;
   name?: string;
-  role?: string;
+  // Backend can return role as a populated object `{_id, name}` or as a raw
+  // string. Coerce to string in toMentionable so React renders cleanly.
+  role?: RawRole;
   user?: { _id?: string; name?: string; email?: string };
+};
+
+const coerceRole = (role: RawRole): string | undefined => {
+  if (!role) return undefined;
+  if (typeof role === "string") return role;
+  if (typeof role === "object" && typeof role.name === "string") return role.name;
+  return undefined;
 };
 
 const toMentionable = (m: RawMember): Mentionable | null => {
@@ -26,7 +36,7 @@ const toMentionable = (m: RawMember): Mentionable | null => {
     id,
     name,
     email: m.email || m.user?.email,
-    role: m.role,
+    role: coerceRole(m.role),
   };
 };
 
@@ -51,10 +61,11 @@ const buildPersonnelUrl = ({
   isVendor: boolean;
   isProjectManager: boolean;
 }): string | null => {
-  if (isManager) return `/manager/personnel/contract/${contractId}`;
-  if (isApprover) return `/approver/contracts/${contractId}/personnel`;
+  // axios baseURL is /api/v1/dev — swagger paths live under /contract.
+  if (isManager) return `/contract/manager/personnel/contract/${contractId}`;
+  if (isApprover) return `/contract/approver/contracts/${contractId}/personnel`;
   if (isVendor || isProjectManager)
-    return `/vendor/contracts/${contractId}/personnel`;
+    return `/contract/vendor/contracts/${contractId}/personnel`;
   return null;
 };
 

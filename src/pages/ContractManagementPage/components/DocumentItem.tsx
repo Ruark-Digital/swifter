@@ -32,8 +32,8 @@ export const DocumentItem = ({
         <div className={`h-10 w-10`}>{d.icon}</div>
 
         <div className="flex-1">
-          <p className="text-sm font-medium text-slate-900">{d.name}</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{d.name}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {d.type} • {d.size}
           </p>
         </div>
@@ -55,7 +55,7 @@ export const DocumentItem = ({
               title="Edit in Collaboration Tool"
               onClick={() =>
                 navigate?.(
-                  `/collaboration-tool?sourceUrl=${encodeURIComponent(d.url || "")}&fileName=${encodeURIComponent(d.name)}&fileType=${encodeURIComponent(d.type || "")}${contractId ? `&contractId=${encodeURIComponent(contractId)}` : ""}`,
+                  `/collaboration-tool?sourceUrl=${encodeURIComponent(d.url || "")}&fileName=${encodeURIComponent(d.name)}&fileType=${encodeURIComponent(d.type || "")}${contractId ? `&contractId=${encodeURIComponent(contractId)}` : ""}${d.id ? `&fileId=${encodeURIComponent(d.id)}` : ""}`,
                 )
               }
             >

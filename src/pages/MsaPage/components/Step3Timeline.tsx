@@ -63,7 +63,6 @@ const Step3Timeline: React.FC<Props> = ({
             placeholder="Select contract effective date"
             component={TextDatePicker}
             showTime
-            minDate={today}
           />
           <p className="text-xs font-semibold text-[#2A4467]">
             Could be in the past, present or future.

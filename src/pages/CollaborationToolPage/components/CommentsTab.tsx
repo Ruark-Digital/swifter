@@ -65,16 +65,16 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
           <button
             type="button"
             onClick={() => setReplyTo(comment.id)}
-            className="text-xs font-semibold text-blue-600 hover:underline"
+            className="text-xs font-semibold text-blue-600 hover:underline dark:text-blue-400"
           >
             Reply
           </button>
           {comment.redlineId && (
-            <span className="text-xs text-amber-600">redline thread</span>
+            <span className="text-xs text-amber-600 dark:text-amber-400">redline thread</span>
           )}
         </div>
         {comment.replies && comment.replies.length > 0 && (
-          <div className="pl-12 border-l-2 border-slate-200 ml-6 space-y-2">
+          <div className="pl-12 border-l-2 border-slate-200 ml-6 space-y-2 dark:border-slate-800">
             {comment.replies.map((r) => (
               <FeedItem
                 key={r.id}
@@ -105,12 +105,12 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
       </div>
 
       {replyTo && (
-        <div className="flex items-center justify-between bg-slate-100 px-3 py-1 rounded text-xs text-slate-600 mb-1">
+        <div className="flex items-center justify-between bg-slate-100 px-3 py-1 rounded text-xs text-slate-600 mb-1 dark:bg-slate-800 dark:text-slate-300">
           <span>Replying to comment</span>
           <button
             type="button"
             onClick={() => setReplyTo(null)}
-            className="font-semibold text-red-500 hover:underline"
+            className="font-semibold text-red-500 hover:underline dark:text-red-400"
           >
             Cancel
           </button>
