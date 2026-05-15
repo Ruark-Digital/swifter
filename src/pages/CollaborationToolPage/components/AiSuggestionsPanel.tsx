@@ -14,13 +14,16 @@ type Item = {
 
 interface AiSuggestionsPanelProps {
   open: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   status: Status;
   errorMessage?: string;
   items: Item[];
   onApprove: (item: Item) => void;
   onDismiss: (item: Item) => void;
   onRetry: () => void;
+  /** When "inline", renders without the fixed-overlay chrome so the
+   *  panel can live inside a sidebar tab. */
+  variant?: "overlay" | "inline";
 }
 
 const KindPill: React.FC<{ kind: RedlineSpan["kind"] }> = ({ kind }) => (
@@ -45,13 +48,21 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
   onApprove,
   onDismiss,
   onRetry,
+  variant = "overlay",
 }) => {
   if (!open) return null;
 
   const remaining = items.filter((i) => i.state === "pending").length;
+  const isInline = variant === "inline";
 
   return (
-    <div className="fixed inset-y-0 right-0 z-40 flex w-[420px] max-w-[90vw] flex-col border-l border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+    <div
+      className={
+        isInline
+          ? "flex h-full w-full flex-col bg-transparent"
+          : "fixed inset-y-0 right-0 z-40 flex w-[420px] max-w-[90vw] flex-col border-l border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+      }
+    >
       <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
@@ -83,14 +94,16 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
               <RotateCw className="h-4 w-4" />
             </button>
           )}
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="rounded-md p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          {onClose && !isInline && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="rounded-md p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
 

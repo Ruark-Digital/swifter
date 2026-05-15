@@ -282,7 +282,7 @@ const WriteComment: React.FC<WriteCommentProps> = ({
           placeholder={placeholder}
           value={val}
           disabled={disabled || isSubmitting}
-          rows={1}
+          rows={3}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           onChange={(e) => {
@@ -292,7 +292,7 @@ const WriteComment: React.FC<WriteCommentProps> = ({
             // Auto-grow up to a cap
             const ta = e.currentTarget;
             ta.style.height = "auto";
-            ta.style.height = `${Math.min(ta.scrollHeight, 140)}px`;
+            ta.style.height = `${Math.min(ta.scrollHeight, 180)}px`;
           }}
           onKeyDown={(e) => {
             if (mentionQuery !== null && suggestions.length > 0) {
