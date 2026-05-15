@@ -926,9 +926,230 @@ export const RoleBasedDashboard: React.FC = () => {
         <VendorContractsView enabled />
       )}
 
+      {/* company_admin: Overview tab */}
+      {userRole === "company_admin" && activeLandingTab === "overview" && (() => {
+        const OVERVIEW_STAT_TITLES = new Set([
+          "All Solicitations",
+          "Published Solicitations",
+          "Under Evaluations",
+          "Closed Solicitations",
+          "All Evaluations",
+          "Active Evaluations",
+          "Pending Evaluations",
+          "Completed Evaluations",
+        ]);
+        const OVERVIEW_CHART_IDS = new Set([
+          "solicitation-status",
+          "proposal-submission",
+          "vendors-intent-status",
+          "vendors-distribution",
+        ]);
+        const overviewStats = enhancedDashboardConfig.stats.filter((s) =>
+          OVERVIEW_STAT_TITLES.has(s.title)
+        );
+        // Rows: mixed row (vendors-distribution only), and chart rows filtered to overview chart ids
+        const overviewRows = enhancedDashboardConfig.rows
+          .map((row) => {
+            if (row.type === "mixed") {
+              return {
+                ...row,
+                properties: row.properties.filter(
+                  (p) => p.id && OVERVIEW_CHART_IDS.has(p.id)
+                ),
+              };
+            }
+            if (row.type === "chart") {
+              return {
+                ...row,
+                properties: row.properties.filter(
+                  (p) => p.id && OVERVIEW_CHART_IDS.has(p.id)
+                ),
+              };
+            }
+            return row;
+          })
+          .filter((row) => row.properties.length > 0);
+        return (
+          <>
+            <div
+              className={cn("grid grid-cols-1 md:grid-cols-2 gap-6", {
+                "lg:grid-cols-4": overviewStats.length === 4 || overviewStats.length > 8,
+                "lg:grid-cols-2": overviewStats.length === 8,
+              })}
+            >
+              {overviewStats.map((stat, index) => (
+                <CardStats
+                  key={`${stat.title}-${index}`}
+                  {...stat}
+                  onClick={() => handleStatCardClick(stat.title)}
+                />
+              ))}
+            </div>
+            {overviewRows.map((item, rowIndex) => {
+              if (item.type === "chart") {
+                return (
+                  <div
+                    key={`overview-chart-row-${rowIndex}`}
+                    className={cn("grid grid-cols-1 lg:grid-cols-2 gap-6", item.className)}
+                  >
+                    {item.properties.map((chart) => (
+                      <ChartComponent
+                        key={chart.id}
+                        chart={chart}
+                        selected={getChartFilter(chart.id)}
+                        onFilterChange={(filter) => handleFilterChange(chart.id, filter)}
+                        chartData={getChartData ? getChartData(chart.id) : chart.data}
+                      />
+                    ))}
+                  </div>
+                );
+              }
+              if (item.type === "mixed") {
+                return (
+                  <div
+                    key={`overview-mixed-row-${rowIndex}`}
+                    className={cn("grid grid-cols-1 lg:grid-cols-2 gap-6", item.className)}
+                  >
+                    {item.properties.map((component, index) =>
+                      component.items ? (
+                        <ActivityComponent key={`activity-${index}`} activity={component} />
+                      ) : (
+                        <ChartComponent
+                          key={`chart-${component.id || index}`}
+                          chart={component}
+                          selected={getChartFilter(component.id || `chart-${index}`)}
+                          onFilterChange={(filter) =>
+                            handleFilterChange(component.id || `chart-${index}`, filter)
+                          }
+                          chartData={
+                            getChartData
+                              ? getChartData(component.id || `chart-${index}`)
+                              : component.data
+                          }
+                        />
+                      )
+                    )}
+                  </div>
+                );
+              }
+              return null;
+            })}
+          </>
+        );
+      })()}
+
+      {/* company_admin: Users tab */}
+      {userRole === "company_admin" && activeLandingTab === "users" && (() => {
+        const USER_STAT_TITLES = new Set([
+          "All Users",
+          "Admins",
+          "Procurement Leads",
+          "Evaluators",
+        ]);
+        const USER_CHART_IDS = new Set(["company-role-distribution"]);
+        const usersStats = enhancedDashboardConfig.stats.filter((s) =>
+          USER_STAT_TITLES.has(s.title)
+        );
+        // General Updates lives in the mixed row
+        const generalUpdatesProperty = enhancedDashboardConfig.rows
+          .find((r) => r.type === "mixed")
+          ?.properties.find((p) => p.title === "General Updates");
+        const usersRows = enhancedDashboardConfig.rows
+          .map((row) => {
+            if (row.type === "chart") {
+              return {
+                ...row,
+                properties: row.properties.filter(
+                  (p) => p.id && USER_CHART_IDS.has(p.id)
+                ),
+              };
+            }
+            return row;
+          })
+          .filter((row) => row.type === "chart" && row.properties.length > 0);
+        return (
+          <>
+            <div
+              className={cn("grid grid-cols-1 md:grid-cols-2 gap-6", {
+                "lg:grid-cols-4": usersStats.length === 4 || usersStats.length > 8,
+                "lg:grid-cols-2": usersStats.length === 8,
+              })}
+            >
+              {usersStats.map((stat, index) => (
+                <CardStats
+                  key={`${stat.title}-${index}`}
+                  {...stat}
+                  onClick={() => handleStatCardClick(stat.title)}
+                />
+              ))}
+            </div>
+            {usersRows.map((item, rowIndex) => (
+              <div
+                key={`users-chart-row-${rowIndex}`}
+                className={cn("grid grid-cols-1 lg:grid-cols-2 gap-6", item.className)}
+              >
+                {item.properties.map((chart) => (
+                  <ChartComponent
+                    key={chart.id}
+                    chart={chart}
+                    selected={getChartFilter(chart.id)}
+                    onFilterChange={(filter) => handleFilterChange(chart.id, filter)}
+                    chartData={getChartData ? getChartData(chart.id) : chart.data}
+                  />
+                ))}
+              </div>
+            ))}
+            {generalUpdatesProperty && canShowGeneralUpdates && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ActivityComponent activity={generalUpdatesProperty} />
+              </div>
+            )}
+          </>
+        );
+      })()}
+
+      {/* company_admin: Contracts tab */}
+      {userRole === "company_admin" && activeLandingTab === "contracts" && (
+        <ContractsTabView
+          topTab={cmTopTab}
+          setTopTab={setCmTopTab}
+          subTab={cmSubTab}
+          setSubTab={setCmSubTab}
+          stats={enhancedDashboardConfig.stats}
+          rows={enhancedDashboardConfig.rows}
+          cmYtdStats={cmYtdStats}
+          cmCycleTimeValues={cmCycleTimeValues}
+          chartFilters={chartFilters}
+          contractManagerTotalCards={contractManagerTotalCards}
+          contractManagerYtdCards={contractManagerYtdCards}
+          contractManagerActionLogs={contractManagerActionLogs}
+          contractManagerGeneralUpdates={contractManagerGeneralUpdates}
+          contractManagerCycleTime={contractManagerCycleTime}
+          contractManagerInvoiceStatus={contractManagerInvoiceStatus}
+          contractManagerCommittedVsActualSpend={contractManagerCommittedVsActualSpend}
+          contractManagerVendorContractValue={contractManagerVendorContractValue}
+          contractManagerProjectContractValue={contractManagerProjectContractValue}
+          contractManagerRiskDistribution={contractManagerRiskDistribution}
+          contractManagerChangeOrderImpact={contractManagerChangeOrderImpact}
+          contractManagerCategoryValue={contractManagerCategoryValue}
+          contractManagerComplianceStatus={contractManagerComplianceStatus}
+          contractManagerClauseIntelligence={contractManagerClauseIntelligence}
+          contractManagerContractStatus={contractManagerContractStatus}
+          contractManagerVendorSummary={contractManagerVendorSummary}
+          contractManagerRenewals={contractManagerRenewals}
+          canShowMyActions={canShowMyActions}
+          canShowGeneralUpdates={canShowGeneralUpdates}
+          onFilterChange={handleFilterChange}
+          getChartFilter={getChartFilter}
+          getChartData={getChartData}
+          onStatCardClick={handleStatCardClick}
+        />
+      )}
+
       {/* Stats Cards — shown for all non-analytics roles on their primary tab */}
       {!isContractAnalyticsRole &&
         userRole !== "project_manager" &&
+        userRole !== "company_admin" &&
         !(userRole === "procurement" && activeLandingTab === "contracts") &&
         !(userRole === "vendor" && activeLandingTab === "contracts") && (
         <div
@@ -953,6 +1174,7 @@ export const RoleBasedDashboard: React.FC = () => {
       {/* Activities and Charts Section */}
       {!isContractAnalyticsRole &&
         userRole !== "project_manager" &&
+        userRole !== "company_admin" &&
         !(userRole === "procurement" && activeLandingTab === "contracts") &&
         !(userRole === "vendor" && activeLandingTab === "contracts") &&
         enhancedDashboardConfig.rows?.map?.((item, rowIndex) => {
