@@ -9,6 +9,24 @@ import AIChatWidget from "./components/layouts/AIChatWidget";
 import { useAuthentication } from "@/hooks/useAuthentication";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToken, useUser } from "@/store/authSlice";
+import type { UserRole } from "@/types";
+
+const MCP_BASE_URL = "https://dev.swiftpro.tech";
+
+const CHAT_ENDPOINT: Partial<Record<UserRole, string>> = {
+  vendor: "/chat/vendor",
+  approver: "/chat/approver",
+  contract_manager: "/chat/manager",
+  procurement: "/chat/rfp",
+  project_manager: "/chat/manager",
+  company_admin: "/chat/manager",
+  super_admin: "/chat/manager",
+  evaluator: "/chat/user",
+  view_only: "/chat/user",
+};
+
+const getChatUrl = (role: UserRole) =>
+  `${MCP_BASE_URL}${CHAT_ENDPOINT[role] ?? "/chat/user"}`;
 
 import * as Sentry from "@sentry/react";
 import { routes } from "./routes";
@@ -53,190 +71,119 @@ const queryClient = new QueryClient({
 
 function App() {
   const isAuthenticated = useAuthentication();
-  const { isVendor } = useUserRole();
+  const { userRole } = useUserRole();
   const token = useToken();
   const user = useUser();
-  
-  // Custom function to handle AI chat messages
+
+  const postChat = async (message: string, stream: boolean) => {
+    const response = await fetch(getChatUrl(userRole), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream, application/json',
+      },
+      body: JSON.stringify({
+        userToken: token,
+        stream,
+        messages: [{ role: 'user', content: message }],
+      }),
+    });
+
+    if (!response.ok) {
+      let errMsg = 'Unknown error';
+      try {
+        const errData = await response.json();
+        errMsg = errData.error || errData.message || errMsg;
+      } catch { void 0; }
+      throw new Error(`API Error: ${response.status} - ${errMsg}`);
+    }
+    return response;
+  };
+
+  // Parse the MCP integration server's named-event SSE stream.
+  const parseMcpStream = async (
+    response: Response,
+    onContent: (text: string) => void,
+    onTool?: (phase: 'start' | 'end', tool: string) => void
+  ) => {
+    const reader = response.body?.getReader();
+    if (!reader) {
+      const data = await response.json();
+      const direct = data?.choices?.[0]?.message?.content ?? '';
+      if (direct) onContent(direct);
+      return;
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let currentEvent = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        if (line.startsWith('event:')) {
+          currentEvent = line.slice(6).trim();
+          continue;
+        }
+        if (!line.startsWith('data:')) continue;
+        const raw = line.slice(5).trim();
+        if (!raw || raw === '[DONE]') continue;
+        let p: any;
+        try { p = JSON.parse(raw); } catch { continue; }
+
+        switch (currentEvent) {
+          case 'content':
+            if (typeof p.content === 'string') onContent(p.content);
+            break;
+          case 'tool_start':
+          case 'tool_cached':
+            if (p.tool) onTool?.('start', p.tool);
+            break;
+          case 'tool_result':
+          case 'tool_error':
+            if (p.tool) onTool?.('end', p.tool);
+            break;
+        }
+      }
+    }
+  };
+
   const handleAIChatMessage = async (message: string): Promise<string> => {
     try {
-      const response = await fetch('https://dev.swiftpro.tech/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream, application/json'
-        },
-        body: JSON.stringify({
-          userToken: token,
-          stream: true,
-          //  "model": "mistralai/mistral-7b-instruct:free",
-          messages: [
-            {
-              role: 'user',
-              content: message
-            }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        let errMsg = 'Unknown error';
-        try {
-          const errData = await response.json();
-          errMsg = errData.message || errData.error || errMsg;
-        } catch {
-          void 0;
-        }
-        throw new Error(`API Error: ${response.status} - ${errMsg}`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        const data = await response.json();
-        const direct =
-          (data?.choices && data.choices[0]?.message?.content) ||
-          data?.response ||
-          data?.content ||
-          data?.message;
-        return direct || 'No response received from AI';
-      }
-
-      const contentType = response.headers.get('content-type') || '';
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let finalText = '';
-      let doneReceived = false;
-
-      while (!doneReceived) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        buffer += chunk;
-
-        if (contentType.includes('text/event-stream')) {
-          const lines = buffer.split(/\r?\n/);
-          buffer = lines.pop() ?? '';
-          for (const line of lines) {
-            if (!line.startsWith('data:')) continue;
-            const dataStr = line.slice(5).trim();
-            if (dataStr === '[DONE]') { buffer = ''; doneReceived = true; break; }
-            // Only append actual content tokens; ignore info/metadata
-            if (dataStr.startsWith('{') || dataStr.startsWith('[')) {
-              try {
-                const obj = JSON.parse(dataStr);
-                const delta =
-                  obj?.choices?.[0]?.delta?.content ??
-                  obj?.content ??
-                  obj?.message ??
-                  obj?.response ??
-                  '';
-                if (typeof delta === 'string' && delta) finalText += delta;
-              } catch {
-                // ignore malformed partial JSON
-              }
-            }
-          }
-        } else {
-          finalText += chunk;
-          buffer = '';
-        }
-      }
-
-      finalText = finalText.trim();
-      return finalText || 'No response received from AI';
+      const response = await postChat(message, false);
+      const data = await response.json();
+      return data?.choices?.[0]?.message?.content || 'No response received from AI';
     } catch (error) {
       console.error('AI Chat Error:', error);
       throw new Error('Failed to get AI response');
     }
   };
 
-  // Streaming variant that emits deltas to a callback for live UI updates
   const handleAIChatMessageStream = async (
     message: string,
-    onDelta: (partial: string) => void
+    onDelta: (partial: string) => void,
+    onTool?: (phase: 'start' | 'end', tool: string) => void
   ): Promise<void> => {
     try {
-      const response = await fetch('https://dev.swiftpro.tech/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream, application/json'
-        },
-        body: JSON.stringify({
-          userToken: token,
-          stream: true,
-          messages: [
-            { role: 'user', content: message }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        let errMsg = 'Unknown error';
-        try {
-          const errData = await response.json();
-          errMsg = errData.message || errData.error || errMsg;
-        } catch {
-          void 0;
-        }
-        throw new Error(`API Error: ${response.status} - ${errMsg}`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        const data = await response.json();
-        const direct =
-          (data?.choices && data.choices[0]?.message?.content) ||
-          data?.response ||
-          data?.content ||
-          data?.message || '';
-        if (direct) onDelta(direct);
-        return;
-      }
-
-      const contentType = response.headers.get('content-type') || '';
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let doneReceived = false;
-
-      while (!doneReceived) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        buffer += chunk;
-
-        if (contentType.includes('text/event-stream')) {
-          const lines = buffer.split(/\r?\n/);
-          buffer = lines.pop() ?? '';
-          for (const line of lines) {
-            if (!line.startsWith('data:')) continue;
-            const dataStr = line.slice(5).trim();
-            if (dataStr === '[DONE]') { buffer = ''; doneReceived = true; break; }
-            // Only emit actual content tokens; ignore info/metadata
-            if (dataStr.startsWith('{') || dataStr.startsWith('[')) {
-              try {
-                const obj = JSON.parse(dataStr);
-                const delta =
-                  obj?.choices?.[0]?.delta?.content ??
-                  obj?.content ??
-                  obj?.message ??
-                  obj?.response ??
-                  '';
-                if (typeof delta === 'string' && delta) onDelta(delta);
-              } catch {
-                // ignore malformed partial JSON
-              }
-            }
-          }
-        } else {
-          if (chunk) onDelta(chunk);
-          buffer = '';
-        }
-      }
+      const response = await postChat(message, true);
+      await parseMcpStream(response, onDelta, onTool);
     } catch (error) {
       console.error('AI Chat Stream Error:', error);
       throw new Error('Failed to stream AI response');
     }
+  };
+
+  const handleAIChatReset = async (): Promise<void> => {
+    await fetch(`${MCP_BASE_URL}/chat/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userToken: token }),
+    });
   };
 
   return (
@@ -247,10 +194,11 @@ function App() {
             <Suspense fallback={<RenderLoader />}>
               <RouterProvider router={router} />
             </Suspense>
-            {Boolean(user?.isAi) && isAuthenticated && !isVendor && (
+            {Boolean(user?.isAi) && isAuthenticated && (
               <AIChatWidget
                 onSendMessage={handleAIChatMessage}
                 onStreamMessage={handleAIChatMessageStream}
+                onReset={handleAIChatReset}
               />
             )}
           </QueryClientProvider>
