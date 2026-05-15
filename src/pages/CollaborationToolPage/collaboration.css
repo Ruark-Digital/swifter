@@ -163,13 +163,14 @@
   overflow: hidden;
 }
 .ct-mention-chip {
+  /* Layout-neutral styling: no padding/margin/font-weight changes so the
+     highlight overlay wraps at exactly the same character positions as
+     the textarea underneath — otherwise the caret drifts off the last
+     word on wrapped lines. */
   display: inline;
   background: #eef2ff;
   color: #4338ca;
-  border-radius: 6px;
-  padding: 1px 6px;
-  margin: 0 1px;
-  font-weight: 600;
+  border-radius: 4px;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
@@ -184,8 +185,8 @@
   font-family: "DM Sans", Inter, Arial, Helvetica, sans-serif;
   font-size: 14px;
   line-height: 22px;
-  min-height: 22px;
-  max-height: 140px;
+  min-height: 76px;
+  max-height: 180px;
   padding: 5px 0;
 }
 .ct-input--overlay {
@@ -358,8 +359,8 @@
 .ct-feed {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 0 23px 24px 23px;
+  gap: 12px;
+  padding: 0 23px 16px 23px;
   flex: 1;
   overflow-y: auto;
 }
@@ -380,7 +381,7 @@
 .ct-feed-content {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 .ct-feed-meta {
   display: flex;
@@ -401,7 +402,8 @@
   color: #3f4756;
   font-family: Geist, Arial, Helvetica, sans-serif;
   font-size: 14px;
-  line-height: 24px;
+  line-height: 18px;
+  font-weight: 600;
 }
 .ct-feed-time {
   color: #626262;
@@ -413,8 +415,8 @@
   color: #0f0f0f;
   font-family: Geist, Arial, Helvetica, sans-serif;
   font-size: 14px;
-  line-height: 24px;
-  width: 322px;
+  line-height: 20px;
+  max-width: 322px;
 }
 .ct-attachment {
   display: flex;

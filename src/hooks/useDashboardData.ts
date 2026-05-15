@@ -338,7 +338,9 @@ export const useDashboardData = (
     return chartFilters[chartId] || defaultFilter;
   };
   const isContractDashboardRole =
-    userRole === "contract_manager" || userRole === "approver";
+    userRole === "contract_manager" ||
+    userRole === "approver" ||
+    userRole === "procurement";
   const contractDashboardBasePath =
     userRole === "approver"
       ? "/contract/approver/contracts/dashboard"

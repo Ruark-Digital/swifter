@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import YooptaEditor, { createYooptaEditor } from "@yoopta/editor";
+
+type YooptaEditorInstance = ReturnType<typeof createYooptaEditor>;
 import Paragraph from "@yoopta/paragraph";
 import { HeadingOne, HeadingTwo, HeadingThree } from "@yoopta/headings";
 import { BulletedList, NumberedList, TodoList } from "@yoopta/lists";
@@ -26,15 +28,7 @@ import "@/pages/CollaborationToolPage/collaboration.css";
 import { createCollab } from "../collab/useYooptaYjs";
 import Table from "@yoopta/table";
 import { useNavigate } from "react-router-dom";
-import { XIcon, History, Save, MessageSquarePlus, Plus, Minus, Sparkles } from "lucide-react";
-import AiSuggestionsPanel from "./AiSuggestionsPanel";
-import { extractRedlines, replaceRedline, type RedlineSpan } from "../collab/redlineScan";
-import {
-  useAiRedlineSuggestions,
-  type AiRedlineSuggestion,
-} from "../collab/useAiRedlineSuggestions";
-import { useSearchParams } from "react-router-dom";
-import VersionHistoryModal, { Version } from "./VersionHistoryModal";
+import { XIcon, MessageSquarePlus, Plus, Minus } from "lucide-react";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUser } from "@/store/authSlice";
 
@@ -222,118 +216,26 @@ interface EditorPanelProps {
     disable?: boolean;
     presenceActive?: boolean;
   };
+  /** Called once the YooptaEditor instance exists so the parent page can
+   *  drive AI/redline and version-history features from the sidebar. */
+  onEditorReady?: (editor: YooptaEditorInstance) => void;
 }
 
 const EditorPanel: React.FC<EditorPanelProps> = ({
   className,
   importMeta,
   collabMeta,
+  onEditorReady,
 }) => {
   const navigate = useNavigate();
   const editor = useMemo(() => createYooptaEditor(), []);
   const toast = useToastHandler();
   const user = useUser();
-  const [isVersionModalOpen, setIsVersionModalOpen] = React.useState(false);
-  const [versions, setVersions] = React.useState<Version[]>([]);
-  const [searchParams] = useSearchParams();
-  const contractId = searchParams.get("contractId") || undefined;
-  const msaContractId = searchParams.get("msaContractId") || undefined;
-  const aiMutation = useAiRedlineSuggestions({
-    documentId: msaContractId || contractId,
-    isMsa: Boolean(msaContractId),
-  });
-  const [aiOpen, setAiOpen] = React.useState(false);
-  type AiItem = {
-    redline: RedlineSpan;
-    suggestion?: AiRedlineSuggestion;
-    state: "pending" | "approved" | "dismissed";
-  };
-  const [aiItems, setAiItems] = React.useState<AiItem[]>([]);
-  // Tracks whether the user has actually triggered a run yet, so the
-  // panel can distinguish "never asked" from "asked, no redlines found"
-  // (otherwise aiMutation never fires for empty docs and the status
-  // permanently reads `idle`).
-  const [aiHasRun, setAiHasRun] = React.useState(false);
-  const [aiNoRedlines, setAiNoRedlines] = React.useState(false);
-
-  const runAiSuggestions = React.useCallback(async () => {
-    setAiHasRun(true);
-    const redlines = extractRedlines(editor.getEditorValue() as any);
-    if (redlines.length === 0) {
-      setAiItems([]);
-      setAiNoRedlines(true);
-      return;
-    }
-    setAiNoRedlines(false);
-    const analysis = await aiMutation.mutateAsync(redlines);
-    const byId = new Map(
-      analysis.suggestions.map((s) => [s.redlineId, s]),
-    );
-    setAiItems(
-      redlines.map((r) => ({
-        redline: r,
-        suggestion: byId.get(r.redlineId),
-        state: "pending" as const,
-      })),
-    );
-  }, [aiMutation, editor]);
-
-  const handleOpenAi = React.useCallback(() => {
-    setAiOpen(true);
-    // Only auto-fetch on the very first open; afterwards the user
-    // drives generation explicitly via the panel's Generate button.
-    if (!aiHasRun) {
-      void runAiSuggestions();
-    }
-  }, [aiHasRun, runAiSuggestions]);
-
-  const handleApproveAi = React.useCallback(
-    (item: AiItem) => {
-      if (!item.suggestion) return;
-      // The swagger AI endpoint returns an accept/reject/negotiate verdict +
-      // assessment text, not a replacement string. We surface the verdict in
-      // the panel; if the user clicks "Apply recommendation" and the verdict
-      // is "reject", revert the redline; otherwise just mark it reviewed.
-      if (item.suggestion.suggestion === "reject") {
-        const next = replaceRedline(
-          editor.getEditorValue() as any,
-          item.redline.redlineId,
-          item.redline.kind === "insertion" ? "" : item.redline.text,
-        );
-        editor.setEditorValue(next as any);
-      }
-      setAiItems((prev) =>
-        prev.map((p) =>
-          p.redline.redlineId === item.redline.redlineId
-            ? { ...p, state: "approved" }
-            : p,
-        ),
-      );
-    },
-    [editor],
-  );
-
-  const handleDismissAi = React.useCallback((item: AiItem) => {
-    setAiItems((prev) =>
-      prev.map((p) =>
-        p.redline.redlineId === item.redline.redlineId
-          ? { ...p, state: "dismissed" }
-          : p,
-      ),
-    );
-  }, []);
-
-  const aiStatus: "idle" | "loading" | "ready" | "error" | "empty" =
-    aiMutation.isPending
-      ? "loading"
-      : aiMutation.isError
-        ? "error"
-        : aiNoRedlines
-          ? "empty"
-          : aiItems.length > 0 || aiMutation.isSuccess
-            ? "ready"
-            : "idle";
   const didImportRef = useRef(false);
+
+  useEffect(() => {
+    onEditorReady?.(editor);
+  }, [editor, onEditorReady]);
   const draftKey = useMemo(
     () => `ct:draft:${collabMeta?.roomId ?? "collab:editor"}`,
     [collabMeta?.roomId]
@@ -341,39 +243,6 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
   const autosaveTimerRef = useRef<number | null>(null);
   const autosaveValueRef = useRef<unknown>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
-
-  const handleSaveVersion = useCallback(() => {
-    const newVersion: Version = {
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      author: user?.name || "Unknown User",
-    };
-    try {
-      const editorState = editor.getEditorValue();
-      localStorage.setItem(
-        `doc-version-${newVersion.id}`,
-        JSON.stringify(editorState)
-      );
-      setVersions((prev) => [newVersion, ...prev]);
-      toast.success("Version saved", "Document version saved successfully.");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      toast.error("Version save failed", message);
-    }
-  }, [editor, toast, user?.name]);
-
-  const handleRestoreVersion = useCallback((versionId: string) => {
-    try {
-      const savedState = localStorage.getItem(`doc-version-${versionId}`);
-      if (!savedState) return;
-      editor.setEditorValue(JSON.parse(savedState));
-      setIsVersionModalOpen(false);
-      toast.success("Version restored", "Document version restored successfully.");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      toast.error("Version restore failed", message);
-    }
-  }, [editor, toast]);
 
   const handleEditorChange = useCallback(
     (value: unknown) => {
@@ -542,31 +411,6 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
       <div className="ct-editor-header">
         <span className="ct-editor-title">Document Editor</span>
         <div className="flex items-center gap-4">
-          <button
-            className="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200 transition-colors dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-900/60"
-            onClick={handleSaveVersion}
-            aria-label="Save Version"
-          >
-            <Save className="w-4 h-4" />
-            <span className="sr-only">Save Version</span>
-          </button>
-          <button
-            className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors flex items-center gap-1 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-            onClick={() => setIsVersionModalOpen(true)}
-            aria-label="View Version History"
-          >
-            <History className="w-4 h-4" />
-            <span className="sr-only">History</span>
-          </button>
-          <button
-            className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200 transition-colors flex items-center gap-1 dark:bg-indigo-900/40 dark:text-indigo-300 dark:hover:bg-indigo-900/60"
-            onClick={handleOpenAi}
-            aria-label="AI Polish redlines"
-            title="AI Polish — suggest professional rephrases for redlines"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span className="sr-only">AI Polish</span>
-          </button>
           <div
             className="ct-dismiss-pill cursor-pointer"
             onClick={handleNavigateBack}
@@ -603,22 +447,6 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
           }}
         />
       </div>
-      <VersionHistoryModal
-        isOpen={isVersionModalOpen}
-        onClose={() => setIsVersionModalOpen(false)}
-        versions={versions}
-        onRestore={handleRestoreVersion}
-      />
-      <AiSuggestionsPanel
-        open={aiOpen}
-        onClose={() => setAiOpen(false)}
-        status={aiStatus}
-        errorMessage={(aiMutation.error as Error | undefined)?.message}
-        items={aiItems}
-        onApprove={handleApproveAi}
-        onDismiss={handleDismissAi}
-        onRetry={runAiSuggestions}
-      />
     </div>
   );
 };
@@ -632,6 +460,7 @@ const arePropsEqual = (prev: EditorPanelProps, next: EditorPanelProps) =>
   prev.collabMeta?.roomId === next.collabMeta?.roomId &&
   prev.collabMeta?.disable === next.collabMeta?.disable &&
   prev.collabMeta?.token === next.collabMeta?.token &&
-  prev.collabMeta?.presenceActive === next.collabMeta?.presenceActive;
+  prev.collabMeta?.presenceActive === next.collabMeta?.presenceActive &&
+  prev.onEditorReady === next.onEditorReady;
 
 export default React.memo(EditorPanel, arePropsEqual);
