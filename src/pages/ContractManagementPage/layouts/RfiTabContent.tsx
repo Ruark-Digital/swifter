@@ -239,11 +239,11 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
             {getFileIcon(extension)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-900 truncate">
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
               {file.name}
             </p>
-            <p className="text-xs text-slate-500">
-              {extension || "FILE"} • {formatFileSize(file.size)}
+            <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
+              {extension || "FILE"} â€¢ {formatFileSize(file.size)}
             </p>
           </div>
         </div>
@@ -270,14 +270,14 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
             <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#22C55E] text-[#22C55E]">
               <Check className="h-8 w-8" />
             </div>
-            <div className="text-base font-semibold text-[#0F0F0F]">
+            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
               RFI Issued Successfully
             </div>
             <div className="flex w-full items-center gap-4">
               <DialogClose asChild>
                 <button
                   type="button"
-                  className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F]"
+                  className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
                 >
                   Close
                 </button>
@@ -295,7 +295,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
         ) : (
           <>
             <div className="flex items-center justify-between px-8 pt-8">
-              <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
+              <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Issue RFI
               </DialogTitle>
             </div>
@@ -338,12 +338,12 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                     component={TextFileUploader}
                     element={
                       <div className="flex flex-col items-center gap-3 py-6">
-                        <CloudUpload className="h-12 w-12 text-[#2A4467]" />
+                        <CloudUpload className="h-12 w-12 text-[#2A4467] dark:text-blue-300" />
                         <div className="space-y-1 text-center">
-                          <p className="text-base font-semibold text-[#2A4467]">
+                          <p className="text-base font-semibold text-[#2A4467] dark:text-blue-300">
                             Drag & Drop or Click to choose files
                           </p>
-                          <p className="text-sm text-[#6B7280]">
+                          <p className="text-sm text-[#6B7280] dark:text-slate-400">
                             Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG,
                             JPEG
                           </p>
@@ -367,7 +367,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                       } as any
                     }
                   />
-                  <div className="flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
                     <span>
                       {fileCount > 0
                         ? `${fileCount} file${fileCount === 1 ? "" : "s"} ready to upload`
@@ -381,7 +381,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                     <Button
                       // type="button"
                       variant="outline"
-                      className="h-12 fex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB]"
+                      className="h-12 fex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:text-slate-100 hover:bg-[#E5E7EB]"
                       disabled={isSubmitting}
                     >
                       Cancel
@@ -493,7 +493,7 @@ const RfiTabContent: React.FC<Props> = ({
   return (
     <TabsContent value="rfi" className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-900">RFI</h3>
+        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">RFI</h3>
         <div className="flex items-center gap-3">
           <Button variant="outline" className="h-10 rounded-xl px-4">
             <Share2 className="mr-2 h-4 w-4" /> Export Report
@@ -526,19 +526,19 @@ const RfiTabContent: React.FC<Props> = ({
         <TabsList className="bg-[#F2F4F7] p-1 rounded-full w-fit">
           <TabsTrigger
             value="all"
-            className="rounded-full px-4 py-2 text-sm font-medium text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="rounded-full px-4 py-2 text-sm font-medium text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             All RFI
           </TabsTrigger>
           <TabsTrigger
             value="issued"
-            className="rounded-full px-4 py-2 text-sm font-medium text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="rounded-full px-4 py-2 text-sm font-medium text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             Issued
           </TabsTrigger>
           <TabsTrigger
             value="received"
-            className="rounded-full px-4 py-2 text-sm font-medium text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="rounded-full px-4 py-2 text-sm font-medium text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             Received
           </TabsTrigger>
