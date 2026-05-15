@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useCallback, useMemo, useState } from "react";
 // import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useUser } from "@/store/authSlice";
@@ -13,6 +13,9 @@ import { cn } from "@/lib/utils";
 import { DashboardConfig } from "@/config/dashboardConfig";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { ContractsTabView } from "./ContractsTabView";
+import { VendorContractsView } from "./VendorContractsView";
+import { useLandingTabs, type LandingTabId } from "./useLandingTabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const DEFAULT_CHART_FILTER = "12months";
 
@@ -171,6 +174,21 @@ export const RoleBasedDashboard: React.FC = () => {
     "total-contracts"
   );
   const navigate = useNavigate();
+
+  const landingTabs = useLandingTabs(userRole, modules);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab") as LandingTabId | null;
+  const defaultLandingTab = landingTabs[0]?.id;
+  const activeLandingTab: LandingTabId | undefined =
+    tabFromUrl && landingTabs.some((t) => t.id === tabFromUrl)
+      ? tabFromUrl
+      : defaultLandingTab;
+
+  const setActiveLandingTab = (id: LandingTabId) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", id);
+    setSearchParams(next, { replace: true });
+  };
 
   // Fetch dashboard data based on user role (without global filter)
   const {
@@ -772,6 +790,7 @@ export const RoleBasedDashboard: React.FC = () => {
 
   const isContractAnalyticsRole =
     userRole === "contract_manager" || userRole === "approver";
+  // project_manager handled separately below
   const canShowMyActions = modules?.myActions === true;
   const canShowGeneralUpdates = modules?.generalUpdatesNotifications === true;
 
@@ -796,6 +815,37 @@ export const RoleBasedDashboard: React.FC = () => {
         {/* <ExportReportSheet /> */}
       </div>
 
+      {/* Outer landing-tab strip — only shown when multiple tabs exist */}
+      {landingTabs.length > 1 && activeLandingTab && (
+        <Tabs
+          value={activeLandingTab}
+          onValueChange={(v) => setActiveLandingTab(v as LandingTabId)}
+          className="w-full"
+        >
+          <TabsList className="bg-slate-100 rounded-full p-1.5 gap-3 mb-3 h-12">
+            {landingTabs.map((t) => (
+              <TabsTrigger
+                key={t.id}
+                value={t.id}
+                className={cn(
+                  "rounded-full px-4 py-2 text-sm",
+                  "data-[state=active]:bg-[#2A4467] data-[state=active]:text-white",
+                  "text-gray-600",
+                )}
+              >
+                {t.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
+
+      {/* project_manager: single Contracts view with no outer strip */}
+      {userRole === "project_manager" && (
+        <VendorContractsView enabled />
+      )}
+
+      {/* contract_manager / approver: full analytics tabs (unchanged) */}
       {isContractAnalyticsRole && (
         <ContractsTabView
           topTab={cmTopTab}
@@ -833,8 +883,54 @@ export const RoleBasedDashboard: React.FC = () => {
         />
       )}
 
-      {/* Stats Cards */}
-      {!isContractAnalyticsRole && (
+      {/* procurement Contracts tab */}
+      {userRole === "procurement" && activeLandingTab === "contracts" && (
+        <ContractsTabView
+          topTab={cmTopTab}
+          setTopTab={setCmTopTab}
+          subTab={cmSubTab}
+          setSubTab={setCmSubTab}
+          stats={enhancedDashboardConfig.stats}
+          rows={enhancedDashboardConfig.rows}
+          cmYtdStats={cmYtdStats}
+          cmCycleTimeValues={cmCycleTimeValues}
+          chartFilters={chartFilters}
+          contractManagerTotalCards={contractManagerTotalCards}
+          contractManagerYtdCards={contractManagerYtdCards}
+          contractManagerActionLogs={contractManagerActionLogs}
+          contractManagerGeneralUpdates={contractManagerGeneralUpdates}
+          contractManagerCycleTime={contractManagerCycleTime}
+          contractManagerInvoiceStatus={contractManagerInvoiceStatus}
+          contractManagerCommittedVsActualSpend={contractManagerCommittedVsActualSpend}
+          contractManagerVendorContractValue={contractManagerVendorContractValue}
+          contractManagerProjectContractValue={contractManagerProjectContractValue}
+          contractManagerRiskDistribution={contractManagerRiskDistribution}
+          contractManagerChangeOrderImpact={contractManagerChangeOrderImpact}
+          contractManagerCategoryValue={contractManagerCategoryValue}
+          contractManagerComplianceStatus={contractManagerComplianceStatus}
+          contractManagerClauseIntelligence={contractManagerClauseIntelligence}
+          contractManagerContractStatus={contractManagerContractStatus}
+          contractManagerVendorSummary={contractManagerVendorSummary}
+          contractManagerRenewals={contractManagerRenewals}
+          canShowMyActions={canShowMyActions}
+          canShowGeneralUpdates={canShowGeneralUpdates}
+          onFilterChange={handleFilterChange}
+          getChartFilter={getChartFilter}
+          getChartData={getChartData}
+          onStatCardClick={handleStatCardClick}
+        />
+      )}
+
+      {/* vendor Contracts tab */}
+      {userRole === "vendor" && activeLandingTab === "contracts" && (
+        <VendorContractsView enabled />
+      )}
+
+      {/* Stats Cards — shown for all non-analytics roles on their primary tab */}
+      {!isContractAnalyticsRole &&
+        userRole !== "project_manager" &&
+        !(userRole === "procurement" && activeLandingTab === "contracts") &&
+        !(userRole === "vendor" && activeLandingTab === "contracts") && (
         <div
           className={cn(`grid grid-cols-1 md:grid-cols-2 gap-6`, {
             "lg:grid-cols-2": enhancedDashboardConfig.stats.length === 8,
@@ -855,7 +951,11 @@ export const RoleBasedDashboard: React.FC = () => {
       )}
 
       {/* Activities and Charts Section */}
-      {!isContractAnalyticsRole && enhancedDashboardConfig.rows?.map?.((item, rowIndex) => {
+      {!isContractAnalyticsRole &&
+        userRole !== "project_manager" &&
+        !(userRole === "procurement" && activeLandingTab === "contracts") &&
+        !(userRole === "vendor" && activeLandingTab === "contracts") &&
+        enhancedDashboardConfig.rows?.map?.((item, rowIndex) => {
         if (item.type === "activity") {
           const gatedActivities = item.properties.filter((activity) => {
             if (activity.id === "my-actions" && !canShowMyActions) {
