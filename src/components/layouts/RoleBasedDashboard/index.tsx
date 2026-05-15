@@ -806,39 +806,35 @@ export const RoleBasedDashboard: React.FC = () => {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-medium text-gray-900 dark:text-gray-100">
-            Dashboard
-          </h1>
-        </div>
-        {/* <ExportReportSheet /> */}
-      </div>
+      <div className="flex justify-between items-center gap-4">
+        <h1 className="text-2xl font-medium text-gray-900 dark:text-gray-100">
+          Dashboard
+        </h1>
 
-      {/* Outer landing-tab strip — only shown when multiple tabs exist */}
-      {landingTabs.length > 1 && activeLandingTab && (
-        <Tabs
-          value={activeLandingTab}
-          onValueChange={(v) => setActiveLandingTab(v as LandingTabId)}
-          className="w-full"
-        >
-          <TabsList className="bg-slate-100 rounded-full p-1.5 gap-3 mb-3 h-12">
-            {landingTabs.map((t) => (
-              <TabsTrigger
-                key={t.id}
-                value={t.id}
-                className={cn(
-                  "rounded-full px-4 py-2 text-sm",
-                  "data-[state=active]:bg-[#2A4467] data-[state=active]:text-white",
-                  "text-gray-600",
-                )}
-              >
-                {t.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      )}
+        {/* Outer landing-tab strip — only shown when multiple tabs exist */}
+        {landingTabs.length > 1 && activeLandingTab && (
+          <Tabs
+            value={activeLandingTab}
+            onValueChange={(v) => setActiveLandingTab(v as LandingTabId)}
+          >
+            <TabsList className="bg-slate-100 rounded-full p-1.5 gap-3 h-12">
+              {landingTabs.map((t) => (
+                <TabsTrigger
+                  key={t.id}
+                  value={t.id}
+                  className={cn(
+                    "rounded-full px-4 py-2 text-sm",
+                    "data-[state=active]:bg-[#2A4467] data-[state=active]:text-white",
+                    "text-gray-600",
+                  )}
+                >
+                  {t.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        )}
+      </div>
 
       {/* project_manager: Contracts view — only when contractManagement is on */}
       {userRole === "project_manager" && activeLandingTab === "contracts" && (
