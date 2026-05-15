@@ -65,10 +65,10 @@ const LabelRow = ({
   highlight?: boolean;
 }) => (
   <div className="space-y-2 py-2">
-    <span className="text-sm text-[#6B7280] block">{label}</span>
+    <span className="text-sm text-[#6B7280] dark:text-slate-400 block">{label}</span>
     <span
       className={`text-sm font-semibold block ${
-        highlight ? "font-semibold text-[#0F0F0F]" : "text-[#111827]"
+        highlight ? "font-semibold text-[#0F0F0F] dark:text-slate-100" : "text-[#111827] dark:text-slate-100"
       }`}
     >
       {value}
@@ -189,14 +189,14 @@ const VendorAcceptDialog: React.FC<{
         <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-green-600 text-green-600">
           <Check className="h-8 w-8" />
         </div>
-        <div className="text-center text-base font-semibold text-[#0F0F0F]">
+        <div className="text-center text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
           Accept this Amendment?
         </div>
         <div className="flex w-full gap-6">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F]"
+            className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
           >
             Cancel
           </button>
@@ -232,7 +232,7 @@ const VendorRejectDialog: React.FC<{
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="w-[700px] h-fit p-8 rounded-2xl border-0 flex flex-col gap-6">
         <div className="flex items-start justify-between">
-          <div className="text-xl font-semibold text-[#0F0F0F]">
+          <div className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
             Reject Review
           </div>
           <button type="button" onClick={onClose} className="text-[#E53935]">
@@ -241,14 +241,14 @@ const VendorRejectDialog: React.FC<{
         </div>
 
         <div className="space-y-3">
-          <div className="text-sm font-medium text-[#3D3D3D]">
+          <div className="text-sm font-medium text-[#3D3D3D] dark:text-slate-300">
             Why are you rejecting this deliverable?
           </div>
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Duration"
-            className="h-[120px] w-full resize-none rounded-lg border border-[#E5E7EB] p-4 text-sm text-[#0F0F0F] placeholder:text-[#6B7280]/50"
+            className="h-[120px] w-full resize-none rounded-lg border border-[#E5E7EB] p-4 text-sm text-[#0F0F0F] dark:text-slate-100 placeholder:text-[#6B7280] dark:text-slate-400/50"
           />
         </div>
 
@@ -256,7 +256,7 @@ const VendorRejectDialog: React.FC<{
           <button
             type="button"
             onClick={onClose}
-            className="w-[306px] rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F]"
+            className="w-[306px] rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
           >
             Back
           </button>
@@ -386,7 +386,7 @@ const AssignApprovalDialog: React.FC<{
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="w-[864px] h- p-8 rounded-2xl border-0 flex flex-col gap-6 overflow-hidden">
         <div className="flex items-start justify-between">
-          <div className="text-xl font-semibold text-[#0F0F0F]">
+          <div className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
             Send for Approval
           </div>
           <button
@@ -399,7 +399,7 @@ const AssignApprovalDialog: React.FC<{
         </div>
 
         <div className="space-y-3 w-full">
-          <div className="text-sm font-medium text-[#0F0F0F]">
+          <div className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
             Select Approvers Group
           </div>
           <Select value={selectedGroup} onValueChange={setSelectedGroup}>
@@ -418,26 +418,26 @@ const AssignApprovalDialog: React.FC<{
 
         <div className="flex flex-col rounded-xl border border-[#E5E7EB] overflow-hidden w-full">
           <div className="flex items-center justify-between bg-[#F9FAFB] px-6 py-4 border-b border-[#E5E7EB]">
-            <div className="w-[150px] text-sm font-semibold text-[#2A4467]">
+            <div className="w-[150px] text-sm font-semibold text-[#2A4467] dark:text-blue-300">
               Group
             </div>
-            <div className="w-[150px] text-center text-sm font-semibold text-[#2A4467]">
+            <div className="w-[150px] text-center text-sm font-semibold text-[#2A4467] dark:text-blue-300">
               Role
             </div>
-            <div className="w-[121px] text-center text-sm font-semibold text-[#2A4467]">
+            <div className="w-[121px] text-center text-sm font-semibold text-[#2A4467] dark:text-blue-300">
               Action
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto">
             {isLoading ? (
-              <div className="p-6 text-sm text-[#6B7280]">Loading...</div>
+              <div className="p-6 text-sm text-[#6B7280] dark:text-slate-400">Loading...</div>
             ) : !selectedGroup ? (
-              <div className="p-6 text-sm text-[#6B7280]">
+              <div className="p-6 text-sm text-[#6B7280] dark:text-slate-400">
                 Select an approver group to view members.
               </div>
             ) : displayApprovers.length === 0 ? (
-              <div className="p-6 text-sm text-[#6B7280]">
+              <div className="p-6 text-sm text-[#6B7280] dark:text-slate-400">
                 No approvers in this group.
               </div>
             ) : (
@@ -453,7 +453,7 @@ const AssignApprovalDialog: React.FC<{
                       className="flex items-start justify-between px-6"
                     >
                       <div className="w-[150px] py-2">
-                        <div className="text-sm font-semibold text-[#374151]">
+                        <div className="text-sm font-semibold text-[#374151] dark:text-slate-300">
                           {name}
                         </div>
                         <a
@@ -463,7 +463,7 @@ const AssignApprovalDialog: React.FC<{
                           {p.email}
                         </a>
                       </div>
-                      <div className="w-[150px] py-2 text-center text-sm font-medium text-[#374151]">
+                      <div className="w-[150px] py-2 text-center text-sm font-medium text-[#374151] dark:text-slate-300">
                         {roleName}
                       </div>
                       <button
@@ -478,7 +478,7 @@ const AssignApprovalDialog: React.FC<{
                         ) : (
                           <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-[#DDDDDD]" />
                         )}
-                        <span className="text-sm font-medium text-[#353535]">
+                        <span className="text-sm font-medium text-[#353535] dark:text-slate-300">
                           Assign
                         </span>
                       </button>
@@ -491,7 +491,7 @@ const AssignApprovalDialog: React.FC<{
         </div>
 
         <div className="space-y-3 w-full">
-          <div className="text-sm font-medium text-[#0F0F0F]">
+          <div className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
             Assigned Approvers
           </div>
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-4 py-4">
@@ -503,7 +503,7 @@ const AssignApprovalDialog: React.FC<{
                   key={id}
                   className="inline-flex items-center gap-2 rounded-lg bg-[#2A44671A] px-2 py-1"
                 >
-                  <span className="text-xs font-semibold text-[#2A4467]">
+                  <span className="text-xs font-semibold text-[#2A4467] dark:text-blue-300">
                     {name}
                   </span>
                   <button
@@ -520,7 +520,7 @@ const AssignApprovalDialog: React.FC<{
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search"
-              className="flex-1 bg-transparent text-sm text-[#0F0F0F] placeholder:text-[#6B7280]/50 outline-none"
+              className="flex-1 bg-transparent text-sm text-[#0F0F0F] dark:text-slate-100 placeholder:text-[#6B7280] dark:text-slate-400/50 outline-none"
             />
           </div>
         </div>
@@ -529,7 +529,7 @@ const AssignApprovalDialog: React.FC<{
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="w-[188px] rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-2 font-semibold text-[#0F0F0F]"
+            className="w-[188px] rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-2 font-semibold text-[#0F0F0F] dark:text-slate-100"
           >
             Back
           </button>
@@ -703,19 +703,19 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                 <SheetClose asChild>
                   <button
                     type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827] dark:text-slate-100"
                   >
                     <ArrowLeft className="h-4 w-4" />
                   </button>
                 </SheetClose>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Amendment Details
                 </SheetTitle>
               </div>
               <div className="flex items-center gap-3">
                 <Button
                   variant="outline"
-                  className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
+                  className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
                 >
                   <Share2 className="mr-2 h-4 w-4" /> Export
                 </Button>
@@ -723,8 +723,8 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
             </div>
           </SheetHeader>
 
-          <div className="text-base font-semibold text-[#0F0F0F]">
-            {isLoading ? "Loading..." : title || "—"}
+          <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+            {isLoading ? "Loading..." : title || "â€”"}
           </div>
 
           <Tabs
@@ -751,21 +751,21 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
               {isTimeImpact && (
                 <div className="grid gap-6 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <LabelRow label="Amendment Name" value={title || "—"} />
+                    <LabelRow label="Amendment Name" value={title || "â€”"} />
                     <LabelRow label="Impact Type" value="Time" />
-                    <LabelRow label="Time" value="—" />
+                    <LabelRow label="Time" value="â€”" />
                     <LabelRow
                       label="New Expiry/Delivery/Completion Date"
-                      value="—"
+                      value="â€”"
                     />
                   </div>
                   <div className="space-y-2">
-                    <LabelRow label="Amendment ID" value={displayId || "—"} />
+                    <LabelRow label="Amendment ID" value={displayId || "â€”"} />
                     <LabelRow
                       label="Prev. Expiry/Delivery/Completion Date"
-                      value="—"
+                      value="â€”"
                     />
-                    <LabelRow label="Vendor" value={vendorLabel || "—"} />
+                    <LabelRow label="Vendor" value={vendorLabel || "â€”"} />
                     <LabelRow
                       label="Status"
                       value={<StatusPill status={statusLabel || "pending"} />}
@@ -777,13 +777,13 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
               {isCostImpact && (
                 <div className="grid gap-6 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <LabelRow label="Amendment Name" value={title || "—"} />
+                    <LabelRow label="Amendment Name" value={title || "â€”"} />
                     <LabelRow label="Impact Type" value="Cost" />
                   </div>
                   <div className="space-y-2">
-                    <LabelRow label="Amendment ID" value={displayId || "—"} />
-                    <LabelRow label="Value" value="—" highlight />
-                    <LabelRow label="Vendor" value={vendorLabel || "—"} />
+                    <LabelRow label="Amendment ID" value={displayId || "â€”"} />
+                    <LabelRow label="Value" value="â€”" highlight />
+                    <LabelRow label="Vendor" value={vendorLabel || "â€”"} />
                     <LabelRow
                       label="Status"
                       value={<StatusPill status={statusLabel || "pending"} />}
@@ -796,14 +796,14 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                 <div className="space-y-6">
                   <div className="grid gap-6 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <LabelRow label="Amendment Name" value={title || "—"} />
+                      <LabelRow label="Amendment Name" value={title || "â€”"} />
                       <LabelRow label="Impact Type" value="Time & Cost" />
                     </div>
                     <div className="space-y-2">
-                      <LabelRow label="Amendment ID" value={displayId || "—"} />
+                      <LabelRow label="Amendment ID" value={displayId || "â€”"} />
                       <LabelRow
                         label="Prev. Expiry/Delivery/Completion Date"
-                        value="—"
+                        value="â€”"
                       />
                     </div>
                   </div>
@@ -811,12 +811,12 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                     <div className="space-y-2">
                       <LabelRow
                         label="New Expiry/Delivery/Completion Date"
-                        value="—"
+                        value="â€”"
                       />
                     </div>
                     <div className="space-y-2">
-                      <LabelRow label="Value" value="—" highlight />
-                      <LabelRow label="Vendor" value={vendorLabel || "—"} />
+                      <LabelRow label="Value" value="â€”" highlight />
+                      <LabelRow label="Vendor" value={vendorLabel || "â€”"} />
                       <LabelRow
                         label="Status"
                         value={<StatusPill status={statusLabel || "pending"} />}
@@ -830,11 +830,11 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                 <div className="space-y-6">
                   <div className="grid gap-6 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <LabelRow label="Amendment Name" value={title || "—"} />
+                      <LabelRow label="Amendment Name" value={title || "â€”"} />
                       <LabelRow label="Impact Type" value="Other Combination" />
                     </div>
                     <div className="space-y-2">
-                      <LabelRow label="Amendment ID" value={displayId || "—"} />
+                      <LabelRow label="Amendment ID" value={displayId || "â€”"} />
                       <LabelRow label="Scope" value="-" />
                     </div>
                   </div>
@@ -842,19 +842,19 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                     <div className="space-y-2">
                       <LabelRow
                         label="Prev. Expiry/Delivery/Completion Date"
-                        value="—"
+                        value="â€”"
                       />
                     </div>
                     <div className="space-y-2">
                       <LabelRow
                         label="New Expiry/Delivery/Completion Date"
-                        value="—"
+                        value="â€”"
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <LabelRow label="Value" value="$1m" highlight />
-                    <LabelRow label="Vendor" value={vendorLabel || "—"} />
+                    <LabelRow label="Vendor" value={vendorLabel || "â€”"} />
                     <LabelRow
                       label="Status"
                       value={<StatusPill status={statusLabel || "pending"} />}
@@ -864,25 +864,25 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
               )}
 
               <div className="space-y-2 mb-7">
-                <div className="text-sm text-[#6B7280]">Description</div>
-                <div className="text-sm text-[#374151]">
-                  {detail?.description || "—"}
+                <div className="text-sm text-[#6B7280] dark:text-slate-400">Description</div>
+                <div className="text-sm text-[#374151] dark:text-slate-300">
+                  {detail?.description || "â€”"}
                 </div>
               </div>
 
               {vendorRejected && (
                 <div className="space-y-2">
-                  <div className="text-sm text-[#6B7280]">
-                    Vendor’s Rejection Reason
+                  <div className="text-sm text-[#6B7280] dark:text-slate-400">
+                    Vendorâ€™s Rejection Reason
                   </div>
-                  <div className="text-sm text-[#374151]">
-                    {vendorReason || "—"}
+                  <div className="text-sm text-[#374151] dark:text-slate-300">
+                    {vendorReason || "â€”"}
                   </div>
                 </div>
               )}
 
               <div className="space-y-3">
-                <div className="text-sm text-[#6B7280]">Attached Documents</div>
+                <div className="text-sm text-[#6B7280] dark:text-slate-400">Attached Documents</div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-1">
                   {(detail?.files ?? []).map((f, idx) => {
                     const fileExtension = getFileExtension(
@@ -896,7 +896,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                           name: f.name ?? "",
                           icon: getFileIcon(f.type ?? ""),
                           type: fileExtension,
-                          size: f.size ?? "—",
+                          size: f.size ?? "â€”",
                         }}
                         // canEdit={canEdit}
                         // navigate={navigate?.(contractId)}
@@ -907,7 +907,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                     );
                   })}
                   {(detail?.files ?? []).length === 0 && (
-                    <div className="text-sm text-[#6B7280]">No documents.</div>
+                    <div className="text-sm text-[#6B7280] dark:text-slate-400">No documents.</div>
                   )}
                 </div>
               </div>
@@ -922,10 +922,10 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                     </div>
 
                     <div className="space-y-1">
-                      <div className="text-sm font-semibold text-[#0F0F0F]">
+                      <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
                         Action needed
                       </div>
-                      <div className="text-sm text-[#626262]">
+                      <div className="text-sm text-[#626262] dark:text-slate-400">
                         This amendment includes a time impact, but no approver
                         has been assigned to review time-related impacts.
                       </div>
@@ -939,7 +939,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
               <div className="px-6 pb-6">
                 <button
                   type="button"
-                  className="w-full rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-[14px] text-base font-semibold text-[#2A4467]"
+                  className="w-full rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-[14px] text-base font-semibold text-[#2A4467] dark:text-blue-300"
                 >
                   Edit Submission
                 </button>
@@ -947,7 +947,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
             )}
 
             <TabsContent value="comments" className="space-y-4">
-              <div className="rounded-xl border border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+              <div className="rounded-xl border border-[#E5E7EB] p-4 text-sm text-[#6B7280] dark:text-slate-400">
                 No comments yet.
               </div>
             </TabsContent>
@@ -966,7 +966,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                   <button
                     type="button"
                     onClick={() => setRejectOpen(true)}
-                    className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F]"
+                    className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
                   >
                     Reject Amendment
                   </button>
@@ -998,7 +998,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                 type="button"
                 disabled={approverActionMutation.isPending}
                 onClick={() => approverActionMutation.mutate("rejected")}
-                className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F] disabled:opacity-60"
+                className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 disabled:opacity-60"
               >
                 Reject
               </button>
@@ -1060,7 +1060,7 @@ const AmendmentsTable: React.FC<Props> = ({
         accessorKey: "amendmentId",
         header: "Amendment ID",
         cell: ({ getValue }) => (
-          <div className="w-[100px] py-2 text-center text-sm font-semibold text-[#374151]">
+          <div className="w-[100px] py-2 text-center text-sm font-semibold text-[#374151] dark:text-slate-300">
             {getValue<string>()}
           </div>
         ),
@@ -1069,7 +1069,7 @@ const AmendmentsTable: React.FC<Props> = ({
         accessorKey: "amendmentTitle",
         header: "Amendment Title",
         cell: ({ getValue }) => (
-          <div className="w-[160px] py-2 text-sm font-medium text-[#374151]">
+          <div className="w-[160px] py-2 text-sm font-medium text-[#374151] dark:text-slate-300">
             {getValue<string>()}
           </div>
         ),
@@ -1078,7 +1078,7 @@ const AmendmentsTable: React.FC<Props> = ({
         accessorKey: "vendorStatus",
         header: "Vendor Status",
         cell: ({ getValue }) => (
-          <div className="w-[100px] py-2 text-center text-sm font-semibold text-[#374151]">
+          <div className="w-[100px] py-2 text-center text-sm font-semibold text-[#374151] dark:text-slate-300">
             {getValue<string>()}
           </div>
         ),
@@ -1152,14 +1152,14 @@ const AmendmentsTable: React.FC<Props> = ({
       className="rounded-xl border border-[#E5E7EB] bg-white overflow-hidden"
     >
       <div className="flex items-center gap-6 border-b border-[#E9E9EB] px-6 py-6">
-        <div className="text-base font-semibold text-[#0F0F0F]">Amendments</div>
+        <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">Amendments</div>
         <div className="relative w-[300px]">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B]" />
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search"
-            className="h-12 w-[300px] rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
+            className="h-12 w-[300px] rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] dark:text-slate-100 placeholder:text-[#6B6B6B] dark:text-slate-400"
           />
         </div>
       </div>
@@ -1183,8 +1183,8 @@ const AmendmentsTable: React.FC<Props> = ({
             tHeadRow: "border-b border-[#E5E7EB]",
             tBody: "bg-white",
             tRow: "border-b border-[#E5E7EB]",
-            tHead: "px-6 py-3 text-xs font-semibold text-slate-500",
-            tCell: "px- py-4 text-sm text-slate-700 align-top",
+            tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500",
+            tCell: "px- py-4 text-sm text-slate-700 dark:text-slate-300 align-top",
           }}
         />
       </div>

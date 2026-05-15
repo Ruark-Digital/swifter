@@ -184,7 +184,7 @@ export const createApproverApi = (
   },
   listChangeComments: async (contractId: string, changeId: string) => {
     const res = await client.get({
-      url: `/contract/approver/contracts/${contractId}/change/${changeId}/comment`,
+      url: `/contract/approver/contracts/${contractId}/changes/${changeId}/comment`,
     });
     return res.data as {
       message?: string;
@@ -197,7 +197,7 @@ export const createApproverApi = (
     payload: ContractChangeCommentDTO,
   ) => {
     const res = await client.post({
-      url: `/contract/approver/contracts/${contractId}/change/${changeId}/comment`,
+      url: `/contract/approver/contracts/${contractId}/changes/${changeId}/comment`,
       payload,
     });
     return res.data as { message?: string; data?: ContractCommentDTO };
@@ -208,14 +208,14 @@ export const createApproverApi = (
     payload: ContractChangeReplyDTO,
   ) => {
     const res = await client.post({
-      url: `/contract/approver/contracts/change/${changeId}/comment/${commentId}/reply`,
+      url: `/contract/approver/contracts/changes/${changeId}/comment/${commentId}/reply`,
       payload,
     });
     return res.data as { message?: string; data?: ContractCommentDTO };
   },
   getChangeApproveStatus: async (contractId: string, changeId: string) => {
     const res = await client.get({
-      url: `/contract/approver/contracts/${contractId}/change/${changeId}/approve/status`,
+      url: `/contract/approver/contracts/${contractId}/changes/${changeId}/approve/status`,
     });
     return res.data as { message?: string; data?: { status?: boolean } };
   },
@@ -225,7 +225,7 @@ export const createApproverApi = (
     payload: ApprovalActionDTO,
   ) => {
     const res = await client.post({
-      url: `/contract/approver/contracts/${contractId}/change/${changeId}/approve`,
+      url: `/contract/approver/contracts/${contractId}/changes/${changeId}/approve`,
       payload,
     });
     return res.data as { message?: string; data?: ContractChangeDTO };

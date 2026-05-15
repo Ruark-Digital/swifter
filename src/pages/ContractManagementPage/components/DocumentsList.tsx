@@ -72,9 +72,9 @@ const DocumentsList: React.FC<Props> = ({ files, effectiveDate, contractId }) =>
 
   return (
     <div className="space-y-4">
-      <div className="text-sm font-medium text-slate-700">All Documents</div>
+      <div className="text-sm font-medium text-slate-700 dark:text-slate-300">All Documents</div>
       {docs.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
+        <div className="rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
           No documents available.
         </div>
       ) : (

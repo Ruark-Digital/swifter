@@ -108,7 +108,7 @@ const ActionLogTabContent: React.FC<Props> = () => {
       accessorKey: "actionId",
       header: "Action ID",
       cell: ({ getValue }) => (
-        <span className="font-medium text-slate-700 truncate block max-w-[100px]" title={getValue<string>()}>
+        <span className="font-medium text-slate-700 dark:text-slate-300 truncate block max-w-[100px]" title={getValue<string>()}>
           {getValue<string>()}
         </span>
       ),
@@ -129,7 +129,7 @@ const ActionLogTabContent: React.FC<Props> = () => {
         return (
           <div className="flex flex-col">
             <span className="font-medium">{row.original.actorName}</span>
-            <span className="text-xs text-slate-400">{row.original.actorRole}</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">{row.original.actorRole}</span>
           </div>
         );
       },
@@ -138,7 +138,7 @@ const ActionLogTabContent: React.FC<Props> = () => {
       accessorKey: "reference",
       header: "Reference",
       cell: ({ getValue }) => (
-        <span className="font-medium text-slate-700 truncate block max-w-[120px]" title={getValue<string>()}>
+        <span className="font-medium text-slate-700 dark:text-slate-300 truncate block max-w-[120px]" title={getValue<string>()}>
           {getValue<string>()}
         </span>
       ),
@@ -147,7 +147,7 @@ const ActionLogTabContent: React.FC<Props> = () => {
       id: "date",
       header: "Date",
       cell: ({ row }) => (
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
           <div>{row.original.dateLine1}</div>
           <div>{row.original.dateLine2}</div>
         </div>
@@ -175,17 +175,17 @@ const ActionLogTabContent: React.FC<Props> = () => {
 
   return (
     <TabsContent value="action-log" className="space-y-6">
-      <h2 className="text-lg font-semibold text-slate-900">Action Log</h2>
+      <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Action Log</h2>
 
       <Card className="overflow-hidden rounded-xl">
         <div className="flex items-center gap-6 border-b border-slate-200 px-6 py-4">
-          <div className="text-sm font-medium text-slate-900">Action Log</div>
+          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">Action Log</div>
 
           <div className="relative w-full max-w-[320px]">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <Input
               placeholder="Search log"
-              className="h-10 pl-9 text-sm placeholder:text-slate-400"
+              className="h-10 pl-9 text-sm placeholder:text-slate-400 dark:text-slate-500"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -203,8 +203,8 @@ const ActionLogTabContent: React.FC<Props> = () => {
               table: "border-collapse border-spacing-0",
               tHeader: "bg-transparent",
               tHeadRow: "bg-slate-50/50 hover:bg-slate-50/50",
-              tHead: "text-[#2A4467] font-medium",
-              tCell: "p-4 text-slate-700",
+              tHead: "text-[#2A4467] dark:text-blue-300 font-medium",
+              tCell: "p-4 text-slate-700 dark:text-slate-300",
             }}
             options={{
               disablePagination: false,

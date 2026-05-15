@@ -201,7 +201,7 @@ const FloatingCommentAction: React.FC<FloatingCommentActionProps> = ({
         left: pos.left,
         transform: "translateY(-50%)",
       }}
-      className="z-50 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 shadow-md text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+      className="z-50 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 shadow-md text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-blue-300"
     >
       <MessageSquarePlus className="w-4 h-4" />
     </button>
@@ -237,7 +237,11 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
   const [versions, setVersions] = React.useState<Version[]>([]);
   const [searchParams] = useSearchParams();
   const contractId = searchParams.get("contractId") || undefined;
-  const aiMutation = useAiRedlineSuggestions(contractId);
+  const msaContractId = searchParams.get("msaContractId") || undefined;
+  const aiMutation = useAiRedlineSuggestions({
+    documentId: msaContractId || contractId,
+    isMsa: Boolean(msaContractId),
+  });
   const [aiOpen, setAiOpen] = React.useState(false);
   type AiItem = {
     redline: RedlineSpan;
@@ -245,15 +249,26 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
     state: "pending" | "approved" | "dismissed";
   };
   const [aiItems, setAiItems] = React.useState<AiItem[]>([]);
+  // Tracks whether the user has actually triggered a run yet, so the
+  // panel can distinguish "never asked" from "asked, no redlines found"
+  // (otherwise aiMutation never fires for empty docs and the status
+  // permanently reads `idle`).
+  const [aiHasRun, setAiHasRun] = React.useState(false);
+  const [aiNoRedlines, setAiNoRedlines] = React.useState(false);
 
   const runAiSuggestions = React.useCallback(async () => {
+    setAiHasRun(true);
     const redlines = extractRedlines(editor.getEditorValue() as any);
     if (redlines.length === 0) {
       setAiItems([]);
+      setAiNoRedlines(true);
       return;
     }
-    const suggestions = await aiMutation.mutateAsync(redlines);
-    const byId = new Map(suggestions.map((s) => [s.redlineId, s]));
+    setAiNoRedlines(false);
+    const analysis = await aiMutation.mutateAsync(redlines);
+    const byId = new Map(
+      analysis.suggestions.map((s) => [s.redlineId, s]),
+    );
     setAiItems(
       redlines.map((r) => ({
         redline: r,
@@ -265,20 +280,28 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
 
   const handleOpenAi = React.useCallback(() => {
     setAiOpen(true);
-    if (aiItems.length === 0) {
+    // Only auto-fetch on the very first open; afterwards the user
+    // drives generation explicitly via the panel's Generate button.
+    if (!aiHasRun) {
       void runAiSuggestions();
     }
-  }, [aiItems.length, runAiSuggestions]);
+  }, [aiHasRun, runAiSuggestions]);
 
   const handleApproveAi = React.useCallback(
     (item: AiItem) => {
       if (!item.suggestion) return;
-      const next = replaceRedline(
-        editor.getEditorValue() as any,
-        item.redline.redlineId,
-        item.suggestion.suggestion,
-      );
-      editor.setEditorValue(next as any);
+      // The swagger AI endpoint returns an accept/reject/negotiate verdict +
+      // assessment text, not a replacement string. We surface the verdict in
+      // the panel; if the user clicks "Apply recommendation" and the verdict
+      // is "reject", revert the redline; otherwise just mark it reviewed.
+      if (item.suggestion.suggestion === "reject") {
+        const next = replaceRedline(
+          editor.getEditorValue() as any,
+          item.redline.redlineId,
+          item.redline.kind === "insertion" ? "" : item.redline.text,
+        );
+        editor.setEditorValue(next as any);
+      }
       setAiItems((prev) =>
         prev.map((p) =>
           p.redline.redlineId === item.redline.redlineId
@@ -300,13 +323,16 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
     );
   }, []);
 
-  const aiStatus: "idle" | "loading" | "ready" | "error" = aiMutation.isPending
-    ? "loading"
-    : aiMutation.isError
-      ? "error"
-      : aiItems.length > 0 || aiMutation.isSuccess
-        ? "ready"
-        : "idle";
+  const aiStatus: "idle" | "loading" | "ready" | "error" | "empty" =
+    aiMutation.isPending
+      ? "loading"
+      : aiMutation.isError
+        ? "error"
+        : aiNoRedlines
+          ? "empty"
+          : aiItems.length > 0 || aiMutation.isSuccess
+            ? "ready"
+            : "idle";
   const didImportRef = useRef(false);
   const draftKey = useMemo(
     () => `ct:draft:${collabMeta?.roomId ?? "collab:editor"}`,
@@ -392,25 +418,20 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
     }
   }, [draftKey, editor]);
   const collab = useMemo(() => {
-    const wsUrl = collabMeta?.wsUrl || import.meta.env.VITE_YWS_URL || "ws://localhost:1234";
-    let resolvedWsUrl = wsUrl;
-
-    if (collabMeta?.token) {
-      try {
-        const url = new URL(wsUrl);
-        if (!url.searchParams.get("token")) {
-          url.searchParams.set("token", collabMeta.token);
-        }
-        resolvedWsUrl = url.toString();
-      } catch {
-        resolvedWsUrl = wsUrl;
-      }
-    }
+    // y-websocket attaches `?<params>` itself, so we pass token via the
+    // params option rather than mutating wsUrl — avoids the double `?` bug
+    // when wsUrl already carries query state.
+    const wsUrl =
+      collabMeta?.wsUrl ||
+      import.meta.env.VITE_WS_URL ||
+      import.meta.env.VITE_YWS_URL ||
+      "ws://localhost:1234";
 
     return createCollab({
-      wsUrl: resolvedWsUrl,
+      wsUrl,
       roomId: collabMeta?.roomId || "collab:editor",
       disable: collabMeta?.disable ?? false,
+      token: collabMeta?.token || undefined,
     });
   }, [collabMeta?.disable, collabMeta?.roomId, collabMeta?.token, collabMeta?.wsUrl]);
 
@@ -522,7 +543,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
         <span className="ct-editor-title">Document Editor</span>
         <div className="flex items-center gap-4">
           <button
-            className="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200 transition-colors"
+            className="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200 transition-colors dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-900/60"
             onClick={handleSaveVersion}
             aria-label="Save Version"
           >
@@ -530,7 +551,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
             <span className="sr-only">Save Version</span>
           </button>
           <button
-            className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors flex items-center gap-1"
+            className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors flex items-center gap-1 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             onClick={() => setIsVersionModalOpen(true)}
             aria-label="View Version History"
           >
@@ -538,7 +559,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
             <span className="sr-only">History</span>
           </button>
           <button
-            className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200 transition-colors flex items-center gap-1"
+            className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200 transition-colors flex items-center gap-1 dark:bg-indigo-900/40 dark:text-indigo-300 dark:hover:bg-indigo-900/60"
             onClick={handleOpenAi}
             aria-label="AI Polish redlines"
             title="AI Polish — suggest professional rephrases for redlines"

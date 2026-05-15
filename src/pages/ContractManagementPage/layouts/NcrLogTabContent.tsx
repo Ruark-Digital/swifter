@@ -86,7 +86,7 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, act
   return (
     <TabsContent value="ncr-log" className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-900">
+        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
           Non-Compliance Report
         </h3>
         {(isApprover || isContractVendorLike) && (

@@ -469,8 +469,8 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
           const vendorRaw =
             typeof data.vendor === "string" ? data.vendor.trim() : "";
           if (!vendorRaw) return undefined;
-          const isObjectId = /^[a-f\\d]{24}$/i.test(vendorRaw);
-          const isEmail = /.+@.+\\..+/.test(vendorRaw);
+          const isObjectId = /^[a-f\d]{24}$/i.test(vendorRaw);
+          const isEmail = /.+@.+\..+/.test(vendorRaw);
           return isObjectId || isEmail ? vendorRaw : undefined;
         })(),
         businessDivision: data.businessDivision,
