@@ -46,7 +46,7 @@ function RatesValuesBlock({ children }: { children: React.ReactNode }) {
   return (
     <div className="rounded border-l-4 border-[#22C55E] bg-[#F0FDF4] px-2 py-3">
       <div className="text-sm font-semibold leading-5 text-[#14532D]">
-        💰 Rates & Values
+        ðŸ’° Rates & Values
       </div>
       <div className="mt-2">{children}</div>
     </div>
@@ -68,13 +68,13 @@ function RatesTable({
           className={`flex justify-center border-b ${idx === rows.length - 1 ? "border-b-0" : ""}`}
           style={{ borderColor }}
         >
-          <div className="flex w-[460px] px-1 py-2 text-sm leading-5 text-[#374151]">
+          <div className="flex w-[460px] px-1 py-2 text-sm leading-5 text-[#374151] dark:text-slate-300">
             {r.left}
           </div>
           <div className="flex w-[229px] justify-end px-1 py-2 text-sm font-semibold leading-5 text-[#14532D]">
             {r.middle}
           </div>
-          <div className="flex w-[345px] justify-end px-1 py-2 text-sm leading-5 text-[#4B5563]">
+          <div className="flex w-[345px] justify-end px-1 py-2 text-sm leading-5 text-[#4B5563] dark:text-slate-400">
             {r.right}
           </div>
         </div>
@@ -104,10 +104,10 @@ function CategoryCard({
             <img src={iconSrc} className="h-6 w-6" />
           </div>
           <div className="pl-3">
-            <div className="text-[18px] font-semibold leading-7 text-[#030712]">
+            <div className="text-[18px] font-semibold leading-7 text-[#030712] dark:text-slate-100">
               {title}
             </div>
-            <div className="text-sm leading-5 text-[#4B5563]">
+            <div className="text-sm leading-5 text-[#4B5563] dark:text-slate-400">
               {clausesCount}
             </div>
           </div>
@@ -137,7 +137,7 @@ function ClauseCard({
   return (
     <div className="flex flex-col gap-3 border-b border-[#F3F4F6] px-5 py-5">
       <div className="flex items-start justify-between">
-        <div className="text-base font-semibold leading-6 text-[#111827]">
+        <div className="text-base font-semibold leading-6 text-[#111827] dark:text-slate-100">
           {title}
         </div>
         <RiskPill tone={riskTone}>{risk}</RiskPill>
@@ -146,18 +146,18 @@ function ClauseCard({
       <div className="flex flex-col gap-3">
         <div className="flex flex-col rounded border-l-4 border-[#3B82F6] bg-[#EFF6FF] px-2 py-3">
           <div className="text-sm font-semibold leading-5 text-[#1E3A8A]">
-            📋 Summary
+            ðŸ“‹ Summary
           </div>
-          <div className="mt-1 text-sm leading-5 text-[#374151]">{summary}</div>
+          <div className="mt-1 text-sm leading-5 text-[#374151] dark:text-slate-300">{summary}</div>
         </div>
 
         {ratesValues && <RatesValuesBlock>{ratesValues}</RatesValuesBlock>}
 
         <div className="rounded bg-[#F9FAFB] p-3">
-          <div className="text-sm font-semibold leading-5 text-[#111827]">
-            📄 Full Details
+          <div className="text-sm font-semibold leading-5 text-[#111827] dark:text-slate-100">
+            ðŸ“„ Full Details
           </div>
-          <div className="mt-1 text-sm leading-5 text-[#374151]">
+          <div className="mt-1 text-sm leading-5 text-[#374151] dark:text-slate-300">
             {fullDetails}
           </div>
         </div>
@@ -250,7 +250,7 @@ const toRiskDisplay = (
 };
 
 const formatCurrency = (value?: number, currency?: string) => {
-  if (typeof value !== "number") return "—";
+  if (typeof value !== "number") return "â€”";
   return new Intl.NumberFormat(undefined, {
     style: "currency",
     currency: currency || "USD",
@@ -259,7 +259,7 @@ const formatCurrency = (value?: number, currency?: string) => {
 };
 
 const formatDateShort = (date?: string) => {
-  if (!date) return "—";
+  if (!date) return "â€”";
   const parsed = new Date(date);
   if (Number.isNaN(parsed.getTime())) return String(date);
   return format(parsed, "dd MMM yyyy");
@@ -320,7 +320,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
             <div className="text-2xl font-bold leading-8 text-[#2563EB]">
               Clause Library
             </div>
-            <div className="text-sm leading-5 text-[#4B5563]">
+            <div className="text-sm leading-5 text-[#4B5563] dark:text-slate-400">
               Contract Cheat Sheet - Quick Reference Guide
             </div>
           </div>
@@ -341,38 +341,38 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
         <div className="flex items-center justify-between rounded-lg border border-[#BFDBFE] bg-[linear-gradient(90deg,#EFF6FF_0%,#FAF5FF_100%)] p-[15px]">
           <div className="inline-flex items-center">
             <div className="inline-flex flex-col">
-              <div className="text-xs leading-4 text-[#4B5563]">
+              <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">
                 Contract ID
               </div>
-              <div className="text-base font-semibold leading-6 text-[#030712]">
-                {contract?.contractId || "—"}
+              <div className="text-base font-semibold leading-6 text-[#030712] dark:text-slate-100">
+                {contract?.contractId || "â€”"}
               </div>
             </div>
             <div className="flex flex-col pl-6">
               <div className="h-8 w-px bg-[#D1D5DB]" />
             </div>
             <div className="inline-flex flex-col pl-6">
-              <div className="text-xs leading-4 text-[#4B5563]">
+              <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">
                 Contract Name
               </div>
-              <div className="text-base font-semibold leading-6 text-[#030712]">
-                {contract?.title || "—"}
+              <div className="text-base font-semibold leading-6 text-[#030712] dark:text-slate-100">
+                {contract?.title || "â€”"}
               </div>
             </div>
             <div className="flex flex-col pl-6">
               <div className="h-8 w-px bg-[#D1D5DB]" />
             </div>
             <div className="inline-flex flex-col pl-6">
-              <div className="text-xs leading-4 text-[#4B5563]">Vendor</div>
-              <div className="text-base font-semibold leading-6 text-[#030712]">
-                —
+              <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">Vendor</div>
+              <div className="text-base font-semibold leading-6 text-[#030712] dark:text-slate-100">
+                â€”
               </div>
             </div>
             <div className="flex flex-col pl-6">
               <div className="h-8 w-px bg-[#D1D5DB]" />
             </div>
             <div className="inline-flex flex-col pl-6">
-              <div className="text-xs leading-4 text-[#4B5563]">Value</div>
+              <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">Value</div>
               <div className="text-base font-semibold leading-6 text-[#16A34A]">
                 {formatCurrency(contract?.value, contract?.currency)}
               </div>
@@ -381,8 +381,8 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
               <div className="h-8 w-px bg-[#D1D5DB]" />
             </div>
             <div className="inline-flex flex-col pl-6">
-              <div className="text-xs leading-4 text-[#4B5563]">Duration</div>
-              <div className="text-base font-semibold leading-6 text-[#030712]">
+              <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">Duration</div>
+              <div className="text-base font-semibold leading-6 text-[#030712] dark:text-slate-100">
                 {`${formatDateShort(contract?.startDate)} to ${formatDateShort(contract?.endDate)}`}
               </div>
             </div>
@@ -390,7 +390,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
 
           <div className="inline-flex rounded-full bg-[#22C55E] px-3 py-1">
             <span className="text-sm font-semibold leading-5 text-white">
-              {contract?.status || "—"}
+              {contract?.status || "â€”"}
             </span>
           </div>
         </div>
@@ -401,7 +401,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search clauses... (e.g., payment terms, insurance, liquidated damages)"
-          className="h-full w-full bg-transparent text-base text-[#4B5563] outline-none placeholder:text-[#9CA3AF]"
+          className="h-full w-full bg-transparent text-base text-[#4B5563] dark:text-slate-400 outline-none placeholder:text-[#9CA3AF] dark:text-slate-500"
         />
         <img
           src="/assets/contract-management/clause-library/search.svg"
@@ -412,11 +412,11 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
       <div className="flex w-[1152px] flex-col gap-6 pb-8">
         <div className="flex w-full flex-col gap-4">
           {isLoading ? (
-            <div className="rounded-lg border border-[#E5E7EB] bg-white p-6 text-sm text-[#4B5563]">
+            <div className="rounded-lg border border-[#E5E7EB] bg-white p-6 text-sm text-[#4B5563] dark:text-slate-400">
               Loading clause library...
             </div>
           ) : filteredSections.length === 0 ? (
-            <div className="rounded-lg border border-[#E5E7EB] bg-white p-6 text-sm text-[#4B5563]">
+            <div className="rounded-lg border border-[#E5E7EB] bg-white p-6 text-sm text-[#4B5563] dark:text-slate-400">
               No clauses found.
             </div>
           ) : (
@@ -439,7 +439,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
                       const risk = toRiskDisplay(clause.risk);
                       const values = (clause.values || []).map((v) => ({
                         left: String(v.label || "Value"),
-                        middle: String(v.value ?? "—"),
+                        middle: String(v.value ?? "â€”"),
                         right: "",
                       }));
                       return (
@@ -480,7 +480,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
 
         <div className="flex w-full justify-center gap-4">
           <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] bg-white p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
-            <div className="text-center text-sm leading-5 text-[#4B5563]">
+            <div className="text-center text-sm leading-5 text-[#4B5563] dark:text-slate-400">
               Total Clauses
             </div>
             <div className="text-center text-[30px] font-bold leading-9 text-[#2563EB]">
@@ -488,7 +488,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
             </div>
           </div>
           <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] bg-white p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
-            <div className="text-center text-sm leading-5 text-[#4B5563]">
+            <div className="text-center text-sm leading-5 text-[#4B5563] dark:text-slate-400">
               High Risk
             </div>
             <div className="text-center text-[30px] font-bold leading-9 text-[#DC2626]">
@@ -496,7 +496,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
             </div>
           </div>
           <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] bg-white p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
-            <div className="text-center text-sm leading-5 text-[#4B5563]">
+            <div className="text-center text-sm leading-5 text-[#4B5563] dark:text-slate-400">
               Medium Risk
             </div>
             <div className="text-center text-[30px] font-bold leading-9 text-[#CA8A04]">
@@ -504,7 +504,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
             </div>
           </div>
           <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] bg-white p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
-            <div className="text-center text-sm leading-5 text-[#4B5563]">
+            <div className="text-center text-sm leading-5 text-[#4B5563] dark:text-slate-400">
               Low Risk
             </div>
             <div className="text-center text-[30px] font-bold leading-9 text-[#16A34A]">
