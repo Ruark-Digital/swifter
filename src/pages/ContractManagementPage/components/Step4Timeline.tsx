@@ -52,7 +52,6 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
         component={TextDatePicker}
         placeholder="Select Date"
         showTime
-        minDate={today}
         helperText="Could be in the past, present or future."
       />
       

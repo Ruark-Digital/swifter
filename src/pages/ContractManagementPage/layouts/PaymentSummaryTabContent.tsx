@@ -624,18 +624,12 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
         });
         return res.data as { message?: string; data?: any[] };
       }
-      if (isContractVendorLike) {
-        const res = await getRequest({
-          url: `/contract/vendor/contracts/${contractId}/payment-savings`,
-        });
-        return res.data as { message?: string; data?: any[] };
-      }
+      // Phase 2 docs do not expose `/vendor/contracts/{contractId}/payment-savings`.
+      // Vendor + project manager intentionally do not fetch savings.
       return { data: [] as any[] };
     },
     enabled:
-      Boolean(contractId) &&
-      !!isActive &&
-      (isManager || isApprover || isContractVendorLike),
+      Boolean(contractId) && !!isActive && (isManager || isApprover),
     staleTime: 60000,
     retry: false,
   });

@@ -77,7 +77,7 @@ const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   return (
     <TabsContent value="lem" className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-900">
+        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
           Labor, Equipment & Material Reports
         </h3>
         {isContractVendorLike ? (

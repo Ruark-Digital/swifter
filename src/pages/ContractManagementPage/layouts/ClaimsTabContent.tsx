@@ -85,11 +85,11 @@ const ClaimsTabContent: React.FC<Props> = ({
   return (
     <TabsContent value="claims" className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-[#1F2937]">Claims</h3>
+        <h3 className="text-lg font-semibold text-[#1F2937] dark:text-slate-100">Claims</h3>
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
-            className="h-10 rounded-xl border-[#E5E7EB] bg-white px-4 text-sm font-medium text-[#111827] hover:bg-[#F9FAFB]"
+            className="h-10 rounded-xl border-[#E5E7EB] bg-white px-4 text-sm font-medium text-[#111827] dark:text-slate-100 hover:bg-[#F9FAFB]"
           >
             <Share2 className="mr-2 h-4 w-4" /> Export Report
           </Button>

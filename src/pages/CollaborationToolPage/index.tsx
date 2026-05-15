@@ -10,6 +10,11 @@ import {
   useContractMentionables,
   type Mentionable,
 } from "./collab/useContractMentionables";
+import {
+  useAddFileComment,
+  useFileComments,
+  type FileCommentRich,
+} from "./collab/useFileComments";
 
 type SidebarAttachment = {
   filename: string;
@@ -115,6 +120,7 @@ const CollaborationToolPage: React.FC = () => {
   const fileName = searchParams.get("fileName") || "";
   const fileType = searchParams.get("fileType") || "";
   const contractId = searchParams.get("contractId") || "";
+  const fileId = searchParams.get("fileId") || "";
   const collabDoc = searchParams.get("doc") || searchParams.get("docId") || "";
   const wsUrlParam = searchParams.get("wsUrl") || searchParams.get("collabWsUrl") || "";
 
@@ -132,6 +138,12 @@ const CollaborationToolPage: React.FC = () => {
 
   const { data: mentionables = [] } = useContractMentionables(contractId);
 
+  // Backend-backed comments via /file-comment/{fileId}. When fileId is
+  // present we treat the API as the source of truth; otherwise we fall
+  // back to localStorage so the tool still works for ad-hoc/legacy use.
+  const fileCommentsQuery = useFileComments(fileId || undefined);
+  const addFileComment = useAddFileComment(fileId || undefined);
+
   useEffect(() => {
     if (!commentsStorageKey) {
       setLocalComments([]);
@@ -140,7 +152,26 @@ const CollaborationToolPage: React.FC = () => {
     setLocalComments(readLocalComments(commentsStorageKey));
   }, [commentsStorageKey]);
 
-  const commentsFeed = useMemo(() => mapLocalCommentsToFeed(localComments), [localComments]);
+  const combinedComments: LocalComment[] = useMemo(() => {
+    if (fileId) {
+      return (fileCommentsQuery.data ?? []).map((c: FileCommentRich) => ({
+        id: c.id,
+        author: c.author,
+        createdAt: c.createdAt,
+        content: c.content,
+        parentId: c.parentId ?? null,
+        redlineId: c.redlineId ?? null,
+        redlineKind: c.redlineKind ?? null,
+        mentions: c.mentions,
+      }));
+    }
+    return localComments;
+  }, [fileCommentsQuery.data, fileId, localComments]);
+
+  const commentsFeed = useMemo(
+    () => mapLocalCommentsToFeed(combinedComments),
+    [combinedComments],
+  );
   const logsFeed = useMemo<SidebarFeed[]>(() => [], []);
 
   useEffect(() => {
@@ -181,7 +212,14 @@ const CollaborationToolPage: React.FC = () => {
   }, [activeTab, setPresenceActive]);
 
   const collabMeta = useMemo(() => {
-    const wsUrl = wsUrlParam || import.meta.env.VITE_YWS_URL || "ws://localhost:1234";
+    // Per COLLAB_WS.md the canonical env var is `VITE_WS_URL`; keep
+     // `VITE_YWS_URL` as a deprecated fallback so existing local .env
+     // files keep working.
+    const wsUrl =
+      wsUrlParam ||
+      import.meta.env.VITE_WS_URL ||
+      import.meta.env.VITE_YWS_URL ||
+      "ws://localhost:1234";
     const roomId = collabDoc || contractId || fileName || "collab:editor";
     return {
       wsUrl,
@@ -243,11 +281,13 @@ const CollaborationToolPage: React.FC = () => {
     [setActiveTab]
   );
 
-  const canWriteComment = Boolean(contractId);
+  // When fileId is supplied we can persist to the backend; otherwise we
+  // require contractId (which gates the localStorage scope).
+  const canWriteComment = Boolean(fileId || contractId);
 
   const handleSubmitComment = useCallback(
     (parentId?: string | null) => {
-      if (!canWriteComment || !commentsStorageKey) return;
+      if (!canWriteComment) return;
 
       const trimmed = commentInput.trim();
       if (!trimmed) return;
@@ -265,17 +305,51 @@ const CollaborationToolPage: React.FC = () => {
         mentions: pendingMentionsRef.current,
       };
 
-      setLocalComments((prev) => {
-        const updated = [next, ...prev];
-        writeLocalComments(commentsStorageKey, updated);
-        return updated;
-      });
+      if (fileId) {
+        // Persist to /file-comment/{fileId}; rich metadata is encoded
+        // inside the `text` field by useAddFileComment.
+        addFileComment.mutate(
+          {
+            id: next.id,
+            author: next.author,
+            createdAt: next.createdAt,
+            content: next.content,
+            parentId: next.parentId,
+            redlineId: next.redlineId,
+            redlineKind: next.redlineKind,
+            mentions: next.mentions,
+          },
+          {
+            onError: () => {
+              toast({
+                title: "Comment failed to save",
+                description: "We'll retry next time you reload.",
+                variant: "destructive",
+              });
+            },
+          },
+        );
+      } else if (commentsStorageKey) {
+        setLocalComments((prev) => {
+          const updated = [next, ...prev];
+          writeLocalComments(commentsStorageKey, updated);
+          return updated;
+        });
+      }
 
       setCommentInput("");
       pendingMentionsRef.current = [];
       if (!parentId) pendingRedlineRef.current = null;
     },
-    [canWriteComment, commentInput, commentsStorageKey, user?.name],
+    [
+      addFileComment,
+      canWriteComment,
+      commentInput,
+      commentsStorageKey,
+      fileId,
+      toast,
+      user?.name,
+    ],
   );
 
   return (
@@ -286,7 +360,7 @@ const CollaborationToolPage: React.FC = () => {
         robots="noindex, nofollow"
         canonical="/collaboration-tool"
       />
-      <div className="flex min-h-svh bg-white">
+      <div className="flex min-h-svh bg-white dark:bg-slate-950">
         <div className="flex-1 max-w-7xl  overflow-auto">
           <Suspense fallback={<div className="ct-editor-panel" />}>
             <EditorPane importMeta={importMeta} collabMeta={collabMeta} />
@@ -302,7 +376,7 @@ const CollaborationToolPage: React.FC = () => {
           onCommentChange={handleCommentChange}
           onCommentSubmit={handleSubmitComment}
           canWriteComment={canWriteComment}
-          isSubmittingComment={false}
+          isSubmittingComment={addFileComment.isPending}
           useFallbackFeed={false}
           mentionables={mentionables}
         />

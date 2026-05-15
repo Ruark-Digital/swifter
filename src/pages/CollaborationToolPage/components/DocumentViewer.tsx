@@ -71,7 +71,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   return (
     <div
       data-testid="document-viewer-container"
-      className={`ct-document-viewer h-full w-full overflow-auto bg-gray-50 p-4 ${
+      className={`ct-document-viewer h-full w-full overflow-auto bg-gray-50 p-4 dark:bg-slate-900 ${
         fileType === "application/pdf" ? "pdf-viewer" : ""
       } ${
         fileType ===
@@ -90,7 +90,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
               <button
                 disabled={pageNumber <= 1}
                 onClick={() => setPageNumber(pageNumber - 1)}
-                className="px-3 py-1 bg-white border rounded"
+                className="px-3 py-1 bg-white border rounded dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
               >
                 Prev
               </button>
@@ -100,7 +100,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
               <button
                 disabled={pageNumber >= numPages}
                 onClick={() => setPageNumber(pageNumber + 1)}
-                className="px-3 py-1 bg-white border rounded"
+                className="px-3 py-1 bg-white border rounded dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
               >
                 Next
               </button>
@@ -113,7 +113,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" &&
         excelHtml && (
           <div
-            className="excel-table-container bg-white p-4 shadow rounded"
+            className="excel-table-container bg-white p-4 shadow rounded dark:bg-slate-800 dark:text-slate-100"
             dangerouslySetInnerHTML={{ __html: excelHtml }}
           />
         )}
@@ -122,13 +122,13 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document" &&
         wordHtml && (
           <div
-            className="word-container bg-white p-8 shadow rounded prose max-w-none"
+            className="word-container bg-white p-8 shadow rounded prose max-w-none dark:bg-slate-800 dark:text-slate-100 dark:prose-invert"
             dangerouslySetInnerHTML={{ __html: wordHtml }}
           />
         )}
 
       {fileType === "text/plain" && textContent && (
-        <pre className="text-container bg-white p-4 shadow rounded whitespace-pre-wrap font-mono">
+        <pre className="text-container bg-white p-4 shadow rounded whitespace-pre-wrap font-mono dark:bg-slate-800 dark:text-slate-100">
           {textContent}
         </pre>
       )}

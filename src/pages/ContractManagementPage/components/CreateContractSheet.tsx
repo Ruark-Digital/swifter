@@ -920,6 +920,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         (vendorRaw && (isEmailLike(vendorRaw) || isObjectIdLike(vendorRaw))
           ? vendorRaw
           : undefined) ||
+        awardedMatch?.vendor?._id ||
         awardedMatch?.vendor?.email ||
         undefined;
 
