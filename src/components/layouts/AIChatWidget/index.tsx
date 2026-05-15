@@ -32,8 +32,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useAIChat, Message } from "@/hooks/useAIChat";
 import MessageContainer from "./components/MessageContainer";
-import axios from "axios";
-import { useToken } from "@/store/authSlice";
 
 interface FileAttachment {
   id: string;
@@ -48,8 +46,10 @@ interface AIChatWidgetProps {
   onSendMessage?: (message: string) => Promise<string>;
   onStreamMessage?: (
     message: string,
-    onDelta: (partial: string) => void
+    onDelta: (partial: string) => void,
+    onTool?: (phase: "start" | "end", tool: string) => void
   ) => Promise<void>;
+  onReset?: () => Promise<void>;
   apiEndpoint?: string;
   className?: string;
   maxFileSize?: number;
@@ -65,6 +65,7 @@ interface AIChatWidgetProps {
 const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   onSendMessage,
   onStreamMessage,
+  onReset,
   apiEndpoint,
   className,
   maxFileSize = 10 * 1024 * 1024, // 10MB default
@@ -83,6 +84,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   const [attachedFiles, setAttachedFiles] = useState<FileAttachment[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [activeTools, setActiveTools] = useState<string[]>([]);
   // const [uploadProgress, setUploadProgress] = useState<Record<string, number>>(
   //   {}
   // );
@@ -91,7 +93,6 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const token = useToken();
 
   // Use the AI chat hook for state management
   const {
@@ -125,11 +126,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   const clearMessages = useCustom
     ? async () => {
         try {
-          await axios.post("https://dev.swiftpro.tech/reset", undefined, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
+          if (onReset) await onReset();
           setCustomMessages([
             {
               id: "1",
@@ -139,6 +136,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
               timestamp: new Date(),
             },
           ]);
+          setActiveTools([]);
         } catch (error) {
           console.error("AI Chat reset failed:", error);
         }
@@ -319,13 +317,23 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
         ]);
 
         try {
-          await onStreamMessage(messageContent, (partial) => {
-            setCustomMessages((prev) =>
-              prev.map((m) =>
-                m.id === aiMessageId ? { ...m, content: m.content + partial } : m
-              )
-            );
-          });
+          await onStreamMessage(
+            messageContent,
+            (partial) => {
+              setCustomMessages((prev) =>
+                prev.map((m) =>
+                  m.id === aiMessageId ? { ...m, content: m.content + partial } : m
+                )
+              );
+            },
+            (phase, tool) => {
+              setActiveTools((prev) =>
+                phase === "start"
+                  ? [...prev, tool]
+                  : prev.filter((t) => t !== tool)
+              );
+            }
+          );
         } catch (error) {
           console.error("Streaming error:", error);
           // Replace the empty placeholder with a clear error message
@@ -344,6 +352,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
           return;
         } finally {
           setCustomIsLoading(false);
+          setActiveTools([]);
         }
       } else if (onSendMessage) {
         // Add user message to custom state
@@ -534,12 +543,17 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                     <CardTitle className="text-base font-semibold">
                       AI Assistant
                     </CardTitle>
-                    {isTyping && (
+                    {activeTools.length > 0 ? (
+                      <p className="text-xs text-slate-300 flex items-center gap-1">
+                        <span className="w-1 h-1 bg-blue-400 rounded-full animate-pulse"></span>
+                        Fetching: {activeTools.join(", ")}…
+                      </p>
+                    ) : isTyping ? (
                       <p className="text-xs text-slate-300 flex items-center gap-1">
                         <span className="w-1 h-1 bg-green-400 rounded-full animate-pulse"></span>
                         Typing...
                       </p>
-                    )}
+                    ) : null}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
