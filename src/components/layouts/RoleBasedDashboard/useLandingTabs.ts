@@ -5,7 +5,6 @@ export type LandingTabId =
   | "solicitations"
   | "invitations"
   | "overview"
-  | "users"
   | "contracts";
 
 export interface LandingTab {
@@ -32,8 +31,7 @@ export function computeLandingTabs(
         : [{ id: "invitations", label: "Invitations" }];
     case "company_admin": {
       const base: LandingTab[] = [
-        { id: "overview", label: "Overview" },
-        { id: "users", label: "Users" },
+        { id: "overview", label: "Dashboard" },
       ];
       return contractsOn ? [...base, CONTRACTS_TAB] : base;
     }

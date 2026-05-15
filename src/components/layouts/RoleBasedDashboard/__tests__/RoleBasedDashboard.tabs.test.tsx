@@ -33,9 +33,11 @@ describe("useLandingTabs (hook integration)", () => {
     expect(result.current.map((t) => t.id)).toEqual(["invitations"]);
   });
 
-  it("company_admin with flag on returns overview + users + contracts", () => {
-    const { result } = renderHook(() => useLandingTabs("company_admin", modulesOn));
-    expect(result.current.map((t) => t.id)).toEqual(["overview", "users", "contracts"]);
+  it("company_admin with flag on returns [overview, contracts]", () => {
+    const { result } = renderHook(
+      () => useLandingTabs("company_admin", modulesOn),
+    );
+    expect(result.current.map((t) => t.id)).toEqual(["overview", "contracts"]);
   });
 
   it("vendor with flag off renders no contracts tab", () => {

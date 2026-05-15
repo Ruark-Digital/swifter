@@ -27,11 +27,15 @@ describe("computeLandingTabs", () => {
   it("vendor with flag off returns [invitations] only", () => {
     expect(computeLandingTabs("vendor", modulesOff).map((t) => t.id)).toEqual(["invitations"]);
   });
-  it("company_admin with flag on returns [overview, users, contracts]", () => {
-    expect(computeLandingTabs("company_admin", modulesOn).map((t) => t.id)).toEqual(["overview", "users", "contracts"]);
+  it("company_admin with flag on returns [overview, contracts]", () => {
+    expect(
+      computeLandingTabs("company_admin", modulesOn).map((t) => t.id),
+    ).toEqual(["overview", "contracts"]);
   });
-  it("company_admin with flag off returns [overview, users]", () => {
-    expect(computeLandingTabs("company_admin", modulesOff).map((t) => t.id)).toEqual(["overview", "users"]);
+  it("company_admin with flag off returns [overview]", () => {
+    expect(
+      computeLandingTabs("company_admin", modulesOff).map((t) => t.id),
+    ).toEqual(["overview"]);
   });
   it("project_manager with flag on returns [contracts]", () => {
     expect(computeLandingTabs("project_manager", modulesOn).map((t) => t.id)).toEqual(["contracts"]);
