@@ -840,8 +840,8 @@ export const RoleBasedDashboard: React.FC = () => {
         </Tabs>
       )}
 
-      {/* project_manager: single Contracts view with no outer strip */}
-      {userRole === "project_manager" && (
+      {/* project_manager: Contracts view — only when contractManagement is on */}
+      {userRole === "project_manager" && activeLandingTab === "contracts" && (
         <VendorContractsView enabled />
       )}
 
