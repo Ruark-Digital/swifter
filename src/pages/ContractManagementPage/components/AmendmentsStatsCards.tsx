@@ -12,11 +12,18 @@ type StatProps = {
 
 const StatCard: React.FC<StatProps> = ({ title, value, iconSrc, iconBg, testId }) => {
   return (
-    <Card data-testid={testId} className="border border-[#E5E7EB] rounded-xl shadow-none">
+    <Card
+      data-testid={testId}
+      className="border border-[#E5E7EB] dark:border-slate-800 dark:bg-slate-900 rounded-xl shadow-none"
+    >
       <CardContent className="p-[23px] flex items-center justify-between gap-4">
         <div className="space-y-2">
-          <div className="text-sm font-medium text-[#6B6B6B]">{title}</div>
-          <div className="text-2xl font-bold text-[#0F0F0F]">{value}</div>
+          <div className="text-sm font-medium text-[#6B6B6B] dark:text-slate-400">
+            {title}
+          </div>
+          <div className="text-2xl font-bold text-[#0F0F0F] dark:text-slate-50">
+            {value}
+          </div>
         </div>
         <div className="rounded-full p-[10px]" style={{ background: iconBg }}>
           <img src={iconSrc} className="h-[29px] w-[29px]" />

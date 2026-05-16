@@ -459,15 +459,19 @@ export class ChartDataTransformer {
 
     if (!data) return applyConsistentColors(defaultData);
 
+    // The /solicitations/analytics/status endpoint returns both percentages
+    // (active/closed/awarded — fractional) and integer counts
+    // (activeSol/closedSol/awardedSol). Prefer the integer counts so the
+    // pie reflects raw solicitation counts, not decimal percentages.
     const chartData = [
       { name: "Draft", value: data.draft || 0 },
-      { name: "Active", value: data.active || 0 },
+      { name: "Active", value: data.activeSol ?? data.active ?? 0 },
       {
         name: "Under Evaluation",
         value: data.evaluating || data.underEvaluating || 0,
       },
-      { name: "Closed", value: data.closed || 0 },
-      { name: "Awarded", value: data.awarded || 0 },
+      { name: "Closed", value: data.closedSol ?? data.closed ?? 0 },
+      { name: "Awarded", value: data.awardedSol ?? data.awarded ?? 0 },
     ];
 
     return applyConsistentColors(chartData);
@@ -1194,31 +1198,35 @@ export class DashboardDataTransformer {
       ];
     }
 
+    // The endpoint returns decimal percentages for active/closed/awarded
+    // alongside integer counts in activeSol/closedSol/awardedSol. The
+    // stats cards must show integer counts, not percentages — prefer the
+    // *Sol fields and fall back to a floored decimal if they're missing.
     return [
       {
         title: "Total Solicitations",
-        value: data.total || 0,
+        value: Math.trunc(data.total || 0),
         icon: "file-text",
         color: "text-blue-800",
         bgColor: "bg-blue-500/20",
       },
       {
         title: "Active Solicitations",
-        value: data.active || 0,
+        value: Math.trunc(data.activeSol ?? data.active ?? 0),
         icon: "activity",
         color: "text-green-800",
         bgColor: "bg-green-500/20",
       },
       {
         title: "Awarded Solicitations",
-        value: data.awarded || 0,
+        value: Math.trunc(data.awardedSol ?? data.awarded ?? 0),
         icon: "award",
         color: "text-yellow-800",
         bgColor: "bg-yellow-500/20",
       },
       {
         title: "Closed Solicitations",
-        value: data.closed || 0,
+        value: Math.trunc(data.closedSol ?? data.closed ?? 0),
         icon: "x-circle",
         color: "text-red-800",
         bgColor: "bg-red-500/20",

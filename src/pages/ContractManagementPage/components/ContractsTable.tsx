@@ -215,7 +215,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
           <div className="flex items-center w-full justify-between border-b border-[#E9E9EB] dark:border-slate-600 p-3 pt-0">
             <div className="flex items-center gap-3 w-full">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-slate-700">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
                   Contracts
                 </span>
                 <Input

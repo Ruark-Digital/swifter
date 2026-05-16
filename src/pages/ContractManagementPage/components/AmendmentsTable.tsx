@@ -1149,9 +1149,9 @@ const AmendmentsTable: React.FC<Props> = ({
   return (
     <div
       data-testid="amendments-table"
-      className="rounded-xl border border-[#E5E7EB] bg-white overflow-hidden"
+      className="rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden"
     >
-      <div className="flex items-center gap-6 border-b border-[#E9E9EB] px-6 py-6">
+      <div className="flex items-center gap-6 border-b border-[#E9E9EB] dark:border-slate-800 px-6 py-6">
         <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">Amendments</div>
         <div className="relative w-[300px]">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />
@@ -1178,12 +1178,12 @@ const AmendmentsTable: React.FC<Props> = ({
             pagination: { pageIndex: 0, pageSize: 10 },
           }}
           classNames={{
-            container: "border border-[#E5E7EB] rounded-xl bg-white",
-            tHeader: "bg-[#F9FAFB]",
-            tHeadRow: "border-b border-[#E5E7EB]",
-            tBody: "bg-white",
-            tRow: "border-b border-[#E5E7EB]",
-            tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500",
+            container: "border border-[#E5E7EB] dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900",
+            tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+            tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+            tBody: "bg-white dark:bg-slate-900",
+            tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+            tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400",
             tCell: "px- py-4 text-sm text-slate-700 dark:text-slate-300 align-top",
           }}
         />
