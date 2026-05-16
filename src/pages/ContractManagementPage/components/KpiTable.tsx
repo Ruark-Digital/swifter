@@ -381,7 +381,7 @@ const KpiTable: React.FC<Props> = ({
       accessorKey: "kpiId",
       header: "KPI ID",
       cell: ({ getValue }) => (
-        <div className="w-[100px] py-2 text-sm font-semibold text-[#374151]">
+        <div className="w-[100px] py-2 text-sm font-semibold text-[#374151] dark:text-slate-200">
           {getValue<string>()}
         </div>
       ),
@@ -390,7 +390,7 @@ const KpiTable: React.FC<Props> = ({
       accessorKey: "category",
       header: "Category",
       cell: ({ getValue }) => (
-        <div className="w-[160px] overflow-hidden py-2 text-sm font-medium text-[#374151]">
+        <div className="w-[160px] overflow-hidden py-2 text-sm font-medium text-[#374151] dark:text-slate-200">
           {getValue<string>()}
         </div>
       ),
@@ -401,7 +401,7 @@ const KpiTable: React.FC<Props> = ({
         <div className="w-[160px] overflow-hidden">Current Avg. Score</div>
       ),
       cell: ({ getValue }) => (
-        <div className="w-[160px] py-2 text-sm font-medium text-[#374151]">
+        <div className="w-[160px] py-2 text-sm font-medium text-[#374151] dark:text-slate-200">
           {getValue<string>()}
         </div>
       ),
@@ -412,7 +412,7 @@ const KpiTable: React.FC<Props> = ({
         <div className="w-[160px] overflow-hidden">All Time Avg. Score</div>
       ),
       cell: ({ getValue }) => (
-        <div className="w-[160px] py-2 text-sm font-medium text-[#374151]">
+        <div className="w-[160px] py-2 text-sm font-medium text-[#374151] dark:text-slate-200">
           {getValue<string>()}
         </div>
       ),
@@ -423,7 +423,7 @@ const KpiTable: React.FC<Props> = ({
         <div className="w-[160px] overflow-hidden">Last Updated</div>
       ),
       cell: ({ getValue }) => (
-        <div className="w-[160px] py-2 text-sm font-medium text-[#374151]">
+        <div className="w-[160px] py-2 text-sm font-medium text-[#374151] dark:text-slate-200">
           {getValue<string>()}
         </div>
       ),
@@ -497,17 +497,17 @@ const KpiTable: React.FC<Props> = ({
 
   return (
     <div className="relative flex flex-col gap-8">
-      <div className="flex flex-col rounded-xl border border-[#E5E7EB] bg-white overflow-hidden">
-        <div className="flex items-center justify-between border-b border-[#E9E9EB] px-6 py-6">
+      <div className="flex flex-col rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+        <div className="flex items-center justify-between border-b border-[#E9E9EB] dark:border-slate-800 px-6 py-6">
           <div className="flex items-center gap-6">
-            <div className="text-base font-semibold text-[#0F0F0F]">KPI</div>
+            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">KPI</div>
             <div className="relative w-[300px]">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B]" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search"
-                className="h-12 w-[300px] rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
+                className="h-12 w-[300px] rounded-lg border border-[#E5E7EB] dark:border-slate-700 pl-9 text-sm text-[#0F0F0F] dark:text-slate-100 dark:bg-slate-900 placeholder:text-[#6B6B6B] dark:placeholder:text-slate-500"
               />
             </div>
           </div>
@@ -570,12 +570,12 @@ const KpiTable: React.FC<Props> = ({
           classNames={{
             container: "[&>div:last-child]:hidden",
             table: "border-spacing-y-0",
-            tHeader: "bg-[#F9FAFB]",
-            tHeadRow: "border-b border-[#E5E7EB]",
-            tBody: "bg-white",
-            tRow: "border-b border-[#E5E7EB]",
-            tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467]",
-            tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+            tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+            tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+            tBody: "bg-white dark:bg-slate-900",
+            tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+            tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467] dark:text-indigo-300",
+            tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
           }}
         />
       </div>
