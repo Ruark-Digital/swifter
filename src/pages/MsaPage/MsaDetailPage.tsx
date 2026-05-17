@@ -28,6 +28,7 @@ import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUserRole } from "@/hooks/useUserRole";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { Textarea } from "@/components/ui/textarea";
+import CreateMSADialog from "./layouts/CreateMSADialog";
 import Overview from "./layouts/Overview";
 import LinkedContracts from "./layouts/LinkedContracts";
 import PaymentSummary from "./layouts/PaymentSummary";
@@ -103,7 +104,7 @@ const ROLE_TAB_WHITELIST: Record<
     "rfi",
     "deliverables",
     "ncr-log",
-    "approvers",
+    // "approvers" intentionally omitted — approvers can't see the Approvers tab
     "reports",
     "payment-summary",
   ],
@@ -119,7 +120,7 @@ const ROLE_TAB_WHITELIST: Record<
     "rfi",
     "deliverables",
     "ncr-log",
-    "approvers",
+    // "approvers" intentionally omitted — vendors and project managers can't see the Approvers tab
     "reports",
     "payment-summary",
   ],
@@ -580,7 +581,7 @@ const MsaDetailPage: React.FC = () => {
           canonical={`/dashboard/msa/${id ?? ""}`}
           robots="noindex, nofollow"
         />
-        <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-700">
+        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-sm text-slate-700 dark:text-slate-200">
           MSA not found.
         </div>
       </div>
@@ -589,7 +590,7 @@ const MsaDetailPage: React.FC = () => {
 
   const status = formatMsaStatus(toMsaStatus(msa?.status));
   const triggerClass =
-    "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3";
+    "dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3";
 
   const draftDuration = diffDays(undefined, undefined);
   const reviewDuration = diffDays(undefined, undefined);
@@ -630,10 +631,10 @@ const MsaDetailPage: React.FC = () => {
 
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
             {msa?.title}
           </h1>
-          <p className="text-sm text-slate-500">{msa?.msaContractId}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{msa?.msaContractId}</p>
         </div>
         <Badge className={status?.className}>{status?.label}</Badge>
       </div>
@@ -663,16 +664,16 @@ const MsaDetailPage: React.FC = () => {
         onValueChange={(v) => setTopTab(v as "details" | "linked")}
         className="w-full space-y-4"
       >
-        <TabsList className="gap-2 p-2 bg-gray-200 rounded-full dark:bg-gray-800">
+        <TabsList className="gap-2 p-2 bg-gray-200 rounded-full dark:bg-slate-800">
           <TabsTrigger
             value="details"
-            className="rounded-full px-4 py-4 text-sm font-semibold border border-[#E5E7EB] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467]"
+            className="rounded-full px-4 py-4 text-sm font-semibold border border-[#E5E7EB] dark:border-slate-700 text-slate-700 dark:text-slate-300 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467] data-[state=active]:dark:text-white"
           >
             MSA Details
           </TabsTrigger>
           <TabsTrigger
             value="linked"
-            className="rounded-full px-4 py-4 text-sm font-semibold border border-[#E5E7EB] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467]"
+            className="rounded-full px-4 py-4 text-sm font-semibold border border-[#E5E7EB] dark:border-slate-700 text-slate-700 dark:text-slate-300 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467] data-[state=active]:dark:text-white"
           >
             Linked Contracts
           </TabsTrigger>
@@ -703,16 +704,22 @@ const MsaDetailPage: React.FC = () => {
               <div className="flex items-center justify-end w-full gap-3 pb-3">
                 <Button
                   variant="outline"
-                  className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
+                  className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
                 >
                   <Share2 className="mr-2 h-4 w-4" /> Export Report
                 </Button>
-                <Button
-                  variant="secondary"
-                  className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
-                >
-                  Edit MSA
-                </Button>
+                <CreateMSADialog
+                  trigger={
+                    <Button
+                      variant="secondary"
+                      className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
+                    >
+                      Edit MSA
+                    </Button>
+                  }
+                  editingMsaId={msa?._id ?? undefined}
+                  initialValues={msa as any}
+                />
               </div>
 
               <Overview

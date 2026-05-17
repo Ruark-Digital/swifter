@@ -571,7 +571,6 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     getValues,
     reset,
     trigger: formTrigger,
-    setError,
     clearErrors,
     setValue
   } = useForge<CreateContractFormData>({
@@ -790,38 +789,18 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       const ok = await formTrigger(fields as any, { shouldFocus: true });
       if (!ok) return false;
       if (currentStep !== 5) return true;
+      // Milestone amount + due date are optional — clear any stale
+      // errors so the field doesn't render in its red error state.
       const values = getValues();
       if (values.paymentStructure !== "milestone") return true;
       const milestones = values.milestones ?? [];
-      let hasMilestoneError = false;
-      milestones.forEach((milestone, index) => {
-        const hasAmount =
-          milestone?.amount !== undefined &&
-          milestone?.amount !== null &&
-          String(milestone.amount).trim() !== "";
-        const hasDueDate = Boolean(milestone?.dueDate);
-        if (!hasAmount) {
-          setError(`milestones.${index}.amount`, {
-            type: "required",
-            message: "Milestone amount is required",
-          });
-          hasMilestoneError = true;
-        } else {
-          clearErrors(`milestones.${index}.amount`);
-        }
-        if (!hasDueDate) {
-          setError(`milestones.${index}.dueDate`, {
-            type: "required",
-            message: "Milestone due date is required",
-          });
-          hasMilestoneError = true;
-        } else {
-          clearErrors(`milestones.${index}.dueDate`);
-        }
+      milestones.forEach((_, index) => {
+        clearErrors(`milestones.${index}.amount`);
+        clearErrors(`milestones.${index}.dueDate`);
       });
-      return !hasMilestoneError;
+      return true;
     },
-    [clearErrors, formTrigger, getValues, setError],
+    [clearErrors, formTrigger, getValues],
   );
 
   const buildPayload = React.useCallback(
@@ -1141,7 +1120,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
           </DialogHeader>
 
           <div className="px-4 pb-8">
-            <p className="text-sm font-medium text-slate-700">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
               {STEP_TITLES[step - 1]}
             </p>
 

@@ -49,15 +49,15 @@ export const VendorsValueCard: React.FC<Props> = ({
       ? `${name.slice(0, MAX_VENDOR_LABEL_LENGTH)}…`
       : name;
   return (
-    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm flex flex-col">
-      <CardHeader className="pb-3">
+    <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col max-h-[32rem]">
+      <CardHeader className="pb-3 shrink-0">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-[16px] font-semibold text-[#0F0F0F]">
+          <CardTitle className="text-[16px] font-semibold text-[#0F0F0F] dark:text-slate-100">
             Contract Value by vendors
           </CardTitle>
-          <div className="inline-flex items-center gap-2 border border-[#E5E7EB] rounded-lg px-3 py-2">
-            <span className="text-xs font-medium text-[#6B6B6B]">Top 10</span>
-            <span className="inline-block w-3 h-3 rounded-sm bg-[#E5E7EB]" />
+          <div className="inline-flex items-center gap-2 border border-[#E5E7EB] dark:border-slate-700 rounded-lg px-3 py-2">
+            <span className="text-xs font-medium text-[#6B6B6B] dark:text-slate-400">Top 10</span>
+            <span className="inline-block w-3 h-3 rounded-sm bg-[#E5E7EB] dark:bg-slate-700" />
           </div>
         </div>
         <Tabs
@@ -65,10 +65,12 @@ export const VendorsValueCard: React.FC<Props> = ({
           onValueChange={(value) => onRangeChange?.(value)}
           className="w-full"
         >
-          <TabsList className="bg-transparent p-0 gap-2">
+          {/* Horizontal scroll on overflow; `!flex-none shrink-0` defeats
+              shadcn TabsTrigger's baked-in `flex-1` so pills don't stretch. */}
+          <TabsList className="bg-transparent p-0 gap-2 flex overflow-x-auto h-auto w-full justify-start">
             <TabsTrigger
               value="ytd"
-              className="rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467]"
+              className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467] dark:bg-slate-800 dark:text-slate-100 data-[state=active]:bg-[#F0F0F0] data-[state=active]:dark:bg-slate-800"
             >
               YTD
             </TabsTrigger>
@@ -76,7 +78,7 @@ export const VendorsValueCard: React.FC<Props> = ({
               <TabsTrigger
                 key={t}
                 value={t.replace(/\s+/g, "")}
-                className="rounded-md px-3 py-2 text-sm font-semibold text-[#667085]"
+                className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-[#667085] dark:text-slate-400"
               >
                 {t}
               </TabsTrigger>
@@ -84,8 +86,8 @@ export const VendorsValueCard: React.FC<Props> = ({
           </TabsList>
         </Tabs>
       </CardHeader>
-      <CardContent className="pt-0 flex-1 flex flex-col">
-        <ChartContainer className="h-full" config={{} as ChartConfig}>
+      <CardContent className="pt-0 flex-1 flex flex-col min-h-0">
+        <ChartContainer className="flex-1 min-h-0" config={{} as ChartConfig}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data}
@@ -121,15 +123,15 @@ export const VendorsValueCard: React.FC<Props> = ({
                 cursor={{ fill: "rgba(0,0,0,0.05)" }}
                 content={({ active, payload }) =>
                   active && payload && payload.length ? (
-                    <div className="bg-white border border-[#E5E7EB] rounded-2xl p-2 w-[140px] shadow">
-                      <p className="text-[14px] font-medium text-[#0F0F0F]">
+                    <div className="bg-white dark:bg-slate-900 border border-[#E5E7EB] dark:border-slate-700 rounded-2xl p-2 w-[140px] shadow">
+                      <p className="text-[14px] font-medium text-[#0F0F0F] dark:text-slate-100">
                         {payload[0].payload.name}
                       </p>
-                      <p className="text-[12px] text-[#6B6B6B]">
+                      <p className="text-[12px] text-[#6B6B6B] dark:text-slate-400">
                         {payload[0].payload.contractCount}{" "}
                         {payload[0].payload.contractCount === 1 ? "Contract" : "Contracts"}
                       </p>
-                      <p className="text-[12px] text-[#6B6B6B]">
+                      <p className="text-[12px] text-[#6B6B6B] dark:text-slate-400">
                         ${Number(payload[0].value).toFixed(1)}M
                       </p>
                     </div>

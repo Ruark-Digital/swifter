@@ -523,7 +523,7 @@ const RfiTabContent: React.FC<Props> = ({
       />
 
       <Tabs defaultValue="all" className="w-full bg-transparent">
-        <TabsList className="bg-[#F2F4F7] p-1 rounded-full w-fit">
+        <TabsList className="bg-[#F2F4F7] dark:bg-slate-800 p-1 rounded-full w-fit">
           <TabsTrigger
             value="all"
             className="rounded-full px-4 py-2 text-sm font-medium text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"

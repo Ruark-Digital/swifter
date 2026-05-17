@@ -387,7 +387,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
       </div>
 
       {isLoading && (
-        <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+        <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
           Loading compliance data...
         </div>
       )}

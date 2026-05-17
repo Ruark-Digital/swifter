@@ -283,18 +283,18 @@ const ApproversTable: React.FC<Props> = ({ rows, isLoading, contractId }) => {
         header: "Approver Name",
         cell: ({ row }) => (
           <div className="space-y-1">
-            <p className="text-sm font-medium text-slate-900">
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
               {row.original.name}
             </p>
             {row.original.email !== "-" ? (
               <a
                 href={`mailto:${row.original.email}`}
-                className="text-xs text-blue-600 underline"
+                className="text-xs text-blue-600 dark:text-blue-400 underline"
               >
                 {row.original.email}
               </a>
             ) : (
-              <span className="text-xs text-slate-400">-</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
             )}
           </div>
         ),
@@ -331,7 +331,7 @@ const ApproversTable: React.FC<Props> = ({ rows, isLoading, contractId }) => {
             trigger={
               <button
                 type="button"
-                className="text-sm font-medium text-green-700 hover:underline"
+                className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline"
               >
                 View
               </button>
@@ -349,8 +349,8 @@ const ApproversTable: React.FC<Props> = ({ rows, isLoading, contractId }) => {
         data={rows}
         columns={columns}
         header={() => (
-          <div className="flex items-center justify-between w-full border-b border-[#E5E7EB] px-5 py-4">
-            <span className="text-sm font-medium text-slate-900">
+          <div className="flex items-center justify-between w-full border-b border-[#E5E7EB] dark:border-slate-800 px-5 py-4">
+            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
               Approvers
             </span>
           </div>
@@ -365,16 +365,16 @@ const ApproversTable: React.FC<Props> = ({ rows, isLoading, contractId }) => {
           pagination: { pageIndex: 0, pageSize: 10 },
         }}
         classNames={{
-          container: "border border-[#E5E7EB] rounded-xl bg-white",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-xs font-semibold text-slate-500",
-          tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+          container: "border border-[#E5E7EB] dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
         }}
         emptyPlaceholder={
-          <div className="rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
+          <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-center text-sm text-slate-500 dark:text-slate-400">
             No approvers available.
           </div>
         }

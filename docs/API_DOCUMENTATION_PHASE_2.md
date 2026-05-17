@@ -1111,13 +1111,13 @@ Approvers have read/write access to sub-resources.
 
 | Method | Path                                                               | Description                            |
 | ------ | ------------------------------------------------------------------ | -------------------------------------- |
-| `GET`  | `/approver/contracts/{contractId}/claim`                           | List contract claims                   |
-| `GET`  | `/approver/contracts/{contractId}/claim/stats`                     | Get contract claim statistics          |
-| `GET`  | `/approver/contracts/{contractId}/claim/{claimId}`                 | Get a contract claim by ID             |
-| `POST` | `/approver/contracts/{contractId}/claim/{claimId}/approve`         | Approve or reject a contract claim     |
-| `GET`  | `/approver/contracts/{contractId}/claim/{claimId}/comment`         | Get comments for a contract claim      |
-| `POST` | `/approver/contracts/{contractId}/claim/{claimId}/comment`         | Add a comment to a contract claim      |
-| `POST` | `/approver/contracts/claim/{claimId}/comment/{commentId}/reply`    | Reply to a contract claim comment      |
+| `GET`  | `/approver/contracts/{contractId}/claims`                           | List contract claims                   |
+| `GET`  | `/approver/contracts/{contractId}/claims/stats`                     | Get contract claim statistics          |
+| `GET`  | `/approver/contracts/{contractId}/claims/{claimId}`                 | Get a contract claim by ID             |
+| `POST` | `/approver/contracts/{contractId}/claims/{claimId}/approve`         | Approve or reject a contract claim     |
+| `GET`  | `/approver/contracts/{contractId}/claims/{claimId}/comment`         | Get comments for a contract claim      |
+| `POST` | `/approver/contracts/{contractId}/claims/{claimId}/comment`         | Add a comment to a contract claim      |
+| `POST` | `/approver/contracts/claims/{claimId}/comment/{commentId}/reply`    | Reply to a contract claim comment      |
 
 #### Compliance
 
@@ -1217,13 +1217,13 @@ Approvers have read/write access to sub-resources.
 | `GET`  | `/approver/msa-contract/{contractId}/changes/{changeId}/comment` | Get comments for an MSA contract change |
 | `POST` | `/approver/msa-contract/{contractId}/changes/{changeId}/comment` | Add a comment to an MSA contract change |
 | `POST` | `/approver/msa-contract/changes/{changeId}/comment/{commentId}/reply` | Reply to an MSA contract change comment |
-| `GET`  | `/approver/msa-contract/{contractId}/claim`                | List MSA contract claims |
-| `GET`  | `/approver/msa-contract/{contractId}/claim/stats`          | Get MSA contract claim statistics |
-| `GET`  | `/approver/msa-contract/{contractId}/claim/{claimId}`      | Get an MSA contract claim by ID |
-| `POST` | `/approver/msa-contract/{contractId}/claim/{claimId}/approve` | Approve or reject an MSA contract claim |
-| `GET`  | `/approver/msa-contract/{contractId}/claim/{claimId}/comment` | Get comments for an MSA contract claim |
-| `POST` | `/approver/msa-contract/{contractId}/claim/{claimId}/comment` | Add a comment to an MSA contract claim |
-| `POST` | `/approver/msa-contract/claim/{claimId}/comment/{commentId}/reply` | Reply to an MSA contract claim comment |
+| `GET`  | `/approver/msa-contract/{contractId}/claims`                | List MSA contract claims |
+| `GET`  | `/approver/msa-contract/{contractId}/claims/stats`          | Get MSA contract claim statistics |
+| `GET`  | `/approver/msa-contract/{contractId}/claims/{claimId}`      | Get an MSA contract claim by ID |
+| `POST` | `/approver/msa-contract/{contractId}/claims/{claimId}/approve` | Approve or reject an MSA contract claim |
+| `GET`  | `/approver/msa-contract/{contractId}/claims/{claimId}/comment` | Get comments for an MSA contract claim |
+| `POST` | `/approver/msa-contract/{contractId}/claims/{claimId}/comment` | Add a comment to an MSA contract claim |
+| `POST` | `/approver/msa-contract/claims/{claimId}/comment/{commentId}/reply` | Reply to an MSA contract claim comment |
 | `GET`  | `/approver/msa-contract/{contractId}/invoice`              | List MSA contract invoices |
 | `GET`  | `/approver/msa-contract/{contractId}/invoice/stats`        | Get MSA contract invoice statistics |
 | `GET`  | `/approver/msa-contract/{contractId}/invoice/{invoiceId}`  | Get MSA contract invoice details |
@@ -1382,14 +1382,14 @@ Vendors can create and manage their own activity on contracts.
 
 | Method | Path                                                             | Description                      |
 | ------ | ---------------------------------------------------------------- | -------------------------------- |
-| `GET`  | `/vendor/contracts/{contractId}/claim`                           | List contract claims             |
-| `POST` | `/vendor/contracts/{contractId}/claim`                           | Create a contract claim          |
-| `GET`  | `/vendor/contracts/{contractId}/claim/stats`                     | Get contract claim statistics    |
-| `GET`  | `/vendor/contracts/{contractId}/claim/{claimId}`                 | Get contract claim details       |
-| `PUT`  | `/vendor/contracts/{contractId}/claim/{claimId}`                 | Edit a contract claim            |
-| `GET`  | `/vendor/contracts/{contractId}/claim/{claimId}/comment`         | Get contract claim comments      |
-| `POST` | `/vendor/contracts/{contractId}/claim/{claimId}/comment`         | Add a comment to a contract claim |
-| `POST` | `/vendor/contracts/{contractId}/claim/{claimId}/comment/{commentId}/reply` | Reply to a contract claim comment |
+| `GET`  | `/vendor/contracts/{contractId}/claims`                           | List contract claims             |
+| `POST` | `/vendor/contracts/{contractId}/claims`                           | Create a contract claim          |
+| `GET`  | `/vendor/contracts/{contractId}/claims/stats`                     | Get contract claim statistics    |
+| `GET`  | `/vendor/contracts/{contractId}/claims/{claimId}`                 | Get contract claim details       |
+| `PUT`  | `/vendor/contracts/{contractId}/claims/{claimId}`                 | Edit a contract claim            |
+| `GET`  | `/vendor/contracts/{contractId}/claims/{claimId}/comment`         | Get contract claim comments      |
+| `POST` | `/vendor/contracts/{contractId}/claims/{claimId}/comment`         | Add a comment to a contract claim |
+| `POST` | `/vendor/contracts/{contractId}/claims/{claimId}/comment/{commentId}/reply` | Reply to a contract claim comment |
 
 #### Invoices
 
@@ -1474,14 +1474,14 @@ Vendors can create and manage their own activity on contracts.
 | `GET`  | `/vendor/msa-contract/{contractId}/amendment/stats`             | Get MSA contract amendment statistics |
 | `GET`  | `/vendor/msa-contract/{contractId}/amendment/{amendmentId}`     | Get MSA contract amendment details |
 | `PATCH` | `/vendor/msa-contract/{contractId}/amendment/{amendmentId}/status` | Update MSA contract amendment vendor status |
-| `GET`  | `/vendor/msa-contract/{contractId}/claim`                       | List MSA contract claims |
-| `POST` | `/vendor/msa-contract/{contractId}/claim`                       | Create an MSA contract claim |
-| `GET`  | `/vendor/msa-contract/{contractId}/claim/stats`                 | Get MSA contract claim statistics |
-| `GET`  | `/vendor/msa-contract/{contractId}/claim/{claimId}`             | Get MSA contract claim details |
-| `PUT`  | `/vendor/msa-contract/{contractId}/claim/{claimId}`             | Edit an MSA contract claim |
-| `GET`  | `/vendor/msa-contract/{contractId}/claim/{claimId}/comment`     | Get MSA contract claim comments |
-| `POST` | `/vendor/msa-contract/{contractId}/claim/{claimId}/comment`     | Add a comment to an MSA contract claim |
-| `POST` | `/vendor/msa-contract/{contractId}/claim/{claimId}/comment/{commentId}/reply` | Reply to an MSA contract claim comment |
+| `GET`  | `/vendor/msa-contract/{contractId}/claims`                       | List MSA contract claims |
+| `POST` | `/vendor/msa-contract/{contractId}/claims`                       | Create an MSA contract claim |
+| `GET`  | `/vendor/msa-contract/{contractId}/claims/stats`                 | Get MSA contract claim statistics |
+| `GET`  | `/vendor/msa-contract/{contractId}/claims/{claimId}`             | Get MSA contract claim details |
+| `PUT`  | `/vendor/msa-contract/{contractId}/claims/{claimId}`             | Edit an MSA contract claim |
+| `GET`  | `/vendor/msa-contract/{contractId}/claims/{claimId}/comment`     | Get MSA contract claim comments |
+| `POST` | `/vendor/msa-contract/{contractId}/claims/{claimId}/comment`     | Add a comment to an MSA contract claim |
+| `POST` | `/vendor/msa-contract/{contractId}/claims/{claimId}/comment/{commentId}/reply` | Reply to an MSA contract claim comment |
 | `GET`  | `/vendor/msa-contract/{contractId}/invoice`                     | List MSA contract invoices |
 | `POST` | `/vendor/msa-contract/{contractId}/invoice`                     | Create a new MSA contract invoice |
 | `GET`  | `/vendor/msa-contract/{contractId}/invoice/stats`               | Get MSA contract invoice statistics |
@@ -1550,10 +1550,10 @@ Read-only access to all sub-resources under `/user/...`.
 | `GET`  | `/user/contracts/{contractId}/changes/stats`                         | Get contract change statistics |
 | `GET`  | `/user/contracts/{contractId}/changes/{changeId}`                    | Get contract change details |
 | `GET`  | `/user/contracts/{contractId}/changes/{changeId}/comment`            | Get contract change comments |
-| `GET`  | `/user/contracts/{contractId}/claim`                                 | List contract claims |
-| `GET`  | `/user/contracts/{contractId}/claim/stats`                           | Get contract claim statistics |
-| `GET`  | `/user/contracts/{contractId}/claim/{claimId}`                       | Get contract claim details |
-| `GET`  | `/user/contracts/{contractId}/claim/{claimId}/comment`               | Get contract claim comments |
+| `GET`  | `/user/contracts/{contractId}/claims`                                 | List contract claims |
+| `GET`  | `/user/contracts/{contractId}/claims/stats`                           | Get contract claim statistics |
+| `GET`  | `/user/contracts/{contractId}/claims/{claimId}`                       | Get contract claim details |
+| `GET`  | `/user/contracts/{contractId}/claims/{claimId}/comment`               | Get contract claim comments |
 | `GET`  | `/user/contracts/{contractId}/compliance`                            | Get contract compliance details |
 | `GET`  | `/user/contracts/{contractId}/deliverables`                          | List contract deliverables |
 | `GET`  | `/user/contracts/{contractId}/deliverables/stats`                    | Get contract deliverable statistics |
@@ -1589,9 +1589,9 @@ Read-only access to all sub-resources under `/user/...`.
 | `GET`  | `/user/msa-contract/{contractId}/changes/stats`                      | Get MSA contract change statistics |
 | `GET`  | `/user/msa-contract/{contractId}/changes/{changeId}`                 | Get MSA contract change details |
 | `GET`  | `/user/msa-contract/{contractId}/changes/{changeId}/comment`         | Get MSA contract change comments |
-| `GET`  | `/user/msa-contract/{contractId}/claim`                              | List MSA contract claims |
-| `GET`  | `/user/msa-contract/{contractId}/claim/stats`                        | Get MSA contract claim statistics |
-| `GET`  | `/user/msa-contract/{contractId}/claim/{claimId}`                    | Get MSA contract claim details |
+| `GET`  | `/user/msa-contract/{contractId}/claims`                              | List MSA contract claims |
+| `GET`  | `/user/msa-contract/{contractId}/claims/stats`                        | Get MSA contract claim statistics |
+| `GET`  | `/user/msa-contract/{contractId}/claims/{claimId}`                    | Get MSA contract claim details |
 | `GET`  | `/user/msa-contract/{contractId}/compliance`                         | Get MSA contract compliance details |
 | `GET`  | `/user/msa-contract/{contractId}/invoice`                            | List MSA contract invoices |
 | `GET`  | `/user/msa-contract/{contractId}/invoice/stats`                      | Get MSA contract invoice statistics |

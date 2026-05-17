@@ -91,7 +91,7 @@ const Lem: React.FC<Props> = ({ contractId, isActive }) => {
   return (
     <TabsContent value="lem" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
+        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F] dark:text-slate-100">
           Labor, Equipment & Material Reports
         </h3>
       </div>
