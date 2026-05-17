@@ -34,7 +34,7 @@ const statusTone = (status?: string) => {
     return "bg-[#FFF8E1] text-[#F4B400]";
   }
   if (normalized === "rejected") return "bg-[#FEECEC] text-[#E53935]";
-  return "bg-slate-100 text-slate-700";
+  return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 };
 
 const formatDate = (value?: string) => {
@@ -259,13 +259,13 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   return (
     <TabsContent value="claims" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
+        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F] dark:text-slate-100">
           Claims
         </h3>
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
-            className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F]"
+            className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
           >
             <Share2 className="mr-2 h-5 w-5" />
             Export Report
@@ -299,28 +299,28 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
         }}
         header={() => (
           <div className="flex items-center gap-4 border-b border-[#E9E9EB] px-6 py-4">
-            <div className="text-base font-semibold text-[#0F0F0F]">Claims</div>
+            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">Claims</div>
             <div className="relative w-[320px]">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B]" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search changes"
-                className="h-12 rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
+                className="h-12 rounded-lg border border-[#E5E7EB] dark:border-slate-700 dark:bg-slate-900 pl-9 text-sm text-[#0F0F0F] dark:text-slate-100 placeholder:text-[#6B6B6B] dark:placeholder:text-slate-500"
               />
             </div>
           </div>
         )}
         classNames={{
           container:
-            "overflow-hidden rounded-xl border border-[#E5E7EB] bg-white",
+            "overflow-hidden rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900",
           table: "border-spacing-y-0",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467]",
-          tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467] dark:text-indigo-300",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
         }}
         emptyPlaceholder={
           <div className="px-6 py-8 text-sm text-slate-500">

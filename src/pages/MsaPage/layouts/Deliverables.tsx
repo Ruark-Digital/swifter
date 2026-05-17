@@ -31,7 +31,7 @@ type DeliverablesStatsData = {
 };
 
 const toneClasses = {
-  gray: { wrap: "bg-slate-100", icon: "text-slate-700" },
+  gray: { wrap: "bg-slate-100", icon: "text-slate-700 dark:text-slate-200" },
   green: { wrap: "bg-[#EAF7EE]", icon: "text-[#43A047]" },
   yellow: { wrap: "bg-[#FFF8E0]", icon: "text-[#F4B400]" },
   red: { wrap: "bg-[#FEECEC]", icon: "text-[#E53935]" },
@@ -48,11 +48,11 @@ const StatCard = ({
 }) => {
   const c = toneClasses[tone];
   return (
-    <Card className="border-[#E5E7EB] rounded-xl shadow-none">
+    <Card className="border-[#E5E7EB] dark:border-slate-800 rounded-xl shadow-none">
       <CardContent className="px-6 py-5 flex items-center justify-between">
         <div className="space-y-2">
-          <div className="text-sm text-[#6B6B6B] leading-5">{title}</div>
-          <div className="text-xl font-semibold leading-8 text-[#0F0F0F]">
+          <div className="text-sm text-[#6B6B6B] dark:text-slate-400 leading-5">{title}</div>
+          <div className="text-xl font-semibold leading-8 text-[#0F0F0F] dark:text-slate-100">
             {value}
           </div>
         </div>
@@ -215,12 +215,12 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
   return (
     <TabsContent value="deliverables" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
+        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F] dark:text-slate-100">
           Deliverable
         </h3>
         <Button
           variant="outline"
-          className="h-12 rounded-xl border-[#E5E7EB] px-5 font-semibold text-[#0F0F0F]"
+          className="h-12 rounded-xl border-[#E5E7EB] dark:border-slate-800 px-5 font-semibold text-[#0F0F0F] dark:text-slate-100"
         >
           <Share2 className="mr-2 h-5 w-5" />
           Export Report

@@ -76,39 +76,39 @@ export const RenewalsTimelineCard: React.FC<Props> = ({ data }) => {
     };
   });
   return (
-    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-[16px] font-semibold text-[#030712]">
+    <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col max-h-[32rem]">
+      <CardHeader className="pb-3 shrink-0">
+        <CardTitle className="text-[16px] font-semibold text-[#030712] dark:text-slate-100">
           Renewals & Expiry Timeline
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 pt-0">
+      <CardContent className="space-y-3 pt-0 flex-1 min-h-0 overflow-y-auto">
         {items.map((item, idx) => (
           <div
             key={idx}
-            className="flex items-center justify-between rounded-xl border border-[#E5E7EB] px-3 py-3"
+            className="flex items-center justify-between rounded-xl border border-[#E5E7EB] dark:border-slate-800 px-3 py-3"
           >
             <div className="flex items-center gap-3">
               <span
-                className="inline-block w-3 h-3 rounded-full"
+                className="inline-block w-3 h-3 rounded-full shrink-0"
                 style={{ backgroundColor: item.color }}
               />
               <div>
-                <p className="text-sm font-medium text-[#030712]">
+                <p className="text-sm font-medium text-[#030712] dark:text-slate-100">
                   {item.title}
                 </p>
-                <p className="text-xs text-[#6B6B6B]">
+                <p className="text-xs text-[#6B6B6B] dark:text-slate-400">
                   {item.org} • {item.code}
                 </p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm font-semibold text-[#030712]">
+              <p className="text-sm font-semibold text-[#030712] dark:text-slate-100">
                 {item.amount}
               </p>
-              <p className="text-xs text-[#6B6B6B]">{item.note}</p>
+              <p className="text-xs text-[#6B6B6B] dark:text-slate-400">{item.note}</p>
             </div>
-            <span className="inline-block w-3 h-3 rounded-sm bg-[#E5E7EB]" />
+            <span className="inline-block w-3 h-3 rounded-sm bg-[#E5E7EB] dark:bg-slate-700 shrink-0" />
           </div>
         ))}
       </CardContent>

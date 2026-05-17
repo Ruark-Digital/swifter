@@ -178,12 +178,12 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
 
   const statusToneClass =
     invoice?.status === "approved"
-      ? "bg-green-100 text-green-700"
+      ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
       : invoice?.status === "rejected"
-        ? "bg-red-100 text-red-700"
+        ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
         : invoice?.status === "draft"
-          ? "bg-slate-100 text-slate-700"
-          : "bg-yellow-100 text-yellow-700";
+          ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+          : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300";
 
   const invoiceIdLabel = invoice?.invoiceId ?? invoice?._id ?? invoiceId;
   const typeLabel =
@@ -220,7 +220,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Invoice
                 </SheetTitle>
               </div>
@@ -241,7 +241,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
                 <div className="text-xs font-medium text-[#9CA3AF]">
                   Invoice Details
                 </div>
-                <div className="text-base font-semibold text-[#0F0F0F]">
+                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   {isLoading ? "Loading..." : invoiceIdLabel}
                 </div>
               </div>
@@ -282,7 +282,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
 
             <div className="space-y-2">
               <div className="text-xs font-medium text-[#9CA3AF]">Description</div>
-              <div className="text-sm text-[#374151]">
+              <div className="text-sm text-[#374151] dark:text-slate-200">
                 {isLoading
                   ? "Loading..."
                   : invoice?.description || "No description provided."}
@@ -291,7 +291,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
 
             {files.length > 0 && (
               <div className="space-y-3">
-                <div className="text-base font-semibold text-[#0F0F0F]">
+                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Attachments
                 </div>
                 <div className="space-y-2">
@@ -382,8 +382,8 @@ const statusTone = (status?: string) => {
   if (normalized === "active") return "bg-[#E6F0FF] text-[#2563EB]";
   if (normalized === "pending") return "bg-[#FFF8E1] text-[#F4B400]";
   if (normalized === "rejected") return "bg-[#FEECEC] text-[#E53935]";
-  if (normalized === "draft") return "bg-slate-100 text-slate-700";
-  return "bg-slate-100 text-slate-700";
+  if (normalized === "draft") return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+  return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 };
 
 const formatCurrency = (value?: number) => {
@@ -585,7 +585,7 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
   return (
     <TabsContent value="invoice" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
+        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F] dark:text-slate-100">
           Invoice
         </h3>
         {(isVendor || isProjectManager) && (
@@ -617,27 +617,27 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
         }}
         header={() => (
           <div className="flex items-center gap-4 border-b border-[#E9E9EB] px-6 py-4">
-            <div className="text-base font-semibold text-[#0F0F0F]">Invoices</div>
+            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">Invoices</div>
             <div className="relative w-[320px]">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B]" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search invoices"
-                className="h-12 rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
+                className="h-12 rounded-lg border border-[#E5E7EB] dark:border-slate-700 dark:bg-slate-900 pl-9 text-sm text-[#0F0F0F] dark:text-slate-100 placeholder:text-[#6B6B6B] dark:placeholder:text-slate-500"
               />
             </div>
           </div>
         )}
         classNames={{
-          container: "overflow-hidden rounded-xl border border-[#E5E7EB] bg-white",
+          container: "overflow-hidden rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900",
           table: "border-spacing-y-0",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467]",
-          tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467] dark:text-indigo-300",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
         }}
         emptyPlaceholder={
           <div className="px-6 py-8 text-sm text-slate-500">No invoices found.</div>

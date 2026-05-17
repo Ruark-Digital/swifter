@@ -159,9 +159,11 @@ const tierToColor = (tier?: DashboardTier) => {
 
 const tierToBadge = (tier?: DashboardTier) => {
   const t = (tier ?? "").toLowerCase();
-  if (t === "high" || t === "critical") return "bg-red-50 text-red-700";
-  if (t === "medium") return "bg-yellow-50 text-yellow-700";
-  return "bg-green-50 text-green-700";
+  if (t === "high" || t === "critical")
+    return "bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-300";
+  if (t === "medium")
+    return "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300";
+  return "bg-green-50 text-green-700 dark:bg-green-900/40 dark:text-green-300";
 };
 
 const formatNumber = (value?: number) => {
@@ -503,7 +505,7 @@ const AnalyticsTab: React.FC<Props> = ({
               : toTitleCase(String(kpi.tier ?? "good"));
 
           return (
-          <div key={index} className="bg-white p-4 rounded-xl border shadow-sm flex flex-col items-center">
+          <div key={index} className="bg-white dark:bg-slate-900 dark:border-slate-800 p-4 rounded-xl border shadow-sm flex flex-col items-center">
             <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 font-medium mb-4 self-start">{kpi.label}</p>
             <div className="relative h-24 w-24 mb-2">
               <ResponsiveContainer width="100%" height="100%">
@@ -546,7 +548,7 @@ const AnalyticsTab: React.FC<Props> = ({
       {/* Middle Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Financial Overview */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
+        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm">
           <div className="flex items-center gap-2 mb-6">
             <DollarSign className="h-5 w-5 text-blue-600" />
             <h3 className="font-semibold text-slate-800 dark:text-slate-100">Financial Overview</h3>
@@ -571,7 +573,7 @@ const AnalyticsTab: React.FC<Props> = ({
         </div>
 
         {/* Alerts */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm border-l-4 border-l-orange-400">
+        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm border-l-4 border-l-orange-400">
           <div className="flex items-center gap-2 mb-6">
             <AlertTriangle className="h-5 w-5 text-orange-500" />
             <h3 className="font-semibold text-slate-800 dark:text-slate-100">Alerts & Recommended Actions</h3>
@@ -592,7 +594,7 @@ const AnalyticsTab: React.FC<Props> = ({
         </div>
 
         {/* Legal Analysis */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
+        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm">
           <div className="flex items-center gap-2 mb-6">
             <FileText className="h-5 w-5 text-blue-600" />
             <h3 className="font-semibold text-slate-800 dark:text-slate-100">Clause & Legal Analysis</h3>
@@ -632,7 +634,7 @@ const AnalyticsTab: React.FC<Props> = ({
       {/* Charts Section */}
       <div className="grid grid-cols-1 items-start lg:grid-cols-3 gap-6">
         {/* Deliverable Status */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm flex flex-col">
+        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm flex flex-col">
           <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-6">Deliverable Status</h3>
           <div className="relative h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -670,7 +672,7 @@ const AnalyticsTab: React.FC<Props> = ({
         </div>
 
         {/* Activities */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm flex flex-col">
+        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-semibold text-slate-800 dark:text-slate-100">Activities</h3>
             <div className="flex gap-2 text-xs">
@@ -732,7 +734,7 @@ const AnalyticsTab: React.FC<Props> = ({
         </div>
 
         {/* Deliverable Summary & Vendor KPI */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm space-y-6">
+        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm space-y-6">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-slate-800 dark:text-slate-100">Deliverable Summary</h3>

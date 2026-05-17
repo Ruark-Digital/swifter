@@ -53,12 +53,18 @@ export interface Distribution {
 
 export interface SolicitationStatusData {
   total: number;
+  // Percentage fields (fractional, summing to 100) — kept for back-compat.
   awarded: number;
   active: number;
   evaluating: number;
   closed: number;
   draft: number;
   percentage: number;
+  // Integer count fields returned alongside the percentages — these are
+  // what the dashboard pie consumes so the slices reflect real counts.
+  activeSol?: number;
+  closedSol?: number;
+  awardedSol?: number;
 }
 
 export interface VendorsDistributionData {

@@ -429,17 +429,17 @@ export const TextTagInput = (
             </div>
           </PopoverTrigger>
           <PopoverContent
-            className="z-[60] w-[360px] lg:w-[420px] p-4 bg-white border shadow-xl"
+            className="z-[60] w-[360px] lg:w-[420px] p-4 bg-white dark:bg-slate-900 border dark:border-slate-700 shadow-xl"
             align="start"
           >
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-700">
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-100">
                 Add Key Personnel Details
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs">Name</Label>
+                  <Label className="text-xs text-slate-700 dark:text-slate-300">Name</Label>
                   <Input
                     value={formData.name}
                     onChange={(e) =>
@@ -449,7 +449,7 @@ export const TextTagInput = (
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Email</Label>
+                  <Label className="text-xs text-slate-700 dark:text-slate-300">Email</Label>
                   <Input
                     value={formData.email}
                     onChange={(e) =>
@@ -460,7 +460,7 @@ export const TextTagInput = (
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Role</Label>
+                  <Label className="text-xs text-slate-700 dark:text-slate-300">Role</Label>
                   <Input
                     value={formData.role}
                     onChange={(e) =>
@@ -470,7 +470,7 @@ export const TextTagInput = (
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Phone Number</Label>
+                  <Label className="text-xs text-slate-700 dark:text-slate-300">Phone Number</Label>
                   <Input
                     value={formData.phone}
                     onChange={(e) =>
@@ -816,7 +816,7 @@ export const TextCurrencyInput = (props: TextCurrencyInputProps) => {
           defaultValue={1000}
           onValueChange={(value) => onChange?.(value ?? "")}
           placeholder={placeholder}
-          className={`w-full h-12 border border-gray-300 rounded-lg px-4 pr-10 focus:border-[#2A4467] focus:ring-[#2A4467] ${
+          className={`w-full h-12 border border-gray-300 rounded-lg px-4 pr-10 bg-white text-slate-900 placeholder:text-slate-400 focus:border-[#2A4467] focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400 ${
             error ? "border-red-500" : ""
           } ${className}`}
         />

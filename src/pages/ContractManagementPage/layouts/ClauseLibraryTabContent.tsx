@@ -44,8 +44,8 @@ function RiskPill({
 
 function RatesValuesBlock({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded border-l-4 border-[#22C55E] bg-[#F0FDF4] px-2 py-3">
-      <div className="text-sm font-semibold leading-5 text-[#14532D]">
+    <div className="rounded border-l-4 border-[#22C55E] bg-[#F0FDF4] dark:bg-green-950/40 px-2 py-3">
+      <div className="text-sm font-semibold leading-5 text-[#14532D] dark:text-green-300">
         ðŸ’° Rates & Values
       </div>
       <div className="mt-2">{children}</div>
@@ -97,7 +97,7 @@ function CategoryCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="w-full rounded-lg border border-[#E5E7EB] bg-white shadow-[0px_1px_2px_0px_#0000000d]">
+    <div className="w-full rounded-lg border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900 shadow-[0px_1px_2px_0px_#0000000d]">
       <div className="flex items-center justify-between px-5 py-5">
         <div className="flex items-center">
           <div className="rounded-lg p-2" style={{ background: iconBg }}>
@@ -121,7 +121,7 @@ function CategoryCard({
         </div>
       </div>
 
-      <div className="border-t border-[#E5E7EB]">{children}</div>
+      <div className="border-t border-[#E5E7EB] dark:border-slate-800">{children}</div>
     </div>
   );
 }
@@ -135,7 +135,7 @@ function ClauseCard({
   ratesValues,
 }: ClauseCardProps) {
   return (
-    <div className="flex flex-col gap-3 border-b border-[#F3F4F6] px-5 py-5">
+    <div className="flex flex-col gap-3 border-b border-[#F3F4F6] dark:border-slate-800 px-5 py-5">
       <div className="flex items-start justify-between">
         <div className="text-base font-semibold leading-6 text-[#111827] dark:text-slate-100">
           {title}
@@ -144,8 +144,8 @@ function ClauseCard({
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col rounded border-l-4 border-[#3B82F6] bg-[#EFF6FF] px-2 py-3">
-          <div className="text-sm font-semibold leading-5 text-[#1E3A8A]">
+        <div className="flex flex-col rounded border-l-4 border-[#3B82F6] bg-[#EFF6FF] dark:bg-blue-950/40 px-2 py-3">
+          <div className="text-sm font-semibold leading-5 text-[#1E3A8A] dark:text-blue-300">
             ðŸ“‹ Summary
           </div>
           <div className="mt-1 text-sm leading-5 text-[#374151] dark:text-slate-300">{summary}</div>
@@ -153,7 +153,7 @@ function ClauseCard({
 
         {ratesValues && <RatesValuesBlock>{ratesValues}</RatesValuesBlock>}
 
-        <div className="rounded bg-[#F9FAFB] p-3">
+        <div className="rounded bg-[#F9FAFB] dark:bg-slate-800/60 p-3">
           <div className="text-sm font-semibold leading-5 text-[#111827] dark:text-slate-100">
             ðŸ“„ Full Details
           </div>
@@ -314,10 +314,10 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
 
   return (
     <TabsContent value="clause-library" className="space-y-6 pb-8">
-      <div className="flex max-w-[1152px] flex-col gap-4 bg-white px-6 py-4">
+      <div className="flex max-w-[1152px] flex-col gap-4 bg-white dark:bg-slate-900 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
-            <div className="text-2xl font-bold leading-8 text-[#2563EB]">
+            <div className="text-2xl font-bold leading-8 text-[#2563EB] dark:text-blue-400">
               Clause Library
             </div>
             <div className="text-sm leading-5 text-[#4B5563] dark:text-slate-400">
@@ -338,7 +338,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
           </button>
         </div>
 
-        <div className="flex items-center justify-between rounded-lg border border-[#BFDBFE] bg-[linear-gradient(90deg,#EFF6FF_0%,#FAF5FF_100%)] p-[15px]">
+        <div className="flex items-center justify-between rounded-lg border border-[#BFDBFE] dark:border-slate-700 bg-[linear-gradient(90deg,#EFF6FF_0%,#FAF5FF_100%)] dark:bg-none dark:bg-slate-800/60 p-[15px]">
           <div className="inline-flex items-center">
             <div className="inline-flex flex-col">
               <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">
@@ -349,7 +349,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
               </div>
             </div>
             <div className="flex flex-col pl-6">
-              <div className="h-8 w-px bg-[#D1D5DB]" />
+              <div className="h-8 w-px bg-[#D1D5DB] dark:bg-slate-700" />
             </div>
             <div className="inline-flex flex-col pl-6">
               <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">
@@ -360,7 +360,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
               </div>
             </div>
             <div className="flex flex-col pl-6">
-              <div className="h-8 w-px bg-[#D1D5DB]" />
+              <div className="h-8 w-px bg-[#D1D5DB] dark:bg-slate-700" />
             </div>
             <div className="inline-flex flex-col pl-6">
               <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">Vendor</div>
@@ -369,7 +369,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
               </div>
             </div>
             <div className="flex flex-col pl-6">
-              <div className="h-8 w-px bg-[#D1D5DB]" />
+              <div className="h-8 w-px bg-[#D1D5DB] dark:bg-slate-700" />
             </div>
             <div className="inline-flex flex-col pl-6">
               <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">Value</div>
@@ -378,7 +378,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
               </div>
             </div>
             <div className="flex flex-col pl-6">
-              <div className="h-8 w-px bg-[#D1D5DB]" />
+              <div className="h-8 w-px bg-[#D1D5DB] dark:bg-slate-700" />
             </div>
             <div className="inline-flex flex-col pl-6">
               <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">Duration</div>
@@ -396,12 +396,12 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
         </div>
       </div>
 
-      <div className="relative h-[50px] w-[1152px] overflow-hidden rounded-lg border border-[#D1D5DB] bg-white px-[15px] py-[12px] pl-[47px]">
+      <div className="relative h-[50px] w-[1152px] overflow-hidden rounded-lg border border-[#D1D5DB] dark:border-slate-700 bg-white dark:bg-slate-900 px-[15px] py-[12px] pl-[47px]">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search clauses... (e.g., payment terms, insurance, liquidated damages)"
-          className="h-full w-full bg-transparent text-base text-[#4B5563] dark:text-slate-400 outline-none placeholder:text-[#9CA3AF] dark:text-slate-500"
+          className="h-full w-full bg-transparent text-base text-[#4B5563] dark:text-slate-100 outline-none placeholder:text-[#9CA3AF] dark:placeholder:text-slate-500"
         />
         <img
           src="/assets/contract-management/clause-library/search.svg"
@@ -412,11 +412,11 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
       <div className="flex w-[1152px] flex-col gap-6 pb-8">
         <div className="flex w-full flex-col gap-4">
           {isLoading ? (
-            <div className="rounded-lg border border-[#E5E7EB] bg-white p-6 text-sm text-[#4B5563] dark:text-slate-400">
+            <div className="rounded-lg border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-sm text-[#4B5563] dark:text-slate-400">
               Loading clause library...
             </div>
           ) : filteredSections.length === 0 ? (
-            <div className="rounded-lg border border-[#E5E7EB] bg-white p-6 text-sm text-[#4B5563] dark:text-slate-400">
+            <div className="rounded-lg border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-sm text-[#4B5563] dark:text-slate-400">
               No clauses found.
             </div>
           ) : (
@@ -479,7 +479,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
         </div>
 
         <div className="flex w-full justify-center gap-4">
-          <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] bg-white p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
+          <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900 p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
             <div className="text-center text-sm leading-5 text-[#4B5563] dark:text-slate-400">
               Total Clauses
             </div>
@@ -487,7 +487,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
               {summary?.total ?? 0}
             </div>
           </div>
-          <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] bg-white p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
+          <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900 p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
             <div className="text-center text-sm leading-5 text-[#4B5563] dark:text-slate-400">
               High Risk
             </div>
@@ -495,7 +495,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
               {summary?.high ?? 0}
             </div>
           </div>
-          <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] bg-white p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
+          <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900 p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
             <div className="text-center text-sm leading-5 text-[#4B5563] dark:text-slate-400">
               Medium Risk
             </div>
@@ -503,7 +503,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
               {summary?.medium ?? 0}
             </div>
           </div>
-          <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] bg-white p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
+          <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900 p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
             <div className="text-center text-sm leading-5 text-[#4B5563] dark:text-slate-400">
               Low Risk
             </div>

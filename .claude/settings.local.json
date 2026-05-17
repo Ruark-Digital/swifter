@@ -8,7 +8,8 @@
       "mcp__a12e873b-b9c1-4570-ae0e-0070b2b68b2e__save_comment",
       "Bash(pnpm playwright *)",
       "Bash(mkdir -p .qa/screenshots && cat \"/c/Users/HomePC/.trae/skills/browser-qa/scripts/qa-run.js\" | head -50)",
-      "Bash(node /c/Users/HomePC/.trae/skills/browser-qa/scripts/qa-run.js --url http://localhost:5173 --feature ade-77-vendor-edit-invoice --out __CMDSUB_OUTPUT__/.qa/screenshots --action '{ *)"
+      "Bash(node /c/Users/HomePC/.trae/skills/browser-qa/scripts/qa-run.js --url http://localhost:5173 --feature ade-77-vendor-edit-invoice --out __CMDSUB_OUTPUT__/.qa/screenshots --action '{ *)",
+      "Bash(npm run *)"
     ]
   }
 }

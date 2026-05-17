@@ -148,7 +148,10 @@ const MsaPage: React.FC = () => {
 
   const toRows = (items: Contract[]): MsaRow[] =>
     items.map((it: Contract) => ({
-      id: String(it?._id ?? "-"),
+      // The MSA list endpoint returns each contract keyed by `id` (not
+      // `_id`). Falling back to "-" or empty here produced broken
+      // `/dashboard/msa/-` links — accept either shape for safety.
+      id: String((it as any)?.id ?? it?._id ?? ""),
       title: String(it?.title ?? "-"),
       code: String(it?.msaContractId ?? "-"),
       vendor:
@@ -207,7 +210,7 @@ const MsaPage: React.FC = () => {
       />
 
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-slate-900">MSA</h2>
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">MSA</h2>
         <div className="flex items-center gap-4">
           {isManager && (
             <CreateMSADialog
@@ -233,13 +236,13 @@ const MsaPage: React.FC = () => {
           <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
             <TabsTrigger
               value="all"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+              className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
             >
               All MSA
             </TabsTrigger>
             <TabsTrigger
               value="mine"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+              className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
             >
               My MSA
             </TabsTrigger>
