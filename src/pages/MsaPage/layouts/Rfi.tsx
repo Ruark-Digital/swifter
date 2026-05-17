@@ -125,8 +125,14 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
-  const { isVendor, isProjectManager } = useUserRole();
-  const isContractVendorLike = isVendor || isProjectManager;
+  const {
+    isManager,
+    isApprover,
+    isVendor,
+    isProjectManager,
+    isAdmin,
+    isViewOnly,
+  } = useUserRole();
   const { control, reset } = useForge({
     defaultValues: {
       rfiTitle: "",
@@ -139,9 +145,34 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
   const [isSuccess, setIsSuccess] = React.useState(false);
   const files = useWatch({ control, name: "files" }) as File[] | null;
 
-  // Personnel lookup mirrors the contract RFI dialog. Vendor / PM users
-  // fetch a contract-scoped vendor personnel list; managers and admins
-  // pull the org-wide personnel directory.
+  // Personnel endpoint is role-scoped per API_DOCUMENTATION_PHASE_2:
+  //   manager  → /contract/manager/personnel/contract/{id}
+  //   approver → /contract/approver/contracts/{id}/personnel
+  //   vendor   → /contract/vendor/contracts/{id}/personnel  (PM uses vendor)
+  //   user     → /contract/user/contracts/{id}/personnel    (view-only/admin)
+  // Hitting the wrong prefix returns 403; the contract personnel paths
+  // serve MSA dialogs too, so we re-use them rather than the msa-contract
+  // variants which do not exist for personnel listings.
+  const personnelUrl = React.useMemo(() => {
+    if (isManager || isAdmin)
+      return `/contract/manager/personnel/contract/${contractId}`;
+    if (isApprover)
+      return `/contract/approver/contracts/${contractId}/personnel`;
+    if (isVendor || isProjectManager)
+      return `/contract/vendor/contracts/${contractId}/personnel`;
+    if (isViewOnly)
+      return `/contract/user/contracts/${contractId}/personnel`;
+    return `/contract/user/contracts/${contractId}/personnel`;
+  }, [
+    contractId,
+    isAdmin,
+    isApprover,
+    isManager,
+    isProjectManager,
+    isVendor,
+    isViewOnly,
+  ]);
+
   const { data: personnelData } = useQuery<
     ApiResponse<
       Array<{
@@ -154,13 +185,8 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
     >,
     ApiResponseError
   >({
-    queryKey: ["msa-rfi-personnel", contractId, isContractVendorLike],
-    queryFn: async () =>
-      await getRequest({
-        url: isContractVendorLike
-          ? `/contract/vendor/msa-contract/${contractId}/personnel`
-          : "/contract/manager/personnel",
-      }),
+    queryKey: ["msa-rfi-personnel", contractId, personnelUrl],
+    queryFn: async () => await getRequest({ url: personnelUrl }),
   });
 
   const personnelOptions = React.useMemo<Option[]>(() => {
