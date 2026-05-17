@@ -32,10 +32,10 @@ const statusTone = (s: LinkedContractRow["status"]) => {
 
   if (normalized === "active") return "bg-[#43A0471A] text-[#43A047]";
   if (normalized === "terminated") return "bg-[#E539351A] text-[#E53935]";
-  if (normalized === "closed") return "bg-[#6B72801A] text-[#6B7280]";
+  if (normalized === "closed") return "bg-[#6B72801A] text-[#6B7280] dark:text-slate-400";
   if (normalized === "suspended") return "bg-[#F59E0B1A] text-[#F59E0B]";
   if (normalized === "pending_approval") return "bg-[#F59E0B1A] text-[#F59E0B]";
-  return "bg-[#E5E7EB] text-[#374151]";
+  return "bg-[#E5E7EB] text-[#374151] dark:text-slate-200";
 };
 
 const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
@@ -64,10 +64,10 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
         header: "Contracts",
         cell: ({ row }) => (
           <div className="flex flex-col">
-            <span className="font-medium text-slate-900">
+            <span className="font-medium text-slate-900 dark:text-slate-100">
               {row.original.title}
             </span>
-            <span className="text-xs text-slate-500">{row.original.code}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{row.original.code}</span>
           </div>
         ),
       },
@@ -75,14 +75,14 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
         accessorKey: "company",
         header: "Company",
         cell: ({ getValue }) => (
-          <span className="text-sm text-slate-900">{getValue<string>()}</span>
+          <span className="text-sm text-slate-900 dark:text-slate-100">{getValue<string>()}</span>
         ),
       },
       {
         accessorKey: "relationship",
         header: "Contract Relationship",
         cell: ({ getValue }) => (
-          <span className="text-sm text-slate-900">{getValue<string>()}</span>
+          <span className="text-sm text-slate-900 dark:text-slate-100">{getValue<string>()}</span>
         ),
       },
       {
@@ -91,7 +91,7 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
         cell: ({ getValue }) => {
           const v = getValue<string | undefined>();
           return (
-            <span className="font-semibold text-slate-900">{v ?? "-"}</span>
+            <span className="font-semibold text-slate-900 dark:text-slate-100">{v ?? "-"}</span>
           );
         },
       },
@@ -99,13 +99,13 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
         id: "date",
         header: "Date",
         cell: ({ row }) => (
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
             <div>
-              <span className="text-slate-700">Published:&nbsp;</span>
+              <span className="text-slate-700 dark:text-slate-200">Published:&nbsp;</span>
               <span>{row.original.published ?? "-"}</span>
             </div>
             <div>
-              <span className="text-slate-700">End Date:&nbsp;</span>
+              <span className="text-slate-700 dark:text-slate-200">End Date:&nbsp;</span>
               <span>{row.original.endDate ?? "-"}</span>
             </div>
           </div>
@@ -134,7 +134,7 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
               to={`/dashboard/contract-management/${row.original.id}`}
               aria-label="View Contract"
             >
-              <MoreVertical className="h-4 w-4 text-slate-500" />
+              <MoreVertical className="h-4 w-4 text-slate-500 dark:text-slate-400" />
             </Link>
           </Button>
         ),
@@ -193,7 +193,7 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
       header={() => (
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3">
-            <div className="text-sm font-semibold text-slate-700">
+            <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
               Contracts
             </div>
             <SearchInput

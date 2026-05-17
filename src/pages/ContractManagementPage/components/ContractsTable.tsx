@@ -45,11 +45,11 @@ const columns: ColumnDef<ContractRow>[] = [
         <a
           href={`/dashboard/contract-management/${row.original.id}`}
           data-testid="project-name-link"
-          className="font-medium text-slate-900 underline-offset-2 hover:underline"
+          className="font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
         >
           {row.original.title}
         </a>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-slate-500 dark:text-slate-400">
           {row.original.contractId}
         </span>
       </div>
@@ -61,7 +61,7 @@ const columns: ColumnDef<ContractRow>[] = [
     header: "Value",
     cell: ({ getValue }) => {
       const v = getValue<string | undefined>();
-      return <span className="font-semibold text-slate-900">{v ?? "-"}</span>;
+      return <span className="font-semibold text-slate-900 dark:text-slate-100">{v ?? "-"}</span>;
     },
   },
   { accessorKey: "owner", header: "Owner" },
@@ -69,16 +69,16 @@ const columns: ColumnDef<ContractRow>[] = [
     id: "date",
     header: "Date",
     cell: ({ row }) => (
-      <div className="text-xs text-slate-500">
+      <div className="text-xs text-slate-500 dark:text-slate-400">
         {row.original.published && (
           <div>
-            <span className="text-black font-bold">Published:</span>{" "}
+            <span className="text-black dark:text-slate-100 font-bold">Published:</span>{" "}
             {row.original.published}
           </div>
         )}
         {row.original.endDate && (
           <div>
-            <span className="text-black font-bold">End Date:</span>{" "}
+            <span className="text-black dark:text-slate-100 font-bold">End Date:</span>{" "}
             {row.original.endDate}
           </div>
         )}

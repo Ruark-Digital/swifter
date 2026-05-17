@@ -12,10 +12,22 @@ type StatProps = {
 };
 
 const toneClasses: Record<StatProps["tone"], { wrap: string; icon: string }> = {
-  gray: { wrap: "bg-slate-50", icon: "text-slate-600" },
-  green: { wrap: "bg-green-50", icon: "text-green-600" },
-  red: { wrap: "bg-red-50", icon: "text-red-600" },
-  yellow: { wrap: "bg-yellow-50", icon: "text-yellow-600" },
+  gray: {
+    wrap: "bg-slate-50 dark:bg-slate-800",
+    icon: "text-slate-600 dark:text-slate-300",
+  },
+  green: {
+    wrap: "bg-green-50 dark:bg-green-900/30",
+    icon: "text-green-600 dark:text-green-400",
+  },
+  red: {
+    wrap: "bg-red-50 dark:bg-red-900/30",
+    icon: "text-red-600 dark:text-red-400",
+  },
+  yellow: {
+    wrap: "bg-yellow-50 dark:bg-yellow-900/30",
+    icon: "text-yellow-600 dark:text-yellow-300",
+  },
 };
 
 const StatCard: React.FC<StatProps> = ({
@@ -29,19 +41,19 @@ const StatCard: React.FC<StatProps> = ({
   return (
     <Card
       data-testid={testId}
-      className={`border-slate-200 ${onClick ? "cursor-pointer hover:border-[#2A4467] transition-colors" : ""}`}
+      className={`border-slate-200 dark:border-slate-800 dark:bg-slate-900 ${onClick ? "cursor-pointer hover:border-[#2A4467] dark:hover:border-indigo-500 transition-colors" : ""}`}
       onClick={onClick}
     >
       <CardContent className="p-6 flex items-center justify-between">
         <div className="space-y-1">
-          <p className="text-sm text-slate-600">{title}</p>
-          <p className="text-2xl font-semibold text-slate-900">{value}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">{title}</p>
+          <p className="text-2xl font-semibold text-slate-900 dark:text-slate-50">{value}</p>
         </div>
         <div
           className={`rounded-full ${c.wrap} h-16 w-16 flex items-center justify-center`}
           aria-hidden
         >
-          <div className="rounded-full bg-white/70 h-12 w-12 flex items-center justify-center shadow-sm">
+          <div className="rounded-full bg-white/70 dark:bg-slate-900/60 h-12 w-12 flex items-center justify-center shadow-sm">
             <HugeiconsIcon
               icon={FolderLibraryIcon}
               className={`h-8 w-8 ${c.icon}`}

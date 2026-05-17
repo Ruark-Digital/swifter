@@ -295,13 +295,13 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
   return (
     <TabsContent value="payment-summary" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-[#0F0F0F]">
+        <h3 className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
           Payment Summary
         </h3>
         <div className="flex items-center gap-4">
           <button
             type="button"
-            className="inline-flex h-12 items-center gap-2 text-sm rounded-xl border border-[#E5E7EB] px-5 font-semibold text-[#0F0F0F]"
+            className="inline-flex h-12 items-center gap-2 text-sm rounded-xl border border-[#E5E7EB] dark:border-slate-800 px-5 font-semibold text-[#0F0F0F] dark:text-slate-100"
           >
             <Share2 className="h-5 w-5" />
             Export Report
@@ -313,7 +313,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
                 trigger={
                   <button
                     type="button"
-                    className="inline-flex h-12 items-center rounded-xl text-sm border border-[#E5E7EB] bg-[#F3F4F6] px-5 font-semibold text-[#0F0F0F]"
+                    className="inline-flex h-12 items-center rounded-xl text-sm border border-[#E5E7EB] dark:border-slate-800 bg-[#F3F4F6] dark:bg-slate-800 px-5 font-semibold text-[#0F0F0F] dark:text-slate-100"
                   >
                     Update Saving
                   </button>
@@ -336,7 +336,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
       </div>
 
       {(holdbacksLoading || savingsLoading) && (
-        <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+        <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-[#F9FAFB] dark:bg-slate-800 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
           Loading payment data…
         </div>
       )}
@@ -360,23 +360,23 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
       </div>
 
       <Tabs defaultValue="milestones" className="w-full space-y-6">
-        <TabsList className="h-auto rounded-full bg-[#F3F4F6] p-2">
+        <TabsList className="h-auto rounded-full bg-[#F3F4F6] dark:bg-slate-800 p-2">
           <TabsTrigger
             value="milestones"
-            className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             MileStones
           </TabsTrigger>
           <TabsTrigger
             value="holdback-release"
-            className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             Holdback Release
           </TabsTrigger>
           {!isVendorLike && (
             <TabsTrigger
               value="saving-realized"
-              className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+              className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
             >
               Saving Reaized
             </TabsTrigger>
@@ -395,7 +395,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
             ]}
           />
           {milestoneRows.length === 0 && (
-            <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+            <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-[#F9FAFB] dark:bg-slate-800 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
               No milestones found.
             </div>
           )}
@@ -415,7 +415,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
             ]}
           />
           {holdbackRows.length === 0 && (
-            <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+            <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-[#F9FAFB] dark:bg-slate-800 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
               No holdback releases available.
             </div>
           )}
@@ -436,7 +436,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
               ]}
             />
             {savingRows.length === 0 && (
-              <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-[#F9FAFB] dark:bg-slate-800 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
                 No savings records found.
               </div>
             )}

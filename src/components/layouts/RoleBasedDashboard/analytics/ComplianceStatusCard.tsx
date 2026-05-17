@@ -52,32 +52,41 @@ export const ComplianceStatusCard: React.FC<Props> = ({ data }) => {
     },
   ];
   return (
-    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-[16px] font-semibold text-[#030712]">
+    <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col max-h-[32rem]">
+      <CardHeader className="pb-3 shrink-0">
+        <CardTitle className="text-[16px] font-semibold text-[#030712] dark:text-slate-100">
           Compliance Status
         </CardTitle>
         <Tabs value="ytd" className="w-full">
-          <TabsList className="bg-transparent p-0 gap-2">
-            <TabsTrigger className="rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467]" value="ytd">
+          {/* Horizontal scroll on overflow; `!flex-none shrink-0` defeats
+              shadcn TabsTrigger's baked-in `flex-1` so pills don't stretch. */}
+          <TabsList className="bg-transparent p-0 gap-2 flex overflow-x-auto h-auto w-full justify-start">
+            <TabsTrigger
+              className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467] dark:bg-slate-800 dark:text-slate-100 data-[state=active]:bg-[#F0F0F0] data-[state=active]:dark:bg-slate-800"
+              value="ytd"
+            >
               YTD
             </TabsTrigger>
             {["12 months", "6 months", "3 months"].map((t) => (
-              <TabsTrigger key={t} value={t.replace(/\s+/g, "")} className="rounded-md px-3 py-2 text-sm font-semibold text-[#667085]">
+              <TabsTrigger
+                key={t}
+                value={t.replace(/\s+/g, "")}
+                className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-[#667085] dark:text-slate-400"
+              >
                 {t}
               </TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
       </CardHeader>
-      <CardContent className="space-y-4 pt-0">
+      <CardContent className="space-y-4 pt-0 flex-1 min-h-0 overflow-y-auto">
         {rows.map((row, idx) => (
           <div key={idx} className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-[#030712]">{row.label}</p>
-              <p className="text-sm font-semibold text-[#030712]">{row.right}</p>
+              <p className="text-sm font-semibold text-[#030712] dark:text-slate-100">{row.label}</p>
+              <p className="text-sm font-semibold text-[#030712] dark:text-slate-100">{row.right}</p>
             </div>
-            <div className="w-full h-2.5 bg-[#DDDDDD] rounded-full overflow-hidden">
+            <div className="w-full h-2.5 bg-[#DDDDDD] dark:bg-slate-800 rounded-full overflow-hidden">
               <div
                 className="h-2.5 rounded-full"
                 style={{

@@ -451,16 +451,16 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
         id: "amountBilled",
         header: "Amount/Billed",
         cell: ({ row }) => (
-          <div className="text-xs text-slate-600">
+          <div className="text-xs text-slate-600 dark:text-slate-300">
             <p>
-              <span className="text-slate-500">Billed:&nbsp;</span>
-              <span className="text-slate-900 font-medium">
+              <span className="text-slate-500 dark:text-slate-400">Billed:&nbsp;</span>
+              <span className="text-slate-900 dark:text-slate-100 font-medium">
                 {row.original.billed}
               </span>
             </p>
             <p>
-              <span className="text-slate-500">Remaining:&nbsp;</span>
-              <span className="text-slate-900 font-medium">
+              <span className="text-slate-500 dark:text-slate-400">Remaining:&nbsp;</span>
+              <span className="text-slate-900 dark:text-slate-100 font-medium">
                 {row.original.remaining}
               </span>
             </p>
@@ -559,8 +559,8 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
         data={invoiceRows}
         columns={columns}
         header={() => (
-          <div className="flex items-center gap-3 w-full border-b border-[#E5E7EB] px-5 py-4">
-            <span className="text-sm font-medium text-slate-900">Invoices</span>
+          <div className="flex items-center gap-3 w-full border-b border-[#E5E7EB] dark:border-slate-800 px-5 py-4">
+            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Invoices</span>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
@@ -581,13 +581,13 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
           pagination,
         }}
         classNames={{
-          container: "border border-[#E5E7EB] rounded-xl bg-white",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-xs font-semibold text-slate-500",
-          tCell: "px-6 py-4 text-sm text-slate-700",
+          container: "border border-[#E5E7EB] dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200",
         }}
       />
     </div>

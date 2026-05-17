@@ -12,7 +12,7 @@ import { Forge, useForge } from "@/lib/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getRequest, postRequest } from "@/lib/axiosInstance";
+import { getRequest, postRequest, putRequest } from "@/lib/axiosInstance";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import { format } from "date-fns";
@@ -40,6 +40,11 @@ import Step9ReviewPublish from "../components/Step9ReviewPublish";
 
 type Props = {
   trigger: React.ReactNode;
+  /** When set, the dialog operates in edit mode: prefills the form from
+   *  `initialValues` (the loaded MSA) and PUTs to /msa-contract/{id}
+   *  instead of POSTing to create. */
+  editingMsaId?: string;
+  initialValues?: Record<string, any>;
 };
 
 const schema = yup.object({
@@ -191,7 +196,12 @@ const STEP_TITLES = [
   "Step 9 of 9: Review & Publish",
 ];
 
-const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
+const CreateMSADialog: React.FC<Props> = ({
+  trigger,
+  editingMsaId,
+  initialValues,
+}) => {
+  const isEditing = Boolean(editingMsaId);
   const {
     control,
     reset,
@@ -202,6 +212,30 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
     defaultValues,
     mode: "onChange",
   });
+
+  // When the dialog is opened in edit mode, hydrate the form from the
+  // loaded MSA so existing values aren't wiped on save. Best-effort
+  // mapping — fields not present in `initialValues` stay at defaults.
+  React.useEffect(() => {
+    if (!isEditing || !initialValues) return;
+    const iv = initialValues as Record<string, any>;
+    reset({
+      ...defaultValues,
+      name: iv.title ?? defaultValues.name,
+      type: typeof iv.msaType === "object" ? iv.msaType?._id : iv.msaType,
+      currency: iv.currency ?? defaultValues.currency,
+      msaId: iv.msaContractId ?? defaultValues.msaId,
+      description: iv.description ?? defaultValues.description,
+      rating: typeof iv.rating === "number" ? iv.rating : defaultValues.rating,
+      businessDivision:
+        typeof iv.businessDivision === "object"
+          ? iv.businessDivision?._id
+          : iv.businessDivision,
+      effectiveDate: iv.startDate ? new Date(iv.startDate) : undefined,
+      endDate: iv.endDate ? new Date(iv.endDate) : undefined,
+      contractValue: iv.contractValue,
+    } as CreateMsaFormData);
+  }, [isEditing, initialValues, reset]);
 
   const [step, setStep] = React.useState(1);
   const [open, setOpen] = React.useState(false);
@@ -521,8 +555,15 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
   );
 
   const createMutation = useMutation({
-    mutationKey: ["create-msa"],
+    mutationKey: ["create-msa", editingMsaId ?? "new"],
     mutationFn: async (payload: any) => {
+      if (isEditing && editingMsaId) {
+        const res = await putRequest({
+          url: `/contract/manager/msa-contract/${editingMsaId}`,
+          payload,
+        });
+        return res.data;
+      }
       const res = await postRequest({
         url: "/contract/manager/msa-contract",
         payload,
@@ -530,14 +571,24 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
       return res.data;
     },
     onSuccess: () => {
-      toast.success("MSA created successfully", "Your MSA has been created.");
+      if (isEditing) {
+        toast.success("MSA updated successfully", "Your changes have been saved.");
+      } else {
+        toast.success("MSA created successfully", "Your MSA has been created.");
+      }
       qc.invalidateQueries({ queryKey: msaQueryKeyPrefix });
+      if (editingMsaId) {
+        qc.invalidateQueries({ queryKey: ["msa-detail", editingMsaId] });
+      }
       setOpen(false);
       setStep(1);
-      reset(defaultValues);
+      if (!isEditing) reset(defaultValues);
     },
     onError: (err: any) => {
-      toast.error("Failed to create MSA", err);
+      toast.error(
+        isEditing ? "Failed to update MSA" : "Failed to create MSA",
+        err,
+      );
     },
   });
 
@@ -599,8 +650,8 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
       >
         <div className="flex items-start justify-between">
           <DialogHeader className="p-0">
-            <DialogTitle className="text-[20px] font-semibold leading-[30px] text-[#0F0F0F]">
-              Create MSA
+            <DialogTitle className="text-[20px] font-semibold leading-[30px] text-[#0F0F0F] dark:text-slate-100">
+              {isEditing ? "Edit MSA" : "Create MSA"}
             </DialogTitle>
           </DialogHeader>
         </div>

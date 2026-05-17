@@ -100,12 +100,12 @@ const Overview: React.FC<Props> = ({
       </div>
 
       <div className="col-span-1 md:col-span-3 space-y-4">
-        <div className="text-base font-semibold text-gray-600">
+        <div className="text-base font-semibold text-gray-600 dark:text-slate-300">
           Contract Team
         </div>
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
           <div className="space-y-2">
-            <span className="text-slate-500 block">Internal Stakeholder</span>
+            <span className="text-slate-500 dark:text-slate-400 block">Internal Stakeholder</span>
             <div className="flex flex-col gap-1">
               {internalTeam.length > 0 ? (
                 internalTeam.map((member, idx) => {
@@ -127,12 +127,12 @@ const Overview: React.FC<Props> = ({
                   );
                 })
               ) : (
-                <span className="text-slate-900">N/A</span>
+                <span className="text-slate-900 dark:text-slate-100">N/A</span>
               )}
             </div>
           </div>
           <div className="space-y-2">
-            <span className="text-slate-500 block">
+            <span className="text-slate-500 dark:text-slate-400 block">
               Vendor/Contractor Key Personnel
             </span>
             <div className="flex flex-col gap-1">
@@ -150,7 +150,7 @@ const Overview: React.FC<Props> = ({
                   />
                 ))
               ) : (
-                <span className="text-slate-900">N/A</span>
+                <span className="text-slate-900 dark:text-slate-100">N/A</span>
               )}
             </div>
           </div>

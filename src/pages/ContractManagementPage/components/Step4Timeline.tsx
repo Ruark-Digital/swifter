@@ -81,12 +81,12 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
       />
 
       <div className="md:col-span-2 space-y-4">
-        <p className="text-sm font-medium text-slate-700">
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
           Duration of Contract Formation Stage
         </p>
         <div className="space-y-6">
-          <div className="rounded-2xl bg-slate-50 p-4 space-y-4">
-            <p className="text-sm font-medium text-slate-700">Draft Stage</p>
+          <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/40 p-4 space-y-4">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Draft Stage</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Forger
                 name="draftStartDate"
@@ -106,8 +106,8 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
               />
             </div>
           </div>
-          <div className="rounded-2xl bg-slate-50 p-4 space-y-4">
-            <p className="text-sm font-medium text-slate-700">Review Stage</p>
+          <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/40 p-4 space-y-4">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Review Stage</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Forger
                 name="reviewStartDate"
@@ -127,8 +127,8 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
               />
             </div>
           </div>
-          <div className="rounded-2xl bg-slate-50 p-4 space-y-4">
-            <p className="text-sm font-medium text-slate-700">Approval Stage</p>
+          <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/40 p-4 space-y-4">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Approval Stage</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Forger
                 name="approvalStartDate"
@@ -148,8 +148,8 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
               />
             </div>
           </div>
-          <div className="rounded-2xl bg-slate-50 p-4 space-y-4">
-            <p className="text-sm font-medium text-slate-700">Execution Stage</p>
+          <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/40 p-4 space-y-4">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Execution Stage</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Forger
                 name="executionStartDate"

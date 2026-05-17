@@ -13,8 +13,8 @@ type VendorRow = {
 };
 
 const columns: ColumnDef<VendorRow>[] = [
-  { accessorKey: "vendor", header: "Vendor", cell: ({ row }) => <span className="text-sm font-medium text-[#0F0F0F]">{row.original.vendor}</span> },
-  { accessorKey: "contracts", header: "Contracts", cell: ({ row }) => <span className="text-sm text-[#0F0F0F]">{row.original.contracts}</span> },
+  { accessorKey: "vendor", header: "Vendor", cell: ({ row }) => <span className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">{row.original.vendor}</span> },
+  { accessorKey: "contracts", header: "Contracts", cell: ({ row }) => <span className="text-sm text-[#0F0F0F] dark:text-slate-100">{row.original.contracts}</span> },
   {
     accessorKey: "risk",
     header: "Risk Score",
@@ -44,7 +44,7 @@ const columns: ColumnDef<VendorRow>[] = [
       </span>
     ),
   },
-  { accessorKey: "changeOrders", header: "Change Orders", cell: ({ row }) => <span className="text-sm text-[#0F0F0F]">{row.original.changeOrders}</span> },
+  { accessorKey: "changeOrders", header: "Change Orders", cell: ({ row }) => <span className="text-sm text-[#0F0F0F] dark:text-slate-100">{row.original.changeOrders}</span> },
   {
     accessorKey: "performance",
     header: "Performance",
@@ -125,24 +125,33 @@ export const VendorPerformanceSummaryCard: React.FC<Props> = ({ data }) => {
           },
         ];
   return (
-    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
-      <CardHeader className="pb-3">
+    <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col max-h-[32rem]">
+      <CardHeader className="pb-3 shrink-0">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-[16px] font-semibold text-[#030712]">Vendor Performance Summary</CardTitle>
-          <div className="inline-flex items-center gap-2 border border-[#E5E7EB] rounded-lg px-3 py-2">
-            <span className="text-xs font-medium text-[#6B6B6B]">Top 10</span>
-            <span className="inline-block w-3 h-3 rounded-sm bg-[#E5E7EB]" />
+          <CardTitle className="text-[16px] font-semibold text-[#030712] dark:text-slate-100">Vendor Performance Summary</CardTitle>
+          <div className="inline-flex items-center gap-2 border border-[#E5E7EB] dark:border-slate-700 rounded-lg px-3 py-2">
+            <span className="text-xs font-medium text-[#6B6B6B] dark:text-slate-400">Top 10</span>
+            <span className="inline-block w-3 h-3 rounded-sm bg-[#E5E7EB] dark:bg-slate-700" />
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 flex-1 min-h-0 overflow-y-auto">
         <Tabs value="ytd" className="w-full mb-3">
-          <TabsList className="bg-transparent p-0 gap-2">
-            <TabsTrigger className="rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467]" value="ytd">
+          {/* Horizontal scroll on overflow; `!flex-none shrink-0` defeats
+              shadcn TabsTrigger's baked-in `flex-1` so pills don't stretch. */}
+          <TabsList className="bg-transparent p-0 gap-2 flex overflow-x-auto h-auto w-full justify-start">
+            <TabsTrigger
+              className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467] dark:bg-slate-800 dark:text-slate-100 data-[state=active]:bg-[#F0F0F0] data-[state=active]:dark:bg-slate-800"
+              value="ytd"
+            >
               YTD
             </TabsTrigger>
             {["12 months", "6 months", "3 months"].map((t) => (
-              <TabsTrigger key={t} value={t.replace(/\s+/g, "")} className="rounded-md px-3 py-2 text-sm font-semibold text-[#667085]">
+              <TabsTrigger
+                key={t}
+                value={t.replace(/\s+/g, "")}
+                className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-[#667085] dark:text-slate-400"
+              >
                 {t}
               </TabsTrigger>
             ))}
@@ -154,8 +163,8 @@ export const VendorPerformanceSummaryCard: React.FC<Props> = ({ data }) => {
           options={{ disablePagination: true, disableSelection: true, isLoading: false, totalCounts: rows.length, manualPagination: false }}
           classNames={{
             tHeader: "rounded-xl",
-            tHead: "text-xs text-[#6B6B6B] font-medium",
-            tRow: "rounded-xl",
+            tHead: "text-xs text-[#6B6B6B] dark:text-slate-400 font-medium",
+            tRow: "rounded-xl dark:border-slate-800",
             tCell: "text-sm",
             table: "w-full",
             container: "w-full",

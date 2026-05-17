@@ -28,7 +28,9 @@ import {
   TextDatePicker,
   TextFileUploader,
   TextInput,
+  TextMultiSelect,
 } from "@/components/layouts/FormInputs";
+import type { Option } from "@/components/ui/multiselect";
 import { FileUploaderItem } from "@/components/ui/file-upload";
 import { Check, CloudUpload, Search, Share2, X } from "lucide-react";
 import { useWatch } from "react-hook-form";
@@ -112,7 +114,7 @@ const statusTone = (status?: string) => {
   const normalized = status?.toLowerCase();
   if (normalized === "open") return "bg-[#EAF7EE] text-[#43A047]";
   if (normalized === "closed") return "bg-[#FEECEC] text-[#E53935]";
-  return "bg-slate-100 text-slate-700";
+  return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 };
 
 const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
@@ -123,16 +125,59 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
+  const { isVendor, isProjectManager } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const { control, reset } = useForge({
     defaultValues: {
       rfiTitle: "",
       responseDeadline: undefined,
       question: "",
       files: null,
+      responders: [] as Option[],
     },
   });
   const [isSuccess, setIsSuccess] = React.useState(false);
   const files = useWatch({ control, name: "files" }) as File[] | null;
+
+  // Personnel lookup mirrors the contract RFI dialog. Vendor / PM users
+  // fetch a contract-scoped vendor personnel list; managers and admins
+  // pull the org-wide personnel directory.
+  const { data: personnelData } = useQuery<
+    ApiResponse<
+      Array<{
+        _id: string;
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        role?: { name: string } | string;
+      }>
+    >,
+    ApiResponseError
+  >({
+    queryKey: ["msa-rfi-personnel", contractId, isContractVendorLike],
+    queryFn: async () =>
+      await getRequest({
+        url: isContractVendorLike
+          ? `/contract/vendor/msa-contract/${contractId}/personnel`
+          : "/contract/manager/personnel",
+      }),
+  });
+
+  const personnelOptions = React.useMemo<Option[]>(() => {
+    const list = Array.isArray(personnelData?.data?.data)
+      ? personnelData?.data?.data
+      : [];
+    return (
+      list?.map((p) => ({
+        label:
+          p.firstName && p.lastName
+            ? `${p.firstName} (${p.lastName})`
+            : p.firstName || (p.email ?? p._id),
+        value: p._id,
+        searchText: [p.firstName, p.lastName, p.email].filter(Boolean).join(" "),
+      })) ?? []
+    );
+  }, [personnelData?.data?.data]);
 
   const { mutateAsync: uploadFile, isPending: isUploadingFiles } = useMutation<
     ApiResponse<UploadURLs[]>,
@@ -183,10 +228,19 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
     responseDeadline?: Date;
     question: string;
     files: File[] | null;
+    responders?: Option[];
   }) => {
+    // Mirror the contract RFI dialog: join responder labels (display
+    // names) with a comma so the backend `responder` field carries a
+    // readable list of recipients.
+    const responderLabels = (data.responders ?? [])
+      .map((r) => r.label)
+      .join(", ");
+
     const payload: ContractRfiDTO = {
       title: data.rfiTitle,
       description: data.question,
+      responder: responderLabels || undefined,
       deadline: data.responseDeadline ? data.responseDeadline.toISOString() : undefined,
     };
 
@@ -238,7 +292,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
             {getFileIcon(extension)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-900 truncate">{file.name}</p>
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{file.name}</p>
             <p className="text-xs text-slate-500">
               {extension || "FILE"} • {formatFileSize(file.size)}
             </p>
@@ -264,14 +318,14 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
             <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#22C55E] text-[#22C55E]">
               <Check className="h-8 w-8" />
             </div>
-            <div className="text-base font-semibold text-[#0F0F0F]">
+            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
               RFI Issued Successfully
             </div>
             <div className="flex w-full items-center gap-4">
               <DialogClose asChild>
                 <button
                   type="button"
-                  className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F]"
+                  className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] dark:bg-slate-800 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
                 >
                   Close
                 </button>
@@ -289,7 +343,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
         ) : (
           <>
             <div className="flex items-center justify-between px-8 pt-8">
-              <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
+              <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Issue RFI
               </DialogTitle>
             </div>
@@ -314,6 +368,13 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                   component={TextArea}
                   rows={5}
                 />
+                <Forger
+                  name="responders"
+                  label="Select Responder"
+                  placeholder="Search and select responders"
+                  component={TextMultiSelect}
+                  options={personnelOptions}
+                />
                 <div className="space-y-2">
                   <Forger
                     name="files"
@@ -326,7 +387,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                           <p className="text-base font-semibold text-[#2A4467]">
                             Drag & Drop or Click to choose files
                           </p>
-                          <p className="text-sm text-[#6B7280]">
+                          <p className="text-sm text-[#6B7280] dark:text-slate-400">
                             Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
                           </p>
                         </div>
@@ -363,7 +424,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-12 flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB]"
+                      className="h-12 flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] dark:bg-slate-800 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 hover:bg-[#E5E7EB]"
                       disabled={isSubmitting}
                     >
                       Cancel
@@ -418,7 +479,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
         <div className="space-y-6">
           <SheetHeader className="space-y-0">
             <div className="flex items-center justify-between">
-              <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+              <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 RFI
               </SheetTitle>
               <SheetClose asChild>
@@ -435,7 +496,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <div className="text-xs font-medium text-[#9CA3AF]">RFI Details</div>
-                <div className="text-base font-semibold text-[#0F0F0F]">
+                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   {isLoading ? "Loading..." : detail?.rfiId || detail?._id || rfiId}
                 </div>
               </div>
@@ -465,13 +526,13 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
             </div>
             <div className="space-y-2">
               <div className="text-xs font-medium text-[#9CA3AF]">Title</div>
-              <div className="text-sm text-[#374151]">
+              <div className="text-sm text-[#374151] dark:text-slate-200">
                 {isLoading ? "Loading..." : detail?.title || "-"}
               </div>
             </div>
             <div className="space-y-2">
               <div className="text-xs font-medium text-[#9CA3AF]">Question / Description</div>
-              <div className="text-sm text-[#374151]">
+              <div className="text-sm text-[#374151] dark:text-slate-200">
                 {isLoading ? "Loading..." : detail?.description || "-"}
               </div>
             </div>
@@ -490,7 +551,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                           <div className="h-8 w-8 rounded-md bg-slate-100 flex items-center justify-center text-xs font-semibold text-slate-700">
                             {ext}
                           </div>
-                          <div className="text-sm text-slate-700">{file?.name || "Attachment"}</div>
+                          <div className="text-sm text-slate-700 dark:text-slate-200">{file?.name || "Attachment"}</div>
                         </div>
                         {file?.url ? (
                           <Button
@@ -630,7 +691,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
             {getFileIcon(extension)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-900 truncate">{file.name}</p>
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{file.name}</p>
             <p className="text-xs text-slate-500">
               {extension || "FILE"} • {formatFileSize(file.size)}
             </p>
@@ -645,7 +706,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-8 pt-8">
-          <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
+          <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
             Respond to RFI
           </DialogTitle>
         </div>
@@ -705,7 +766,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-12 flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB]"
+                  className="h-12 flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] dark:bg-slate-800 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 hover:bg-[#E5E7EB]"
                   disabled={isSubmitting}
                 >
                   Cancel
@@ -858,7 +919,7 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
         accessorKey: "title",
         header: "Title",
         cell: ({ getValue }) => (
-          <div className="max-w-[280px] text-sm text-slate-700">{getValue<string>() || "-"}</div>
+          <div className="max-w-[280px] text-sm text-slate-700 dark:text-slate-200">{getValue<string>() || "-"}</div>
         ),
       },
       {
@@ -954,13 +1015,13 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   return (
     <TabsContent value="rfi" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
+        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F] dark:text-slate-100">
           RFI
         </h3>
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
-            className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F]"
+            className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
           >
             <Share2 className="mr-2 h-5 w-5" />
             Export Report
@@ -1022,27 +1083,27 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
         }}
         header={() => (
           <div className="flex items-center gap-4 border-b border-[#E9E9EB] px-6 py-4">
-            <div className="text-base font-semibold text-[#0F0F0F]">RFI</div>
+            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">RFI</div>
             <div className="relative w-[320px]">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B]" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search changes"
-                className="h-12 rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
+                className="h-12 rounded-lg border border-[#E5E7EB] dark:border-slate-700 dark:bg-slate-900 pl-9 text-sm text-[#0F0F0F] dark:text-slate-100 placeholder:text-[#6B6B6B] dark:placeholder:text-slate-500"
               />
             </div>
           </div>
         )}
         classNames={{
-          container: "overflow-hidden rounded-xl border border-[#E5E7EB] bg-white",
+          container: "overflow-hidden rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900",
           table: "border-spacing-y-0",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467]",
-          tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467] dark:text-indigo-300",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
         }}
         emptyPlaceholder={
           <div className="px-6 py-8 text-sm text-slate-500">No RFI found.</div>
