@@ -1,0 +1,30 @@
+// EditorAdapter — a small uniform API that both the Yoopta and TipTap
+// panels publish to the page (`index.tsx`) so the shared AI / redline /
+// version-history flows can drive either editor.
+//
+// The two editors have very different state models (Yoopta JSON tree vs
+// ProseMirror state) so this adapter intentionally keeps the surface
+// narrow: just the operations the page actually needs.
+
+import type * as Y from "yjs";
+import type { RedlineSpan } from "./redlineScan";
+
+export type EditorKind = "yoopta" | "tiptap";
+
+export type EditorAdapter = {
+  /** Identifies which editor is mounted. Mainly for debug. */
+  kind: EditorKind;
+  /** The Y.Doc backing this editor. Shared with other clients via the
+   *  collab provider; used by `useCollabVersions` to persist the
+   *  version history list/snapshots into a place every client sees. */
+  doc: Y.Doc;
+  /** Serialize the current document for version snapshots. */
+  getSnapshot: () => unknown;
+  /** Restore a previous snapshot. */
+  setSnapshot: (snapshot: unknown) => void;
+  /** Extract every redlined span (insertion + deletion marks). */
+  extractRedlines: () => RedlineSpan[];
+  /** Replace the text of a redlined span by id. Strips the mark in the
+   *  process (so accepted/rejected redlines no longer render). */
+  replaceRedline: (redlineId: string, replacement: string) => void;
+};
