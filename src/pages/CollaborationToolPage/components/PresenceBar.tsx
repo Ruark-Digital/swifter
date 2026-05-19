@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import type { AwarenessEntry, CollabSyncState } from "../collab/useYooptaYjs";
+import type { AwarenessEntry, CollabSyncState } from "../collab/useCollabProvider";
 
 type SaveState = "offline" | "saving" | "saved" | "kicked";
 

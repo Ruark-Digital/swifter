@@ -1,7 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import YooptaEditor, { createYooptaEditor } from "@yoopta/editor";
-
-type YooptaEditorInstance = ReturnType<typeof createYooptaEditor>;
 import Paragraph from "@yoopta/paragraph";
 import { HeadingOne, HeadingTwo, HeadingThree } from "@yoopta/headings";
 import { BulletedList, NumberedList, TodoList } from "@yoopta/lists";
@@ -186,32 +184,10 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
   const user = useUser();
   const didImportRef = useRef(false);
 
-  useEffect(() => {
-    const adapter: EditorAdapter = {
-      kind: "yoopta",
-      doc: collab.doc,
-      getSnapshot: () => editor.getEditorValue(),
-      setSnapshot: (snapshot) => {
-        if (snapshot && typeof snapshot === "object") {
-          editor.setEditorValue(
-            snapshot as Parameters<typeof editor.setEditorValue>[0],
-          );
-        }
-      },
-      extractRedlines: () =>
-        extractRedlines(editor.getEditorValue() as never),
-      replaceRedline: (redlineId, replacement) => {
-        const next = replaceRedline(
-          editor.getEditorValue() as never,
-          redlineId,
-          replacement,
-        );
-        editor.setEditorValue(next as Parameters<typeof editor.setEditorValue>[0]);
-      },
-    };
-    onEditorReady?.(adapter);
-    return () => onEditorReady?.(null);
-  }, [collab, editor, onEditorReady]);
+  // The adapter-publishing effect needs `collab` (declared further down)
+  // for the Y.Doc reference. Adapter logic moved to a useEffect below
+  // the `collab = useMemo(...)` declaration; this comment marks where
+  // the adapter previously lived.
   const draftKey = useMemo(
     () => `ct:draft:${collabMeta?.roomId ?? "collab:editor"}`,
     [collabMeta?.roomId]
@@ -302,6 +278,37 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
     // are pushed via collab.updateLocalUser below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collabMeta?.disable, collabMeta?.roomId, collabMeta?.token, collabMeta?.wsUrl]);
+
+  // Adapter-publishing effect — declared here (not at the top of the
+  // component) because it needs the `collab` memo's `Y.Doc`.
+  useEffect(() => {
+    const adapter: EditorAdapter = {
+      kind: "yoopta",
+      doc: collab.doc,
+      getSnapshot: () => editor.getEditorValue(),
+      setSnapshot: (snapshot) => {
+        if (snapshot && typeof snapshot === "object") {
+          editor.setEditorValue(
+            snapshot as Parameters<typeof editor.setEditorValue>[0],
+          );
+        }
+      },
+      extractRedlines: () =>
+        extractRedlines(editor.getEditorValue() as never),
+      replaceRedline: (redlineId, replacement) => {
+        const next = replaceRedline(
+          editor.getEditorValue() as never,
+          redlineId,
+          replacement,
+        );
+        editor.setEditorValue(
+          next as Parameters<typeof editor.setEditorValue>[0],
+        );
+      },
+    };
+    onEditorReady?.(adapter);
+    return () => onEditorReady?.(null);
+  }, [collab, editor, onEditorReady]);
 
   useEffect(() => {
     collab.updateLocalUser?.(localUser);

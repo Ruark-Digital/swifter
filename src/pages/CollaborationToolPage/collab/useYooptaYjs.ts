@@ -27,8 +27,11 @@ export type AwarenessEntry = {
 };
 
 export type CollabSyncState = {
-  /** `connecting | connected | disconnected` from y-websocket. */
-  status: "connecting" | "connected" | "disconnected";
+  /** `connecting | connected | disconnected | kicked` — kept in lockstep
+   *  with `useCollabProvider.ts` so consumers (PresenceBar, both panels)
+   *  share one type. The Yoopta path doesn't generate "kicked" today
+   *  but the shape stays open for parity. */
+  status: "connecting" | "connected" | "disconnected" | "kicked";
   /** True once the provider has reconciled initial state with the server. */
   synced: boolean;
 };

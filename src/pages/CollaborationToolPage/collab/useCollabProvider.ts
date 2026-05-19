@@ -274,28 +274,23 @@ export function createCollabProvider(config: CollabConfig): CollabProvider {
       // BE and stop reconnecting. y-websocket auto-reconnects on close,
       // which against a 4000-enforcing server creates a thrash loop
       // between two tabs of the same user.
-      provider.on(
-        "connection-close",
-        (event: { code?: number; reason?: string } | undefined) => {
-          // @ts-expect-error import.meta.env is Vite-specific
-          if (import.meta.env?.DEV) {
-            // eslint-disable-next-line no-console
-            console.warn("[collab] WS close", {
-              code: event?.code,
-              reason: event?.reason,
-              room: config.roomId,
-            });
-          }
-          if (event?.code === WS_CLOSE_CODE_REPLACED) {
-            entryRef.kicked = true;
-            provider.disconnect();
-            entryRef.kickedListeners.forEach((fn) => fn());
-          }
-        },
-      );
-      // @ts-expect-error import.meta.env is Vite-specific
-      if (import.meta.env?.DEV) {
-        provider.on("connection-error", (event: Event | undefined) => {
+      provider.on("connection-close", (event: CloseEvent | null) => {
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.warn("[collab] WS close", {
+            code: event?.code,
+            reason: event?.reason,
+            room: config.roomId,
+          });
+        }
+        if (event?.code === WS_CLOSE_CODE_REPLACED) {
+          entryRef.kicked = true;
+          provider.disconnect();
+          entryRef.kickedListeners.forEach((fn) => fn());
+        }
+      });
+      if (import.meta.env.DEV) {
+        provider.on("connection-error", (event: Event | null) => {
           // eslint-disable-next-line no-console
           console.warn("[collab] WS error", { event, room: config.roomId });
         });
@@ -313,12 +308,7 @@ export function createCollabProvider(config: CollabConfig): CollabProvider {
   // the BE filters out doc-sync frames (msg type 0) but lets awareness
   // (type 1) through — see commit log for the 260519 cross-tab edit
   // propagation bug. Look at `window.__ctMsgHistogram` in DevTools.
-  if (
-    provider &&
-    typeof window !== "undefined" &&
-    // @ts-expect-error import.meta.env is Vite-specific
-    import.meta.env?.DEV
-  ) {
+  if (provider && typeof window !== "undefined" && import.meta.env.DEV) {
     const histogram: Record<string, { in: number; out: number }> = {};
     const win = window as unknown as { __ctMsgHistogram?: typeof histogram };
     win.__ctMsgHistogram = histogram;

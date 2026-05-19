@@ -75,8 +75,7 @@ export const InsertionMark = Mark.create<InsertionMarkOptions>({
     return [{ tag: "ins[data-redline-id]" }];
   },
 
-  renderHTML({ node, HTMLAttributes }) {
-    void node;
+  renderHTML({ HTMLAttributes }) {
     const author = (HTMLAttributes["data-author-name"] as string) || "Unknown";
     const createdAt = (HTMLAttributes["data-created-at"] as string) || "";
     return [
