@@ -255,15 +255,13 @@ const Step1BasicInfo: React.FC<Props> = ({
       )}
 
       {relationship === "msa" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Forger
-            name="msaContractId"
-            label="Select MSA"
-            placeholder="Select MSA"
-            component={TextSelect}
-            options={msaOptions}
-          />
-        </div>
+        <Forger
+          name="msaContractId"
+          label="Select MSA"
+          placeholder="Select MSA"
+          component={TextSelect}
+          options={msaOptions}
+        />
       )}
 
       {relationship === "msa_project" && (
@@ -284,15 +282,13 @@ const Step1BasicInfo: React.FC<Props> = ({
               options={projectOptions}
             />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Forger
-              name="awardedSolicitation"
-              label="Select Awarded Solicitation (Optional)"
-              placeholder="Select Solicitation"
-              component={TextSelect}
-              options={awardedOptions}
-            />
-          </div>
+          <Forger
+            name="awardedSolicitation"
+            label="Select Awarded Solicitation (Optional)"
+            placeholder="Select Solicitation"
+            component={TextSelect}
+            options={awardedOptions}
+          />
         </>
       )}
 
