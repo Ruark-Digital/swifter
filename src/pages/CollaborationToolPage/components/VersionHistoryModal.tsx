@@ -1,10 +1,23 @@
 import React from 'react';
 import { XIcon, RotateCcw } from 'lucide-react';
 
+export type VersionKind =
+  | "edit"
+  | "insertion"
+  | "deletion"
+  | "comment"
+  | "ai-apply";
+
 export interface Version {
   id: string;
   timestamp: string;
   author: string;
+  /** Short label describing what produced this snapshot. Manual saves
+   *  use a generic label; track-change events carry the change type. */
+  label?: string;
+  /** Classifier used by the Versions tab to render an icon / colour
+   *  for each entry without re-parsing the label text. */
+  kind?: VersionKind;
 }
 
 interface VersionHistoryModalProps {

@@ -17,18 +17,16 @@ import {
 } from "./collab/useFileComments";
 import { useToastHandler } from "@/hooks/useToaster";
 import {
-  extractRedlines,
-  replaceRedline,
   type RedlineSpan,
 } from "./collab/redlineScan";
+import type { EditorAdapter } from "./collab/editorAdapter";
+import { useCollabVersions } from "./collab/useCollabVersions";
 import {
   useAiRedlineSuggestions,
   type AiRedlineSuggestion,
 } from "./collab/useAiRedlineSuggestions";
 import type { Version } from "./components/VersionHistoryModal";
-import type { createYooptaEditor } from "@yoopta/editor";
 
-type YooptaEditorInstance = ReturnType<typeof createYooptaEditor>;
 type AiItem = {
   redline: RedlineSpan;
   suggestion?: AiRedlineSuggestion;
@@ -61,6 +59,11 @@ type LocalComment = {
 };
 
 const EditorPane = lazy(() => import("./components/EditorPanel"));
+// TipTap is now the default editor. The legacy Yoopta panel is kept as
+// a fallback for redline / comment / AI / version-history features that
+// haven't been ported yet — opt in with `?editor=yoopta` until SP2-4
+// land those features on TipTap.
+const TipTapEditorPane = lazy(() => import("./components/TipTapEditorPanel"));
 
 const toTimestamp = (value?: string | Date) => {
   if (!value) return "";
@@ -116,16 +119,32 @@ const CollaborationToolPage: React.FC = () => {
   const setActiveTab = useCollaborationStore((state) => state.setActiveTab);
   const setPresenceActive = useCollaborationStore((state) => state.setPresenceActive);
 
-  // Editor instance is owned by EditorPanel but published up here so the
-  // sidebar tabs (Redline + Versions) can drive AI runs and version
-  // snapshots without going through the editor's own buttons.
-  const editorRef = useRef<YooptaEditorInstance | null>(null);
-  const handleEditorReady = useCallback((ed: YooptaEditorInstance) => {
-    editorRef.current = ed;
+  // Editor adapter is owned by whichever panel is mounted (Yoopta or
+  // TipTap) and published up here so the sidebar (Redline + Versions
+  // tabs) can drive AI runs and version snapshots without depending on
+  // a specific editor's API.
+  const editorAdapterRef = useRef<EditorAdapter | null>(null);
+  // Mirror the adapter's Y.Doc into state so the version-history hook
+  // can subscribe — refs don't trigger re-renders, but the hook needs
+  // re-renders when the doc identity changes (room/token swap).
+  //
+  // Named `collabYDoc` to avoid colliding with the `collabDoc` URL
+  // search-param string declared further down.
+  const [collabYDoc, setCollabYDoc] = useState<
+    EditorAdapter["doc"] | undefined
+  >(undefined);
+  const handleEditorReady = useCallback((adapter: EditorAdapter | null) => {
+    editorAdapterRef.current = adapter;
+    setCollabYDoc(adapter?.doc);
   }, []);
 
-  // Version history (moved out of EditorPanel)
-  const [versions, setVersions] = useState<Version[]>([]);
+  // Version history backed by Yjs so every client in the same room
+  // sees the same timeline.
+  const {
+    versions,
+    addVersion,
+    getSnapshot: getVersionSnapshot,
+  } = useCollabVersions(collabYDoc);
 
   // AI redline suggestions (moved out of EditorPanel)
   const contractIdParam = searchParams.get("contractId") || undefined;
@@ -240,7 +259,11 @@ const CollaborationToolPage: React.FC = () => {
       import.meta.env.VITE_WS_URL ||
       import.meta.env.VITE_YWS_URL ||
       "ws://localhost:1234";
-    const roomId = collabDoc || contractId || fileName || "collab:editor";
+    // Collab room is keyed by file name so the same document opened from
+    // different contracts converges to one Yjs room. An explicit `?doc=`
+    // query param still wins (lets ops pin a custom room id); contractId
+    // is only a last-resort fallback when no fileName is supplied.
+    const roomId = collabDoc || fileName || contractId || "collab:editor";
     return {
       wsUrl,
       roomId,
@@ -255,6 +278,13 @@ const CollaborationToolPage: React.FC = () => {
     [sourceUrl, fileName, fileType]
   );
 
+  // `saveVersionSnapshot` is declared further down (after version
+  // history wiring). Read it through a ref so this listener-mount
+  // effect doesn't hit the TDZ on first render.
+  const saveVersionSnapshotRef = useRef<
+    ((label: string, kind: Version["kind"]) => void) | null
+  >(null);
+
   useEffect(() => {
     const onRedline = (e: Event) => {
       const detail = (e as CustomEvent).detail as
@@ -266,6 +296,14 @@ const CollaborationToolPage: React.FC = () => {
         kind: detail.kind,
       };
       setActiveTab("comments");
+      // Track-change snapshot — versions tab becomes the timeline so
+      // users can revert "before this insertion" / "before this deletion".
+      saveVersionSnapshotRef.current?.(
+        detail.kind === "insertion"
+          ? "Inserted redline"
+          : "Deleted redline",
+        detail.kind,
+      );
     };
     const onInlineComment = (e: Event) => {
       const detail = (e as CustomEvent).detail as
@@ -278,11 +316,19 @@ const CollaborationToolPage: React.FC = () => {
       };
       setActiveTab("comments");
     };
+    // Debounced plain-text-edit signal from the editor panel — turns
+    // every "pause after typing" into a versions-tab snapshot so users
+    // can revert ordinary edits, not just track-changes events.
+    const onDocEdit = () => {
+      saveVersionSnapshotRef.current?.("Document edit", "edit");
+    };
     window.addEventListener("ct-add-redline", onRedline);
     window.addEventListener("ct-add-inline-comment", onInlineComment);
+    window.addEventListener("ct-doc-edit", onDocEdit);
     return () => {
       window.removeEventListener("ct-add-redline", onRedline);
       window.removeEventListener("ct-add-inline-comment", onInlineComment);
+      window.removeEventListener("ct-doc-edit", onDocEdit);
     };
   }, [setActiveTab]);
 
@@ -302,51 +348,71 @@ const CollaborationToolPage: React.FC = () => {
   );
 
   // ── Version history handlers ────────────────────────────────────────
-  const handleSaveVersion = useCallback(() => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    const newVersion: Version = {
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      author: user?.name || "Unknown User",
-    };
-    try {
-      const editorState = editor.getEditorValue();
-      localStorage.setItem(
-        `doc-version-${newVersion.id}`,
-        JSON.stringify(editorState),
-      );
-      setVersions((prev) => [newVersion, ...prev]);
-      toastHandler.success("Version saved", "Document version saved successfully.");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      toastHandler.error("Version save failed", message);
-    }
-  }, [toastHandler, user?.name]);
+  // Backed by `useCollabVersions` — the version list + snapshots live in
+  // the shared Y.Doc, so other clients see new entries automatically.
+  // There is no manual Save button; every entry comes from a track-
+  // change event (redline, AI apply, comment) so the call is always
+  // silent (no toast).
+  const saveVersionSnapshot = useCallback(
+    (label: string, kind: Version["kind"]) => {
+      const adapter = editorAdapterRef.current;
+      if (!adapter) return;
+      try {
+        const snapshot = adapter.getSnapshot();
+        addVersion({
+          label,
+          kind: kind ?? "comment",
+          author: user?.name || "Unknown User",
+          snapshot,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.warn("[versions] save failed", error);
+        }
+      }
+    },
+    [addVersion, user?.name],
+  );
+
+  // Keep the ref used by the early useEffect listeners in sync with
+  // the latest callback identity.
+  useEffect(() => {
+    saveVersionSnapshotRef.current = saveVersionSnapshot;
+  }, [saveVersionSnapshot]);
 
   const handleRestoreVersion = useCallback(
     (versionId: string) => {
-      const editor = editorRef.current;
-      if (!editor) return;
+      const adapter = editorAdapterRef.current;
+      if (!adapter) return;
       try {
-        const savedState = localStorage.getItem(`doc-version-${versionId}`);
-        if (!savedState) return;
-        editor.setEditorValue(JSON.parse(savedState));
-        toastHandler.success("Version restored", "Document version restored successfully.");
+        const snapshot = getVersionSnapshot(versionId);
+        if (snapshot == null) {
+          toastHandler.error(
+            "Version restore failed",
+            "Snapshot is no longer available.",
+          );
+          return;
+        }
+        adapter.setSnapshot(snapshot);
+        toastHandler.success(
+          "Version restored",
+          "Document version restored successfully.",
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         toastHandler.error("Version restore failed", message);
       }
     },
-    [toastHandler],
+    [getVersionSnapshot, toastHandler],
   );
 
   // ── AI redline suggestion handlers ──────────────────────────────────
   const runAiSuggestions = useCallback(async () => {
-    const editor = editorRef.current;
-    if (!editor) return;
+    const adapter = editorAdapterRef.current;
+    if (!adapter) return;
     setAiHasRun(true);
-    const redlines = extractRedlines(editor.getEditorValue() as any);
+    const redlines = adapter.extractRedlines();
     if (redlines.length === 0) {
       setAiItems([]);
       setAiNoRedlines(true);
@@ -371,25 +437,41 @@ const CollaborationToolPage: React.FC = () => {
     void runAiSuggestions();
   }, [activeTab, aiHasRun, runAiSuggestions]);
 
-  const handleApproveAi = useCallback((item: AiItem) => {
-    const editor = editorRef.current;
-    if (!editor || !item.suggestion) return;
-    if (item.suggestion.suggestion === "reject") {
-      const next = replaceRedline(
-        editor.getEditorValue() as any,
-        item.redline.redlineId,
-        item.redline.kind === "insertion" ? "" : item.redline.text,
+  const handleApproveAi = useCallback(
+    (item: AiItem, tier: "low" | "medium" | "high" = "medium") => {
+      const adapter = editorAdapterRef.current;
+      if (!adapter || !item.suggestion) return;
+      // Pick the user's chosen alternative-language tier (or fall back
+      // through the others, then to the legacy `replacementText` field
+      // for older BE deployments).
+      const alt = item.suggestion.alternativeLanguage;
+      const replacement =
+        alt?.[tier] ??
+        alt?.medium ??
+        alt?.low ??
+        alt?.high ??
+        item.suggestion.replacementText;
+      if (typeof replacement === "string" && replacement.length > 0) {
+        adapter.replaceRedline(item.redline.redlineId, replacement);
+        // Auto-snapshot so the user can revert the AI-applied change.
+        saveVersionSnapshot(`Applied AI suggestion (${tier})`, "ai-apply");
+      } else if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "[ai-redline] apply clicked but no alternativeLanguage / replacementText available; doc not mutated.",
+          item.redline.redlineId,
+        );
+      }
+      setAiItems((prev) =>
+        prev.map((p) =>
+          p.redline.redlineId === item.redline.redlineId
+            ? { ...p, state: "approved" }
+            : p,
+        ),
       );
-      editor.setEditorValue(next as any);
-    }
-    setAiItems((prev) =>
-      prev.map((p) =>
-        p.redline.redlineId === item.redline.redlineId
-          ? { ...p, state: "approved" }
-          : p,
-      ),
-    );
-  }, []);
+    },
+    [saveVersionSnapshot],
+  );
 
   const handleDismissAi = useCallback((item: AiItem) => {
     setAiItems((prev) =>
@@ -467,12 +549,18 @@ const CollaborationToolPage: React.FC = () => {
     setCommentInput("");
     pendingMentionsRef.current = [];
     pendingRedlineRef.current = null;
+    // Auto-snapshot — a new comment is part of the document timeline.
+    saveVersionSnapshot(
+      redline?.redlineId ? "Added anchored comment" : "Added comment",
+      "comment",
+    );
   }, [
     addFileComment,
     canWriteComment,
     commentInput,
     commentsStorageKey,
     fileId,
+    saveVersionSnapshot,
     toast,
     user?.name,
   ]);
@@ -488,11 +576,19 @@ const CollaborationToolPage: React.FC = () => {
       <div className="flex min-h-svh bg-white dark:bg-slate-950">
         <div className="flex-1 max-w-7xl  overflow-auto">
           <Suspense fallback={<div className="ct-editor-panel" />}>
-            <EditorPane
-              importMeta={importMeta}
-              collabMeta={collabMeta}
-              onEditorReady={handleEditorReady}
-            />
+            {searchParams.get("editor") === "yoopta" ? (
+              <EditorPane
+                importMeta={importMeta}
+                collabMeta={collabMeta}
+                onEditorReady={handleEditorReady}
+              />
+            ) : (
+              <TipTapEditorPane
+                importMeta={importMeta}
+                collabMeta={collabMeta}
+                onEditorReady={handleEditorReady}
+              />
+            )}
           </Suspense>
         </div>
         <SidebarPanel
@@ -507,7 +603,6 @@ const CollaborationToolPage: React.FC = () => {
           useFallbackFeed={false}
           mentionables={mentionables}
           versions={versions}
-          onSaveVersion={handleSaveVersion}
           onRestoreVersion={handleRestoreVersion}
           aiStatus={aiStatus}
           aiItems={aiItems}

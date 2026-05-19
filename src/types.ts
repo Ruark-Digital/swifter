@@ -143,6 +143,10 @@ export interface ContractDetail {
   vendor:                 Company;
   msaContract?:           { _id: string; title: string };
   vendorPersonnel:        VendorPersonnel[];
+  /** Returned by the new /edit endpoint (swagger 2.3.0). The legacy
+   *  detail endpoint exposes the same data under `vendorPersonnel`;
+   *  callers should accept either, preferring `personnel` when set. */
+  personnel?:             VendorPersonnel[];
   creator:                Creator;
   contractType:           Company;
   contractTerm:           Company;
