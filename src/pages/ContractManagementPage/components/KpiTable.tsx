@@ -176,26 +176,26 @@ type MetricConfig = {
 
 const CATEGORY_METRICS: Record<string, MetricConfig[]> = {
   "On‑Time Delivery/Schedule Compliance": [
-    { key: "timestampedDelivery", label: "Timestamped delivery (Optional)" },
-    { key: "scheduleConfirmations", label: "Schedule confirmations" },
-    { key: "milestoneLogs", label: "Milestone logs" },
+    { key: "timestampDelivery", label: "Timestamped delivery (Optional)" },
+    { key: "scheduleConfirm", label: "Schedule confirmations" },
+    { key: "mileStoneLog", label: "Milestone logs" },
   ],
   "Quality & Specification Compliance": [
-    { key: "inspectionReports", label: "Inspection reports" },
-    { key: "ncrLogs", label: "NCR logs" },
-    { key: "qaDocumentation", label: "QA documentation" },
+    { key: "inspectionReport", label: "Inspection reports" },
+    { key: "NCRLog", label: "NCR logs" },
+    { key: "QADocs", label: "QA documentation" },
   ],
   Responsiveness: [
-    { key: "timestampedCommunicationLogs", label: "Timestamped communication logs" },
+    { key: "timestampComLog", label: "Timestamped communication logs" },
   ],
   "Contractual Compliance": [
     { key: "complianceTracking", label: "Compliance Tracking" },
   ],
   "Cost Variance": [
-    { key: "automatedRateMatching", label: "Automated invoice-to-contract rate matching. (Auto check of contract rates and Invoice rates or Milestone amount in contract Vs Invoice )" },
+    { key: "invoiceContract", label: "Automated invoice-to-contract rate matching. (Auto check of contract rates and Invoice rates or Milestone amount in contract Vs Invoice )" },
   ],
   "Invoice Accuracy": [
-    { key: "matchingResults", label: "2‑way/3‑way matching results. (Auto check of contract rates and Invoice rates or Milestone amount in contract Vs Invoice)" },
+    { key: "twoWay", label: "2‑way/3‑way matching results. (Auto check of contract rates and Invoice rates or Milestone amount in contract Vs Invoice)" },
   ],
   "Issue Resolution": [
     { key: "issueResolution", label: "Issue Resolution" },
@@ -274,7 +274,7 @@ const UpdateVendorPerformanceDialog: React.FC<{
       }
       await postRequest({
         url: `${basePath}/${kpiId}`,
-        payload: { metrics: metricsPayload },
+        payload: metricsPayload,
       });
       success("KPI updated", "Values submitted successfully");
       reset();
