@@ -47,7 +47,7 @@ export const DocumentItem = ({
           >
             <Eye className="h-4 w-4" />
           </Button>
-          {canEdit && (
+          {canEdit && d.type?.toLowerCase() === "docx" && (
             <Button
               variant="ghost"
               size="icon"

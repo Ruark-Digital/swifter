@@ -758,6 +758,7 @@ const MsaDetailPage: React.FC = () => {
               contractId={id ?? ""}
               files={msa?.files}
               isActive={activeTab === "documents"}
+              status={msa?.status}
             />
 
             <Amendments

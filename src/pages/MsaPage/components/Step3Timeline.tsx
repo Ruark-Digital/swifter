@@ -9,7 +9,7 @@ import { useForgeValues } from "@/lib/forge";
 import { CreateMsaFormData } from "../layouts/CreateMSADialog";
 import { useWatch } from "react-hook-form";
 import { formatDateTZ } from "@/lib/utils";
-import { differenceInCalendarDays, startOfDay } from "date-fns";
+import { differenceInCalendarDays } from "date-fns";
 
 type Props = {
   termTypeOptions?: Array<{ label: string; value: string }>;
@@ -22,10 +22,13 @@ const Step3Timeline: React.FC<Props> = ({
   isLoadingTermTypes,
   control,
 }) => {
-  const today = React.useMemo(() => startOfDay(new Date()), []);
+  // Past dates are intentionally allowed across every stage — MSA
+  // contracts can be backdated, and editing an in-flight MSA needs to
+  // keep the original past timeline. The chain still enforces order
+  // (stage N start >= stage N-1 end) but no longer floors at today.
   const clampMinDate = React.useCallback(
-    (d?: Date) => (d && d > today ? d : today),
-    [today],
+    (d?: Date) => (d instanceof Date && !Number.isNaN(d.getTime()) ? d : undefined),
+    [],
   );
   const { setValue } = useForgeValues({ control });
   const endDate = useWatch({ control, name: "endDate" });
@@ -118,7 +121,6 @@ const Step3Timeline: React.FC<Props> = ({
               label="Start Date"
               placeholder="Select start date"
               component={TextDatePicker}
-              minDate={today}
               maxDate={effectiveDate}
             />
             <Forger
