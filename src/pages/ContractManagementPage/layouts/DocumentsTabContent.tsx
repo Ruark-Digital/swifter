@@ -15,10 +15,13 @@ type Props = {
   contractId?: string;
   onUpdated?: (contract: ContractDetail) => void;
   effectiveDate?: string;
+  /** Contract status — drives whether documents are editable. The list
+   *  becomes read-only for any status other than `pending_approval`. */
+  status?: string;
   actionsDisabled?: boolean;
 };
 
-const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, effectiveDate, actionsDisabled }) => {
+const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, effectiveDate, status, actionsDisabled }) => {
   const [editingContractId, setEditingContractId] = React.useState<string | null>(null);
   const { success } = useToastHandler();
   const qc = useQueryClient();
@@ -47,7 +50,12 @@ const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, ef
 
       <DocumentsStatsCard count={files?.length ?? 0} />
 
-      <DocumentsList files={files} effectiveDate={effectiveDate} contractId={contractId} />
+      <DocumentsList
+        files={files}
+        effectiveDate={effectiveDate}
+        contractId={contractId}
+        status={status}
+      />
 
       {editingContractId !== null && (
         <EditContract

@@ -5,7 +5,7 @@ import { useForgeValues } from "@/lib/forge";
 import { CreateContractFormData } from "./CreateContractSheet";
 import { useWatch } from "react-hook-form";
 import { formatDateTZ } from "@/lib/utils";
-import { differenceInCalendarDays, startOfDay } from "date-fns";
+import { differenceInCalendarDays } from "date-fns";
 
 
 
@@ -15,10 +15,13 @@ type Props = {
 };
 
 const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
-  const today = React.useMemo(() => startOfDay(new Date()), []);
+  // Past dates are intentionally allowed across every stage — contracts
+  // can be backdated, and editing an in-flight contract needs to keep
+  // the original past timeline. The chain still enforces order
+  // (stage N start >= stage N-1 end) but no longer floors at today.
   const clampMinDate = React.useCallback(
-    (d?: Date) => (d && d > today ? d : today),
-    [today],
+    (d?: Date) => (d instanceof Date && !Number.isNaN(d.getTime()) ? d : undefined),
+    [],
   );
   const { setValue } = useForgeValues({ control });
   const endDate = useWatch({ control, name: "endDate" });
@@ -93,7 +96,6 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
                 label="Start Date"
                 component={TextDatePicker}
                 placeholder="Select Date"
-                minDate={today}
                 maxDate={effectiveDate}
               />
               <Forger

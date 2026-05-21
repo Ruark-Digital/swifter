@@ -123,6 +123,51 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
 
             {security === "yes" && (
               <>
+                <div className="md:col-span-2 space-y-2">
+                  <p className="text-sm font-medium text-slate-700">Amount</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Forger
+                      name="securityType"
+                      label="Security Type"
+                      placeholder="Enter Security"
+                      component={TextSelect}
+                      options={[
+                        {
+                          label: "Letter of Credit",
+                          value: "letter_of_credit",
+                        },
+                        { label: "Bank Guarantee", value: "bank_guarantee" },
+                        {
+                          label: "Performance Bond",
+                          value: "performance_bond",
+                        },
+                        {
+                          label: "Material Bond",
+                          value: "material_bond",
+                        },
+                        {
+                          label: "Labour Bond",
+                          value: "labour_bond",
+                        },
+                      ]}
+                    />
+                    <Forger
+                      name="securityAmount"
+                      label="Amount"
+                      placeholder="Enter Amount"
+                      component={TextCurrencyInput}
+                      currency={currency}
+                    />
+                    <Forger
+                      name="securityDueDate"
+                      label="Due Date"
+                      component={TextDatePicker}
+                      placeholder="Enter Date"
+                      minDate={today}
+                      containerClass="md:col-span-2"
+                    />
+                  </div>
+                </div>
                 {secFields.map((field, index) => (
                   <div key={field.id} className="md:col-span-2 space-y-2">
                     <div className="flex items-center justify-between">

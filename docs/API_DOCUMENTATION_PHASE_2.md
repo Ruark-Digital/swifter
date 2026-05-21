@@ -398,6 +398,15 @@ MSA (Master Services Agreement) contracts are umbrella contracts that can have l
 | `GET`  | `/manager/msa-contract/{contractId}/compliance`              | Get MSA contract compliance details           |
 | `POST` | `/manager/msa-contract/{contractId}/compliance/{type}/approve` | Approve or reject an MSA contract compliance item |
 
+#### Deliverables
+
+| Method | Path                                                                       | Description                       |
+| ------ | -------------------------------------------------------------------------- | --------------------------------- |
+| `GET`  | `/manager/msa-contract/{contractId}/deliverables/stats`                    | MSA deliverable statistics        |
+| `GET`  | `/manager/msa-contract/{contractId}/deliverables`                          | List MSA deliverables             |
+| `GET`  | `/manager/msa-contract/{contractId}/deliverables/{deliverableId}`          | Get MSA deliverable details       |
+| `POST` | `/manager/msa-contract/{contractId}/deliverables/{deliverableId}/approve`  | Approve or reject MSA deliverable |
+
 #### Invoices
 
 | Method | Path                                                     | Description                        |
@@ -1243,6 +1252,11 @@ Approvers have read/write access to sub-resources.
 | `POST` | `/approver/msa-contract/{contractId}/rfi/{rfiId}/comment/{commentId}/reply` | Reply to a contract RFI comment |
 | `POST` | `/approver/msa-contract/{dataId}/rfi`                      | Create a new RFI issue |
 | `POST` | `/approver/msa-contract/{dataId}/rfi/{rfiId}/response`     | Create RFI response |
+| `GET`  | `/approver/msa-contract/{contractId}/deliverables/stats`   | Get MSA deliverable statistics |
+| `GET`  | `/approver/msa-contract/{contractId}/deliverables`         | List MSA deliverables |
+| `GET`  | `/approver/msa-contract/{contractId}/deliverables/{deliverableId}` | Get MSA deliverable details |
+| `POST` | `/approver/msa-contract/{contractId}/deliverables/{deliverableId}/approve` | Approve or reject an MSA deliverable |
+| `GET`  | `/approver/msa-contract/{contractId}/deliverables/{deliverableId}/approve/status` | Check MSA deliverable approval status |
 
 ***
 
@@ -1497,6 +1511,10 @@ Vendors can create and manage their own activity on contracts.
 | `POST` | `/vendor/msa-contract/{contractId}/rfi/{rfiId}/comment/{commentId}/reply` | Reply to a contract RFI comment |
 | `POST` | `/vendor/msa-contract/{dataId}/rfi`                             | Create a new RFI issue |
 | `POST` | `/vendor/msa-contract/{dataId}/rfi/{rfiId}/response`            | Create RFI response |
+| `GET`  | `/vendor/msa-contract/{contractId}/deliverables/stats`          | Get MSA deliverable statistics |
+| `GET`  | `/vendor/msa-contract/{contractId}/deliverables`                | List MSA deliverables |
+| `GET`  | `/vendor/msa-contract/{contractId}/deliverables/{deliverableId}` | Get MSA deliverable details |
+| `POST` | `/vendor/msa-contract/{contractId}/deliverables/{deliverableId}/submit` | Submit a deliverable |
 
 ***
 
@@ -1558,7 +1576,7 @@ Read-only access to all sub-resources under `/user/...`.
 | `GET`  | `/user/contracts/{contractId}/deliverables`                          | List contract deliverables |
 | `GET`  | `/user/contracts/{contractId}/deliverables/stats`                    | Get contract deliverable statistics |
 | `GET`  | `/user/contracts/{contractId}/deliverables/{deliverableId}`          | Get contract deliverable details |
-| `GET`  | `/user/contracts/{contractId}/deliverables/{deliverableId}/approve/status` | Check manager approval status for a deliverable |
+| `GET`  | `/user/contract/{contractId}/personnel`                              | List personnel attached to the contract |
 | `GET`  | `/user/contracts/{contractId}/invoice`                               | List contract invoices |
 | `GET`  | `/user/contracts/{contractId}/invoice/stats`                         | Get contract invoice statistics |
 | `GET`  | `/user/contracts/{contractId}/invoice/{invoiceId}`                   | Get contract invoice details |
@@ -1600,6 +1618,9 @@ Read-only access to all sub-resources under `/user/...`.
 | `GET`  | `/user/msa-contract/{contractId}/rfi/stats`                          | Get MSA contract RFI statistics |
 | `GET`  | `/user/msa-contract/{contractId}/rfi/{rfiId}`                        | Get a specific RFI |
 | `GET`  | `/user/msa-contract/{contractId}/rfi/{rfiId}/comment`                | Get contract RFI comments |
+| `GET`  | `/user/msa-contract/{contractId}/deliverables/stats`                 | Get MSA deliverable statistics |
+| `GET`  | `/user/msa-contract/{contractId}/deliverables`                       | List MSA deliverables |
+| `GET`  | `/user/msa-contract/{contractId}/deliverables/{deliverableId}`       | Get MSA deliverable details |
 
 ***
 

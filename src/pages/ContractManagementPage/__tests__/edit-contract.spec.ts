@@ -73,14 +73,14 @@ test.describe("Edit Contract", () => {
               company: "company-1",
               project: { _id: "p1", name: "P1" },
               solicitation: "s1",
-              vendor: { _id: "v1", name: "Vendor" },
+              vendor: { _id: "507f1f77bcf86cd799439011", name: "Vendor" },
               vendorPersonnel: [],
               creator: { _id: "u1", name: "User", email: "u@e.com" },
               contractType: { _id: "type1", name: "Monthly" },
               contractTerm: "Fixed",
               internalTeam: [],
               managers: [],
-              businessDivision: "BD",
+              businessDivision: { _id: "bd1", name: "BD" },
               rating: 5,
               title: "Original Title",
               contractRelationship: "project",
@@ -99,8 +99,15 @@ test.describe("Edit Contract", () => {
               insurance: {
                 _id: "ins1",
                 contract: contractId,
-                contractSecurity: false,
-                contractSecurityType: [],
+                contractSecurity: true,
+                contractSecurityType: [
+                  {
+                    securityTypeId: "SC-001",
+                    securityType: "material_bond",
+                    amount: 600900,
+                    dueDate: new Date().toISOString(),
+                  },
+                ],
                 expiryDate: new Date().toISOString(),
                 policy: [],
                 __v: 0,
@@ -108,8 +115,23 @@ test.describe("Edit Contract", () => {
               startDate: new Date().toISOString(),
               endDate: new Date().toISOString(),
               duration: 30,
-              deliverables: [],
-              files: [],
+              deliverables: [
+                {
+                  _id: "d1",
+                  deliverableId: "DEL-001",
+                  name: "Cohibeo valeo absens apostolus bene.",
+                  dueDate: new Date().toISOString(),
+                  status: "pending",
+                },
+              ],
+              files: [
+                {
+                  name: "Form of Contract - Marked Up - AI.docx",
+                  url: "https://api.swiftpro.tech/api/v1/dev/upload/file-1779286774387-19190458/Form of Contract - Marked Up - AI.docx",
+                  type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                  size: 308234,
+                },
+              ],
               currentApprovalLevel: 0,
               approvers: [],
               status: "draft",
@@ -132,13 +154,14 @@ test.describe("Edit Contract", () => {
       const body = route.request().postDataJSON();
       expect(body.title).toBe("Edited Title");
       expect(body.contractRelationship).toBe("project");
-      expect(body.businessDivision).toBe("BD");
+      expect(body.businessDivision).toBe("bd1");
       expect(body.projectId).toBe("p1");
       expect(body.solicitationId).toBe("s1");
       expect(body.contractPaymentTerm).toBe("pt1");
       expect(body.paymentTerm).toBe("Net 30");
       expect(body.contractTermType).toBe("tt1");
       expect(body.termType).toBe("Fixed");
+      expect(body.files[0].size).toBe("308234");
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -185,6 +208,17 @@ test.describe("Edit Contract", () => {
         body: JSON.stringify({ status: 200, message: "ok", data: [] }),
       });
     });
+    await page.route("**/contract/manager/business-division**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: 200,
+          message: "ok",
+          data: { docs: [{ _id: "bd1", name: "BD", location: "HQ" }] },
+        }),
+      });
+    });
 
     await page.route("**/api/v1/**", async (route) => {
       const url = route.request().url();
@@ -195,6 +229,7 @@ test.describe("Edit Contract", () => {
         "/contract/manager/terms",
         "/contract/manager/personnel",
         "/contract/manager/awarded-solicitation",
+        "/contract/manager/business-division",
       ];
       if (passthrough.some((p) => url.includes(p))) {
         await route.fallback();
@@ -239,6 +274,18 @@ test.describe("Edit Contract", () => {
     await nameInput.fill("Edited Title");
     await expect(nameInput).toHaveValue("Edited Title");
     await sheet.getByRole("button", { name: "Continue" }).click();
+    await sheet.getByRole("button", { name: "Continue" }).click();
+    await sheet.getByRole("button", { name: "Continue" }).click();
+    await sheet.getByRole("button", { name: "Continue" }).click();
+    await expect(
+      sheet.getByText("Cohibeo valeo absens apostolus bene.").first(),
+    ).toBeVisible();
+    await sheet.getByRole("button", { name: "Continue" }).click();
+    await sheet.getByRole("button", { name: "Contract Security" }).click();
+    await expect(sheet.getByText("Material Bond").first()).toBeVisible();
+    await sheet.getByRole("button", { name: "Continue" }).click();
+    await expect(sheet.getByText("Upload Files")).toBeVisible();
+    expect(errors).toEqual([]);
     await sheet.getByRole("button", { name: "Save Changes" }).click();
     await putReq;
 

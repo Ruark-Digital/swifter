@@ -816,6 +816,20 @@ export const createContractManagerApi = (
       });
       return res as ApiResponse<ContractDetail>;
     },
+    /**
+     * Fetches the contract in edit-form shape — swagger 2.3.0 added
+     * `GET /manager/contracts/{contractId}/edit` which returns a fully
+     * populated record specifically meant for pre-filling the edit
+     * wizard. Use this from EditContract instead of the read-only
+     * detail endpoint above.
+     * x-roles: contract_manager, company_admin.
+     */
+    getContractForEdit: async (contractId: string) => {
+      const res = await client.get({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/edit`,
+      });
+      return res as ApiResponse<ContractDetail>;
+    },
     listContractApprovers: async (contractId: string) => {
       const res = await client.get({
         url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/approvers`,

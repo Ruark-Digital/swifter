@@ -100,15 +100,22 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
     };
   }, []);
 
+  // MSA-specific deliverable endpoints added in swagger v2.3.0 — same
+  // shape as contract deliverables (list / stats / detail / approve /
+  // submit) but live under `/msa-contract/...` not `/contracts/...`.
+  // DeliverablesTable interpolates `basePath` for every action, so swapping
+  // the prefix here routes the whole tab to the MSA endpoints.
   const basePath = React.useMemo(() => {
     if (!contractId) return "";
     if (isVendor || isProjectManager)
-      return `/contract/vendor/contracts/${contractId}/deliverables`;
-    if (isApprover) return `/contract/approver/contracts/${contractId}/deliverables`;
+      return `/contract/vendor/msa-contract/${contractId}/deliverables`;
+    if (isApprover)
+      return `/contract/approver/msa-contract/${contractId}/deliverables`;
     if (isManager || isCompanyAdminLike)
-      return `/contract/manager/contracts/${contractId}/deliverables`;
-    if (isViewOnly) return `/contract/user/contracts/${contractId}/deliverables`;
-    return `/contract/user/contracts/${contractId}/deliverables`;
+      return `/contract/manager/msa-contract/${contractId}/deliverables`;
+    if (isViewOnly)
+      return `/contract/user/msa-contract/${contractId}/deliverables`;
+    return `/contract/user/msa-contract/${contractId}/deliverables`;
   }, [
     contractId,
     isApprover,

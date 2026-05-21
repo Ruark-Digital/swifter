@@ -15,6 +15,9 @@ type DocumentsProps = {
   contractId: string;
   files?: ContractFile[];
   isActive?: boolean;
+  /** MSA status — read-only documents for anything other than
+   *  `pending_approval`. Comes from the parent `MsaDetailPage`. */
+  status?: string;
 };
 
 type MsaDetailsApiResponse = {
@@ -23,6 +26,7 @@ type MsaDetailsApiResponse = {
     files?: ContractFile[];
     createdAt?: string;
     startDate?: string;
+    status?: string;
   };
 };
 
@@ -30,6 +34,7 @@ const Documents: React.FC<DocumentsProps> = ({
   contractId,
   files,
   isActive,
+  status,
 }) => {
   const { isVendor, isProjectManager, isApprover, isViewOnly, isManager } =
     useUserRole();
@@ -114,7 +119,12 @@ const Documents: React.FC<DocumentsProps> = ({
 
       <DocumentsStatsCard count={resolvedFiles.length} />
 
-      <DocumentsList files={resolvedFiles} effectiveDate={effectiveDate} contractId={contractId} />
+      <DocumentsList
+        files={resolvedFiles}
+        effectiveDate={effectiveDate}
+        contractId={contractId}
+        status={status ?? documentsResponse?.data?.status}
+      />
     </TabsContent>
   );
 };
