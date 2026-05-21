@@ -316,7 +316,7 @@ export const CreateAmendmentDialog: React.FC<{
         <DialogTrigger asChild>{trigger}</DialogTrigger>
         <DialogContent
           showCloseButton={false}
-          className="max-h-[90vh] w-full gap-0 overflow-hidden rounded-2xl border-0 p-0"
+          className="max-h-[90vh] w-full max-w-2xl gap-0 overflow-hidden rounded-2xl border-0 p-0"
         >
           <Forge
             control={control}
@@ -495,7 +495,7 @@ export const CreateAmendmentDialog: React.FC<{
                     <Forger
                       name="newExpiryDate"
                       placeholder="Enter Date"
-                      component={TextInput}
+                      component={TextDatePicker}
                       disabled={!expiryEnabled}
                     />
                   </div>
@@ -525,7 +525,7 @@ export const CreateAmendmentDialog: React.FC<{
                     <Forger
                       name="otherCost"
                       placeholder="Enter Amount"
-                      component={TextInput}
+                      component={TextCurrencyInput}
                       disabled={!costEnabled}
                     />
                   </div>
