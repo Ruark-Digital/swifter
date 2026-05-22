@@ -45,6 +45,7 @@ import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
 import { formatDate } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import Spinner from "@/components/ui/Spinner";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
@@ -360,16 +361,26 @@ const SubmitRateSheetDialog: React.FC<{
               type="button"
               onClick={() => setOpen(false)}
               disabled={isSubmitting}
-              className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-3.5 text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 shadow-sm hover:bg-[#E5E7EB] dark:hover:bg-slate-700"
+              className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-3.5 text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 shadow-sm hover:bg-[#E5E7EB] dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Back
             </button>
             <button
               type="submit"
-              disabled={isPending || submitMutation.isPending}
-              className="flex-1 rounded-xl bg-[#2A4467] py-3.5 text-base font-semibold text-white shadow-sm hover:bg-[#1e3a5f]"
+              disabled={isSubmitting}
+              aria-busy={isSubmitting}
+              className="flex-1 rounded-xl bg-[#2A4467] py-3.5 text-base font-semibold text-white shadow-sm hover:bg-[#1e3a5f] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Submit Rate Sheet
+              {isSubmitting ? (
+                <div className="flex items-center justify-center gap-2">
+                  <Spinner className="h-5 w-5 text-white" />
+                  <span>
+                    {isPending ? "Uploading files…" : "Submitting…"}
+                  </span>
+                </div>
+              ) : (
+                "Submit Rate Sheet"
+              )}
             </button>
           </div>
         </Forge>
