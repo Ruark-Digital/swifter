@@ -482,15 +482,24 @@ const UploadElement = () => {
   );
 };
 
-const FilesListItem = ({
-  file,
-  value,
-  onChange,
-}: {
-  file: File;
-  value: File[];
-  onChange: (name: string, files: File[]) => void;
-}) => {
+const FilesListItem = ({ file, index }: { file: File; index?: number }) => {
+  // TextFileUploader calls List with { file, control, index } — not
+  // value/onChange — so the previous remove handler silently no-op'd.
+  // Pull the live files array off form context, splice by index, and
+  // write back. Index is more reliable than name because dropzone
+  // allows duplicates and a name-match would remove both rows.
+  const { setValue } = useFormContext<{ files: File[] | null }>();
+  const value = useWatch({ name: "files" }) as File[] | null | undefined;
+
+  const handleRemove = () => {
+    if (typeof index !== "number") return;
+    const next = (value ?? []).filter((_, i) => i !== index);
+    setValue("files", next.length > 0 ? next : null, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
   return (
     <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
       <div className="flex items-center gap-3">
@@ -509,12 +518,7 @@ const FilesListItem = ({
       </div>
       <button
         type="button"
-        onClick={() =>
-          onChange(
-            "files",
-            (value ?? []).filter((f) => f.name !== file.name),
-          )
-        }
+        onClick={handleRemove}
         className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] dark:text-slate-400 hover:text-red-500 transition-colors"
       >
         <X className="h-4 w-4" />
