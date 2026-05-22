@@ -140,12 +140,12 @@ type FooterProps = {
 
 const Footer = React.memo(
   ({ onBack, primaryLabel, onPrimary, isSubmitting }: FooterProps) => (
-    <div className="sticky bottom-0 left-0 right-0 z-10 bg-white px-2 py-6 border-t border-[#E5E7EB]">
+    <div className="sticky bottom-0 left-0 right-0 z-10 bg-white dark:bg-slate-900 px-2 py-6 border-t border-[#E5E7EB] dark:border-slate-700">
       <div className="flex items-center gap-4">
         <button
           type="button"
           onClick={onBack}
-          className="h-12 flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F]"
+          className="h-12 flex-1 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F3F4F6] dark:bg-slate-800 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
         >
           Back
         </button>
@@ -180,40 +180,40 @@ const InvoiceInputRow = ({
       key={id}
       className="px-6 py-3 grid grid-cols-[40px_1fr_1fr_100px_160px_120px_120px_100px] gap-4 items-center"
     >
-      <div className="text-sm text-[#6B7280]">{index + 1}</div>
+      <div className="text-sm text-[#6B7280] dark:text-slate-400">{index + 1}</div>
       <Forger
         name={`items.${index}.itemComponent`}
         component="input"
         type="text"
-        className="h-10 rounded-lg border border-[#E5E7EB] px-3 text-sm"
+        className="h-10 rounded-lg border border-[#E5E7EB] dark:border-slate-700 px-3 text-sm dark:bg-slate-800 dark:text-slate-100"
         placeholder="Item 2"
       />
       <Forger
         name={`items.${index}.description`}
         component="input"
         type="text"
-        className="h-10 rounded-lg border border-[#E5E7EB] px-3 text-sm"
+        className="h-10 rounded-lg border border-[#E5E7EB] dark:border-slate-700 px-3 text-sm dark:bg-slate-800 dark:text-slate-100"
         placeholder="Long Input"
       />
       <Forger
         name={`items.${index}.quantity`}
         component="input"
         type="text"
-        className="h-10 rounded-lg border border-[#E5E7EB] px-3 text-sm"
+        className="h-10 rounded-lg border border-[#E5E7EB] dark:border-slate-700 px-3 text-sm dark:bg-slate-800 dark:text-slate-100"
         placeholder="Enter Value"
       />
       <Forger
         name={`items.${index}.unitMeasurement`}
         component="input"
         type="text"
-        className="h-10 rounded-lg border border-[#E5E7EB] px-3 text-sm"
+        className="h-10 rounded-lg border border-[#E5E7EB] dark:border-slate-700 px-3 text-sm dark:bg-slate-800 dark:text-slate-100"
         placeholder="Enter Value"
       />
       <Forger
         name={`items.${index}.unitPrice`}
         component="input"
         type="text"
-        className="h-10 rounded-lg border border-[#E5E7EB] px-3 text-sm"
+        className="h-10 rounded-lg border border-[#E5E7EB] dark:border-slate-700 px-3 text-sm dark:bg-slate-800 dark:text-slate-100"
         placeholder="Enter Value"
       />
       <Forger
@@ -221,7 +221,7 @@ const InvoiceInputRow = ({
         component="input"
         type="text"
         readOnly
-        className="h-10 rounded-lg border border-[#E5E7EB] px-3 text-sm text-slate-500"
+        className="h-10 rounded-lg border border-[#E5E7EB] dark:border-slate-700 px-3 text-sm text-slate-500 dark:text-slate-400 dark:bg-slate-800"
         placeholder="Subtotal"
       />
 
@@ -229,7 +229,7 @@ const InvoiceInputRow = ({
         <button
           type="button"
           onClick={onAddRow}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E7EB] text-[#6B7280]"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E7EB] dark:border-slate-700 text-[#6B7280] dark:text-slate-400"
         >
           <Plus className="h-4 w-4" />
         </button>
@@ -237,7 +237,7 @@ const InvoiceInputRow = ({
           <button
             type="button"
             onClick={() => onRemoveRow(index)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E7EB] text-[#EF4444]"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E7EB] dark:border-slate-700 text-[#EF4444]"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -331,14 +331,14 @@ const CompleteInvoiceDialog = React.memo(
         <DialogTrigger asChild>{trigger}</DialogTrigger>
         <DialogContent className="sm:max-w-7xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
           <div className="flex items-center justify-between px-8 pt-8">
-            <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
+            <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
               Complete Invoice
             </DialogTitle>
           </div>
           <div className="px-8 pb-8 pt-6">
-            <div className="overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white">
-              <div className="flex items-center justify-between border-b border-[#E5E7EB] px-6 py-4">
-                <div className="text-sm font-semibold text-[#6B7280] grid grid-cols-[40px_1fr_1fr_100px_160px_120px_120px_100px] gap-4 w-full">
+            <div className="overflow-hidden rounded-2xl border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-900">
+              <div className="flex items-center justify-between border-b border-[#E5E7EB] dark:border-slate-700 px-6 py-4">
+                <div className="text-sm font-semibold text-[#6B7280] dark:text-slate-400 grid grid-cols-[40px_1fr_1fr_100px_160px_120px_120px_100px] gap-4 w-full">
                   <span>#</span>
                   <span>Item/Component</span>
                   <span>Description</span>
@@ -350,7 +350,7 @@ const CompleteInvoiceDialog = React.memo(
                 </div>
               </div>
 
-              <div className="divide-y divide-[#E5E7EB]">
+              <div className="divide-y divide-[#E5E7EB] dark:divide-slate-700">
                 {fields.map((field, index) => (
                   <InvoiceInputRow
                     {...{
@@ -364,17 +364,17 @@ const CompleteInvoiceDialog = React.memo(
               </div>
 
               {/* Total */}
-              <div className="flex items-center justify-between border-t border-[#E5E7EB] px-6 py-4">
+              <div className="flex items-center justify-between border-t border-[#E5E7EB] dark:border-slate-700 px-6 py-4">
                 <button
                   type="button"
                   onClick={handleAddRow}
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-[#2A4467]"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-[#2A4467] dark:text-blue-300"
                 >
                   <Plus className="h-4 w-4" /> Add More
                 </button>
                 <div className="flex items-center gap-6">
-                  <span className="text-sm text-[#6B7280]">Total</span>
-                  <span className="text-base font-semibold text-[#0F0F0F]">
+                  <span className="text-sm text-[#6B7280] dark:text-slate-400">Total</span>
+                  <span className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                     {new Intl.NumberFormat("en-US", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
@@ -385,12 +385,12 @@ const CompleteInvoiceDialog = React.memo(
             </div>
 
             {/* Button Footer */}
-            <div className="sticky bottom-0 left-0 right-0 z-10 bg-white px-0 py-6">
+            <div className="sticky bottom-0 left-0 right-0 z-10 bg-white dark:bg-slate-900 px-0 py-6">
               <div className="flex items-center justify-end gap-4">
                 <button
                   type="button"
                   onClick={() => onOpenChange(false)}
-                  className="h-12 px-12 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F]"
+                  className="h-12 px-12 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F3F4F6] dark:bg-slate-800 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
                 >
                   Back
                 </button>
@@ -452,11 +452,15 @@ function RadioGroupDemo({
     >
       <div className="flex items-center gap-3">
         <RadioGroupItem value="manual" id="r1" />
-        <Label htmlFor="r1">Manual</Label>
+        <Label htmlFor="r1" className="text-[#0F0F0F] dark:text-slate-100">
+          Manual
+        </Label>
       </div>
       <div className="flex items-center gap-3">
         <RadioGroupItem value="file" id="r2" />
-        <Label htmlFor="r2">Upload File</Label>
+        <Label htmlFor="r2" className="text-[#0F0F0F] dark:text-slate-100">
+          Upload File
+        </Label>
       </div>
     </RadioGroup>
   );
@@ -464,13 +468,13 @@ function RadioGroupDemo({
 
 const UploadElement = () => {
   return (
-    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] bg-white px-4">
-      <UploadCloud className="h-10 w-10 text-[#2A4467]" />
+    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] dark:border-slate-600 bg-white dark:bg-slate-800 px-4">
+      <UploadCloud className="h-10 w-10 text-[#2A4467] dark:text-blue-300" />
       <div className="flex flex-col items-center gap-1 text-center">
-        <div className="text-sm font-semibold text-[#2A4467]">
+        <div className="text-sm font-semibold text-[#2A4467] dark:text-blue-300">
           Drag &amp; Drop or Click to choose files
         </div>
-        <div className="text-xs font-medium text-[#9CA3AF]">
+        <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
           Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
         </div>
       </div>
@@ -488,16 +492,16 @@ const FilesListItem = ({
   onChange: (name: string, files: File[]) => void;
 }) => {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-3">
+    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB]">
-          <FileText className="h-5 w-5 text-[#2A4467]" />
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
+          <FileText className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium max-w-xs text-[#0F0F0F]">
+          <div className="truncate text-sm font-medium max-w-xs text-[#0F0F0F] dark:text-slate-100">
             {file.name}
           </div>
-          <div className="text-xs font-medium text-[#9CA3AF]">
+          <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
             {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
             {formatFileSize(file.size)}
           </div>
@@ -511,7 +515,7 @@ const FilesListItem = ({
             (value ?? []).filter((f) => f.name !== file.name),
           )
         }
-        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] hover:text-red-500 transition-colors"
+        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] dark:text-slate-400 hover:text-red-500 transition-colors"
       >
         <X className="h-4 w-4" />
       </button>
@@ -548,10 +552,10 @@ const InvoiceComponent = ({
   ) : (
     <button
       type="button"
-      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#E5E7EB] py-3.5"
+      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-700 py-3.5"
     >
-      <Plus className="h-4 w-4 text-[#2A4467]" />
-      <span className="text-[#2A4467] text-base font-semibold">
+      <Plus className="h-4 w-4 text-[#2A4467] dark:text-blue-300" />
+      <span className="text-[#2A4467] dark:text-blue-300 text-base font-semibold">
         Create Invoice
       </span>
     </button>
@@ -1003,7 +1007,7 @@ const CreateInvoiceDialog: React.FC<Props> = ({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-4 pt-8">
-          <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
+          <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
             {isEditMode ? "Edit Invoice" : "Create Invoice"}
           </DialogTitle>
         </div>

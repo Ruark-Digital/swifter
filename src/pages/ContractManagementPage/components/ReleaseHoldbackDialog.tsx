@@ -45,13 +45,13 @@ type ReleaseHoldbackDialogProps = {
 
 const UploadElement = () => {
   return (
-    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] bg-white px-4">
-      <UploadCloud className="h-10 w-10 text-[#2A4467]" />
+    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] dark:border-slate-600 bg-white dark:bg-slate-800 px-4">
+      <UploadCloud className="h-10 w-10 text-[#2A4467] dark:text-blue-300" />
       <div className="flex flex-col items-center gap-1 text-center">
-        <div className="text-sm font-semibold text-[#2A4467]">
+        <div className="text-sm font-semibold text-[#2A4467] dark:text-blue-300">
           Drag &amp; Drop or Click to choose files
         </div>
-        <div className="text-xs font-medium text-[#9CA3AF]">
+        <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
           Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
         </div>
       </div>
@@ -63,14 +63,14 @@ const FilesListItem = ({ file }: { file: File }) => {
   const { control, setValue } = useFormContext<ReleaseHoldbackFormValues>();
   const value = useWatch({ control, name: "files" });
   return (
-    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-3">
+    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB]">
-          <FileText className="h-5 w-5 text-[#2A4467]" />
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
+          <FileText className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium text-[#0F0F0F]">{file.name}</div>
-          <div className="text-xs font-medium text-[#9CA3AF]">
+          <div className="truncate text-sm font-medium text-[#0F0F0F] dark:text-slate-100">{file.name}</div>
+          <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
             {getSimpleFileExtension(file.name).toUpperCase()} • {formatFileSize(file.size)}
           </div>
         </div>
@@ -78,7 +78,7 @@ const FilesListItem = ({ file }: { file: File }) => {
       <button
         type="button"
         onClick={() => setValue("files", (value ?? []).filter((f) => f.name !== file.name))}
-        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] hover:text-red-500 transition-colors"
+        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] dark:text-slate-400 hover:text-red-500 transition-colors"
       >
         <X className="h-4 w-4" />
       </button>
@@ -231,8 +231,8 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="h-[80vh] overflow-auto gap-0 border-0 p-0 ">
         <Forge control={control} onSubmit={onSubmit} className="flex flex-col">
-          <div className="flex items-center justify-between border-b border-[#E5E7EB] px-6 py-5">
-            <h2 className="text-xl font-semibold text-[#111827]">Release Holdback</h2>
+          <div className="flex items-center justify-between border-b border-[#E5E7EB] dark:border-slate-700 px-6 py-5">
+            <h2 className="text-xl font-semibold text-[#111827] dark:text-slate-100">Release Holdback</h2>
           </div>
 
           <div className="flex flex-col gap-6 px-6 py-6">
@@ -273,7 +273,7 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
             />
 
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-[#374151]">Upload Files</label>
+              <label className="text-sm font-medium text-[#374151] dark:text-slate-300">Upload Files</label>
               <Forger
                 name="files"
                 component={TextFileUploader}
@@ -297,12 +297,12 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 border-t border-[#E5E7EB] px-6 py-5">
+          <div className="flex items-center justify-end gap-3 border-t border-[#E5E7EB] dark:border-slate-700 px-6 py-5">
             <button
               type="button"
               onClick={() => setOpen(false)}
               disabled={isSubmitting}
-              className="rounded-xl border border-[#E5E7EB] bg-white px-5 py-2.5 text-sm font-semibold text-[#374151] shadow-sm hover:bg-[#F9FAFB] disabled:opacity-50"
+              className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-2.5 text-sm font-semibold text-[#374151] dark:text-slate-300 shadow-sm hover:bg-[#F9FAFB] dark:hover:bg-slate-700 disabled:opacity-50"
             >
               Back
             </button>
