@@ -738,7 +738,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
         <div className="flex items-center gap-6">
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] px-[15px] py-2 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-700 px-[15px] py-2 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
           >
             <img
               src="/assets/contract-management/payment-summary/share.svg"
@@ -754,7 +754,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
                 trigger={
                   <button
                     type="button"
-                    className="inline-flex items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] px-[15px] py-2 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+                    className="inline-flex items-center justify-center rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F3F4F6] dark:bg-slate-800 px-[15px] py-2 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
                   >
                     Update Savings
                   </button>
@@ -778,7 +778,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
       </div>
 
       {(holdbacksLoading || savingsLoading) && (
-        <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
+        <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800/60 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
           Loading payment dataâ€¦
         </div>
       )}
@@ -855,7 +855,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
         defaultValue="milestones"
         className="w-full bg-transparent space-y-8"
       >
-        <TabsList className="bg-[#F3F4F6] p-2 h-fit rounded-full w-fit">
+        <TabsList className="bg-[#F3F4F6] dark:bg-slate-800 p-2 h-fit rounded-full w-fit">
           <TabsTrigger
             value="milestones"
             className="rounded-full px-6 py-1.5 text-base font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
@@ -893,7 +893,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
             !savingsLoading &&
             isContractVendorLike &&
             milestoneRows.length === 0 && (
-              <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800/60 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
                 No milestones found.
               </div>
             )}
@@ -915,7 +915,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
           {!holdbacksLoading &&
             isContractVendorLike &&
             holdbackRows.length === 0 && (
-              <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800/60 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
                 No holdback releases available.
               </div>
             )}
@@ -936,7 +936,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
               ]}
             />
             {!savingsLoading && savingsRows.length === 0 && (
-              <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800/60 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
                 No savings records found.
               </div>
             )}

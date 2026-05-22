@@ -673,7 +673,7 @@ const columns: ColumnDef<DeliverableRow>[] = [
     accessorKey: "title",
     header: "Deliverable Title",
     cell: ({ getValue }) => (
-      <div className="max-w-[260px] text-sm text-slate-700">
+      <div className="max-w-[260px] text-sm text-slate-700 dark:text-slate-300">
         {getValue<string>()}
       </div>
     ),
@@ -682,10 +682,10 @@ const columns: ColumnDef<DeliverableRow>[] = [
     id: "date",
     header: "Date",
     cell: ({ row }) => (
-      <div className="space-y-1 text-xs text-slate-600">
+      <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
         <p>
-          <span className="text-slate-500">Due Date:&nbsp;</span>
-          <span className="text-slate-900">
+          <span className="text-slate-500 dark:text-slate-400">Due Date:&nbsp;</span>
+          <span className="text-slate-900 dark:text-slate-100">
             {row.original.dueDate
               ? formatDate(row.original.dueDate ?? "", "yyyy MMM dd")
               : "-"}
@@ -705,7 +705,7 @@ const columns: ColumnDef<DeliverableRow>[] = [
     accessorKey: "kpi",
     header: "KPI",
     cell: ({ row }) => (
-      <div className="text-sm text-slate-700">{row.original.kpi?.kpiText ?? "-"}</div>
+      <div className="text-sm text-slate-700 dark:text-slate-300">{row.original.kpi?.kpiText ?? "-"}</div>
     ),
   },
   {

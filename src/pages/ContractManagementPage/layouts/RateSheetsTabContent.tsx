@@ -1091,7 +1091,7 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         data={filtered}
         columns={columns}
         header={() => (
-          <div className="flex items-center gap-3 border-b w-full border-[#E5E7EB] px-5 py-4">
+          <div className="flex items-center gap-3 border-b w-full border-[#E5E7EB] dark:border-slate-700 px-5 py-4">
             <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
               Rate Sheets
             </span>
@@ -1116,11 +1116,11 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
           isLoading: !!isLoading,
         }}
         classNames={{
-          container: "border border-[#E5E7EB] rounded-xl bg-white",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
+          container: "border border-[#E5E7EB] dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-700",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-700",
           tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500",
           tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-300 align-top",
         }}

@@ -54,8 +54,8 @@ const LabelRow = ({
   value: React.ReactNode;
 }) => (
   <div className="space-y-2">
-    <div className="text-xs font-medium text-[#9CA3AF]">{label}</div>
-    <div className="text-sm font-medium text-[#111827]">{value}</div>
+    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">{label}</div>
+    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
 
@@ -147,11 +147,11 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] dark:border-slate-700 text-[#111827] dark:text-slate-100"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Approval Scorecard
                 </SheetTitle>
               </div>
@@ -168,12 +168,12 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
 
           <div className="space-y-6">
             <div className="flex items-start justify-between">
-              <div className="text-base font-semibold text-[#0F0F0F]">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Approver Details
               </div>
               <Button
                 variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
+                className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
               >
                 <Share2 className="mr-2 h-4 w-4" /> Export
               </Button>
@@ -207,7 +207,7 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
             </div>
 
             <div className="space-y-2">
-              <div className="text-xs font-medium text-[#9CA3AF]">Status</div>
+              <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">Status</div>
               <div
                 className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusTone}`}
               >
@@ -216,7 +216,7 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
             </div>
 
             <div className="space-y-4">
-              <div className="text-base font-semibold text-[#0F0F0F]">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Approval Status
               </div>
               <Accordion type="single" collapsible className="space-y-4">
@@ -233,9 +233,9 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
                         detail.title ??
                         "approval"
                       }
-                      className="rounded-xl border border-[#E5E7EB] px-4"
+                      className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 px-4"
                     >
-                      <AccordionTrigger className="py-4 text-sm font-semibold text-[#0F0F0F] hover:no-underline">
+                      <AccordionTrigger className="py-4 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100 hover:no-underline">
                         {formatActionTitle(detail.title)}
                       </AccordionTrigger>
                       <AccordionContent className="space-y-4">
@@ -244,10 +244,10 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
                           value={formatActionStatus(detail.status)}
                         />
                         <div className="space-y-2">
-                          <div className="text-xs font-medium text-[#9CA3AF]">
+                          <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                             Comments
                           </div>
-                          <div className="text-sm text-[#374151]">
+                          <div className="text-sm text-[#374151] dark:text-slate-300">
                             {detail.comment || "N/A"}
                           </div>
                         </div>
@@ -261,7 +261,7 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
                     </AccordionItem>
                   ))
                 ) : (
-                  <div className="rounded-xl border border-dashed border-[#E5E7EB] px-4 py-6 text-sm text-[#6B7280]">
+                  <div className="rounded-xl border border-dashed border-[#E5E7EB] dark:border-slate-700 px-4 py-6 text-sm text-[#6B7280] dark:text-slate-400">
                     No approval actions available.
                   </div>
                 )}

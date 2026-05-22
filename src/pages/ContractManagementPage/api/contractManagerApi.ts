@@ -1087,9 +1087,9 @@ export const createContractManagerApi = (
         data?: { invoices?: ContractInvoiceDTO[]; total?: number };
       };
     },
-    getInvoiceDetail: async (invoiceId: string) => {
+    getInvoiceDetail: async (contractId: string, invoiceId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/invoice/${invoiceId}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/invoice/${invoiceId}`,
       });
       return res.data as { message?: string; data?: ContractInvoiceDTO };
     },

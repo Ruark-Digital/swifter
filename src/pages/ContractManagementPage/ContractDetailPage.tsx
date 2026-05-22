@@ -57,25 +57,25 @@ import { cn } from "@/lib/utils";
 
 const formatContractStatus = (status?: ContractDetail["status"]) => {
   if (status === "active")
-    return { label: "Active", className: "bg-green-100 text-green-700" };
+    return { label: "Active", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" };
   if (status === "publish")
-    return { label: "Published", className: "bg-green-100 text-green-700" };
+    return { label: "Published", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" };
   if (status === "draft")
-    return { label: "Draft", className: "bg-slate-100 text-slate-700" };
+    return { label: "Draft", className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" };
   if (status === "pending_approval")
     return {
       label: "Pending Approval",
-      className: "bg-yellow-100 text-yellow-700",
+      className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
     };
   if (status === "completed")
-    return { label: "Completed", className: "bg-blue-100 text-blue-700" };
+    return { label: "Completed", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" };
   if (status === "cancelled")
-    return { label: "Cancelled", className: "bg-red-100 text-red-700" };
+    return { label: "Cancelled", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" };
   if (status === "expired")
-    return { label: "Expired", className: "bg-orange-100 text-orange-700" };
+    return { label: "Expired", className: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" };
   if (status === "terminated")
-    return { label: "Terminated", className: "bg-red-100 text-red-700" };
-  return { label: "Unknown", className: "bg-slate-100 text-slate-700" };
+    return { label: "Terminated", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" };
+  return { label: "Unknown", className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" };
 };
 
 type TabKey =
