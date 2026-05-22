@@ -794,11 +794,11 @@ const AmendmentsTabContent: React.FC<Props> = ({
   return (
     <TabsContent value="amendments" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-semibold text-[#0F0F0F]">Amendments</h3>
+        <h3 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">Amendments</h3>
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
-            className="rounded-xl border-[#E5E7EB] px-4 text-base font-semibold text-[#0F0F0F]"
+            className="rounded-xl border-[#E5E7EB] dark:border-slate-700 px-4 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
           >
             <img
               src="/assets/contract-management/amendments/share.svg"

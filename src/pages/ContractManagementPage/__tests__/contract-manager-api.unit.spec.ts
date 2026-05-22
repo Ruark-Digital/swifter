@@ -278,9 +278,9 @@ test.describe("contractManagerApi (unit)", () => {
       config: { params: { invoiceId: "inv", page: 2, limit: 20 } },
     });
 
-    await api.getInvoiceDetail("inv1");
+    await api.getInvoiceDetail("c5", "inv1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/invoice/inv1",
+      url: "/contract/manager/contracts/c5/invoice/inv1",
     });
 
     await api.getAmendmentStats("c6");

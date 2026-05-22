@@ -48,8 +48,8 @@ const LabelRow = ({
   value: React.ReactNode;
 }) => (
   <div className="space-y-2">
-    <div className="text-xs font-medium text-[#9CA3AF]">{label}</div>
-    <div className="text-sm font-medium text-[#111827]">{value}</div>
+    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">{label}</div>
+    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
 
@@ -62,13 +62,13 @@ const DocCard = ({
   type: string;
   size: string;
 }) => (
-  <div className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-white p-3">
-    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EEF2FF] text-xs font-semibold text-[#3B82F6]">
+  <div className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-900 p-3">
+    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EEF2FF] dark:bg-slate-800 text-xs font-semibold text-[#3B82F6] dark:text-blue-400">
       {getFileIcon(type)}
     </div>
     <div className="flex-1">
-      <div className="text-sm font-medium text-[#111827]">{name}</div>
-      <div className="text-xs text-[#9CA3AF]">
+      <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{name}</div>
+      <div className="text-xs text-[#9CA3AF] dark:text-slate-400">
         {type} • {size}
       </div>
     </div>
@@ -125,11 +125,11 @@ const ReportDetailsSheet: React.FC<{
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] dark:border-slate-700 text-[#111827] dark:text-slate-100"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Report Details
                 </SheetTitle>
               </div>
@@ -146,19 +146,19 @@ const ReportDetailsSheet: React.FC<{
 
           <div className="space-y-6">
             <div className="flex items-start justify-between">
-              <div className="text-base font-semibold text-[#0F0F0F]">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Additional structural reinforcement
               </div>
               <Button
                 variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
+                className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
               >
                 <Share2 className="mr-2 h-4 w-4" /> Export
               </Button>
             </div>
 
             <Tabs defaultValue="overview" className="space-y-6">
-              <TabsList className="h-auto w-full justify-start gap-6 rounded-none border-b border-[#E5E7EB] bg-transparent p-0">
+              <TabsList className="h-auto w-full justify-start gap-6 rounded-none border-b border-[#E5E7EB] dark:border-slate-700 bg-transparent p-0">
                 <TabsTrigger
                   value="overview"
                   className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
@@ -240,10 +240,10 @@ const ReportDetailsSheet: React.FC<{
 
                     {reportDetails.description && (
                       <div className="space-y-2">
-                        <div className="text-xs font-medium text-[#9CA3AF]">
+                        <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                           Description
                         </div>
-                        <div className="text-sm text-[#374151]">
+                        <div className="text-sm text-[#374151] dark:text-slate-300">
                           {reportDetails.description}
                         </div>
                       </div>
@@ -251,7 +251,7 @@ const ReportDetailsSheet: React.FC<{
 
                     {reportDetails.files && reportDetails.files.length > 0 && (
                       <div className="space-y-3">
-                        <div className="text-base font-semibold text-[#0F0F0F]">
+                        <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                           Attached Documents
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
@@ -277,7 +277,7 @@ const ReportDetailsSheet: React.FC<{
               </TabsContent>
 
               <TabsContent value="comments" className="space-y-4">
-                <div className="rounded-xl border border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+                <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
                   No comments available.
                 </div>
               </TabsContent>
@@ -412,7 +412,7 @@ function VendorReportsTabContent({
   return (
     <TabsContent value="reports" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-900">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
           Vendor’s Reports
         </h2>
         {isContractVendorLike && (
@@ -444,23 +444,23 @@ function VendorReportsTabContent({
         )}
       </div>
 
-      <Card className="w-[320px] rounded-xl border border-slate-200 bg-white p-5 shadow-none">
+      <Card className="w-[320px] rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-none">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
-            <div className="text-xs text-slate-500">All Report</div>
-            <div className="text-lg font-semibold text-slate-900">
+            <div className="text-xs text-slate-500 dark:text-slate-400">All Report</div>
+            <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
               {statsLoading ? "—" : (reportsStats?.total ?? rows.length)}
             </div>
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
-            <FileText className="h-5 w-5 text-slate-700" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+            <FileText className="h-5 w-5 text-slate-700 dark:text-slate-300" />
           </div>
         </div>
       </Card>
 
-      <Card className="overflow-hidden rounded-xl">
-        <div className="flex items-center gap-6 border-b border-slate-200 px-6 py-4">
-          <div className="text-sm font-medium text-slate-900">Reports</div>
+      <Card className="overflow-hidden rounded-xl dark:bg-slate-900 dark:border-slate-700">
+        <div className="flex items-center gap-6 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">Reports</div>
 
           <div className="relative w-full max-w-[320px]">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -499,9 +499,9 @@ function VendorReportsTabContent({
                 container: "[&>div:last-child]:hidden",
                 table: "border-collapse border-spacing-0",
                 tHeader: "bg-transparent",
-                tHeadRow: "bg-white",
-                tHead: "text-[#2A4467] font-medium",
-                tCell: "p-4 text-slate-700",
+                tHeadRow: "bg-white dark:bg-slate-900",
+                tHead: "text-[#2A4467] dark:text-slate-200 font-medium",
+                tCell: "p-4 text-slate-700 dark:text-slate-300",
               }}
               options={{
                 disablePagination: true,

@@ -56,12 +56,12 @@ const ProjectsTable: React.FC<Props> = ({
             <a
               href={`/dashboard/project-management/${row.original.id ?? ""}`}
               data-testid="project-name-link"
-              className="font-medium text-slate-900 underline-offset-2 hover:underline"
+              className="font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
             >
               {row.original.name ?? ""}
             </a>
             {row.original.code && (
-              <span className="text-xs text-slate-500">{row.original.code}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{row.original.code}</span>
             )}
           </div>
         ),
@@ -73,7 +73,7 @@ const ProjectsTable: React.FC<Props> = ({
         id: "date",
         header: "Date",
         cell: ({ row }) => (
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
             {row.original.startDate && (
               <div>
                 Start Date:{" "}
@@ -149,14 +149,14 @@ const ProjectsTable: React.FC<Props> = ({
         classNames={{
           container:
             "bg-white dark:bg-slate-950 rounded-xl px-3 border border-gray-300 dark:border-slate-600",
-          tHeadRow: "bg-gray-300",
+          tHeadRow: "bg-gray-300 dark:bg-slate-800",
         }}
         data={filtered}
         columns={columns}
         options={{ disableSelection: true }}
         emptyPlaceholder={
           <div className="p-10 text-center">
-            <div data-testid="empty-state" className="text-slate-600">
+            <div data-testid="empty-state" className="text-slate-600 dark:text-slate-400">
               No projects found
             </div>
           </div>
