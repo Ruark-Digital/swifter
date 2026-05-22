@@ -152,7 +152,7 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="right"
-        className="right-4 top-4 bottom-4 h-[calc(100vh-30px)] sm:max-w-4xl p-0 rounded-2xl border border-[#E5E7EB] overflow-hidden [&>button]:hidden"
+        className="right-4 top-4 bottom-4 h-[calc(100vh-30px)] sm:max-w-4xl p-0 rounded-2xl border border-[#E5E7EB] dark:border-slate-800 overflow-hidden [&>button]:hidden"
       >
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between px-8 pt-7">
@@ -162,10 +162,10 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
                   type="button"
                   className="inline-flex h-9 w-9 items-center justify-center"
                 >
-                  <ArrowLeft className="h-5 w-5 text-[#2A4467]" />
+                  <ArrowLeft className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
                 </button>
               </SheetClose>
-              <div className="text-base font-semibold text-[#0F0F0F]">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Holdback Details
               </div>
             </div>
@@ -184,7 +184,7 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
             <div className="flex justify-end pb-6">
               <button
                 type="button"
-                className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] bg-white px-4 py-2.5 text-sm font-semibold text-[#0F0F0F]"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
               >
                 <img
                   src="/assets/contract-management/payment-summary/share.svg"
@@ -196,7 +196,7 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
 
             <div className="space-y-6">
               {!holdBackId ? (
-                <div className="rounded-xl border border-dashed border-[#E5E7EB] p-6 text-sm text-[#6B7280]">
+                <div className="rounded-xl border border-dashed border-[#E5E7EB] dark:border-slate-700 p-6 text-sm text-[#6B7280] dark:text-slate-400">
                   No holdback selected.
                 </div>
               ) : isLoading ? (
@@ -221,10 +221,10 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
               ) : (
                 <div className="grid grid-cols-2 gap-x-16 gap-y-7">
                   <div className="space-y-2">
-                    <div className="text-xs font-medium text-[#9CA3AF]">
+                    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                       Release Type
                     </div>
-                    <div className="text-sm font-semibold text-[#0F0F0F]">
+                    <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
                       {detail?.type === "full"
                         ? "Full Release"
                         : detail?.type === "partial"
@@ -233,33 +233,33 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <div className="text-xs font-medium text-[#9CA3AF]">
+                    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                       Release ID
                     </div>
-                    <div className="text-sm font-semibold text-[#0F0F0F]">
+                    <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
                       {detail?.holdBackId || "-"}
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <div className="text-xs font-medium text-[#9CA3AF]">
+                    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                       Released Amount
                     </div>
-                    <div className="text-sm font-semibold text-[#0F0F0F]">
+                    <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
                       {detail?.amount != null ? formatCurrency(detail?.amount, "en-US", currency) : "-"}
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <div className="text-xs font-medium text-[#9CA3AF]">
+                    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                       Released Date
                     </div>
-                    <div className="text-sm font-semibold text-[#0F0F0F]">
+                    <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
                       {detail?.releasedDate ? formatDate(detail?.releasedDate, "dd MMM yyyy") : "-"}
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <div className="text-xs font-medium text-[#9CA3AF]">
+                    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                       Status
                     </div>
                     <Badge
@@ -272,10 +272,10 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
               )}
 
               <div className="space-y-3">
-                <div className="text-xs font-medium text-[#9CA3AF]">
+                <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                   Description
                 </div>
-                <div className="text-sm font-medium leading-6 text-[#374151]">
+                <div className="text-sm font-medium leading-6 text-[#374151] dark:text-slate-200">
                   {isLoading ? (
                     <span className="inline-block h-4 w-56 rounded bg-[#E5E7EB]" />
                   ) : (
@@ -285,7 +285,7 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
               </div>
 
               <div className="space-y-4 pt-3">
-                <div className="text-sm font-semibold text-[#0F0F0F]">
+                <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Attached Documents
                 </div>
                 {isLoading ? (
@@ -293,7 +293,7 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
                     {Array.from({ length: 4 }).map((_, idx) => (
                       <div
                         key={idx}
-                        className="h-16 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] animate-pulse"
+                        className="h-16 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800 animate-pulse"
                       />
                     ))}
                   </div>
@@ -308,7 +308,7 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
                       />
                     ))}
                     {mappedDocs.length === 0 && (
-                      <div className="text-sm text-[#6B7280]">
+                      <div className="text-sm text-[#6B7280] dark:text-slate-400">
                         No documents.
                       </div>
                     )}
@@ -319,10 +319,10 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
           </div>
 
           {isApprover && (
-            <div className="flex items-center justify-between gap-6 border-t border-[#E5E7EB] bg-white px-8 py-6">
+            <div className="flex items-center justify-between gap-6 border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 px-8 py-6">
               <button
                 type="button"
-                className="h-12 flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-sm font-semibold text-[#0F0F0F]"
+                className="h-12 flex-1 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F3F4F6] dark:bg-slate-800 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
                 disabled={isLoading || !holdBackId || approveMutation.isPending}
                 onClick={() => {
                   setConfirmAction("rejected");
