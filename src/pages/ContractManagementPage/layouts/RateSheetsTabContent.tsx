@@ -360,7 +360,7 @@ const SubmitRateSheetDialog: React.FC<{
               type="button"
               onClick={() => setOpen(false)}
               disabled={isSubmitting}
-              className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-3.5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 shadow-sm hover:bg-[#E5E7EB]"
+              className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-3.5 text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 shadow-sm hover:bg-[#E5E7EB] dark:hover:bg-slate-700"
             >
               Back
             </button>
