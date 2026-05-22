@@ -8,6 +8,7 @@ import type { ContractDetail } from "@/types";
 import EditContract from "../components/EditContract";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useQueryClient } from "@tanstack/react-query";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   currency?: string;
@@ -31,9 +32,11 @@ const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, ef
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-gray-600">Documents</h3>
         <div className="flex items-center gap-2">
-          <Button variant="outline">
-            <Share2 className="mr-2 h-4 w-4" /> Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId ?? ""} contractType="Contract">
+            <Button variant="outline">
+              <Share2 className="mr-2 h-4 w-4" /> Export Report
+            </Button>
+          </ExportReportSheet>
           
           <Button
             onClick={() => {

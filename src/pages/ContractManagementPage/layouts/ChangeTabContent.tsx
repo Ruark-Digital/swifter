@@ -18,6 +18,7 @@ import {
 } from "@/pages/ContractManagementPage/lib/contractChanges";
 import { useUserRole } from "@/hooks/useUserRole";
 import { ApiResponse } from "@/types";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 export interface ChangesDataResponse {
   changes: Change[];
@@ -160,12 +161,14 @@ const ChangeTabContent: React.FC<Props> = ({
           Change Management
         </h3>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            className="h-10 rounded-xl border-[#E5E7EB] bg-white px-4 text-sm font-medium text-[#111827] hover:bg-[#F9FAFB]"
-          >
-            <Share2 className="mr-2 h-4 w-4" /> Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="Contract">
+            <Button
+              variant="outline"
+              className="h-10 rounded-xl border-[#E5E7EB] bg-white px-4 text-sm font-medium text-[#111827] hover:bg-[#F9FAFB]"
+            >
+              <Share2 className="mr-2 h-4 w-4" /> Export Report
+            </Button>
+          </ExportReportSheet>
           {(isManager || isContractVendorLike) && (
             <CreateChangeDialog
               trigger={

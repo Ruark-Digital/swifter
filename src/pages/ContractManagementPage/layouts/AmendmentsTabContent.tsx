@@ -30,6 +30,7 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { postRequest } from "@/lib/axiosInstance";
 import type { UploadURLs } from "../lib/contractChanges";
 import type { ApiResponse, ApiResponseError } from "@/types";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type CreateAmendmentFormValues = {
   amendmentTitle: string;
@@ -796,16 +797,18 @@ const AmendmentsTabContent: React.FC<Props> = ({
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">Amendments</h3>
         <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            className="rounded-xl border-[#E5E7EB] dark:border-slate-700 px-4 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
-          >
-            <img
-              src="/assets/contract-management/amendments/share.svg"
-              className="mr-2 h-5 w-5"
-            />
-            Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="Contract">
+            <Button
+              variant="outline"
+              className="rounded-xl border-[#E5E7EB] dark:border-slate-700 px-4 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+            >
+              <img
+                src="/assets/contract-management/amendments/share.svg"
+                className="mr-2 h-5 w-5"
+              />
+              Export Report
+            </Button>
+          </ExportReportSheet>
 
           {isManager && (
             <CreateAmendmentDialog

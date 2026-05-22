@@ -32,6 +32,7 @@ import { getHoldbackStatusBadgeProps } from "../lib/holdbacks";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import Spinner from "@/components/ui/Spinner";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type HoldbackReleaseRow = {
   releaseId: string;
@@ -736,16 +737,18 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
         </h3>
 
         <div className="flex items-center gap-6">
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-700 px-[15px] py-2 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
-          >
-            <img
-              src="/assets/contract-management/payment-summary/share.svg"
-              className="h-5 w-5"
-            />
-            Export Report
-          </button>
+          <ExportReportSheet contractId={contractId} contractType="Contract">
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-700 px-[15px] py-2 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+            >
+              <img
+                src="/assets/contract-management/payment-summary/share.svg"
+                className="h-5 w-5"
+              />
+              Export Report
+            </button>
+          </ExportReportSheet>
 
           {isManager && !isPendingApproval && (
             <div className="inline-flex items-start gap-6">

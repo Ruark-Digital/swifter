@@ -40,6 +40,7 @@ import {
 import { useWatch } from "react-hook-form";
 import { useUserRole } from "@/hooks/useUserRole";
 import type { Option } from "@/components/ui/multiselect";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type IssueRfiDialogProps = {
   trigger: React.ReactNode;
@@ -495,9 +496,11 @@ const RfiTabContent: React.FC<Props> = ({
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">RFI</h3>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="h-10 rounded-xl px-4">
-            <Share2 className="mr-2 h-4 w-4" /> Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="Contract">
+            <Button variant="outline" className="h-10 rounded-xl px-4">
+              <Share2 className="mr-2 h-4 w-4" /> Export Report
+            </Button>
+          </ExportReportSheet>
           {!isViewOnly && (
             <IssueRfiDialog
               contractId={contractId}

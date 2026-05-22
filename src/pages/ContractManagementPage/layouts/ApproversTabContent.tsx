@@ -8,6 +8,7 @@ import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import type { ApiResponseError } from "@/types";
 import ApproversTable, { type ApproverRow } from "../components/ApproversTable";
 import { contractManagerApi } from "../api/contractManagerApi";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
@@ -67,9 +68,11 @@ const ApproversTabContent: React.FC<Props> = ({ contractId, isActive }) => {
     <TabsContent value="approvers" className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Approvers</h3>
-        <Button variant="outline" className="h-10 rounded-xl px-4">
-          <Share2 className="mr-2 h-4 w-4" /> Export Report
-        </Button>
+        <ExportReportSheet contractId={contractId} contractType="Contract">
+          <Button variant="outline" className="h-10 rounded-xl px-4">
+            <Share2 className="mr-2 h-4 w-4" /> Export Report
+          </Button>
+        </ExportReportSheet>
       </div>
 
       <ApproversTable rows={rows} isLoading={isLoading} contractId={contractId} />

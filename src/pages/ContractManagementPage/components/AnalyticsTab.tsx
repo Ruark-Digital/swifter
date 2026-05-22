@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 import type { ContractDetail } from "@/types";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type DashboardTier = "high" | "medium" | "good" | "critical" | "low" | string;
 
@@ -441,9 +442,11 @@ const AnalyticsTab: React.FC<Props> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Analytics</h3>
-        <Button variant="outline" className="text-slate-600 dark:text-slate-400 dark:text-slate-500 border-slate-300">
-          <Share2 className="mr-2 h-4 w-4" /> Export Report
-        </Button>
+        <ExportReportSheet contractId={contract?._id ?? ""} contractType="Contract">
+          <Button variant="outline" className="text-slate-600 dark:text-slate-400 dark:text-slate-500 border-slate-300">
+            <Share2 className="mr-2 h-4 w-4" /> Export Report
+          </Button>
+        </ExportReportSheet>
       </div>
 
       {/* Hero Card */}
