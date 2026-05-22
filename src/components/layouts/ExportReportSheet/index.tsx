@@ -29,12 +29,19 @@ type DocsOptionResponse = Record<string, boolean>;
 interface ExportReportSheetProps {
   solicitationId?: string;
   evaluationId?: string;
+  contractId?: string;
+  /** API path prefix used to build the contract export endpoints.
+   *  Defaults to "/contract/manager" so manager pages work without
+   *  passing it; vendor/approver callers can override. */
+  contractBasePath?: string;
   children?: React.ReactNode;
 }
 
 export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
   solicitationId,
   evaluationId,
+  contractId,
+  contractBasePath = "/contract/manager",
   children,
 }) => {
   const [exportFormat, setExportFormat] = useState("pdf");
@@ -47,15 +54,21 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
   // Determine context type
   const isEvaluationContext = !!evaluationId;
   const isSolicitationContext = !!solicitationId;
+  const isContractContext = !!contractId;
 
-  // Fetch document options for both solicitation and evaluation contexts
+  // Fetch document options for solicitation, evaluation, and contract contexts
   const {
     data: docsOptionsData,
     isLoading: isLoadingOptions,
     error: optionsError,
   } = useQuery<ApiResponse<DocsOptionResponse>, ApiResponseError>({
-    queryKey: ["docs-options", solicitationId, evaluationId],
+    queryKey: ["docs-options", solicitationId, evaluationId, contractId],
     queryFn: async () => {
+      if (isContractContext) {
+        return await getRequest({
+          url: `${contractBasePath}/contracts/${contractId}/docs-option`,
+        });
+      }
       const contextId = solicitationId || evaluationId;
       return await getRequest({
         url: isEvaluationContext
@@ -63,7 +76,7 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
           : `/procurement/solicitations/${contextId}/docs-option`,
       });
     },
-    enabled: !!(solicitationId || evaluationId),
+    enabled: !!(solicitationId || evaluationId || contractId),
   });
 
   // Update selected sections based on API response
@@ -87,7 +100,7 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
 
   // Handle download functionality
   const handleDownload = async () => {
-    if (!solicitationId && !evaluationId) {
+    if (!solicitationId && !evaluationId && !contractId) {
       toast.error("Download Error", "Missing required context ID");
       return;
     }
@@ -136,6 +149,33 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
         toast.success(
           "Download Complete",
           "Solicitation report downloaded successfully"
+        );
+      } else if (isContractContext && contractId) {
+        // Contract document download
+        const sectionsParam = selectedSectionKeys.join(",");
+        const response = await getRequest({
+          url: `${contractBasePath}/contracts/${contractId}/generate-document?type=${exportFormat}&sections=${sectionsParam}`,
+          config: { responseType: "blob" },
+        });
+
+        const blob = new Blob([response.data], {
+          type:
+            exportFormat === "pdf"
+              ? "application/pdf"
+              : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `contract-report.${exportFormat}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        toast.success(
+          "Download Complete",
+          "Contract report downloaded successfully"
         );
       } else if (isEvaluationContext && evaluationId) {
         // Evaluation document download
@@ -261,7 +301,7 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           {/* Loading State */}
-          {isLoadingOptions && isSolicitationContext && (
+          {isLoadingOptions && (isSolicitationContext || isContractContext) && (
             <div className="flex items-center justify-center py-8">
               <div className="flex items-center gap-2">
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -327,7 +367,7 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
             )}
 
           {/* No Context Error */}
-          {!solicitationId && !evaluationId && (
+          {!solicitationId && !evaluationId && !contractId && (
             <div className="flex items-center justify-center py-8">
               <div className="text-center">
                 <p className="text-gray-600 dark:text-gray-400 mb-2">

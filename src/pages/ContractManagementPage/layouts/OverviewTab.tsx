@@ -7,6 +7,7 @@ import EmployeeCardPopover from "../components/EmployeeCardPopover";
 import type { ContractDetail } from "@/types";
 import { cn, formatDateTZ } from "@/lib/utils";
 import EditContract from "../components/EditContract";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -866,10 +867,22 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
           Contract Details
         </div>
         <div className="flex items-center gap-2">
-          {(!isViewOnly && isApprover) || (!isApprover && !isViewOnly) ? (
-            <Button variant="outline">
-              <Share2 className="mr-2 h-4 w-4" /> Export Report
-            </Button>
+          {((!isViewOnly && isApprover) || (!isApprover && !isViewOnly)) &&
+          contract?._id ? (
+            <ExportReportSheet
+              contractId={contract._id}
+              contractBasePath={
+                isContractVendorLike
+                  ? "/contract/vendor"
+                  : isApprover
+                    ? "/contract/approver"
+                    : "/contract/manager"
+              }
+            >
+              <Button variant="outline">
+                <Share2 className="mr-2 h-4 w-4" /> Export Report
+              </Button>
+            </ExportReportSheet>
           ) : null}
 
           {!isContractVendorLike && !isApprover && !isViewOnly && !isCompanyAdmin && (
