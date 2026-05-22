@@ -81,7 +81,7 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
     queryFn: async () => {
       if (isContractContext) {
         return await getRequest({
-          url: `/contract-export/${contractId}/entities?type=${contractType}`,
+          url: `/contract/contract-export/${contractId}/entities?type=${contractType}`,
         });
       }
       const contextId = solicitationId || evaluationId;
@@ -181,7 +181,7 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
         // with JSON body { type, exportType, entity[] }. Response is a
         // binary stream.
         const response = await postRequest({
-          url: `/contract-export/${contractId}/download`,
+          url: `/contract/contract-export/${contractId}/download`,
           payload: {
             type: contractType,
             exportType: exportFormat,
