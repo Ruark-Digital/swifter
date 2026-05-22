@@ -23,6 +23,7 @@ export type ContractRow = {
   owner: string;
   published?: string;
   endDate?: string;
+  createdAtRaw?: string;
   status:
     | "Active"
     | "Publish"
@@ -149,6 +150,21 @@ type ContractsTableProps = {
   onStatusFilterChange?: (status: string) => void;
 };
 
+const applyDateFilter = (rows: ContractRow[], dateFilter: string): ContractRow[] => {
+  if (!dateFilter || dateFilter === "all") return rows;
+  const now = new Date();
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const today = startOf(now);
+  return rows.filter((row) => {
+    if (!row.createdAtRaw) return true;
+    const created = new Date(row.createdAtRaw);
+    if (dateFilter === "today") return startOf(created).getTime() === today.getTime();
+    if (dateFilter === "last7days") return created >= new Date(today.getTime() - 6 * 86400000);
+    if (dateFilter === "last30days") return created >= new Date(today.getTime() - 29 * 86400000);
+    return true;
+  });
+};
+
 const ContractsTable: React.FC<ContractsTableProps> = ({
   rows = [],
   isLoading,
@@ -157,10 +173,11 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
   disableActions,
   pagination: paginationProp,
   setPagination: setPaginationProp,
-  statusFilter,
+  statusFilter = "all",
   onStatusFilterChange,
 }) => {
   const [search, setSearch] = React.useState("");
+  const [dateFilter, setDateFilter] = React.useState("all");
   const [localPagination, setLocalPagination] = React.useState<PaginationState>(
     {
       pageIndex: 0,
@@ -184,27 +201,34 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
 
     if (search) {
       const query = search.toLowerCase();
-      result = result.filter((row) => {
-        return (
-          row.title.toLowerCase().includes(query) ||
-          row.code.toLowerCase().includes(query)
-        );
-      });
+      result = result.filter((row) =>
+        row.title.toLowerCase().includes(query) ||
+        row.code.toLowerCase().includes(query),
+      );
     }
 
     if (statusFilter && statusFilter !== "all") {
-      result = result.filter((row) => {
-        return normalizeStatus(row.status) === normalizeStatus(statusFilter);
-      });
+      result = result.filter(
+        (row) => normalizeStatus(row.status) === normalizeStatus(statusFilter),
+      );
     }
 
-    return result;
-  }, [rows, search, statusFilter, normalizeStatus]);
+    result = applyDateFilter(result, dateFilter);
 
-  const handleFilterChange = (filters: any) => {
-    const status = filters.find((f: any) => f.title === "Status")?.value;
-    if (status && onStatusFilterChange) {
-      onStatusFilterChange(status);
+    return result;
+  }, [rows, search, statusFilter, dateFilter, normalizeStatus]);
+
+  const selectedFilterValues: Record<string, string> = {
+    Status: statusFilter ?? "all",
+    Date: dateFilter,
+  };
+
+  const handleFilterChange = (filterTitle: string, value: string) => {
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    if (filterTitle === "Status") {
+      onStatusFilterChange?.(value);
+    } else if (filterTitle === "Date") {
+      setDateFilter(value);
     }
   };
 
@@ -244,18 +268,10 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                       title: "Date",
                       showIcon: true,
                       options: [
-                        {
-                          hasOptions: true,
-                          value: "date",
-                          label: "Date Created",
-                          subOptions: [
-                            { title: "All", value: "all" },
-                            { title: "Today", value: "today" },
-                            { title: "Last 7 Days", value: "last7days" },
-                            { title: "Last 30 Days", value: "last30days" },
-                            { title: "Custom", value: "custom" },
-                          ],
-                        },
+                        { label: "All", value: "all" },
+                        { label: "Today", value: "today" },
+                        { label: "Last 7 Days", value: "last7days" },
+                        { label: "Last 30 Days", value: "last30days" },
                       ],
                     },
                     {
@@ -268,22 +284,12 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                         { label: "Suspended", value: "suspended" },
                         { label: "Expired", value: "expired" },
                         { label: "Terminated", value: "terminated" },
-                        {
-                          label: "Pending Approval",
-                          value: "pending_approval",
-                        },
-                      ],
-                    },
-                    {
-                      title: "Category",
-                      options: [
-                        { label: "All", value: "all" },
-                        { label: "Software", value: "software" },
-                        { label: "Construction", value: "construction" },
+                        { label: "Pending Approval", value: "pending_approval" },
                       ],
                     },
                   ]}
                   onFilterChange={handleFilterChange}
+                  selectedValues={selectedFilterValues}
                 />
               </div>
             </div>
