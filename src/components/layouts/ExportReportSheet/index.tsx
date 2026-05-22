@@ -94,10 +94,11 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
     enabled: !!(solicitationId || evaluationId || contractId),
   });
 
-  // Update selected sections based on API response. Contract endpoint
-  // returns `{ available: string[] }`; solicitation/evaluation return
-  // a `Record<string, boolean>` map. Normalize both into the same
-  // `Record<string, boolean>` we use internally.
+  // Update selected sections based on API response. The contract
+  // endpoint *currently* returns a flat `Record<string, boolean>` map
+  // (matching solicitation/evaluation) even though swagger advertises
+  // `{ available: string[], data: {...} }`. Handle both: if `available`
+  // exists, use it; otherwise treat the payload itself as the map.
   useEffect(() => {
     const payload = docsOptionsData?.data?.data;
     if (!payload || typeof payload !== "object") return;
