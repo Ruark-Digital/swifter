@@ -114,7 +114,7 @@ const LabelRow = ({
 
 const RateSheetUploadElement = () => {
   return (
-    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] bg-white px-4">
+    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] dark:border-slate-600 bg-white dark:bg-slate-800 px-4">
       <UploadCloud className="h-10 w-10 text-[#2A4467] dark:text-blue-300" />
       <div className="flex flex-col items-center gap-1 text-center">
         <div className="text-sm font-semibold text-[#2A4467] dark:text-blue-300">
@@ -133,9 +133,9 @@ const RateSheetFilesListItem = ({ file }: { file: File }) => {
   const value = useWatch({ control, name: "files" });
 
   return (
-    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-3">
+    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB]">
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
           <FileText className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
         </div>
         <div className="min-w-0">
