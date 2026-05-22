@@ -869,16 +869,7 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
         <div className="flex items-center gap-2">
           {((!isViewOnly && isApprover) || (!isApprover && !isViewOnly)) &&
           contract?._id ? (
-            <ExportReportSheet
-              contractId={contract._id}
-              contractBasePath={
-                isContractVendorLike
-                  ? "/contract/vendor"
-                  : isApprover
-                    ? "/contract/approver"
-                    : "/contract/manager"
-              }
-            >
+            <ExportReportSheet contractId={contract._id} contractType="Contract">
               <Button variant="outline">
                 <Share2 className="mr-2 h-4 w-4" /> Export Report
               </Button>

@@ -17,23 +17,29 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
-import { getRequest } from "@/lib/axiosInstance";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 
 // API Types
-// Make options dynamic to support any added/removed keys from the API
+// Solicitation/evaluation endpoints return a map; the contract export
+// endpoint returns `{ available: string[], data: {...} }`. The sheet
+// keeps the same Record<string, boolean> internal state and normalizes
+// at the read boundary.
 type DocsOptionResponse = Record<string, boolean>;
+type ContractEntitiesResponse = {
+  available?: string[];
+  data?: Record<string, unknown>;
+};
 
 // Component Props Interface
 interface ExportReportSheetProps {
   solicitationId?: string;
   evaluationId?: string;
   contractId?: string;
-  /** API path prefix used to build the contract export endpoints.
-   *  Defaults to "/contract/manager" so manager pages work without
-   *  passing it; vendor/approver callers can override. */
-  contractBasePath?: string;
+  /** Tells the contract export endpoint whether contractId refers to
+   *  a regular Contract or an MsaContract. Defaults to "Contract". */
+  contractType?: "Contract" | "MsaContract";
   children?: React.ReactNode;
 }
 
@@ -41,7 +47,7 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
   solicitationId,
   evaluationId,
   contractId,
-  contractBasePath = "/contract/manager",
+  contractType = "Contract",
   children,
 }) => {
   const [exportFormat, setExportFormat] = useState("pdf");
@@ -61,12 +67,21 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
     data: docsOptionsData,
     isLoading: isLoadingOptions,
     error: optionsError,
-  } = useQuery<ApiResponse<DocsOptionResponse>, ApiResponseError>({
-    queryKey: ["docs-options", solicitationId, evaluationId, contractId],
+  } = useQuery<
+    ApiResponse<DocsOptionResponse | ContractEntitiesResponse>,
+    ApiResponseError
+  >({
+    queryKey: [
+      "docs-options",
+      solicitationId,
+      evaluationId,
+      contractId,
+      contractType,
+    ],
     queryFn: async () => {
       if (isContractContext) {
         return await getRequest({
-          url: `${contractBasePath}/contracts/${contractId}/docs-option`,
+          url: `/contract-export/${contractId}/entities?type=${contractType}`,
         });
       }
       const contextId = solicitationId || evaluationId;
@@ -79,16 +94,26 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
     enabled: !!(solicitationId || evaluationId || contractId),
   });
 
-  // Update selected sections based on API response
+  // Update selected sections based on API response. Contract endpoint
+  // returns `{ available: string[] }`; solicitation/evaluation return
+  // a `Record<string, boolean>` map. Normalize both into the same
+  // `Record<string, boolean>` we use internally.
   useEffect(() => {
-    const options = docsOptionsData?.data?.data;
-    if (options && typeof options === "object") {
-      const initialSections: Record<string, boolean> = {};
-      Object.entries(options).forEach(([key, value]) => {
+    const payload = docsOptionsData?.data?.data;
+    if (!payload || typeof payload !== "object") return;
+
+    const initialSections: Record<string, boolean> = {};
+    const available = (payload as ContractEntitiesResponse).available;
+    if (Array.isArray(available)) {
+      available.forEach((key) => {
+        initialSections[key] = true;
+      });
+    } else {
+      Object.entries(payload as DocsOptionResponse).forEach(([key, value]) => {
         initialSections[key] = Boolean(value);
       });
-      setSelectedSections(initialSections);
     }
+    setSelectedSections(initialSections);
   }, [docsOptionsData]);
 
   const handleSectionChange = (section: string, checked: boolean) => {
@@ -151,10 +176,16 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
           "Solicitation report downloaded successfully"
         );
       } else if (isContractContext && contractId) {
-        // Contract document download
-        const sectionsParam = selectedSectionKeys.join(",");
-        const response = await getRequest({
-          url: `${contractBasePath}/contracts/${contractId}/generate-document?type=${exportFormat}&sections=${sectionsParam}`,
+        // Contract document download — POST /contract-export/{id}/download
+        // with JSON body { type, exportType, entity[] }. Response is a
+        // binary stream.
+        const response = await postRequest({
+          url: `/contract-export/${contractId}/download`,
+          payload: {
+            type: contractType,
+            exportType: exportFormat,
+            entity: selectedSectionKeys,
+          },
           config: { responseType: "blob" },
         });
 
@@ -167,7 +198,9 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `contract-report.${exportFormat}`;
+        const baseName =
+          contractType === "MsaContract" ? "msa-export" : "contract-export";
+        link.download = `${baseName}-${contractId}.${exportFormat}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -175,7 +208,7 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
 
         toast.success(
           "Download Complete",
-          "Contract report downloaded successfully"
+          `${contractType === "MsaContract" ? "MSA" : "Contract"} report downloaded successfully`
         );
       } else if (isEvaluationContext && evaluationId) {
         // Evaluation document download
@@ -259,9 +292,56 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
         label: "Submission Scores",
         description: "Scoring summary tables per submission",
       },
+      // Contract export entity keys (swagger: /contract-export endpoints)
+      invoice: { label: "Invoices", description: "Invoices table" },
+      change: { label: "Change Orders", description: "Change orders table" },
+      amendment: {
+        label: "Amendments",
+        description: "Amendments table + field-change sub-tables",
+      },
+      approvers: {
+        label: "Approval Groups",
+        description: "Approval groups table",
+      },
+      // NOTE: backend key is intentionally misspelled ("complaince") —
+      // preserve verbatim for compatibility per swagger.
+      complaince: {
+        label: "Compliance",
+        description: "Insurance & compliance table",
+      },
+      deliverable: {
+        label: "Deliverables",
+        description: "Deliverables table",
+      },
+      kpi: { label: "KPIs", description: "KPI table" },
+      lem: {
+        label: "Labour, Equipment & Materials",
+        description: "LEM table",
+      },
+      rfi: {
+        label: "RFIs",
+        description: "Requests for Information table",
+      },
+      ncr: {
+        label: "Non-Conformance Reports",
+        description: "NCR table",
+      },
+      claim: { label: "Claims", description: "Claims table" },
+      clause: {
+        label: "Contract Clauses",
+        description: "Contract clauses, grouped by section",
+      },
     };
 
-    return Object.entries(options)
+    const entries: Array<[string, boolean]> = (() => {
+      const available = (options as ContractEntitiesResponse).available;
+      if (Array.isArray(available)) {
+        return available.map((k) => [k, true] as [string, boolean]);
+      }
+      return Object.entries(options as DocsOptionResponse);
+    })();
+
+    return entries
       .filter(([, isAvailable]) => Boolean(isAvailable))
       .map(([key]) => {
         const friendly = friendlyLabels[key];
