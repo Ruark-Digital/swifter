@@ -130,8 +130,8 @@ const LabelRow = ({
   value: React.ReactNode;
 }) => (
   <div className="space-y-2">
-    <div className="text-xs font-medium text-[#9CA3AF]">{label}</div>
-    <div className="text-sm font-medium text-[#111827]">{value}</div>
+    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">{label}</div>
+    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
 
@@ -430,10 +430,21 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   const approverStatus = detail?.approverStatus;
   const isSubmitted = detail?.submissionStatus === "submitted";
   const isRejected = approverStatus === "rejected";
+  // Backend doesn't always set `submissionStatus` — once the PM/vendor
+  // uploads, the deliverable carries `submittedBy` and a non-empty
+  // `files[]` instead. Treat that combo as "already submitted" so the
+  // Submit button doesn't re-appear after the first upload.
+  const hasBeenSubmitted =
+    Boolean(detail?.submittedBy) &&
+    Array.isArray(detail?.files) &&
+    detail.files.length > 0;
   const canShowApproveButtons =
     approverStatus && approverStatus !== "N/A" && !isSubmitted && !isRejected;
   const canShowSubmitButton =
-    isVendor && !isSubmitted && approverStatus !== "N/A";
+    isVendor &&
+    !isSubmitted &&
+    !hasBeenSubmitted &&
+    approverStatus !== "N/A";
 
   const approveRejectMutation = useMutation({
     mutationKey: [
@@ -484,11 +495,11 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827] dark:text-slate-100"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Deliverable Details
                 </SheetTitle>
               </div>
@@ -505,12 +516,12 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
 
           <div className="space-y-8">
             <div className="flex items-center justify-between">
-              <div className="text-base font-semibold text-[#0F0F0F]">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 {detail?.name ?? "Deliverable Details"}
               </div>
               <Button
                 variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
+                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
               >
                 <Share2 className="mr-2 h-4 w-4" /> Export
               </Button>
@@ -559,7 +570,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
             )}
 
             <div className="space-y-2">
-              <div className="text-xs font-medium text-[#9CA3AF]">Status</div>
+              <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">Status</div>
               <div
                 className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusTone(detail?.status)}`}
               >
@@ -572,17 +583,17 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
             </div>
 
             <div className="space-y-2">
-              <div className="text-xs font-medium text-[#9CA3AF]">
+              <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                 Description
               </div>
-              <div className="text-sm text-[#374151]">
+              <div className="text-sm text-[#374151] dark:text-slate-300">
                 {detail?.description ?? "-"}
               </div>
             </div>
           </div>
 
           <div className="space-y-3">
-            <div className="text-base font-semibold text-[#0F0F0F]">
+            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
               Attached Documents
             </div>
             <div className="grid gap-3 sm:grid-cols-1">
@@ -634,7 +645,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
               <>
                 <Button
                   variant="outline"
-                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
                   disabled={approveRejectMutation.isPending}
                   onClick={() => approveRejectMutation.mutate("rejected")}
                 >
