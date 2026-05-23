@@ -36,6 +36,13 @@ import {
 } from "../lib/contractChanges";
 import { formatDate } from "date-fns";
 import Spinner from "@/components/ui/Spinner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 type Props = {
   trigger?: React.ReactNode;
@@ -157,9 +164,27 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const showDecisionActions =
     shouldShowChangeDecisionActions(changeType) && approverStatus === "pending";
 
+  // Approve / reject opens a comment dialog first. `pendingAction` drives
+  // both the dialog visibility and which variant (Approve vs Reject) we
+  // render — `commentDraft` is reset whenever the dialog closes.
+  const [pendingAction, setPendingAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [commentDraft, setCommentDraft] = React.useState("");
+
+  React.useEffect(() => {
+    if (pendingAction === null) setCommentDraft("");
+  }, [pendingAction]);
+
   const { mutate: mutateApproval, isPending: isApproving } = useMutation({
     mutationKey: ["approveChange", roleBasePath, contractId, changeId],
-    mutationFn: async (action: "approved" | "rejected") => {
+    mutationFn: async ({
+      action,
+      comment,
+    }: {
+      action: "approved" | "rejected";
+      comment: string;
+    }) => {
       const canApprovePath = roleBasePath.includes("/manager/");
       if (!canApprovePath) {
         throw new Error(
@@ -173,10 +198,10 @@ const ChangeDetailsSheet: React.FC<Props> = ({
       });
       return await postRequest({
         url,
-        payload: { action, comment: "" },
+        payload: { action, comment },
       });
     },
-    onSuccess: (res, action) => {
+    onSuccess: (res, { action }) => {
       toast.success(
         `Change ${action === "approved" ? "approved" : "rejected"}`,
         (res as any)?.data?.message,
@@ -185,6 +210,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
         queryKey: ["contractChanges", contractId],
       });
       qc.invalidateQueries({ queryKey: changeDetailQueryKey });
+      setPendingAction(null);
     },
     onError: (err: any) => {
       toast.error("Failed to update change status", err);
@@ -494,7 +520,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                       );
                       return;
                     }
-                    mutateApproval("rejected");
+                    setPendingAction("rejected");
                   }}
                 >
                   Reject Change
@@ -503,7 +529,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                   <Button
                     className="flex-1 h-12 rounded-xl"
                     disabled={isApproving}
-                    onClick={() => mutateApproval("approved")}
+                    onClick={() => setPendingAction("approved")}
                   >
                     Approve
                   </Button>
@@ -520,6 +546,75 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             </SheetFooter>
           )}
         </div>
+
+        <Dialog
+          open={pendingAction !== null}
+          onOpenChange={(next) => {
+            if (!next && !isApproving) setPendingAction(null);
+          }}
+        >
+          <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-2">
+              <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                {pendingAction === "approved"
+                  ? "Approve Change"
+                  : "Reject Change"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="px-6 pb-6 space-y-4">
+              <p className="text-sm text-[#6B7280] dark:text-slate-400">
+                {pendingAction === "approved"
+                  ? "Add an optional comment for the vendor before approving."
+                  : "Let the vendor know why this change is being rejected (optional)."}
+              </p>
+              <textarea
+                value={commentDraft}
+                onChange={(e) => setCommentDraft(e.target.value)}
+                placeholder="Enter your comment"
+                rows={5}
+                className="w-full resize-none rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                autoFocus
+              />
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
+                  disabled={isApproving}
+                  onClick={() => setPendingAction(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className={cn(
+                    "h-11 flex-1 rounded-xl text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed",
+                    pendingAction === "approved"
+                      ? "bg-[#16A34A] hover:bg-[#15803D]"
+                      : "bg-[#E53935] hover:bg-[#C62828]",
+                  )}
+                  disabled={isApproving}
+                  aria-busy={isApproving}
+                  onClick={() => {
+                    if (pendingAction === null) return;
+                    mutateApproval({
+                      action: pendingAction,
+                      comment: commentDraft.trim(),
+                    });
+                  }}
+                >
+                  {isApproving
+                    ? pendingAction === "approved"
+                      ? "Approving..."
+                      : "Rejecting..."
+                    : pendingAction === "approved"
+                      ? "Confirm Approve"
+                      : "Confirm Reject"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </SheetContent>
     </Sheet>
   );
