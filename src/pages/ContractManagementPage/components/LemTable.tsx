@@ -324,7 +324,7 @@ const createColumns = (
     accessorKey: "title",
     header: "LEM Title",
     cell: ({ getValue }) => (
-      <div className="max-w-[260px] text-sm text-slate-700">
+      <div className="max-w-[260px] text-sm text-slate-700 dark:text-slate-200">
         {getValue<string>()}
       </div>
     ),
@@ -333,14 +333,14 @@ const createColumns = (
     accessorKey: "amount",
     header: "Amount",
     cell: ({ getValue }) => (
-      <span className="font-medium text-slate-900">{getValue<string>()}</span>
+      <span className="font-medium text-slate-900 dark:text-slate-100">{getValue<string>()}</span>
     ),
   },
   {
     accessorKey: "submissionDate",
     header: "Submission Date",
     cell: ({ getValue }) => (
-      <span className="text-sm text-slate-700">
+      <span className="text-sm text-slate-700 dark:text-slate-200">
         {formatDateValue(getValue<string>())}
       </span>
     ),
@@ -352,10 +352,10 @@ const createColumns = (
       const s = getValue<string>();
       const getStatusColor = (status: string) => {
         const lower = status.toLowerCase();
-        if (lower === "approved") return "bg-green-100 text-green-700";
-        if (lower === "rejected") return "bg-red-100 text-red-600";
-        if (lower === "pending" || lower === "pending approval") return "bg-yellow-100 text-yellow-700";
-        return "bg-gray-100 text-gray-700";
+        if (lower === "approved") return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
+        if (lower === "rejected") return "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300";
+        if (lower === "pending" || lower === "pending approval") return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300";
+        return "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300";
       };
       return (
         <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(s)}`}>
@@ -377,7 +377,7 @@ const createColumns = (
             trigger={
               <button
                 type="button"
-                className="text-sm font-medium text-green-700 hover:underline"
+                className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline"
               >
                 View
               </button>
