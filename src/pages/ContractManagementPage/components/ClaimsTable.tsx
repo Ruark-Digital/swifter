@@ -1,4 +1,5 @@
 import React from "react";
+import { format } from "date-fns";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,7 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
     header: "Claim Title",
     cell: ({ getValue }) => {
       const title = getValue<string | undefined>();
-      return <span className="font-medium text-slate-900">{title ?? "-"}</span>;
+      return <span className="font-medium text-slate-900 dark:text-slate-100">{title ?? "-"}</span>;
     },
   },
   {
@@ -49,9 +50,12 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
     },
   },
   {
-    id: "submitted",
+    accessorKey: "createdAt",
     header: "Submitted",
-    cell: () => "-",
+    cell: ({ getValue }) => {
+      const date = getValue<string | undefined>();
+      return date ? format(new Date(date), "dd MMM yyyy") : "-";
+    },
   },
   {
     accessorKey: "status",

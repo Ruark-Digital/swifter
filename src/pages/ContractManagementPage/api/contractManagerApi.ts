@@ -432,6 +432,9 @@ export type ContractClaimDTO = {
   }>;
   manager?: { status?: string; comment?: string };
   approvers?: ContractChangeApprover[];
+  submittedBy?: { _id?: string; name?: string; email?: string };
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type ContractClaimStatsDTO = {
