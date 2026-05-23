@@ -10,6 +10,7 @@ import type { PaginationState } from "@tanstack/react-table";
 import { getRequest } from "@/lib/axiosInstance";
 import {
   ContractChangeDTO,
+  type ContractChangeStatsDTO,
   type ManagerListChangesQuery,
 } from "../api/contractManagerApi";
 import {
@@ -96,18 +97,28 @@ const ChangeTabContent: React.FC<Props> = ({
 
   const basePath = getBasePath();
 
-  const { data: statsRes, isLoading: isStatsLoading } = useQuery({
+  const { data: stats, isLoading: isStatsLoading } = useQuery({
     queryKey: [
       "contractChanges",
       "stats",
       contractId,
-      basePath
+      basePath,
     ],
     queryFn: async () => {
-      const response = await getRequest({
-        url: `${basePath}/stats`,
-      });
-      return response.data;
+      const response = await getRequest({ url: `${basePath}/stats` });
+      // Server envelope: { status, message, data: {...} }. Axios already
+      // strips one level so `response.data` is the server body. Strip the
+      // inner `.data` here so the queryFn returns the stats object
+      // directly — avoids ambiguous unwrap at the call site.
+      const body = response?.data as
+        | { data?: ContractChangeStatsDTO }
+        | ContractChangeStatsDTO
+        | undefined;
+      return (
+        ((body as { data?: ContractChangeStatsDTO })?.data ??
+          (body as ContractChangeStatsDTO) ??
+          {}) as ContractChangeStatsDTO
+      );
     },
     enabled: Boolean(contractId) && !!isActive,
     staleTime: 60000,
@@ -186,16 +197,12 @@ const ChangeTabContent: React.FC<Props> = ({
         </div>
       </div>
 
-      {(() => {
-        const stats = (statsRes as any)?.data?.data ?? (statsRes as any)?.data;
-        return (
-          <ChangeStatsCards
-            stats={stats}
-            isLoading={isStatsLoading}
-            variant={isApprover ? "approver" : "manager"}
-          />
-        );
-      })()}
+      <ChangeStatsCards
+        stats={stats}
+        isLoading={isStatsLoading}
+        variant={isApprover ? "approver" : "manager"}
+      />
+
 
       <Tabs
         value={activeTab}
