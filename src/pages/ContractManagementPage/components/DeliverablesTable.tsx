@@ -49,6 +49,7 @@ import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { formatDate } from "date-fns";
 import { vendorApi } from "@/pages/ContractManagementPage/api/vendorApi";
 import { Option } from "@/components/ui/multiselect";
+import { cn } from "@/lib/utils";
 
 type UploadedFilePayload = {
   name: string;
@@ -446,6 +447,18 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
     !hasBeenSubmitted &&
     approverStatus !== "N/A";
 
+  // Approve / reject opens a comment dialog first. `pendingAction` drives
+  // both the dialog visibility and which variant (Approve vs Reject) we
+  // render — `commentDraft` is reset whenever the dialog closes.
+  const [pendingAction, setPendingAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [commentDraft, setCommentDraft] = React.useState("");
+
+  React.useEffect(() => {
+    if (pendingAction === null) setCommentDraft("");
+  }, [pendingAction]);
+
   const approveRejectMutation = useMutation({
     mutationKey: [
       "approve-reject-deliverable",
@@ -453,12 +466,18 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
       deliverableId,
       basePath,
     ],
-    mutationFn: async (action: "approved" | "rejected") =>
+    mutationFn: async ({
+      action,
+      comment,
+    }: {
+      action: "approved" | "rejected";
+      comment: string;
+    }) =>
       postRequest({
         url: `${basePath}/${deliverableId}/approve`,
-        payload: { action, comment: "" },
+        payload: { action, comment },
       }),
-    onSuccess: (_, action) => {
+    onSuccess: (_, { action }) => {
       toast.success(
         "Success",
         `Deliverable ${action === "approved" ? "approved" : "rejected"} successfully`,
@@ -472,8 +491,9 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
       queryClient.invalidateQueries({
         queryKey: ["deliverable-detail", contractId, deliverableId, basePath],
       });
+      setPendingAction(null);
     },
-    onError: (error: any, action) => {
+    onError: (error: any, { action }) => {
       toast.error(
         "Error",
         error?.response?.data?.message ||
@@ -647,16 +667,16 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                   variant="outline"
                   className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
                   disabled={approveRejectMutation.isPending}
-                  onClick={() => approveRejectMutation.mutate("rejected")}
+                  onClick={() => setPendingAction("rejected")}
                 >
-                  {approveRejectMutation.isPending ? "Rejecting..." : "Reject"}
+                  Reject
                 </Button>
                 <Button
                   className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
                   disabled={approveRejectMutation.isPending}
-                  onClick={() => approveRejectMutation.mutate("approved")}
+                  onClick={() => setPendingAction("approved")}
                 >
-                  {approveRejectMutation.isPending ? "Approving..." : "Approve"}
+                  Approve
                 </Button>
               </>
             ) : canShowSubmitButton && !isLoading ? (
@@ -673,6 +693,77 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
             ) : null}
           </div>
         </div>
+
+        <Dialog
+          open={pendingAction !== null}
+          onOpenChange={(next) => {
+            if (!next && !approveRejectMutation.isPending) {
+              setPendingAction(null);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-2">
+              <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                {pendingAction === "approved"
+                  ? "Approve Deliverable"
+                  : "Reject Deliverable"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="px-6 pb-6 space-y-4">
+              <p className="text-sm text-[#6B7280] dark:text-slate-400">
+                {pendingAction === "approved"
+                  ? "Add an optional comment for the vendor before approving."
+                  : "Let the vendor know why this deliverable is being rejected."}
+              </p>
+              <textarea
+                value={commentDraft}
+                onChange={(e) => setCommentDraft(e.target.value)}
+                placeholder="Enter your comment"
+                rows={5}
+                className="w-full resize-none rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                autoFocus
+              />
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
+                  disabled={approveRejectMutation.isPending}
+                  onClick={() => setPendingAction(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className={cn(
+                    "h-11 flex-1 rounded-xl text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed",
+                    pendingAction === "approved"
+                      ? "bg-[#16A34A] hover:bg-[#15803D]"
+                      : "bg-[#E53935] hover:bg-[#C62828]",
+                  )}
+                  disabled={approveRejectMutation.isPending}
+                  aria-busy={approveRejectMutation.isPending}
+                  onClick={() => {
+                    if (pendingAction === null) return;
+                    approveRejectMutation.mutate({
+                      action: pendingAction,
+                      comment: commentDraft.trim(),
+                    });
+                  }}
+                >
+                  {approveRejectMutation.isPending
+                    ? pendingAction === "approved"
+                      ? "Approving..."
+                      : "Rejecting..."
+                    : pendingAction === "approved"
+                      ? "Confirm Approve"
+                      : "Confirm Reject"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </SheetContent>
     </Sheet>
   );
