@@ -429,6 +429,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
 
   const detail = data?.data?.data;
   const approverStatus = detail?.approverStatus;
+  const managerStatus = detail?.manager?.status;
   const isSubmitted = detail?.submissionStatus === "submitted";
   const isRejected = approverStatus === "rejected";
   // Backend doesn't always set `submissionStatus` — once the PM/vendor
@@ -439,8 +440,17 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
     Boolean(detail?.submittedBy) &&
     Array.isArray(detail?.files) &&
     detail.files.length > 0;
+  // Approve/Reject is role-scoped to the role's *own* pending slot:
+  //  - Approver sees the buttons only while their `approverStatus` is
+  //    still "pending"
+  //  - Contract Manager sees them only while `manager.status` is
+  //    "pending"
+  // Once their slot transitions to approved/rejected the buttons hide,
+  // even if the other role still has an outstanding decision.
+  const canApproverAct = isApprover && approverStatus === "pending";
+  const canManagerAct = isContractManager && managerStatus === "pending";
   const canShowApproveButtons =
-    approverStatus && approverStatus !== "N/A" && !isSubmitted && !isRejected;
+    (canApproverAct || canManagerAct) && !isSubmitted;
   const canShowSubmitButton =
     isVendor &&
     !isSubmitted &&
