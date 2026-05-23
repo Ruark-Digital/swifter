@@ -42,13 +42,13 @@ test.describe("vendorApi (unit)", () => {
 
     await api.listChangeComments("c1", "chg1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/vendor/contracts/c1/changes/chg1/comment",
+      url: "/contract/vendor/contracts/c1/changes/chg1/comment",
     });
 
     const payload = { content: "hello" };
     await api.addChangeComment("c1", "chg1", payload);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/vendor/contracts/c1/changes/chg1/comment",
+      url: "/contract/vendor/contracts/c1/changes/chg1/comment",
       payload,
     });
   });
