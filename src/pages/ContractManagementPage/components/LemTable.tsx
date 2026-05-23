@@ -111,14 +111,9 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
     !isViewOnly &&
     !isVendor &&
     !isProjectManager;
-  const statusRaw =
-    typeof (lemDetail as any)?.status === "string" ? (lemDetail as any).status : "";
-  const statusNormalized = statusRaw.toLowerCase();
-  const isPending =
-    statusNormalized === "pending" ||
-    statusNormalized === "pending_approval" ||
-    statusNormalized === "pending approval";
-  const showApprovalActions = canApproveOrReject && isPending;
+  const approverStatus = (lemDetail as any)?.approverStatus;
+  const showApprovalActions =
+    canApproveOrReject && approverStatus === "pending";
 
 
   return (
