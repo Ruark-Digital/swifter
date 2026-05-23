@@ -431,7 +431,6 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   const approverStatus = detail?.approverStatus;
   const managerStatus = detail?.manager?.status;
   const isSubmitted = detail?.submissionStatus === "submitted";
-  const isRejected = approverStatus === "rejected";
   // Backend doesn't always set `submissionStatus` — once the PM/vendor
   // uploads, the deliverable carries `submittedBy` and a non-empty
   // `files[]` instead. Treat that combo as "already submitted" so the
