@@ -122,16 +122,11 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const { data: detailRes, isLoading: isDetailLoading } = useQuery({
     queryKey: changeDetailQueryKey,
     queryFn: async () => {
-      let url = usesListBasePath
+      const url = usesListBasePath
         ? `${roleBasePath}/${changeId}`
         : isClaim
           ? `${roleBasePath}/${contractId}/claims/${changeId}`
           : `${roleBasePath}/${contractId}/changes/${changeId}`;
-          
-      // Handle the backend route mismatch for approver claims
-      if (isClaim && url.includes("/claim/") && !url.includes("/claims/")) {
-        url = url.replace("/claim/", "/claims/");
-      }
 
       const res = await getRequest({ url });
       return (res as any)?.data;
@@ -267,7 +262,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     queryKey: commentsQueryKey,
     queryFn: async () => {
       const url = roleBasePath.includes("/vendor/")
-        ? `/vendor/contracts/${contractId}/changes/${changeId}/comment`
+        ? `${roleBasePath}/${changeId}/comment`
         : roleBasePath.includes("/manager/")
           ? usesListBasePath
             ? `${roleBasePath}/${changeId}/comments`
@@ -291,7 +286,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
       if (!content.trim()) return;
       const payload = { content };
       const url = roleBasePath.includes("/vendor/")
-        ? `/vendor/contracts/${contractId}/changes/${changeId}/comment`
+        ? `${roleBasePath}/${changeId}/comment`
         : roleBasePath.includes("/manager/")
           ? usesListBasePath
             ? `${roleBasePath}/${changeId}/comments`

@@ -33,12 +33,12 @@ const ClaimsTabContent: React.FC<Props> = ({
   });
 
   const getBasePath = () => {
-    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/claim`;
-    if (isApprover) return `/contract/approver/contracts/${contractId}/claim`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/claims`;
+    if (isApprover) return `/contract/approver/contracts/${contractId}/claims`;
     if (isManager) return `/contract/manager/contracts/${contractId}/claims`;
     if (isAdmin || isViewOnly)
-      return `/contract/user/contracts/${contractId}/claim`;
-    return `/contract/user/contracts/${contractId}/claim`; // Default fallback
+      return `/contract/user/contracts/${contractId}/claims`;
+    return `/contract/user/contracts/${contractId}/claims`; // Default fallback
   };
 
   const basePath = getBasePath();
@@ -100,7 +100,7 @@ const ClaimsTabContent: React.FC<Props> = ({
           {(isContractVendorLike || isManager) && (
             <RequestClaimDialog
               createPath={basePath}
-              invalidateQueryKey={["contractClaims", contractId, basePath]}
+              invalidateQueryKey={["contractClaims"]}
               trigger={
                 <Button
                   className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-medium text-white hover:bg-[#1f3552]"
