@@ -1,6 +1,6 @@
 import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Search, ArrowLeft, Share2 } from "lucide-react";
+import { Search, ArrowLeft, Share2, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/layouts/DataTable";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -262,10 +262,13 @@ const UpdateVendorPerformanceDialog: React.FC<{
   });
   const { success, error } = useToastHandler();
   const [successOpen, setSuccessOpen] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const metrics = CATEGORY_METRICS[category] ?? [];
 
   const onSubmit = async (payload: any) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const metricsPayload: Record<string, number> = {};
       for (const m of metrics) {
@@ -281,6 +284,8 @@ const UpdateVendorPerformanceDialog: React.FC<{
       setSuccessOpen(true);
     } catch (e) {
       error("Failed to update KPI", e as ApiResponseError);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -329,15 +334,25 @@ const UpdateVendorPerformanceDialog: React.FC<{
           <Button
             type="button"
             variant="outline"
-            className="h-12 flex-1 rounded-xl bg-[#F3F4F6] dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
+            disabled={isSubmitting}
+            className="h-12 flex-1 rounded-xl bg-[#F3F4F6] dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700 disabled:opacity-50"
           >
             Cancel
           </Button>
           <Button
             type="submit"
-            className="h-12 flex-1 rounded-xl bg-[#2A4467] text-white hover:bg-[#2A4467]/90"
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
+            className="h-12 flex-1 rounded-xl bg-[#2A4467] text-white hover:bg-[#2A4467]/90 disabled:opacity-80"
           >
-            Update KPI
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              "Update KPI"
+            )}
           </Button>
         </div>
       </Forge>

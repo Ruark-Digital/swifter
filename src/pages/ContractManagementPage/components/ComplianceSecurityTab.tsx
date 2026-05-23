@@ -15,6 +15,7 @@ import { useParams } from "react-router-dom";
 import { postRequest } from "@/lib/axiosInstance";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToastHandler } from "@/hooks/useToaster";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 export type PolicyRow = {
   id: string;
@@ -445,9 +446,11 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
               }
             />
           )}
-          <Button variant="outline" className="text-slate-600 border-slate-300">
-            <Share2 className="mr-2 h-4 w-4" /> Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId ?? ""} contractType="Contract">
+            <Button variant="outline" className="text-slate-600 border-slate-300">
+              <Share2 className="mr-2 h-4 w-4" /> Export Report
+            </Button>
+          </ExportReportSheet>
         </div>
       </div>
 

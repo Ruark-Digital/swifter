@@ -27,7 +27,7 @@ export const DocumentItem = ({
   handleDownload?: (d: DocType) => void;
 }) => {
   return (
-    <Card key={d.id} className="border-slate-200">
+    <Card key={d.id} className="border-slate-200 dark:border-slate-700 dark:bg-slate-900">
       <CardContent className="p-4 flex items-center gap-4">
         <div className={`h-10 w-10`}>{d.icon}</div>
 

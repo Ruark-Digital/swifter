@@ -813,13 +813,15 @@ export const VendorDetailPage = () => {
             >
               Submissions
             </TabsTrigger>
-            <TabsTrigger
-              value="project-managers"
-              data-testid="project-managers-tab"
-              className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              Project Managers
-            </TabsTrigger>
+            {projectManagers.length > 0 && (
+              <TabsTrigger
+                value="project-managers"
+                data-testid="project-managers-tab"
+                className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+              >
+                Project Managers
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="overview" className="mt-0 border-0 p-0">

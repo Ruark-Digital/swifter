@@ -133,12 +133,18 @@ const Step1BasicInfo: React.FC<Props> = ({
     staleTime: 60000,
   });
 
+  // API spec (POST/PUT /manager/contracts) describes `category` as a
+  // string name (e.g. "Construction", "IT"), and the GET response
+  // surfaces the same name back. Using the name as the option value
+  // keeps the prefill round-trip stable — otherwise the edit form
+  // received "Construction" but the options were keyed by `_id`, so
+  // TextSelectWithSearch couldn't find a match and rendered empty.
   const categoryOptions = React.useMemo(
     () =>
       Array.isArray(categoriesData?.data?.data)
         ? categoriesData.data.data.map((c: { _id?: string; name: string }) => ({
             label: c.name,
-            value: c._id ?? c.name,
+            value: c.name,
           }))
         : [],
     [categoriesData?.data?.data],

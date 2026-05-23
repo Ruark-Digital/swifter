@@ -32,6 +32,7 @@ import { getHoldbackStatusBadgeProps } from "../lib/holdbacks";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import Spinner from "@/components/ui/Spinner";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type HoldbackReleaseRow = {
   releaseId: string;
@@ -393,7 +394,7 @@ const UpdateSavingsDialog: React.FC<{
             className="flex max-h-[90vh] flex-col"
           >
             <div className="flex items-center justify-between px-8 pb-2 pt-8">
-              <div className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Update Savings Realized
               </div>
               <button
@@ -488,7 +489,7 @@ const UpdateSavingsDialog: React.FC<{
                 type="button"
                 onClick={() => setOpen(false)}
                 disabled={isSubmitting}
-                className="inline-flex h-11 min-w-[140px] items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:text-slate-100 disabled:opacity-50"
+                className="inline-flex h-11 min-w-[140px] items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 disabled:opacity-50"
               >
                 Back
               </button>
@@ -527,7 +528,7 @@ const UpdateSavingsDialog: React.FC<{
               <button
                 type="button"
                 onClick={() => setSuccessOpen(false)}
-                className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+                className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
                 Close
               </button>
@@ -736,16 +737,18 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
         </h3>
 
         <div className="flex items-center gap-6">
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-700 px-[15px] py-2 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
-          >
-            <img
-              src="/assets/contract-management/payment-summary/share.svg"
-              className="h-5 w-5"
-            />
-            Export Report
-          </button>
+          <ExportReportSheet contractId={contractId} contractType="Contract">
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-700 px-[15px] py-2 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+            >
+              <img
+                src="/assets/contract-management/payment-summary/share.svg"
+                className="h-5 w-5"
+              />
+              Export Report
+            </button>
+          </ExportReportSheet>
 
           {isManager && !isPendingApproval && (
             <div className="inline-flex items-start gap-6">

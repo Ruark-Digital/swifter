@@ -81,21 +81,41 @@ const columns: ColumnDef<MsaRow>[] = [
     accessorKey: "status",
     header: "Status",
     cell: ({ getValue }) => {
-      const s = getValue<MsaRow["status"]>();
+      // Backend emits raw lowercase/snake values ("publish",
+      // "pending_approval", "draft", …). Mirror ContractsTable: map to
+      // a human label, then pick the tone. Previously "publish" fell
+      // through the fallback case and rendered yellow.
+      const raw = String(getValue<MsaRow["status"]>() ?? "");
+      const label =
+        raw === "active"
+          ? "Active"
+          : raw === "publish"
+            ? "Publish"
+            : raw === "draft"
+              ? "Draft"
+              : raw === "expired"
+                ? "Expired"
+                : raw === "terminated"
+                  ? "Terminated"
+                  : raw === "suspended"
+                    ? "Suspended"
+                    : raw === "pending_approval"
+                      ? "Pending Approval"
+                      : raw;
       const tone =
-        s === "Active"
+        label === "Active" || label === "Publish"
           ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
-          : s === "Draft"
+          : label === "Draft"
             ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-            : s === "Expired" || s === "Terminated" || s === "Suspended"
-              ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
-              : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"; // Pending Approval
+            : label === "Pending Approval"
+              ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"
+              : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
       return (
         <span
           data-testid="msa-status-badge"
           className={`px-2 py-1 rounded-full text-xs font-medium ${tone}`}
         >
-          {s}
+          {label}
         </span>
       );
     },

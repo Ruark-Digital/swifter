@@ -46,6 +46,8 @@ import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
 import { formatDate } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import Spinner from "@/components/ui/Spinner";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
@@ -114,7 +116,7 @@ const LabelRow = ({
 
 const RateSheetUploadElement = () => {
   return (
-    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] bg-white px-4">
+    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] dark:border-slate-600 bg-white dark:bg-slate-800 px-4">
       <UploadCloud className="h-10 w-10 text-[#2A4467] dark:text-blue-300" />
       <div className="flex flex-col items-center gap-1 text-center">
         <div className="text-sm font-semibold text-[#2A4467] dark:text-blue-300">
@@ -133,9 +135,9 @@ const RateSheetFilesListItem = ({ file }: { file: File }) => {
   const value = useWatch({ control, name: "files" });
 
   return (
-    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-3">
+    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB]">
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
           <FileText className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
         </div>
         <div className="min-w-0">
@@ -360,16 +362,26 @@ const SubmitRateSheetDialog: React.FC<{
               type="button"
               onClick={() => setOpen(false)}
               disabled={isSubmitting}
-              className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-3.5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 shadow-sm hover:bg-[#E5E7EB]"
+              className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-3.5 text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 shadow-sm hover:bg-[#E5E7EB] dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Back
             </button>
             <button
               type="submit"
-              disabled={isPending || submitMutation.isPending}
-              className="flex-1 rounded-xl bg-[#2A4467] py-3.5 text-base font-semibold text-white shadow-sm hover:bg-[#1e3a5f]"
+              disabled={isSubmitting}
+              aria-busy={isSubmitting}
+              className="flex-1 rounded-xl bg-[#2A4467] py-3.5 text-base font-semibold text-white shadow-sm hover:bg-[#1e3a5f] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Submit Rate Sheet
+              {isSubmitting ? (
+                <div className="flex items-center justify-center gap-2">
+                  <Spinner className="h-5 w-5 text-white" />
+                  <span>
+                    {isPending ? "Uploading files…" : "Submitting…"}
+                  </span>
+                </div>
+              ) : (
+                "Submit Rate Sheet"
+              )}
             </button>
           </div>
         </Forge>
@@ -1070,9 +1082,11 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Rate Sheets</h3>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="h-10 rounded-xl px-4">
-            Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="Contract">
+            <Button variant="outline" className="h-10 rounded-xl px-4">
+              Export Report
+            </Button>
+          </ExportReportSheet>
           {isContractVendorLike && (
             <SubmitRateSheetDialog
               contractId={contractId}
