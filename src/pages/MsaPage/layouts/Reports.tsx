@@ -14,7 +14,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { ArrowLeft, FileText, Search, X } from "lucide-react";
+import CreateVendorReportDialog from "@/pages/ContractManagementPage/components/CreateVendorReportDialog";
 import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
@@ -302,12 +304,29 @@ const Reports: React.FC<Props> = ({ contractId, isActive }) => {
     [basePath],
   );
 
+  const isVendorLike = isVendor || isProjectManager;
+  const [openCreate, setOpenCreate] = React.useState(false);
+
   return (
     <TabsContent value="reports" className="space-y-8">
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F] dark:text-slate-100">
           Vendor’s Reports
         </h3>
+        {isVendorLike ? (
+          <Dialog open={openCreate} onOpenChange={setOpenCreate}>
+            <DialogTrigger asChild>
+              <Button className="h-10 rounded-xl bg-[#2A4467] text-white">
+                Create Report
+              </Button>
+            </DialogTrigger>
+            <CreateVendorReportDialog
+              contractId={contractId}
+              invalidateQueryKey={listQueryKey}
+              onSuccess={() => setOpenCreate(false)}
+            />
+          </Dialog>
+        ) : null}
       </div>
 
       <Card className="w-[320px] rounded-xl border border-[#E5E7EB] dark:border-slate-800 dark:bg-slate-900 shadow-none">
