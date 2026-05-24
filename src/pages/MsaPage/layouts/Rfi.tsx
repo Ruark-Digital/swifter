@@ -113,7 +113,8 @@ const formatDate = (value?: string | Date) => formatDateTZ(value, "MMMM dd, yyyy
 const statusTone = (status?: string) => {
   const normalized = status?.toLowerCase();
   if (normalized === "open") return "bg-[#EAF7EE] text-[#43A047]";
-  if (normalized === "closed") return "bg-[#FEECEC] text-[#E53935]";
+  if (normalized === "closed")
+    return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
   return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 };
 

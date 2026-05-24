@@ -77,7 +77,9 @@ const statusToUi = (status?: string): NcrRow["status"] => {
 };
 
 const statusTone = (status: NcrRow["status"]) =>
-  status === "Closed" ? "bg-[#FEECEC] text-[#E53935]" : "bg-[#EAF7EE] text-[#43A047]";
+  status === "Closed"
+    ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+    : "bg-[#EAF7EE] text-[#43A047]";
 
 const NcrDetailsSheet = ({
   trigger,

@@ -43,7 +43,9 @@ const statusTone = (status?: string) => {
   if (normalized === "approved") return "bg-[#EAF7EE] dark:bg-green-900/40 text-[#43A047] dark:text-green-300";
   if (normalized === "pending") return "bg-[#FFF8E1] dark:bg-yellow-900/40 text-[#F4B400] dark:text-yellow-300";
   if (normalized === "rejected") return "bg-[#FEECEC] dark:bg-red-900/40 text-[#E53935] dark:text-red-300";
-  return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:text-slate-300";
+  if (normalized === "closed")
+    return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+  return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 };
 
 const formatChangeValue = (value?: number) => {

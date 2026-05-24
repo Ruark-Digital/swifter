@@ -70,7 +70,9 @@ const getStatusTone = (status?: string) => {
   }
   if (normalized === "rejected")
     return "bg-[#FEECEC] text-[#E53935] dark:bg-red-900/30 dark:text-red-300";
-  return "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-200";
+  if (normalized === "closed")
+    return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+  return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 };
 
 const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
