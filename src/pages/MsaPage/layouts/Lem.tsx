@@ -24,11 +24,11 @@ const Lem: React.FC<Props> = ({ contractId, isActive }) => {
 
   const basePath = React.useMemo(() => {
     if (isVendor || isProjectManager)
-      return `/contract/vendor/contracts/${contractId}/lems`;
-    if (isApprover) return `/contract/approver/contracts/${contractId}/lems`;
-    if (isManager) return `/contract/manager/contracts/${contractId}/lems`;
-    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/lems`;
-    return `/contract/user/contracts/${contractId}/lems`;
+      return `/contract/vendor/msa-contract/${contractId}/lems`;
+    if (isApprover) return `/contract/approver/msa-contract/${contractId}/lems`;
+    if (isManager) return `/contract/manager/msa-contract/${contractId}/lems`;
+    if (isAdmin || isViewOnly) return `/contract/user/msa-contract/${contractId}/lems`;
+    return `/contract/user/msa-contract/${contractId}/lems`;
   }, [
     contractId,
     isAdmin,
