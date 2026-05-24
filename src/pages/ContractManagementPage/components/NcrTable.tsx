@@ -7,6 +7,14 @@ import type {
 } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { CheckCircle2 } from "lucide-react";
 import {
   Sheet,
   SheetClose,
@@ -264,7 +272,30 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
     },
   });
 
-  const isRespondActionPending = approveCapaMutation.isPending;
+  const [closeChecklistOpen, setCloseChecklistOpen] = React.useState(false);
+  const [closeSuccessOpen, setCloseSuccessOpen] = React.useState(false);
+
+  const closeNcrMutation = useMutation({
+    mutationFn: async () =>
+      await patchRequest({
+        url: `${basePath}/${ncrId}/close`,
+        payload: { reason: "NCR closure checklist verified" },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["contractNcrs", "detail", contractId, ncrId, basePath],
+      });
+      invalidateNcrQueries();
+      setCloseChecklistOpen(false);
+      setCloseSuccessOpen(true);
+    },
+    onError: (error: ApiResponseError) => {
+      toastHandler.error("Close NCR", error);
+    },
+  });
+
+  const isRespondActionPending =
+    approveCapaMutation.isPending || closeNcrMutation.isPending;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -435,7 +466,8 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
 
           {/* Footer is identity-gated:
               - No CAPA + viewer is a listed responder → Cancel + Submit CAPA
-              - CAPA submitted + viewer is the NCR submitter → Cancel + Approve CAPA */}
+              - CAPA submitted + viewer is the NCR submitter → Cancel + Approve CAPA
+              - NCR status approved + viewer is the NCR submitter → Cancel + Close NCR */}
           {!latestCapa?._id && isResponderMatched ? (
             <div className="flex w-full gap-3 pt-2">
               <Button
@@ -459,7 +491,9 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
             </div>
           ) : null}
 
-          {latestCapa?._id && isNcrSubmitter ? (
+          {latestCapa?._id &&
+          isNcrSubmitter &&
+          String(status).toLowerCase() !== "approved" ? (
             <div className="flex w-full gap-3 pt-2">
               <Button
                 variant="outline"
@@ -477,6 +511,41 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
               </Button>
             </div>
           ) : null}
+
+          {String(status).toLowerCase() === "approved" && isNcrSubmitter ? (
+            <div className="flex w-full gap-3 pt-2">
+              <Button
+                variant="outline"
+                className="flex-1 h-12 rounded-xl"
+                onClick={() => setOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 h-12 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
+                onClick={() => setCloseChecklistOpen(true)}
+                disabled={isRespondActionPending}
+              >
+                Close NCR
+              </Button>
+            </div>
+          ) : null}
+
+          <CloseNcrChecklistDialog
+            open={closeChecklistOpen}
+            onOpenChange={setCloseChecklistOpen}
+            onConfirm={() => closeNcrMutation.mutate()}
+            isSubmitting={closeNcrMutation.isPending}
+          />
+
+          <NcrCloseSuccessDialog
+            open={closeSuccessOpen}
+            onOpenChange={setCloseSuccessOpen}
+            onDone={() => {
+              setCloseSuccessOpen(false);
+              setOpen(false);
+            }}
+          />
           {selectedDoc ? (
             <DocumentViewer
               isOpen={viewerOpen}
@@ -621,3 +690,146 @@ const NcrTable: React.FC<Props> = ({
 };
 
 export default NcrTable;
+
+const CLOSE_NCR_CHECKLIST = [
+  "All corrective and preventive actions are completed as planned",
+  "Sufficient documentation (photos, test reports, records) supports the actions taken",
+  "Actions have successfully resolved the non-conformance and prevented recurrence",
+  "All NCR documentation is complete, clear, and up-to-date",
+  "Necessary approvals from relevant stakeholders have been obtained",
+  "Insights have been documented for training and future process improvements",
+  "NCR status has been marked as “Closed” in the system",
+  "Closed NCR has been archived for audits and future reference",
+];
+
+const CloseNcrChecklistDialog: React.FC<{
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => void;
+  isSubmitting: boolean;
+}> = ({ open, onOpenChange, onConfirm, isSubmitting }) => {
+  const [checked, setChecked] = React.useState<boolean[]>(() =>
+    CLOSE_NCR_CHECKLIST.map(() => false),
+  );
+
+  React.useEffect(() => {
+    if (!open) setChecked(CLOSE_NCR_CHECKLIST.map(() => false));
+  }, [open]);
+
+  const allChecked = checked.every(Boolean);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        showCloseButton={false}
+        className="max-h-[90vh] w-full max-w-xl gap-0 overflow-y-auto rounded-2xl border-0 p-0"
+      >
+        <div className="flex items-center justify-between px-8 pb-2 pt-8">
+          <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+            Close NCR
+          </DialogTitle>
+          <button
+            type="button"
+            onClick={() => !isSubmitting && onOpenChange(false)}
+            disabled={isSubmitting}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#EF4444] disabled:opacity-50"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <DialogDescription className="sr-only">
+          Confirm that every NCR closure checklist item is complete before
+          closing the NCR.
+        </DialogDescription>
+
+        <div className="space-y-5 px-8 pb-2 pt-2">
+          <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+            NCR Checklist
+          </div>
+          <div className="space-y-4">
+            {CLOSE_NCR_CHECKLIST.map((item, i) => (
+              <label
+                key={i}
+                className="flex items-start gap-3 text-sm text-[#374151] dark:text-slate-200 cursor-pointer"
+              >
+                <Checkbox
+                  checked={checked[i]}
+                  onCheckedChange={(value) => {
+                    setChecked((prev) => {
+                      const next = [...prev];
+                      next[i] = Boolean(value);
+                      return next;
+                    });
+                  }}
+                  className="mt-0.5"
+                />
+                <span>{item}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-4 px-8 pb-8 pt-6">
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            disabled={isSubmitting}
+            className="inline-flex h-11 min-w-[140px] items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={!allChecked || isSubmitting}
+            className="inline-flex h-11 min-w-[170px] items-center justify-center rounded-xl bg-[#2A4467] px-6 text-base font-semibold text-white disabled:opacity-50"
+          >
+            {isSubmitting ? "Closing..." : "Close NCR"}
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const NcrCloseSuccessDialog: React.FC<{
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDone: () => void;
+}> = ({ open, onOpenChange, onDone }) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent
+      showCloseButton={false}
+      className="w-full max-w-md rounded-2xl border-0 px-8 py-10"
+    >
+      <DialogTitle className="sr-only">NCR Closed Successfully</DialogTitle>
+      <DialogDescription className="sr-only">
+        The NCR has been closed.
+      </DialogDescription>
+      <div className="flex flex-col items-center gap-6">
+        <CheckCircle2 className="h-16 w-16 text-[#22C55E]" />
+        <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+          NCR Closed Successfully
+        </div>
+        <div className="flex w-full items-center gap-4">
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            onClick={onDone}
+            className="inline-flex h-11 flex-1 items-center justify-center rounded-xl bg-[#2A4467] text-base font-semibold text-white"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </DialogContent>
+  </Dialog>
+);
