@@ -21,17 +21,21 @@ After the initial audit shipped, every finding was cross-checked against `docs/s
 - **§11 Invoice "msa-contracts (plural) typo"** ❌ **RETRACTED.** The BE genuinely accepts and routes `/manager/msa-contracts/{contractId}/invoice/{invoiceId}/approve` with plural `msa-contracts`. This is the **only** MSA endpoint that uses the plural form; every other MSA endpoint uses singular `msa-contract`. The frontend code at `Invoice.tsx:120-122` correctly mirrors this BE quirk. See memory `msa-contracts-plural-invoice-approve-quirk`.
 - **§6 RFI "manager singular `/rfi` should be plural `/rfis`"** ❌ **RETRACTED.** BE genuinely uses singular `/manager/msa-contract/{id}/rfi` for MSA. The audit assumed MSA followed Contract's manager-plural quirk; it doesn't. Frontend code is correct.
 - **§12 Vendor Reports "wrong endpoint family"** ❌ **RETRACTED.** No `/msa-contract/*/reports` route exists in swagger. MSA Vendor Reports correctly shares Contract endpoints under `/{role}/contracts/{id}/reports`. Frontend code is correct.
+- **§3 Claims "Manager can't Create Claim on MSA"** ❌ **RETRACTED** (Wave 2 pre-flight). `/manager/msa-contract/{contractId}/claims` is GET-only on BE — no POST endpoint exists. MSA's gating to vendor/PM only is BE-correct. Contract behavior (manager can POST a claim) does not exist on MSA. Frontend code is correct.
 
 **Confirmed findings — Wave 1 fixes shipped:**
 
-| Finding | Status | Commit |
-|---|---|---|
-| §3 Claims `/claim` → `/claims` plural for 3 of 4 roles | ✅ Shipped | `7aa222c75` |
-| §7 Compliance manager Approve add `/contract` prefix | ✅ Shipped | `369758628` |
-| §5 NCR Log basePath `/contracts/` → `/msa-contract/` for all 4 roles | ✅ Shipped | `51df46d56` |
-| §10 LEM basePath `/contracts/` → `/msa-contract/` for all 4 roles | ✅ Shipped | `89e453fa8` |
+| Finding | Wave | Status | Commit |
+|---|---|---|---|
+| §3 Claims `/claim` → `/claims` plural for 3 of 4 roles | 1 | ✅ Shipped | `7aa222c75` |
+| §7 Compliance manager Approve add `/contract` prefix | 1 | ✅ Shipped | `369758628` |
+| §5 NCR Log basePath `/contracts/` → `/msa-contract/` for all 4 roles | 1 | ✅ Shipped | `51df46d56` |
+| §10 LEM basePath `/contracts/` → `/msa-contract/` for all 4 roles | 1 | ✅ Shipped | `89e453fa8` |
+| §4 Deliverables pass `isContractManager` prop to shared `DeliverablesTable` | 2 | ✅ Shipped | `7feb7ca9d` |
 
-**Remaining findings unchanged.** All non-endpoint findings (missing buttons, Documents Edit Contract dead `onClick`, Deliverables `isContractManager` prop omission, status tone drift, query-key wrapping, etc.) stand as written.
+**Source-of-truth note:** As of 260524, `docs/swagger-phase-2.json` on disk is missing the v2.3.0 MSA route additions (MSA NCR, MSA LEM endpoint families). The user's externally-provided `docs.json` is the current spec. When `swagger-phase-2.json` and the external doc disagree, the external doc wins.
+
+**Remaining findings unchanged.** All non-endpoint findings (Documents Edit Contract dead `onClick`, LEM Submit missing, Vendor Reports Create missing, status tone drift, query-key wrapping, etc.) stand as written.
 
 > The "Top broken behaviors" list and "Recommended fix sequencing" sections below were written before these corrections — refer to this section first when prioritizing work.
 
