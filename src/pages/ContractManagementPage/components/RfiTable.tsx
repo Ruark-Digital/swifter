@@ -54,7 +54,7 @@ import {
   // type ContractRfiDTO,
 } from "../api/contractManagerApi";
 import { approverApi } from "../api/approverApi";
-// import { vendorApi } from "../api/vendorApi";
+import { vendorApi } from "../api/vendorApi";
 import { formatDateTZ } from "@/lib/utils";
 import { formatFileSize, getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -114,15 +114,21 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   const [isOpen, setIsOpen] = React.useState(false);
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
-  const { isApprover } = useUserRole();
+  const { isApprover, isVendor, isProjectManager } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
+  const roleNs = isApprover
+    ? "approver"
+    : isContractVendorLike
+      ? "vendor"
+      : "contractManager";
   const queryKey = useUserQueryKey([
-    isApprover ? "approver" : "contractManager",
+    roleNs,
     "contractRfis",
     "detail",
     rfiId,
   ]);
   const commentsQueryKey = useUserQueryKey([
-    isApprover ? "approver" : "contractManager",
+    roleNs,
     "contractRfis",
     "comments",
     contractId,
@@ -134,7 +140,9 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     queryFn: async () =>
       isApprover
         ? await approverApi.getRfiDetail(rfiId, contractId)
-        : await contractManagerApi.getRfiDetail(contractId, rfiId),
+        : isContractVendorLike
+          ? await vendorApi.getRfiDetail(contractId, rfiId)
+          : await contractManagerApi.getRfiDetail(contractId, rfiId),
     enabled: Boolean(rfiId) && isOpen,
     staleTime: 60000,
   });
@@ -150,7 +158,9 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     queryFn: async () =>
       isApprover
         ? await approverApi.listRfiComments(contractId, rfiId)
-        : await contractManagerApi.listRfiComments(contractId, rfiId),
+        : isContractVendorLike
+          ? await vendorApi.listRfiComments(contractId, rfiId)
+          : await contractManagerApi.listRfiComments(contractId, rfiId),
     enabled: Boolean(contractId) && Boolean(rfiId) && isOpen,
     staleTime: 60000,
   });
@@ -161,7 +171,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     ContractChangeCommentDTO
   >({
     mutationKey: [
-      isApprover ? "approver" : "contractManager",
+      roleNs,
       "contractRfis",
       "comments",
       "add",
@@ -171,7 +181,9 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     mutationFn: async (payload) =>
       isApprover
         ? await approverApi.addRfiComment(contractId, rfiId, payload)
-        : await contractManagerApi.addRfiComment(contractId, rfiId, payload),
+        : isContractVendorLike
+          ? await vendorApi.addRfiComment(contractId, rfiId, payload)
+          : await contractManagerApi.addRfiComment(contractId, rfiId, payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: commentsQueryKey });
     },
@@ -184,7 +196,16 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   const rfiTitle = rfiDetail?.title ?? rfi?.title ?? "-";
   const rfiDescription = rfiDetail?.description ?? rfi?.description ?? "-";
   const rfiStatus = rfi?.status ?? "-";
-  const rfiSubmittedBy = rfiDetail?.submittedBy?.name ?? rfi?.submittedBy ?? "-";
+  // Backend now returns `submittedBy` as a populated user object
+  // (`{_id, name, email}`) on both list + detail. Older rows could
+  // still be plain strings. Coerce to a string before rendering —
+  // otherwise React crashes with "Objects are not valid as a
+  // React child".
+  const submittedByRaw = rfiDetail?.submittedBy ?? rfi?.submittedBy;
+  const rfiSubmittedBy =
+    typeof submittedByRaw === "string"
+      ? submittedByRaw
+      : (submittedByRaw?.name ?? submittedByRaw?.email ?? "-");
   const rfiIdentifier = rfi?.rfiId ?? rfi?._id ?? "-";
 
   const formatDate = (value?: string | Date) =>
