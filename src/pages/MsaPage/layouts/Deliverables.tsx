@@ -250,6 +250,7 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
           rows={rows}
           isLoading={Boolean(listLoading || statsLoading)}
           isApprover={isApprover}
+          isContractManager={isManager}
           basePath={basePath}
         />
       ) : null}
