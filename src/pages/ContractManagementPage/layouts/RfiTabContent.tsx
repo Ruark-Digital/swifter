@@ -20,7 +20,7 @@ import {
   TextDatePicker,
   TextFileUploader,
   TextInput,
-  TextMultiSelect,
+  TextSelect,
 } from "@/components/layouts/FormInputs";
 import { Check, CloudUpload, Share2 } from "lucide-react";
 import RfiStatsCards from "../components/RfiStatsCards";
@@ -39,7 +39,6 @@ import {
 } from "@/lib/fileUtils";
 import { useWatch } from "react-hook-form";
 import { useUserRole } from "@/hooks/useUserRole";
-import type { Option } from "@/components/ui/multiselect";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type IssueRfiDialogProps = {
@@ -53,7 +52,7 @@ type IssueRfiFormValues = {
   responseDeadline?: Date | null;
   question: string;
   files: File[] | null;
-  responders: Option[];
+  responder: string;
 };
 
 const issueRfiSchema = yup.object({
@@ -61,7 +60,7 @@ const issueRfiSchema = yup.object({
   responseDeadline: yup.date().nullable().optional(),
   question: yup.string().required("Question is required"),
   files: yup.mixed().nullable().optional(),
-  responders: yup.array().default([]),
+  responder: yup.string().default(""),
 });
 
 const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
@@ -80,7 +79,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
       responseDeadline: undefined,
       question: "",
       files: null,
-      responders: [],
+      responder: "",
     },
   });
   const [isSuccess, setIsSuccess] = React.useState(false);
@@ -166,7 +165,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
       reset();
       toastHandler.success("RFI", "RFI issued successfully");
       await queryClient.invalidateQueries({
-        queryKey: ["contractRfis", contractId],
+        queryKey: ["contractRfis"],
       });
     },
     onError: (error: ApiResponseError) => {
@@ -175,12 +174,10 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
   });
 
   const handleSubmit = async (data: IssueRfiFormValues) => {
-    const responderEmails = data.responders.map((r) => r.label).join(", ");
-
     const payload: ContractRfiDTO = {
       title: data.rfiTitle,
       description: data.question,
-      responder: responderEmails || undefined,
+      responder: data.responder || undefined,
       deadline: data.responseDeadline
         ? data.responseDeadline.toISOString()
         : undefined,
@@ -278,7 +275,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
               <DialogClose asChild>
                 <button
                   type="button"
-                  className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+                  className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 >
                   Close
                 </button>
@@ -326,10 +323,10 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                   rows={5}
                 />
                 <Forger
-                  name="responders"
+                  name="responder"
                   label="Select Responder"
-                  placeholder="Search and select responders"
-                  component={TextMultiSelect}
+                  placeholder="Search and select a responder"
+                  component={TextSelect}
                   options={personnelOptions}
                 />
                 <div className="space-y-2">
