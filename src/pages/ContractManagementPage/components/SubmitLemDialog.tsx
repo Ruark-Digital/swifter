@@ -32,6 +32,15 @@ const schema = yup.object({
 type SubmitLemDialogProps = {
   trigger: React.ReactElement;
   contractId: string;
+  /** Optional override of the POST endpoint. When omitted, defaults to
+   *  `vendorApi.createLem` which hits `/contract/vendor/contracts/{id}/lems`.
+   *  MSA callers pass `/contract/vendor/msa-contract/{contractId}/lems`. */
+  createPath?: string;
+  /** Optional extra query key to invalidate after successful submission.
+   *  MSA callers pass the wrapped `useUserQueryKey` list key so the MSA tab
+   *  refetches after submit. The Contract-side default keys are always
+   *  invalidated regardless. */
+  invalidateQueryKey?: readonly unknown[];
 };
 
 const UploadElement = () => {
@@ -77,7 +86,12 @@ const FilesListItem = ({ file }: { file: File }) => {
   );
 };
 
-const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({ trigger, contractId }) => {
+const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
+  trigger,
+  contractId,
+  createPath,
+  invalidateQueryKey,
+}) => {
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const toastHandler = useToastHandler();
@@ -116,8 +130,12 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({ trigger, contractId }
   });
 
   const createMutation = useMutation({
-    mutationKey: ["createLem", contractId],
+    mutationKey: ["createLem", contractId, createPath ?? "default"],
     mutationFn: async (data: any) => {
+      if (createPath) {
+        const res = await postRequest({ url: createPath, payload: data });
+        return res as ApiResponse<any>;
+      }
       return await vendorApi.createLem(contractId, data);
     },
     onSuccess: async () => {
@@ -129,8 +147,9 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({ trigger, contractId }
       await queryClient.invalidateQueries({
         queryKey: ["lem-list", contractId],
       });
-      // Also invalidate invoices as LEMs might affect them or appear there? 
-      // Based on InvoiceTabContent, it fetches invoices.
+      if (invalidateQueryKey) {
+        await queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
+      }
       toastHandler.success("Success", "LEM submitted successfully");
     },
     onError: (error: any) => {
