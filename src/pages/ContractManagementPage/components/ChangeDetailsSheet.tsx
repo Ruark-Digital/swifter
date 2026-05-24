@@ -36,6 +36,13 @@ import {
 } from "../lib/contractChanges";
 import { formatDate } from "date-fns";
 import Spinner from "@/components/ui/Spinner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 type Props = {
   trigger?: React.ReactNode;
@@ -56,10 +63,12 @@ const LabelRow = ({
   highlight?: boolean;
 }) => (
   <div className="space-y-2 py-3">
-    <span className="text-sm text-slate-500 block">{label}</span>
+    <span className="text-sm text-slate-500 dark:text-slate-400 block">{label}</span>
     <span
       className={`text-sm block ${
-        highlight ? "font-semibold text-slate-900" : "text-slate-800"
+        highlight
+          ? "font-semibold text-slate-900 dark:text-slate-100"
+          : "text-slate-800 dark:text-slate-200"
       }`}
     >
       {value}
@@ -113,16 +122,11 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const { data: detailRes, isLoading: isDetailLoading } = useQuery({
     queryKey: changeDetailQueryKey,
     queryFn: async () => {
-      let url = usesListBasePath
+      const url = usesListBasePath
         ? `${roleBasePath}/${changeId}`
         : isClaim
           ? `${roleBasePath}/${contractId}/claims/${changeId}`
           : `${roleBasePath}/${contractId}/changes/${changeId}`;
-          
-      // Handle the backend route mismatch for approver claims
-      if (isClaim && url.includes("/claim/") && !url.includes("/claims/")) {
-        url = url.replace("/claim/", "/claims/");
-      }
 
       const res = await getRequest({ url });
       return (res as any)?.data;
@@ -155,9 +159,27 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const showDecisionActions =
     shouldShowChangeDecisionActions(changeType) && approverStatus === "pending";
 
+  // Approve / reject opens a comment dialog first. `pendingAction` drives
+  // both the dialog visibility and which variant (Approve vs Reject) we
+  // render — `commentDraft` is reset whenever the dialog closes.
+  const [pendingAction, setPendingAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [commentDraft, setCommentDraft] = React.useState("");
+
+  React.useEffect(() => {
+    if (pendingAction === null) setCommentDraft("");
+  }, [pendingAction]);
+
   const { mutate: mutateApproval, isPending: isApproving } = useMutation({
     mutationKey: ["approveChange", roleBasePath, contractId, changeId],
-    mutationFn: async (action: "approved" | "rejected") => {
+    mutationFn: async ({
+      action,
+      comment,
+    }: {
+      action: "approved" | "rejected";
+      comment: string;
+    }) => {
       const canApprovePath = roleBasePath.includes("/manager/");
       if (!canApprovePath) {
         throw new Error(
@@ -171,10 +193,10 @@ const ChangeDetailsSheet: React.FC<Props> = ({
       });
       return await postRequest({
         url,
-        payload: { action, comment: "" },
+        payload: { action, comment },
       });
     },
-    onSuccess: (res, action) => {
+    onSuccess: (res, { action }) => {
       toast.success(
         `Change ${action === "approved" ? "approved" : "rejected"}`,
         (res as any)?.data?.message,
@@ -183,6 +205,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
         queryKey: ["contractChanges", contractId],
       });
       qc.invalidateQueries({ queryKey: changeDetailQueryKey });
+      setPendingAction(null);
     },
     onError: (err: any) => {
       toast.error("Failed to update change status", err);
@@ -239,7 +262,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     queryKey: commentsQueryKey,
     queryFn: async () => {
       const url = roleBasePath.includes("/vendor/")
-        ? `/vendor/contracts/${contractId}/changes/${changeId}/comment`
+        ? `${roleBasePath}/${changeId}/comment`
         : roleBasePath.includes("/manager/")
           ? usesListBasePath
             ? `${roleBasePath}/${changeId}/comments`
@@ -263,7 +286,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
       if (!content.trim()) return;
       const payload = { content };
       const url = roleBasePath.includes("/vendor/")
-        ? `/vendor/contracts/${contractId}/changes/${changeId}/comment`
+        ? `${roleBasePath}/${changeId}/comment`
         : roleBasePath.includes("/manager/")
           ? usesListBasePath
             ? `${roleBasePath}/${changeId}/comments`
@@ -306,7 +329,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
               </div>
             </SheetHeader>
 
-          <h3 className="text-lg font-semibold text-slate-900">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             {title}
           </h3>
 
@@ -341,7 +364,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     <LabelRow
                       label="Submitted by"
                       value={
-                        <a className="text-blue-600 underline">
+                        <a className="text-blue-600 dark:text-blue-400 underline">
                           {isDetailLoading ? "" : submittedByName}
                         </a>
                       }
@@ -352,7 +375,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     <LabelRow
                       label="Vendor/Contractor"
                       value={
-                        <a className="text-blue-600 underline">
+                        <a className="text-blue-600 dark:text-blue-400 underline">
                           {isDetailLoading ? "" : vendorEmail}
                         </a>
                       }
@@ -386,7 +409,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     <LabelRow
                     label="Status"
                     value={
-                      <Badge className="bg-yellow-100 text-yellow-700">
+                      <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">
                         {isDetailLoading
                           ? ""
                           : status
@@ -400,14 +423,14 @@ const ChangeDetailsSheet: React.FC<Props> = ({
               </div>
 
               <div className="space-y-2">
-                <span className="text-sm text-slate-500">Description</span>
-                <p className="text-sm text-slate-700">
+                <span className="text-sm text-slate-500 dark:text-slate-400">Description</span>
+                <p className="text-sm text-slate-700 dark:text-slate-200">
                   {isDetailLoading ? "" : description}
                 </p>
               </div>
 
               <div className="space-y-5">
-                <span className="text-sm text-slate-500">
+                <span className="text-sm text-slate-500 dark:text-slate-400">
                   Attached Documents
                 </span>
                 <div className="grid grid-cols-1 gap-3">
@@ -441,25 +464,25 @@ const ChangeDetailsSheet: React.FC<Props> = ({
 
               <Separator />
 
-              <div className="rounded-xl border border-slate-200 p-4">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
                 {isCommentsLoading ? (
-                  <p className="text-sm text-slate-700">Loading comments...</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-300">Loading comments...</p>
                 ) : Array.isArray(comments) && comments.length > 0 ? (
                   <div className="space-y-4">
                     {comments.map((c: any) => (
                       <div key={c?._id} className="space-y-1">
-                        <div className="text-xs text-slate-500">
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
                           {(c?.user?.name || c?.user?.email || "").toString()}
                         </div>
                         <div
-                          className="text-sm text-slate-700 prose prose-sm max-w-none"
+                          className="text-sm text-slate-700 dark:text-slate-200 prose prose-sm dark:prose-invert max-w-none"
                           dangerouslySetInnerHTML={{ __html: c?.content || "" }}
                         />
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-700">No comments yet.</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-300">No comments yet.</p>
                 )}
               </div>
 
@@ -492,7 +515,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                       );
                       return;
                     }
-                    mutateApproval("rejected");
+                    setPendingAction("rejected");
                   }}
                 >
                   Reject Change
@@ -501,7 +524,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                   <Button
                     className="flex-1 h-12 rounded-xl"
                     disabled={isApproving}
-                    onClick={() => mutateApproval("approved")}
+                    onClick={() => setPendingAction("approved")}
                   >
                     Approve
                   </Button>
@@ -518,6 +541,75 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             </SheetFooter>
           )}
         </div>
+
+        <Dialog
+          open={pendingAction !== null}
+          onOpenChange={(next) => {
+            if (!next && !isApproving) setPendingAction(null);
+          }}
+        >
+          <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-2">
+              <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                {pendingAction === "approved"
+                  ? "Approve Change"
+                  : "Reject Change"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="px-6 pb-6 space-y-4">
+              <p className="text-sm text-[#6B7280] dark:text-slate-400">
+                {pendingAction === "approved"
+                  ? "Add an optional comment for the vendor before approving."
+                  : "Let the vendor know why this change is being rejected (optional)."}
+              </p>
+              <textarea
+                value={commentDraft}
+                onChange={(e) => setCommentDraft(e.target.value)}
+                placeholder="Enter your comment"
+                rows={5}
+                className="w-full resize-none rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                autoFocus
+              />
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
+                  disabled={isApproving}
+                  onClick={() => setPendingAction(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className={cn(
+                    "h-11 flex-1 rounded-xl text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed",
+                    pendingAction === "approved"
+                      ? "bg-[#16A34A] hover:bg-[#15803D]"
+                      : "bg-[#E53935] hover:bg-[#C62828]",
+                  )}
+                  disabled={isApproving}
+                  aria-busy={isApproving}
+                  onClick={() => {
+                    if (pendingAction === null) return;
+                    mutateApproval({
+                      action: pendingAction,
+                      comment: commentDraft.trim(),
+                    });
+                  }}
+                >
+                  {isApproving
+                    ? pendingAction === "approved"
+                      ? "Approving..."
+                      : "Rejecting..."
+                    : pendingAction === "approved"
+                      ? "Confirm Approve"
+                      : "Confirm Reject"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </SheetContent>
     </Sheet>
   );

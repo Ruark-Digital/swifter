@@ -415,7 +415,7 @@ export const createApproverApi = (
   },
   listClaims: async (contractId: string, query?: ManagerListClaimsQuery) => {
     const res = await client.get({
-      url: `/contract/approver/contracts/${contractId}/claim`,
+      url: `/contract/approver/contracts/${contractId}/claims`,
       config: query ? { params: query } : undefined,
     });
     return res.data as {

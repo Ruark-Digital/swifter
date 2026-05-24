@@ -80,12 +80,12 @@ const ClaimDetailsSheet: React.FC<Props> = ({
   const roleBasePath = React.useMemo(() => {
     if (basePath) return basePath;
     if (isContractVendorLike)
-      return `/contract/vendor/contracts/${contractId}/claim`;
-    if (isApprover) return `/contract/approver/contracts/${contractId}/claim`;
+      return `/contract/vendor/contracts/${contractId}/claims`;
+    if (isApprover) return `/contract/approver/contracts/${contractId}/claims`;
     if (isManager) return `/contract/manager/contracts/${contractId}/claims`;
     if (isAdmin || isViewOnly)
-      return `/contract/user/contracts/${contractId}/claim`;
-    return `/contract/user/contracts/${contractId}/claim`;
+      return `/contract/user/contracts/${contractId}/claims`;
+    return `/contract/user/contracts/${contractId}/claims`;
   }, [
     basePath,
     isManager,

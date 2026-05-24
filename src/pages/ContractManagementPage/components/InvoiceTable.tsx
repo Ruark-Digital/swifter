@@ -103,9 +103,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
 
   const invoice = data?.data;
 
-  const pendingSignal = (invoice?.approverStatus || invoice?.status || "")
-    .toLowerCase()
-    .trim();
+  const isPendingApproval = invoice?.approverStatus === "pending";
 
   const { data: approveStatusData, isLoading: isApproveStatusLoading } = useQuery<
     { message?: string; data?: { status?: boolean } },
@@ -120,9 +118,9 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   });
 
   const canApprove =
-    pendingSignal === "pending" && approveStatusData?.data?.status === true;
+    isPendingApproval && approveStatusData?.data?.status === true;
 
-  const canManagerAct = isManager && pendingSignal === "pending";
+  const canManagerAct = isManager && isPendingApproval;
 
 
   const approveInvoiceMutation = useMutation<

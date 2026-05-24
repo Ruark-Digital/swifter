@@ -355,6 +355,10 @@ export type ContractChangeStatsDTO = {
   approved?: number;
   pending?: number;
   rejected?: number;
+  // Approver `/changes/stats` returns these aliases instead of
+  // approved/rejected — surfaced as fallbacks in the UI.
+  completed?: number;
+  cancelled?: number;
 };
 
 export type ApprovalActionDTO = {
@@ -428,6 +432,9 @@ export type ContractClaimDTO = {
   }>;
   manager?: { status?: string; comment?: string };
   approvers?: ContractChangeApprover[];
+  submittedBy?: { _id?: string; name?: string; email?: string };
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type ContractClaimStatsDTO = {
