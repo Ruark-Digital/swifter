@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Download, Search, X } from "lucide-react";
 import type { ContractNcrSummary } from "../api/contractManagerApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
 import { formatDateTZ } from "@/lib/utils";
 import SubmitCapaDialog from "./SubmitCapaDialog";
 import { getRequest, patchRequest } from "@/lib/axiosInstance";
@@ -153,8 +153,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
   const [open, setOpen] = React.useState(false);
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [selectedDoc, setSelectedDoc] = React.useState<DocType | null>(null);
-  const { isApprover, isVendor, isProjectManager } = useUserRole();
-  const isContractVendorLike = isVendor || isProjectManager;
+  const user = useUser();
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
 
@@ -181,6 +180,24 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
   const responseDeadline = formatDateTZ(detail?.updatedAt, "dd MMM yyyy");
 
   const latestCapa = detail?.capa?.[0];
+
+  // Footer gating is identity-driven, not role-driven:
+  //  - Responders (the user(s) listed on `detail.responders`) own the
+  //    "Submit CAPA" action while the NCR has no CAPA yet.
+  //  - The NCR's `submittedBy` owns the "Approve CAPA" action once the
+  //    responder has submitted.
+  const isResponderMatched = React.useMemo(() => {
+    const uid = user?._id;
+    if (!uid) return false;
+    return (detail?.responders ?? []).some((r) => {
+      const responderId = typeof r?.user === "string" ? r.user : r?.user?._id;
+      return responderId === uid;
+    });
+  }, [detail?.responders, user?._id]);
+
+  const isNcrSubmitter = Boolean(
+    user?._id && detail?.submittedBy?._id === user._id,
+  );
 
   const overviewDocs = React.useMemo(
     () => mapFilesToDocs(detail?.files ?? []),
@@ -234,53 +251,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
     },
   });
 
-  const rejectCapaMutation = useMutation({
-    mutationFn: async () =>
-      await patchRequest({
-        url: `${basePath}/${ncrId}/close`,
-        payload: { reason: "CAPA rejected" },
-      }),
-    onSuccess: (res) => {
-      toastHandler.success(
-        "NCR CAPA",
-        (res as ApiResponse<{ message?: string }>)?.data?.message ??
-          "CAPA rejected successfully",
-      );
-      invalidateNcrQueries();
-      setOpen(false);
-    },
-    onError: (error: ApiResponseError) => {
-      toastHandler.error("NCR CAPA", error);
-    },
-  });
-
-  const closeNcrMutation = useMutation({
-    mutationFn: async () =>
-      await patchRequest({
-        url: `${basePath}/${ncrId}/close`,
-        payload: { reason: "CAPA approved" },
-      }),
-    onSuccess: (res) => {
-      toastHandler.success(
-        "NCR",
-        (res as ApiResponse<{ message?: string }>)?.data?.message ??
-          "NCR closed successfully",
-      );
-      queryClient.invalidateQueries({
-        queryKey: ["contractNcrs", "detail", contractId, ncrId, basePath],
-      });
-      invalidateNcrQueries();
-      setOpen(false);
-    },
-    onError: (error: ApiResponseError) => {
-      toastHandler.error("Close NCR", error);
-    },
-  });
-
-  const isRespondActionPending =
-    approveCapaMutation.isPending ||
-    rejectCapaMutation.isPending ||
-    closeNcrMutation.isPending;
+  const isRespondActionPending = approveCapaMutation.isPending;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -369,7 +340,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                   <LabelRow
                     label="Status"
                     value={
-                      <span className="inline-flex rounded-full bg-[#DCFCE7] px-3 py-1 text-xs font-semibold text-[#16A34A]">
+                      <span className="inline-flex rounded-full bg-[#DCFCE7] px-3 py-1 text-xs font-semibold text-[#16A34A] dark:bg-green-900/40 dark:text-green-300">
                         {String(status || "-")}
                       </span>
                     }
@@ -409,16 +380,16 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
               {detail?.capa && detail.capa.length > 0 && (
                 <TabsContent value="capa" className="space-y-10">
                   <div className="space-y-4">
-                    <div className="text- text-[#6B7280]">
+                    <div className="text-sm text-[#6B7280] dark:text-slate-400">
                       Corrective &amp; Preventive Action Plan
                     </div>
-                    <div className="text-base font-semibold leading-[1.5] text-[#0F0F0F]">
+                    <div className="text-base font-semibold leading-[1.5] text-[#0F0F0F] dark:text-slate-100">
                       {latestCapa?.description ?? description}
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    <div className="text-base font-semibold text-[#0F0F0F]">
+                    <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                       Attached Documents
                     </div>
                     {capaDocs.length > 0 ? (
@@ -433,7 +404,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                         ))}
                       </div>
                     ) : (
-                      <div className="rounded-xl border border-dashed border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+                      <div className="rounded-xl border border-dashed border-[#E5E7EB] p-4 text-sm text-[#6B7280] dark:border-slate-700 dark:text-slate-400">
                         No attached documents.
                       </div>
                     )}
@@ -449,59 +420,48 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
             </Tabs>
           </div>
 
-          {isApprover || isContractVendorLike ? (
+          {/* Footer is identity-gated:
+              - No CAPA + viewer is a listed responder → Cancel + Submit CAPA
+              - CAPA submitted + viewer is the NCR submitter → Cancel + Approve CAPA */}
+          {!latestCapa?._id && isResponderMatched ? (
             <div className="flex w-full gap-3 pt-2">
-              {!latestCapa?._id ? (
-                <>
-                  <Button
-                    variant="outline"
-                    className="flex-1 h-12 rounded-xl"
-                    onClick={() => setOpen(false)}
-                  >
-                    Cancel
+              <Button
+                variant="outline"
+                className="flex-1 h-12 rounded-xl"
+                onClick={() => setOpen(false)}
+              >
+                Cancel
+              </Button>
+              <SubmitCapaDialog
+                contractId={contractId}
+                ncrId={ncrId}
+                ncrTitle={title}
+                basePath={basePath}
+                trigger={
+                  <Button className="flex-1 h-12 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]">
+                    Submit CAPA
                   </Button>
-                  {isContractVendorLike ? (
-                    <SubmitCapaDialog
-                      contractId={contractId}
-                      ncrId={ncrId}
-                      ncrTitle={title}
-                      basePath={basePath}
-                      trigger={
-                        <Button className="flex-1 h-12 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]">
-                          Submit CAPA
-                        </Button>
-                      }
-                    />
-                  ) : null}
-                </>
-              ) : isApprover ? (
-                <>
-                  <Button
-                    variant="outline"
-                    className="flex-1 h-12 rounded-xl border-[#FCA5A5] text-[#DC2626] hover:text-[#B91C1C]"
-                    onClick={() => rejectCapaMutation.mutate()}
-                    disabled={isRespondActionPending}
-                  >
-                    Reject CAPA
-                  </Button>
-                  <Button
-                    className="flex-1 h-12 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
-                    onClick={() => approveCapaMutation.mutate()}
-                    disabled={isRespondActionPending}
-                  >
-                    Approve CAPA
-                  </Button>
-                  {String(status).toLowerCase() === "approved" ? (
-                    <Button
-                      className="flex-1 h-12 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
-                      onClick={() => closeNcrMutation.mutate()}
-                      disabled={isRespondActionPending}
-                    >
-                      Close NCR
-                    </Button>
-                  ) : null}
-                </>
-              ) : null}
+                }
+              />
+            </div>
+          ) : null}
+
+          {latestCapa?._id && isNcrSubmitter ? (
+            <div className="flex w-full gap-3 pt-2">
+              <Button
+                variant="outline"
+                className="flex-1 h-12 rounded-xl"
+                onClick={() => setOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 h-12 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
+                onClick={() => approveCapaMutation.mutate()}
+                disabled={isRespondActionPending}
+              >
+                Approve CAPA
+              </Button>
             </div>
           ) : null}
           {selectedDoc ? (
