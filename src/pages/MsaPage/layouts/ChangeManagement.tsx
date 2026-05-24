@@ -291,7 +291,11 @@ const ChangeManagement: React.FC<Props> = ({
         </div>
       </div>
 
-      <ChangeStatsCards stats={stats} isLoading={isStatsLoading} variant="approver" />
+      <ChangeStatsCards
+        stats={stats}
+        isLoading={isStatsLoading}
+        variant={isApprover ? "approver" : "manager"}
+      />
 
       <Tabs
         value={activeTab}
