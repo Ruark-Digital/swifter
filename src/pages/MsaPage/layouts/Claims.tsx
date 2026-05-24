@@ -87,13 +87,13 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   ]);
 
   const claimsPath = React.useMemo(
-    () => (isManager || isAdmin ? `${basePath}/claims` : `${basePath}/claim`),
-    [basePath, isAdmin, isManager],
+    () => `${basePath}/claims`,
+    [basePath],
   );
   const statsPath = `${claimsPath}/stats`;
 
   const createPath = React.useMemo(() => {
-    if (isVendor || isProjectManager) return `${basePath}/claim`;
+    if (isVendor || isProjectManager) return `${basePath}/claims`;
     return undefined;
   }, [basePath, isVendor, isProjectManager]);
 
