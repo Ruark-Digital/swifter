@@ -35,8 +35,9 @@ After the initial audit shipped, every finding was cross-checked against `docs/s
 | §10 LEM Submit button wired for vendor/PM on MSA (incl. `SubmitLemDialog` refactor with optional `createPath`/`invalidateQueryKey`) | 2 | ✅ Shipped | `668669cde` |
 | §8 Documents "Edit Contract" button wired to `CreateMSADialog` in edit mode | 2 | ✅ Shipped | `f8e95a785` |
 | §12 Vendor Reports "Create Report" button wired for vendor/PM (incl. `CreateVendorReportDialog` optional `invalidateQueryKey` for MSA refetch) | 2 | ✅ Shipped | `b98f00943` |
+| §5 §6 §2 §3 §7 — Closed status tone palette: canonical slate-100/700 (dark slate-800/300) across NCR, RFI, Change Mgmt, Claims, Compliance | 3 | ✅ Shipped | `8213380ae` |
 
-**Wave 2 closes here.** All five Wave-2 actionable findings have been addressed (§3 retracted, §4 / §8 / §10 / §12 shipped). Waves 3–6 remain open per the original fix sequencing.
+**Wave 2 closes here.** All five Wave-2 actionable findings have been addressed (§3 retracted, §4 / §8 / §10 / §12 shipped). **Wave 3 closes here.** Five of six recurring-drift entries swept; §11 Invoice excluded — `ContractInvoiceDTO` status enum has no `closed` value at the type level (`"active" | "draft" | "pending" | "approved" | "rejected"`), so the audit's recurring-pattern table over-counted Invoice. **Waves 4–6 remain open** per the original fix sequencing.
 
 **Source-of-truth note:** As of 260524, `docs/swagger-phase-2.json` on disk is missing the v2.3.0 MSA route additions (MSA NCR, MSA LEM endpoint families). The user's externally-provided `docs.json` is the current spec. When `swagger-phase-2.json` and the external doc disagree, the external doc wins.
 
