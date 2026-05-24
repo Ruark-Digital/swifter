@@ -93,8 +93,8 @@ const LabelRow = ({
   value: React.ReactNode;
 }) => (
   <div className="space-y-2">
-    <div className="text-xs font-medium text-[#9CA3AF]">{label}</div>
-    <div className="text-sm font-medium text-[#111827]">{value}</div>
+    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">{label}</div>
+    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
 
@@ -192,7 +192,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     },
   });
 
-  const rfiDetail = (rfiDetailRes?.data?.contractRfi ?? rfiDetailRes?.data ?? rfiDetailRes) as unknown as any;
+  const rfiDetail = ((rfiDetailRes?.data as any)?.contractRfi ?? rfiDetailRes?.data ?? rfiDetailRes) as unknown as any;
   const rfiTitle = rfiDetail?.title ?? rfi?.title ?? "-";
   const rfiDescription = rfiDetail?.description ?? rfi?.description ?? "-";
   const rfiStatus = rfi?.status ?? "-";
@@ -216,10 +216,10 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
 
   const statusTone =
     rfiStatus?.toLowerCase() === "open"
-      ? "bg-[#DCFCE7] text-[#16A34A]"
+      ? "bg-[#DCFCE7] text-[#16A34A] dark:bg-green-900/40 dark:text-green-300"
       : rfiStatus?.toLowerCase() === "closed"
-        ? "bg-red-100 text-red-600"
-        : "bg-slate-100 text-slate-700";
+        ? "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300"
+        : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 
   const files = (rfiDetail?.files ?? rfi?.files ?? []) as Array<{
     name?: string;
@@ -269,11 +269,11 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] dark:border-slate-700 text-[#111827] dark:text-slate-100"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   RFI Details
                 </SheetTitle>
               </div>
@@ -282,12 +282,12 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
 
           <div className="space-y-6">
             <div className="flex items-start justify-between">
-              <div className="text-base font-semibold text-[#0F0F0F]">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 {rfiTitle}
               </div>
               <Button
                 variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
+                className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
               >
                 <Download className="mr-2 h-4 w-4" /> Export
               </Button>
@@ -353,14 +353,14 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <div className="text-xs font-medium text-[#9CA3AF]">
+                  <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                     Description
                   </div>
-                  <div className="text-sm text-[#374151]">{rfiDescription}</div>
+                  <div className="text-sm text-[#374151] dark:text-slate-200">{rfiDescription}</div>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="text-base font-semibold text-[#0F0F0F]">
+                  <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                     Attached Documents
                   </div>
                   <div className="grid gap-3 sm:grid-cols-1">
@@ -485,7 +485,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
             </Tabs>
           </div>
 
-          {!(rfiDetailRes?.data?.isResponse ?? false) && isApprover && (
+          {!((rfiDetailRes?.data as any)?.isResponse ?? false) && isApprover && (
             <SheetFooter>
               <div className="flex w-full gap-3 pt-2">
                 <Button variant="outline" className="flex-1 h-12 rounded-xl">
@@ -542,13 +542,13 @@ const RfiResponseContent: React.FC<{
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <div className="text-xs font-medium text-[#9CA3AF]">
+        <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
           Response / Description
         </div>
-        <div className="text-sm text-[#374151]">{description}</div>
+        <div className="text-sm text-[#374151] dark:text-slate-200">{description}</div>
       </div>
       <div className="space-y-3">
-        <div className="text-base font-semibold text-[#0F0F0F]">
+        <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
           Attached Documents
         </div>
         <div className="grid gap-3 sm:grid-cols-1">
