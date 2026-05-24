@@ -383,11 +383,22 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                   />
                   <LabelRow
                     label="Status"
-                    value={
-                      <span className="inline-flex rounded-full bg-[#DCFCE7] px-3 py-1 text-xs font-semibold text-[#16A34A] dark:bg-green-900/40 dark:text-green-300">
-                        {String(status || "-")}
-                      </span>
-                    }
+                    value={(() => {
+                      const s = String(status || "").toLowerCase();
+                      const tone =
+                        s === "approved" || s === "closed"
+                          ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                          : s === "rejected"
+                            ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                            : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300";
+                      return (
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${tone}`}
+                        >
+                          {String(status || "-")}
+                        </span>
+                      );
+                    })()}
                   />
                 </div>
 
