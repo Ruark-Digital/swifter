@@ -24,7 +24,6 @@ import { formatDateTZ } from "@/lib/utils";
 import SubmitCapaDialog from "./SubmitCapaDialog";
 import { getRequest, patchRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
-import { useUser } from "@/store/authSlice";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getFileExtension, getFileIcon, formatFileSize } from "@/lib/fileUtils";
 import { DocumentItem, type DocType } from "./DocumentItem";
@@ -156,7 +155,6 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
   const [selectedDoc, setSelectedDoc] = React.useState<DocType | null>(null);
   const { isApprover, isVendor, isProjectManager } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
-  const user = useUser();
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
 
@@ -183,21 +181,6 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
   const responseDeadline = formatDateTZ(detail?.updatedAt, "dd MMM yyyy");
 
   const latestCapa = detail?.capa?.[0];
-
-  const responderIds = React.useMemo(
-    () =>
-      (detail?.responders ?? [])
-        .map((responder) =>
-          typeof responder?.user === "string"
-            ? responder.user
-            : responder?.user?._id,
-        )
-        .filter((value): value is string => Boolean(value)),
-    [detail?.responders],
-  );
-
-  const isResponderMatched =
-    Boolean(user?._id) && responderIds.includes(user?._id ?? "");
 
   const overviewDocs = React.useMemo(
     () => mapFilesToDocs(detail?.files ?? []),
