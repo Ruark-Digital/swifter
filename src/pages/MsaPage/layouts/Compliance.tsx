@@ -310,7 +310,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
 
   const approveMutation = useMutation({
     mutationFn: async (action: "approved" | "rejected") => {
-      const endpoint = `/manager/msa-contract/${contractId}/compliance/${activeTab}/approve`;
+      const endpoint = `/contract/manager/msa-contract/${contractId}/compliance/${activeTab}/approve`;
       const comment =
         action === "approved"
           ? `Approved all ${activeTab} items via bulk action`
