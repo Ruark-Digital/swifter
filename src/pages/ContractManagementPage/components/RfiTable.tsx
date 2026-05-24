@@ -425,7 +425,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                 <Separator />
 
                 {isCommentsLoading ? (
-                  <div className="rounded-xl border border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
                     Loading comments...
                   </div>
                 ) : comments.length ? (
@@ -433,25 +433,25 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                     {comments.map((comment, index) => (
                       <div
                         key={comment._id ?? `${index}`}
-                        className="rounded-xl border border-[#E5E7EB] p-4"
+                        className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 dark:bg-slate-900 p-4"
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div>
-                            <div className="text-sm font-semibold text-[#111827]">
+                            <div className="text-sm font-semibold text-[#111827] dark:text-slate-100">
                               {getCommentAuthor(comment)}
                             </div>
                             {getCommentEmail(comment) ? (
-                              <div className="text-xs text-[#6B7280]">
+                              <div className="text-xs text-[#6B7280] dark:text-slate-400">
                                 {getCommentEmail(comment)}
                               </div>
                             ) : null}
                           </div>
-                          <div className="text-xs text-[#6B7280]">
+                          <div className="text-xs text-[#6B7280] dark:text-slate-400">
                             {formatDateTZ(comment.createdAt, "dd MMM yyyy")}
                           </div>
                         </div>
                         <div
-                          className="text-sm text-[#374151] mt-3 prose prose-sm max-w-none"
+                          className="text-sm text-[#374151] dark:text-slate-200 mt-3 prose prose-sm dark:prose-invert max-w-none"
                           dangerouslySetInnerHTML={{
                             __html: comment.content ?? "",
                           }}
@@ -460,7 +460,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
                     No comments yet.
                   </div>
                 )}
