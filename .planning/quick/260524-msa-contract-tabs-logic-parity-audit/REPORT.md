@@ -12,6 +12,31 @@
 
 ---
 
+## Post-Audit Corrections (260524, swagger-verified)
+
+After the initial audit shipped, every finding was cross-checked against `docs/swagger-phase-2.json` (the BE swagger spec — authoritative; `docs/API_DOCUMENTATION_PHASE_2.md` is an incomplete handwritten summary, see [project_be_spec_doc_precedence](../../../../memory)). The corrections below supersede the original findings where they conflict.
+
+**False positives — RETRACTED, do not "fix":**
+
+- **§11 Invoice "msa-contracts (plural) typo"** ❌ **RETRACTED.** The BE genuinely accepts and routes `/manager/msa-contracts/{contractId}/invoice/{invoiceId}/approve` with plural `msa-contracts`. This is the **only** MSA endpoint that uses the plural form; every other MSA endpoint uses singular `msa-contract`. The frontend code at `Invoice.tsx:120-122` correctly mirrors this BE quirk. See memory `msa-contracts-plural-invoice-approve-quirk`.
+- **§6 RFI "manager singular `/rfi` should be plural `/rfis`"** ❌ **RETRACTED.** BE genuinely uses singular `/manager/msa-contract/{id}/rfi` for MSA. The audit assumed MSA followed Contract's manager-plural quirk; it doesn't. Frontend code is correct.
+- **§12 Vendor Reports "wrong endpoint family"** ❌ **RETRACTED.** No `/msa-contract/*/reports` route exists in swagger. MSA Vendor Reports correctly shares Contract endpoints under `/{role}/contracts/{id}/reports`. Frontend code is correct.
+
+**Confirmed findings — Wave 1 fixes shipped:**
+
+| Finding | Status | Commit |
+|---|---|---|
+| §3 Claims `/claim` → `/claims` plural for 3 of 4 roles | ✅ Shipped | `7aa222c75` |
+| §7 Compliance manager Approve add `/contract` prefix | ✅ Shipped | `369758628` |
+| §5 NCR Log basePath `/contracts/` → `/msa-contract/` for all 4 roles | ✅ Shipped | `51df46d56` |
+| §10 LEM basePath `/contracts/` → `/msa-contract/` for all 4 roles | ✅ Shipped | `89e453fa8` |
+
+**Remaining findings unchanged.** All non-endpoint findings (missing buttons, Documents Edit Contract dead `onClick`, Deliverables `isContractManager` prop omission, status tone drift, query-key wrapping, etc.) stand as written.
+
+> The "Top broken behaviors" list and "Recommended fix sequencing" sections below were written before these corrections — refer to this section first when prioritizing work.
+
+---
+
 ## Executive Summary
 
 ### Top broken behaviors (highest fix priority)
