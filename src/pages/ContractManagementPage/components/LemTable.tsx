@@ -44,6 +44,17 @@ const formatDateValue = (value: unknown) => {
   return formatDate(d, "yyyy-MMM-dd");
 };
 
+const getLemStatusColor = (status?: string) => {
+  const lower = (status ?? "").toLowerCase();
+  if (lower === "approved")
+    return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
+  if (lower === "rejected")
+    return "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300";
+  if (lower === "pending" || lower === "pending approval")
+    return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300";
+  return "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300";
+};
+
 export type LemRow = {
   id: string;
   title: string;
@@ -204,7 +215,12 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   <LabelRow
                     label="Status"
                     value={
-                      <span className="inline-flex rounded-full bg-[#FEF3C7] dark:bg-yellow-900/30 px-3 py-1 text-xs font-semibold text-[#F59E0B] dark:text-yellow-300">
+                      <span
+                        className={cn(
+                          "inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize",
+                          getLemStatusColor(lemDetail?.status),
+                        )}
+                      >
                         {lemDetail?.status || "Pending"}
                       </span>
                     }
@@ -345,15 +361,13 @@ const createColumns = (
     header: "Status",
     cell: ({ getValue }) => {
       const s = getValue<string>();
-      const getStatusColor = (status: string) => {
-        const lower = status.toLowerCase();
-        if (lower === "approved") return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
-        if (lower === "rejected") return "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300";
-        if (lower === "pending" || lower === "pending approval") return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300";
-        return "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300";
-      };
       return (
-        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(s)}`}>
+        <span
+          className={cn(
+            "px-3 py-1 rounded-full text-xs font-medium capitalize",
+            getLemStatusColor(s),
+          )}
+        >
           {s}
         </span>
       );
