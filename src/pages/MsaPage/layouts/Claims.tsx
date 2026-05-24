@@ -20,6 +20,7 @@ import type {
 import ClaimsStatsCards from "@/pages/ContractManagementPage/components/ClaimsStatsCards";
 import RequestClaimDialog from "@/pages/ContractManagementPage/components/RequestClaimDialog";
 import MSAClaimDetailsSheet from "@/pages/MsaPage/components/MSAClaimDetailsSheet";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
@@ -265,13 +266,15 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
           Claims
         </h3>
         <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
-          >
-            <Share2 className="mr-2 h-5 w-5" />
-            Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="MsaContract">
+            <Button
+              variant="outline"
+              className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+            >
+              <Share2 className="mr-2 h-5 w-5" />
+              Export Report
+            </Button>
+          </ExportReportSheet>
           {createPath && (
             <RequestClaimDialog
               createPath={createPath}

@@ -16,6 +16,7 @@ import type { ApiResponseError } from "@/types";
 import type { ContractComplianceDTO } from "@/pages/ContractManagementPage/api/contractManagerApi";
 import ComplianceDetailsSheet from "@/pages/ContractManagementPage/components/ComplianceDetailsSheet";
 import SubmitPolicyDialog from "@/pages/ContractManagementPage/components/SubmitPolicyDialog";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import { LabelItem } from "../components/LabelItem";
 import { Status, StatusBadge } from "../components/StatusBadge";
 
@@ -378,13 +379,15 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
             />
           )}
 
-          <Button
-            variant="outline"
-            className="h-12 rounded-xl border-[#E5E7EB] dark:border-slate-700 px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 dark:bg-transparent"
-          >
-            <Share2 className="mr-2 h-5 w-5" />
-            Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="MsaContract">
+            <Button
+              variant="outline"
+              className="h-12 rounded-xl border-[#E5E7EB] dark:border-slate-700 px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 dark:bg-transparent"
+            >
+              <Share2 className="mr-2 h-5 w-5" />
+              Export Report
+            </Button>
+          </ExportReportSheet>
         </div>
       </div>
 

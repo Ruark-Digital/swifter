@@ -13,6 +13,7 @@ import PaymentSummaryMilestonesTable, {
 import { LabelItem } from "../components/LabelItem";
 import MsaReleaseHoldbackDialog from "../components/MsaReleaseHoldbackDialog";
 import MsaUpdateSavingsDialog from "../components/MsaUpdateSavingsDialog";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type PaymentSummaryProps = {
   contractId: string;
@@ -299,13 +300,15 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
           Payment Summary
         </h3>
         <div className="flex items-center gap-4">
-          <button
-            type="button"
-            className="inline-flex h-12 items-center gap-2 text-sm rounded-xl border border-[#E5E7EB] dark:border-slate-800 px-5 font-semibold text-[#0F0F0F] dark:text-slate-100"
-          >
-            <Share2 className="h-5 w-5" />
-            Export Report
-          </button>
+          <ExportReportSheet contractId={contractId} contractType="MsaContract">
+            <button
+              type="button"
+              className="inline-flex h-12 items-center gap-2 text-sm rounded-xl border border-[#E5E7EB] dark:border-slate-800 px-5 font-semibold text-[#0F0F0F] dark:text-slate-100"
+            >
+              <Share2 className="h-5 w-5" />
+              Export Report
+            </button>
+          </ExportReportSheet>
           {isManager && !isPendingApproval && (
             <>
               <MsaUpdateSavingsDialog

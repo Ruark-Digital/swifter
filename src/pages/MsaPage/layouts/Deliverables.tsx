@@ -13,6 +13,7 @@ import DeliverablesTable, {
   type DeliverableRow,
   type KPIDetail,
 } from "@/pages/ContractManagementPage/components/DeliverablesTable";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId?: string;
@@ -225,13 +226,15 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
         <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F] dark:text-slate-100">
           Deliverable
         </h3>
-        <Button
-          variant="outline"
-          className="h-12 rounded-xl border-[#E5E7EB] dark:border-slate-800 px-5 font-semibold text-[#0F0F0F] dark:text-slate-100"
-        >
-          <Share2 className="mr-2 h-5 w-5" />
-          Export Report
-        </Button>
+        <ExportReportSheet contractId={contractId ?? ""} contractType="MsaContract">
+          <Button
+            variant="outline"
+            className="h-12 rounded-xl border-[#E5E7EB] dark:border-slate-800 px-5 font-semibold text-[#0F0F0F] dark:text-slate-100"
+          >
+            <Share2 className="mr-2 h-5 w-5" />
+            Export Report
+          </Button>
+        </ExportReportSheet>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

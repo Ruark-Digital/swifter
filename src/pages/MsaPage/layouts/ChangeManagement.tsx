@@ -17,6 +17,7 @@ import type { ApiResponse, ApiResponseError } from "@/types";
 import ChangeStatsCards from "@/pages/ContractManagementPage/components/ChangeStatsCards";
 import CreateChangeDialog from "@/pages/ContractManagementPage/components/CreateChangeDialog";
 import ChangeDetailsSheet from "@/pages/ContractManagementPage/components/ChangeDetailsSheet";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import {
   changeTabToApiType,
   formatChangeTypeLabel,
@@ -263,13 +264,15 @@ const ChangeManagement: React.FC<Props> = ({
           Change Management
         </h3>
         <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            className="h-12 rounded-xl border-[#E5E7EB] px-5 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
-          >
-            <Share2 className="mr-2 h-5 w-5" />
-            Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="MsaContract">
+            <Button
+              variant="outline"
+              className="h-12 rounded-xl border-[#E5E7EB] px-5 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
+            >
+              <Share2 className="mr-2 h-5 w-5" />
+              Export Report
+            </Button>
+          </ExportReportSheet>
           {canCreateChange && (
             <CreateChangeDialog
               trigger={
