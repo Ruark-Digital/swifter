@@ -849,7 +849,7 @@ const columns: ColumnDef<RfiRow>[] = [
     accessorKey: "title",
     header: "Title",
     cell: ({ getValue }) => (
-      <div className="max-w-[260px] text-sm text-slate-700">
+      <div className="max-w-[260px] text-sm text-slate-700 dark:text-slate-200">
         {getValue<string>()}
       </div>
     ),
@@ -862,10 +862,10 @@ const columns: ColumnDef<RfiRow>[] = [
       const s = getValue<RfiRow["status"]>();
       const tone =
         s === "open"
-          ? "bg-green-100 text-green-700"
+          ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
           : s === "closed"
-            ? "bg-red-100 text-red-600"
-            : "bg-slate-100 text-slate-700";
+            ? "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300"
+            : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
       return (
         <span className={`px-3 py-1 rounded-full text-xs font-medium ${tone}`}>
           {s}
