@@ -64,7 +64,11 @@ export interface NcrDetailsResponse {
   title: string;
   description: string;
   capa: Capa[];
-  responders: Responder[];
+  // BE returns `responders[]` to most viewers (manager/approver/etc.)
+  // but a singular `responder` object to the responder themselves —
+  // see project_rfi_responder_singular memory.
+  responders?: Responder[];
+  responder?: Responder;
   status: string;
   files: File[];
   createdAt: string;
@@ -186,14 +190,23 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
   //    "Submit CAPA" action while the NCR has no CAPA yet.
   //  - The NCR's `submittedBy` owns the "Approve CAPA" action once the
   //    responder has submitted.
+  //
+  // BE returns `responders[]` to most viewers but a singular
+  // `responder` object to the responder themselves. Check both so the
+  // match works regardless of which shape arrived.
   const isResponderMatched = React.useMemo(() => {
     const uid = user?._id;
     if (!uid) return false;
-    return (detail?.responders ?? []).some((r) => {
-      const responderId = typeof r?.user === "string" ? r.user : r?.user?._id;
-      return responderId === uid;
-    });
-  }, [detail?.responders, user?._id]);
+    const extractId = (r: Responder | undefined) => {
+      if (!r?.user) return undefined;
+      return typeof r.user === "string" ? r.user : r.user?._id;
+    };
+    const fromList = (detail?.responders ?? []).some(
+      (r) => extractId(r) === uid,
+    );
+    if (fromList) return true;
+    return extractId(detail?.responder) === uid;
+  }, [detail?.responders, detail?.responder, user?._id]);
 
   const isNcrSubmitter = Boolean(
     user?._id && detail?.submittedBy?._id === user._id,
