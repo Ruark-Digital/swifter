@@ -32,6 +32,11 @@ After the initial audit shipped, every finding was cross-checked against `docs/s
 | §5 NCR Log basePath `/contracts/` → `/msa-contract/` for all 4 roles | 1 | ✅ Shipped | `51df46d56` |
 | §10 LEM basePath `/contracts/` → `/msa-contract/` for all 4 roles | 1 | ✅ Shipped | `89e453fa8` |
 | §4 Deliverables pass `isContractManager` prop to shared `DeliverablesTable` | 2 | ✅ Shipped | `7feb7ca9d` |
+| §10 LEM Submit button wired for vendor/PM on MSA (incl. `SubmitLemDialog` refactor with optional `createPath`/`invalidateQueryKey`) | 2 | ✅ Shipped | `668669cde` |
+| §8 Documents "Edit Contract" button wired to `CreateMSADialog` in edit mode | 2 | ✅ Shipped | `f8e95a785` |
+| §12 Vendor Reports "Create Report" button wired for vendor/PM (incl. `CreateVendorReportDialog` optional `invalidateQueryKey` for MSA refetch) | 2 | ✅ Shipped | `b98f00943` |
+
+**Wave 2 closes here.** All five Wave-2 actionable findings have been addressed (§3 retracted, §4 / §8 / §10 / §12 shipped). Waves 3–6 remain open per the original fix sequencing.
 
 **Source-of-truth note:** As of 260524, `docs/swagger-phase-2.json` on disk is missing the v2.3.0 MSA route additions (MSA NCR, MSA LEM endpoint families). The user's externally-provided `docs.json` is the current spec. When `swagger-phase-2.json` and the external doc disagree, the external doc wins.
 
