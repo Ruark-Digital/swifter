@@ -405,10 +405,10 @@ const ContractDetailPage: React.FC = () => {
 
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
             {contract?.title}
           </h1>
-          <p className="text-sm text-slate-500">{contract?.contractId}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{contract?.contractId}</p>
         </div>
         <Badge className={status?.className}>{status?.label}</Badge>
       </div>
