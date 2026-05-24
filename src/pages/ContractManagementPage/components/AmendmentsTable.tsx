@@ -3,7 +3,14 @@ import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import {
   Sheet,
   SheetClose,
@@ -197,7 +204,7 @@ const VendorAcceptDialog: React.FC<{
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+            className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           >
             Cancel
           </button>
@@ -257,7 +264,7 @@ const VendorRejectDialog: React.FC<{
           <button
             type="button"
             onClick={onClose}
-            className="w-[306px] rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+            className="w-[306px] rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           >
             Back
           </button>
@@ -495,7 +502,7 @@ const AssignApprovalDialog: React.FC<{
           <div className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
             Assigned Approvers
           </div>
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-4 py-4">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-4 py-4 dark:border-slate-700 dark:bg-slate-800">
             {assignedUsers.map((p: any) => {
               const name = p.name || p.email;
               const id = p.approverId || p._id;
@@ -530,7 +537,7 @@ const AssignApprovalDialog: React.FC<{
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="w-[188px] rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-2 font-semibold text-[#0F0F0F] dark:text-slate-100"
+            className="w-[188px] rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-2 font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           >
             Back
           </button>
@@ -558,6 +565,14 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   const [open, setOpen] = React.useState(false);
   const [acceptOpen, setAcceptOpen] = React.useState(false);
   const [rejectOpen, setRejectOpen] = React.useState(false);
+  const [pendingApproverAction, setPendingApproverAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [approverCommentDraft, setApproverCommentDraft] = React.useState("");
+
+  React.useEffect(() => {
+    if (pendingApproverAction === null) setApproverCommentDraft("");
+  }, [pendingApproverAction]);
   const toast = useToastHandler();
   // const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -666,18 +681,25 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   });
 
   const approverActionMutation = useMutation({
-    mutationFn: async (action: "approved" | "rejected") => {
+    mutationFn: async ({
+      action,
+      comment,
+    }: {
+      action: "approved" | "rejected";
+      comment: string;
+    }) => {
       return await postRequest({
         url: `${basePath}/${amendmentId}/approve`,
-        payload: { action },
+        payload: { action, comment },
       });
     },
-    onSuccess: (_, action) => {
+    onSuccess: (_, { action }) => {
       toast.success(
         "Success",
         action === "approved" ? "Amendment approved" : "Amendment rejected",
       );
       invalidateAll();
+      setPendingApproverAction(null);
     },
     onError: (error: any) => {
       toast.error(
@@ -971,7 +993,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
         </div>
 
         {isContractVendorLike && detail?.vendorStatus === "pending" && (
-          <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] bg-white p-6">
+          <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 p-6">
             <div className="flex gap-6">
               <VendorRejectDialog
                 open={rejectOpen}
@@ -982,7 +1004,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                   <button
                     type="button"
                     onClick={() => setRejectOpen(true)}
-                    className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+                    className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   >
                     Reject Amendment
                   </button>
@@ -1008,20 +1030,20 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
         )}
 
         {isApprover && detail?.approverStatus === "pending" && (
-          <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] bg-white p-6">
+          <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 p-6">
             <div className="flex gap-6">
               <button
                 type="button"
                 disabled={approverActionMutation.isPending}
-                onClick={() => approverActionMutation.mutate("rejected")}
-                className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 disabled:opacity-60"
+                onClick={() => setPendingApproverAction("rejected")}
+                className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] h-11 text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 disabled:opacity-60"
               >
                 Reject
               </button>
               <button
                 type="button"
                 disabled={approverActionMutation.isPending}
-                onClick={() => approverActionMutation.mutate("approved")}
+                onClick={() => setPendingApproverAction("approved")}
                 className="flex-1 rounded-xl bg-[#2A4467] h-11 text-base font-semibold text-white disabled:opacity-60"
               >
                 Approve
@@ -1030,8 +1052,79 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
           </div>
         )}
 
+        <Dialog
+          open={pendingApproverAction !== null}
+          onOpenChange={(next) => {
+            if (!next && !approverActionMutation.isPending) {
+              setPendingApproverAction(null);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-2">
+              <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                {pendingApproverAction === "approved"
+                  ? "Approve Amendment"
+                  : "Reject Amendment"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="px-6 pb-6 space-y-4">
+              <p className="text-sm text-[#6B7280] dark:text-slate-400">
+                {pendingApproverAction === "approved"
+                  ? "Add an optional comment before approving this amendment."
+                  : "Add an optional comment explaining why this amendment is being rejected."}
+              </p>
+              <textarea
+                value={approverCommentDraft}
+                onChange={(e) => setApproverCommentDraft(e.target.value)}
+                placeholder="Enter your comment (optional)"
+                rows={5}
+                className="w-full resize-none rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                autoFocus
+              />
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  disabled={approverActionMutation.isPending}
+                  onClick={() => setPendingApproverAction(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className={cn(
+                    "h-11 flex-1 rounded-xl text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed",
+                    pendingApproverAction === "approved"
+                      ? "bg-[#2A4467] hover:bg-[#1f3552]"
+                      : "bg-[#E53935] hover:bg-[#C62828]",
+                  )}
+                  disabled={approverActionMutation.isPending}
+                  aria-busy={approverActionMutation.isPending}
+                  onClick={() => {
+                    if (pendingApproverAction === null) return;
+                    approverActionMutation.mutate({
+                      action: pendingApproverAction,
+                      comment: approverCommentDraft.trim(),
+                    });
+                  }}
+                >
+                  {approverActionMutation.isPending
+                    ? pendingApproverAction === "approved"
+                      ? "Approving..."
+                      : "Rejecting..."
+                    : pendingApproverAction === "approved"
+                      ? "Confirm Approve"
+                      : "Confirm Reject"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {isManager && !hasApprovals && !isTimeImpact && (
-          <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] bg-white p-6">
+          <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 p-6">
             <div className="flex justify-end">
               <AssignApprovalDialog
                 contractId={contractId}
