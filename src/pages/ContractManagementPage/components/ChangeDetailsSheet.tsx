@@ -22,6 +22,7 @@ import SendApprovalDialog from "./SendApprovalDialog";
 import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -116,10 +117,17 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     [roleBasePath],
   );
 
-  const changeDetailQueryKey = React.useMemo(
-    () => [isClaim ? "contract-claim-detail" : "contract-change-detail", roleBasePath, contractId, changeId],
-    [isClaim, roleBasePath, contractId, changeId],
-  );
+  // useUserQueryKey appends user._id so the cache stays isolated per
+  // logged-in user — without this the next user sees the previous
+  // user's claim/change detail until React Query staleTime elapses.
+  // (See feedback_user_query_key_invalidation memory: id is appended
+  //  to the END of the key — invalidate with the same wrapped key.)
+  const changeDetailQueryKey = useUserQueryKey([
+    isClaim ? "contract-claim-detail" : "contract-change-detail",
+    roleBasePath,
+    contractId,
+    changeId,
+  ]);
 
   const { data: detailRes, isLoading: isDetailLoading } = useQuery({
     queryKey: changeDetailQueryKey,
@@ -336,10 +344,12 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     document.body.removeChild(link);
   }, []);
 
-  const commentsQueryKey = React.useMemo(
-    () => ["contract-change-comments", roleBasePath, contractId, changeId],
-    [roleBasePath, contractId, changeId],
-  );
+  const commentsQueryKey = useUserQueryKey([
+    "contract-change-comments",
+    roleBasePath,
+    contractId,
+    changeId,
+  ]);
 
   const canLoadComments =
     open && !!contractId && !!changeId && (isManager || isApprover || isContractVendorLike);
