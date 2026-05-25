@@ -514,12 +514,12 @@ const RfiResponseContent: React.FC<{
   isApprover: boolean;
 }> = ({ rfiId, contractId, isApprover }) => {
   const { data: respRes } = useQuery({
-    queryKey: [
+    queryKey: useUserQueryKey([
       isApprover ? "approver" : "contractManager",
       "contractRfis",
       "response",
       rfiId,
-    ],
+    ]),
     queryFn: async () =>
       isApprover
         ? await approverApi.getRfiResponse(contractId, rfiId)

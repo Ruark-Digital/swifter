@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Eye, Download } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { getRequest } from "@/lib/axiosInstance";
 import { getFileIcon } from "@/lib/fileUtils";
 import { ContractComplianceDTO } from "../api/contractManagerApi";
@@ -97,7 +98,7 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
   data,
 }) => {
   const { data: complianceRes, isLoading } = useQuery({
-    queryKey: ["contract-compliance-detail", contractId, basePath],
+    queryKey: useUserQueryKey(["contract-compliance-detail", contractId, basePath]),
     queryFn: async () => {
       const res = await getRequest({ url: basePath });
       return res.data as { data?: ContractComplianceDTO };

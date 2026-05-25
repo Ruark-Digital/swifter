@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { getRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
@@ -72,7 +73,11 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
     return null;
   }, [basePath, isApprover, isManager, isContractVendorLike]);
 
-  const queryKey = ["contract-holdback-detail", rolePrefix, holdBackId];
+  const queryKey = useUserQueryKey([
+    "contract-holdback-detail",
+    rolePrefix,
+    holdBackId,
+  ]);
   const { data: detailRes, isLoading, isError, error } = useQuery<{
     message?: string;
     data?: HoldbackDetailDTO;

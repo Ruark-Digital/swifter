@@ -195,7 +195,7 @@ const SendApprovalDialog: React.FC<Props> = ({
               onValueChange={setSelectedGroup}
               disabled={isLoading || groupOptions.length === 0}
             >
-              <SelectTrigger className="h-11 rounded-lg border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+              <SelectTrigger className="h-11 w-full rounded-lg border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                 <SelectValue
                   placeholder={
                     isLoading

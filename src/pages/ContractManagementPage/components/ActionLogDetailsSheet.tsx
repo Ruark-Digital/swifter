@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Share2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { contractManagerApi } from "../api/contractManagerApi";
 import { useParams } from "react-router-dom";
 import { format } from "date-fns";
@@ -90,7 +91,7 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
   const contractId = id || contractIdParam;
 
   const { data: detailResponse, isLoading } = useQuery({
-    queryKey: ["actionDetail", contractId, action?.actionId, action?.reference],
+    queryKey: useUserQueryKey(["actionDetail", contractId, action?.actionId, action?.reference]),
     queryFn: async () => {
       if (!action || !contractId) return null;
       const logId = (action.actionId && action.actionId !== "Unknown")

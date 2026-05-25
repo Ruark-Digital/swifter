@@ -36,6 +36,7 @@ import {
   X,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { getRequest, patchRequest, postRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -579,12 +580,12 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   const { isVendor, isProjectManager, isManager, isApprover } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
 
-  const detailQueryKey = [
+  const detailQueryKey = useUserQueryKey([
     "contract-amendment-detail",
     contractId,
     basePath,
     amendmentId,
-  ];
+  ]);
 
   const { data: detailRes, isLoading } = useQuery<{ data?: AmendmentDetail }>({
     queryKey: detailQueryKey,

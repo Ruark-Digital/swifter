@@ -4,6 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { getRequest } from "@/lib/axiosInstance";
 import {
   Dialog,
@@ -92,7 +93,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } =
     useUserRole();
   const { data: lemDetail, isLoading: detailLoading } = useQuery({
-    queryKey: ["lem-detail", contractId, lemId, basePath],
+    queryKey: useUserQueryKey(["lem-detail", contractId, lemId, basePath]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${basePath}/${lemId}`,

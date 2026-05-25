@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { formatFileSize, getFileIcon, getSimpleFileExtension } from "@/lib/fileUtils";
@@ -65,10 +66,11 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
   const qc = useQueryClient();
   const [open, setOpen] = React.useState(false);
 
-  const changeDetailQueryKey = React.useMemo(
-    () => ["approver-change-detail", contractId, changeId],
-    [contractId, changeId],
-  );
+  const changeDetailQueryKey = useUserQueryKey([
+    "approver-change-detail",
+    contractId,
+    changeId,
+  ]);
 
   const { data: detailRes, isLoading: isDetailLoading } = useQuery({
     queryKey: changeDetailQueryKey,
@@ -131,10 +133,11 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
     document.body.removeChild(link);
   }, []);
 
-  const commentsQueryKey = React.useMemo(
-    () => ["approver-change-comments", contractId, changeId],
-    [contractId, changeId],
-  );
+  const commentsQueryKey = useUserQueryKey([
+    "approver-change-comments",
+    contractId,
+    changeId,
+  ]);
 
   const { data: commentsRes, isLoading: isCommentsLoading } = useQuery({
     queryKey: commentsQueryKey,

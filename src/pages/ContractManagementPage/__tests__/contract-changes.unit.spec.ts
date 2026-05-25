@@ -134,7 +134,7 @@ test.describe("contractChanges helpers (unit)", () => {
       name: "doc.pdf",
       url: "https://cdn.example.com/doc.pdf",
       type: "application/pdf",
-      size: 1234,
+      size: "1234",
     });
   });
 

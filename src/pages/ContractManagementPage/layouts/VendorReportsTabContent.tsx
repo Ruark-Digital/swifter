@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -102,7 +103,7 @@ const ReportDetailsSheet: React.FC<{
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["report-details", reportId, basePath],
+    queryKey: useUserQueryKey(["report-details", reportId, basePath]),
     queryFn: async () => {
       const response = await getRequest({
         url: `${basePath}/reports/${reportId}`,

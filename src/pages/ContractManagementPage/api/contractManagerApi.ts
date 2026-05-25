@@ -321,7 +321,7 @@ export type ContractChangeManagerDTO = {
     name?: string;
     url?: string;
     type?: string;
-    size?: number;
+    size?: string;
   }>;
   type?: "directive" | "order";
 };

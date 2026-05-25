@@ -1,6 +1,7 @@
 import React from "react";
 import { ArrowLeft, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -51,7 +52,7 @@ const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, basePath, cur
     message?: string;
     data?: SavingsDetailDTO;
   }>({
-    queryKey: ["contract-savings-detail", rolePrefix, savingId],
+    queryKey: useUserQueryKey(["contract-savings-detail", rolePrefix, savingId]),
     queryFn: async () => {
       const res = await getRequest({ url: `${rolePrefix}/${savingId}` });
       return res.data as any;
