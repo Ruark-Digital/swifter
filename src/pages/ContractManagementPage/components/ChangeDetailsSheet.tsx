@@ -194,10 +194,12 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     isClaim &&
     isApprover &&
     (isTimeImpact ? isAssignedApprover : approverStatus === "pending");
-  const canManagerActOnClaim = isClaim && isManager;
-  const sendForApprovalEnabled = !isTimeImpact
-    ? true
-    : approverStatus === "approved" && (approverList?.length ?? 0) === 0;
+  // Manager Send-for-Approval is only relevant for time-impact claims, where
+  // the manager auto-approves and then routes to approvers. For cost / time_cost
+  // claims the manager has no manual route step in this surface.
+  const canManagerActOnClaim = isClaim && isManager && isTimeImpact;
+  const sendForApprovalEnabled =
+    approverStatus === "approved" && (approverList?.length ?? 0) === 0;
 
   const showDecisionActions =
     showChangeDecisionActions ||
@@ -549,59 +551,28 @@ const ChangeDetailsSheet: React.FC<Props> = ({
 
           {showDecisionActions && (
             <SheetFooter>
-              <div className="flex w-full gap-3 pt-2">
-                {/* Change flow (unchanged): manager gets Reject+Approve;
-                    non-manager gets Reject (disabled) + Send for Approval. */}
-                {showChangeDecisionActions && (
-                  <>
-                    <Button
-                      variant="outline"
-                      className="flex-1 h-12 rounded-xl"
-                      disabled={!canApprove || isApproving}
-                      onClick={() => {
-                        if (!canApprove) {
-                          toast.error(
-                            "Action not allowed",
-                            "Only managers can reject changes",
-                          );
-                          return;
-                        }
-                        setPendingAction("rejected");
-                      }}
-                    >
-                      Reject Change
-                    </Button>
-                    {canApprove ? (
-                      <Button
-                        className="flex-1 h-12 rounded-xl"
-                        disabled={isApproving}
-                        onClick={() => setPendingAction("approved")}
-                      >
-                        Approve
-                      </Button>
-                    ) : (
-                      <SendApprovalDialog
-                        trigger={
-                          <Button className="flex-1 h-12 rounded-xl">
-                            Send for Approval
-                          </Button>
-                        }
-                      />
-                    )}
-                  </>
-                )}
-
-                {/* Claim flow — approver path: identity-gated Reject + Approve. */}
-                {canApproverDecideOnClaim && (
-                  <>
-                    <Button
-                      variant="outline"
-                      className="flex-1 h-12 rounded-xl"
-                      disabled={isApproving}
-                      onClick={() => setPendingAction("rejected")}
-                    >
-                      Reject Claim
-                    </Button>
+              {/* Change flow (unchanged): manager gets Reject+Approve;
+                  non-manager gets Reject (disabled) + Send for Approval. */}
+              {showChangeDecisionActions && (
+                <div className="flex w-full gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 h-12 rounded-xl"
+                    disabled={!canApprove || isApproving}
+                    onClick={() => {
+                      if (!canApprove) {
+                        toast.error(
+                          "Action not allowed",
+                          "Only managers can reject changes",
+                        );
+                        return;
+                      }
+                      setPendingAction("rejected");
+                    }}
+                  >
+                    Reject Change
+                  </Button>
+                  {canApprove ? (
                     <Button
                       className="flex-1 h-12 rounded-xl"
                       disabled={isApproving}
@@ -609,33 +580,67 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     >
                       Approve
                     </Button>
-                  </>
-                )}
-
-                {/* Claim flow — manager path: Reject + Send for Approval. */}
-                {canManagerActOnClaim && !canApproverDecideOnClaim && (
-                  <>
-                    <Button
-                      variant="outline"
-                      className="flex-1 h-12 rounded-xl"
-                      disabled={isApproving}
-                      onClick={() => setPendingAction("rejected")}
-                    >
-                      Reject Claim
-                    </Button>
+                  ) : (
                     <SendApprovalDialog
+                      contractId={contractId}
+                      entityLabel="change"
+                      onSent={() =>
+                        qc.invalidateQueries({ queryKey: changeDetailQueryKey })
+                      }
                       trigger={
-                        <Button
-                          className="flex-1 h-12 rounded-xl"
-                          disabled={!sendForApprovalEnabled}
-                        >
+                        <Button className="flex-1 h-12 rounded-xl">
                           Send for Approval
                         </Button>
                       }
                     />
-                  </>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
+
+              {/* Claim flow — approver path: identity-gated Reject + Approve. */}
+              {canApproverDecideOnClaim && (
+                <div className="flex w-full gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 h-12 rounded-xl"
+                    disabled={isApproving}
+                    onClick={() => setPendingAction("rejected")}
+                  >
+                    Reject Claim
+                  </Button>
+                  <Button
+                    className="flex-1 h-12 rounded-xl"
+                    disabled={isApproving}
+                    onClick={() => setPendingAction("approved")}
+                  >
+                    Approve
+                  </Button>
+                </div>
+              )}
+
+              {/* Claim flow — manager path (time impact only):
+                  right-aligned Send for Approval, no Reject. */}
+              {canManagerActOnClaim && !canApproverDecideOnClaim && (
+                <div className="flex w-full justify-end pt-2">
+                  <SendApprovalDialog
+                    contractId={contractId}
+                    entityLabel="claim"
+                    assignUrl={`/contract/manager/contracts/${contractId}/claims/${changeId}/approvers`}
+                    onSent={() => {
+                      qc.invalidateQueries({ queryKey: changeDetailQueryKey });
+                      qc.invalidateQueries({ queryKey: ["contractClaims"] });
+                    }}
+                    trigger={
+                      <Button
+                        className="h-12 rounded-xl px-6"
+                        disabled={!sendForApprovalEnabled}
+                      >
+                        Send for Approval
+                      </Button>
+                    }
+                  />
+                </div>
+              )}
             </SheetFooter>
           )}
         </div>
