@@ -921,7 +921,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
               )}
 
               <div className="space-y-3">
-                <div className="text-sm text-[#6B7280] dark:text-slate-400">Attached Documents</div>
+                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">Attached Documents</div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-1">
                   {(detail?.files ?? []).map((f, idx) => {
                     const fileExtension = getFileExtension(
@@ -955,7 +955,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                 hasTimeImpact &&
                 vendorAccepted &&
                 !hasApprovals && (
-                  <div className="flex items-start gap-3 rounded-2xl border border-[#2A44671A] bg-[#F8F8F8] p-4">
+                  <div className="flex items-start gap-3 rounded-2xl border border-[#2A44671A] bg-[#F8F8F8] p-4 dark:border-slate-700 dark:bg-slate-800">
                     <div className="flex h-8 w-10 items-center justify-center rounded-full border border-[#EF4444] text-[#EF4444]">
                       <AlertTriangle className="h-4 w-4" />
                     </div>
@@ -978,7 +978,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
               <div className="px-6 pb-6">
                 <button
                   type="button"
-                  className="w-full rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-[14px] text-base font-semibold text-[#2A4467] dark:text-blue-300"
+                  className="w-full rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-[14px] text-base font-semibold text-[#2A4467] dark:text-blue-300 dark:border-slate-700 dark:bg-slate-800"
                 >
                   Edit Submission
                 </button>
@@ -986,7 +986,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
             )}
 
             <TabsContent value="comments" className="space-y-4">
-              <div className="rounded-xl border border-[#E5E7EB] p-4 text-sm text-[#6B7280] dark:text-slate-400">
+              <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
                 No comments yet.
               </div>
             </TabsContent>
