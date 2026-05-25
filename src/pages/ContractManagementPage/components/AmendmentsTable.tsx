@@ -64,6 +64,7 @@ type AmendmentDetailsSheetProps = {
   >;
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
+  approverPoolPath?: string;
 };
 
 const LabelRow = ({
@@ -293,6 +294,7 @@ const AssignApprovalDialog: React.FC<{
   onAssigned: () => void;
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
+  approverPoolPath?: string;
 }> = ({
   trigger,
   contractId,
@@ -301,6 +303,7 @@ const AssignApprovalDialog: React.FC<{
   onAssigned,
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
+  approverPoolPath,
 }) => {
   const [open, setOpen] = React.useState(false);
   const [selectedGroup, setSelectedGroup] = React.useState<string>("");
@@ -309,12 +312,13 @@ const AssignApprovalDialog: React.FC<{
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
+  const resolvedApproverPoolPath =
+    approverPoolPath ?? `/contract/manager/contracts/${contractId}/approvers`;
+
   const { data, isLoading } = useQuery<PersonnelApiResponse>({
-    queryKey: ["contract-approvers", contractId],
+    queryKey: ["contract-approvers", contractId, resolvedApproverPoolPath],
     queryFn: async () => {
-      const res = await getRequest({
-        url: `/contract/manager/contracts/${contractId}/approvers`,
-      });
+      const res = await getRequest({ url: resolvedApproverPoolPath });
       return res.data as PersonnelApiResponse;
     },
     enabled: open,
@@ -582,6 +586,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   summary,
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
+  approverPoolPath,
 }) => {
   const [open, setOpen] = React.useState(false);
   const [acceptOpen, setAcceptOpen] = React.useState(false);
@@ -1171,6 +1176,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                 onAssigned={invalidateAll}
                 listInvalidateQueryKey={listInvalidateQueryKey}
                 statsInvalidateQueryKey={statsInvalidateQueryKey}
+                approverPoolPath={approverPoolPath}
                 trigger={
                   <button
                     type="button"
@@ -1195,6 +1201,7 @@ type Props = {
   basePath: string;
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
+  approverPoolPath?: string;
 };
 
 const AmendmentsTable: React.FC<Props> = ({
@@ -1204,6 +1211,7 @@ const AmendmentsTable: React.FC<Props> = ({
   basePath,
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
+  approverPoolPath,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -1275,6 +1283,7 @@ const AmendmentsTable: React.FC<Props> = ({
               }}
               listInvalidateQueryKey={listInvalidateQueryKey}
               statsInvalidateQueryKey={statsInvalidateQueryKey}
+              approverPoolPath={approverPoolPath}
               trigger={
                 <button
                   type="button"
@@ -1288,7 +1297,13 @@ const AmendmentsTable: React.FC<Props> = ({
         ),
       },
     ],
-    [contractId, basePath, listInvalidateQueryKey, statsInvalidateQueryKey],
+    [
+      contractId,
+      basePath,
+      listInvalidateQueryKey,
+      statsInvalidateQueryKey,
+      approverPoolPath,
+    ],
   );
 
   const filteredRows = React.useMemo(() => {

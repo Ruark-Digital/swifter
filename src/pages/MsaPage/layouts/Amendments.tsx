@@ -225,6 +225,7 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
         basePath={basePath}
         listInvalidateQueryKey={amendmentsQueryKey}
         statsInvalidateQueryKey={statsQueryKey}
+        approverPoolPath={`/contract/manager/msa-contract/${contractId}/approvers`}
       />
     </TabsContent>
   );
