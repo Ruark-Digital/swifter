@@ -50,10 +50,16 @@ import type {
   ContractRfiDTO,
   ContractRFIDetailDTO,
   ContractRfiResponseDTO,
+  ContractCommentDTO,
   ManagerListRfisQuery,
 } from "@/pages/ContractManagementPage/api/contractManagerApi";
 import type { UploadURLs } from "@/pages/ContractManagementPage/lib/contractChanges";
 import RfiStatsCards from "@/pages/ContractManagementPage/components/RfiStatsCards";
+import {
+  DocumentItem,
+  type DocType,
+} from "@/pages/ContractManagementPage/components/DocumentItem";
+import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
@@ -147,24 +153,19 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
   const [isSuccess, setIsSuccess] = React.useState(false);
   const files = useWatch({ control, name: "files" }) as File[] | null;
 
-  // Personnel endpoint is role-scoped per API_DOCUMENTATION_PHASE_2:
-  //   manager  → /contract/manager/personnel/contract/{id}
-  //   approver → /contract/approver/contracts/{id}/personnel
-  //   vendor   → /contract/vendor/contracts/{id}/personnel  (PM uses vendor)
-  //   user     → /contract/user/contracts/{id}/personnel    (view-only/admin)
-  // Hitting the wrong prefix returns 403; the contract personnel paths
-  // serve MSA dialogs too, so we re-use them rather than the msa-contract
-  // variants which do not exist for personnel listings.
+  // Personnel endpoint is role-scoped. MSA has its own per-role personnel
+  // routes under /msa-contract/{id}/personnel for all four roles per the
+  // full swagger spec — see memory be-msa-parallel-endpoints-default-assumption.
   const personnelUrl = React.useMemo(() => {
     if (isManager || isAdmin)
-      return `/contract/manager/personnel/contract/${contractId}`;
+      return `/contract/manager/msa-contract/${contractId}/personnel`;
     if (isApprover)
-      return `/contract/approver/contracts/${contractId}/personnel`;
+      return `/contract/approver/msa-contract/${contractId}/personnel`;
     if (isVendor || isProjectManager)
-      return `/contract/vendor/contracts/${contractId}/personnel`;
+      return `/contract/vendor/msa-contract/${contractId}/personnel`;
     if (isViewOnly)
-      return `/contract/user/contracts/${contractId}/personnel`;
-    return `/contract/user/contracts/${contractId}/personnel`;
+      return `/contract/user/msa-contract/${contractId}/personnel`;
+    return `/contract/user/msa-contract/${contractId}/personnel`;
   }, [
     contractId,
     isAdmin,
@@ -479,6 +480,8 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   fallback,
 }) => {
   const [open, setOpen] = React.useState(false);
+  const queryClient = useQueryClient();
+  const toastHandler = useToastHandler();
 
   const { data, isLoading } = useQuery({
     queryKey: ["msaRfiDetail", contractId, rfiId, basePath],
@@ -492,6 +495,75 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   });
 
   const detail = (data?.data as any)?.contractRfi ?? (data?.data as any) ?? fallback;
+  const isResponse = (data?.data as any)?.isResponse ?? false;
+
+  const commentsQueryKey = useUserQueryKey([
+    "msa-rfi-comments",
+    contractId,
+    rfiId,
+    basePath,
+  ]);
+
+  const { data: commentsRes, isLoading: isCommentsLoading } = useQuery<
+    { data?: { data?: ContractCommentDTO[]; page?: number; limit?: number } },
+    ApiResponseError
+  >({
+    queryKey: commentsQueryKey,
+    queryFn: async () => {
+      const response = await getRequest({
+        url: `${basePath}/${rfiId}/comment`,
+      });
+      return response.data as {
+        data?: { data?: ContractCommentDTO[]; page?: number; limit?: number };
+      };
+    },
+    enabled: open && Boolean(contractId) && Boolean(rfiId),
+    staleTime: 60000,
+  });
+
+  const addCommentMutation = useMutation({
+    mutationKey: ["msa-rfi-comments", "add", contractId, rfiId, basePath],
+    mutationFn: async (payload: { content: string }) => {
+      return await postRequest({
+        url: `${basePath}/${rfiId}/comment`,
+        payload,
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: commentsQueryKey });
+    },
+    onError: (error) => {
+      toastHandler.error("RFI Comment", error as ApiResponseError);
+    },
+  });
+
+  const comments = (commentsRes?.data?.data ?? []) as Array<
+    ContractCommentDTO & {
+      createdBy?: { name?: string; email?: string };
+    }
+  >;
+
+  const getCommentAuthor = (comment: ContractCommentDTO) =>
+    comment.user?.name ??
+    (comment as { createdBy?: { name?: string } }).createdBy?.name ??
+    comment.replyTo?.name ??
+    "Unknown";
+
+  const getCommentEmail = (comment: ContractCommentDTO) =>
+    comment.user?.email ??
+    (comment as { createdBy?: { email?: string } }).createdBy?.email ??
+    comment.replyTo?.email ??
+    "";
+
+  const handleSendComment = async (content: string) => {
+    if (!content.trim()) return;
+    if (!contractId || !rfiId) return;
+    try {
+      await addCommentMutation.mutateAsync({ content });
+    } catch {
+      return;
+    }
+  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -533,69 +605,256 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                 {detail?.status || "-"}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-5">
-              <LabelRow
-                label="RFI ID"
-                value={isLoading ? "Loading..." : detail?.rfiId || detail?._id || "-"}
-              />
-              <LabelRow label="Type" value={isLoading ? "Loading..." : detail?.type || "-"} />
-              <LabelRow
-                label="Submission Date"
-                value={isLoading ? "Loading..." : formatDate(detail?.createdAt)}
-              />
-              <LabelRow
-                label="Response Deadline"
-                value={isLoading ? "Loading..." : formatDate(detail?.deadline)}
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-[#9CA3AF]">Title</div>
-              <div className="text-sm text-[#374151] dark:text-slate-200">
-                {isLoading ? "Loading..." : detail?.title || "-"}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-[#9CA3AF]">Question / Description</div>
-              <div className="text-sm text-[#374151] dark:text-slate-200">
-                {isLoading ? "Loading..." : detail?.description || "-"}
-              </div>
-            </div>
-            {Array.isArray(detail?.files) && detail.files.length > 0 ? (
-              <div className="space-y-2">
-                <div className="text-xs font-medium text-[#9CA3AF]">Attachments</div>
-                <div className="space-y-2">
-                  {detail.files.map((file: any, index: number) => {
-                    const ext = getFileExtension(file?.name || "", file?.type || "");
-                    return (
-                      <div
-                        key={`${file?.name || "attachment"}-${index}`}
-                        className="flex items-center justify-between rounded-xl border border-[#E5E7EB] px-3 py-2"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-md bg-slate-100 flex items-center justify-center text-xs font-semibold text-slate-700">
-                            {ext}
-                          </div>
-                          <div className="text-sm text-slate-700 dark:text-slate-200">{file?.name || "Attachment"}</div>
-                        </div>
-                        {file?.url ? (
-                          <Button
-                            variant="link"
-                            className="h-auto p-0 text-[#43A047] font-semibold"
-                            onClick={() => window.open(file.url, "_blank", "noopener,noreferrer")}
-                          >
-                            Open
-                          </Button>
-                        ) : null}
-                      </div>
-                    );
-                  })}
+
+            <Tabs defaultValue="overview" className="space-y-6">
+              <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
+                <TabsTrigger
+                  value="overview"
+                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                >
+                  Overview
+                </TabsTrigger>
+                {isResponse ? (
+                  <TabsTrigger
+                    value="response"
+                    className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                  >
+                    Response
+                  </TabsTrigger>
+                ) : null}
+                <TabsTrigger
+                  value="comments"
+                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                >
+                  Comments
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-6">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+                  <LabelRow
+                    label="RFI ID"
+                    value={isLoading ? "Loading..." : detail?.rfiId || detail?._id || "-"}
+                  />
+                  <LabelRow label="Type" value={isLoading ? "Loading..." : detail?.type || "-"} />
+                  <LabelRow
+                    label="Submission Date"
+                    value={isLoading ? "Loading..." : formatDate(detail?.createdAt)}
+                  />
+                  <LabelRow
+                    label="Response Deadline"
+                    value={isLoading ? "Loading..." : formatDate(detail?.deadline)}
+                  />
                 </div>
-              </div>
-            ) : null}
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-[#9CA3AF]">Title</div>
+                  <div className="text-sm text-[#374151] dark:text-slate-200">
+                    {isLoading ? "Loading..." : detail?.title || "-"}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-[#9CA3AF]">Question / Description</div>
+                  <div className="text-sm text-[#374151] dark:text-slate-200">
+                    {isLoading ? "Loading..." : detail?.description || "-"}
+                  </div>
+                </div>
+                {Array.isArray(detail?.files) && detail.files.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-[#9CA3AF]">Attachments</div>
+                    <div className="space-y-2">
+                      {detail.files.map((file: any, index: number) => {
+                        const ext = getFileExtension(file?.name || "", file?.type || "");
+                        return (
+                          <div
+                            key={`${file?.name || "attachment"}-${index}`}
+                            className="flex items-center justify-between rounded-xl border border-[#E5E7EB] px-3 py-2"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-md bg-slate-100 flex items-center justify-center text-xs font-semibold text-slate-700">
+                                {ext}
+                              </div>
+                              <div className="text-sm text-slate-700 dark:text-slate-200">{file?.name || "Attachment"}</div>
+                            </div>
+                            {file?.url ? (
+                              <Button
+                                variant="link"
+                                className="h-auto p-0 text-[#43A047] font-semibold"
+                                onClick={() => window.open(file.url, "_blank", "noopener,noreferrer")}
+                              >
+                                Open
+                              </Button>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </TabsContent>
+
+              <TabsContent value="response" className="space-y-6">
+                <RfiResponseContent
+                  contractId={contractId}
+                  rfiId={rfiId}
+                  basePath={basePath}
+                />
+              </TabsContent>
+
+              <TabsContent value="comments" className="space-y-4">
+                {isCommentsLoading ? (
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                    Loading comments...
+                  </div>
+                ) : comments.length ? (
+                  <div className="space-y-4">
+                    {comments.map((comment, index) => (
+                      <div
+                        key={comment._id ?? `${index}`}
+                        className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 dark:bg-slate-900 p-4"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-sm font-semibold text-[#111827] dark:text-slate-100">
+                              {getCommentAuthor(comment)}
+                            </div>
+                            {getCommentEmail(comment) ? (
+                              <div className="text-xs text-[#6B7280] dark:text-slate-400">
+                                {getCommentEmail(comment)}
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="text-xs text-[#6B7280] dark:text-slate-400">
+                            {formatDateTZ(comment.createdAt, "dd MMM yyyy")}
+                          </div>
+                        </div>
+                        <div
+                          className="text-sm text-[#374151] dark:text-slate-200 mt-3 prose prose-sm dark:prose-invert max-w-none"
+                          dangerouslySetInnerHTML={{
+                            __html: comment.content ?? "",
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                    No comments yet.
+                  </div>
+                )}
+
+                <MessageComposer
+                  onSend={(content) => {
+                    void handleSendComment(content);
+                  }}
+                  isLoading={addCommentMutation.isPending}
+                  replyToUser={{ name: "Vendor" }}
+                  availableUsers={[
+                    { name: "Manager" },
+                    { name: "Approver" },
+                    { name: "Vendor" },
+                  ]}
+                  currentUser={{ name: "You" }}
+                  sendType="reply"
+                  isNewChat={false}
+                  onSendTypeChange={() => {}}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </SheetContent>
     </Sheet>
+  );
+};
+
+const RfiResponseContent: React.FC<{
+  contractId: string;
+  rfiId: string;
+  basePath: string;
+}> = ({ contractId, rfiId, basePath }) => {
+  const { data: respRes } = useQuery({
+    queryKey: useUserQueryKey([
+      "msa-rfi-response",
+      contractId,
+      rfiId,
+      basePath,
+    ]),
+    queryFn: async () => {
+      const response = await getRequest({
+        url: `${basePath}/${rfiId}/response`,
+      });
+      return response.data as { data?: unknown };
+    },
+    enabled: Boolean(rfiId),
+    staleTime: 60000,
+  });
+
+  const resp = Array.isArray((respRes as any)?.data)
+    ? ((respRes as any).data[0] ?? {})
+    : ((respRes as any)?.data ?? {});
+  const description = resp?.description ?? "-";
+  const files = (resp?.files ?? []) as Array<{
+    name?: string;
+    url?: string;
+    type?: string;
+    size?: string | number;
+  }>;
+
+  const getSizeLabel = (size?: string | number) => {
+    if (size === undefined || size === null) return "N/A";
+    if (typeof size === "number") return formatFileSize(size);
+    const numeric = Number(size);
+    return Number.isFinite(numeric) ? formatFileSize(numeric) : String(size);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <div className="text-xs font-medium text-[#9CA3AF]">
+          Response / Description
+        </div>
+        <div className="text-sm text-[#374151] dark:text-slate-200">
+          {description}
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+          Attached Documents
+        </div>
+        <div className="grid gap-3 sm:grid-cols-1">
+          {files.map((file, index) => {
+            const name = file.name ?? "Untitled";
+            const type = getFileExtension(name, file.type ?? "");
+            const d: DocType = {
+              id: `${name}-${index}`,
+              name,
+              type: type || "FILE",
+              size: getSizeLabel(file.size),
+              url: file.url,
+              icon: getFileIcon(type || "FILE"),
+            };
+            return (
+              <DocumentItem
+                key={d.id}
+                d={d}
+                handlePreview={() => {
+                  window.open(d.url || "#", "_blank");
+                }}
+                handleDownload={() => {
+                  if (!d.url) return;
+                  const link = document.createElement("a");
+                  link.href = d.url;
+                  link.download = d.name;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+              />
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 };
 
