@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import {
   Search,
@@ -721,7 +722,7 @@ const RateSheetDetailsSheet: React.FC<{
   const rateSheetId = row.sheetId || row.id;
 
   const { data: detailRes, isLoading: detailLoading } = useQuery({
-    queryKey: ["rate-sheet-detail", basePath, contractId, rateSheetId],
+    queryKey: useUserQueryKey(["rate-sheet-detail", basePath, contractId, rateSheetId]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${basePath}/${rateSheetId}`,

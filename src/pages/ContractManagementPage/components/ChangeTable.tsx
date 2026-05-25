@@ -19,6 +19,9 @@ import { format } from "date-fns";
 
 type ChangeTableProps = {
   contractId: string;
+  /** Role-prefixed entity path, e.g. `/contract/vendor/contracts/{id}/changes`.
+   *  Required for downstream sheets to build correct comment / approve URLs. */
+  basePath?: string;
   rows?: ContractChangeDTO[];
   isLoading?: boolean;
   totalCount?: number;
@@ -29,6 +32,7 @@ type ChangeTableProps = {
 
 const ChangeTable: React.FC<ChangeTableProps> = ({
   contractId,
+  basePath,
   rows = [],
   isLoading,
   totalCount,
@@ -197,6 +201,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
               <ChangeDetailsSheet
                 contractId={contractId}
                 changeId={changeId}
+                basePath={basePath}
                 open={sheetOpen}
                 onOpenChange={setSheetOpen}
               />

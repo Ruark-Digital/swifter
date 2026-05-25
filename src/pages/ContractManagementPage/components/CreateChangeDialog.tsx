@@ -167,8 +167,10 @@ const CreateChangeDialog: React.FC<Props> = ({
         );
 
         const filesPayload = uploadedItems
-          .filter((item): item is { name: string; url: string; type: string; size: string } => Boolean(item))
-          .map((item) => ({ ...item, size: Number(item.size) || 0 }));
+          .filter(
+            (item): item is { name: string; url: string; type: string; size: string } =>
+              Boolean(item),
+          );
         if (filesPayload.length) {
           payload.files = filesPayload;
         }
