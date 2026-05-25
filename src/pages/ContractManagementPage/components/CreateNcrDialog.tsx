@@ -42,6 +42,8 @@ type Props = {
   trigger: React.ReactElement;
   contract?: ContractDetail;
   basePath: string;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
 };
 
 const UploadElement = memo(() => {
@@ -104,7 +106,14 @@ const ACCEPTED_FILE_TYPES = {
   "image/jpeg": [".jpeg", ".jpg"],
 } as const;
 
-const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract, basePath }) => {
+const CreateNcrDialog: React.FC<Props> = ({
+  contractId,
+  trigger,
+  contract,
+  basePath,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+}) => {
   const [open, setOpen] = React.useState(false);
   const toast = useToastHandler();
   const queryClient = useQueryClient();
@@ -170,11 +179,11 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract, baseP
     onSuccess: () => {
       toast.success("Success", "NCR created successfully");
       queryClient.invalidateQueries({
-        queryKey: ["contractNcrs", contractId],
+        queryKey: listInvalidateQueryKey ?? ["contractNcrs", contractId],
       });
-      queryClient.refetchQueries({
-        queryKey: ["contractNcrs", contractId],
-      });
+      if (statsInvalidateQueryKey) {
+        queryClient.invalidateQueries({ queryKey: statsInvalidateQueryKey });
+      }
       setOpen(false);
       reset();
     },

@@ -50,8 +50,17 @@ const NcrLog: React.FC<Props> = ({ contractId, contract, isActive, actionsDisabl
     pageSize: 10,
   });
 
+  const statsQueryKey = ["msaNcrs", "stats", contractId, basePath] as const;
+  const listQueryKey = [
+    "msaNcrs",
+    contractId,
+    pagination.pageIndex,
+    pagination.pageSize,
+    basePath,
+  ] as const;
+
   const { data: statsRes, isLoading: isStatsLoading } = useQuery({
-    queryKey: ["msaNcrs", "stats", contractId, basePath],
+    queryKey: statsQueryKey,
     queryFn: async () => {
       const response = await getRequest({ url: `${basePath}/stats` });
       return response.data as { data?: ContractNcrStatsDTO };
@@ -61,13 +70,7 @@ const NcrLog: React.FC<Props> = ({ contractId, contract, isActive, actionsDisabl
   });
 
   const { data: ncrsRes, isLoading: isNcrsLoading } = useQuery({
-    queryKey: [
-      "msaNcrs",
-      contractId,
-      pagination.pageIndex,
-      pagination.pageSize,
-      basePath,
-    ],
+    queryKey: listQueryKey,
     queryFn: async () => {
       const query: ManagerListNcrsQuery = {
         page: pagination.pageIndex + 1,
@@ -99,6 +102,8 @@ const NcrLog: React.FC<Props> = ({ contractId, contract, isActive, actionsDisabl
             contractId={contractId}
             contract={contract}
             basePath={basePath}
+            listInvalidateQueryKey={listQueryKey}
+            statsInvalidateQueryKey={statsQueryKey}
             trigger={
               <button
                 type="button"
@@ -127,6 +132,8 @@ const NcrLog: React.FC<Props> = ({ contractId, contract, isActive, actionsDisabl
         setPagination={setPagination}
         contractId={contractId}
         basePath={basePath}
+        listInvalidateQueryKey={listQueryKey}
+        statsInvalidateQueryKey={statsQueryKey}
       />
     </TabsContent>
   );
