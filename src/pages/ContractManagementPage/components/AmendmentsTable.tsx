@@ -1124,7 +1124,12 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
           </DialogContent>
         </Dialog>
 
-        {isManager && !hasApprovals && !isTimeImpact && (
+        {/* Manager Assign Approval visibility:
+            - non-time impact (cost / time_cost / others) → always show
+            - time impact → show ONLY after the vendor has accepted
+              (workflow: vendor acceptance is the manager's cue to route).
+            Hidden once approvers are assigned. */}
+        {isManager && !hasApprovals && (!isTimeImpact || vendorAccepted) && (
           <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 p-6">
             <div className="flex justify-end">
               <AssignApprovalDialog
