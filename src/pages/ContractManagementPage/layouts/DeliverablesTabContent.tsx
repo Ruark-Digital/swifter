@@ -166,6 +166,7 @@ const DeliverablesTabContent: React.FC = () => {
         basePath={basePath}
         listInvalidateQueryKey={listQueryKey}
         statsInvalidateQueryKey={statsQueryKey}
+        personnelPath={`/contract/vendor/contracts/${contractId ?? ""}/personnel`}
       />
     </TabsContent>
   );

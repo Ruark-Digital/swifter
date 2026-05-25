@@ -208,6 +208,7 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
           basePath={basePath}
           listInvalidateQueryKey={listQueryKey}
           statsInvalidateQueryKey={statsQueryKey}
+          personnelPath={`/contract/vendor/msa-contract/${contractId}/personnel`}
         />
       ) : null}
     </TabsContent>

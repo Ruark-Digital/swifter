@@ -124,6 +124,7 @@ type DeliverableDetailsSheetProps = {
   basePath: string;
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
+  personnelPath?: string;
 };
 
 const LabelRow = ({
@@ -194,6 +195,7 @@ const SubmitDeliverableDialog: React.FC<{
   basePath: string;
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
+  personnelPath?: string;
 }> = ({
   trigger,
   contractId,
@@ -201,6 +203,7 @@ const SubmitDeliverableDialog: React.FC<{
   basePath,
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
+  personnelPath,
 }) => {
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -208,8 +211,11 @@ const SubmitDeliverableDialog: React.FC<{
   const queryClient = useQueryClient();
 
   const { data: personnelData } = useQuery({
-    queryKey: ["deliverable-personnel", contractId],
-    queryFn: async () => vendorApi.listPersonnel(contractId),
+    queryKey: ["deliverable-personnel", contractId, personnelPath ?? "default"],
+    queryFn: async () =>
+      personnelPath
+        ? getRequest({ url: personnelPath })
+        : vendorApi.listPersonnel(contractId),
     enabled: !!contractId,
     staleTime: 60000,
   });
@@ -424,6 +430,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   basePath,
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
+  personnelPath,
 }) => {
   const [open, setOpen] = React.useState(false);
   const [viewerOpen, setViewerOpen] = React.useState(false);
@@ -716,6 +723,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                 basePath={basePath}
                 listInvalidateQueryKey={listInvalidateQueryKey}
                 statsInvalidateQueryKey={statsInvalidateQueryKey}
+                personnelPath={personnelPath}
                 trigger={
                   <Button className="h-11 w-64 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
                     Submit
@@ -883,6 +891,7 @@ const columns: ColumnDef<DeliverableRow>[] = [
             basePath={basePath}
             listInvalidateQueryKey={meta?.listInvalidateQueryKey}
             statsInvalidateQueryKey={meta?.statsInvalidateQueryKey}
+            personnelPath={meta?.personnelPath}
             trigger={
               <button
                 type="button"
@@ -907,6 +916,7 @@ type DeliverablesTableProps = {
   basePath: string;
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
+  personnelPath?: string;
 };
 
 const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
@@ -918,6 +928,7 @@ const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
   basePath,
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
+  personnelPath,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -976,6 +987,7 @@ const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
             basePath,
             listInvalidateQueryKey,
             statsInvalidateQueryKey,
+            personnelPath,
           },
         }}
         classNames={{
