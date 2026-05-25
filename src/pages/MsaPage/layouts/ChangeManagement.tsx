@@ -7,9 +7,8 @@ import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/layouts/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Share2, Search } from "lucide-react";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useUserRole } from "@/hooks/useUserRole";
-import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getRequest } from "@/lib/axiosInstance";
 import { cn } from "@/lib/utils";
@@ -67,9 +66,13 @@ const ChangeManagement: React.FC<Props> = ({
   const lastErrorRef = React.useRef<{ stats?: unknown; list?: unknown }>({});
   const [activeTab, setActiveTab] = React.useState<ChangeTabValue>("all");
   const [search, setSearch] = React.useState("");
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   const rolePrefix = React.useMemo(() => {
-    if (isManager || isAdmin) return `/contract/manager/msa-contract/${contractId}`;
+    if (isManager) return `/contract/manager/msa-contract/${contractId}`;
     if (isApprover) return `/contract/approver/msa-contract/${contractId}`;
     if (isVendor || isProjectManager)
       return `/contract/vendor/msa-contract/${contractId}`;
@@ -87,18 +90,20 @@ const ChangeManagement: React.FC<Props> = ({
 
   const listBasePath = React.useMemo(() => `${rolePrefix}/changes`, [rolePrefix]);
 
-  const statsQueryKey = useUserQueryKey([
+  const statsQueryKey = [
     "msaChanges",
     "stats",
     contractId,
     rolePrefix,
-  ]);
-  const listQueryKey = useUserQueryKey([
+  ];
+  const listQueryKey = [
     "msaChanges",
     contractId,
     activeTab,
+    pagination.pageIndex,
+    pagination.pageSize,
     rolePrefix,
-  ]);
+  ];
 
   const { data: statsRes, isLoading: isStatsLoading, error: statsError } =
     useQuery({
@@ -118,8 +123,8 @@ const ChangeManagement: React.FC<Props> = ({
       queryFn: async () => {
         const type = changeTabToApiType(activeTab);
         const params = new URLSearchParams();
-        params.append("page", "1");
-        params.append("limit", "100");
+        params.append("page", String(pagination.pageIndex + 1));
+        params.append("limit", String(pagination.pageSize));
         if (type) params.append("type", type);
         const response = await getRequest({
           url: `${listBasePath}?${params.toString()}`,
@@ -156,6 +161,7 @@ const ChangeManagement: React.FC<Props> = ({
     if (Array.isArray(payload?.data?.changes)) return payload.data.changes;
     return [];
   }, [changesRes?.data?.data]);
+  const totalCount = changesRes?.data?.data?.total ?? rows.length;
 
   const filteredRows = React.useMemo(() => {
     if (!search.trim()) return rows;
@@ -255,7 +261,7 @@ const ChangeManagement: React.FC<Props> = ({
   );
 
   const stats = statsRes?.data;
-  const canCreateChange = isManager || isAdmin || isProjectManager || isVendor;
+  const canCreateChange = isManager || isProjectManager || isVendor;
 
   return (
     <MainTabsContent value="change" className="space-y-8">
@@ -299,7 +305,10 @@ const ChangeManagement: React.FC<Props> = ({
 
       <Tabs
         value={activeTab}
-        onValueChange={(value) => setActiveTab(value as ChangeTabValue)}
+        onValueChange={(value) => {
+          setActiveTab(value as ChangeTabValue);
+          setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+        }}
         className="space-y-4"
       >
         <TabsList className="h-auto rounded-full bg-[#F3F4F6] dark:bg-slate-800 p-1">
@@ -341,8 +350,11 @@ const ChangeManagement: React.FC<Props> = ({
             columns={columns}
             options={{
               disableSelection: true,
-              disablePagination: true,
               isLoading: isChangesLoading,
+              manualPagination: true,
+              pagination,
+              setPagination,
+              totalCounts: totalCount,
             }}
             header={() => (
               <div className="flex items-center gap-4 border-b border-[#E9E9EB] dark:border-slate-800 px-6 py-4">

@@ -6,7 +6,6 @@ import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToastHandler } from "@/hooks/useToaster";
-import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import type { ApiResponseError } from "@/types";
 import DeliverablesTable, {
   type DeliverableRow,
@@ -90,8 +89,8 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
     isViewOnly,
   ]);
 
-  const listQueryKey = useUserQueryKey(["msa-deliverables", contractId, basePath]);
-  const statsQueryKey = useUserQueryKey(["msa-deliverables-stats", contractId, basePath]);
+  const listQueryKey = ["msa-deliverables", contractId, basePath] as const;
+  const statsQueryKey = ["msa-deliverables-stats", contractId, basePath] as const;
 
   const { data: listRes, isLoading: listLoading, error: listError } = useQuery({
     queryKey: listQueryKey,

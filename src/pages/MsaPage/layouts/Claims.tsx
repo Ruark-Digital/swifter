@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { TabsContent } from "@/components/ui/tabs";
 import { DataTable } from "@/components/layouts/DataTable";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search, Share2 } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
-import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getRequest } from "@/lib/axiosInstance";
 import { cn } from "@/lib/utils";
@@ -63,16 +62,19 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
     isApprover,
     isVendor,
     isProjectManager,
-    isAdmin,
     isViewOnly,
   } = useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ stats?: unknown; claims?: unknown }>({});
   const [search, setSearch] = React.useState("");
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   const basePath = React.useMemo(() => {
-    if (isManager || isAdmin)
+    if (isManager)
       return `/contract/manager/msa-contract/${contractId}`;
     if (isApprover) return `/contract/approver/msa-contract/${contractId}`;
     if (isVendor || isProjectManager)
@@ -81,7 +83,6 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
     return `/contract/user/msa-contract/${contractId}`;
   }, [
     contractId,
-    isAdmin,
     isApprover,
     isManager,
     isVendor,
@@ -100,16 +101,19 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
     return undefined;
   }, [basePath, isVendor, isProjectManager]);
 
-  const claimsQueryKey = useUserQueryKey([
+  const claimsQueryKey = [
     "msa-claims",
     contractId,
+    pagination.pageIndex,
+    pagination.pageSize,
     claimsPath,
-  ]);
-  const statsQueryKey = useUserQueryKey([
-    "msa-claims-stats",
+  ];
+  const statsQueryKey = [
+    "msa-claims",
+    "stats",
     contractId,
     statsPath,
-  ]);
+  ];
 
   const {
     data: statsRes,
@@ -134,8 +138,8 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
     queryKey: claimsQueryKey,
     queryFn: async () => {
       const params = new URLSearchParams();
-      params.append("page", "1");
-      params.append("limit", "50");
+      params.append("page", String(pagination.pageIndex + 1));
+      params.append("limit", String(pagination.pageSize));
       const response = await getRequest({
         url: `${claimsPath}?${params.toString()}`,
       });
@@ -143,6 +147,7 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
         data?: {
           contractClaims?: ContractClaimDTO[];
           claims?: ContractClaimDTO[];
+          total?: number;
         };
       };
     },
@@ -175,6 +180,7 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
     if (Array.isArray(payload?.claims)) return payload.claims;
     return [];
   }, [claimsRes?.data]);
+  const totalCount = claimsRes?.data?.total ?? rows.length;
 
   const filteredRows = React.useMemo(() => {
     if (!search.trim()) return rows;
@@ -278,7 +284,7 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
           {createPath && (
             <RequestClaimDialog
               createPath={createPath}
-              invalidateQueryKey={claimsQueryKey}
+              invalidateQueryKey={["msa-claims"]}
               trigger={
                 <Button
                   className="h-12 rounded-xl bg-[#2A4467] px-5 text-base font-semibold text-white hover:bg-[#2A4467]/90"
@@ -299,8 +305,11 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
         columns={columns}
         options={{
           disableSelection: true,
-          disablePagination: true,
           isLoading: isClaimsLoading,
+          manualPagination: true,
+          pagination,
+          setPagination,
+          totalCounts: totalCount,
         }}
         header={() => (
           <div className="flex items-center gap-4 border-b border-[#E9E9EB] px-6 py-4">

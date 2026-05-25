@@ -517,6 +517,8 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                 ncrId={ncrId}
                 ncrTitle={title}
                 basePath={basePath}
+                listInvalidateQueryKey={listInvalidateQueryKey}
+                statsInvalidateQueryKey={statsInvalidateQueryKey}
                 trigger={
                   <Button className="flex-1 h-12 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]">
                     Submit CAPA

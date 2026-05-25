@@ -26,6 +26,8 @@ type SubmitCapaDialogProps = {
   ncrId: string;
   ncrTitle?: string;
   basePath: string;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
 };
 
 const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
@@ -34,6 +36,8 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
   ncrId,
   ncrTitle,
   basePath,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
 }) => {
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
@@ -106,6 +110,12 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
       await queryClient.invalidateQueries({
         queryKey: ["contractNcrs", "detail", contractId, ncrId],
       });
+      if (listInvalidateQueryKey) {
+        await queryClient.invalidateQueries({ queryKey: listInvalidateQueryKey });
+      }
+      if (statsInvalidateQueryKey) {
+        await queryClient.invalidateQueries({ queryKey: statsInvalidateQueryKey });
+      }
     },
   });
 
