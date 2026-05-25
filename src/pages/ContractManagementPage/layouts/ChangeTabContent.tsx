@@ -248,6 +248,7 @@ const ChangeTabContent: React.FC<Props> = ({
         <TabsContent value="all">
           <ChangeTable
             contractId={contractId}
+            basePath={basePath}
             variant={isApprover ? "approver" : "manager"}
             rows={filteredRows}
             isLoading={isChangesLoading}
@@ -259,6 +260,7 @@ const ChangeTabContent: React.FC<Props> = ({
         <TabsContent value="requests">
           <ChangeTable
             contractId={contractId}
+            basePath={basePath}
             variant={isApprover ? "approver" : "manager"}
             rows={filteredRows.filter((row) => row.type === "request")}
             isLoading={isChangesLoading}
@@ -270,6 +272,7 @@ const ChangeTabContent: React.FC<Props> = ({
         <TabsContent value="orders">
           <ChangeTable
             contractId={contractId}
+            basePath={basePath}
             rows={filteredRows.filter((row) => row.type === "order")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
@@ -280,6 +283,7 @@ const ChangeTabContent: React.FC<Props> = ({
         <TabsContent value="directive">
           <ChangeTable
             contractId={contractId}
+            basePath={basePath}
             rows={filteredRows.filter((row) => row.type === "directive")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
@@ -290,6 +294,7 @@ const ChangeTabContent: React.FC<Props> = ({
         <TabsContent value="proposal">
           <ChangeTable
             contractId={contractId}
+            basePath={basePath}
             variant={isApprover ? "approver" : "manager"}
             rows={filteredRows.filter((row) => row.type === "proposal")}
             isLoading={isChangesLoading}

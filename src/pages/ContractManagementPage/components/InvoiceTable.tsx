@@ -14,6 +14,7 @@ import {
 import { ArrowLeft, Edit2, Search, Share2, X } from "lucide-react";
 import CreateInvoiceDialog from "./CreateInvoiceDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import type { ContractInvoiceDTO } from "../api/contractManagerApi";
 import { contractManagerApi } from "../api/contractManagerApi";
 import { approverApi } from "../api/approverApi";
@@ -77,7 +78,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
     message?: string;
     data?: ContractInvoiceDTO;
   }>({
-    queryKey: ["contractInvoiceDetail", contractId, invoiceId],
+    queryKey: useUserQueryKey(["contractInvoiceDetail", contractId, invoiceId]),
     queryFn: async () => {
       if (isApprover) {
         return await approverApi.getInvoiceDetail(contractId, invoiceId);
@@ -109,7 +110,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
     { message?: string; data?: { status?: boolean } },
     ApiResponseError
   >({
-    queryKey: ["invoiceApproveStatus", contractId, invoiceId],
+    queryKey: useUserQueryKey(["invoiceApproveStatus", contractId, invoiceId]),
     queryFn: async () => {
       return await approverApi.getInvoiceApproveStatus(contractId, invoiceId);
     },

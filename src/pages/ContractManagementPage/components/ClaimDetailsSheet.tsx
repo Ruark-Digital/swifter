@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Share2, ArrowLeft, Send } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import {
@@ -96,10 +97,12 @@ const ClaimDetailsSheet: React.FC<Props> = ({
     contractId,
   ]);
 
-  const claimDetailQueryKey = React.useMemo(
-    () => ["contract-claim-detail", roleBasePath, contractId, claimId],
-    [roleBasePath, contractId, claimId],
-  );
+  const claimDetailQueryKey = useUserQueryKey([
+    "contract-claim-detail",
+    roleBasePath,
+    contractId,
+    claimId,
+  ]);
 
   const { data: detailRes, isLoading: isDetailLoading } = useQuery({
     queryKey: claimDetailQueryKey,
@@ -112,10 +115,11 @@ const ClaimDetailsSheet: React.FC<Props> = ({
     staleTime: 60_000,
   });
 
-  const commentsQueryKey = React.useMemo(
-    () => ["contract-claim-comments", roleBasePath, claimId],
-    [roleBasePath, claimId],
-  );
+  const commentsQueryKey = useUserQueryKey([
+    "contract-claim-comments",
+    roleBasePath,
+    claimId,
+  ]);
 
   const { data: commentsRes } = useQuery({
     queryKey: commentsQueryKey,

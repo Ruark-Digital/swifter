@@ -118,14 +118,14 @@ export const toManagerCreateChangePayload = (
   description?: string;
   type?: "directive" | "order";
   urgency?: "low" | "medium" | "high";
-  files?: Array<{ name: string; url: string; type: string; size: number }>;
+  files?: Array<{ name: string; url: string; type: string; size: string }>;
 } => {
   const payload: {
     title?: string;
     description?: string;
     type?: "directive" | "order";
     urgency?: "low" | "medium" | "high";
-    files?: Array<{ name: string; url: string; type: string; size: number }>;
+    files?: Array<{ name: string; url: string; type: string; size: string }>;
   } = {
     title: values.changeName,
     description: values.description,
@@ -153,7 +153,7 @@ export const toVendorCreateChangePayload = (
   type: "request" | "order" | "proposal";
   proposalCategory?: string;
   urgency?: "low" | "medium" | "high";
-  files?: Array<{ name: string; url: string; type: string; size: number }>;
+  files?: Array<{ name: string; url: string; type: string; size: string }>;
 } => {
   const type =
     values.changeType === "request" ||
@@ -168,7 +168,7 @@ export const toVendorCreateChangePayload = (
     type: "request" | "order" | "proposal";
     proposalCategory?: string;
     urgency?: "low" | "medium" | "high";
-    files?: Array<{ name: string; url: string; type: string; size: number }>;
+    files?: Array<{ name: string; url: string; type: string; size: string }>;
   } = {
     title: values.changeName,
     description: values.description,

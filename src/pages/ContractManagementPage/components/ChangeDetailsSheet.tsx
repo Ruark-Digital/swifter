@@ -22,6 +22,7 @@ import SendApprovalDialog from "./SendApprovalDialog";
 import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -116,10 +117,17 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     [roleBasePath],
   );
 
-  const changeDetailQueryKey = React.useMemo(
-    () => [isClaim ? "contract-claim-detail" : "contract-change-detail", roleBasePath, contractId, changeId],
-    [isClaim, roleBasePath, contractId, changeId],
-  );
+  // useUserQueryKey appends user._id so the cache stays isolated per
+  // logged-in user — without this the next user sees the previous
+  // user's claim/change detail until React Query staleTime elapses.
+  // (See feedback_user_query_key_invalidation memory: id is appended
+  //  to the END of the key — invalidate with the same wrapped key.)
+  const changeDetailQueryKey = useUserQueryKey([
+    isClaim ? "contract-claim-detail" : "contract-change-detail",
+    roleBasePath,
+    contractId,
+    changeId,
+  ]);
 
   const { data: detailRes, isLoading: isDetailLoading } = useQuery({
     queryKey: changeDetailQueryKey,
@@ -158,6 +166,17 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const cost = detail?.cost;
 
   const canApprove = isManager;
+
+  const statusBadgeTone = (s?: string) => {
+    const k = (s ?? "").toLowerCase();
+    if (k === "approved" || k === "accepted")
+      return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
+    if (k === "rejected")
+      return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300";
+    if (k === "dispute")
+      return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+    return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300";
+  };
   // Change-flow decision actions (manager Approve+Reject, non-manager
   // Send-for-Approval). Unchanged behavior — only the claim branch is
   // re-gated below.
@@ -181,30 +200,56 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     | Array<{ user?: Array<{ user?: string }> }>
     | undefined;
   const currentUserId = currentUser?._id;
-  const isAssignedApprover = React.useMemo(() => {
+
+  // Once the overall claim status is approved/rejected, no further decision
+  // actions should be visible — regardless of role or impact.
+  const isClaimFinalized =
+    status?.toLowerCase() === "approved" ||
+    status?.toLowerCase() === "rejected";
+
+  // Refined: for time impact we also need the *current user's* approver
+  // entry to still be pending. Without this, an approver who already
+  // approved keeps seeing the buttons because `isAssignedApprover` only
+  // checked membership, not per-user status.
+  const isAssignedApproverPending = React.useMemo(() => {
     if (!currentUserId || !Array.isArray(approverList)) return false;
     return approverList.some(
       (level) =>
         Array.isArray(level?.user) &&
-        level.user.some((u) => u?.user === currentUserId),
+        level.user.some(
+          (u: any) => u?.user === currentUserId && u?.status === "pending",
+        ),
     );
   }, [approverList, currentUserId]);
 
   const canApproverDecideOnClaim =
     isClaim &&
     isApprover &&
-    (isTimeImpact ? isAssignedApprover : approverStatus === "pending");
+    !isClaimFinalized &&
+    (isTimeImpact ? isAssignedApproverPending : approverStatus === "pending");
   // Manager Send-for-Approval is only relevant for time-impact claims, where
-  // the manager auto-approves and then routes to approvers. For cost / time_cost
-  // claims the manager has no manual route step in this surface.
-  const canManagerActOnClaim = isClaim && isManager && isTimeImpact;
+  // the manager auto-approves and then routes to approvers.
+  const canManagerActOnClaim =
+    isClaim && isManager && isTimeImpact && !isClaimFinalized;
   const sendForApprovalEnabled =
     approverStatus === "approved" && (approverList?.length ?? 0) === 0;
+
+  // Cost / time_cost claims: manager decides directly (Reject + Approve),
+  // same comment-dialog flow as the change-flow approve path. Gated on
+  // approverStatus === "pending" to match the approver-side cost claim
+  // gate and to hide after a decision.
+  const canManagerDecideOnCostClaim =
+    isClaim &&
+    isManager &&
+    (impact === "cost" || impact === "time_cost") &&
+    approverStatus === "pending" &&
+    !isClaimFinalized;
 
   const showDecisionActions =
     showChangeDecisionActions ||
     canApproverDecideOnClaim ||
-    canManagerActOnClaim;
+    canManagerActOnClaim ||
+    canManagerDecideOnCostClaim;
 
   // Approve / reject opens a comment dialog first. `pendingAction` drives
   // both the dialog visibility and which variant (Approve vs Reject) we
@@ -299,10 +344,12 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     document.body.removeChild(link);
   }, []);
 
-  const commentsQueryKey = React.useMemo(
-    () => ["contract-change-comments", roleBasePath, contractId, changeId],
-    [roleBasePath, contractId, changeId],
-  );
+  const commentsQueryKey = useUserQueryKey([
+    "contract-change-comments",
+    roleBasePath,
+    contractId,
+    changeId,
+  ]);
 
   const canLoadComments =
     open && !!contractId && !!changeId && (isManager || isApprover || isContractVendorLike);
@@ -458,12 +505,10 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     <LabelRow
                     label="Status"
                     value={
-                      <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">
-                        {isDetailLoading
-                          ? ""
-                          : status
-                            ? status.charAt(0).toUpperCase() + status.slice(1)
-                            : "-"}
+                      <Badge
+                        className={cn("capitalize", statusBadgeTone(status))}
+                      >
+                        {isDetailLoading ? "" : status || "-"}
                       </Badge>
                     }
                   />
@@ -599,6 +644,30 @@ const ChangeDetailsSheet: React.FC<Props> = ({
 
               {/* Claim flow — approver path: identity-gated Reject + Approve. */}
               {canApproverDecideOnClaim && (
+                <div className="flex w-full gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 h-12 rounded-xl"
+                    disabled={isApproving}
+                    onClick={() => setPendingAction("rejected")}
+                  >
+                    Reject Claim
+                  </Button>
+                  <Button
+                    className="flex-1 h-12 rounded-xl"
+                    disabled={isApproving}
+                    onClick={() => setPendingAction("approved")}
+                  >
+                    Approve
+                  </Button>
+                </div>
+              )}
+
+              {/* Claim flow — manager path (cost / time_cost): direct
+                  Reject + Approve via the same comment-dialog flow as the
+                  change-flow approve path. Time-impact stays on the
+                  Send-for-Approval branch below. */}
+              {canManagerDecideOnCostClaim && (
                 <div className="flex w-full gap-3 pt-2">
                   <Button
                     variant="outline"

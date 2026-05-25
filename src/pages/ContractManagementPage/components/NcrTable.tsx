@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Download, Search, X } from "lucide-react";
 import type { ContractNcrSummary } from "../api/contractManagerApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUser } from "@/store/authSlice";
 import { formatDateTZ } from "@/lib/utils";
 import SubmitCapaDialog from "./SubmitCapaDialog";
@@ -170,7 +171,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
   const queryClient = useQueryClient();
 
   const { data: detailRes } = useQuery({
-    queryKey: ["contractNcrs", "detail", contractId, ncrId, basePath],
+    queryKey: useUserQueryKey(["contractNcrs", "detail", contractId, ncrId, basePath]),
     queryFn: async () => {
       const response = await getRequest({
         url: `${basePath}/${ncrId}`,

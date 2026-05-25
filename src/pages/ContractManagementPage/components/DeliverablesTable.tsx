@@ -27,6 +27,7 @@ import {
   X,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import {
   formatFileSize,
@@ -416,7 +417,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["deliverable-detail", contractId, deliverableId, basePath, open],
+    queryKey: useUserQueryKey(["deliverable-detail", contractId, deliverableId, basePath, open]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${basePath}/${deliverableId}`,
