@@ -10,6 +10,8 @@ import { getRequest } from "@/lib/axiosInstance";
 import type { File as ContractFile } from "@/types";
 import DocumentsStatsCard from "@/pages/ContractManagementPage/components/DocumentsStatsCard";
 import DocumentsList from "@/pages/ContractManagementPage/components/DocumentsList";
+import CreateMSADialog from "./CreateMSADialog";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type DocumentsProps = {
   contractId: string;
@@ -94,19 +96,27 @@ const Documents: React.FC<DocumentsProps> = ({
         <h3 className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">Documents</h3>
 
         <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            className="h-12 rounded-2xl border-[#E5E7EB] dark:border-slate-800 px-5 font-semibold text-[#0F0F0F] dark:text-slate-100"
-          >
-            <Share2 className="mr-2 h-5 w-5" /> Export Report
-          </Button>
-          {isManager && (
+          <ExportReportSheet contractId={contractId} contractType="MsaContract">
             <Button
               variant="outline"
               className="h-12 rounded-2xl border-[#E5E7EB] dark:border-slate-800 px-5 font-semibold text-[#0F0F0F] dark:text-slate-100"
             >
-              Edit Contract
+              <Share2 className="mr-2 h-5 w-5" /> Export Report
             </Button>
+          </ExportReportSheet>
+          {isManager && (
+            <CreateMSADialog
+              editingMsaId={contractId}
+              initialValues={documentsResponse?.data as any}
+              trigger={
+                <Button
+                  variant="outline"
+                  className="h-12 rounded-2xl border-[#E5E7EB] dark:border-slate-800 px-5 font-semibold text-[#0F0F0F] dark:text-slate-100"
+                >
+                  Edit Contract
+                </Button>
+              }
+            />
           )}
         </div>
       </div>

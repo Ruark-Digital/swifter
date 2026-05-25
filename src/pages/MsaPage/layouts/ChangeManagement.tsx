@@ -17,6 +17,7 @@ import type { ApiResponse, ApiResponseError } from "@/types";
 import ChangeStatsCards from "@/pages/ContractManagementPage/components/ChangeStatsCards";
 import CreateChangeDialog from "@/pages/ContractManagementPage/components/CreateChangeDialog";
 import ChangeDetailsSheet from "@/pages/ContractManagementPage/components/ChangeDetailsSheet";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import {
   changeTabToApiType,
   formatChangeTypeLabel,
@@ -43,7 +44,9 @@ const statusTone = (status?: string) => {
   if (normalized === "approved") return "bg-[#EAF7EE] dark:bg-green-900/40 text-[#43A047] dark:text-green-300";
   if (normalized === "pending") return "bg-[#FFF8E1] dark:bg-yellow-900/40 text-[#F4B400] dark:text-yellow-300";
   if (normalized === "rejected") return "bg-[#FEECEC] dark:bg-red-900/40 text-[#E53935] dark:text-red-300";
-  return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:text-slate-300";
+  if (normalized === "closed")
+    return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+  return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 };
 
 const formatChangeValue = (value?: number) => {
@@ -261,13 +264,15 @@ const ChangeManagement: React.FC<Props> = ({
           Change Management
         </h3>
         <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            className="h-12 rounded-xl border-[#E5E7EB] px-5 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
-          >
-            <Share2 className="mr-2 h-5 w-5" />
-            Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="MsaContract">
+            <Button
+              variant="outline"
+              className="h-12 rounded-xl border-[#E5E7EB] px-5 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
+            >
+              <Share2 className="mr-2 h-5 w-5" />
+              Export Report
+            </Button>
+          </ExportReportSheet>
           {canCreateChange && (
             <CreateChangeDialog
               trigger={
@@ -286,7 +291,11 @@ const ChangeManagement: React.FC<Props> = ({
         </div>
       </div>
 
-      <ChangeStatsCards stats={stats} isLoading={isStatsLoading} variant="approver" />
+      <ChangeStatsCards
+        stats={stats}
+        isLoading={isStatsLoading}
+        variant={isApprover ? "approver" : "manager"}
+      />
 
       <Tabs
         value={activeTab}

@@ -8,14 +8,11 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Eye, Download } from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getRequest, postRequest } from "@/lib/axiosInstance";
-import { useUserRole } from "@/hooks/useUserRole";
-import { useToastHandler } from "@/hooks/useToaster";
+import { useQuery } from "@tanstack/react-query";
+import { getRequest } from "@/lib/axiosInstance";
 import { getFileIcon } from "@/lib/fileUtils";
 import { ContractComplianceDTO } from "../api/contractManagerApi";
 import Spinner from "@/components/ui/Spinner";
@@ -98,12 +95,7 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
   basePath,
   currency,
   data,
-  actionsDisabled,
 }) => {
-  const { isManager, isSuperAdmin } = useUserRole();
-  const toast = useToastHandler();
-  const queryClient = useQueryClient();
-
   const { data: complianceRes, isLoading } = useQuery({
     queryKey: ["contract-compliance-detail", contractId, basePath],
     queryFn: async () => {
@@ -171,24 +163,6 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
   if (isLoading) {
     return <Spinner />;
   }
-
-  const handleAction = async (action: "approved" | "rejected") => {
-    try {
-      await postRequest({
-        url: `${basePath}/${type}/${id}/approve`,
-        payload: { action },
-      });
-      toast.success("Success", `Status updated to ${action}`);
-      queryClient.invalidateQueries({
-        queryKey: ["contract-compliance-detail", contractId, basePath],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["contract-compliance", contractId, basePath],
-      });
-    } catch (error: any) {
-      toast.error("Error", error?.message || "Failed to update status");
-    }
-  };
 
   return (
     <Sheet>
@@ -340,28 +314,6 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
             </TabsContent>
           </Tabs>
 
-          {(isManager || isSuperAdmin) &&
-            hasFiles &&
-            !["published", "approved"].includes(
-              detail?.status?.toLowerCase(),
-            ) &&
-            !actionsDisabled && (
-              <div className="flex gap-4 pt-6 sticky bottom-0 bg-white dark:bg-slate-950 pb-2 border-t border-slate-100 dark:border-slate-800 mt-auto">
-                <Button
-                  variant="outline"
-                  className="flex-1 rounded-xl border-slate-200 bg-slate-50 text-slate-900 font-bold text-sm hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-                  onClick={() => handleAction("rejected")}
-                >
-                  Reject
-                </Button>
-                <Button
-                  className="flex-1 rounded-xl bg-[#2A4467] text-white font-bold text-sm hover:bg-[#1f3552]"
-                  onClick={() => handleAction("approved")}
-                >
-                  Approve
-                </Button>
-              </div>
-            )}
         </div>
       </SheetContent>
     </Sheet>

@@ -815,9 +815,14 @@
 .ct-tiptap .ProseMirror code { background: #f1f5f9; padding: 0 4px; border-radius: 3px; font-size: 0.85em; }
 .ct-tiptap .ProseMirror table { border-collapse: collapse; margin: 0.6em 0; }
 .ct-tiptap .ProseMirror th, .ct-tiptap .ProseMirror td { border: 1px solid #cbd5e1; padding: 4px 8px; }
+.ct-tiptap .ProseMirror a { color: #2563eb; text-decoration: underline; }
+.ct-tiptap .ProseMirror hr { border: 0; border-top: 1px solid #e2e8f0; margin: 1.2em 0; }
+.dark .ct-tiptap .ProseMirror { color: #e2e8f0; /* slate-200 — fixes invisible-text-in-dark-mode */ }
 .dark .ct-tiptap .ProseMirror blockquote { border-left-color: #334155; color: #94a3b8; }
 .dark .ct-tiptap .ProseMirror code { background: #1e293b; color: #e2e8f0; }
 .dark .ct-tiptap .ProseMirror th, .dark .ct-tiptap .ProseMirror td { border-color: #334155; }
+.dark .ct-tiptap .ProseMirror a { color: #93c5fd; /* blue-300 */ }
+.dark .ct-tiptap .ProseMirror hr { border-top-color: #334155; }
 
 /* TipTap BubbleMenu (selection toolbar) */
 .ct-bubble-menu { z-index: 50; }

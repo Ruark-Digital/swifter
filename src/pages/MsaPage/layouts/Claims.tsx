@@ -20,6 +20,7 @@ import type {
 import ClaimsStatsCards from "@/pages/ContractManagementPage/components/ClaimsStatsCards";
 import RequestClaimDialog from "@/pages/ContractManagementPage/components/RequestClaimDialog";
 import MSAClaimDetailsSheet from "@/pages/MsaPage/components/MSAClaimDetailsSheet";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
@@ -34,6 +35,8 @@ const statusTone = (status?: string) => {
     return "bg-[#FFF8E1] text-[#F4B400]";
   }
   if (normalized === "rejected") return "bg-[#FEECEC] text-[#E53935]";
+  if (normalized === "closed")
+    return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
   return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 };
 
@@ -87,13 +90,13 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   ]);
 
   const claimsPath = React.useMemo(
-    () => (isManager || isAdmin ? `${basePath}/claims` : `${basePath}/claim`),
-    [basePath, isAdmin, isManager],
+    () => `${basePath}/claims`,
+    [basePath],
   );
   const statsPath = `${claimsPath}/stats`;
 
   const createPath = React.useMemo(() => {
-    if (isVendor || isProjectManager) return `${basePath}/claim`;
+    if (isVendor || isProjectManager) return `${basePath}/claims`;
     return undefined;
   }, [basePath, isVendor, isProjectManager]);
 
@@ -263,13 +266,15 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
           Claims
         </h3>
         <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
-          >
-            <Share2 className="mr-2 h-5 w-5" />
-            Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="MsaContract">
+            <Button
+              variant="outline"
+              className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+            >
+              <Share2 className="mr-2 h-5 w-5" />
+              Export Report
+            </Button>
+          </ExportReportSheet>
           {createPath && (
             <RequestClaimDialog
               createPath={createPath}

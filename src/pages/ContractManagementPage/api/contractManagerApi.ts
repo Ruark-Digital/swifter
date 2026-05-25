@@ -522,13 +522,61 @@ export type ContractApproverAction = {
   approvedDate?: string;
 };
 
+export type ContractApproverItem = {
+  refId?: string;
+  refType?: string;
+  refCode?: string;
+  title?: string;
+  status?: "pending" | "approved" | "rejected";
+  comment?: string;
+  actionedAt?: string;
+  completedAt?: string;
+  level?: number;
+  group?: string;
+  amount?: number;
+};
+
+export type ContractApproverItemsByCategory = {
+  project?: ContractApproverItem[];
+  changes?: ContractApproverItem[];
+  claims?: ContractApproverItem[];
+  invoices?: ContractApproverItem[];
+  lems?: ContractApproverItem[];
+  amendments?: ContractApproverItem[];
+};
+
+export type ContractApproverModelSummary = {
+  status?: "pending" | "approved" | "rejected";
+  comment?: string;
+  actionedAt?: string;
+  assigned?: number;
+  completed?: number;
+};
+
 export type ContractApproverDetail = {
+  contract?: {
+    _id?: string;
+    contractId?: string;
+    title?: string;
+    status?: string;
+    currency?: string;
+    contractValue?: number;
+    startDate?: string;
+    endDate?: string;
+  };
   approver?: {
     _id?: string;
+    name?: string;
     firstName?: string;
     lastName?: string;
     email?: string;
+    role?: { _id?: string; name?: string };
   };
+  submissionDate?: string;
+  assignedApproval?: { completed?: number; total?: number };
+  status?: "pending" | "approved" | "rejected";
+  models?: Record<string, ContractApproverModelSummary>;
+  items?: ContractApproverItemsByCategory;
   details?: ContractApproverAction[];
 };
 

@@ -145,7 +145,7 @@ const RateSheetFilesListItem = ({ file }: { file: File }) => {
             {file.name}
           </div>
           <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-500">
-            {getSimpleFileExtension(file.name).toUpperCase()} â€¢{" "}
+            {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
             {formatFileSize(file.size)}
           </div>
         </div>
@@ -466,14 +466,33 @@ const RateSheetSummaryTable = React.memo(
       setVisibleRowCount(RATE_SHEET_SUMMARY_INITIAL_ROWS);
     }, [rows]);
 
+    // BE sometimes declares fewer headers than the rows actually carry
+    // (xlsx parsing truncates header row at the first empty cell). Union
+    // any extra row keys onto the declared headers so every populated cell
+    // gets a column to render under.
+    const effectiveHeaders = React.useMemo(() => {
+      const declared = new Set(headers);
+      const merged: string[] = [...headers];
+      for (const r of rows) {
+        if (!r) continue;
+        for (const k of Object.keys(r)) {
+          if (!declared.has(k)) {
+            declared.add(k);
+            merged.push(k);
+          }
+        }
+      }
+      return merged;
+    }, [headers, rows]);
+
     const headerCells = React.useMemo(
       () =>
-        headers.map((h) => (
+        effectiveHeaders.map((h) => (
           <th key={h} className="whitespace-nowrap px-4 py-3">
-            {h}
+            {/^__EMPTY(_\d+)?$/.test(h) ? "" : h}
           </th>
         )),
-      [headers],
+      [effectiveHeaders],
     );
 
     const bodyRows = React.useMemo(() => {
@@ -482,7 +501,10 @@ const RateSheetSummaryTable = React.memo(
       if (visibleRows.length === 0) {
         return (
           <tr className="border-t border-[#E5E7EB]">
-            <td className="px-4 py-3 text-[#6B7280] dark:text-slate-400" colSpan={headers.length}>
+            <td
+              className="px-4 py-3 text-[#6B7280] dark:text-slate-400"
+              colSpan={effectiveHeaders.length}
+            >
               No rows available.
             </td>
           </tr>
@@ -491,17 +513,20 @@ const RateSheetSummaryTable = React.memo(
 
       return visibleRows.map((r, rowIndex) => (
         <tr key={rowIndex} className="border-t border-[#E5E7EB]">
-          {headers.map((h) => (
-            <td
-              key={`${rowIndex}-${h}`}
-              className="whitespace-nowrap px-4 py-3"
-            >
-              {(r as any)?.[h] ?? "â€”"}
-            </td>
-          ))}
+          {effectiveHeaders.map((h) => {
+            const cell = (r as any)?.[h];
+            return (
+              <td
+                key={`${rowIndex}-${h}`}
+                className="whitespace-nowrap px-4 py-3"
+              >
+                {cell == null || cell === "" ? "" : String(cell)}
+              </td>
+            );
+          })}
         </tr>
       ));
-    }, [headers, rows, visibleRowCount]);
+    }, [effectiveHeaders, rows, visibleRowCount]);
 
     return (
       <div className="overflow-x-auto rounded-lg border border-[#E5E7EB] bg-white">
@@ -542,7 +567,7 @@ const RateSheetSummarySheet = React.memo(
     return (
       <div className="space-y-3">
         <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
-          {sheet?.sheetName || "â€”"}
+          {sheet?.sheetName || "—"}
         </div>
         {Array.isArray(sheet?.headers) && sheet.headers.length > 0 ? (
           <RateSheetSummaryTable
@@ -778,7 +803,7 @@ const RateSheetDetailsSheet: React.FC<{
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
-                {sheet?.title || row.title || "â€”"}
+                {sheet?.title || row.title || "—"}
               </div>
               <Button
                 variant="outline"
@@ -825,7 +850,7 @@ const RateSheetDetailsSheet: React.FC<{
                       label="Submission Date"
                       value={sheet?.createdAt
                         ? formatDate(sheet?.createdAt, "yyyy MMM dd")
-                        : "â€”"}
+                        : "—"}
                     />
                     <LabelRow
                       label="Status"
@@ -839,7 +864,7 @@ const RateSheetDetailsSheet: React.FC<{
                       Description
                     </div>
                     <div className="text-sm font-medium text-[#111827] dark:text-slate-100">
-                      {sheet?.description || "â€”"}
+                      {sheet?.description || "—"}
                     </div>
                   </div>
                   {detailLoading ? (
@@ -863,7 +888,7 @@ const RateSheetDetailsSheet: React.FC<{
                             size:
                               typeof file?.size === "number"
                                 ? `${file.size} B`
-                                : "â€”",
+                                : "—",
                             url: file?.url,
                             icon: getFileIcon(ext),
                           };

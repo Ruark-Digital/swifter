@@ -16,6 +16,7 @@ import AmendmentsTable, {
   type AmendmentRow,
 } from "@/pages/ContractManagementPage/components/AmendmentsTable";
 import { CreateAmendmentDialog } from "@/pages/ContractManagementPage/layouts/AmendmentsTabContent";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
@@ -175,16 +176,18 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">Amendments</h3>
         <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            className="rounded-xl border-[#E5E7EB] dark:border-slate-800 px-4 font-semibold text-[#0F0F0F] dark:text-slate-100"
-          >
-            <img
-              src="/assets/contract-management/amendments/share.svg"
-              className="mr-2 h-5 w-5"
-            />
-            Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="MsaContract">
+            <Button
+              variant="outline"
+              className="rounded-xl border-[#E5E7EB] dark:border-slate-800 px-4 font-semibold text-[#0F0F0F] dark:text-slate-100"
+            >
+              <img
+                src="/assets/contract-management/amendments/share.svg"
+                className="mr-2 h-5 w-5"
+              />
+              Export Report
+            </Button>
+          </ExportReportSheet>
 
           {isManager && (
             <CreateAmendmentDialog

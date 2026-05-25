@@ -797,7 +797,11 @@ const MsaDetailPage: React.FC = () => {
               actionsDisabled={msa?.status === "publish"}
             />
 
-            <NcrLog contractId={id ?? ""} isActive={activeTab === "ncr-log"} />
+            <NcrLog
+              contractId={id ?? ""}
+              contract={msa as any}
+              isActive={activeTab === "ncr-log"}
+            />
 
             <Deliverables
               contractId={deliverablesContractId}
