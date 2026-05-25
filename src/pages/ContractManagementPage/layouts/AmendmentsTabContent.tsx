@@ -276,14 +276,14 @@ export const CreateAmendmentDialog: React.FC<{
 
   const FileListItem = ({ file }: { file: File }) => {
     return (
-      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 dark:border-slate-700 dark:bg-slate-800">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-blue-100 rounded flex items-center justify-center">
-            <FileText className="h-5 w-5 text-blue-600" />
+          <div className="w-10 h-10 bg-blue-100 dark:bg-slate-700 rounded flex items-center justify-center">
+            <FileText className="h-5 w-5 text-blue-600 dark:text-blue-300" />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-900">{file.name}</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{file.name}</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400">
               {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
               {formatFileSize(file.size)}
             </p>
@@ -297,7 +297,7 @@ export const CreateAmendmentDialog: React.FC<{
               (value || []).filter((v: File) => v.name !== file.name),
             )
           }
-          className="text-gray-400 hover:text-red-500 transition-colors"
+          className="text-gray-400 dark:text-slate-400 hover:text-red-500 transition-colors"
         >
           <X className="h-4 w-4" />
         </button>

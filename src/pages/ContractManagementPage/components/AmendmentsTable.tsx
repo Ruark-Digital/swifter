@@ -411,7 +411,7 @@ const AssignApprovalDialog: React.FC<{
             Select Approvers Group
           </div>
           <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-            <SelectTrigger className="h-14 w-full rounded-lg border border-[#E5E7EB] px-4 text-sm">
+            <SelectTrigger className="h-14 w-full rounded-lg border border-[#E5E7EB] dark:border-slate-700 px-4 text-sm">
               <SelectValue placeholder="Select Option" />
             </SelectTrigger>
             <SelectContent>
@@ -424,8 +424,8 @@ const AssignApprovalDialog: React.FC<{
           </Select>
         </div>
 
-        <div className="flex flex-col rounded-xl border border-[#E5E7EB] overflow-hidden w-full">
-          <div className="flex items-center justify-between bg-[#F9FAFB] px-6 py-4 border-b border-[#E5E7EB]">
+        <div className="flex flex-col rounded-xl border border-[#E5E7EB] dark:border-slate-700 overflow-hidden w-full">
+          <div className="flex items-center justify-between bg-[#F9FAFB] dark:bg-slate-800 px-6 py-4 border-b border-[#E5E7EB] dark:border-slate-700">
             <div className="w-[150px] text-sm font-semibold text-[#2A4467] dark:text-blue-300">
               Group
             </div>
@@ -484,7 +484,7 @@ const AssignApprovalDialog: React.FC<{
                             <Check className="h-2 w-2 text-white" />
                           </span>
                         ) : (
-                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-[#DDDDDD]" />
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-[#DDDDDD] dark:border-slate-600" />
                         )}
                         <span className="text-sm font-medium text-[#353535] dark:text-slate-300">
                           Assign
