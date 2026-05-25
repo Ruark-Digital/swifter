@@ -1004,18 +1004,6 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                 )}
             </TabsContent>
 
-            {/* Edit Submission appears for vendor on rejected 'Other Combination' */}
-            {isContractVendorLike && isOtherCombination && vendorRejected && (
-              <div className="px-6 pb-6">
-                <button
-                  type="button"
-                  className="w-full rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-[14px] text-base font-semibold text-[#2A4467] dark:text-blue-300 dark:border-slate-700 dark:bg-slate-800"
-                >
-                  Edit Submission
-                </button>
-              </div>
-            )}
-
             <TabsContent value="comments" className="space-y-4">
               <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
                 No comments yet.
