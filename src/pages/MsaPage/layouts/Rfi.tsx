@@ -28,7 +28,7 @@ import {
   TextDatePicker,
   TextFileUploader,
   TextInput,
-  TextMultiSelect,
+  TextSelect,
 } from "@/components/layouts/FormInputs";
 import type { Option } from "@/components/ui/multiselect";
 import { FileUploaderItem } from "@/components/ui/file-upload";
@@ -141,7 +141,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
       responseDeadline: undefined,
       question: "",
       files: null,
-      responders: [] as Option[],
+      responder: "",
     },
   });
   const [isSuccess, setIsSuccess] = React.useState(false);
@@ -256,19 +256,15 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
     responseDeadline?: Date;
     question: string;
     files: File[] | null;
-    responders?: Option[];
+    responder?: string;
   }) => {
-    // Mirror the contract RFI dialog: join responder labels (display
-    // names) with a comma so the backend `responder` field carries a
-    // readable list of recipients.
-    const responderLabels = (data.responders ?? [])
-      .map((r) => r.label)
-      .join(", ");
-
     const payload: ContractRfiDTO = {
       title: data.rfiTitle,
       description: data.question,
-      responder: responderLabels || undefined,
+      // BE field is singular `responder?: string` — must be the personnel
+      // option's `_id`, not the display label.
+      // See memory project_rfi_responder_singular.
+      responder: data.responder || undefined,
       deadline: data.responseDeadline ? data.responseDeadline.toISOString() : undefined,
     };
 
@@ -397,10 +393,10 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                   rows={5}
                 />
                 <Forger
-                  name="responders"
+                  name="responder"
                   label="Select Responder"
-                  placeholder="Search and select responders"
-                  component={TextMultiSelect}
+                  placeholder="Search and select a responder"
+                  component={TextSelect}
                   options={personnelOptions}
                 />
                 <div className="space-y-2">
