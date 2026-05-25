@@ -395,7 +395,13 @@ const EditContract: React.FC<Props> = ({
           ? contract.solicitation
           : (contract.solicitation?._id ?? ""),
       type: contract.contractType?._id ?? "",
-      category: contract.category ?? "",
+      // BE detail can return `category` as either the raw string name or
+      // a populated `{_id, name}` object — coerce to the string the form
+      // expects (TextSelectWithSearch matches options by `value: c.name`).
+      category:
+        typeof contract.category === "string"
+          ? contract.category
+          : ((contract.category as any)?.name ?? ""),
       manager: contract.managers?.[0] ?? "",
       jobTitle: contract.jobTitle ?? "",
       vendor:
@@ -766,7 +772,12 @@ const EditContract: React.FC<Props> = ({
       const payload = {
         title: data.name,
         description: data.description,
-        category: data.category,
+        // Defensive guard: if the initial state leaked through as an object
+        // (legacy BE shape), coerce to the string name the API expects.
+        category:
+          typeof data.category === "string"
+            ? data.category
+            : ((data.category as any)?.name ?? ""),
         timezone: tz,
         contractType: data.type,
         contractRelationship: relationship,
