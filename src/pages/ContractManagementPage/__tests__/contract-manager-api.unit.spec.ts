@@ -116,9 +116,9 @@ test.describe("contractManagerApi (unit)", () => {
       payload: holdbackPayload,
     });
 
-    await api.getPaymentHoldbackById("hb1");
+    await api.getPaymentHoldbackById("c1", "hb1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/payment-holdbacks/hb1",
+      url: "/contract/manager/contracts/c1/payment-holdbacks/hb1",
     });
 
     await api.listPaymentSavings("c2");
@@ -133,9 +133,9 @@ test.describe("contractManagerApi (unit)", () => {
       payload: savingPayload,
     });
 
-    await api.getPaymentSavingById("s1");
+    await api.getPaymentSavingById("c2", "s1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/payment-savings/s1",
+      url: "/contract/manager/contracts/c2/payment-savings/s1",
     });
 
     await api.getChangeStats("c3");

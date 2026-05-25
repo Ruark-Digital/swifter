@@ -129,7 +129,9 @@ const buildHoldbackReleaseColumns = (
   },
 ];
 
-const savingsRealizedColumns: ColumnDef<SavingsRealizedRow>[] = [
+const buildSavingsRealizedColumns = (
+  contractId: string,
+): ColumnDef<SavingsRealizedRow>[] => [
   {
     accessorKey: "savingsId",
     header: "Savings ID",
@@ -182,6 +184,7 @@ const savingsRealizedColumns: ColumnDef<SavingsRealizedRow>[] = [
       <div className="flex w-[80px] justify-center py-4">
         <SavingsDetailsSheet
           savingId={row.getValue<string>("savingsId")}
+          contractId={contractId}
           currency={row.getValue<string>("currency")}
           trigger={
             <button
@@ -706,6 +709,11 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
 
   const holdbackReleaseColumns = React.useMemo(
     () => buildHoldbackReleaseColumns(contractId, "Contract"),
+    [contractId],
+  );
+
+  const savingsRealizedColumns = React.useMemo(
+    () => buildSavingsRealizedColumns(contractId),
     [contractId],
   );
 

@@ -29,8 +29,8 @@ import { getHoldbackStatusBadgeProps } from "../lib/holdbacks";
 type Props = {
   trigger: React.ReactNode;
   holdBackId?: string;
-  // contractId is required for the approver `/approve` and `/approve/status`
-  // routes. Detail GET works without it (BE indexes by holdBackId alone).
+  // contractId is required: BE indexes detail GET, /approve, and /approve/status
+  // by the parent contract (multi-level escalation lives there).
   contractId?: string;
   // Which surface this sheet is rendered on. Drives the `/contracts` vs
   // `/msa-contract` segment in every role-prefixed URL.
@@ -81,18 +81,19 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
   const contractSegment =
     contractType === "MsaContract" ? "msa-contract" : "contracts";
 
-  // Phase 2 documents `/contract/{manager,approver,vendor}/{segment}/payment-holdbacks/{id}`
+  // Swagger documents `/contract/{manager,approver,vendor}/{segment}/{contractId}/payment-holdbacks/{id}`
   // for holdback detail. View-only has no documented detail route.
   const rolePrefix = React.useMemo(() => {
     if (basePath) return basePath; // allow parent override
+    if (!contractId) return null;
     if (isManager)
-      return `/contract/manager/${contractSegment}/payment-holdbacks`;
+      return `/contract/manager/${contractSegment}/${contractId}/payment-holdbacks`;
     if (isApprover)
-      return `/contract/approver/${contractSegment}/payment-holdbacks`;
+      return `/contract/approver/${contractSegment}/${contractId}/payment-holdbacks`;
     if (isContractVendorLike)
-      return `/contract/vendor/${contractSegment}/payment-holdbacks`;
+      return `/contract/vendor/${contractSegment}/${contractId}/payment-holdbacks`;
     return null;
-  }, [basePath, isApprover, isManager, isContractVendorLike, contractSegment]);
+  }, [basePath, contractId, isApprover, isManager, isContractVendorLike, contractSegment]);
 
   // Approver-only routes: `/contract/approver/{segment}/{contractId}/payment-holdbacks/{id}/approve`
   // and `.../approve/status`. Require contractId because BE indexes the approval
