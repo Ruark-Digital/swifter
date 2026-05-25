@@ -1128,8 +1128,14 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
             For cost / time_cost / others, the manager decides directly
             elsewhere; Assign Approval is the time-impact routing step
             and only appears once the vendor has accepted. Hidden once
-            approvers are assigned. */}
-        {isManager && !hasApprovals && isTimeImpact && vendorAccepted && (
+            approvers are assigned — BE signals this with
+            `assignApprover: true` even when the `approvers[]` array
+            isn't populated in the response, so check both. */}
+        {isManager &&
+          !detail?.assignApprover &&
+          !hasApprovals &&
+          isTimeImpact &&
+          vendorAccepted && (
           <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 p-6">
             <div className="flex justify-end">
               <AssignApprovalDialog
