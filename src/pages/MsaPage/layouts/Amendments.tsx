@@ -220,6 +220,8 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
         isLoading={isAmendmentsLoading}
         contractId={contractId}
         basePath={basePath}
+        listInvalidateQueryKey={amendmentsQueryKey}
+        statsInvalidateQueryKey={statsQueryKey}
       />
     </TabsContent>
   );

@@ -62,6 +62,8 @@ type AmendmentDetailsSheetProps = {
     AmendmentRow,
     "amendmentTitle" | "amendmentId" | "vendorStatus" | "status"
   >;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
 };
 
 const LabelRow = ({
@@ -289,7 +291,17 @@ const AssignApprovalDialog: React.FC<{
   basePath: string;
   amendmentId: string;
   onAssigned: () => void;
-}> = ({ trigger, contractId, basePath, amendmentId, onAssigned }) => {
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+}> = ({
+  trigger,
+  contractId,
+  basePath,
+  amendmentId,
+  onAssigned,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+}) => {
   const [open, setOpen] = React.useState(false);
   const [selectedGroup, setSelectedGroup] = React.useState<string>("");
   const [search, setSearch] = React.useState("");
@@ -369,10 +381,16 @@ const AssignApprovalDialog: React.FC<{
     onSuccess: () => {
       toast.success("Success", "Approvers assigned successfully");
       queryClient.invalidateQueries({
-        queryKey: ["contract-amendments", contractId, basePath],
+        queryKey:
+          listInvalidateQueryKey ?? ["contract-amendments", contractId, basePath],
       });
       queryClient.invalidateQueries({
-        queryKey: ["contract-amendments-stats", contractId, basePath],
+        queryKey:
+          statsInvalidateQueryKey ?? [
+            "contract-amendments-stats",
+            contractId,
+            basePath,
+          ],
       });
       onAssigned();
       setOpen(false);
@@ -562,6 +580,8 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   basePath,
   amendmentId,
   summary,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
 }) => {
   const [open, setOpen] = React.useState(false);
   const [acceptOpen, setAcceptOpen] = React.useState(false);
@@ -645,10 +665,16 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({
-      queryKey: ["contract-amendments", contractId, basePath],
+      queryKey:
+        listInvalidateQueryKey ?? ["contract-amendments", contractId, basePath],
     });
     queryClient.invalidateQueries({
-      queryKey: ["contract-amendments-stats", contractId, basePath],
+      queryKey:
+        statsInvalidateQueryKey ?? [
+          "contract-amendments-stats",
+          contractId,
+          basePath,
+        ],
     });
     queryClient.invalidateQueries({ queryKey: detailQueryKey });
   };
@@ -1143,6 +1169,8 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                 basePath={basePath}
                 amendmentId={amendmentId}
                 onAssigned={invalidateAll}
+                listInvalidateQueryKey={listInvalidateQueryKey}
+                statsInvalidateQueryKey={statsInvalidateQueryKey}
                 trigger={
                   <button
                     type="button"
@@ -1165,6 +1193,8 @@ type Props = {
   isLoading?: boolean;
   contractId: string;
   basePath: string;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
 };
 
 const AmendmentsTable: React.FC<Props> = ({
@@ -1172,6 +1202,8 @@ const AmendmentsTable: React.FC<Props> = ({
   isLoading,
   contractId,
   basePath,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -1241,6 +1273,8 @@ const AmendmentsTable: React.FC<Props> = ({
                 vendorStatus: row.original.vendorStatus,
                 status: row.original.status,
               }}
+              listInvalidateQueryKey={listInvalidateQueryKey}
+              statsInvalidateQueryKey={statsInvalidateQueryKey}
               trigger={
                 <button
                   type="button"
@@ -1254,7 +1288,7 @@ const AmendmentsTable: React.FC<Props> = ({
         ),
       },
     ],
-    [contractId, basePath],
+    [contractId, basePath, listInvalidateQueryKey, statsInvalidateQueryKey],
   );
 
   const filteredRows = React.useMemo(() => {
