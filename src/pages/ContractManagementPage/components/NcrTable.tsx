@@ -40,7 +40,7 @@ import { DocumentViewer } from "@/components/ui/DocumentViewer";
 export type NcrRow = {
   id: string;
   title: string;
-  status: "Approved" | "Pending" | "Rejected";
+  status: "Approved" | "Pending" | "Rejected" | "Closed";
   contractId: string;
   basePath: string;
 };
@@ -477,10 +477,13 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
             </Tabs>
           </div>
 
-          {/* Footer is identity-gated:
+          {/* Footer is identity-gated. Closed NCRs are terminal — no
+              buttons rendered regardless of identity:
               - No CAPA + viewer is a listed responder → Cancel + Submit CAPA
               - CAPA submitted + viewer is the NCR submitter → Cancel + Approve CAPA
               - NCR status approved + viewer is the NCR submitter → Cancel + Close NCR */}
+          {String(status).toLowerCase() === "closed" ? null : (
+          <>
           {!latestCapa?._id && isResponderMatched ? (
             <div className="flex w-full gap-3 pt-2">
               <Button
@@ -543,6 +546,8 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
               </Button>
             </div>
           ) : null}
+          </>
+          )}
 
           <CloseNcrChecklistDialog
             open={closeChecklistOpen}
@@ -587,10 +592,12 @@ const columns: ColumnDef<NcrRow>[] = [
       const s = getValue<NcrRow["status"]>();
       const tone =
         s === "Approved"
-          ? "bg-green-100 text-green-700"
+          ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
           : s === "Rejected"
-            ? "bg-red-100 text-red-700"
-            : "bg-yellow-100 text-yellow-700";
+            ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+            : s === "Closed"
+              ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+              : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300";
       return (
         <span className={`px-4 py-1 rounded-full text-xs font-medium ${tone}`}>
           {s}
@@ -625,6 +632,7 @@ const formatNcrStatus = (status?: string): NcrRow["status"] => {
   const normalized = status?.toLowerCase();
   if (normalized === "approved") return "Approved";
   if (normalized === "rejected") return "Rejected";
+  if (normalized === "closed") return "Closed";
   return "Pending";
 };
 
