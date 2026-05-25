@@ -21,6 +21,7 @@ import {
 import SendApprovalDialog from "./SendApprovalDialog";
 import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -89,6 +90,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const { isManager, isApprover, isVendor, isProjectManager, isAdmin, isViewOnly } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
+  const currentUser = useUser();
   const [internalOpen, setInternalOpen] = React.useState(false);
 
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -156,8 +158,51 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const cost = detail?.cost;
 
   const canApprove = isManager;
+  // Change-flow decision actions (manager Approve+Reject, non-manager
+  // Send-for-Approval). Unchanged behavior — only the claim branch is
+  // re-gated below.
+  const showChangeDecisionActions =
+    !isClaim &&
+    shouldShowChangeDecisionActions(changeType) &&
+    approverStatus === "pending";
+
+  // Claim-flow gating. Per spec:
+  //  - Manager: visible Reject + Send for Approval. Send enabled when
+  //    impact !== "time", OR (impact === "time" AND approverStatus is
+  //    already "approved" AND no approvers have been assigned yet —
+  //    i.e. the time-only auto-approve happened but the manager hasn't
+  //    routed it for approver review).
+  //  - Approver: visible Reject + Approve. For non-time impact, gate on
+  //    approverStatus === "pending". For time impact, the user must be
+  //    in detail.approvers[].user[].user (only the assigned approver(s)
+  //    see the buttons; other approver-role users do not).
+  const isTimeImpact = impact === "time";
+  const approverList = (detail as any)?.approvers as
+    | Array<{ user?: Array<{ user?: string }> }>
+    | undefined;
+  const currentUserId = currentUser?._id;
+  const isAssignedApprover = React.useMemo(() => {
+    if (!currentUserId || !Array.isArray(approverList)) return false;
+    return approverList.some(
+      (level) =>
+        Array.isArray(level?.user) &&
+        level.user.some((u) => u?.user === currentUserId),
+    );
+  }, [approverList, currentUserId]);
+
+  const canApproverDecideOnClaim =
+    isClaim &&
+    isApprover &&
+    (isTimeImpact ? isAssignedApprover : approverStatus === "pending");
+  const canManagerActOnClaim = isClaim && isManager;
+  const sendForApprovalEnabled = !isTimeImpact
+    ? true
+    : approverStatus === "approved" && (approverList?.length ?? 0) === 0;
+
   const showDecisionActions =
-    shouldShowChangeDecisionActions(changeType) && approverStatus === "pending";
+    showChangeDecisionActions ||
+    canApproverDecideOnClaim ||
+    canManagerActOnClaim;
 
   // Approve / reject opens a comment dialog first. `pendingAction` drives
   // both the dialog visibility and which variant (Approve vs Reject) we
@@ -180,10 +225,12 @@ const ChangeDetailsSheet: React.FC<Props> = ({
       action: "approved" | "rejected";
       comment: string;
     }) => {
-      const canApprovePath = roleBasePath.includes("/manager/");
+      const canApprovePath =
+        roleBasePath.includes("/manager/") ||
+        roleBasePath.includes("/approver/");
       if (!canApprovePath) {
         throw new Error(
-          "Change approve endpoint is not available for this role.",
+          "Approve endpoint is not available for this role.",
         );
       }
       const url = getManagerApproveChangeUrl({
@@ -503,39 +550,90 @@ const ChangeDetailsSheet: React.FC<Props> = ({
           {showDecisionActions && (
             <SheetFooter>
               <div className="flex w-full gap-3 pt-2">
-                <Button
-                  variant="outline"
-                  className="flex-1 h-12 rounded-xl"
-                  disabled={!canApprove || isApproving}
-                  onClick={() => {
-                    if (!canApprove) {
-                      toast.error(
-                        "Action not allowed",
-                        "Only managers can reject changes",
-                      );
-                      return;
-                    }
-                    setPendingAction("rejected");
-                  }}
-                >
-                  Reject Change
-                </Button>
-                {canApprove ? (
-                  <Button
-                    className="flex-1 h-12 rounded-xl"
-                    disabled={isApproving}
-                    onClick={() => setPendingAction("approved")}
-                  >
-                    Approve
-                  </Button>
-                ) : (
-                  <SendApprovalDialog
-                    trigger={
-                      <Button className="flex-1 h-12 rounded-xl">
-                        Send for Approval
+                {/* Change flow (unchanged): manager gets Reject+Approve;
+                    non-manager gets Reject (disabled) + Send for Approval. */}
+                {showChangeDecisionActions && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="flex-1 h-12 rounded-xl"
+                      disabled={!canApprove || isApproving}
+                      onClick={() => {
+                        if (!canApprove) {
+                          toast.error(
+                            "Action not allowed",
+                            "Only managers can reject changes",
+                          );
+                          return;
+                        }
+                        setPendingAction("rejected");
+                      }}
+                    >
+                      Reject Change
+                    </Button>
+                    {canApprove ? (
+                      <Button
+                        className="flex-1 h-12 rounded-xl"
+                        disabled={isApproving}
+                        onClick={() => setPendingAction("approved")}
+                      >
+                        Approve
                       </Button>
-                    }
-                  />
+                    ) : (
+                      <SendApprovalDialog
+                        trigger={
+                          <Button className="flex-1 h-12 rounded-xl">
+                            Send for Approval
+                          </Button>
+                        }
+                      />
+                    )}
+                  </>
+                )}
+
+                {/* Claim flow — approver path: identity-gated Reject + Approve. */}
+                {canApproverDecideOnClaim && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="flex-1 h-12 rounded-xl"
+                      disabled={isApproving}
+                      onClick={() => setPendingAction("rejected")}
+                    >
+                      Reject Claim
+                    </Button>
+                    <Button
+                      className="flex-1 h-12 rounded-xl"
+                      disabled={isApproving}
+                      onClick={() => setPendingAction("approved")}
+                    >
+                      Approve
+                    </Button>
+                  </>
+                )}
+
+                {/* Claim flow — manager path: Reject + Send for Approval. */}
+                {canManagerActOnClaim && !canApproverDecideOnClaim && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="flex-1 h-12 rounded-xl"
+                      disabled={isApproving}
+                      onClick={() => setPendingAction("rejected")}
+                    >
+                      Reject Claim
+                    </Button>
+                    <SendApprovalDialog
+                      trigger={
+                        <Button
+                          className="flex-1 h-12 rounded-xl"
+                          disabled={!sendForApprovalEnabled}
+                        >
+                          Send for Approval
+                        </Button>
+                      }
+                    />
+                  </>
                 )}
               </div>
             </SheetFooter>
@@ -552,15 +650,19 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             <DialogHeader className="px-6 pt-6 pb-2">
               <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 {pendingAction === "approved"
-                  ? "Approve Change"
-                  : "Reject Change"}
+                  ? isClaim
+                    ? "Approve Claim"
+                    : "Approve Change"
+                  : isClaim
+                    ? "Reject Claim"
+                    : "Reject Change"}
               </DialogTitle>
             </DialogHeader>
             <div className="px-6 pb-6 space-y-4">
               <p className="text-sm text-[#6B7280] dark:text-slate-400">
                 {pendingAction === "approved"
-                  ? "Add an optional comment for the vendor before approving."
-                  : "Let the vendor know why this change is being rejected (optional)."}
+                  ? `Add an optional comment for the vendor before approving${isClaim ? " this claim" : ""}.`
+                  : `Let the vendor know why this ${isClaim ? "claim" : "change"} is being rejected (optional).`}
               </p>
               <textarea
                 value={commentDraft}

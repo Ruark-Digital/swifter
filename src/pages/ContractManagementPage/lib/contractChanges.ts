@@ -59,14 +59,29 @@ export const getManagerApproveChangeUrl = ({
   contractId: string;
   changeId: string;
 }) => {
-  const prefix = "/contract/manager/contracts";
-  const base = roleBasePath.includes(prefix) ? roleBasePath : prefix;
+  // ChangeDetailsSheet is dual-purpose (changes + claims) and is invoked
+  // from both manager- and approver-prefixed basePaths. Preserve whichever
+  // role prefix and entity segment came in, since `/contract/<role>/contracts/
+  // {id}/{changes|claims}/{itemId}/approve` is a real endpoint on both roles
+  // (see manager + approver APIs).
+  const entity =
+    roleBasePath.endsWith("/claims") || roleBasePath.includes("/claims/")
+      ? "claims"
+      : "changes";
 
-  const contractBase = base.endsWith(`/${contractId}/changes`)
-    ? base
-    : `${prefix}/${contractId}/changes`;
+  // Case 1: roleBasePath already ends with /{contractId}/{entity} — use as-is.
+  if (roleBasePath.endsWith(`/${contractId}/${entity}`)) {
+    return `${roleBasePath}/${changeId}/approve`;
+  }
 
-  return `${contractBase}/${changeId}/approve`;
+  // Case 2: fall back by extracting the role from roleBasePath and rebuilding
+  // the full path. Defaults to "manager" when roleBasePath doesn't carry a
+  // role segment (matches the prior manager-only behavior).
+  const roleMatch = roleBasePath.match(
+    /^\/contract\/(manager|approver|vendor|user)\/contracts/,
+  );
+  const role = roleMatch?.[1] ?? "manager";
+  return `/contract/${role}/contracts/${contractId}/${entity}/${changeId}/approve`;
 };
 
 export type ManagerCreateChangeDialogValues = {
