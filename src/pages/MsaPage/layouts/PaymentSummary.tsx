@@ -10,6 +10,7 @@ import { getRequest } from "@/lib/axiosInstance";
 import PaymentSummaryMilestonesTable, {
   type PaymentMilestoneRow,
 } from "@/pages/ContractManagementPage/components/PaymentSummaryMilestonesTable";
+import HoldbackDetailsSheet from "@/pages/ContractManagementPage/components/HoldbackDetailsSheet";
 import { LabelItem } from "../components/LabelItem";
 import MsaReleaseHoldbackDialog from "../components/MsaReleaseHoldbackDialog";
 import MsaUpdateSavingsDialog from "../components/MsaUpdateSavingsDialog";
@@ -247,8 +248,30 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
           <div className="text-center">{getValue<string>()}</div>
         ),
       },
+      {
+        id: "action",
+        header: () => <div className="text-center">Action</div>,
+        cell: ({ row }) => (
+          <div className="flex justify-center">
+            <HoldbackDetailsSheet
+              holdBackId={row.getValue<string>("releaseId")}
+              contractId={contractId}
+              contractType="MsaContract"
+              currency={currency}
+              trigger={
+                <button
+                  type="button"
+                  className="text-sm font-semibold text-[#16A34A] underline underline-offset-2"
+                >
+                  View
+                </button>
+              }
+            />
+          </div>
+        ),
+      },
     ],
-    [],
+    [contractId, currency],
   );
 
   const savingsColumns = React.useMemo<ColumnDef<SavingRealizedRow>[]>(

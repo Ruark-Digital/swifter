@@ -8,21 +8,33 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
-import { getRequest } from "@/lib/axiosInstance";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { DocumentItem, type DocType } from "./DocumentItem";
-import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { formatDate } from "date-fns";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { getHoldbackStatusBadgeProps } from "../lib/holdbacks";
 
 type Props = {
   trigger: React.ReactNode;
   holdBackId?: string;
+  // contractId is required for the approver `/approve` and `/approve/status`
+  // routes. Detail GET works without it (BE indexes by holdBackId alone).
+  contractId?: string;
+  // Which surface this sheet is rendered on. Drives the `/contracts` vs
+  // `/msa-contract` segment in every role-prefixed URL.
+  contractType?: "Contract" | "MsaContract";
   basePath?: string;
   currency?: string;
 };
@@ -55,6 +67,8 @@ export interface File {
 const HoldbackDetailsSheet: React.FC<Props> = ({
   trigger,
   holdBackId,
+  contractId,
+  contractType = "Contract",
   basePath,
   currency = "USD",
 }) => {
@@ -63,15 +77,30 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
   const { isVendor, isProjectManager, isApprover, isManager } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
 
-  // Phase 2 documents `/contract/{manager,approver,vendor}/contracts/payment-holdbacks/{id}`
+  // Path segment that distinguishes Contract from MSA across every role.
+  const contractSegment =
+    contractType === "MsaContract" ? "msa-contract" : "contracts";
+
+  // Phase 2 documents `/contract/{manager,approver,vendor}/{segment}/payment-holdbacks/{id}`
   // for holdback detail. View-only has no documented detail route.
   const rolePrefix = React.useMemo(() => {
     if (basePath) return basePath; // allow parent override
-    if (isManager) return `/contract/manager/contracts/payment-holdbacks`;
-    if (isApprover) return `/contract/approver/contracts/payment-holdbacks`;
-    if (isContractVendorLike) return `/contract/vendor/contracts/payment-holdbacks`;
+    if (isManager)
+      return `/contract/manager/${contractSegment}/payment-holdbacks`;
+    if (isApprover)
+      return `/contract/approver/${contractSegment}/payment-holdbacks`;
+    if (isContractVendorLike)
+      return `/contract/vendor/${contractSegment}/payment-holdbacks`;
     return null;
-  }, [basePath, isApprover, isManager, isContractVendorLike]);
+  }, [basePath, isApprover, isManager, isContractVendorLike, contractSegment]);
+
+  // Approver-only routes: `/contract/approver/{segment}/{contractId}/payment-holdbacks/{id}/approve`
+  // and `.../approve/status`. Require contractId because BE indexes the approval
+  // workflow by the parent contract (multi-level escalation lives there).
+  const approveBaseUrl = React.useMemo(() => {
+    if (!isApprover || !contractId || !holdBackId) return null;
+    return `/contract/approver/${contractSegment}/${contractId}/payment-holdbacks/${holdBackId}/approve`;
+  }, [isApprover, contractId, holdBackId, contractSegment]);
 
   const queryKey = useUserQueryKey([
     "contract-holdback-detail",
@@ -135,22 +164,84 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
   };
 
   const queryClient = useQueryClient();
-  const [confirmOpen, setConfirmOpen] = React.useState(false);
-  const [confirmAction, setConfirmAction] = React.useState<"approved" | "rejected" | null>(null);
-  const approveMutation = useMutation({
-    mutationFn: async (action: "approved" | "rejected") => {
-      void action;
-      throw new Error("Holdback approval endpoint not available");
+
+  // `/approve/status` precheck — BE returns `{status: boolean}` where true means
+  // the current approver is at the active level AND has not already acted.
+  // We use this to gate button visibility (hide, not disable) since a `false`
+  // answer means the user has no recoverable action here.
+  const approveStatusQueryKey = useUserQueryKey([
+    "contract-holdback-approve-status",
+    approveBaseUrl,
+  ]);
+  const { data: approveStatusRes } = useQuery<{
+    message?: string;
+    data?: { status?: boolean };
+  }>({
+    queryKey: approveStatusQueryKey,
+    queryFn: async () => {
+      const res = await getRequest({ url: `${approveBaseUrl}/status` });
+      return res.data as any;
     },
-    onSuccess: () => {
+    enabled: open && Boolean(approveBaseUrl),
+    staleTime: 30_000,
+    retry: false,
+  });
+  const canAct = approveStatusRes?.data?.status === true;
+
+  // Bare list-query prefix matches both Contract and MSA list keys created by
+  // `useUserQueryKey` (which appends userId — prefix matching still hits).
+  const listQueryKey = React.useMemo(
+    () =>
+      contractType === "MsaContract"
+        ? ["msa-payment-holdbacks", contractId]
+        : ["contract-payment-holdbacks", contractId],
+    [contractType, contractId],
+  );
+
+  // Single-dialog flip pattern (Pattern B): `pendingAction` drives both
+  // dialog visibility and which variant (Approve vs Reject) we render.
+  // `commentDraft` resets whenever the dialog closes.
+  const [pendingAction, setPendingAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [commentDraft, setCommentDraft] = React.useState("");
+  React.useEffect(() => {
+    if (pendingAction === null) setCommentDraft("");
+  }, [pendingAction]);
+
+  const approveMutation = useMutation({
+    mutationKey: ["approveHoldback", approveBaseUrl],
+    mutationFn: async ({
+      action,
+      comment,
+    }: {
+      action: "approved" | "rejected";
+      comment: string;
+    }) => {
+      if (!approveBaseUrl) {
+        throw new Error("Approve endpoint is not available for this role.");
+      }
+      const res = await postRequest({
+        url: approveBaseUrl,
+        payload: { action, comment },
+      });
+      return res.data as { message?: string };
+    },
+    onSuccess: (res, vars) => {
+      toast.success(
+        `Holdback ${vars.action === "approved" ? "approved" : "rejected"}`,
+        res?.message ?? "Holdback status updated",
+      );
       queryClient.invalidateQueries({ queryKey });
-      setConfirmOpen(false);
+      queryClient.invalidateQueries({ queryKey: listQueryKey });
+      queryClient.invalidateQueries({ queryKey: approveStatusQueryKey });
+      setPendingAction(null);
     },
     onError: (err: any) => {
-      toast.error("Holdback Approval", err?.message || "Operation not supported");
-      setConfirmOpen(false);
+      toast.error("Holdback Approval", err);
     },
   });
+  const isApproving = approveMutation.isPending;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -323,51 +414,95 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
             </div>
           </div>
 
-          {isApprover && (
+          {isApprover && canAct && (
             <div className="flex items-center justify-between gap-6 border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 px-8 py-6">
               <button
                 type="button"
-                className="h-12 flex-1 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F3F4F6] dark:bg-slate-800 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
-                disabled={isLoading || !holdBackId || approveMutation.isPending}
-                onClick={() => {
-                  setConfirmAction("rejected");
-                  setConfirmOpen(true);
-                }}
+                className="h-12 flex-1 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F3F4F6] dark:bg-slate-800 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading || !holdBackId || isApproving}
+                onClick={() => setPendingAction("rejected")}
               >
                 Reject
               </button>
               <button
                 type="button"
-                className="h-12 flex-1 rounded-xl bg-[#2A4467] text-sm font-semibold text-white"
-                disabled={isLoading || !holdBackId || approveMutation.isPending}
-                onClick={() => {
-                  setConfirmAction("approved");
-                  setConfirmOpen(true);
-                }}
+                className="h-12 flex-1 rounded-xl bg-[#2A4467] text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading || !holdBackId || isApproving}
+                onClick={() => setPendingAction("approved")}
               >
                 Approve
               </button>
             </div>
           )}
 
-          <ConfirmAlert
-            open={confirmOpen}
-            onClose={(v) => setConfirmOpen(v)}
-            title={confirmAction === "approved" ? "Approve Holdback" : "Reject Holdback"}
-            text={
-              confirmAction === "approved"
-                ? "Are you sure you want to approve this holdback?"
-                : "Are you sure you want to reject this holdback?"
-            }
-            onPrimaryAction={() => {
-              if (!confirmAction) return;
-              approveMutation.mutate(confirmAction);
+          <Dialog
+            open={pendingAction !== null}
+            onOpenChange={(next) => {
+              if (!next && !isApproving) setPendingAction(null);
             }}
-            primaryButtonText={confirmAction === "approved" ? "Approve" : "Reject"}
-            secondaryButtonText="Cancel"
-            type={confirmAction === "approved" ? "success" : "delete"}
-            isLoading={approveMutation.isPending}
-          />
+          >
+            <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+              <DialogHeader className="px-6 pt-6 pb-2">
+                <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                  {pendingAction === "approved"
+                    ? "Approve Holdback"
+                    : "Reject Holdback"}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="px-6 pb-6 space-y-4">
+                <p className="text-sm text-[#6B7280] dark:text-slate-400">
+                  {pendingAction === "approved"
+                    ? "Add an optional comment before approving this holdback release."
+                    : "Let the team know why this holdback release is being rejected (optional)."}
+                </p>
+                <textarea
+                  value={commentDraft}
+                  onChange={(e) => setCommentDraft(e.target.value)}
+                  placeholder="Enter your comment"
+                  rows={5}
+                  className="w-full resize-none rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                  autoFocus
+                />
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100 dark:border-slate-700 dark:bg-slate-800"
+                    disabled={isApproving}
+                    onClick={() => setPendingAction(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    className={cn(
+                      "h-11 flex-1 rounded-xl text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed",
+                      pendingAction === "approved"
+                        ? "bg-[#16A34A] hover:bg-[#15803D]"
+                        : "bg-[#E53935] hover:bg-[#C62828]",
+                    )}
+                    disabled={isApproving}
+                    aria-busy={isApproving}
+                    onClick={() => {
+                      if (pendingAction === null) return;
+                      approveMutation.mutate({
+                        action: pendingAction,
+                        comment: commentDraft.trim(),
+                      });
+                    }}
+                  >
+                    {isApproving
+                      ? pendingAction === "approved"
+                        ? "Approving..."
+                        : "Rejecting..."
+                      : pendingAction === "approved"
+                        ? "Approve"
+                        : "Reject"}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </SheetContent>
     </Sheet>
