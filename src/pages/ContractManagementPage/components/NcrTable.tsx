@@ -729,7 +729,7 @@ const CloseNcrChecklistDialog: React.FC<{
     if (!open) setChecked(CLOSE_NCR_CHECKLIST.map(() => false));
   }, [open]);
 
-  const allChecked = checked.every(Boolean);
+  const someChecked = checked.some(Boolean);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -796,7 +796,7 @@ const CloseNcrChecklistDialog: React.FC<{
           <button
             type="button"
             onClick={onConfirm}
-            disabled={!allChecked || isSubmitting}
+            disabled={!someChecked || isSubmitting}
             className="inline-flex h-11 min-w-[170px] items-center justify-center rounded-xl bg-[#2A4467] px-6 text-base font-semibold text-white disabled:opacity-50"
           >
             {isSubmitting ? "Closing..." : "Close NCR"}
