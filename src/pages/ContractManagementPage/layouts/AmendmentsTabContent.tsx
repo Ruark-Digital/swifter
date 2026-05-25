@@ -73,12 +73,12 @@ type CreateAmendmentPayload = {
 const UploadElement = () => {
   return (
     <div className="flex flex-col items-center gap-3">
-      <CloudUpload className="h-12 w-12 text-[#2A4467]" />
+      <CloudUpload className="h-12 w-12 text-[#2A4467] dark:text-blue-300" />
       <div className="space-y-1 text-center">
-        <p className="text-base font-semibold text-[#2A4467]">
+        <p className="text-base font-semibold text-[#2A4467] dark:text-blue-300">
           Drag &amp; Drop or Click to choose files
         </p>
-        <p className="text-sm text-[#6B7280]">
+        <p className="text-sm text-[#6B7280] dark:text-slate-400">
           Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
         </p>
       </div>
@@ -325,7 +325,7 @@ export const CreateAmendmentDialog: React.FC<{
             className="flex max-h-[90vh] flex-col"
           >
             <div className="flex items-center justify-between px-8 pb-2 pt-8">
-              <div className="text-xl font-semibold text-[#0F0F0F]">
+              <div className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Create Amendment
               </div>
               <button
@@ -383,17 +383,17 @@ export const CreateAmendmentDialog: React.FC<{
                           key={option.id}
                           type="button"
                           onClick={() => onChange(option.value)}
-                          className="flex items-center gap-3 text-sm font-semibold text-[#374151]"
+                          className="flex items-center gap-3 text-sm font-semibold text-[#374151] dark:text-slate-200"
                         >
                           <span
                             className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${
                               isSelected
-                                ? "border-[#2A4467] bg-[#F9F5FF]"
-                                : "border-[#E5E7EB] bg-white"
+                                ? "border-[#2A4467] bg-[#F9F5FF] dark:border-blue-300 dark:bg-slate-800"
+                                : "border-[#E5E7EB] bg-white dark:border-slate-600 dark:bg-slate-800"
                             }`}
                           >
                             {isSelected && (
-                              <span className="h-2.5 w-2.5 rounded-full bg-[#2A4467]" />
+                              <span className="h-2.5 w-2.5 rounded-full bg-[#2A4467] dark:bg-blue-300" />
                             )}
                           </span>
                           <span>{option.label}</span>
@@ -440,10 +440,10 @@ export const CreateAmendmentDialog: React.FC<{
               )}
 
               {impactType === "others" && (
-                <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4 shadow-[0_-1px_4px_0px_rgba(0,26,43,0.05)] space-y-4">
+                <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4 shadow-[0_-1px_4px_0px_rgba(0,26,43,0.05)] space-y-4 dark:border-slate-700 dark:bg-slate-800">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium text-[#0F0F0F]">
+                      <div className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
                         Scope
                       </div>
                       <Forger
@@ -473,7 +473,7 @@ export const CreateAmendmentDialog: React.FC<{
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium text-[#0F0F0F]">
+                      <div className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
                         New Expiry/ Delivery / Completion Date
                       </div>
                       <Forger
@@ -503,7 +503,7 @@ export const CreateAmendmentDialog: React.FC<{
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium text-[#0F0F0F]">
+                      <div className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
                         Cost
                       </div>
                       <Forger
@@ -533,7 +533,7 @@ export const CreateAmendmentDialog: React.FC<{
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium text-[#0F0F0F]">
+                      <div className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
                         Clause
                       </div>
                       <Forger
@@ -563,7 +563,7 @@ export const CreateAmendmentDialog: React.FC<{
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium text-[#0F0F0F]">
+                      <div className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
                         Others
                       </div>
                       <Forger
@@ -602,7 +602,7 @@ export const CreateAmendmentDialog: React.FC<{
               />
 
               <div className="space-y-4">
-                <div className="text-base font-semibold text-[#0F0F0F]">
+                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Upload Files
                 </div>
                 <Forger
@@ -628,15 +628,15 @@ export const CreateAmendmentDialog: React.FC<{
                 />
               </div>
 
-              <div className="flex items-start gap-3 rounded-2xl border border-[#2A44671A] bg-[#F8F8F8] p-4">
+              <div className="flex items-start gap-3 rounded-2xl border border-[#2A44671A] bg-[#F8F8F8] p-4 dark:border-slate-700 dark:bg-slate-800">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#EF4444] text-[#EF4444]">
                   <AlertTriangle className="h-4 w-4" />
                 </div>
                 <div className="space-y-1 max-w-xs">
-                  <div className="text-sm font-semibold text-[#0F0F0F]">
+                  <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
                     Vendor Acceptance Required
                   </div>
-                  <div className="text-sm text-[#626262]">
+                  <div className="text-sm text-[#626262] dark:text-slate-400">
                     This amendment includes a time impact, but no approver has
                     been assigned to review time-related impacts.
                   </div>
@@ -648,7 +648,7 @@ export const CreateAmendmentDialog: React.FC<{
               <Button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F]"
+                className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:text-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
                 disabled={isSubmitting}
               >
                 Cancel
@@ -674,7 +674,7 @@ export const CreateAmendmentDialog: React.FC<{
             <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#22C55E] text-[#22C55E]">
               <Check className="h-8 w-8" />
             </div>
-            <div className="text-base font-semibold text-[#0F0F0F]">
+            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
               Amendment Created Successfully
             </div>
             <Button
@@ -795,12 +795,12 @@ const AmendmentsTabContent: React.FC<Props> = ({
   return (
     <TabsContent value="amendments" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">Amendments</h3>
+        <h3 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100 dark:text-slate-100">Amendments</h3>
         <div className="flex items-center gap-4">
           <ExportReportSheet contractId={contractId} contractType="Contract">
             <Button
               variant="outline"
-              className="rounded-xl border-[#E5E7EB] dark:border-slate-700 px-4 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+              className="rounded-xl border-[#E5E7EB] dark:border-slate-700 px-4 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 dark:text-slate-100"
             >
               <img
                 src="/assets/contract-management/amendments/share.svg"
