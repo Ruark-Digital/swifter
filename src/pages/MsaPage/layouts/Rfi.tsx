@@ -608,6 +608,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
+  const { isApprover } = useUserRole();
   const { control, reset } = useForge({
     defaultValues: {
       response: "",
@@ -663,6 +664,16 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
   const fileCount = files?.length ?? 0;
 
   const handleSubmit = async (data: { response: string; files: File[] | null }) => {
+    // Mirror Contract: approver-only at the submit step. Manager and
+    // vendor/PM see the Respond button (BE permits them) but get a
+    // toast error here instead of submitting. Product decision 260525.
+    if (!isApprover) {
+      toastHandler.error("RFI Response", {
+        message: "Only approvers can respond to RFIs.",
+      } as ApiResponseError);
+      return;
+    }
+
     const payload: ContractRfiResponseDTO = {
       description: data.response,
     };
