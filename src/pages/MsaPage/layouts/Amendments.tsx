@@ -71,10 +71,22 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
       return `/contract/vendor/msa-contract/${contractId}/amendment`;
     if (isApprover)
       return `/contract/approver/msa-contract/${contractId}/amendment`;
+    // Manager stats live under the plural `msa-contracts` quirk path —
+    // see memory msa-contracts-plural-invoice-approve-quirk.
+    if (isManager)
+      return `/contract/manager/msa-contracts/${contractId}/amendments`;
     if (isAdmin || isViewOnly)
       return `/contract/user/msa-contract/${contractId}/amendment`;
     return "";
-  }, [contractId, isAdmin, isApprover, isProjectManager, isVendor, isViewOnly]);
+  }, [
+    contractId,
+    isAdmin,
+    isApprover,
+    isManager,
+    isProjectManager,
+    isVendor,
+    isViewOnly,
+  ]);
 
   const statsQueryKey = useUserQueryKey([
     "msa-amendments-stats",
@@ -116,7 +128,7 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
         | { message?: string; data?: ContractAmendmentStatsDTO }
         | ContractAmendmentStatsDTO;
     },
-    enabled: Boolean(contractId) && !!isActive && !isManager,
+    enabled: Boolean(contractId) && !!isActive,
     staleTime: 60000,
     retry: false,
   });
@@ -157,19 +169,10 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
     }));
   }, [amendments]);
 
-  const derivedManagerStats = React.useMemo<ContractAmendmentStatsDTO>(() => {
-    const all = amendmentsRows.length;
-    const accepted = amendmentsRows.filter((row) => row.status === "Approved").length;
-    const rejected = amendmentsRows.filter((row) => row.status === "Rejected").length;
-    const pending = Math.max(0, all - accepted - rejected);
-    return { all, accepted, rejected, pending };
-  }, [amendmentsRows]);
-
   const resolvedStats = React.useMemo<ContractAmendmentStatsDTO | undefined>(() => {
-    if (isManager) return derivedManagerStats;
     if ((statsRes as any)?.data) return (statsRes as any).data;
     return statsRes as ContractAmendmentStatsDTO | undefined;
-  }, [derivedManagerStats, isManager, statsRes]);
+  }, [statsRes]);
 
   return (
     <TabsContent value="amendments" className="space-y-8">
