@@ -772,3 +772,88 @@
 .dark .yoopta-overlays {
   color: #e2e8f0;
 }
+
+/* Click-to-scroll flash for anchored comments / redlines */
+@keyframes ct-mark-flash-kf {
+  0%   { box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.95); background-color: rgba(254, 240, 138, 0.85); }
+  60%  { box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.35); }
+  100% { box-shadow: 0 0 0 2px rgba(250, 204, 21, 0); background-color: transparent; }
+}
+.ct-mark-flash {
+  animation: ct-mark-flash-kf 1.2s ease-out;
+  border-radius: 3px;
+}
+.dark .ct-mark-flash {
+  animation: ct-mark-flash-kf-dark 1.2s ease-out;
+}
+@keyframes ct-mark-flash-kf-dark {
+  0%   { box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.95); background-color: rgba(217, 119, 6, 0.45); }
+  60%  { box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.35); }
+  100% { box-shadow: 0 0 0 2px rgba(251, 191, 36, 0); background-color: transparent; }
+}
+
+/* TipTap editor surface (sub-phase 1 tracer-bullet panel).
+   Without a min-height the empty ProseMirror node is unclickable;
+   without typography rules paragraphs / headings render unstyled. */
+.ct-tiptap {
+  min-height: calc(100vh - 220px);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.ct-tiptap .ProseMirror {
+  min-height: calc(100vh - 220px);
+  padding: 8px 0 120px;
+  outline: none;
+}
+.ct-tiptap .ProseMirror p { margin: 0 0 0.6em; }
+.ct-tiptap .ProseMirror h1 { font-size: 1.875rem; font-weight: 700; margin: 1.2em 0 0.6em; }
+.ct-tiptap .ProseMirror h2 { font-size: 1.5rem;  font-weight: 700; margin: 1.0em 0 0.5em; }
+.ct-tiptap .ProseMirror h3 { font-size: 1.25rem; font-weight: 600; margin: 0.9em 0 0.4em; }
+.ct-tiptap .ProseMirror ul, .ct-tiptap .ProseMirror ol { padding-left: 1.5rem; margin: 0 0 0.6em; }
+.ct-tiptap .ProseMirror li > p { margin: 0; }
+.ct-tiptap .ProseMirror blockquote { border-left: 3px solid #cbd5e1; padding-left: 1rem; color: #475569; margin: 0.6em 0; }
+.ct-tiptap .ProseMirror code { background: #f1f5f9; padding: 0 4px; border-radius: 3px; font-size: 0.85em; }
+.ct-tiptap .ProseMirror table { border-collapse: collapse; margin: 0.6em 0; }
+.ct-tiptap .ProseMirror th, .ct-tiptap .ProseMirror td { border: 1px solid #cbd5e1; padding: 4px 8px; }
+.ct-tiptap .ProseMirror a { color: #2563eb; text-decoration: underline; }
+.ct-tiptap .ProseMirror hr { border: 0; border-top: 1px solid #e2e8f0; margin: 1.2em 0; }
+.dark .ct-tiptap .ProseMirror { color: #e2e8f0; /* slate-200 — fixes invisible-text-in-dark-mode */ }
+.dark .ct-tiptap .ProseMirror blockquote { border-left-color: #334155; color: #94a3b8; }
+.dark .ct-tiptap .ProseMirror code { background: #1e293b; color: #e2e8f0; }
+.dark .ct-tiptap .ProseMirror th, .dark .ct-tiptap .ProseMirror td { border-color: #334155; }
+.dark .ct-tiptap .ProseMirror a { color: #93c5fd; /* blue-300 */ }
+.dark .ct-tiptap .ProseMirror hr { border-top-color: #334155; }
+
+/* TipTap BubbleMenu (selection toolbar) */
+.ct-bubble-menu { z-index: 50; }
+.ct-bm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  color: #334155;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 120ms;
+}
+.ct-bm-btn:hover { background: #f1f5f9; }
+.ct-bm-btn--active { background: #e2e8f0; color: #0f172a; }
+.ct-bm-sep {
+  width: 1px;
+  height: 18px;
+  background: #e2e8f0;
+  margin: 0 2px;
+}
+.dark .ct-bm-btn { color: #cbd5e1; }
+.dark .ct-bm-btn:hover { background: #1e293b; }
+.dark .ct-bm-btn--active { background: #334155; color: #f1f5f9; }
+.dark .ct-bm-sep { background: #334155; }
+
+/* Mark visuals for marks rendered inside TipTap (the marks register
+   their own className in renderHTML, but these rules ensure the marks
+   look correct even before TipTap injects the class on a fresh paint). */
+.ct-tiptap mark[data-comment-id] { cursor: pointer; }
+.ct-tiptap ins[data-redline-id] { text-decoration: underline; }
+.ct-tiptap del[data-redline-id] { text-decoration: line-through; }

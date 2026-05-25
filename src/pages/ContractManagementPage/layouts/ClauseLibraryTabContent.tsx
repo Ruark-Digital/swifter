@@ -46,7 +46,7 @@ function RatesValuesBlock({ children }: { children: React.ReactNode }) {
   return (
     <div className="rounded border-l-4 border-[#22C55E] bg-[#F0FDF4] dark:bg-green-950/40 px-2 py-3">
       <div className="text-sm font-semibold leading-5 text-[#14532D] dark:text-green-300">
-        ðŸ’° Rates & Values
+        💰 Rates & Values
       </div>
       <div className="mt-2">{children}</div>
     </div>
@@ -146,7 +146,7 @@ function ClauseCard({
       <div className="flex flex-col gap-3">
         <div className="flex flex-col rounded border-l-4 border-[#3B82F6] bg-[#EFF6FF] dark:bg-blue-950/40 px-2 py-3">
           <div className="text-sm font-semibold leading-5 text-[#1E3A8A] dark:text-blue-300">
-            ðŸ“‹ Summary
+            📋 Summary
           </div>
           <div className="mt-1 text-sm leading-5 text-[#374151] dark:text-slate-300">{summary}</div>
         </div>
@@ -155,7 +155,7 @@ function ClauseCard({
 
         <div className="rounded bg-[#F9FAFB] dark:bg-slate-800/60 p-3">
           <div className="text-sm font-semibold leading-5 text-[#111827] dark:text-slate-100">
-            ðŸ“„ Full Details
+            📄 Full Details
           </div>
           <div className="mt-1 text-sm leading-5 text-[#374151] dark:text-slate-300">
             {fullDetails}
@@ -176,19 +176,22 @@ type ClauseLibraryResponse = {
     sectionSummariesReady?: boolean;
     overallRiskLevel?: "high" | "medium" | "low" | "none";
     contract?: {
-      title?: string;
       contractId?: string;
-      value?: number;
+      contractName?: string;
+      title?: string;
+      vendor?: string;
+      value?: number | string;
       currency?: string;
+      duration?: string;
       startDate?: string;
       endDate?: string;
       status?: string;
     };
     summary?: {
-      total?: number;
-      high?: number;
-      medium?: number;
-      low?: number;
+      totalClauses?: number;
+      highRisk?: number;
+      mediumRisk?: number;
+      lowRisk?: number;
     };
     sections?: Array<{
       id?: string;
@@ -249,17 +252,18 @@ const toRiskDisplay = (
   return { risk: "LOW RISK", riskTone: "low" };
 };
 
-const formatCurrency = (value?: number, currency?: string) => {
-  if (typeof value !== "number") return "â€”";
+const formatCurrency = (value?: number | string, currency?: string) => {
+  const num = typeof value === "string" ? Number(value) : value;
+  if (typeof num !== "number" || !Number.isFinite(num)) return "—";
   return new Intl.NumberFormat(undefined, {
     style: "currency",
     currency: currency || "USD",
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(num);
 };
 
 const formatDateShort = (date?: string) => {
-  if (!date) return "â€”";
+  if (!date) return "—";
   const parsed = new Date(date);
   if (Number.isNaN(parsed.getTime())) return String(date);
   return format(parsed, "dd MMM yyyy");
@@ -345,7 +349,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
                 Contract ID
               </div>
               <div className="text-base font-semibold leading-6 text-[#030712] dark:text-slate-100">
-                {contract?.contractId || "â€”"}
+                {contract?.contractId || "—"}
               </div>
             </div>
             <div className="flex flex-col pl-6">
@@ -356,7 +360,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
                 Contract Name
               </div>
               <div className="text-base font-semibold leading-6 text-[#030712] dark:text-slate-100">
-                {contract?.title || "â€”"}
+                {contract?.contractName || contract?.title || "—"}
               </div>
             </div>
             <div className="flex flex-col pl-6">
@@ -365,7 +369,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
             <div className="inline-flex flex-col pl-6">
               <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">Vendor</div>
               <div className="text-base font-semibold leading-6 text-[#030712] dark:text-slate-100">
-                â€”
+                {contract?.vendor || "—"}
               </div>
             </div>
             <div className="flex flex-col pl-6">
@@ -383,14 +387,15 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
             <div className="inline-flex flex-col pl-6">
               <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">Duration</div>
               <div className="text-base font-semibold leading-6 text-[#030712] dark:text-slate-100">
-                {`${formatDateShort(contract?.startDate)} to ${formatDateShort(contract?.endDate)}`}
+                {contract?.duration ||
+                  `${formatDateShort(contract?.startDate)} to ${formatDateShort(contract?.endDate)}`}
               </div>
             </div>
           </div>
 
           <div className="inline-flex rounded-full bg-[#22C55E] px-3 py-1">
             <span className="text-sm font-semibold leading-5 text-white">
-              {contract?.status || "â€”"}
+              {contract?.status || "—"}
             </span>
           </div>
         </div>
@@ -439,7 +444,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
                       const risk = toRiskDisplay(clause.risk);
                       const values = (clause.values || []).map((v) => ({
                         left: String(v.label || "Value"),
-                        middle: String(v.value ?? "â€”"),
+                        middle: String(v.value ?? "—"),
                         right: "",
                       }));
                       return (
@@ -484,7 +489,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
               Total Clauses
             </div>
             <div className="text-center text-[30px] font-bold leading-9 text-[#2563EB]">
-              {summary?.total ?? 0}
+              {summary?.totalClauses ?? 0}
             </div>
           </div>
           <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900 p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
@@ -492,7 +497,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
               High Risk
             </div>
             <div className="text-center text-[30px] font-bold leading-9 text-[#DC2626]">
-              {summary?.high ?? 0}
+              {summary?.highRisk ?? 0}
             </div>
           </div>
           <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900 p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
@@ -500,7 +505,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
               Medium Risk
             </div>
             <div className="text-center text-[30px] font-bold leading-9 text-[#CA8A04]">
-              {summary?.medium ?? 0}
+              {summary?.mediumRisk ?? 0}
             </div>
           </div>
           <div className="flex flex-1 flex-col rounded-lg border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900 p-[15px] shadow-[0px_1px_2px_0px_#0000000d]">
@@ -508,7 +513,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
               Low Risk
             </div>
             <div className="text-center text-[30px] font-bold leading-9 text-[#16A34A]">
-              {summary?.low ?? 0}
+              {summary?.lowRisk ?? 0}
             </div>
           </div>
         </div>

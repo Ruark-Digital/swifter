@@ -61,7 +61,7 @@ const ChangeStatsCards: React.FC<Props> = ({ stats, isLoading, variant = "manage
         />
         <StatCard
           title="Approved Changes"
-          value={stats?.approved ?? 0}
+          value={stats?.approved ?? stats?.completed ?? 0}
           tone="green"
           testId="change-stats-approved"
           icon={FileCheck}
@@ -75,7 +75,7 @@ const ChangeStatsCards: React.FC<Props> = ({ stats, isLoading, variant = "manage
         />
         <StatCard
           title="Rejected Changes"
-          value={stats?.rejected ?? 0}
+          value={stats?.rejected ?? stats?.cancelled ?? 0}
           tone="red"
           testId="change-stats-rejected"
           icon={FileX}

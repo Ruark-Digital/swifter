@@ -3,18 +3,60 @@ import { postRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import type { RedlineSpan } from "./redlineScan";
 
+export type AiRiskLevel = "high" | "medium" | "low";
+
+/** Acceptability verdict — short label rendered as a status pill. */
+export type AiAcceptability =
+  | "acceptable"
+  | "conditionally-acceptable"
+  | "not-acceptable"
+  | string; // tolerate future BE values
+
+/** Per-domain considerations broken out by the AI. */
+export type AiConsiderations = {
+  legal?: string;
+  commercial?: string;
+  technical?: string;
+};
+
+/**
+ * Three risk-tiered replacement texts. The user picks which to apply.
+ * - `low`: most conservative, removes nearly all enforceable language.
+ * - `medium`: balanced — preserves intent, adds qualifiers.
+ * - `high`: keeps original meaning, adds minimal disclaimers.
+ */
+export type AiAlternativeLanguage = {
+  low?: string;
+  medium?: string;
+  high?: string;
+};
+
 /**
  * Per-redline analysis returned by the backend.
  * Swagger schema: RedlineAnalysisResultItem.
  */
 export type AiRedlineSuggestion = {
   redlineId: string;
-  /** AI assessment of the redline (what changes and why it matters). */
+  /** Full paragraph analysis of what the redline changes and why it matters. */
   assessment: string;
-  /** Action recommendation for this single redline. */
-  suggestion: "accept" | "reject" | "negotiate";
+  /** Free-text recommendation summary (e.g. "This change should not be
+   *  accepted as-is due to the risk of …"). NOT a short verdict — that's
+   *  `acceptability`. */
+  suggestion: string;
+  /** Short verdict — typically "acceptable" / "conditionally-acceptable"
+   *  / "not-acceptable". Rendered as a status pill. */
+  acceptability?: AiAcceptability;
+  /** Per-domain considerations. */
+  considerations?: AiConsiderations;
+  /** Risk-tiered replacement options. The user picks one before applying. */
+  alternativeLanguage?: AiAlternativeLanguage;
+  /** Actionable next-step text the AI proposes (escalate, propose, etc.). */
+  solution?: string;
   /** Risk level for this single redline. */
-  riskLevel: "high" | "medium" | "low";
+  riskLevel: AiRiskLevel;
+  /** @deprecated Pre-v2 BE field. Use `alternativeLanguage` tiers. Kept
+   *  for back-compat when older deployments still return it. */
+  replacementText?: string;
 };
 
 /**
@@ -23,8 +65,14 @@ export type AiRedlineSuggestion = {
  */
 export type AiRedlineAnalysis = {
   summary: string;
-  riskLevel: "high" | "medium" | "low";
-  overallSuggestion: "accept" | "reject" | "negotiate";
+  riskLevel: AiRiskLevel;
+  /** Aggregate verdict for the whole document. */
+  acceptability?: AiAcceptability;
+  considerations?: AiConsiderations;
+  /** Free-text aggregate recommendation. */
+  overallSuggestion: string;
+  /** Aggregate actionable next step. */
+  overallSolution?: string;
   suggestions: AiRedlineSuggestion[];
 };
 
@@ -33,13 +81,21 @@ type ApiResponseBody = {
   message?: string;
   data?: {
     summary?: string;
-    riskLevel?: AiRedlineAnalysis["riskLevel"];
-    overallSuggestion?: AiRedlineAnalysis["overallSuggestion"];
+    riskLevel?: AiRiskLevel;
+    acceptability?: AiAcceptability;
+    considerations?: AiConsiderations;
+    overallSuggestion?: string;
+    overallSolution?: string;
     redlineAnalysis?: Array<{
       redlineId?: string;
       assessment?: string;
-      suggestion?: AiRedlineSuggestion["suggestion"];
-      riskLevel?: AiRedlineSuggestion["riskLevel"];
+      suggestion?: string;
+      acceptability?: AiAcceptability;
+      considerations?: AiConsiderations;
+      alternativeLanguage?: AiAlternativeLanguage;
+      solution?: string;
+      riskLevel?: AiRiskLevel;
+      replacementText?: string;
     }>;
   };
 };
@@ -123,19 +179,29 @@ export function useAiRedlineSuggestions({ documentId, isMsa }: AiRedlineScope) {
         data.redlineAnalysis,
       )
         ? data.redlineAnalysis
-            .filter((s): s is Required<typeof s> => Boolean(s?.redlineId))
+            .filter((s) => Boolean(s?.redlineId))
             .map((s) => ({
               redlineId: s.redlineId as string,
               assessment: s.assessment ?? "",
-              suggestion: (s.suggestion as AiRedlineSuggestion["suggestion"]) ?? "negotiate",
-              riskLevel: (s.riskLevel as AiRedlineSuggestion["riskLevel"]) ?? "medium",
+              suggestion: typeof s.suggestion === "string" ? s.suggestion : "",
+              acceptability: s.acceptability,
+              considerations: s.considerations,
+              alternativeLanguage: s.alternativeLanguage,
+              solution: typeof s.solution === "string" ? s.solution : undefined,
+              riskLevel: s.riskLevel ?? "medium",
+              replacementText:
+                typeof s.replacementText === "string" ? s.replacementText : undefined,
             }))
         : [];
       return {
         summary: data.summary ?? "",
-        riskLevel: (data.riskLevel as AiRedlineAnalysis["riskLevel"]) ?? "low",
+        riskLevel: data.riskLevel ?? "low",
+        acceptability: data.acceptability,
+        considerations: data.considerations,
         overallSuggestion:
-          (data.overallSuggestion as AiRedlineAnalysis["overallSuggestion"]) ?? "negotiate",
+          typeof data.overallSuggestion === "string" ? data.overallSuggestion : "",
+        overallSolution:
+          typeof data.overallSolution === "string" ? data.overallSolution : undefined,
         suggestions,
       };
     },

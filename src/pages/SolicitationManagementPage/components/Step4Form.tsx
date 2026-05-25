@@ -20,9 +20,11 @@ import {
   useAddFiles,
   useRemoveFile,
   useUpdateFileState,
+  useSetFiles,
   useSessionId,
   useSetSessionId,
   useClearSession,
+  solicitationFileSlice,
 } from "@/store/solicitationFileSlice";
 
 // Type definitions for uploaded files
@@ -264,15 +266,20 @@ const FileListItem = ({
   return (
     <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg mb-2 border">
       <div className="flex items-center space-x-3 flex-1">
-        {getFileIcon(fileState.file?.name)}
+        {getFileIcon(fileState.file?.name || fileState.uploadedData?.name || "")}
         <div className="flex-1">
           <p className="text-sm font-medium text-gray-900 dark:text-white">
-            {fileState.file?.name || "Unknown file"}
+            {fileState.file?.name || fileState.uploadedData?.name || "Unknown file"}
           </p>
           <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
             <span>
-              {getSimpleFileExtension(fileState.file?.name || "").toUpperCase()}{" "}
-              • {formatFileSize(fileState.file?.size || 0)}
+              {getSimpleFileExtension(
+                fileState.file?.name || fileState.uploadedData?.name || ""
+              ).toUpperCase()}{" "}
+              •{" "}
+              {fileState.file?.size
+                ? formatFileSize(fileState.file.size)
+                : (fileState.uploadedData?.size ?? formatFileSize(0))}
             </span>
             {getStatusIcon()}
             <span
@@ -329,12 +336,14 @@ export const FileUploadManager = ({
   const addFiles = useAddFiles();
   const removeFile = useRemoveFile();
   const updateFileState = useUpdateFileState();
+  const setFiles = useSetFiles();
   const sessionId = useSessionId();
   const setSessionId = useSetSessionId();
   const clearSession = useClearSession();
 
   const [isUploading, setIsUploading] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const syncedDocumentsSignatureRef = useRef<string | null>(null);
   const toast = useToastHandler();
   const { setValue } = useForgeValues({ control });
 
@@ -348,20 +357,55 @@ export const FileUploadManager = ({
     }
   }, [sessionId, setSessionId]);
 
-  // Helper function to check if a file already exists in the store using document ID
-  const fileExistsInStore = useCallback(
-    (docToCheck: DocumentType) => {
-      // For uploaded files, we only need to check by document ID since that's unique
-      return filesWithState.some((fileState) => {
-        return fileState.uploadedData?.id === docToCheck._id;
-      });
-    },
-    [filesWithState]
-  );
+  // One-time dedupe of the rehydrated Zustand store. The store is
+  // persisted to localStorage, so duplicate entries written by older
+  // builds (before url-based dedupe existed) survive a reload and
+  // continue to render as ghost tiles. Collapse duplicates by
+  // uploadedData.url (falls back to uploadedData.id) on first mount.
+  const dedupedOnMountRef = useRef(false);
+  useEffect(() => {
+    // Wait until the persisted store has actually rehydrated. On a
+    // browser reload Zustand's `persist` middleware hydrates
+    // asynchronously, so this effect fires once with an empty
+    // filesWithState and again once the entries are restored — we
+    // want to dedupe on the second pass.
+    if (dedupedOnMountRef.current) return;
+    if (filesWithState.length === 0) return;
+    dedupedOnMountRef.current = true;
+    const seen = new Set<string>();
+    const deduped = filesWithState.filter((fs) => {
+      const key = fs.uploadedData?.url || fs.uploadedData?.id;
+      if (!key) return true; // keep entries we can't key
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    if (deduped.length !== filesWithState.length) {
+      setFiles(deduped);
+    }
+  }, [filesWithState, setFiles]);
 
-  // Initialize existing documents from form values with deduplication
+  // Initialize existing documents from form values with deduplication.
+  // We intentionally read filesWithState fresh from the store
+  // (solicitationFileSlice.getState()) instead of relying on the
+  // useCallback closure, because Zustand's `persist` rehydration is
+  // async — when this effect first fires after a browser reload, the
+  // closure may still see an empty filesWithState even though the
+  // store has already rehydrated the persisted entry, causing the
+  // existing document to be re-added as a duplicate.
   useEffect(() => {
     if (!initialized && sessionId && documents?.length > 0) {
+      const liveFiles = (
+        solicitationFileSlice.getState() as { filesWithState: any[] }
+      ).filesWithState;
+      const liveExists = (doc: DocumentType) =>
+        liveFiles.some((fileState: any) => {
+          const sameId =
+            doc._id != null && fileState.uploadedData?.id === doc._id;
+          const sameUrl =
+            !!doc.url && fileState.uploadedData?.url === doc.url;
+          return sameId || sameUrl;
+        });
       // console.log('Initializing documents:', {
       //   documentsCount: documents.length,
       //   currentStoreFiles: filesWithState.length,
@@ -372,8 +416,7 @@ export const FileUploadManager = ({
       const newDocuments = documents.filter((doc: DocumentType) => {
         const documentName = doc.name || doc.originalName || doc.fileName;
         if (!documentName || !doc.url) return false;
-        const exists = fileExistsInStore(doc);
-        return !exists;
+        return !liveExists(doc);
       });
       
       // console.log('Filtering results:', { 
@@ -569,12 +612,19 @@ export const FileUploadManager = ({
 
   // Update form state with uploaded file URLs
   useEffect(() => {
+    if (!initialized && documents?.length > 0) return;
+
     const uploadedFiles = filesWithState
       .filter((f) => f.status === "uploaded" && f.uploadedData)
       .map((f) => f.uploadedData!);
 
-    setValue("documents", uploadedFiles.length > 0 ? uploadedFiles : null);
-  }, [filesWithState, setValue]);
+    const nextDocuments = uploadedFiles.length > 0 ? uploadedFiles : null;
+    const signature = JSON.stringify(nextDocuments);
+    if (syncedDocumentsSignatureRef.current === signature) return;
+
+    syncedDocumentsSignatureRef.current = signature;
+    setValue("documents", nextDocuments);
+  }, [documents?.length, filesWithState, initialized, setValue]);
 
   const allFilesUploaded =
     filesWithState.length > 0 &&

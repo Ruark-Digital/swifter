@@ -3,6 +3,7 @@ import { ApiResponse, ContractDetail } from "@/types";
 import { AxiosRequestConfig } from "axios";
 import {
   ContractChangeDTO,
+  ContractCommentDTO,
   ContractInvoiceDTO,
   ContractRfiDTO,
   ContractChangeCommentDTO,
@@ -103,7 +104,7 @@ export const createVendorApi = (
   },
   listChangeComments: async (contractId: string, changeId: string) => {
     const res = await client.get({
-      url: `/vendor/contracts/${contractId}/changes/${changeId}/comment`,
+      url: `/contract/vendor/contracts/${contractId}/changes/${changeId}/comment`,
     });
     return res as ApiResponse<{ data?: ContractChangeCommentDTO[] }>;
   },
@@ -114,7 +115,7 @@ export const createVendorApi = (
   ) => {
     const post = client.post ?? ((params: PostParams) => postRequest(params));
     const res = await post({
-      url: `/vendor/contracts/${contractId}/changes/${changeId}/comment`,
+      url: `/contract/vendor/contracts/${contractId}/changes/${changeId}/comment`,
       payload,
     });
     return res as ApiResponse<ContractChangeCommentDTO>;
@@ -146,6 +147,30 @@ export const createVendorApi = (
       url: `/contract/vendor/contracts/${contractId}/rfi/${rfiId}`,
     });
     return res as ApiResponse<ContractRfiDTO>;
+  },
+  listRfiComments: async (contractId: string, rfiId: string) => {
+    const res = await client.get({
+      url: `/contract/vendor/contracts/${contractId}/rfi/${rfiId}/comment`,
+    });
+    return (res as { data?: unknown })?.data as {
+      message?: string;
+      data?: { data?: ContractCommentDTO[]; page?: number; limit?: number };
+    };
+  },
+  addRfiComment: async (
+    contractId: string,
+    rfiId: string,
+    payload: ContractChangeCommentDTO,
+  ) => {
+    const post = client.post ?? ((params: PostParams) => postRequest(params));
+    const res = await post({
+      url: `/contract/vendor/contracts/${contractId}/rfi/${rfiId}/comment`,
+      payload,
+    });
+    return (res as { data?: unknown })?.data as {
+      message?: string;
+      data?: ContractCommentDTO;
+    };
   },
   createLem: async (
     contractId: string,

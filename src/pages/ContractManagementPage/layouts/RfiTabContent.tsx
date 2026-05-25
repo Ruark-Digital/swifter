@@ -20,7 +20,7 @@ import {
   TextDatePicker,
   TextFileUploader,
   TextInput,
-  TextMultiSelect,
+  TextSelect,
 } from "@/components/layouts/FormInputs";
 import { Check, CloudUpload, Share2 } from "lucide-react";
 import RfiStatsCards from "../components/RfiStatsCards";
@@ -39,7 +39,7 @@ import {
 } from "@/lib/fileUtils";
 import { useWatch } from "react-hook-form";
 import { useUserRole } from "@/hooks/useUserRole";
-import type { Option } from "@/components/ui/multiselect";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type IssueRfiDialogProps = {
   trigger: React.ReactNode;
@@ -52,7 +52,7 @@ type IssueRfiFormValues = {
   responseDeadline?: Date | null;
   question: string;
   files: File[] | null;
-  responders: Option[];
+  responder: string;
 };
 
 const issueRfiSchema = yup.object({
@@ -60,7 +60,7 @@ const issueRfiSchema = yup.object({
   responseDeadline: yup.date().nullable().optional(),
   question: yup.string().required("Question is required"),
   files: yup.mixed().nullable().optional(),
-  responders: yup.array().default([]),
+  responder: yup.string().default(""),
 });
 
 const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
@@ -79,7 +79,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
       responseDeadline: undefined,
       question: "",
       files: null,
-      responders: [],
+      responder: "",
     },
   });
   const [isSuccess, setIsSuccess] = React.useState(false);
@@ -165,7 +165,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
       reset();
       toastHandler.success("RFI", "RFI issued successfully");
       await queryClient.invalidateQueries({
-        queryKey: ["contractRfis", contractId],
+        queryKey: ["contractRfis"],
       });
     },
     onError: (error: ApiResponseError) => {
@@ -174,12 +174,10 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
   });
 
   const handleSubmit = async (data: IssueRfiFormValues) => {
-    const responderEmails = data.responders.map((r) => r.label).join(", ");
-
     const payload: ContractRfiDTO = {
       title: data.rfiTitle,
       description: data.question,
-      responder: responderEmails || undefined,
+      responder: data.responder || undefined,
       deadline: data.responseDeadline
         ? data.responseDeadline.toISOString()
         : undefined,
@@ -232,18 +230,18 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
     return (
       <FileUploaderItem
         index={index ?? 0}
-        className="h-auto w-full rounded-xl border border-slate-200 bg-slate-50 p-3"
+        className="h-auto w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3"
       >
         <div className="flex items-center gap-3 w-full">
-          <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
             {getFileIcon(extension)}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
               {file.name}
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
-              {extension || "FILE"} â€¢ {formatFileSize(file.size)}
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {extension || "FILE"} • {formatFileSize(file.size)}
             </p>
           </div>
         </div>
@@ -277,7 +275,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
               <DialogClose asChild>
                 <button
                   type="button"
-                  className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+                  className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 >
                   Close
                 </button>
@@ -325,10 +323,10 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                   rows={5}
                 />
                 <Forger
-                  name="responders"
+                  name="responder"
                   label="Select Responder"
-                  placeholder="Search and select responders"
-                  component={TextMultiSelect}
+                  placeholder="Search and select a responder"
+                  component={TextSelect}
                   options={personnelOptions}
                 />
                 <div className="space-y-2">
@@ -495,9 +493,11 @@ const RfiTabContent: React.FC<Props> = ({
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">RFI</h3>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="h-10 rounded-xl px-4">
-            <Share2 className="mr-2 h-4 w-4" /> Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="Contract">
+            <Button variant="outline" className="h-10 rounded-xl px-4">
+              <Share2 className="mr-2 h-4 w-4" /> Export Report
+            </Button>
+          </ExportReportSheet>
           {!isViewOnly && (
             <IssueRfiDialog
               contractId={contractId}

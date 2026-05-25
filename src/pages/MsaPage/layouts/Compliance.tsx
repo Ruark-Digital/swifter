@@ -16,6 +16,7 @@ import type { ApiResponseError } from "@/types";
 import type { ContractComplianceDTO } from "@/pages/ContractManagementPage/api/contractManagerApi";
 import ComplianceDetailsSheet from "@/pages/ContractManagementPage/components/ComplianceDetailsSheet";
 import SubmitPolicyDialog from "@/pages/ContractManagementPage/components/SubmitPolicyDialog";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import { LabelItem } from "../components/LabelItem";
 import { Status, StatusBadge } from "../components/StatusBadge";
 
@@ -70,7 +71,9 @@ const getStatusTone = (status?: string) => {
   }
   if (normalized === "rejected")
     return "bg-[#FEECEC] text-[#E53935] dark:bg-red-900/30 dark:text-red-300";
-  return "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-200";
+  if (normalized === "closed")
+    return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+  return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 };
 
 const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
@@ -310,7 +313,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
 
   const approveMutation = useMutation({
     mutationFn: async (action: "approved" | "rejected") => {
-      const endpoint = `/manager/msa-contract/${contractId}/compliance/${activeTab}/approve`;
+      const endpoint = `/contract/manager/msa-contract/${contractId}/compliance/${activeTab}/approve`;
       const comment =
         action === "approved"
           ? `Approved all ${activeTab} items via bulk action`
@@ -376,13 +379,15 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
             />
           )}
 
-          <Button
-            variant="outline"
-            className="h-12 rounded-xl border-[#E5E7EB] dark:border-slate-700 px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 dark:bg-transparent"
-          >
-            <Share2 className="mr-2 h-5 w-5" />
-            Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="MsaContract">
+            <Button
+              variant="outline"
+              className="h-12 rounded-xl border-[#E5E7EB] dark:border-slate-700 px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 dark:bg-transparent"
+            >
+              <Share2 className="mr-2 h-5 w-5" />
+              Export Report
+            </Button>
+          </ExportReportSheet>
         </div>
       </div>
 

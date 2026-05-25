@@ -44,9 +44,8 @@ interface SidebarPanelProps {
   isSubmittingComment?: boolean;
   useFallbackFeed?: boolean;
   mentionables?: Mentionable[];
-  // Versions
+  // Versions — auto-saved; no manual save button anymore.
   versions: Version[];
-  onSaveVersion: () => void;
   onRestoreVersion: (versionId: string) => void;
   // AI / Redline
   aiStatus: "idle" | "loading" | "ready" | "error" | "empty";
@@ -87,7 +86,6 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   useFallbackFeed = false,
   mentionables = [],
   versions,
-  onSaveVersion,
   onRestoreVersion,
   aiStatus,
   aiItems,
@@ -182,12 +180,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
         )}
         {activeTab === "versions" && (
           <Suspense fallback={fallbackNode}>
-            <VersionsTab
-              versions={versions}
-              onSave={onSaveVersion}
-              onRestore={onRestoreVersion}
-              canSave={true}
-            />
+            <VersionsTab versions={versions} onRestore={onRestoreVersion} />
           </Suspense>
         )}
       </div>

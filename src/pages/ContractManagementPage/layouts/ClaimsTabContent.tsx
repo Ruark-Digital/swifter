@@ -10,6 +10,7 @@ import { getRequest } from "@/lib/axiosInstance";
 import type { PaginationState } from "@tanstack/react-table";
 import { type ManagerListClaimsQuery } from "../api/contractManagerApi";
 import { useUserRole } from "@/hooks/useUserRole";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
@@ -32,12 +33,12 @@ const ClaimsTabContent: React.FC<Props> = ({
   });
 
   const getBasePath = () => {
-    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/claim`;
-    if (isApprover) return `/contract/approver/contracts/${contractId}/claim`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/claims`;
+    if (isApprover) return `/contract/approver/contracts/${contractId}/claims`;
     if (isManager) return `/contract/manager/contracts/${contractId}/claims`;
     if (isAdmin || isViewOnly)
-      return `/contract/user/contracts/${contractId}/claim`;
-    return `/contract/user/contracts/${contractId}/claim`; // Default fallback
+      return `/contract/user/contracts/${contractId}/claims`;
+    return `/contract/user/contracts/${contractId}/claims`; // Default fallback
   };
 
   const basePath = getBasePath();
@@ -87,17 +88,19 @@ const ClaimsTabContent: React.FC<Props> = ({
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-[#1F2937] dark:text-slate-100">Claims</h3>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            className="h-10 rounded-xl border-[#E5E7EB] bg-white px-4 text-sm font-medium text-[#111827] dark:text-slate-100 hover:bg-[#F9FAFB]"
-          >
-            <Share2 className="mr-2 h-4 w-4" /> Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="Contract">
+            <Button
+              variant="outline"
+              className="h-10 rounded-xl border-[#E5E7EB] bg-white px-4 text-sm font-medium text-[#111827] dark:text-slate-100 hover:bg-[#F9FAFB]"
+            >
+              <Share2 className="mr-2 h-4 w-4" /> Export Report
+            </Button>
+          </ExportReportSheet>
 
           {(isContractVendorLike || isManager) && (
             <RequestClaimDialog
               createPath={basePath}
-              invalidateQueryKey={["contractClaims", contractId, basePath]}
+              invalidateQueryKey={["contractClaims"]}
               trigger={
                 <Button
                   className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-medium text-white hover:bg-[#1f3552]"

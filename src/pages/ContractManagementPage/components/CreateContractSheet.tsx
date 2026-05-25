@@ -105,6 +105,7 @@ export const schema = yup.object({
   contingency: yup.string().optional(),
   holdback: yup.string().optional(),
   paymentStructure: yup.string().optional(),
+  selectedDeliverable: yup.string().optional(),
   paymentTerm: yup.string().optional(),
   milestones: yup
     .array(
@@ -215,6 +216,7 @@ export const defaultValues = {
   contingency: "",
   holdback: "",
   paymentStructure: "",
+  selectedDeliverable: "",
   paymentTerm: "",
   milestones: [{ name: "", amount: "", dueDate: undefined, deliverable: "" }],
   effectiveDate: undefined,

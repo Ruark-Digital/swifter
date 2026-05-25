@@ -29,7 +29,11 @@ import {
 } from "@/pages/ContractManagementPage/components/CreateContractSheet";
 import { format } from "date-fns";
 import { X } from "lucide-react";
-import { toApproverUserKeyOrUndefined } from "@/lib/contractFormValues";
+import {
+  toApproverUserKeyOrUndefined,
+  toFileMetaOrUndefined,
+  toIdStringOrUndefined,
+} from "@/lib/contractFormValues";
 
 type Props = {
   open: boolean;
@@ -238,9 +242,13 @@ const EditContract: React.FC<Props> = ({
     staleTime: 60_000,
   });
 
+  // Use the dedicated edit endpoint (swagger 2.3.0) — returns the
+  // contract in form-ready shape with all relations populated.
+  // Distinct query key (`contract-manager-contract-edit`) so we don't
+  // clobber the read-only detail cache used elsewhere.
   const { data: contractRes } = useQuery({
-    queryKey: useUserQueryKey(["contract-manager-contracts", contractId]),
-    queryFn: () => contractManagerApi.getContract(contractId),
+    queryKey: useUserQueryKey(["contract-manager-contract-edit", contractId]),
+    queryFn: () => contractManagerApi.getContractForEdit(contractId),
     enabled: !!contractId,
     staleTime: 60_000,
   });
@@ -283,7 +291,8 @@ const EditContract: React.FC<Props> = ({
         : (contract.contractTerm?._id ?? ""));
 
     const documents =
-      (contract.files ?? []).map((f) => ({
+      (contract.files ?? []).map((f: any) => ({
+        _id: f._id,
         name: f.name,
         url: f.url,
         type: f.type,
@@ -295,21 +304,53 @@ const EditContract: React.FC<Props> = ({
         name: d.name,
         dueDate: d.dueDate ? new Date(d.dueDate) : undefined,
       })) ?? [];
+    const selectedDeliverable =
+      deliverables.find((d) => Boolean(d.name))?.name ?? "";
 
     const milestones =
-      (contract.milestone ?? []).map((m: any) => ({
-        name: m?.name ?? m?.milestoneName ?? "",
-        amount: m?.amount ?? m?.milestoneAmount ?? "",
-        dueDate: m?.dueDate ? new Date(m.dueDate) : undefined,
-        deliverable: m?.deliverable ?? "",
-      })) ?? [];
+      (contract.milestone ?? []).map((m: any) => {
+        // Backend persists the milestone deliverable as
+        // `{ name, dueDate }`, but the form's TextSelect expects a
+        // plain string (the deliverable's name) — same shape Create
+        // emits. Without this unwrap the dropdown rendered blank and
+        // on save `typeof m.deliverable === "string"` was false, so
+        // the deliverable silently dropped out of the payload.
+        const rawDeliverable = m?.deliverable;
+        const deliverable =
+          typeof rawDeliverable === "string"
+            ? rawDeliverable
+            : (rawDeliverable?.name ?? "");
+        return {
+          name: m?.name ?? m?.milestoneName ?? "",
+          amount: m?.amount ?? m?.milestoneAmount ?? "",
+          dueDate: m?.dueDate ? new Date(m.dueDate) : undefined,
+          deliverable,
+        };
+      }) ?? [];
 
-    const approvalGroups = (contract.approvers ?? []).map((a) => ({
+    const approvalGroups = (contract.approvers ?? []).map((a: any) => ({
       name: a.group,
-      approvers: (a.user ?? []).map((u, idx) => ({
-        value: u.user,
-        text: u.userRef || `Approver ${idx + 1}`,
-      })),
+      approvers: (a.user ?? []).map((u: any, idx: number) => {
+        // API shape: { user: { _id, name, email }, userRef, status }.
+        // The previous mapping set text to `userRef` (literally the
+        // string "User") which is why the chip rendered "User"; and
+        // set value to the user OBJECT, breaking id-based lookups.
+        const userObj = u?.user && typeof u.user === "object" ? u.user : u;
+        const id = userObj?._id ?? userObj?.id ?? userObj?.email ?? "";
+        return {
+          id,
+          value: id,
+          text:
+            userObj?.name || userObj?.email || id || `Approver ${idx + 1}`,
+          meta: {
+            email: userObj?.email ?? "",
+            role:
+              typeof userObj?.role === "string"
+                ? userObj.role
+                : (userObj?.role?.name ?? ""),
+          },
+        };
+      }),
       approvalLevel: String(a.level ?? 0),
       amount: a.amount ?? "",
     })) ?? [{ name: "", approvers: [], approvalLevel: "0", amount: "" }];
@@ -361,7 +402,13 @@ const EditContract: React.FC<Props> = ({
         typeof contract.vendor === "string"
           ? contract.vendor
           : (contract.vendor?._id ?? ""),
-      personnel: (contract.vendorPersonnel ?? []).map((p) => ({
+      // Server field name varies — the new /edit endpoint exposes a
+      // flat `personnel` array; the older detail shape used
+      // `vendorPersonnel`. Accept either.
+      personnel: ((contract.personnel as any[] | undefined) ??
+        contract.vendorPersonnel ??
+        []
+      ).map((p: any) => ({
         id: p._id ?? p.email ?? "",
         text: p.name || p.email || p._id || "",
         meta: {
@@ -369,10 +416,13 @@ const EditContract: React.FC<Props> = ({
           role: Array.isArray(p.role)
             ? (p.role[0]?.name ?? "")
             : (p.role ?? ""),
-          phone: (p as any).phone ?? "",
+          phone: p.phone ?? "",
         },
       })),
-      personnelMeta: (contract.vendorPersonnel ?? []).map((p) => ({
+      personnelMeta: ((contract.personnel as any[] | undefined) ??
+        contract.vendorPersonnel ??
+        []
+      ).map((p: any) => ({
         id: p._id ?? p.email ?? "",
         name: p.name || "",
         email: p.email ?? "",
@@ -382,24 +432,35 @@ const EditContract: React.FC<Props> = ({
             : Array.isArray(p.role)
               ? ((p.role[0] as any)?.name ?? "")
               : "",
-        phone: (p as any).phone ?? "",
+        phone: p.phone ?? "",
       })),
-      internalTeam: (contract.internalTeam ?? []).map((t) => ({
-        id: t.id ?? t.email ?? "",
-        text: t.name || t.email || t.id || "",
-        meta: {
-          email: t.email ?? "",
-          role: t.role ?? "",
-          phone: (t as any).phone ?? "",
-        },
-      })),
-      internalTeamMeta: (contract.internalTeam ?? []).map((t) => ({
-        id: t.id ?? t.email ?? "",
-        name: t.name || "",
-        email: t.email ?? "",
-        role: t.role ?? "",
-        phone: (t as any).phone ?? "",
-      })),
+      internalTeam: (contract.internalTeam ?? []).map((t: any) => {
+        const u = t?.user ?? t;
+        const role =
+          typeof u?.role === "string" ? u.role : (u?.role?.name ?? "");
+        const id = u?._id ?? u?.id ?? u?.email ?? "";
+        return {
+          id,
+          text: u?.name || u?.email || id || "",
+          meta: {
+            email: u?.email ?? "",
+            role,
+            phone: u?.phone ?? "",
+          },
+        };
+      }),
+      internalTeamMeta: (contract.internalTeam ?? []).map((t: any) => {
+        const u = t?.user ?? t;
+        const role =
+          typeof u?.role === "string" ? u.role : (u?.role?.name ?? "");
+        return {
+          id: u?._id ?? u?.id ?? u?.email ?? "",
+          name: u?.name || "",
+          email: u?.email ?? "",
+          role,
+          phone: u?.phone ?? "",
+        };
+      }),
       businessDivision:
         typeof contract.businessDivision === "string"
           ? contract.businessDivision
@@ -407,8 +468,25 @@ const EditContract: React.FC<Props> = ({
       contractId: contract.contractId ?? "",
       description: contract.description ?? "",
       visibility: contract.visibility ?? "",
+      // The /edit response carries `currency` and `projectManager` which
+      // the previous mapping ignored — the form's Currency select was
+      // stuck on "Select currency" and the PM select was unfilled even
+      // when both were saved on the contract.
+      currency:
+        typeof contract.currency === "string"
+          ? contract.currency
+          : ((contract as any).currency?._id ??
+            createDefaults.currency ??
+            ""),
+      projectManager:
+        typeof contract.projectManager === "object" &&
+        contract.projectManager !== null
+          ? (((contract.projectManager as any).user?._id ??
+            (contract.projectManager as any).user) ??
+            "")
+          : ((contract.projectManager as any) ?? ""),
       contractValue: contract.contractValue ?? "",
-      contingency: contract.contigency ?? "",
+      contingency: (contract as any).contingency ?? contract.contigency ?? "",
       holdback: String(contract.holdBack ?? ""),
       paymentStructure:
         contract.paymentStructure === "Monthly"
@@ -418,6 +496,7 @@ const EditContract: React.FC<Props> = ({
             : contract.paymentStructure === "Progress Draw"
               ? "lump_sum"
               : "",
+      selectedDeliverable,
       paymentTerm: paymentTermId,
       termType: termTypeId,
       effectiveDate: contract.startDate
@@ -622,16 +701,8 @@ const EditContract: React.FC<Props> = ({
 
       const files =
         (data.documents ?? [])
-          .map((f: any) => ({
-            name: typeof f?.name === "string" ? f.name : undefined,
-            url: typeof f?.url === "string" ? f.url : undefined,
-            type: typeof f?.type === "string" ? f.type : undefined,
-            size:
-              typeof f?.size === "number"
-                ? f.size
-                : toNumberOrUndefined(f?.size),
-          }))
-          .filter((f) => Boolean(f?.name && f?.url && f?.type)) ?? [];
+          .map((f: any) => toFileMetaOrUndefined(f))
+          .filter(Boolean) ?? [];
 
       const formatDate = (d: any) =>
         d ? format(d, "yyyy-MM-dd'T'HH:mm:ss") : undefined;
@@ -718,7 +789,7 @@ const EditContract: React.FC<Props> = ({
               ? data.contractValue
               : undefined
             : toNumberOrUndefined(data.contractValue),
-        contigency: data.contingency || undefined,
+        contingency: data.contingency || undefined,
         holdBack,
         contractPaymentTerm: data.paymentTerm || undefined,
         paymentTerm: paymentTermName || undefined,
@@ -736,6 +807,14 @@ const EditContract: React.FC<Props> = ({
         rating: data.rating || 5,
         status,
         approvers,
+        internalTeam:
+          (data.internalTeamMeta && data.internalTeamMeta.length > 0
+            ? (data.internalTeamMeta ?? [])
+                .map((p: any) => toIdStringOrUndefined(p))
+                .filter(Boolean)
+            : (data.internalTeam ?? [])
+                .map((t: any) => toIdStringOrUndefined(t?.value ?? t))
+                .filter(Boolean)) ?? undefined,
         signatories:
           signatories && signatories.length > 0 ? signatories : undefined,
       };
@@ -1041,6 +1120,20 @@ const SendForApprovalDialog = React.memo(
     const [assignedApproverIds, setAssignedApproverIds] = React.useState<
       string[]
     >([]);
+
+    // Auto-select the first group that has approvers as soon as the
+    // dialog opens, so the approver list isn't a dead empty state
+    // until the user manually picks from the dropdown.
+    React.useEffect(() => {
+      if (!open) return;
+      if (selectedApprovalGroup !== "") return;
+      const firstWithApprovers = (approvalGroups ?? []).findIndex(
+        (g) => (g?.approvers?.length ?? 0) > 0,
+      );
+      if (firstWithApprovers >= 0) {
+        setSelectedApprovalGroup(String(firstWithApprovers));
+      }
+    }, [open, approvalGroups, selectedApprovalGroup]);
 
     const approvalGroupOptions = React.useMemo(
       () =>

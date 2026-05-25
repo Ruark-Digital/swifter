@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 import type { ContractDetail } from "@/types";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type DashboardTier = "high" | "medium" | "good" | "critical" | "low" | string;
 
@@ -441,9 +442,11 @@ const AnalyticsTab: React.FC<Props> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Analytics</h3>
-        <Button variant="outline" className="text-slate-600 dark:text-slate-400 dark:text-slate-500 border-slate-300">
-          <Share2 className="mr-2 h-4 w-4" /> Export Report
-        </Button>
+        <ExportReportSheet contractId={contract?._id ?? ""} contractType="Contract">
+          <Button variant="outline" className="text-slate-600 dark:text-slate-400 dark:text-slate-500 border-slate-300">
+            <Share2 className="mr-2 h-4 w-4" /> Export Report
+          </Button>
+        </ExportReportSheet>
       </div>
 
       {/* Hero Card */}
@@ -560,7 +563,7 @@ const AnalyticsTab: React.FC<Props> = ({
                 <span className={cn("font-semibold", item.color || "text-slate-900 dark:text-slate-100")}>{item.value}</span>
               </div>
             ))}
-            <div className="pt-4 border-t mt-4 flex justify-between items-center bg-blue-50 p-3 rounded-lg">
+            <div className="pt-4 border-t mt-4 dark:border-slate-700 flex justify-between items-center bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg">
               <span className="font-semibold text-slate-800 dark:text-slate-100">Current Contract Value</span>
               <span className="font-bold text-blue-700 text-lg">
                 {formatMoney(
@@ -604,7 +607,7 @@ const AnalyticsTab: React.FC<Props> = ({
               <div 
                 key={index} 
                 className={cn(
-                  "p-4 rounded-lg bg-slate-50 border-l-4",
+                  "p-4 rounded-lg bg-slate-50 dark:bg-slate-800/60 border-l-4",
                   item.color === "red" ? "border-l-red-500" :
                   item.color === "green" ? "border-l-green-500" : "border-l-yellow-500"
                 )}
@@ -683,7 +686,7 @@ const AnalyticsTab: React.FC<Props> = ({
                   className={cn(
                     "px-2 py-1",
                     r.value === activitiesRange
-                      ? "bg-slate-100 rounded text-slate-600 dark:text-slate-400 dark:text-slate-500 font-medium"
+                      ? "bg-slate-100 dark:bg-slate-800 rounded text-slate-600 dark:text-slate-300 font-medium"
                       : "text-slate-400 dark:text-slate-500",
                   )}
                   onClick={() => onActivitiesRangeChange?.(r.value)}
@@ -746,7 +749,7 @@ const AnalyticsTab: React.FC<Props> = ({
                     className={cn(
                       "px-2 py-1",
                       r.value === deliverySummaryRange
-                        ? "bg-slate-100 rounded text-slate-600 dark:text-slate-400 dark:text-slate-500 font-medium"
+                        ? "bg-slate-100 dark:bg-slate-800 rounded text-slate-600 dark:text-slate-300 font-medium"
                         : "text-slate-400 dark:text-slate-500",
                     )}
                     onClick={() => onDeliverySummaryRangeChange?.(r.value)}
@@ -757,21 +760,21 @@ const AnalyticsTab: React.FC<Props> = ({
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 mb-6">
-              <div className="bg-slate-50 p-3 rounded-lg text-center">
-                <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">Total</p>
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-lg text-center">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
                 <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{deliverySummaryTotals.total}</p>
               </div>
-              <div className="bg-green-50 p-3 rounded-lg text-center">
-                <p className="text-xs text-green-600">On Time</p>
-                <p className="text-xl font-bold text-green-700">{deliverySummaryTotals.onTime}</p>
+              <div className="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg text-center">
+                <p className="text-xs text-green-600 dark:text-green-400">On Time</p>
+                <p className="text-xl font-bold text-green-700 dark:text-green-300">{deliverySummaryTotals.onTime}</p>
               </div>
-              <div className="bg-orange-50 p-3 rounded-lg text-center">
-                <p className="text-xs text-orange-600">Rejected</p>
-                <p className="text-xl font-bold text-orange-700">{deliverySummaryTotals.rejected}</p>
+              <div className="bg-orange-50 dark:bg-orange-900/30 p-3 rounded-lg text-center">
+                <p className="text-xs text-orange-600 dark:text-orange-400">Rejected</p>
+                <p className="text-xl font-bold text-orange-700 dark:text-orange-300">{deliverySummaryTotals.rejected}</p>
               </div>
-              <div className="bg-red-50 p-3 rounded-lg text-center">
-                <p className="text-xs text-red-600">Late/Missed</p>
-                <p className="text-xl font-bold text-red-700">{deliverySummaryTotals.lateMissed}</p>
+              <div className="bg-red-50 dark:bg-red-900/30 p-3 rounded-lg text-center">
+                <p className="text-xs text-red-600 dark:text-red-400">Late/Missed</p>
+                <p className="text-xl font-bold text-red-700 dark:text-red-300">{deliverySummaryTotals.lateMissed}</p>
               </div>
             </div>
           </div>
@@ -821,7 +824,7 @@ const AnalyticsTab: React.FC<Props> = ({
           <h3 className="font-semibold text-slate-800 dark:text-slate-100">Documents & Attachments</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="border border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
+          <div className="border border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
             <div className="h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center mb-3">
               <FileText className="h-5 w-5 text-purple-600" />
             </div>
@@ -830,7 +833,7 @@ const AnalyticsTab: React.FC<Props> = ({
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">View all</p>
           </div>
-          <div className="border border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
+          <div className="border border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
             <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center mb-3">
               <Shield className="h-5 w-5 text-green-600" />
             </div>

@@ -3,7 +3,6 @@ import type { File as ContractDocument } from "@/types";
 import { formatFileSize, getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { useNavigate } from "react-router-dom";
-import { isBefore, startOfDay } from "date-fns";
 import { DocumentItem } from "./DocumentItem";
 
 type Doc = {
@@ -17,19 +16,29 @@ type Doc = {
 
 type Props = {
   files?: ContractDocument[];
+  /** Retained for shape compatibility — no longer used to gate editing.
+   *  Edit availability is now driven by `status` (pending_approval only). */
   effectiveDate?: string;
   contractId?: string;
+  /** Contract / MSA status. Documents are editable only when the record
+   *  is `pending_approval`; once `publish`-ed (or any other terminal
+   *  state) the list is read-only. */
+  status?: string;
 };
 
-const DocumentsList: React.FC<Props> = ({ files, effectiveDate, contractId }) => {
+const DocumentsList: React.FC<Props> = ({ files, contractId, status }) => {
   const navigate = useNavigate();
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [selectedDoc, setSelectedDoc] = React.useState<Doc | null>(null);
 
+  // Documents are mutable only while the contract is awaiting approval.
+  // Anything else — including the most common case `publish` — is
+  // read-only. If status is undefined (e.g., a stale caller hasn't
+  // passed it yet) we keep the previous lenient default.
   const canEdit = React.useMemo(() => {
-    if (!effectiveDate) return true; // Assuming active if no date provided
-    return isBefore(startOfDay(new Date()), startOfDay(new Date(effectiveDate)));
-  }, [effectiveDate]);
+    if (status === undefined) return true;
+    return status === "pending_approval";
+  }, [status]);
 
   const docs = React.useMemo<Doc[]>(() => {
     if (!files?.length) return [];
@@ -74,7 +83,7 @@ const DocumentsList: React.FC<Props> = ({ files, effectiveDate, contractId }) =>
     <div className="space-y-4">
       <div className="text-sm font-medium text-slate-700 dark:text-slate-300">All Documents</div>
       {docs.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
+        <div className="rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
           No documents available.
         </div>
       ) : (

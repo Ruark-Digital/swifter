@@ -318,6 +318,7 @@ const mapContractsToRows = (contracts?: ContractApi[]): ContractRow[] => {
         ? formatDate(c.createdAt, "dd MMM yyyy")
         : undefined,
       endDate: c.endDate ? formatDate(c.endDate, "dd MMM yyyy") : undefined,
+      createdAtRaw: c.createdAt,
       status: mapStatusToLabel(c.status),
       category: c.category,
     };

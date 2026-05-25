@@ -59,7 +59,7 @@ const ProjectManagementPage: React.FC = () => {
       />
 
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-slate-900">Projects</h2>
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Projects</h2>
         <div className="flex items-center gap-4">
           <Button
             data-testid="export-button"
@@ -89,7 +89,7 @@ const ProjectManagementPage: React.FC = () => {
       />
 
       {isListLoading ? (
-        <div className="p-10 text-center text-slate-600">Loading projects…</div>
+        <div className="p-10 text-center text-slate-600 dark:text-slate-400">Loading projects…</div>
       ) : rows.length > 0 ? (
         <ProjectsTable
           projects={rows}

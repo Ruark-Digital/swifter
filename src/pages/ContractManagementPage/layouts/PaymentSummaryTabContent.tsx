@@ -32,6 +32,7 @@ import { getHoldbackStatusBadgeProps } from "../lib/holdbacks";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import Spinner from "@/components/ui/Spinner";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type HoldbackReleaseRow = {
   releaseId: string;
@@ -393,7 +394,7 @@ const UpdateSavingsDialog: React.FC<{
             className="flex max-h-[90vh] flex-col"
           >
             <div className="flex items-center justify-between px-8 pb-2 pt-8">
-              <div className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Update Savings Realized
               </div>
               <button
@@ -488,7 +489,7 @@ const UpdateSavingsDialog: React.FC<{
                 type="button"
                 onClick={() => setOpen(false)}
                 disabled={isSubmitting}
-                className="inline-flex h-11 min-w-[140px] items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:text-slate-100 disabled:opacity-50"
+                className="inline-flex h-11 min-w-[140px] items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 disabled:opacity-50"
               >
                 Back
               </button>
@@ -527,7 +528,7 @@ const UpdateSavingsDialog: React.FC<{
               <button
                 type="button"
                 onClick={() => setSuccessOpen(false)}
-                className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+                className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
                 Close
               </button>
@@ -736,16 +737,18 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
         </h3>
 
         <div className="flex items-center gap-6">
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] px-[15px] py-2 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
-          >
-            <img
-              src="/assets/contract-management/payment-summary/share.svg"
-              className="h-5 w-5"
-            />
-            Export Report
-          </button>
+          <ExportReportSheet contractId={contractId} contractType="Contract">
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-700 px-[15px] py-2 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+            >
+              <img
+                src="/assets/contract-management/payment-summary/share.svg"
+                className="h-5 w-5"
+              />
+              Export Report
+            </button>
+          </ExportReportSheet>
 
           {isManager && !isPendingApproval && (
             <div className="inline-flex items-start gap-6">
@@ -754,7 +757,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
                 trigger={
                   <button
                     type="button"
-                    className="inline-flex items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] px-[15px] py-2 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+                    className="inline-flex items-center justify-center rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F3F4F6] dark:bg-slate-800 px-[15px] py-2 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
                   >
                     Update Savings
                   </button>
@@ -778,7 +781,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
       </div>
 
       {(holdbacksLoading || savingsLoading) && (
-        <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
+        <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800/60 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
           Loading payment dataâ€¦
         </div>
       )}
@@ -855,7 +858,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
         defaultValue="milestones"
         className="w-full bg-transparent space-y-8"
       >
-        <TabsList className="bg-[#F3F4F6] p-2 h-fit rounded-full w-fit">
+        <TabsList className="bg-[#F3F4F6] dark:bg-slate-800 p-2 h-fit rounded-full w-fit">
           <TabsTrigger
             value="milestones"
             className="rounded-full px-6 py-1.5 text-base font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
@@ -893,7 +896,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
             !savingsLoading &&
             isContractVendorLike &&
             milestoneRows.length === 0 && (
-              <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800/60 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
                 No milestones found.
               </div>
             )}
@@ -915,7 +918,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
           {!holdbacksLoading &&
             isContractVendorLike &&
             holdbackRows.length === 0 && (
-              <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800/60 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
                 No holdback releases available.
               </div>
             )}
@@ -936,7 +939,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
               ]}
             />
             {!savingsLoading && savingsRows.length === 0 && (
-              <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800/60 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
                 No savings records found.
               </div>
             )}

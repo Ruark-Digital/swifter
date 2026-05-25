@@ -213,38 +213,154 @@ const CreateMSADialog: React.FC<Props> = ({
     mode: "onChange",
   });
 
-  // When the dialog is opened in edit mode, hydrate the form from the
-  // loaded MSA so existing values aren't wiped on save. Best-effort
-  // mapping — fields not present in `initialValues` stay at defaults.
+  const [step, setStep] = React.useState(1);
+  const [open, setOpen] = React.useState(false);
+
+  // Fetch the MSA via the dedicated edit endpoint — swagger 2.3.0
+  // `GET /manager/msa-contract/{contractId}/edit` returns "a fully
+  // populated MSA contract record with all associated data needed to
+  // pre-fill the editing form". That's a different shape from the
+  // read-only detail endpoint (more populated relations, the canonical
+  // edit-form representation).
+  // x-roles: contract_manager, company_admin only.
+  const editDetailQuery = useQuery({
+    queryKey: ["msa-edit-detail", editingMsaId],
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `/contract/manager/msa-contract/${editingMsaId}/edit`,
+      });
+      return res.data as { data?: any };
+    },
+    enabled: Boolean(editingMsaId) && open,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+
+  // Hydration guard: prefill the form ONCE the very first time the user
+  // opens the dialog for a given MSA id. We deliberately do NOT reset
+  // this flag on close — re-opening preserves the user's in-flight
+  // edits instead of stomping them with fresh server data. The flag is
+  // re-armed only when `editingMsaId` changes (different MSA) or when
+  // the user actually completes a save (handled in the mutation
+  // onSuccess by closing + leaving the flag set).
+  const hydratedRef = React.useRef(false);
+  const hydratedForRef = React.useRef<string | undefined>(undefined);
   React.useEffect(() => {
-    if (!isEditing || !initialValues) return;
-    const iv = initialValues as Record<string, any>;
+    if (editingMsaId !== hydratedForRef.current) {
+      hydratedRef.current = false;
+      hydratedForRef.current = editingMsaId;
+    }
+  }, [editingMsaId]);
+  React.useEffect(() => {
+    if (!open) return;
+    if (!isEditing) return;
+    if (hydratedRef.current) return;
+
+    // Prefer fetched detail; fall back to `initialValues` while the
+    // query is still loading so the form fills in immediately.
+    const fetched = editDetailQuery.data?.data;
+    const iv = (fetched ?? initialValues) as Record<string, any> | undefined;
+    if (!iv) return;
+
+    const idOf = (v: any) =>
+      typeof v === "object" && v !== null ? (v._id ?? v.id ?? "") : (v ?? "");
+
+    const stage = (iv.contractFormationStage ?? {}) as Record<string, any>;
+    const personnelArr = Array.isArray(iv.vendorPersonnel)
+      ? iv.vendorPersonnel
+      : Array.isArray(iv.personnel)
+        ? iv.personnel
+        : [];
+    const internalTeamArr = Array.isArray(iv.internalTeam) ? iv.internalTeam : [];
+
     reset({
       ...defaultValues,
       name: iv.title ?? defaultValues.name,
-      type: typeof iv.msaType === "object" ? iv.msaType?._id : iv.msaType,
+      type: idOf(iv.msaType),
       currency: iv.currency ?? defaultValues.currency,
       msaId: iv.msaContractId ?? defaultValues.msaId,
       description: iv.description ?? defaultValues.description,
       rating: typeof iv.rating === "number" ? iv.rating : defaultValues.rating,
-      businessDivision:
-        typeof iv.businessDivision === "object"
-          ? iv.businessDivision?._id
-          : iv.businessDivision,
+      businessDivision: idOf(iv.businessDivision),
+      vendor:
+        typeof iv.vendor === "object"
+          ? (iv.vendor?.email ?? iv.vendor?._id ?? "")
+          : (iv.vendor ?? ""),
+      projectManager: idOf(iv.projectManager?.user ?? iv.projectManager),
+      visibility: iv.visibility ?? defaultValues.visibility,
+      personnel: personnelArr.length ? personnelArr : defaultValues.personnel,
+      internalTeam: internalTeamArr.length
+        ? internalTeamArr.map((m: any) => idOf(m))
+        : defaultValues.internalTeam,
       effectiveDate: iv.startDate ? new Date(iv.startDate) : undefined,
       endDate: iv.endDate ? new Date(iv.endDate) : undefined,
-      contractValue: iv.contractValue,
+      duration:
+        typeof iv.duration === "number" ? String(iv.duration) : iv.duration ?? "",
+      draftStartDate: stage.draft?.startDate
+        ? new Date(stage.draft.startDate)
+        : undefined,
+      draftEndDate: stage.draft?.endDate
+        ? new Date(stage.draft.endDate)
+        : undefined,
+      reviewStartDate: stage.review?.startDate
+        ? new Date(stage.review.startDate)
+        : undefined,
+      reviewEndDate: stage.review?.endDate
+        ? new Date(stage.review.endDate)
+        : undefined,
+      approvalStartDate: stage.approval?.startDate
+        ? new Date(stage.approval.startDate)
+        : undefined,
+      approvalEndDate: stage.approval?.endDate
+        ? new Date(stage.approval.endDate)
+        : undefined,
+      executionStartDate: stage.execution?.startDate
+        ? new Date(stage.execution.startDate)
+        : undefined,
+      executionEndDate: stage.execution?.endDate
+        ? new Date(stage.execution.endDate)
+        : undefined,
+      contractValue: iv.contractValue ?? defaultValues.contractValue,
+      contingency:
+        typeof iv.contigency === "string"
+          ? iv.contigency
+          : (iv.contingency ?? defaultValues.contingency),
+      holdback:
+        typeof iv.holdBack === "number"
+          ? String(iv.holdBack)
+          : (iv.holdback ?? defaultValues.holdback),
+      paymentStructure: iv.paymentStructure ?? defaultValues.paymentStructure,
+      milestones:
+        Array.isArray(iv.milestone) && iv.milestone.length
+          ? iv.milestone.map((m: any) => ({
+              name: m?.name ?? "",
+              amount: m?.amount ?? "",
+              dueDate: m?.dueDate ? new Date(m.dueDate) : undefined,
+              deliverable: idOf(m?.deliverable),
+            }))
+          : defaultValues.milestones,
+      deliverables:
+        Array.isArray(iv.deliverables) && iv.deliverables.length
+          ? iv.deliverables.map((d: any) =>
+              typeof d === "string"
+                ? { name: d, dueDate: undefined }
+                : {
+                    name: d?.name ?? "",
+                    dueDate: d?.dueDate ? new Date(d.dueDate) : undefined,
+                  },
+            )
+          : defaultValues.deliverables,
+      documents: Array.isArray(iv.files) ? (iv.files as any) : null,
     } as CreateMsaFormData);
-  }, [isEditing, initialValues, reset]);
 
-  const [step, setStep] = React.useState(1);
-  const [open, setOpen] = React.useState(false);
+    hydratedRef.current = true;
+  }, [open, isEditing, editDetailQuery.data, initialValues, reset]);
+
   const [signatories, setSignatories] = React.useState<string[]>([]);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
   const qc = useQueryClient();
   const toast = useToastHandler();
   const currentUser = useUser();
-  const msaQueryKeyPrefix = useUserQueryKey(["msa"]);
 
   const typesQuery = useQuery({
     queryKey: useUserQueryKey(["contract-types"]),
@@ -576,9 +692,18 @@ const CreateMSADialog: React.FC<Props> = ({
       } else {
         toast.success("MSA created successfully", "Your MSA has been created.");
       }
-      qc.invalidateQueries({ queryKey: msaQueryKeyPrefix });
+      qc.invalidateQueries({
+        predicate: (q) =>
+          q.queryKey[0] === "msa" && q.queryKey.at(-1) === currentUser?._id,
+      });
       if (editingMsaId) {
         qc.invalidateQueries({ queryKey: ["msa-detail", editingMsaId] });
+        qc.invalidateQueries({ queryKey: ["msa-edit-detail", editingMsaId] });
+        // After a successful save the local form is the new source of
+        // truth, but on a subsequent open we want to pull the fresh
+        // server copy in case anything was server-derived. Re-arm the
+        // hydration guard.
+        hydratedRef.current = false;
       }
       setOpen(false);
       setStep(1);
@@ -630,7 +755,11 @@ const CreateMSADialog: React.FC<Props> = ({
   };
 
   const onCancel = () => {
-    reset(defaultValues);
+    // In edit mode the form mirrors a real saved record — wiping it on
+    // Cancel would discard the user's in-flight edits. Only reset for
+    // the create flow. The dialog just closes either way; re-opening
+    // re-hydrates from the freshest server detail (hydratedRef gate).
+    if (!isEditing) reset(defaultValues);
     setOpen(false);
   };
 

@@ -43,10 +43,10 @@ const LabelRow = ({
   highlight?: boolean;
 }) => (
   <div className="py-2">
-    <span className="text-sm text-slate-500 block">{label}</span>
+    <span className="text-sm text-slate-500 dark:text-slate-400 block">{label}</span>
     <span
       className={`text-sm block ${
-        highlight ? "font-semibold text-slate-900" : "text-slate-800"
+        highlight ? "font-semibold text-slate-900 dark:text-slate-100" : "text-slate-800 dark:text-slate-200"
       }`}
     >
       {value}
@@ -63,11 +63,11 @@ const DocCard = ({
   type: string;
   size: string;
 }) => (
-  <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
-    <div className="flex items-center justify-center h-10 w-10 rounded bg-slate-100" />
+  <div className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+    <div className="flex items-center justify-center h-10 w-10 rounded bg-slate-100 dark:bg-slate-800" />
     <div className="flex-1">
-      <p className="text-sm font-medium text-slate-900">{name}</p>
-      <p className="text-xs text-slate-500">
+      <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{name}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400">
         {type} • {size}
       </p>
     </div>
@@ -129,7 +129,7 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
 
     return (
       <div className="space-y-6">
-        <h3 className="text-lg font-semibold text-slate-900">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
           {typeof anyData.action === "string"
             ? anyData.action
             : action?.description || "Log Detail"}
@@ -180,8 +180,8 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
             </div>
 
             <div className="space-y-2">
-              <span className="text-sm text-slate-500">Description</span>
-              <p className="text-sm text-slate-700">
+              <span className="text-sm text-slate-500 dark:text-slate-400">Description</span>
+              <p className="text-sm text-slate-700 dark:text-slate-300">
                 {typeof anyData.contractDetailRef === "object" && anyData.contractDetailRef !== null
                   ? JSON.stringify(anyData.contractDetailRef)
                   : anyData.contractDetailRef || "No description provided."}
@@ -189,7 +189,7 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
             </div>
 
             <div className="space-y-3">
-              <span className="text-sm text-slate-500">Attached Documents</span>
+              <span className="text-sm text-slate-500 dark:text-slate-400">Attached Documents</span>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {files.map((file: any, index: number) => (
                   <DocCard
@@ -202,7 +202,7 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
                   />
                 ))}
                 {files.length === 0 && (
-                  <div className="text-sm text-slate-500">
+                  <div className="text-sm text-slate-500 dark:text-slate-400">
                     No documents attached.
                   </div>
                 )}

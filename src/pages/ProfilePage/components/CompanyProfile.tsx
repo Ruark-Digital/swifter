@@ -4,6 +4,7 @@ import { getRequest, putRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { Forge, Forger, useForge } from "@/lib/forge";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
+import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/store/authSlice";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -25,10 +26,12 @@ interface CompanyData {
   businessType: string;
   location: string;
   website: string;
+  currency?: string;
   logo?: string;
   companyId: {
     _id: string;
-    name: string
+    name: string;
+    currency?: string;
   }
 }
 
@@ -40,7 +43,19 @@ type FormValues = {
   businessType: string;
   location: string;
   website: string;
+  currency: string;
 }
+
+const CURRENCY_OPTIONS = [
+  { label: "CAD - Canadian Dollar", value: "CAD" },
+  { label: "USD - US Dollar", value: "USD" },
+  { label: "EUR - Euro", value: "EUR" },
+  { label: "GBP - British Pound", value: "GBP" },
+  { label: "AUD - Australian Dollar", value: "AUD" },
+  { label: "NGN - Nigerian Naira", value: "NGN" },
+  { label: "ZAR - South African Rand", value: "ZAR" },
+  { label: "GHS - Ghanaian Cedi", value: "GHS" },
+];
 
 const CompanyProfile: React.FC = () => {
   const user = useUser();
@@ -124,6 +139,7 @@ const CompanyProfile: React.FC = () => {
         businessType: _companyData?.businessType || user?.businessType || "",
         location: _companyData?.location || user?.location || "",
         website: _companyData?.website || user?.website || "",
+        currency: _companyData?.companyId?.currency || _companyData?.currency || "CAD",
       }
       
       Object.entries(payload).forEach(([key, value]) => {
@@ -272,6 +288,16 @@ const CompanyProfile: React.FC = () => {
           name="website"
           label="Website"
           placeholder=""
+          containerClass="space-y-2"
+        />
+
+        {/* Default Currency */}
+        <Forger
+          component={TextSelect}
+          name="currency"
+          label="Default Currency"
+          placeholder="Select currency"
+          options={CURRENCY_OPTIONS}
           containerClass="space-y-2"
         />
 

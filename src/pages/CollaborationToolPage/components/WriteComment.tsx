@@ -138,6 +138,28 @@ const WriteComment: React.FC<WriteCommentProps> = ({
   // updates and the textarea's DOM value matches.
   const pendingCaretRef = useRef<number | null>(null);
 
+  // When the editor dispatches an inline-comment event (user clicked the
+  // floating "Comment on selection" action), bring focus to the textarea
+  // so the user can type immediately — the composer otherwise lives in
+  // the sidebar and the connection isn't visually obvious.
+  useEffect(() => {
+    const onInlineComment = () => {
+      const input = inputRef.current;
+      if (!input) return;
+      // Defer so any tab-switch render finishes first.
+      window.requestAnimationFrame(() => {
+        input.focus();
+        input.scrollIntoView({ block: "nearest" });
+      });
+    };
+    window.addEventListener("ct-add-inline-comment", onInlineComment);
+    window.addEventListener("ct-add-redline", onInlineComment);
+    return () => {
+      window.removeEventListener("ct-add-inline-comment", onInlineComment);
+      window.removeEventListener("ct-add-redline", onInlineComment);
+    };
+  }, []);
+
   useEffect(() => {
     const pos = pendingCaretRef.current;
     if (pos == null) return;

@@ -13,6 +13,7 @@ import DeliverablesTable, {
   type DeliverableRow,
   type KPIDetail,
 } from "@/pages/ContractManagementPage/components/DeliverablesTable";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId?: string;
@@ -100,15 +101,22 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
     };
   }, []);
 
+  // MSA-specific deliverable endpoints added in swagger v2.3.0 — same
+  // shape as contract deliverables (list / stats / detail / approve /
+  // submit) but live under `/msa-contract/...` not `/contracts/...`.
+  // DeliverablesTable interpolates `basePath` for every action, so swapping
+  // the prefix here routes the whole tab to the MSA endpoints.
   const basePath = React.useMemo(() => {
     if (!contractId) return "";
     if (isVendor || isProjectManager)
-      return `/contract/vendor/contracts/${contractId}/deliverables`;
-    if (isApprover) return `/contract/approver/contracts/${contractId}/deliverables`;
+      return `/contract/vendor/msa-contract/${contractId}/deliverables`;
+    if (isApprover)
+      return `/contract/approver/msa-contract/${contractId}/deliverables`;
     if (isManager || isCompanyAdminLike)
-      return `/contract/manager/contracts/${contractId}/deliverables`;
-    if (isViewOnly) return `/contract/user/contracts/${contractId}/deliverables`;
-    return `/contract/user/contracts/${contractId}/deliverables`;
+      return `/contract/manager/msa-contract/${contractId}/deliverables`;
+    if (isViewOnly)
+      return `/contract/user/msa-contract/${contractId}/deliverables`;
+    return `/contract/user/msa-contract/${contractId}/deliverables`;
   }, [
     contractId,
     isApprover,
@@ -218,13 +226,15 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
         <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F] dark:text-slate-100">
           Deliverable
         </h3>
-        <Button
-          variant="outline"
-          className="h-12 rounded-xl border-[#E5E7EB] dark:border-slate-800 px-5 font-semibold text-[#0F0F0F] dark:text-slate-100"
-        >
-          <Share2 className="mr-2 h-5 w-5" />
-          Export Report
-        </Button>
+        <ExportReportSheet contractId={contractId ?? ""} contractType="MsaContract">
+          <Button
+            variant="outline"
+            className="h-12 rounded-xl border-[#E5E7EB] dark:border-slate-800 px-5 font-semibold text-[#0F0F0F] dark:text-slate-100"
+          >
+            <Share2 className="mr-2 h-5 w-5" />
+            Export Report
+          </Button>
+        </ExportReportSheet>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -243,6 +253,7 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
           rows={rows}
           isLoading={Boolean(listLoading || statsLoading)}
           isApprover={isApprover}
+          isContractManager={isManager}
           basePath={basePath}
         />
       ) : null}

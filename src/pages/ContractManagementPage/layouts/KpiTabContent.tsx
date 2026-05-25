@@ -4,6 +4,7 @@ import KpiTable, { type KpiRow } from "../components/KpiTable";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { format } from "date-fns";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
@@ -46,16 +47,18 @@ const KpiTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         <h3 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
           Key Performance Indicator
         </h3>
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-700 px-[15px] py-3 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800"
-        >
-          <img
-            src="/assets/contract-management/kpi/share.svg"
-            className="h-5 w-5"
-          />
-          Export Report
-        </button>
+        <ExportReportSheet contractId={contractId} contractType="Contract">
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-700 px-[15px] py-3 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800"
+          >
+            <img
+              src="/assets/contract-management/kpi/share.svg"
+              className="h-5 w-5"
+            />
+            Export Report
+          </button>
+        </ExportReportSheet>
       </div>
 
       {isLoading ? (

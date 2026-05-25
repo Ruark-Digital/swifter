@@ -44,6 +44,17 @@ const formatDateValue = (value: unknown) => {
   return formatDate(d, "yyyy-MMM-dd");
 };
 
+const getLemStatusColor = (status?: string) => {
+  const lower = (status ?? "").toLowerCase();
+  if (lower === "approved")
+    return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
+  if (lower === "rejected")
+    return "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300";
+  if (lower === "pending" || lower === "pending approval")
+    return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300";
+  return "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300";
+};
+
 export type LemRow = {
   id: string;
   title: string;
@@ -67,8 +78,8 @@ const LabelRow = ({
   value: React.ReactNode;
 }) => (
   <div className="space-y-2">
-    <div className="text-xs font-medium text-[#9CA3AF]">{label}</div>
-    <div className="text-sm font-medium text-[#111827]">{value}</div>
+    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">{label}</div>
+    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
 
@@ -111,14 +122,9 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
     !isViewOnly &&
     !isVendor &&
     !isProjectManager;
-  const statusRaw =
-    typeof (lemDetail as any)?.status === "string" ? (lemDetail as any).status : "";
-  const statusNormalized = statusRaw.toLowerCase();
-  const isPending =
-    statusNormalized === "pending" ||
-    statusNormalized === "pending_approval" ||
-    statusNormalized === "pending approval";
-  const showApprovalActions = canApproveOrReject && isPending;
+  const approverStatus = (lemDetail as any)?.approverStatus;
+  const showApprovalActions =
+    canApproveOrReject && approverStatus === "pending";
 
 
   return (
@@ -137,11 +143,11 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] dark:border-slate-700 text-[#111827] dark:text-slate-200"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   LEM Details
                 </SheetTitle>
               </div>
@@ -158,12 +164,12 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <div className="text-base font-semibold text-[#0F0F0F]">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 {detailLoading ? "Loading..." : lemDetail?.title || "—"}
               </div>
               <Button
                 variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
+                className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
               >
                 <Share2 className="mr-2 h-4 w-4" /> Export
               </Button>
@@ -193,7 +199,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   <LabelRow
                     label="Submitted By"
                     value={
-                      <a className="text-[#2563EB] underline">
+                      <a className="text-[#2563EB] dark:text-blue-400 underline">
                         {lemDetail?.submittedBy?.name || "-"}
                       </a>
                     }
@@ -209,7 +215,12 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   <LabelRow
                     label="Status"
                     value={
-                      <span className="inline-flex rounded-full bg-[#FEF3C7] px-3 py-1 text-xs font-semibold text-[#F59E0B]">
+                      <span
+                        className={cn(
+                          "inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize",
+                          getLemStatusColor(lemDetail?.status),
+                        )}
+                      >
                         {lemDetail?.status || "Pending"}
                       </span>
                     }
@@ -223,10 +234,10 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <div className="text-xs font-medium text-[#9CA3AF]">
+                  <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                     Description
                   </div>
-                  <div className="text-sm text-[#374151]">
+                  <div className="text-sm text-[#374151] dark:text-slate-200">
                     {detailLoading
                       ? "Loading..."
                       : lemDetail?.description || "—"}
@@ -235,7 +246,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
 
                 {lemDetail?.files && lemDetail.files.length > 0 && (
                   <div className="space-y-3">
-                    <div className="text-base font-semibold text-[#0F0F0F]">
+                    <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                       Attachment
                     </div>
                     {lemDetail.files.map((file: any, index: number) => {
@@ -269,14 +280,14 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                 <DialogTrigger asChild>
                   <Button
                     variant="outline"
-                    className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                    className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   >
                     Reject Change
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md rounded-2xl">
                   <DialogHeader>
-                    <DialogTitle className="text-base font-semibold text-[#0F0F0F]">
+                    <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                       Reject LEM
                     </DialogTitle>
                   </DialogHeader>
@@ -296,7 +307,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md rounded-2xl">
                   <DialogHeader>
-                    <DialogTitle className="text-base font-semibold text-[#0F0F0F]">
+                    <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                       Approve LEM
                     </DialogTitle>
                   </DialogHeader>
@@ -324,7 +335,7 @@ const createColumns = (
     accessorKey: "title",
     header: "LEM Title",
     cell: ({ getValue }) => (
-      <div className="max-w-[260px] text-sm text-slate-700">
+      <div className="max-w-[260px] text-sm text-slate-700 dark:text-slate-200">
         {getValue<string>()}
       </div>
     ),
@@ -333,14 +344,14 @@ const createColumns = (
     accessorKey: "amount",
     header: "Amount",
     cell: ({ getValue }) => (
-      <span className="font-medium text-slate-900">{getValue<string>()}</span>
+      <span className="font-medium text-slate-900 dark:text-slate-100">{getValue<string>()}</span>
     ),
   },
   {
     accessorKey: "submissionDate",
     header: "Submission Date",
     cell: ({ getValue }) => (
-      <span className="text-sm text-slate-700">
+      <span className="text-sm text-slate-700 dark:text-slate-200">
         {formatDateValue(getValue<string>())}
       </span>
     ),
@@ -350,15 +361,13 @@ const createColumns = (
     header: "Status",
     cell: ({ getValue }) => {
       const s = getValue<string>();
-      const getStatusColor = (status: string) => {
-        const lower = status.toLowerCase();
-        if (lower === "approved") return "bg-green-100 text-green-700";
-        if (lower === "rejected") return "bg-red-100 text-red-600";
-        if (lower === "pending" || lower === "pending approval") return "bg-yellow-100 text-yellow-700";
-        return "bg-gray-100 text-gray-700";
-      };
       return (
-        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(s)}`}>
+        <span
+          className={cn(
+            "px-3 py-1 rounded-full text-xs font-medium capitalize",
+            getLemStatusColor(s),
+          )}
+        >
           {s}
         </span>
       );
@@ -377,7 +386,7 @@ const createColumns = (
             trigger={
               <button
                 type="button"
-                className="text-sm font-medium text-green-700 hover:underline"
+                className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline"
               >
                 View
               </button>

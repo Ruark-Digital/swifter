@@ -27,7 +27,7 @@ export const DocumentItem = ({
   handleDownload?: (d: DocType) => void;
 }) => {
   return (
-    <Card key={d.id} className="border-slate-200">
+    <Card key={d.id} className="border-slate-200 dark:border-slate-700 dark:bg-slate-900">
       <CardContent className="p-4 flex items-center gap-4">
         <div className={`h-10 w-10`}>{d.icon}</div>
 
@@ -47,7 +47,7 @@ export const DocumentItem = ({
           >
             <Eye className="h-4 w-4" />
           </Button>
-          {canEdit && (
+          {canEdit && d.type?.toLowerCase() === "docx" && (
             <Button
               variant="ghost"
               size="icon"
@@ -55,7 +55,10 @@ export const DocumentItem = ({
               title="Edit in Collaboration Tool"
               onClick={() =>
                 navigate?.(
-                  `/collaboration-tool?sourceUrl=${encodeURIComponent(d.url || "")}&fileName=${encodeURIComponent(d.name)}&fileType=${encodeURIComponent(d.type || "")}${contractId ? `&contractId=${encodeURIComponent(contractId)}` : ""}${d.id ? `&fileId=${encodeURIComponent(d.id)}` : ""}`,
+                  // Editor pinned to `tiptap` even though that's the
+                  // current default — keeps the link sticky if the
+                  // default is ever flipped back during SP2-4 work.
+                  `/collaboration-tool?sourceUrl=${encodeURIComponent(d.url || "")}&fileName=${encodeURIComponent(d.name)}&fileType=${encodeURIComponent(d.type || "")}${contractId ? `&contractId=${encodeURIComponent(contractId)}` : ""}${d.id ? `&fileId=${encodeURIComponent(d.id)}` : ""}&editor=tiptap`,
                 )
               }
             >

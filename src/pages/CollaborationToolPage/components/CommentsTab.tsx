@@ -46,23 +46,54 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
   }, [onCommentSubmit]);
 
   const renderCommentItem = useCallback(
-    (comment: CommentsFeedItem) => (
-      <div className="space-y-2">
-        <FeedItem
-          avatarSrc={avatarPublic}
-          name={comment.name}
-          timestamp={comment.timestamp}
-          message={comment.message}
-          attachment={comment.attachment}
-          showDot={comment.showDot}
-        />
-        {comment.redlineId && (
-          <div className="pl-12 flex items-center gap-3">
-            <span className="text-xs text-amber-600 dark:text-amber-400">redline thread</span>
-          </div>
-        )}
-      </div>
-    ),
+    (comment: CommentsFeedItem) => {
+      const focusMark = () => {
+        if (!comment.redlineId) return;
+        window.dispatchEvent(
+          new CustomEvent("ct-focus-mark", {
+            detail: { id: comment.redlineId },
+          }),
+        );
+      };
+      return (
+        <div
+          className={`space-y-2 ${
+            comment.redlineId
+              ? "cursor-pointer rounded-md transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
+              : ""
+          }`}
+          onClick={comment.redlineId ? focusMark : undefined}
+          role={comment.redlineId ? "button" : undefined}
+          tabIndex={comment.redlineId ? 0 : undefined}
+          onKeyDown={
+            comment.redlineId
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    focusMark();
+                  }
+                }
+              : undefined
+          }
+        >
+          <FeedItem
+            avatarSrc={avatarPublic}
+            name={comment.name}
+            timestamp={comment.timestamp}
+            message={comment.message}
+            attachment={comment.attachment}
+            showDot={comment.showDot}
+          />
+          {comment.redlineId && (
+            <div className="pl-12 flex items-center gap-3">
+              <span className="text-xs text-amber-600 dark:text-amber-400">
+                anchored to document
+              </span>
+            </div>
+          )}
+        </div>
+      );
+    },
     [avatarPublic],
   );
 

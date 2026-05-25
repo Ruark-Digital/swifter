@@ -54,6 +54,7 @@ import type {
 } from "@/pages/ContractManagementPage/api/contractManagerApi";
 import type { UploadURLs } from "@/pages/ContractManagementPage/lib/contractChanges";
 import RfiStatsCards from "@/pages/ContractManagementPage/components/RfiStatsCards";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
@@ -113,7 +114,8 @@ const formatDate = (value?: string | Date) => formatDateTZ(value, "MMMM dd, yyyy
 const statusTone = (status?: string) => {
   const normalized = status?.toLowerCase();
   if (normalized === "open") return "bg-[#EAF7EE] text-[#43A047]";
-  if (normalized === "closed") return "bg-[#FEECEC] text-[#E53935]";
+  if (normalized === "closed")
+    return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
   return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 };
 
@@ -1045,13 +1047,15 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
           RFI
         </h3>
         <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
-          >
-            <Share2 className="mr-2 h-5 w-5" />
-            Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="MsaContract">
+            <Button
+              variant="outline"
+              className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+            >
+              <Share2 className="mr-2 h-5 w-5" />
+              Export Report
+            </Button>
+          </ExportReportSheet>
           {canCreate ? (
             <IssueRfiDialog
               contractId={contractId}

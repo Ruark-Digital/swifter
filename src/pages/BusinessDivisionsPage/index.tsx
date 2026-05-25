@@ -124,68 +124,68 @@ const BusinessDivisionsPage = () => {
     () => [
       {
         header: () => (
-          <div className="w-[180px] py-2 text-sm font-semibold text-[#2A4467] font-quicksand">
+          <div className="w-[180px] py-2 text-sm font-semibold text-[#2A4467] dark:text-blue-300 font-quicksand">
             Division Name
           </div>
         ),
         accessorKey: "name",
         cell: ({ row }) => (
           <div className="w-[180px] py-2 font-quicksand">
-            <p className="text-sm font-semibold text-[#374151]">
+            <p className="text-sm font-semibold text-[#374151] dark:text-slate-200">
               {row.original?.name ?? ""}
             </p>
-            <p className="text-xs text-[#6B6B6B]">{row.original?._id ?? ""}</p>
+            <p className="text-xs text-[#6B6B6B] dark:text-slate-400">{row.original?._id ?? ""}</p>
           </div>
         ),
       },
       {
         header: () => (
-          <div className="w-[100px] py-2 text-center text-sm font-semibold text-[#2A4467] font-quicksand">
+          <div className="w-[100px] py-2 text-center text-sm font-semibold text-[#2A4467] dark:text-blue-300 font-quicksand">
             Total Contracts
           </div>
         ),
         accessorKey: "totalContracts",
         cell: ({ getValue }) => (
-          <div className="w-[100px] py-2 text-center text-sm font-bold text-[#374151] font-quicksand">
+          <div className="w-[100px] py-2 text-center text-sm font-bold text-[#374151] dark:text-slate-200 font-quicksand">
             {Number(getValue() ?? 0)}
           </div>
         ),
       },
       {
         header: () => (
-          <div className="w-[100px] py-2 text-center text-sm font-semibold text-[#2A4467] font-quicksand">
+          <div className="w-[100px] py-2 text-center text-sm font-semibold text-[#2A4467] dark:text-blue-300 font-quicksand">
             Total Contract Value
           </div>
         ),
         accessorKey: "totalContractValue",
         cell: ({ row }) => (
-          <div className="w-[100px] py-2 text-center text-sm font-bold text-[#374151] font-quicksand">
+          <div className="w-[100px] py-2 text-center text-sm font-bold text-[#374151] dark:text-slate-200 font-quicksand">
             {formatCompactCurrency(row.original?.totalContractValue)}
           </div>
         ),
       },
       {
         header: () => (
-          <div className="w-[100px] py-2 text-center text-sm font-semibold text-[#2A4467] font-quicksand">
+          <div className="w-[100px] py-2 text-center text-sm font-semibold text-[#2A4467] dark:text-blue-300 font-quicksand">
             Total Projects
           </div>
         ),
         accessorKey: "totalProjects",
         cell: ({ getValue }) => (
-          <div className="w-[100px] py-2 text-center text-sm font-bold text-[#374151] font-quicksand">
+          <div className="w-[100px] py-2 text-center text-sm font-bold text-[#374151] dark:text-slate-200 font-quicksand">
             {Number(getValue() ?? 0)}
           </div>
         ),
       },
       {
         header: () => (
-          <div className="w-[100px] py-2 text-center text-sm font-semibold text-[#2A4467] font-quicksand">
+          <div className="w-[100px] py-2 text-center text-sm font-semibold text-[#2A4467] dark:text-blue-300 font-quicksand">
             Total Project Value
           </div>
         ),
         accessorKey: "totalProjectValue",
         cell: ({ row }) => (
-          <div className="w-[100px] py-2 text-center text-sm font-bold text-[#374151] font-quicksand">
+          <div className="w-[100px] py-2 text-center text-sm font-bold text-[#374151] dark:text-slate-200 font-quicksand">
             {formatCompactCurrency(row.original?.totalProjectValue)}
           </div>
         ),
@@ -193,7 +193,7 @@ const BusinessDivisionsPage = () => {
       {
         id: "actions",
         header: () => (
-          <div className="w-[80px] py-2 text-center text-sm font-semibold text-[#2A4467] font-quicksand">
+          <div className="w-[80px] py-2 text-center text-sm font-semibold text-[#2A4467] dark:text-blue-300 font-quicksand">
             Actions
           </div>
         ),
@@ -223,13 +223,13 @@ const BusinessDivisionsPage = () => {
       <div className="flex flex-1 flex-col px-8 py-12">
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold text-[#0F0F0F] font-quicksand">
+            <h2 className="text-2xl font-semibold text-[#0F0F0F] dark:text-slate-100 font-quicksand">
               Business Divisions
             </h2>
             <div className="flex items-center gap-4">
               <Button
                 variant="outline"
-                className="gap-2 rounded-xl border-[#E5E7EB] bg-white px-4 text-base font-semibold text-[#6B6B6B] font-quicksand"
+                className="gap-2 rounded-xl border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-base font-semibold text-[#6B6B6B] dark:text-slate-400 font-quicksand"
                 onClick={handleExport}
                 disabled={divisions.length === 0}
               >
@@ -256,16 +256,16 @@ const BusinessDivisionsPage = () => {
           </div>
 
           <div className="flex items-center">
-            <div className="flex w-[347px] items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-6">
+            <div className="flex w-[347px] items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-900 p-6">
               <div className="flex flex-col gap-2">
-                <p className="text-sm font-medium text-[#6B6B6B] font-quicksand">
+                <p className="text-sm font-medium text-[#6B6B6B] dark:text-slate-400 font-quicksand">
                   All Business Divisions
                 </p>
-                <p className="text-2xl font-bold text-[#0F0F0F] font-quicksand">
+                <p className="text-2xl font-bold text-[#0F0F0F] dark:text-slate-100 font-quicksand">
                   {totalDivisions}
                 </p>
               </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/10">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/10 dark:bg-white/10">
                 <img
                   src="/assets/business-divisions/icon-distribution.svg"
                   alt=""
@@ -277,15 +277,15 @@ const BusinessDivisionsPage = () => {
         </div>
 
         {hasDivisions ? (
-          <div className="mt-8 w-full overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
-            <div className="flex h-[72px] items-center gap-6 border-b border-[#E9E9EB] px-6">
-              <p className="text-base font-semibold text-[#0F0F0F] font-quicksand">
+          <div className="mt-8 w-full overflow-hidden rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-900">
+            <div className="flex h-[72px] items-center gap-6 border-b border-[#E9E9EB] dark:border-slate-700 px-6">
+              <p className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100 font-quicksand">
                 Business Divisions
               </p>
-              <div className="flex h-12 w-[300px] items-center gap-2 rounded-lg border border-[#E5E7EB] px-[15px] font-quicksand">
+              <div className="flex h-12 w-[300px] items-center gap-2 rounded-lg border border-[#E5E7EB] dark:border-slate-700 px-[15px] font-quicksand">
                 <div className="flex items-center p-[3px]">
                   <Search
-                    className="h-[15px] w-[15px] text-[#6B6B6B]"
+                    className="h-[15px] w-[15px] text-[#6B6B6B] dark:text-slate-400"
                     strokeWidth={1.67}
                   />
                 </div>
@@ -293,7 +293,7 @@ const BusinessDivisionsPage = () => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search contract"
-                  className="h-10 border-0 p-0 text-sm text-[#6B6B6B] placeholder:opacity-50 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="h-10 border-0 p-0 text-sm text-[#6B6B6B] dark:text-slate-400 placeholder:opacity-50 focus-visible:ring-0 focus-visible:ring-offset-0"
                 />
               </div>
             </div>
@@ -312,12 +312,12 @@ const BusinessDivisionsPage = () => {
                 classNames={{
                   container: "w-full [&>div:last-child]:hidden",
                   table: "border-separate border-spacing-y-3",
-                  tHeader: "bg-[#F9FAFB]",
+                  tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
                   tHead: "h-auto p-0",
                   tCell: "p-0 pl-0",
-                  tRow: "bg-white [&>td:first-child]:pl-6 [&>td:last-child]:pr-6",
+                  tRow: "bg-white dark:bg-slate-900 [&>td:first-child]:pl-6 [&>td:last-child]:pr-6",
                   tHeadRow:
-                    "border-b border-[#E5E7EB] [&>th:first-child]:pl-6 [&>th:last-child]:pr-6",
+                    "border-b border-[#E5E7EB] dark:border-slate-700 [&>th:first-child]:pl-6 [&>th:last-child]:pr-6",
                 }}
               />
             </div>
@@ -330,7 +330,7 @@ const BusinessDivisionsPage = () => {
                 alt=""
                 className="h-14 w-14"
               />
-              <p className="text-2xl font-semibold text-[#6B6B6B] font-quicksand">
+              <p className="text-2xl font-semibold text-[#6B6B6B] dark:text-slate-400 font-quicksand">
                 No Division Yet
               </p>
               <CreateDivisionDialog

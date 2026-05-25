@@ -46,6 +46,8 @@ import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
 import { formatDate } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import Spinner from "@/components/ui/Spinner";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
@@ -114,7 +116,7 @@ const LabelRow = ({
 
 const RateSheetUploadElement = () => {
   return (
-    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] bg-white px-4">
+    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] dark:border-slate-600 bg-white dark:bg-slate-800 px-4">
       <UploadCloud className="h-10 w-10 text-[#2A4467] dark:text-blue-300" />
       <div className="flex flex-col items-center gap-1 text-center">
         <div className="text-sm font-semibold text-[#2A4467] dark:text-blue-300">
@@ -133,9 +135,9 @@ const RateSheetFilesListItem = ({ file }: { file: File }) => {
   const value = useWatch({ control, name: "files" });
 
   return (
-    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-3">
+    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB]">
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
           <FileText className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
         </div>
         <div className="min-w-0">
@@ -143,7 +145,7 @@ const RateSheetFilesListItem = ({ file }: { file: File }) => {
             {file.name}
           </div>
           <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-500">
-            {getSimpleFileExtension(file.name).toUpperCase()} â€¢{" "}
+            {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
             {formatFileSize(file.size)}
           </div>
         </div>
@@ -360,16 +362,26 @@ const SubmitRateSheetDialog: React.FC<{
               type="button"
               onClick={() => setOpen(false)}
               disabled={isSubmitting}
-              className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-3.5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 shadow-sm hover:bg-[#E5E7EB]"
+              className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-3.5 text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 shadow-sm hover:bg-[#E5E7EB] dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Back
             </button>
             <button
               type="submit"
-              disabled={isPending || submitMutation.isPending}
-              className="flex-1 rounded-xl bg-[#2A4467] py-3.5 text-base font-semibold text-white shadow-sm hover:bg-[#1e3a5f]"
+              disabled={isSubmitting}
+              aria-busy={isSubmitting}
+              className="flex-1 rounded-xl bg-[#2A4467] py-3.5 text-base font-semibold text-white shadow-sm hover:bg-[#1e3a5f] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Submit Rate Sheet
+              {isSubmitting ? (
+                <div className="flex items-center justify-center gap-2">
+                  <Spinner className="h-5 w-5 text-white" />
+                  <span>
+                    {isPending ? "Uploading files…" : "Submitting…"}
+                  </span>
+                </div>
+              ) : (
+                "Submit Rate Sheet"
+              )}
             </button>
           </div>
         </Forge>
@@ -454,14 +466,33 @@ const RateSheetSummaryTable = React.memo(
       setVisibleRowCount(RATE_SHEET_SUMMARY_INITIAL_ROWS);
     }, [rows]);
 
+    // BE sometimes declares fewer headers than the rows actually carry
+    // (xlsx parsing truncates header row at the first empty cell). Union
+    // any extra row keys onto the declared headers so every populated cell
+    // gets a column to render under.
+    const effectiveHeaders = React.useMemo(() => {
+      const declared = new Set(headers);
+      const merged: string[] = [...headers];
+      for (const r of rows) {
+        if (!r) continue;
+        for (const k of Object.keys(r)) {
+          if (!declared.has(k)) {
+            declared.add(k);
+            merged.push(k);
+          }
+        }
+      }
+      return merged;
+    }, [headers, rows]);
+
     const headerCells = React.useMemo(
       () =>
-        headers.map((h) => (
+        effectiveHeaders.map((h) => (
           <th key={h} className="whitespace-nowrap px-4 py-3">
-            {h}
+            {/^__EMPTY(_\d+)?$/.test(h) ? "" : h}
           </th>
         )),
-      [headers],
+      [effectiveHeaders],
     );
 
     const bodyRows = React.useMemo(() => {
@@ -470,7 +501,10 @@ const RateSheetSummaryTable = React.memo(
       if (visibleRows.length === 0) {
         return (
           <tr className="border-t border-[#E5E7EB]">
-            <td className="px-4 py-3 text-[#6B7280] dark:text-slate-400" colSpan={headers.length}>
+            <td
+              className="px-4 py-3 text-[#6B7280] dark:text-slate-400"
+              colSpan={effectiveHeaders.length}
+            >
               No rows available.
             </td>
           </tr>
@@ -479,17 +513,20 @@ const RateSheetSummaryTable = React.memo(
 
       return visibleRows.map((r, rowIndex) => (
         <tr key={rowIndex} className="border-t border-[#E5E7EB]">
-          {headers.map((h) => (
-            <td
-              key={`${rowIndex}-${h}`}
-              className="whitespace-nowrap px-4 py-3"
-            >
-              {(r as any)?.[h] ?? "â€”"}
-            </td>
-          ))}
+          {effectiveHeaders.map((h) => {
+            const cell = (r as any)?.[h];
+            return (
+              <td
+                key={`${rowIndex}-${h}`}
+                className="whitespace-nowrap px-4 py-3"
+              >
+                {cell == null || cell === "" ? "" : String(cell)}
+              </td>
+            );
+          })}
         </tr>
       ));
-    }, [headers, rows, visibleRowCount]);
+    }, [effectiveHeaders, rows, visibleRowCount]);
 
     return (
       <div className="overflow-x-auto rounded-lg border border-[#E5E7EB] bg-white">
@@ -530,7 +567,7 @@ const RateSheetSummarySheet = React.memo(
     return (
       <div className="space-y-3">
         <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
-          {sheet?.sheetName || "â€”"}
+          {sheet?.sheetName || "—"}
         </div>
         {Array.isArray(sheet?.headers) && sheet.headers.length > 0 ? (
           <RateSheetSummaryTable
@@ -766,7 +803,7 @@ const RateSheetDetailsSheet: React.FC<{
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
-                {sheet?.title || row.title || "â€”"}
+                {sheet?.title || row.title || "—"}
               </div>
               <Button
                 variant="outline"
@@ -813,7 +850,7 @@ const RateSheetDetailsSheet: React.FC<{
                       label="Submission Date"
                       value={sheet?.createdAt
                         ? formatDate(sheet?.createdAt, "yyyy MMM dd")
-                        : "â€”"}
+                        : "—"}
                     />
                     <LabelRow
                       label="Status"
@@ -827,7 +864,7 @@ const RateSheetDetailsSheet: React.FC<{
                       Description
                     </div>
                     <div className="text-sm font-medium text-[#111827] dark:text-slate-100">
-                      {sheet?.description || "â€”"}
+                      {sheet?.description || "—"}
                     </div>
                   </div>
                   {detailLoading ? (
@@ -851,7 +888,7 @@ const RateSheetDetailsSheet: React.FC<{
                             size:
                               typeof file?.size === "number"
                                 ? `${file.size} B`
-                                : "â€”",
+                                : "—",
                             url: file?.url,
                             icon: getFileIcon(ext),
                           };
@@ -1070,9 +1107,11 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Rate Sheets</h3>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="h-10 rounded-xl px-4">
-            Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="Contract">
+            <Button variant="outline" className="h-10 rounded-xl px-4">
+              Export Report
+            </Button>
+          </ExportReportSheet>
           {isContractVendorLike && (
             <SubmitRateSheetDialog
               contractId={contractId}
@@ -1091,7 +1130,7 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         data={filtered}
         columns={columns}
         header={() => (
-          <div className="flex items-center gap-3 border-b w-full border-[#E5E7EB] px-5 py-4">
+          <div className="flex items-center gap-3 border-b w-full border-[#E5E7EB] dark:border-slate-700 px-5 py-4">
             <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
               Rate Sheets
             </span>
@@ -1116,11 +1155,11 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
           isLoading: !!isLoading,
         }}
         classNames={{
-          container: "border border-[#E5E7EB] rounded-xl bg-white",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
+          container: "border border-[#E5E7EB] dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-700",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-700",
           tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500",
           tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-300 align-top",
         }}

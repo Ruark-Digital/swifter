@@ -84,6 +84,8 @@ Authorization: Bearer <your_token>
 28. [View-Only — Contracts & MSA Contracts](#28-view-only--contracts--msa-contracts)
 29. [View-Only — Contract Sub-Resources](#29-view-only--contract-sub-resources)
 30. [Collaboration (WebSocket)](#30-collaboration-websocket)
+31. [Contract Export](#31-contract-export)
+32. [File Utilities](#32-file-utilities)
 
 ***
 
@@ -398,6 +400,15 @@ MSA (Master Services Agreement) contracts are umbrella contracts that can have l
 | `GET`  | `/manager/msa-contract/{contractId}/compliance`              | Get MSA contract compliance details           |
 | `POST` | `/manager/msa-contract/{contractId}/compliance/{type}/approve` | Approve or reject an MSA contract compliance item |
 
+#### Deliverables
+
+| Method | Path                                                                       | Description                       |
+| ------ | -------------------------------------------------------------------------- | --------------------------------- |
+| `GET`  | `/manager/msa-contract/{contractId}/deliverables/stats`                    | MSA deliverable statistics        |
+| `GET`  | `/manager/msa-contract/{contractId}/deliverables`                          | List MSA deliverables             |
+| `GET`  | `/manager/msa-contract/{contractId}/deliverables/{deliverableId}`          | Get MSA deliverable details       |
+| `POST` | `/manager/msa-contract/{contractId}/deliverables/{deliverableId}/approve`  | Approve or reject MSA deliverable |
+
 #### Invoices
 
 | Method | Path                                                     | Description                        |
@@ -446,6 +457,12 @@ MSA (Master Services Agreement) contracts are umbrella contracts that can have l
 | ------ | ----------------------------------------------------------- | ------------------------------ |
 | `GET`  | `/manager/msa-contract/{contractId}/approvers`              | Get MSA contract approvers     |
 | `GET`  | `/manager/msa-contract/{contractId}/approvers/{approverId}` | Get MSA contract approver details |
+
+#### Personnel
+
+| Method | Path                                               | Description                        |
+| ------ | -------------------------------------------------- | ---------------------------------- |
+| `GET`  | `/manager/msa-contract/{contractId}/personnel`     | List personnel for an MSA contract |
 
 ### POST `/manager/msa-contract` — Create MSA Contract
 
@@ -606,7 +623,7 @@ Invoices are created by vendors and approved by managers/approvers.
 | ------ | ------------------------------------------------------------- | ---------------------- | --------------------------------- |
 | `GET`  | `/manager/contracts/{contractId}/invoice/stats`               | Invoice counts         | All                               |
 | `GET`  | `/manager/contracts/{contractId}/invoice`                     | List invoices          | All                               |
-| `GET`  | `/manager/contracts/invoice/{invoiceId}`                      | Get invoice detail     | All                               |
+| `GET`  | `/manager/contracts/{contractId}/invoice/{invoiceId}`         | Get invoice detail     | All                               |
 | `POST` | `/manager/contracts/{contractId}/invoice/{invoiceId}/approve` | Manager approve/reject | `contract_manager`, `procurement` |
 
 **Query params for list:** `invoiceId`, `page`, `limit`
@@ -1243,6 +1260,12 @@ Approvers have read/write access to sub-resources.
 | `POST` | `/approver/msa-contract/{contractId}/rfi/{rfiId}/comment/{commentId}/reply` | Reply to a contract RFI comment |
 | `POST` | `/approver/msa-contract/{dataId}/rfi`                      | Create a new RFI issue |
 | `POST` | `/approver/msa-contract/{dataId}/rfi/{rfiId}/response`     | Create RFI response |
+| `GET`  | `/approver/msa-contract/{contractId}/deliverables/stats`   | Get MSA deliverable statistics |
+| `GET`  | `/approver/msa-contract/{contractId}/deliverables`         | List MSA deliverables |
+| `GET`  | `/approver/msa-contract/{contractId}/deliverables/{deliverableId}` | Get MSA deliverable details |
+| `POST` | `/approver/msa-contract/{contractId}/deliverables/{deliverableId}/approve` | Approve or reject an MSA deliverable |
+| `GET`  | `/approver/msa-contract/{contractId}/deliverables/{deliverableId}/approve/status` | Check MSA deliverable approval status |
+| `GET`  | `/approver/msa-contract/{contractId}/personnel`                              | List personnel for an MSA contract |
 
 ***
 
@@ -1497,6 +1520,11 @@ Vendors can create and manage their own activity on contracts.
 | `POST` | `/vendor/msa-contract/{contractId}/rfi/{rfiId}/comment/{commentId}/reply` | Reply to a contract RFI comment |
 | `POST` | `/vendor/msa-contract/{dataId}/rfi`                             | Create a new RFI issue |
 | `POST` | `/vendor/msa-contract/{dataId}/rfi/{rfiId}/response`            | Create RFI response |
+| `GET`  | `/vendor/msa-contract/{contractId}/deliverables/stats`          | Get MSA deliverable statistics |
+| `GET`  | `/vendor/msa-contract/{contractId}/deliverables`                | List MSA deliverables |
+| `GET`  | `/vendor/msa-contract/{contractId}/deliverables/{deliverableId}` | Get MSA deliverable details |
+| `POST` | `/vendor/msa-contract/{contractId}/deliverables/{deliverableId}/submit` | Submit a deliverable |
+| `GET`  | `/vendor/msa-contract/{contractId}/personnel`                           | List personnel for an MSA contract |
 
 ***
 
@@ -1558,7 +1586,7 @@ Read-only access to all sub-resources under `/user/...`.
 | `GET`  | `/user/contracts/{contractId}/deliverables`                          | List contract deliverables |
 | `GET`  | `/user/contracts/{contractId}/deliverables/stats`                    | Get contract deliverable statistics |
 | `GET`  | `/user/contracts/{contractId}/deliverables/{deliverableId}`          | Get contract deliverable details |
-| `GET`  | `/user/contracts/{contractId}/deliverables/{deliverableId}/approve/status` | Check manager approval status for a deliverable |
+| `GET`  | `/user/contracts/{contractId}/personnel`                             | List personnel attached to the contract |
 | `GET`  | `/user/contracts/{contractId}/invoice`                               | List contract invoices |
 | `GET`  | `/user/contracts/{contractId}/invoice/stats`                         | Get contract invoice statistics |
 | `GET`  | `/user/contracts/{contractId}/invoice/{invoiceId}`                   | Get contract invoice details |
@@ -1600,6 +1628,10 @@ Read-only access to all sub-resources under `/user/...`.
 | `GET`  | `/user/msa-contract/{contractId}/rfi/stats`                          | Get MSA contract RFI statistics |
 | `GET`  | `/user/msa-contract/{contractId}/rfi/{rfiId}`                        | Get a specific RFI |
 | `GET`  | `/user/msa-contract/{contractId}/rfi/{rfiId}/comment`                | Get contract RFI comments |
+| `GET`  | `/user/msa-contract/{contractId}/deliverables/stats`                 | Get MSA deliverable statistics |
+| `GET`  | `/user/msa-contract/{contractId}/deliverables`                       | List MSA deliverables |
+| `GET`  | `/user/msa-contract/{contractId}/deliverables/{deliverableId}`       | Get MSA deliverable details |
+| `GET`  | `/user/msa-contract/{contractId}/personnel`                          | List personnel for an MSA contract |
 
 ***
 
@@ -3156,5 +3188,87 @@ Schemas are derived from `swagger.json`.
 | `status` | `string` |  | example: active |
 | `title` | `string` |  | example: Master Services Agreement |
 
+
+***
+
+## 31. Contract Export
+
+Export a contract or MSA contract to PDF or DOCX. Call the entities endpoint first to discover which sections have data, then pass the desired entity keys to the download endpoint.
+
+### Endpoints at a Glance
+
+| Method | Path                                        | Description                                  |
+| ------ | ------------------------------------------- | -------------------------------------------- |
+| `GET`  | `/contract-export/{contractId}/entities`    | List entity sections that have data          |
+| `POST` | `/contract-export/{contractId}/download`    | Generate and stream a PDF or DOCX file       |
+
+---
+
+### GET `/contract-export/{contractId}/entities` — Available Entity Sections
+
+Returns the entity types that have at least one record for the given contract. Use the returned keys as the `entity` array when calling the download endpoint.
+
+**Path Parameters:** `contractId` — the contract's string ID (e.g. `CON-001`) or MongoDB ObjectId.
+
+**Sample Response:**
+
+```json
+{
+  "status": 200,
+  "message": "Contract entities fetched successfully",
+  "data": ["invoice", "amendment", "kpi", "deliverable"]
+}
+```
+
+---
+
+### POST `/contract-export/{contractId}/download` — Export Contract Document
+
+Generates a binary PDF or DOCX file containing company details, contract overview, and any selected entity sections. The response is a file stream — the browser will trigger a download via `Content-Disposition`.
+
+**Path Parameters:** `contractId` — string ID or ObjectId.
+
+**Request Body:**
+
+| Field        | Type     | Required | Description                                                  |
+| ------------ | -------- | -------- | ------------------------------------------------------------ |
+| `exportType` | enum     | ✅        | `pdf` or `docx`                                              |
+| `type`       | enum     |          | `Contract` (default) or `MsaContract`                        |
+| `entity`     | string[] |          | Entity sections to include. Pass `[]` for overview only.     |
+
+**Available `entity` keys:**
+
+| Key          | Section rendered                           |
+| ------------ | ------------------------------------------ |
+| `invoice`    | Invoices table                             |
+| `change`     | Change Orders table                        |
+| `amendment`  | Amendments table + field-change sub-tables |
+| `approvers`  | Approval Groups table                      |
+| `complaince` | Insurance & Compliance table               |
+| `deliverable`| Deliverables table                         |
+| `kpi`        | KPIs table                                 |
+| `lem`        | Labour, Equipment & Materials table        |
+| `rfi`        | Requests for Information table             |
+| `ncr`        | Non-Conformance Reports table              |
+| `claim`      | Claims table                               |
+| `clause`     | Contract Clauses                           |
+
+> **Note:** `complaince` is the existing key spelling — preserved for API compatibility.
+
+**Response:** Binary file stream with `Content-Type: application/pdf` or `application/vnd.openxmlformats-officedocument.wordprocessingml.document` and a `Content-Disposition: attachment` header.
+
+---
+
+## 32. File Utilities
+
+### GET `/file/versions/{docName}` — File Version History
+
+Returns the version history for a stored file.
+
+**Path Parameters:** `docName` — the document filename/key.
+
+**Response:** Array of version records per file.
+
+---
 
 *End of SwiftPro API Reference v2.3.0*
