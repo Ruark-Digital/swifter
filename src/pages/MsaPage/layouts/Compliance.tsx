@@ -11,6 +11,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { cn } from "@/lib/utils";
+import { format, differenceInDays } from "date-fns";
 import { Check, Search, Share2, X } from "lucide-react";
 import type { ApiResponseError } from "@/types";
 import type { ContractComplianceDTO } from "@/pages/ContractManagementPage/api/contractManagerApi";
@@ -40,6 +41,8 @@ type SecurityRow = {
   securityId: string;
   securityType: string;
   amount: string;
+  dueDate: string;
+  dueIn: string;
   status: string;
 };
 
@@ -154,13 +157,30 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
 
   const securityRows = React.useMemo<SecurityRow[]>(
     () =>
-      (complianceData?.security ?? []).map((security) => ({
-        id: security._id || security.securityTypeId || "",
-        securityId: security._id || security.securityTypeId || "-",
-        securityType: security.securityType || "-",
-        amount: formatCurrencyCompact(security.amount),
-        status: security.status || "Pending",
-      })),
+      (complianceData?.security ?? []).map((security) => {
+        const dueDate = security.dueDate
+          ? format(new Date(security.dueDate), "dd MMM yyyy")
+          : "-";
+        let dueIn = "-";
+        if (security.dueDate) {
+          const days = differenceInDays(
+            new Date(security.dueDate),
+            new Date(),
+          );
+          if (days > 0) dueIn = `${days} days`;
+          else if (days === 0) dueIn = "Today";
+          else dueIn = "Overdue";
+        }
+        return {
+          id: security._id || security.securityTypeId || "",
+          securityId: security.securityTypeId || security._id || "-",
+          securityType: security.securityType || "-",
+          amount: formatCurrencyCompact(security.amount),
+          dueDate,
+          dueIn,
+          status: security.status || "Pending",
+        };
+      }),
     [complianceData?.security],
   );
 
@@ -237,6 +257,32 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
       { accessorKey: "securityType", header: "Security Type" },
       { accessorKey: "amount", header: "Amount" },
       {
+        accessorKey: "dueDate",
+        header: "Date",
+        cell: ({ row }) => (
+          <div className="flex flex-col text-sm">
+            <div>
+              <span className="text-slate-500 dark:text-slate-400 mr-1">
+                Due Date:
+              </span>
+              <span className="font-medium text-slate-900 dark:text-slate-100">
+                {row.original.dueDate}
+              </span>
+            </div>
+            {row.original.dueIn && row.original.dueIn !== "-" && (
+              <div>
+                <span className="text-slate-500 dark:text-slate-400 mr-1">
+                  Due in:
+                </span>
+                <span className="text-slate-900 dark:text-slate-100">
+                  {row.original.dueIn}
+                </span>
+              </div>
+            )}
+          </div>
+        ),
+      },
+      {
         accessorKey: "status",
         header: "Status",
         cell: ({ getValue }) => (
@@ -301,15 +347,43 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
     [complianceData?.details],
   );
 
+  const hasFiles = React.useMemo(() => {
+    const details = complianceData?.details;
+    if (!details) return false;
+    if (activeTab === "policy") {
+      return (
+        (details.policyStatus?.files?.length ?? details.files?.length ?? 0) > 0
+      );
+    }
+    const raw = details.securityStatus as unknown;
+    if (raw && typeof raw === "object" && "files" in raw) {
+      return ((raw as { files?: unknown[] }).files?.length ?? 0) > 0;
+    }
+    return (details.files?.length ?? 0) > 0;
+  }, [activeTab, complianceData?.details]);
+
   const insuranceStatus = String(getCategoryStatus("policy") || "pending");
   const securityStatus = String(getCategoryStatus("security") || "pending");
 
   const canSubmitActiveCategory = React.useMemo(() => {
     if (!isVendorOrProjectManager) return false;
     const status = String(getCategoryStatus(activeTab) || "").toLowerCase();
-    if (!status) return false;
+    if (!status) return !hasFiles;
     return status === "pending" || status === "rejected";
-  }, [activeTab, getCategoryStatus, isVendorOrProjectManager]);
+  }, [activeTab, getCategoryStatus, hasFiles, isVendorOrProjectManager]);
+
+  const canManagerActOnActive = React.useMemo(() => {
+    if (!isContractManager) return false;
+    if (!hasFiles) return false;
+    const status = String(getCategoryStatus(activeTab) || "").toLowerCase();
+    if (!status) return false;
+    return (
+      status === "submitted" ||
+      status === "pending approval" ||
+      status === "pending_approval" ||
+      status === "awaiting approval"
+    );
+  }, [activeTab, getCategoryStatus, hasFiles, isContractManager]);
 
   const approveMutation = useMutation({
     mutationFn: async (action: "approved" | "rejected") => {
@@ -340,7 +414,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
           Compliance & Security Details
         </h3>
         <div className="flex items-center gap-3">
-          {isContractManager && (
+          {canManagerActOnActive && (
             <>
               <Button
                 variant="outline"
