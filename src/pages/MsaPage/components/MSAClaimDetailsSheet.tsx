@@ -41,7 +41,7 @@ type Detail = {
   cost?: number;
   createdAt?: string;
   updatedAt?: string;
-  documents?: Array<{
+  files?: Array<{
     id?: string;
     name?: string;
     url?: string;
@@ -110,7 +110,8 @@ const MSAClaimDetailsSheet: React.FC<Props> = ({
   const addCommentMutation = useMutation({
     mutationFn: async (commentText: string) => {
       const url = `${roleBasePath}/${claimId}/comment`;
-      return await postRequest({ url, payload: { comment: commentText } });
+      // BE shape is ContractChangeCommentDTO with `content`, not `comment`.
+      return await postRequest({ url, payload: { content: commentText } });
     },
     onSuccess: () => {
       setComment("");
@@ -129,7 +130,7 @@ const MSAClaimDetailsSheet: React.FC<Props> = ({
   const detail = detailRes ?? {};
 
   const docs: DocType[] = React.useMemo(() => {
-    const source = Array.isArray(detail?.documents) ? detail.documents : [];
+    const source = Array.isArray(detail?.files) ? detail.files : [];
     return source.map((file: any, index: number) => {
       const ext = getSimpleFileExtension(file?.name || "").toUpperCase();
       const rawSize = file?.size;
@@ -150,7 +151,7 @@ const MSAClaimDetailsSheet: React.FC<Props> = ({
         icon: getFileIcon(ext),
       };
     });
-  }, [detail?.documents]);
+  }, [detail?.files]);
 
   const formatImpact = (d: Detail) => {
     const parts: string[] = [];
@@ -315,7 +316,7 @@ const MSAClaimDetailsSheet: React.FC<Props> = ({
                             {c.createdAt ? new Date(c.createdAt).toLocaleDateString() : ""}
                           </span>
                         </div>
-                        <p className="text-sm text-slate-600">{c.comment}</p>
+                        <p className="text-sm text-slate-600">{c.content}</p>
                       </div>
                     ))}
                   </div>
