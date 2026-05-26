@@ -40,7 +40,7 @@ Produce a **read-only audit report** that documents, per detail tab × per user 
 ### Deliverable Shape
 - **D-01:** Produce **audit report only** in this phase. Fix work is a separate phase (or phases). No code changes in this phase except the report file itself.
 - **D-02:** Output is a **single `REPORT.md`** with one section per tab (12 sections). Each section contains a role × dimension matrix plus a findings list under that matrix.
-- **D-03:** Reports live at `.planning/quick/260524-msa-contract-tabs-logic-parity-audit/REPORT.md` (single file, no per-tab fragmentation).
+- **D-03:** Reports live at `.planning/quick/260524-msa-contracts-tabs-logic-parity-audit/REPORT.md` (single file, no per-tab fragmentation).
 
 ### Audit Dimensions (what counts as a finding)
 - **D-04:** Three dimensions are in scope: **Role gates & action visibility**, **API endpoint shape parity**, **Status semantics & tone**.
@@ -120,7 +120,7 @@ Produce a **read-only audit report** that documents, per detail tab × per user 
 - `src/pages/MsaPage/MsaDetailPage.tsx` — tab orchestration + ROLE_TAB_WHITELIST (see `project_msa_detail_role_gates_and_rfi`)
 - `src/pages/MsaPage/layouts/` — 16 layout files; the 12 in scope listed in D-07 (filename map: Amendments.tsx, ChangeManagement.tsx, Claims.tsx, Compliance.tsx, Deliverables.tsx, Documents.tsx, Invoice.tsx, Lem.tsx, NcrLog.tsx, PaymentSummary.tsx, Reports.tsx, Rfi.tsx)
 - `src/pages/MsaPage/components/` — MSA-only sub-components (MSAClaimDetailsSheet, MsaReleaseHoldbackDialog, MsaUpdateSavingsDialog, MsaTable, LabelItem, StatusBadge)
-- MSA has **no dedicated `api/` folder** — endpoints are inlined in each layout via `getRequest({ url: \`/contract/<role>/msa-contract/${id}/…\` })`. This is a known divergence; document but do not refactor.
+- MSA has **no dedicated `api/` folder** — endpoints are inlined in each layout via `getRequest({ url: \`/contract/<role>/msa-contracts/${id}/…\` })`. This is a known divergence; document but do not refactor.
 
 ### API Documentation
 - `docs/API_DOCUMENTATION_PHASE_2.md` — full route index for all 4 role prefixes (manager / vendor / approver / user); per `reference_api_doc_phase2`. Use to verify that the MSA endpoints inlined in layouts match swagger.
@@ -156,7 +156,7 @@ Produce a **read-only audit report** that documents, per detail tab × per user 
 - **`StatusBadge` + tone helpers** — Contract has a canonical tone palette (closed=grey, approved=green, rejected=red, pending=yellow per `90c92d27c` commit). MSA layouts often inline a `statusTone()` helper (e.g., `ChangeManagement.tsx:41-47`, `Compliance.tsx:63-74`) — check each.
 
 ### Established Patterns the Audit Will Apply
-- **Role prefix:** Contract → `/contract/<role>/contracts/{id}/…`, MSA → `/contract/<role>/msa-contract/{id}/…`. Both branch over `isManager | isApprover | isContractVendorLike | (isAdmin|isViewOnly)`. Audit verifies same branch shape across both.
+- **Role prefix:** Contract → `/contract/<role>/contracts/{id}/…`, MSA → `/contract/<role>/msa-contracts/{id}/…`. Both branch over `isManager | isApprover | isContractVendorLike | (isAdmin|isViewOnly)`. Audit verifies same branch shape across both.
 - **`actionsDisabled` prop:** Contract tabs accept `actionsDisabled` and pass it down to hide write actions. MSA tabs accept it too (per file scout) but verify it's wired to the same actions.
 - **`ROLE_TAB_WHITELIST`:** Per `project_msa_detail_role_gates_and_rfi`, MSA hides "approvers" tab from approver/vendor/PM. Contract has its own whitelist (see `ContractDetailPage.tsx`). The audit treats these as N/A cells, not gaps.
 
@@ -199,5 +199,5 @@ Produce a **read-only audit report** that documents, per detail tab × per user 
 
 ---
 
-*Phase: 260524-msa-contract-tabs-logic-parity-audit*
+*Phase: 260524-msa-contracts-tabs-logic-parity-audit*
 *Context gathered: 2026-05-24*

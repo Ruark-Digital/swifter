@@ -4,7 +4,7 @@
 > Decisions are captured in CONTEXT.md — this log preserves the alternatives considered.
 
 **Date:** 2026-05-24
-**Phase:** 260524-msa-contract-tabs-logic-parity-audit
+**Phase:** 260524-msa-contracts-tabs-logic-parity-audit
 **Areas discussed:** Deliverable shape, Audit dimensions, User-role coverage, Tab-scope strategy, Group order, Report packaging, Severity rubric
 
 ---
@@ -27,7 +27,7 @@
 | Option | Description | Selected |
 |--------|-------------|----------|
 | Role gates & action visibility | Submit/Approve/Reject/Close/Edit/Assign-Approval button visibility per role + ROLE_TAB_WHITELIST + actionsDisabled + status-based edit gates. | ✓ |
-| API endpoint shape parity | /contracts/ vs /msa-contract/ path drift, plural/singular routes, payload shape, _id vs id, query-cache key + invalidation correctness. | ✓ |
+| API endpoint shape parity | /contracts/ vs /msa-contracts/ path drift, plural/singular routes, payload shape, _id vs id, query-cache key + invalidation correctness. | ✓ |
 | Status semantics & tone | Status enum values, tone palette, closed=grey rule, approved/pending/rejected mapping. | ✓ |
 | Component reuse + dialog parity | Where MSA reimplements a table inline instead of reusing Contract's *Tab/*Table component; DetailsSheet / Approve-Reject / Submit dialog behavior parity. | |
 

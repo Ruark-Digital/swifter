@@ -87,7 +87,7 @@ MSA `IssueRfiDialog` builds a personnel URL with a role-aware switch, **always u
 
 ```ts
 // Hitting the wrong prefix returns 403; the contract personnel paths
-// serve MSA dialogs too, so we re-use them rather than the msa-contract
+// serve MSA dialogs too, so we re-use them rather than the msa-contracts
 // variants which do not exist for personnel listings.
 ```
 
@@ -95,16 +95,16 @@ MSA `IssueRfiDialog` builds a personnel URL with a role-aware switch, **always u
 
 Per the full swagger attached 260525, **MSA personnel endpoints exist for all four roles**:
 
-- `/approver/msa-contract/{contractId}/personnel`
-- `/manager/msa-contract/{contractId}/personnel`
-- `/user/msa-contract/{contractId}/personnel`
-- `/vendor/msa-contract/{contractId}/personnel`
+- `/approver/msa-contracts/{contractId}/personnel`
+- `/manager/msa-contracts/{contractId}/personnel`
+- `/user/msa-contracts/{contractId}/personnel`
+- `/vendor/msa-contracts/{contractId}/personnel`
 
 See memory `project_be_msa_parallel_endpoints_default_assumption`. The comment is out of date.
 
 Probable runtime behavior: the Contract personnel endpoints likely return the company's user pool regardless of which contractId is in the path (personnel are user-level config, not contract-scoped), so MSA is currently getting the correct list of users by accident. Same situation as the Deliverables personnel-pool finding (closed in `6b5b76174`).
 
-**Fix:** route MSA personnel requests to `/{role}/msa-contract/{id}/personnel`. Update or delete the misleading comment.
+**Fix:** route MSA personnel requests to `/{role}/msa-contracts/{id}/personnel`. Update or delete the misleading comment.
 
 Lower urgency than #1 — current behavior likely renders correctly, but it's a hidden assumption that breaks if the BE ever scopes personnel by contract type.
 
@@ -125,7 +125,7 @@ Visibility ([Rfi.tsx:987-988](src/pages/MsaPage/layouts/Rfi.tsx#L987-L988)) — 
 
 ### What BE allows
 
-Per the attached spec, POST `/{role}/{contracts|msa-contract}/{id}/rfi/{rfiId}/response` exists for **manager, vendor, approver** (not view-only). MSA's gate is actually closer to BE truth than Contract's.
+Per the attached spec, POST `/{role}/{contracts|msa-contracts}/{id}/rfi/{rfiId}/response` exists for **manager, vendor, approver** (not view-only). MSA's gate is actually closer to BE truth than Contract's.
 
 ### So what's the drift
 
@@ -150,7 +150,7 @@ MSA's `RfiDetailsSheet` ([Rfi.tsx:478-604](src/pages/MsaPage/layouts/Rfi.tsx#L47
 ### Observable consequences
 
 - **Vendor / PM / Manager / Approver on MSA can never see the response to an RFI from inside the detail sheet.** The data exists at the BE (response endpoints exist for MSA per swagger) but MSA doesn't render it.
-- **None of the four roles can leave or read comments on an MSA RFI.** Comments endpoints exist on BE (`/{role}/msa-contract/{id}/rfi/{rfiId}/comment` for all four roles per spec) but MSA doesn't surface them.
+- **None of the four roles can leave or read comments on an MSA RFI.** Comments endpoints exist on BE (`/{role}/msa-contracts/{id}/rfi/{rfiId}/comment` for all four roles per spec) but MSA doesn't surface them.
 
 This is the inverse of the trim-MSA pattern: MSA is **feature-poor** here, not feature-rich. Contract's Comments + Response are the spec; MSA is missing them.
 
@@ -162,10 +162,10 @@ This is the inverse of the trim-MSA pattern: MSA is **feature-poor** here, not f
 
 | Role | Contract | MSA |
 |------|---|---|
-| Manager | `/manager/contracts/{id}/rfis` (plural — quirk) | `/manager/msa-contract/{id}/rfi` (singular — different from Contract manager) |
-| Vendor / PM | `/vendor/contracts/{id}/rfi` | `/vendor/msa-contract/{id}/rfi` |
-| Approver | `/approver/contracts/{id}/rfi` | `/approver/msa-contract/{id}/rfi` |
-| View-only | `/user/contracts/{id}/rfi` | `/user/msa-contract/{id}/rfi` |
+| Manager | `/manager/contracts/{id}/rfis` (plural — quirk) | `/manager/msa-contracts/{id}/rfi` (singular — different from Contract manager) |
+| Vendor / PM | `/vendor/contracts/{id}/rfi` | `/vendor/msa-contracts/{id}/rfi` |
+| Approver | `/approver/contracts/{id}/rfi` | `/approver/msa-contracts/{id}/rfi` |
+| View-only | `/user/contracts/{id}/rfi` | `/user/msa-contracts/{id}/rfi` |
 
 All endpoints correct per the attached swagger. The Contract-manager-plural / MSA-manager-singular asymmetry is documented BE behavior — the original audit's "MSA manager should use plural" finding was retracted as a false positive.
 
@@ -190,7 +190,7 @@ All endpoints correct per the attached swagger. The Contract-manager-plural / MS
 
 3. **(Decision needed) MSA Respond action gate** — trim to approver-only to match Contract, OR loosen Contract to match MSA + BE. Asking product clarifying their intent on RFI response permissions before changing either.
 
-4. **MSA personnel fetch: route to `/msa-contract/` paths.** Update the role-aware switch + remove the outdated comment. Lower urgency because likely benign at runtime, but it's a hidden assumption worth correcting. Memory `project_be_msa_parallel_endpoints_default_assumption` confirms the paths exist.
+4. **MSA personnel fetch: route to `/msa-contracts/` paths.** Update the role-aware switch + remove the outdated comment. Lower urgency because likely benign at runtime, but it's a hidden assumption worth correcting. Memory `project_be_msa_parallel_endpoints_default_assumption` confirms the paths exist.
 
 ---
 

@@ -92,7 +92,7 @@ Swagger has personnel routes under three shapes (all `/contracts/` plural):
 - `/manager/personnel/contract/{contractId}` (singular `contract`)
 - `/manager/personnel` (flat — no contract context)
 
-**No `/msa-contract/{id}/personnel` route in current swagger.** But memory `project_msa_detail_role_gates_and_rfi` notes the MSA RFI dialog has a working responder multi-select sourced from an MSA personnel endpoint — so the BE likely has *something* MSA-shaped that the memory captured but the local swagger snapshot is missing (per `feedback_audit_findings_need_be_spec_verification`, swagger on disk may lag behind the live spec).
+**No `/msa-contracts/{id}/personnel` route in current swagger.** But memory `project_msa_detail_role_gates_and_rfi` notes the MSA RFI dialog has a working responder multi-select sourced from an MSA personnel endpoint — so the BE likely has *something* MSA-shaped that the memory captured but the local swagger snapshot is missing (per `feedback_audit_findings_need_be_spec_verification`, swagger on disk may lag behind the live spec).
 
 **Observable on MSA vendor's Submit Deliverable dialog:** the "Add Responders" multi-select fetches from the Contract-shaped URL passing an MSA contractId. Likely outcomes:
 - BE returns empty list → vendor sees no options, can't add responders, submits without them.
@@ -119,7 +119,7 @@ Memory confirms the gate is intentionally a single condition: [`project_delivera
 
 ### Actual (MSA)
 
-Identical via shared component. Manager basePath is `/contract/manager/msa-contract/${contractId}/deliverables` ([Deliverables.tsx:115-116](src/pages/MsaPage/layouts/Deliverables.tsx#L115-L116)) — singular `msa-contract`, plural `deliverables`. Endpoint shape matches.
+Identical via shared component. Manager basePath is `/contract/manager/msa-contracts/${contractId}/deliverables` ([Deliverables.tsx:115-116](src/pages/MsaPage/layouts/Deliverables.tsx#L115-L116)) — singular `msa-contracts`, plural `deliverables`. Endpoint shape matches.
 
 ### User-flow gaps for manager
 
@@ -141,7 +141,7 @@ Same gate, same dialog, same endpoint. Approver and manager share the gate logic
 
 ### Actual (MSA)
 
-Same shared component, same gate. Approver basePath: `/contract/approver/msa-contract/${contractId}/deliverables` ([Deliverables.tsx:113-114](src/pages/MsaPage/layouts/Deliverables.tsx#L113-L114)).
+Same shared component, same gate. Approver basePath: `/contract/approver/msa-contracts/${contractId}/deliverables` ([Deliverables.tsx:113-114](src/pages/MsaPage/layouts/Deliverables.tsx#L113-L114)).
 
 ### User-flow gaps for approver
 
@@ -166,7 +166,7 @@ Click → `SubmitDeliverableDialog` with file uploader + responders multi-select
 
 ### Actual (MSA)
 
-Same shared component. Vendor basePath: `/contract/vendor/msa-contract/${contractId}/deliverables` ([Deliverables.tsx:111-112](src/pages/MsaPage/layouts/Deliverables.tsx#L111-L112)). The `isVendor` string-match check (`basePath.includes("/vendor/")`) still works for MSA because the substring is present.
+Same shared component. Vendor basePath: `/contract/vendor/msa-contracts/${contractId}/deliverables` ([Deliverables.tsx:111-112](src/pages/MsaPage/layouts/Deliverables.tsx#L111-L112)). The `isVendor` string-match check (`basePath.includes("/vendor/")`) still works for MSA because the substring is present.
 
 ### User-flow gaps for vendor/PM
 
@@ -222,4 +222,4 @@ Plus cross-cutting: ⚠️ Stats card count diverges (4 Contract / 7 MSA).
 - `isVendor = basePath.includes("/vendor/")` ([DeliverablesTable.tsx:415](src/pages/ContractManagementPage/components/DeliverablesTable.tsx#L415)) — fragile but works for both Contract and MSA since both have `/vendor/` substring. Not worth refactoring solo.
 - `useUserQueryKey(["deliverable-detail", ..., open])` ([:420](src/pages/ContractManagementPage/components/DeliverablesTable.tsx#L420)) — including the `open` boolean in the key means a fresh cache entry every time the sheet opens, wasting `staleTime`. Affects both pages equally; cosmetic.
 - MSA rows pass `submissionDate` ([Deliverables.tsx:185](src/pages/MsaPage/layouts/Deliverables.tsx#L185)) that isn't in the shared `DeliverableRow` type and isn't rendered by any column — dead data, not a bug.
-- Endpoint shape audit — verified, all four MSA basePaths follow the `/contract/{role}/msa-contract/{id}/deliverables` convention. No URL drift.
+- Endpoint shape audit — verified, all four MSA basePaths follow the `/contract/{role}/msa-contracts/{id}/deliverables` convention. No URL drift.

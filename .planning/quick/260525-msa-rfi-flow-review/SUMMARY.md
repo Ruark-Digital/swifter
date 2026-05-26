@@ -24,7 +24,7 @@ Reviewed RFI user-flow across manager, approver, vendor/PM, and view-only on MSA
 
 2. **`2f4363a35`** — `fix(rfi): narrow MSA Respond to approver-only via toast guard, mirroring Contract`. Added `!isApprover` early-return + toast in `RespondToRfiDialog.handleSubmit`. Per the user's product decision via AskUserQuestion 260525, narrow MSA to match Contract's approver-only restriction (rather than loosen Contract or switch both to identity-gating).
 
-3. **`af7106e70`** — `fix(rfi): add Comments + Response tabs to MSA detail sheet, route personnel to /msa-contract/`. Inline mirror per user's scope decision: added `Tabs` wrapper with three tabs (Overview / Response (conditional on `isResponse`) / Comments), inline `RfiResponseContent` component, inline comments query + add-comment mutation + `MessageComposer` integration. Plus cleaned up the outdated personnel path comment and routed all four role branches to `/msa-contract/` per `project_be_msa_parallel_endpoints_default_assumption`. +325 / -66 lines.
+3. **`af7106e70`** — `fix(rfi): add Comments + Response tabs to MSA detail sheet, route personnel to /msa-contracts/`. Inline mirror per user's scope decision: added `Tabs` wrapper with three tabs (Overview / Response (conditional on `isResponse`) / Comments), inline `RfiResponseContent` component, inline comments query + add-comment mutation + `MessageComposer` integration. Plus cleaned up the outdated personnel path comment and routed all four role branches to `/msa-contracts/` per `project_be_msa_parallel_endpoints_default_assumption`. +325 / -66 lines.
 
 ## Verification
 
@@ -34,7 +34,7 @@ Reviewed RFI user-flow across manager, approver, vendor/PM, and view-only on MSA
   - **Respond to RFI**: try as manager + vendor/PM (should toast-error with "Only approvers can respond to RFIs."); try as approver (should succeed).
   - **Detail sheet**: open any RFI, confirm Comments tab loads and "no comments yet" placeholder + composer render; post a comment, confirm it appears.
   - **Detail sheet**: open an RFI that has a response submitted, confirm the Response tab appears and renders the response description + files.
-  - **Issue RFI personnel dropdown**: confirm it populates (was on `/contracts/`, now on `/msa-contract/`).
+  - **Issue RFI personnel dropdown**: confirm it populates (was on `/contracts/`, now on `/msa-contracts/`).
 
 ## Architectural note
 

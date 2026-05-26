@@ -95,19 +95,19 @@ The detail-sheet itself does update because `detailQueryKey` is wrapped via `use
 - Stats query is **disabled for manager** — `enabled: Boolean(contractId) && !!isActive && !isManager` ([Amendments.tsx:119](src/pages/MsaPage/layouts/Amendments.tsx#L119)).
 - `statsBasePath` is **empty string for manager** ([Amendments.tsx:69-77](src/pages/MsaPage/layouts/Amendments.tsx#L69-L77)).
 - For manager, MSA **derives stats client-side from the loaded list** via `derivedManagerStats` ([Amendments.tsx:160-166](src/pages/MsaPage/layouts/Amendments.tsx#L160-L166)).
-- Create Amendment correctly overrides `createPath` to `/contract/manager/msa-contract/{id}/amendments` and passes invalidation keys ([Amendments.tsx:192-212](src/pages/MsaPage/layouts/Amendments.tsx#L192-L212)).
+- Create Amendment correctly overrides `createPath` to `/contract/manager/msa-contracts/{id}/amendments` and passes invalidation keys ([Amendments.tsx:192-212](src/pages/MsaPage/layouts/Amendments.tsx#L192-L212)).
 
 ### User-flow gaps for manager
 
-- **Stats are derived client-side, not fetched.** Swagger has the manager stats endpoint for MSA: `/manager/msa-contracts/{contractId}/amendments/stats` (plural `msa-contracts`, line 31830 of `docs/swagger-phase-2.json`). Note: this endpoint uses the **plural `msa-contracts` quirk** seen on Invoice (memory `msa-contracts-plural-invoice-approve-quirk`) — it's the second known endpoint where MSA breaks its singular-`msa-contract` convention. Client-derived stats are bounded by whatever the list query returned and will drift from the true totals as soon as the list endpoint paginates or filters server-side. Wire the stats fetch.
+- **Stats are derived client-side, not fetched.** Swagger has the manager stats endpoint for MSA: `/manager/msa-contracts/{contractId}/amendments/stats` (plural `msa-contracts`, line 31830 of `docs/swagger-phase-2.json`). Note: this endpoint uses the **plural `msa-contracts` quirk** seen on Invoice (memory `msa-contracts-plural-invoice-approve-quirk`) — it's the second known endpoint where MSA breaks its singular-`msa-contracts` convention. Client-derived stats are bounded by whatever the list query returned and will drift from the true totals as soon as the list endpoint paginates or filters server-side. Wire the stats fetch.
 - **Send for Approval (Assign Approval) succeeds but list does not refetch** — root-cause bug above.
-- **Approver pool path is hardcoded to Contract shape** — `AssignApprovalDialog` queries `/contract/manager/contracts/${contractId}/approvers` ([AmendmentsTable.tsx:304](src/pages/ContractManagementPage/components/AmendmentsTable.tsx#L304)). Swagger has both `/manager/contracts/{id}/approvers` (line 18701) and `/manager/msa-contract/{id}/approvers` (line 29598). If the BE backs both with the same user pool (likely — approvers are user-level config, not contract-level) this is benign. If not, MSA manager sees the wrong pool. **Worth a one-shot BE check before fixing.**
+- **Approver pool path is hardcoded to Contract shape** — `AssignApprovalDialog` queries `/contract/manager/contracts/${contractId}/approvers` ([AmendmentsTable.tsx:304](src/pages/ContractManagementPage/components/AmendmentsTable.tsx#L304)). Swagger has both `/manager/contracts/{id}/approvers` (line 18701) and `/manager/msa-contracts/{id}/approvers` (line 29598). If the BE backs both with the same user pool (likely — approvers are user-level config, not contract-level) this is benign. If not, MSA manager sees the wrong pool. **Worth a one-shot BE check before fixing.**
 
 ### Non-gaps (already parity)
 
 - Assign-Approval gate (`!assignApprover && !hasApprovals && isTimeImpact && vendorAccepted`) is identical via shared `AmendmentDetailsSheet` ([AmendmentsTable.tsx:1134-1138](src/pages/ContractManagementPage/components/AmendmentsTable.tsx#L1134-L1138)). Memory `feedback_amendment_approve_gate` confirms.
 - Create Amendment payload shape (changes[], files[], impact type branching) is shared via `CreateAmendmentDialog`. Memory `project_amendment_detail_data_wiring` covers it.
-- Endpoint base-path for the manager list (`/manager/{contracts|msa-contract}/{id}/amendments` plural for both) is correct.
+- Endpoint base-path for the manager list (`/manager/{contracts|msa-contracts}/{id}/amendments` plural for both) is correct.
 
 ---
 
@@ -130,7 +130,7 @@ Same shared component, same gate, same mutation, same payload, same dialogs — 
 
 - **Accept and Reject succeed BE-side but list stays stale on MSA** — root-cause bug.
 - **`Edit Submission` button on rejected "Other Combination" amendments is a dead button (no `onClick`)** ([AmendmentsTable.tsx:977-986](src/pages/ContractManagementPage/components/AmendmentsTable.tsx#L977-L986)) — this is **a parity bug, not a drift**: both Contract and MSA ship the same dead button because they share the component. Worth noting in the MSA review because the user's audit dimensions include vendor flow.
-- Endpoint shape matches: `/vendor/msa-contract/{id}/amendment/{amendmentId}/status` exists in swagger (line 46893). ✅
+- Endpoint shape matches: `/vendor/msa-contracts/{id}/amendment/{amendmentId}/status` exists in swagger (line 46893). ✅
 
 ---
 
@@ -150,8 +150,8 @@ Same shared component, same gate, same mutation, same payload — and same hardc
 ### User-flow gaps for approver
 
 - **Approve/Reject succeeds BE-side but list stays stale on MSA** — root-cause bug.
-- Endpoint shape matches: `/approver/msa-contract/{id}/amendment/{amendmentId}/approve` exists (line 13137). ✅
-- Memory `feedback_amendment_approve_gate` notes "no /approve/status endpoint" — that memory is **out of date on the schema side** (swagger has `/approver/msa-contract/{id}/amendment/{amendmentId}/approve/status` at line 13068) but **still correct on the frontend side** (the gate uses `detail.approverStatus`, not a separate status fetch). No action required.
+- Endpoint shape matches: `/approver/msa-contracts/{id}/amendment/{amendmentId}/approve` exists (line 13137). ✅
+- Memory `feedback_amendment_approve_gate` notes "no /approve/status endpoint" — that memory is **out of date on the schema side** (swagger has `/approver/msa-contracts/{id}/amendment/{amendmentId}/approve/status` at line 13068) but **still correct on the frontend side** (the gate uses `detail.approverStatus`, not a separate status fetch). No action required.
 
 ---
 
@@ -178,7 +178,7 @@ Both pages render the tab and the shared table; view-only sees neither vendor-ac
 
 2. **Wire manager stats fetch for MSA** — endpoint is `/contract/manager/msa-contracts/{contractId}/amendments/stats` (plural `msa-contracts`, second known instance of the plural quirk after Invoice approve). Drop the `!isManager` gate, change `statsBasePath` for manager from `""` to the plural path (or accept a separate `statsBasePath` prop), and drop `derivedManagerStats`. Manager stats then match what the BE actually has.
 
-3. **Verify and (if needed) parameterize the approver-pool path** — `AssignApprovalDialog` line 304 hardcodes `/contract/manager/contracts/${contractId}/approvers`. Confirm via a one-shot HTTP check whether the BE serves the same pool for `/manager/msa-contract/{id}/approvers`. If yes, leave alone and document. If no, parameterize via prop (`approverPoolPath` or similar).
+3. **Verify and (if needed) parameterize the approver-pool path** — `AssignApprovalDialog` line 304 hardcodes `/contract/manager/contracts/${contractId}/approvers`. Confirm via a one-shot HTTP check whether the BE serves the same pool for `/manager/msa-contracts/{id}/approvers`. If yes, leave alone and document. If no, parameterize via prop (`approverPoolPath` or similar).
 
 4. **(Cross-cutting parity)** Wire the `Edit Submission` button's `onClick` — currently dead on Contract and MSA. Not strictly an MSA-vs-Contract drift, but the user's audit dimensions include vendor flow.
 

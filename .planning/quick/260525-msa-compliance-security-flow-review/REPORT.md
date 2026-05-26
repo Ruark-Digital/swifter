@@ -62,7 +62,7 @@ The manager sees Approve / Reject when **only one** thing is true ([Compliance.t
 
 There is **no `hasFiles` check** and **no submission-status check**. The buttons are always visible to the manager regardless of whether the category has been submitted or even has files attached.
 
-The endpoint shape itself is correct ([Compliance.tsx:316](src/pages/MsaPage/layouts/Compliance.tsx#L316)) — `/contract/manager/msa-contract/{id}/compliance/{policy|security}/approve` — the missing-`/contract`-prefix bug from the earlier audit (Wave 1, `369758628`) has shipped.
+The endpoint shape itself is correct ([Compliance.tsx:316](src/pages/MsaPage/layouts/Compliance.tsx#L316)) — `/contract/manager/msa-contracts/{id}/compliance/{policy|security}/approve` — the missing-`/contract`-prefix bug from the earlier audit (Wave 1, `369758628`) has shipped.
 
 ### User-flow gap
 
@@ -101,7 +101,7 @@ Vendor / PM gate:
 ### Non-gaps
 
 - `SubmitPolicyDialog` is shared, payload is identical.
-- `basePath` shape `/contract/vendor/msa-contract/{id}/compliance` matches the Contract shape mod the `msa-contract` segment.
+- `basePath` shape `/contract/vendor/msa-contracts/{id}/compliance` matches the Contract shape mod the `msa-contracts` segment.
 
 ---
 

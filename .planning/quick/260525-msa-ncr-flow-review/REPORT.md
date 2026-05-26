@@ -121,7 +121,7 @@ This is the third known instance of [[feedback-shared-component-hidden-invalidat
 
 ### Actual (MSA)
 
-Endpoint: `/contract/manager/msa-contract/{id}/ncrs` ([NcrLog.tsx:36](src/pages/MsaPage/layouts/NcrLog.tsx#L36)). Gate logic identical. Identity-based action gates inside shared sheet are also identical.
+Endpoint: `/contract/manager/msa-contracts/{id}/ncrs` ([NcrLog.tsx:36](src/pages/MsaPage/layouts/NcrLog.tsx#L36)). Gate logic identical. Identity-based action gates inside shared sheet are also identical.
 
 ### User-flow gaps for manager
 
@@ -139,7 +139,7 @@ Endpoint: `/contract/manager/msa-contract/{id}/ncrs` ([NcrLog.tsx:36](src/pages/
 
 ### Actual (MSA)
 
-Same gate, same dialog, same identity-based footer gating via shared component. Endpoint: `/contract/approver/msa-contract/{id}/ncrs` ([NcrLog.tsx:35](src/pages/MsaPage/layouts/NcrLog.tsx#L35)).
+Same gate, same dialog, same identity-based footer gating via shared component. Endpoint: `/contract/approver/msa-contracts/{id}/ncrs` ([NcrLog.tsx:35](src/pages/MsaPage/layouts/NcrLog.tsx#L35)).
 
 ### User-flow gaps for approver
 
@@ -158,7 +158,7 @@ Same gate, same dialog, same identity-based footer gating via shared component. 
 
 ### Actual (MSA)
 
-Same. Endpoint: `/contract/vendor/msa-contract/{id}/ncrs` ([NcrLog.tsx:34](src/pages/MsaPage/layouts/NcrLog.tsx#L34)).
+Same. Endpoint: `/contract/vendor/msa-contracts/{id}/ncrs` ([NcrLog.tsx:34](src/pages/MsaPage/layouts/NcrLog.tsx#L34)).
 
 ### User-flow gaps for vendor/PM
 
@@ -193,7 +193,7 @@ Sees the tab and the list. No Create button (gate excludes view-only). No mutati
 
 ## Out of scope / non-issues
 
-- Endpoint shapes verified against attached spec — both pages correct. The Wave 1 fix (`51df46d56`) that swapped MSA from `/contracts/` to `/msa-contract/` is in place.
+- Endpoint shapes verified against attached spec — both pages correct. The Wave 1 fix (`51df46d56`) that swapped MSA from `/contracts/` to `/msa-contracts/` is in place.
 - Tab whitelist parity verified.
 - Identity-based action gates work the same on both pages via shared component (memory `project_ncr_capa_workflow` covers the workflow).
 - Status tone palette (closed = slate) already aligned via Wave 3 / shared component.
