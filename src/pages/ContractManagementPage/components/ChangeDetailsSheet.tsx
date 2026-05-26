@@ -55,6 +55,10 @@ type Props = {
   onOpenChange?: (open: boolean) => void;
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
+  /** When in claim mode (`isClaim`), the manager Send-for-Approval flow
+   *  POSTs to `${claimAssignUrl}` to assign approvers. Must include the
+   *  claimId. Defaults to the Contract path. */
+  claimAssignUrl?: string;
 };
 
 const LabelRow = ({
@@ -89,6 +93,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   onOpenChange: setControlledOpen,
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
+  claimAssignUrl,
 }) => {
   const toast = useToastHandler();
   const qc = useQueryClient();
@@ -299,9 +304,13 @@ const ChangeDetailsSheet: React.FC<Props> = ({
         `Change ${action === "approved" ? "approved" : "rejected"}`,
         (res as any)?.data?.message,
       );
+      // Default list key is context-aware: claims when used in dual-purpose
+      // `isClaim` mode, changes otherwise. Either way the caller can override.
+      const defaultListKey: readonly unknown[] = isClaim
+        ? ["contractClaims"]
+        : ["contractChanges", contractId];
       qc.invalidateQueries({
-        queryKey:
-          listInvalidateQueryKey ?? ["contractChanges", contractId],
+        queryKey: listInvalidateQueryKey ?? defaultListKey,
       });
       if (statsInvalidateQueryKey) {
         qc.invalidateQueries({ queryKey: statsInvalidateQueryKey });
@@ -702,10 +711,15 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                   <SendApprovalDialog
                     contractId={contractId}
                     entityLabel="claim"
-                    assignUrl={`/contract/manager/contracts/${contractId}/claims/${changeId}/approvers`}
+                    assignUrl={
+                      claimAssignUrl ??
+                      `/contract/manager/contracts/${contractId}/claims/${changeId}/approvers`
+                    }
                     onSent={() => {
                       qc.invalidateQueries({ queryKey: changeDetailQueryKey });
-                      qc.invalidateQueries({ queryKey: ["contractClaims"] });
+                      qc.invalidateQueries({
+                        queryKey: listInvalidateQueryKey ?? ["contractClaims"],
+                      });
                     }}
                     trigger={
                       <Button

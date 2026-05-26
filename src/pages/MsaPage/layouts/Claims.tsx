@@ -1,59 +1,26 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { ColumnDef, PaginationState } from "@tanstack/react-table";
+import type { PaginationState } from "@tanstack/react-table";
 import { TabsContent } from "@/components/ui/tabs";
-import { DataTable } from "@/components/layouts/DataTable";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Search, Share2 } from "lucide-react";
+import { Share2 } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getRequest } from "@/lib/axiosInstance";
-import { cn } from "@/lib/utils";
 import type { ApiResponseError } from "@/types";
 import type {
   ContractClaimDTO,
   ContractClaimStatsDTO,
 } from "@/pages/ContractManagementPage/api/contractManagerApi";
 import ClaimsStatsCards from "@/pages/ContractManagementPage/components/ClaimsStatsCards";
+import ClaimsTable from "@/pages/ContractManagementPage/components/ClaimsTable";
 import RequestClaimDialog from "@/pages/ContractManagementPage/components/RequestClaimDialog";
-import MSAClaimDetailsSheet from "@/pages/MsaPage/components/MSAClaimDetailsSheet";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
-};
-
-const statusTone = (status?: string) => {
-  const normalized = status?.toLowerCase();
-  if (normalized === "approved") return "bg-[#EAF7EE] text-[#43A047]";
-  if (normalized === "pending" || normalized === "under review") {
-    return "bg-[#FFF8E1] text-[#F4B400]";
-  }
-  if (normalized === "rejected") return "bg-[#FEECEC] text-[#E53935]";
-  if (normalized === "closed")
-    return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
-  return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
-};
-
-const formatDate = (value?: string) => {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toISOString().slice(0, 10);
-};
-
-const formatImpact = (item: ContractClaimDTO) => {
-  const hasTime = typeof item.time === "number" && Number.isFinite(item.time);
-  const hasCost = typeof item.cost === "number" && Number.isFinite(item.cost);
-  if (hasTime && hasCost)
-    return `$${(item.cost || 0) / 1000000}M + ${item.time} days`;
-  if (hasTime) return `${item.time} days`;
-  if (hasCost) return `$${(item.cost || 0) / 1000000}M`;
-  return "-";
 };
 
 const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
@@ -67,7 +34,6 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ stats?: unknown; claims?: unknown }>({});
-  const [search, setSearch] = React.useState("");
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -187,87 +153,14 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   }, [claimsRes?.data]);
   const totalCount = claimsRes?.data?.total ?? rows.length;
 
-  const filteredRows = React.useMemo(() => {
-    if (!search.trim()) return rows;
-    const q = search.toLowerCase();
-    return rows.filter((row) => {
-      const claimId = row.claimId || "";
-      const title = row.title || "";
-      const type = row.type || "";
-      return (
-        claimId.toLowerCase().includes(q) ||
-        title.toLowerCase().includes(q) ||
-        type.toLowerCase().includes(q)
-      );
-    });
-  }, [rows, search]);
-
-  const columns = React.useMemo<ColumnDef<ContractClaimDTO>[]>(
-    () => [
-      { accessorKey: "claimId", header: "Claim ID" },
-      { accessorKey: "title", header: "Claim Title" },
-      {
-        accessorKey: "type",
-        header: "Type",
-        cell: ({ getValue }) => getValue<string>() || "-",
-      },
-      {
-        id: "impact",
-        header: "Impact",
-        cell: ({ row }) => (
-          <span className="font-semibold text-slate-900">
-            {formatImpact(row.original)}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "createdAt",
-        header: "Submitted",
-        cell: ({ row }) => {
-          const raw = row.original as any;
-          return formatDate(raw?.createdAt);
-        },
-      },
-      {
-        accessorKey: "status",
-        header: "Status",
-        cell: ({ getValue }) => {
-          const status = getValue<string>() || "pending";
-          const label =
-            status.toLowerCase() === "pending" ? "Under Review" : status;
-          return (
-            <Badge
-              variant="secondary"
-              className={cn(
-                "rounded-full border-none px-4 py-1 font-semibold",
-                statusTone(status),
-              )}
-            >
-              {label}
-            </Badge>
-          );
-        },
-      },
-      {
-        id: "actions",
-        header: "Actions",
-        cell: ({ row }) => (
-          <MSAClaimDetailsSheet
-            claimId={row.original.claimId}
-            contractId={contractId}
-            roleBasePath={claimsPath}
-          >
-            <Button
-              variant="link"
-              className="h-auto p-0 font-semibold text-[#43A047] hover:no-underline"
-            >
-              View
-            </Button>
-          </MSAClaimDetailsSheet>
-        ),
-      },
-    ],
-    [],
+  // Manager Send-for-Approval (time-impact claims) needs the MSA-specific
+  // approver-assign URL. Plural `msa-contracts` + plural `claims` for
+  // manager per BE spec — see msa-contracts-plural-invoice-approve-quirk
+  // (third family) and msa-url-routing-bug-classes Class 4.
+  const claimAssignUrlBuilder = React.useCallback(
+    (claimId: string) =>
+      `/contract/manager/msa-contracts/${contractId}/claims/${claimId}/approvers`,
+    [contractId],
   );
 
   return (
@@ -305,47 +198,16 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
 
       <ClaimsStatsCards stats={statsRes?.data} isLoading={isStatsLoading} />
 
-      <DataTable<ContractClaimDTO>
-        data={filteredRows}
-        columns={columns}
-        options={{
-          disableSelection: true,
-          isLoading: isClaimsLoading,
-          manualPagination: true,
-          pagination,
-          setPagination,
-          totalCounts: totalCount,
-        }}
-        header={() => (
-          <div className="flex items-center gap-4 border-b border-[#E9E9EB] w-full dark:border-slate-800 px-6 py-4">
-            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">Claims</div>
-            <div className="relative w-[320px]">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search changes"
-                className="h-12 rounded-lg border border-[#E5E7EB] dark:border-slate-700 dark:bg-slate-900 pl-9 text-sm text-[#0F0F0F] dark:text-slate-100 placeholder:text-[#6B6B6B] dark:placeholder:text-slate-500"
-              />
-            </div>
-          </div>
-        )}
-        classNames={{
-          container:
-            "overflow-hidden rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900",
-          table: "border-spacing-y-0",
-          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
-          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
-          tBody: "bg-white dark:bg-slate-900",
-          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
-          tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467] dark:text-indigo-300",
-          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
-        }}
-        emptyPlaceholder={
-          <div className="px-6 py-8 text-sm text-slate-500">
-            No claims found.
-          </div>
-        }
+      <ClaimsTable
+        contractId={contractId}
+        basePath={claimsPath}
+        rows={rows}
+        isLoading={isClaimsLoading}
+        totalCount={totalCount}
+        pagination={pagination}
+        setPagination={setPagination}
+        listInvalidateQueryKey={["msa-claims"]}
+        claimAssignUrlBuilder={claimAssignUrlBuilder}
       />
     </TabsContent>
   );
