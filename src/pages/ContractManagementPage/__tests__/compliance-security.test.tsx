@@ -182,7 +182,7 @@ describe("Compliance & Security", () => {
           data={
             {
               details: {
-                policyStatus: { status: "submitted" },
+                policyStatus: { status: "submitted", files: [{ name: "policy.pdf" }] },
                 securityStatus: { status: "submitted" },
               },
               policy: [],
@@ -212,7 +212,7 @@ describe("Compliance & Security", () => {
           data={
             {
               details: {
-                policyStatus: { status: "submitted" },
+                policyStatus: { status: "submitted", files: [{ name: "policy.pdf" }] },
                 securityStatus: { status: "submitted" },
               },
               policy: [],

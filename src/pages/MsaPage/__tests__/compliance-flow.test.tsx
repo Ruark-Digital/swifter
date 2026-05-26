@@ -25,6 +25,10 @@ vi.mock("@/hooks/useUserRole", () => {
   };
 });
 
+vi.mock("@/hooks/useUserQueryKey", () => ({
+  useUserQueryKey: (key: unknown[]) => key,
+}));
+
 vi.mock("@/lib/axiosInstance", () => {
   return {
     getRequest: (...args: any[]) => getRequestMock(...args),
@@ -63,7 +67,7 @@ describe("MSA Compliance flow", () => {
       isViewOnly: false,
     };
 
-    getRequestMock.mockResolvedValueOnce({
+    getRequestMock.mockResolvedValue({
       data: {
         data: {
           details: {
@@ -76,7 +80,9 @@ describe("MSA Compliance flow", () => {
       },
     });
 
-    const queryClient = new QueryClient();
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
     render(
       <QueryClientProvider client={queryClient}>
         <Tabs value="compliance" onValueChange={() => {}}>
@@ -111,7 +117,7 @@ describe("MSA Compliance flow", () => {
       isViewOnly: false,
     };
 
-    getRequestMock.mockResolvedValueOnce({
+    getRequestMock.mockResolvedValue({
       data: {
         data: {
           details: {
@@ -124,7 +130,9 @@ describe("MSA Compliance flow", () => {
       },
     });
 
-    const queryClient = new QueryClient();
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
     render(
       <QueryClientProvider client={queryClient}>
         <Tabs value="compliance" onValueChange={() => {}}>
@@ -164,11 +172,11 @@ describe("MSA Compliance flow", () => {
       isViewOnly: false,
     };
 
-    getRequestMock.mockResolvedValueOnce({
+    getRequestMock.mockResolvedValue({
       data: {
         data: {
           details: {
-            policyStatus: { status: "submitted" },
+            policyStatus: { status: "submitted", files: [{ name: "policy.pdf" }] },
             securityStatus: { status: "submitted" },
           },
           policy: [],
@@ -177,7 +185,9 @@ describe("MSA Compliance flow", () => {
       },
     });
 
-    const queryClient = new QueryClient();
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
     render(
       <QueryClientProvider client={queryClient}>
         <Tabs value="compliance" onValueChange={() => {}}>

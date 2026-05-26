@@ -1,6 +1,6 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { TabsContent } from "@/components/ui/tabs";
 import { DataTable } from "@/components/layouts/DataTable";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1089,6 +1089,10 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   const lastErrorRef = React.useRef<{ stats?: unknown; list?: unknown }>({});
   const [search, setSearch] = React.useState("");
   const [filterTab, setFilterTab] = React.useState<FilterTab>("all");
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   const basePath = React.useMemo(() => {
     if (isManager || isAdmin) return `/contract/manager/msa-contract/${contractId}/rfi`;
@@ -1108,13 +1112,22 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   ]);
 
   const statsPath = `${basePath}/stats`;
-  const listQueryKey = useUserQueryKey(["msa-rfi-list", contractId, basePath]);
+  const listQueryKey = useUserQueryKey([
+    "msa-rfi-list",
+    contractId,
+    pagination.pageIndex,
+    pagination.pageSize,
+    basePath,
+  ]);
   const statsQueryKey = useUserQueryKey(["msa-rfi-stats", contractId, statsPath]);
 
   const { data: listRes, isLoading: isListLoading, error: listError } = useQuery({
     queryKey: listQueryKey,
     queryFn: async () => {
-      const query: ManagerListRfisQuery = { page: 1, limit: 10 };
+      const query: ManagerListRfisQuery = {
+        page: pagination.pageIndex + 1,
+        limit: pagination.pageSize,
+      };
       const params = new URLSearchParams();
       if (query.page) params.append("page", String(query.page));
       if (query.limit) params.append("limit", String(query.limit));
@@ -1374,7 +1387,10 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
         columns={columns}
         options={{
           disableSelection: true,
-          disablePagination: true,
+          manualPagination: true,
+          totalCounts: totalCount,
+          pagination,
+          setPagination,
           isLoading: isListLoading,
         }}
         header={() => (
