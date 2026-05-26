@@ -54,6 +54,8 @@ type Props = {
   setPagination: OnChangeFn<PaginationState>;
   contractId: string;
   basePath: string;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
 };
 
 type NcrDetailsSheetProps = {
@@ -61,6 +63,8 @@ type NcrDetailsSheetProps = {
   contractId: string;
   ncrId: string;
   basePath: string;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
 };
 
 export interface NcrDetailsResponse {
@@ -162,6 +166,8 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
   contractId,
   ncrId,
   basePath,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
 }) => {
   const [open, setOpen] = React.useState(false);
   const [viewerOpen, setViewerOpen] = React.useState(false);
@@ -247,7 +253,19 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
   };
 
   const invalidateNcrQueries = () => {
-    queryClient.invalidateQueries({ queryKey: ["contractNcrs"] });
+    if (listInvalidateQueryKey || statsInvalidateQueryKey) {
+      if (listInvalidateQueryKey) {
+        queryClient.invalidateQueries({ queryKey: listInvalidateQueryKey });
+      }
+      if (statsInvalidateQueryKey) {
+        queryClient.invalidateQueries({ queryKey: statsInvalidateQueryKey });
+      }
+    } else {
+      // Fallback: wide-cast position-0 prefix preserves Contract callers
+      // that haven't migrated to explicit props. Won't match MSA's
+      // `["msaNcrs", ...]` keys — those callers must pass props.
+      queryClient.invalidateQueries({ queryKey: ["contractNcrs"] });
+    }
   };
 
   const approveCapaMutation = useMutation({
@@ -499,6 +517,8 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                 ncrId={ncrId}
                 ncrTitle={title}
                 basePath={basePath}
+                listInvalidateQueryKey={listInvalidateQueryKey}
+                statsInvalidateQueryKey={statsInvalidateQueryKey}
                 trigger={
                   <Button className="flex-1 h-12 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]">
                     Submit CAPA
@@ -609,23 +629,33 @@ const columns: ColumnDef<NcrRow>[] = [
   {
     id: "actions",
     header: () => <div className="text-right">Actions</div>,
-    cell: ({ row }) => (
-      <div className="text-right">
-        <NcrDetailsSheet
-          contractId={row.original.contractId}
-          ncrId={row.original.id}
-          basePath={row.original.basePath}
-          trigger={
-            <button
-              type="button"
-              className="text-sm font-medium text-green-700 hover:underline"
-            >
-              View
-            </button>
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as
+        | {
+            listInvalidateQueryKey?: readonly unknown[];
+            statsInvalidateQueryKey?: readonly unknown[];
           }
-        />
-      </div>
-    ),
+        | undefined;
+      return (
+        <div className="text-right">
+          <NcrDetailsSheet
+            contractId={row.original.contractId}
+            ncrId={row.original.id}
+            basePath={row.original.basePath}
+            listInvalidateQueryKey={meta?.listInvalidateQueryKey}
+            statsInvalidateQueryKey={meta?.statsInvalidateQueryKey}
+            trigger={
+              <button
+                type="button"
+                className="text-sm font-medium text-green-700 hover:underline"
+              >
+                View
+              </button>
+            }
+          />
+        </div>
+      );
+    },
   },
 ];
 
@@ -645,6 +675,8 @@ const NcrTable: React.FC<Props> = ({
   setPagination,
   contractId,
   basePath,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -696,6 +728,7 @@ const NcrTable: React.FC<Props> = ({
           totalCounts: totalCount ?? filteredRows.length,
           setPagination,
           pagination,
+          meta: { listInvalidateQueryKey, statsInvalidateQueryKey },
         }}
         classNames={{
           container: "border border-[#E5E7EB] dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900",

@@ -125,7 +125,7 @@ async function mockCreateContractMeta(page: Page) {
     });
   });
 
-  await page.route("**/contract/manager/msa-contract**", async (route) => {
+  await page.route("**/contract/manager/msa-contracts**", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -648,7 +648,7 @@ test.describe("Contract Management Page (roles)", () => {
     await mockContractManagerEndpoints(page);
     await mockCreateContractMeta(page);
 
-    await page.route("**/contract/manager/msa-contract**", async (route) => {
+    await page.route("**/contract/manager/msa-contracts**", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",

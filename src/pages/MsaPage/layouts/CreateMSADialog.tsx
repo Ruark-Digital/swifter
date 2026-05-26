@@ -41,7 +41,7 @@ import Step9ReviewPublish from "../components/Step9ReviewPublish";
 type Props = {
   trigger: React.ReactNode;
   /** When set, the dialog operates in edit mode: prefills the form from
-   *  `initialValues` (the loaded MSA) and PUTs to /msa-contract/{id}
+   *  `initialValues` (the loaded MSA) and PUTs to /msa-contracts/{id}
    *  instead of POSTing to create. */
   editingMsaId?: string;
   initialValues?: Record<string, any>;
@@ -217,7 +217,7 @@ const CreateMSADialog: React.FC<Props> = ({
   const [open, setOpen] = React.useState(false);
 
   // Fetch the MSA via the dedicated edit endpoint — swagger 2.3.0
-  // `GET /manager/msa-contract/{contractId}/edit` returns "a fully
+  // `GET /manager/msa-contracts/{contractId}/edit` returns "a fully
   // populated MSA contract record with all associated data needed to
   // pre-fill the editing form". That's a different shape from the
   // read-only detail endpoint (more populated relations, the canonical
@@ -227,7 +227,7 @@ const CreateMSADialog: React.FC<Props> = ({
     queryKey: ["msa-edit-detail", editingMsaId],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/msa-contract/${editingMsaId}/edit`,
+        url: `/contract/manager/msa-contracts/${editingMsaId}/edit`,
       });
       return res.data as { data?: any };
     },
@@ -675,13 +675,13 @@ const CreateMSADialog: React.FC<Props> = ({
     mutationFn: async (payload: any) => {
       if (isEditing && editingMsaId) {
         const res = await putRequest({
-          url: `/contract/manager/msa-contract/${editingMsaId}`,
+          url: `/contract/manager/msa-contracts/${editingMsaId}`,
           payload,
         });
         return res.data;
       }
       const res = await postRequest({
-        url: "/contract/manager/msa-contract",
+        url: "/contract/manager/msa-contracts",
         payload,
       });
       return res.data;
@@ -874,7 +874,7 @@ const CreateMSADialog: React.FC<Props> = ({
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-12 px-10 rounded-xl bg-slate-300"
+                  className="h-12 px-10 rounded-xl bg-slate-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-600"
                   onClick={() => setStep(step - 1)}
                 >
                   Back
@@ -1009,18 +1009,18 @@ const SendForApprovalDialog = React.memo(
         <DialogContent className="sm:max-w-2xl">
           <div className=" space-y-6">
             <div className="flex items-center justify-between">
-              <p className="text-xl font-semibold text-slate-900">
+              <p className="text-xl font-semibold text-slate-900 dark:text-slate-100">
                 Send for Approval
               </p>
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-900">
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                 Select Approvers For Contract Execution
               </p>
               <div className="relative">
                 <select
-                  className="w-full h-12 border border-gray-300 rounded-lg px-4 pr-10 text-sm text-slate-700 focus:border-[#2A4467] focus:ring-[#2A4467]"
+                  className="w-full h-12 border border-gray-300 dark:border-slate-700 rounded-lg px-4 pr-10 text-sm text-slate-700 dark:text-slate-300 focus:border-[#2A4467] focus:ring-[#2A4467]"
                   value={selectedApprovalGroup}
                   onChange={(event) =>
                     setSelectedApprovalGroup(event.target.value)
@@ -1036,15 +1036,15 @@ const SendForApprovalDialog = React.memo(
               </div>
             </div>
 
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
-              <div className="grid grid-cols-[1fr_160px_140px] bg-slate-50 px-6 py-2 text-sm font-semibold text-[#2A4467]">
+            <div className="border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
+              <div className="grid grid-cols-[1fr_160px_140px] bg-slate-50 dark:bg-slate-800/60 px-6 py-2 text-sm font-semibold text-[#2A4467] dark:text-blue-300">
                 <p>Group</p>
                 <p className="text-center">Role</p>
                 <p className="text-center">Action</p>
               </div>
-              <div className="divide-y divide-gray-300">
+              <div className="divide-y divide-gray-300 dark:divide-slate-700">
                 {selectedApprovers.length === 0 && (
-                  <div className="px-6 py-6 text-sm text-slate-500">
+                  <div className="px-6 py-6 text-sm text-slate-500 dark:text-slate-400">
                     No approvers added for this group
                   </div>
                 )}
@@ -1067,14 +1067,14 @@ const SendForApprovalDialog = React.memo(
                       className="grid grid-cols-[1fr_160px_140px] items-center px-6 py-4"
                     >
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold text-slate-700">
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                           {name}
                         </p>
                         {email && (
                           <p className="text-xs text-blue-600 ">{email}</p>
                         )}
                       </div>
-                      <p className="text-sm text-slate-600 text-center">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
                         {role}
                       </p>
                       <div className="flex items-center justify-center gap-2">
@@ -1084,7 +1084,7 @@ const SendForApprovalDialog = React.memo(
                             toggleApprover(approverId, Boolean(checked))
                           }
                         />
-                        <span className="text-sm text-slate-700">Assign</span>
+                        <span className="text-sm text-slate-700 dark:text-slate-300">Assign</span>
                       </div>
                     </div>
                   );
@@ -1093,12 +1093,12 @@ const SendForApprovalDialog = React.memo(
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-900">
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                 Assigned Approvers
               </p>
-              <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-slate-50 px-4 py-4">
+              <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-4">
                 {assignedApprovers.length === 0 && (
-                  <p className="text-sm text-slate-500">Search</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Search</p>
                 )}
                 {assignedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
@@ -1110,13 +1110,13 @@ const SendForApprovalDialog = React.memo(
                   return (
                     <div
                       key={approverId}
-                      className="flex items-center gap-2 rounded-md bg-[#2A44671A] px-2 py-1 text-xs font-semibold text-[#2A4467]"
+                      className="flex items-center gap-2 rounded-md bg-[#2A44671A] dark:bg-blue-900/30 px-2 py-1 text-xs font-semibold text-[#2A4467] dark:text-blue-300"
                     >
                       <span>{name}</span>
                       <button
                         type="button"
                         onClick={() => toggleApprover(approverId, false)}
-                        className="text-[#2A4467]"
+                        className="text-[#2A4467] dark:text-blue-300"
                       >
                         <X className="h-3 w-3" />
                       </button>

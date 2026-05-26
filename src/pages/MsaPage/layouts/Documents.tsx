@@ -60,7 +60,7 @@ const Documents: React.FC<DocumentsProps> = ({
     queryKey: documentsQueryKey,
     queryFn: async () => {
       const res = await getRequest({
-        url: `${rolePrefix}/msa-contract/${contractId}`,
+        url: `${rolePrefix}/msa-contracts/${contractId}`,
       });
       return res.data as MsaDetailsApiResponse;
     },

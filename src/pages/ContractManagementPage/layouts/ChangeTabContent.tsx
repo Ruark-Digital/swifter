@@ -97,13 +97,11 @@ const ChangeTabContent: React.FC<Props> = ({
 
   const basePath = getBasePath();
 
+  const statsQueryKey = ["contractChanges", "stats", contractId, basePath] as const;
+  const listQueryKey = ["contractChanges", contractId] as const;
+
   const { data: stats, isLoading: isStatsLoading } = useQuery({
-    queryKey: [
-      "contractChanges",
-      "stats",
-      contractId,
-      basePath,
-    ],
+    queryKey: statsQueryKey,
     queryFn: async () => {
       const response = await getRequest({ url: `${basePath}/stats` });
       // Server envelope: { status, message, data: {...} }. Axios already
@@ -123,6 +121,14 @@ const ChangeTabContent: React.FC<Props> = ({
     enabled: Boolean(contractId) && !!isActive,
     staleTime: 60000,
   });
+
+  // Reused by all 5 <ChangeTable> instances below — see comments inside
+  // ChangeDetailsSheet for the trap class this closes (memory
+  // [[feedback-shared-component-hidden-invalidation-keys]]).
+  const tableInvalidationProps = {
+    listInvalidateQueryKey: listQueryKey,
+    statsInvalidateQueryKey: statsQueryKey,
+  } as const;
 
   const { data: changesRes, isLoading: isChangesLoading } = useQuery({
     queryKey: [
@@ -255,6 +261,7 @@ const ChangeTabContent: React.FC<Props> = ({
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            {...tableInvalidationProps}
           />
         </TabsContent>
         <TabsContent value="requests">
@@ -267,6 +274,7 @@ const ChangeTabContent: React.FC<Props> = ({
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            {...tableInvalidationProps}
           />
         </TabsContent>
         <TabsContent value="orders">
@@ -278,6 +286,7 @@ const ChangeTabContent: React.FC<Props> = ({
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            {...tableInvalidationProps}
           />
         </TabsContent>
         <TabsContent value="directive">
@@ -289,6 +298,7 @@ const ChangeTabContent: React.FC<Props> = ({
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            {...tableInvalidationProps}
           />
         </TabsContent>
         <TabsContent value="proposal">
@@ -301,6 +311,7 @@ const ChangeTabContent: React.FC<Props> = ({
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            {...tableInvalidationProps}
           />
         </TabsContent>
       </Tabs>

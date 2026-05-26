@@ -58,15 +58,14 @@ const DeliverablesTabContent: React.FC = () => {
 
   const basePath = getBasePath();
 
+  const listQueryKey = ["deliverables", contractId, basePath] as const;
+  const statsQueryKey = ["deliverables-stats", contractId, basePath] as const;
+
   const {
     data: listRes,
     isLoading: listLoading,
   } = useQuery({
-    queryKey: [
-      "deliverables",
-      contractId,
-      basePath
-    ],
+    queryKey: listQueryKey,
     queryFn: async () => {
       const res = await getRequest({
         url: basePath,
@@ -81,11 +80,7 @@ const DeliverablesTabContent: React.FC = () => {
     data: statsRes,
     isLoading: statsLoading,
   } = useQuery({
-    queryKey: [
-      "deliverables-stats",
-      contractId,
-      basePath
-    ],
+    queryKey: statsQueryKey,
     queryFn: async () => {
       const res = await getRequest({
         url: `${basePath}/stats`,
@@ -169,6 +164,9 @@ const DeliverablesTabContent: React.FC = () => {
         isApprover={isApprover}
         isContractManager={isManager}
         basePath={basePath}
+        listInvalidateQueryKey={listQueryKey}
+        statsInvalidateQueryKey={statsQueryKey}
+        personnelPath={`/contract/vendor/contracts/${contractId ?? ""}/personnel`}
       />
     </TabsContent>
   );

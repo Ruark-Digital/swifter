@@ -45,7 +45,7 @@ The repo convention (per `feedback_role_guards.md`) is **PM = vendor for contrac
 - `src/pages/MsaPage/layouts/Rfi.tsx:149-165` correctly branches manager/approver/vendor/user. The MSA-RFI personnel-endpoint bug referenced in the prompt appears to be **addressed**.
 
 ### 2.3 Audit other MSA dialogs for the same pattern
-- `src/pages/MsaPage/layouts/Claims.tsx`, `MsaPage/layouts/Invoice.tsx`, `MsaPage/layouts/ChangeManagement.tsx`, `MsaPage/layouts/Compliance.tsx`, `MsaPage/layouts/Amendments.tsx` all use `/contract/vendor/msa-contract/...` for vendor/PM and `/contract/manager/...` elsewhere — pattern matches Rfi.tsx, no findings.
+- `src/pages/MsaPage/layouts/Claims.tsx`, `MsaPage/layouts/Invoice.tsx`, `MsaPage/layouts/ChangeManagement.tsx`, `MsaPage/layouts/Compliance.tsx`, `MsaPage/layouts/Amendments.tsx` all use `/contract/vendor/msa-contracts/...` for vendor/PM and `/contract/manager/...` elsewhere — pattern matches Rfi.tsx, no findings.
 - **Open audit item:** `MsaPage/components/MSAClaimDetailsSheet.tsx`, `MsaPage/layouts/PaymentSummary.tsx`, `MsaPage/layouts/Documents.tsx` — verify any sub-dialog that fetches personnel/approvers list uses the role-aware base path, not a hard-coded `/contract/manager/personnel`. (Severity: medium until verified.)
 
 ---
@@ -151,7 +151,7 @@ Inline styles beat `dark:` Tailwind variants by specificity. Anywhere the inline
 
 ### 8.1 MSA detail page reads `_id` (verify)
 - File: `src/pages/MsaPage/MsaDetailPage.tsx:517`
-- Code: `` `/contract/vendor/msa-contract/${msa?._id ?? ""}/approve` ``
+- Code: `` `/contract/vendor/msa-contracts/${msa?._id ?? ""}/approve` ``
 - Per `project_msa_list_id_shape.md`, the MSA **list** endpoint returns `id`, not `_id`. If `MsaDetailPage` is reached via row-click that stores the list item directly, `_id` will be `undefined`. Verify the detail page is reached via route param (`id`), not via list-item state.
 - Severity: medium until verified.
 

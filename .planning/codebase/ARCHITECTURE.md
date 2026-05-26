@@ -178,7 +178,7 @@ Page-level API modules (e.g. `src/pages/ContractManagementPage/api/{contractMana
 - **Auth persisted under `localStorage["auth"]`:** Reading or mutating this key outside `authSlice.ts` is forbidden — `useUserRole` is the only sanctioned reader.
 - **Role prefix discipline:** Never call a role's endpoint from another role's UI branch. Always pick the API module via `useUserRole()` flags.
 - **PM ≡ Vendor in contract domain:** Any contract-side guard that checks `isVendor` must also include `isProjectManager` (helper `isContractVendorLike`). See memory `project_contract_role_guards`.
-- **MSA list keys on `id`, not `_id`:** `/contract/msa-contract` returns `id`; row mapping must `id ?? _id ?? ""`. Memory `project_msa_list_id_shape`.
+- **MSA list keys on `id`, not `_id`:** `/contract/msa-contracts` returns `id`; row mapping must `id ?? _id ?? ""`. Memory `project_msa_list_id_shape`.
 - **File size from upload must be the server-returned string:** Use `res.data.data[0].size`, not `file.size`. Memory `feedback_file_size_string`.
 
 ## Anti-Patterns

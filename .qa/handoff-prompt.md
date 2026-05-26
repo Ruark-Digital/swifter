@@ -9,7 +9,7 @@ If the seeded test accounts have no contracts (the blocker that stopped the prev
 The CollaborationToolPage at `src/pages/CollaborationToolPage/` was just modified to wire three new pieces of the v2.3.0 swagger API:
 
 1. **Comments API** — new `collab/useFileComments.ts` (GET/POST `/file-comment/{fileId}` with rich-metadata JSON sentinel inside the `text` field).
-2. **Redline-suggestion API** — `collab/useAiRedlineSuggestions.ts` rewritten to be role-aware (manager/approver/vendor/user) and support both contract + msa-contract, parsing the new swagger response shape `{ summary, riskLevel, overallSuggestion, redlineAnalysis: [{redlineId, assessment, suggestion, riskLevel}] }`.
+2. **Redline-suggestion API** — `collab/useAiRedlineSuggestions.ts` rewritten to be role-aware (manager/approver/vendor/user) and support both contract + msa-contracts, parsing the new swagger response shape `{ summary, riskLevel, overallSuggestion, redlineAnalysis: [{redlineId, assessment, suggestion, riskLevel}] }`.
 3. **WebSocket handshake** — `collab/useYooptaYjs.ts` now forwards `token` + explicit `doc` query via y-websocket's `params` option (per swagger `/collab?doc=...&token=...` spec), avoiding the previous double-`?` URL mutation bug.
 
 Also touched:

@@ -62,6 +62,9 @@ type AmendmentDetailsSheetProps = {
     AmendmentRow,
     "amendmentTitle" | "amendmentId" | "vendorStatus" | "status"
   >;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+  approverPoolPath?: string;
 };
 
 const LabelRow = ({
@@ -289,7 +292,19 @@ const AssignApprovalDialog: React.FC<{
   basePath: string;
   amendmentId: string;
   onAssigned: () => void;
-}> = ({ trigger, contractId, basePath, amendmentId, onAssigned }) => {
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+  approverPoolPath?: string;
+}> = ({
+  trigger,
+  contractId,
+  basePath,
+  amendmentId,
+  onAssigned,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+  approverPoolPath,
+}) => {
   const [open, setOpen] = React.useState(false);
   const [selectedGroup, setSelectedGroup] = React.useState<string>("");
   const [search, setSearch] = React.useState("");
@@ -297,12 +312,13 @@ const AssignApprovalDialog: React.FC<{
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
+  const resolvedApproverPoolPath =
+    approverPoolPath ?? `/contract/manager/contracts/${contractId}/approvers`;
+
   const { data, isLoading } = useQuery<PersonnelApiResponse>({
-    queryKey: ["contract-approvers", contractId],
+    queryKey: ["contract-approvers", contractId, resolvedApproverPoolPath],
     queryFn: async () => {
-      const res = await getRequest({
-        url: `/contract/manager/contracts/${contractId}/approvers`,
-      });
+      const res = await getRequest({ url: resolvedApproverPoolPath });
       return res.data as PersonnelApiResponse;
     },
     enabled: open,
@@ -369,10 +385,16 @@ const AssignApprovalDialog: React.FC<{
     onSuccess: () => {
       toast.success("Success", "Approvers assigned successfully");
       queryClient.invalidateQueries({
-        queryKey: ["contract-amendments", contractId, basePath],
+        queryKey:
+          listInvalidateQueryKey ?? ["contract-amendments", contractId, basePath],
       });
       queryClient.invalidateQueries({
-        queryKey: ["contract-amendments-stats", contractId, basePath],
+        queryKey:
+          statsInvalidateQueryKey ?? [
+            "contract-amendments-stats",
+            contractId,
+            basePath,
+          ],
       });
       onAssigned();
       setOpen(false);
@@ -562,6 +584,9 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   basePath,
   amendmentId,
   summary,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+  approverPoolPath,
 }) => {
   const [open, setOpen] = React.useState(false);
   const [acceptOpen, setAcceptOpen] = React.useState(false);
@@ -645,10 +670,16 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({
-      queryKey: ["contract-amendments", contractId, basePath],
+      queryKey:
+        listInvalidateQueryKey ?? ["contract-amendments", contractId, basePath],
     });
     queryClient.invalidateQueries({
-      queryKey: ["contract-amendments-stats", contractId, basePath],
+      queryKey:
+        statsInvalidateQueryKey ?? [
+          "contract-amendments-stats",
+          contractId,
+          basePath,
+        ],
     });
     queryClient.invalidateQueries({ queryKey: detailQueryKey });
   };
@@ -973,18 +1004,6 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                 )}
             </TabsContent>
 
-            {/* Edit Submission appears for vendor on rejected 'Other Combination' */}
-            {isContractVendorLike && isOtherCombination && vendorRejected && (
-              <div className="px-6 pb-6">
-                <button
-                  type="button"
-                  className="w-full rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-[14px] text-base font-semibold text-[#2A4467] dark:text-blue-300 dark:border-slate-700 dark:bg-slate-800"
-                >
-                  Edit Submission
-                </button>
-              </div>
-            )}
-
             <TabsContent value="comments" className="space-y-4">
               <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
                 No comments yet.
@@ -1128,8 +1147,14 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
             For cost / time_cost / others, the manager decides directly
             elsewhere; Assign Approval is the time-impact routing step
             and only appears once the vendor has accepted. Hidden once
-            approvers are assigned. */}
-        {isManager && !hasApprovals && isTimeImpact && vendorAccepted && (
+            approvers are assigned — BE signals this with
+            `assignApprover: true` even when the `approvers[]` array
+            isn't populated in the response, so check both. */}
+        {isManager &&
+          !detail?.assignApprover &&
+          !hasApprovals &&
+          isTimeImpact &&
+          vendorAccepted && (
           <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 p-6">
             <div className="flex justify-end">
               <AssignApprovalDialog
@@ -1137,6 +1162,9 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                 basePath={basePath}
                 amendmentId={amendmentId}
                 onAssigned={invalidateAll}
+                listInvalidateQueryKey={listInvalidateQueryKey}
+                statsInvalidateQueryKey={statsInvalidateQueryKey}
+                approverPoolPath={approverPoolPath}
                 trigger={
                   <button
                     type="button"
@@ -1159,6 +1187,9 @@ type Props = {
   isLoading?: boolean;
   contractId: string;
   basePath: string;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+  approverPoolPath?: string;
 };
 
 const AmendmentsTable: React.FC<Props> = ({
@@ -1166,6 +1197,9 @@ const AmendmentsTable: React.FC<Props> = ({
   isLoading,
   contractId,
   basePath,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+  approverPoolPath,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -1235,6 +1269,9 @@ const AmendmentsTable: React.FC<Props> = ({
                 vendorStatus: row.original.vendorStatus,
                 status: row.original.status,
               }}
+              listInvalidateQueryKey={listInvalidateQueryKey}
+              statsInvalidateQueryKey={statsInvalidateQueryKey}
+              approverPoolPath={approverPoolPath}
               trigger={
                 <button
                   type="button"
@@ -1248,7 +1285,13 @@ const AmendmentsTable: React.FC<Props> = ({
         ),
       },
     ],
-    [contractId, basePath],
+    [
+      contractId,
+      basePath,
+      listInvalidateQueryKey,
+      statsInvalidateQueryKey,
+      approverPoolPath,
+    ],
   );
 
   const filteredRows = React.useMemo(() => {

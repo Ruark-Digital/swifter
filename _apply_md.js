@@ -47,18 +47,18 @@ replace(
 
 // 4. Approver MSA — remove compliance, add LEMs + AI
 replace(
-  "| `GET`  | `/approver/msa-contract/{contractId}/compliance`           | Get MSA contract compliance details |\n",
+  "| `GET`  | `/approver/msa-contracts/{contractId}/compliance`           | Get MSA contract compliance details |\n",
   "",
   'approver msa compliance row'
 );
 replace(
-  "| `POST` | `/approver/msa-contract/{dataId}/rfi/{rfiId}/response`     | Create RFI response |\n\n***\n\n## 24. Approver — Dashboards",
-  "| `POST` | `/approver/msa-contract/{dataId}/rfi/{rfiId}/response`     | Create RFI response |\n" +
-  "| `GET`  | `/approver/msa-contract/{contractId}/lems`                 | List MSA contract LEMs |\n" +
-  "| `GET`  | `/approver/msa-contract/{contractId}/lems/{lemId}`         | Get MSA contract LEM details |\n" +
-  "| `POST` | `/approver/msa-contract/{contractId}/lems/{lemId}/approve` | Approve or reject a LEM |\n" +
-  "| `GET`  | `/approver/msa-contract/{contractId}/lems/{lemId}/approve/status` | Check LEM approval status |\n" +
-  "| `POST` | `/approver/msa-contract/{contractId}/ai/redline-suggestions` | Get AI redline suggestions |\n\n***\n\n## 24. Approver — Dashboards",
+  "| `POST` | `/approver/msa-contracts/{dataId}/rfi/{rfiId}/response`     | Create RFI response |\n\n***\n\n## 24. Approver — Dashboards",
+  "| `POST` | `/approver/msa-contracts/{dataId}/rfi/{rfiId}/response`     | Create RFI response |\n" +
+  "| `GET`  | `/approver/msa-contracts/{contractId}/lems`                 | List MSA contract LEMs |\n" +
+  "| `GET`  | `/approver/msa-contracts/{contractId}/lems/{lemId}`         | Get MSA contract LEM details |\n" +
+  "| `POST` | `/approver/msa-contracts/{contractId}/lems/{lemId}/approve` | Approve or reject a LEM |\n" +
+  "| `GET`  | `/approver/msa-contracts/{contractId}/lems/{lemId}/approve/status` | Check LEM approval status |\n" +
+  "| `POST` | `/approver/msa-contracts/{contractId}/ai/redline-suggestions` | Get AI redline suggestions |\n\n***\n\n## 24. Approver — Dashboards",
   'approver msa additions'
 );
 
@@ -75,19 +75,19 @@ replace(
 
 // 6. Vendor MSA — add changes, LEMs, ratesheets, AI
 replace(
-  "| `POST` | `/vendor/msa-contract/{dataId}/rfi/{rfiId}/response`            | Create RFI response |\n",
-  "| `POST` | `/vendor/msa-contract/{dataId}/rfi/{rfiId}/response`            | Create RFI response |\n" +
-  "| `GET`  | `/vendor/msa-contract/{contractId}/changes/stats`               | Get MSA contract change statistics |\n" +
-  "| `GET`  | `/vendor/msa-contract/{contractId}/changes`                     | List MSA contract changes |\n" +
-  "| `GET`  | `/vendor/msa-contract/{contractId}/changes/{changeId}/comment`  | Get MSA contract change comments |\n" +
-  "| `POST` | `/vendor/msa-contract/{contractId}/changes/{changeId}/comment`  | Add a comment to an MSA contract change |\n" +
-  "| `POST` | `/vendor/msa-contract/changes/{changeId}/comment/{commentId}/reply` | Reply to an MSA contract change comment |\n" +
-  "| `GET`  | `/vendor/msa-contract/{contractId}/lems`                        | List MSA contract LEMs |\n" +
-  "| `GET`  | `/vendor/msa-contract/{contractId}/lems/{lemId}`                | Get MSA contract LEM details |\n" +
-  "| `GET`  | `/vendor/msa-contract/{contractId}/lems/{lemId}/ratesheet`      | Get rate sheet for an MSA LEM |\n" +
-  "| `GET`  | `/vendor/msa-contract/{contractId}/ratesheets`                  | List MSA contract rate sheets |\n" +
-  "| `GET`  | `/vendor/msa-contract/{contractId}/ratesheets/{rateSheetId}`    | Get MSA rate sheet detail |\n" +
-  "| `POST` | `/vendor/msa-contract/{contractId}/ai/redline-suggestions`      | Get AI redline suggestions |\n",
+  "| `POST` | `/vendor/msa-contracts/{dataId}/rfi/{rfiId}/response`            | Create RFI response |\n",
+  "| `POST` | `/vendor/msa-contracts/{dataId}/rfi/{rfiId}/response`            | Create RFI response |\n" +
+  "| `GET`  | `/vendor/msa-contracts/{contractId}/changes/stats`               | Get MSA contract change statistics |\n" +
+  "| `GET`  | `/vendor/msa-contracts/{contractId}/changes`                     | List MSA contract changes |\n" +
+  "| `GET`  | `/vendor/msa-contracts/{contractId}/changes/{changeId}/comment`  | Get MSA contract change comments |\n" +
+  "| `POST` | `/vendor/msa-contracts/{contractId}/changes/{changeId}/comment`  | Add a comment to an MSA contract change |\n" +
+  "| `POST` | `/vendor/msa-contracts/changes/{changeId}/comment/{commentId}/reply` | Reply to an MSA contract change comment |\n" +
+  "| `GET`  | `/vendor/msa-contracts/{contractId}/lems`                        | List MSA contract LEMs |\n" +
+  "| `GET`  | `/vendor/msa-contracts/{contractId}/lems/{lemId}`                | Get MSA contract LEM details |\n" +
+  "| `GET`  | `/vendor/msa-contracts/{contractId}/lems/{lemId}/ratesheet`      | Get rate sheet for an MSA LEM |\n" +
+  "| `GET`  | `/vendor/msa-contracts/{contractId}/ratesheets`                  | List MSA contract rate sheets |\n" +
+  "| `GET`  | `/vendor/msa-contracts/{contractId}/ratesheets/{rateSheetId}`    | Get MSA rate sheet detail |\n" +
+  "| `POST` | `/vendor/msa-contracts/{contractId}/ai/redline-suggestions`      | Get AI redline suggestions |\n",
   'vendor msa additions'
 );
 
@@ -97,7 +97,7 @@ replace(
   "",
   'user contracts compliance'
 );
-md = md.replace(/\| `GET`  \| `\/user\/msa-contract\/\{contractId\}\/compliance`[^\n]*\n/g, '');
+md = md.replace(/\| `GET`  \| `\/user\/msa-contracts\/\{contractId\}\/compliance`[^\n]*\n/g, '');
 
 // User contracts: add create-claim + AI
 replace(
@@ -110,11 +110,11 @@ replace(
 
 // User MSA: add LEMs + AI
 replace(
-  "| `GET`  | `/user/msa-contract/{contractId}/rfi`                                | List contract RFIs |",
-  "| `GET`  | `/user/msa-contract/{contractId}/lems`                               | List MSA contract LEMs |\n" +
-  "| `GET`  | `/user/msa-contract/{contractId}/lems/{lemId}`                       | Get MSA contract LEM details |\n" +
-  "| `POST` | `/user/msa-contract/{contractId}/ai/redline-suggestions`             | Get AI redline suggestions |\n" +
-  "| `GET`  | `/user/msa-contract/{contractId}/rfi`                                | List contract RFIs |",
+  "| `GET`  | `/user/msa-contracts/{contractId}/rfi`                                | List contract RFIs |",
+  "| `GET`  | `/user/msa-contracts/{contractId}/lems`                               | List MSA contract LEMs |\n" +
+  "| `GET`  | `/user/msa-contracts/{contractId}/lems/{lemId}`                       | Get MSA contract LEM details |\n" +
+  "| `POST` | `/user/msa-contracts/{contractId}/ai/redline-suggestions`             | Get AI redline suggestions |\n" +
+  "| `GET`  | `/user/msa-contracts/{contractId}/rfi`                                | List contract RFIs |",
   'user msa additions'
 );
 
@@ -127,8 +127,8 @@ replace(
 
 // 9. Manager MSA additions block
 replace(
-  "### POST `/manager/msa-contract` — Create MSA Contract",
-  "Additional manager MSA endpoints:\n\n| Method | Path | Description |\n| ------ | ---- | ----------- |\n| `POST` | `/manager/msa-contract/{contractId}/edit` | Edit MSA contract (post-publish) |\n| `POST` | `/manager/msa-contract/{contractId}/ai/redline-suggestions` | Get AI redline suggestions |\n| `GET`  | `/manager/msa-contract/{contractId}/lems` | List MSA contract LEMs |\n| `GET`  | `/manager/msa-contract/{contractId}/lems/{lemId}` | Get MSA contract LEM details |\n| `POST` | `/manager/msa-contract/{contractId}/lems/{lemId}/approve` | Approve or reject a LEM |\n| `GET`  | `/manager/msa-contract/{contractId}/lems/{lemId}/approve/status` | Check LEM approval status |\n| `GET`  | `/manager/msa-contract/{contractId}/lems/{lemId}/ratesheet` | Get rate sheet for an MSA LEM |\n| `GET`  | `/manager/msa-contract/{contractId}/ratesheets` | List MSA contract rate sheets |\n| `GET`  | `/manager/msa-contract/{contractId}/ratesheets/{rateSheetId}` | Get MSA rate sheet detail |\n| `POST` | `/manager/msa-contract/{contractId}/ratesheets/{rateSheetId}/approve` | Approve or reject a rate sheet |\n\n***\n\n### POST `/manager/msa-contract` — Create MSA Contract",
+  "### POST `/manager/msa-contracts` — Create MSA Contract",
+  "Additional manager MSA endpoints:\n\n| Method | Path | Description |\n| ------ | ---- | ----------- |\n| `POST` | `/manager/msa-contracts/{contractId}/edit` | Edit MSA contract (post-publish) |\n| `POST` | `/manager/msa-contracts/{contractId}/ai/redline-suggestions` | Get AI redline suggestions |\n| `GET`  | `/manager/msa-contracts/{contractId}/lems` | List MSA contract LEMs |\n| `GET`  | `/manager/msa-contracts/{contractId}/lems/{lemId}` | Get MSA contract LEM details |\n| `POST` | `/manager/msa-contracts/{contractId}/lems/{lemId}/approve` | Approve or reject a LEM |\n| `GET`  | `/manager/msa-contracts/{contractId}/lems/{lemId}/approve/status` | Check LEM approval status |\n| `GET`  | `/manager/msa-contracts/{contractId}/lems/{lemId}/ratesheet` | Get rate sheet for an MSA LEM |\n| `GET`  | `/manager/msa-contracts/{contractId}/ratesheets` | List MSA contract rate sheets |\n| `GET`  | `/manager/msa-contracts/{contractId}/ratesheets/{rateSheetId}` | Get MSA rate sheet detail |\n| `POST` | `/manager/msa-contracts/{contractId}/ratesheets/{rateSheetId}/approve` | Approve or reject a rate sheet |\n\n***\n\n### POST `/manager/msa-contracts` — Create MSA Contract",
   'manager msa additions'
 );
 

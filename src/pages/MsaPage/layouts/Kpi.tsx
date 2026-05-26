@@ -21,7 +21,7 @@ const Kpi: React.FC<Props> = ({ contractId, isActive }) => {
   const lastErrorRef = React.useRef<unknown>(null);
   const canManageKpi = isManager || isAdmin;
   const basePath = canManageKpi
-    ? `/contract/manager/msa-contract/${contractId}/kpis`
+    ? `/contract/manager/msa-contracts/${contractId}/kpis`
     : undefined;
   const queryKey = useUserQueryKey(["msa-kpis", contractId, basePath || "none"]);
 

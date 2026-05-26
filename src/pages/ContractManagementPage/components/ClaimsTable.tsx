@@ -96,19 +96,33 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
     header: "Actions",
     cell: ({ row, table }) => {
       const [sheetOpen, setSheetOpen] = React.useState(false);
-      const contractId = (table.options.meta as any)?.contractId ?? "";
-      const basePath = (table.options.meta as any)?.basePath ?? "";
-      
+      const meta = table.options.meta as
+        | {
+            contractId?: string;
+            basePath?: string;
+            listInvalidateQueryKey?: readonly unknown[];
+            statsInvalidateQueryKey?: readonly unknown[];
+            claimAssignUrlBuilder?: (claimId: string) => string;
+          }
+        | undefined;
+      const contractId = meta?.contractId ?? "";
+      const basePath = meta?.basePath ?? "";
+      const claimId = row.original.claimId || row.original._id || "";
+      const claimAssignUrl = meta?.claimAssignUrlBuilder?.(claimId);
+
       return (
         <>
           <ChangeDetailsSheet
             open={sheetOpen}
             onOpenChange={setSheetOpen}
-            changeId={row.original.claimId || row.original._id || ""}
+            changeId={claimId}
             contractId={contractId}
             basePath={basePath}
+            listInvalidateQueryKey={meta?.listInvalidateQueryKey}
+            statsInvalidateQueryKey={meta?.statsInvalidateQueryKey}
+            claimAssignUrl={claimAssignUrl}
           />
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">⋮</Button>
@@ -133,6 +147,9 @@ type ClaimsTableProps = {
   totalCount?: number;
   pagination: PaginationState;
   setPagination: React.Dispatch<React.SetStateAction<PaginationState>>;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+  claimAssignUrlBuilder?: (claimId: string) => string;
 };
 
 const ClaimsTable: React.FC<ClaimsTableProps> = ({
@@ -143,6 +160,9 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
   totalCount,
   pagination,
   setPagination,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+  claimAssignUrlBuilder,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -198,7 +218,13 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
           manualPagination: true,
           pagination,
           setPagination,
-          meta: { contractId, basePath },
+          meta: {
+            contractId,
+            basePath,
+            listInvalidateQueryKey,
+            statsInvalidateQueryKey,
+            claimAssignUrlBuilder,
+          },
         }}
       />
     </div>
