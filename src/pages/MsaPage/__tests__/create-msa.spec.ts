@@ -196,7 +196,7 @@ test.describe("Create MSA (API integration)", () => {
       }
 
       if (
-        url.includes("/contract/manager/msa-contract") &&
+        url.includes("/contract/manager/msa-contracts") &&
         route.request().method() === "POST"
       ) {
         const body = route.request().postDataJSON() as any;
@@ -353,7 +353,7 @@ test.describe("Create MSA (API integration)", () => {
 
     const createRequest = page.waitForRequest(
       (req) =>
-        req.url().includes("/contract/manager/msa-contract") &&
+        req.url().includes("/contract/manager/msa-contracts") &&
         req.method() === "POST",
       { timeout: 15000 },
     );
@@ -491,7 +491,7 @@ test.describe("Create MSA (API integration)", () => {
     await expect(page.getByRole("button", { name: "Publish" })).toBeVisible();
 
     let slowFulfill = false;
-    await page.route("**/contract/manager/msa-contract", async (route) => {
+    await page.route("**/contract/manager/msa-contracts", async (route) => {
       if (route.request().method() === "POST") {
         if (!slowFulfill) {
           slowFulfill = true;

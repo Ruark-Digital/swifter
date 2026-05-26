@@ -122,6 +122,9 @@ type DeliverableDetailsSheetProps = {
   isApprover?: boolean;
   isContractManager?: boolean;
   basePath: string;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+  personnelPath?: string;
 };
 
 const LabelRow = ({
@@ -190,15 +193,29 @@ const SubmitDeliverableDialog: React.FC<{
   contractId: string;
   deliverableId: string;
   basePath: string;
-}> = ({ trigger, contractId, deliverableId, basePath }) => {
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+  personnelPath?: string;
+}> = ({
+  trigger,
+  contractId,
+  deliverableId,
+  basePath,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+  personnelPath,
+}) => {
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
   const { data: personnelData } = useQuery({
-    queryKey: ["deliverable-personnel", contractId],
-    queryFn: async () => vendorApi.listPersonnel(contractId),
+    queryKey: ["deliverable-personnel", contractId, personnelPath ?? "default"],
+    queryFn: async () =>
+      personnelPath
+        ? getRequest({ url: personnelPath })
+        : vendorApi.listPersonnel(contractId),
     enabled: !!contractId,
     staleTime: 60000,
   });
@@ -274,10 +291,16 @@ const SubmitDeliverableDialog: React.FC<{
     onSuccess: () => {
       toast.success("Success", "Deliverable submitted successfully");
       queryClient.invalidateQueries({
-        queryKey: ["deliverables", contractId, basePath],
+        queryKey:
+          listInvalidateQueryKey ?? ["deliverables", contractId, basePath],
       });
       queryClient.invalidateQueries({
-        queryKey: ["deliverables-stats", contractId, basePath],
+        queryKey:
+          statsInvalidateQueryKey ?? [
+            "deliverables-stats",
+            contractId,
+            basePath,
+          ],
       });
       queryClient.invalidateQueries({
         queryKey: ["deliverable-detail", contractId, deliverableId, basePath],
@@ -405,6 +428,9 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   isApprover,
   isContractManager,
   basePath,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+  personnelPath,
 }) => {
   const [open, setOpen] = React.useState(false);
   const [viewerOpen, setViewerOpen] = React.useState(false);
@@ -488,10 +514,16 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
         `Deliverable ${action === "approved" ? "approved" : "rejected"} successfully`,
       );
       queryClient.invalidateQueries({
-        queryKey: ["deliverables", contractId, basePath],
+        queryKey:
+          listInvalidateQueryKey ?? ["deliverables", contractId, basePath],
       });
       queryClient.invalidateQueries({
-        queryKey: ["deliverables-stats", contractId, basePath],
+        queryKey:
+          statsInvalidateQueryKey ?? [
+            "deliverables-stats",
+            contractId,
+            basePath,
+          ],
       });
       queryClient.invalidateQueries({
         queryKey: ["deliverable-detail", contractId, deliverableId, basePath],
@@ -689,6 +721,9 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                 contractId={contractId}
                 deliverableId={deliverableId}
                 basePath={basePath}
+                listInvalidateQueryKey={listInvalidateQueryKey}
+                statsInvalidateQueryKey={statsInvalidateQueryKey}
+                personnelPath={personnelPath}
                 trigger={
                   <Button className="h-11 w-64 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
                     Submit
@@ -843,16 +878,20 @@ const columns: ColumnDef<DeliverableRow>[] = [
     id: "actions",
     header: () => <div className="text-right">Actions</div>,
     cell: ({ row, table }) => {
-      const contractId: string = (table.options.meta as any)?.contractId ?? "";
-      const basePath: string = (table.options.meta as any)?.basePath ?? "";
+      const meta = table.options.meta as any;
+      const contractId: string = meta?.contractId ?? "";
+      const basePath: string = meta?.basePath ?? "";
       return (
         <div className="text-right">
           <DeliverableDetailsSheet
             contractId={contractId}
             deliverableId={row.original.id}
-            isApprover={(table.options.meta as any)?.isApprover}
-            isContractManager={(table.options.meta as any)?.isContractManager}
+            isApprover={meta?.isApprover}
+            isContractManager={meta?.isContractManager}
             basePath={basePath}
+            listInvalidateQueryKey={meta?.listInvalidateQueryKey}
+            statsInvalidateQueryKey={meta?.statsInvalidateQueryKey}
+            personnelPath={meta?.personnelPath}
             trigger={
               <button
                 type="button"
@@ -875,6 +914,9 @@ type DeliverablesTableProps = {
   isApprover?: boolean;
   isContractManager?: boolean;
   basePath: string;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+  personnelPath?: string;
 };
 
 const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
@@ -884,6 +926,9 @@ const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
   isApprover = false,
   isContractManager = false,
   basePath,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+  personnelPath,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -935,7 +980,15 @@ const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
           setPagination: () => {},
           pagination: { pageIndex: 0, pageSize: 10 },
           isLoading: !!isLoading,
-          meta: { contractId, isApprover, isContractManager, basePath },
+          meta: {
+            contractId,
+            isApprover,
+            isContractManager,
+            basePath,
+            listInvalidateQueryKey,
+            statsInvalidateQueryKey,
+            personnelPath,
+          },
         }}
         classNames={{
           container: "border border-[#E5E7EB] dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900",

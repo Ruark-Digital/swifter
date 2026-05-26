@@ -50,7 +50,10 @@ type SavingsRealizedRow = {
   dateSubmitted: string;
 };
 
-const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
+const buildHoldbackReleaseColumns = (
+  contractId: string,
+  contractType: "Contract" | "MsaContract" = "Contract",
+): ColumnDef<HoldbackReleaseRow>[] => [
   {
     accessorKey: "releaseId",
     header: "Release ID",
@@ -108,10 +111,11 @@ const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
     id: "action",
     header: () => <div className="w-[80px] text-center">Action</div>,
     cell: ({ row }) => (
-      // <div className="flex justify-center py-4">
       <HoldbackDetailsSheet
         holdBackId={row.getValue<string>("releaseId")}
         currency={row.getValue<string>("currency")}
+        contractId={contractId}
+        contractType={contractType}
         trigger={
           <button
             type="button"
@@ -121,12 +125,13 @@ const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
           </button>
         }
       />
-      // </div>
     ),
   },
 ];
 
-const savingsRealizedColumns: ColumnDef<SavingsRealizedRow>[] = [
+const buildSavingsRealizedColumns = (
+  contractId: string,
+): ColumnDef<SavingsRealizedRow>[] => [
   {
     accessorKey: "savingsId",
     header: "Savings ID",
@@ -179,6 +184,7 @@ const savingsRealizedColumns: ColumnDef<SavingsRealizedRow>[] = [
       <div className="flex w-[80px] justify-center py-4">
         <SavingsDetailsSheet
           savingId={row.getValue<string>("savingsId")}
+          contractId={contractId}
           currency={row.getValue<string>("currency")}
           trigger={
             <button
@@ -559,7 +565,8 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
   contract,
   isActive,
 }) => {
-  const { isVendor, isProjectManager, isManager, isApprover } = useUserRole();
+  const { isVendor, isProjectManager, isManager, isApprover, isViewOnly } =
+    useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
   const isPendingApproval = contract?.status === "pending_approval";
 
@@ -699,6 +706,16 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
       dateSubmitted: formatDateTZ(saving?.submittedDate, "dd MMM yyyy") ?? "-",
     }));
   }, [formatMoney, savingsResponse?.data, currency]);
+
+  const holdbackReleaseColumns = React.useMemo(
+    () => buildHoldbackReleaseColumns(contractId, "Contract"),
+    [contractId],
+  );
+
+  const savingsRealizedColumns = React.useMemo(
+    () => buildSavingsRealizedColumns(contractId),
+    [contractId],
+  );
 
   const milestoneRows = React.useMemo(() => {
     const milestones = Array.isArray(contract?.milestone)
@@ -865,12 +882,14 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
           >
             MileStones
           </TabsTrigger>
-          <TabsTrigger
-            value="holdback-release"
-            className="rounded-full px-5 py-1.5 text-base font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
-          >
-            Holdback Release
-          </TabsTrigger>
+          {!isViewOnly && (
+            <TabsTrigger
+              value="holdback-release"
+              className="rounded-full px-5 py-1.5 text-base font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            >
+              Holdback Release
+            </TabsTrigger>
+          )}
           {(isManager || isApprover) && (
             <TabsTrigger
               value="saving-realized"
@@ -902,27 +921,29 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
             )}
         </TabsContent>
 
-        <TabsContent value="holdback-release">
-          <PaymentSummaryMilestonesTable
-            title="Holdback Release"
-            rows={holdbackRows}
-            columns={holdbackReleaseColumns}
-            getRowSearchValues={(row) => [
-              row.releaseId,
-              row.releasedType,
-              row.releasedAmount,
-              row.status,
-              row.dueDate,
-            ]}
-          />
-          {!holdbacksLoading &&
-            isContractVendorLike &&
-            holdbackRows.length === 0 && (
-              <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800/60 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
-                No holdback releases available.
-              </div>
-            )}
-        </TabsContent>
+        {!isViewOnly && (
+          <TabsContent value="holdback-release">
+            <PaymentSummaryMilestonesTable
+              title="Holdback Release"
+              rows={holdbackRows}
+              columns={holdbackReleaseColumns}
+              getRowSearchValues={(row) => [
+                row.releaseId,
+                row.releasedType,
+                row.releasedAmount,
+                row.status,
+                row.dueDate,
+              ]}
+            />
+            {!holdbacksLoading &&
+              isContractVendorLike &&
+              holdbackRows.length === 0 && (
+                <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800/60 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
+                  No holdback releases available.
+                </div>
+              )}
+          </TabsContent>
+        )}
 
         {(isManager || isApprover) && (
           <TabsContent value="saving-realized">

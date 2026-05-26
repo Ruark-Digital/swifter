@@ -15,6 +15,10 @@ import { formatCurrency } from "@/lib/utils";
 type Props = {
   trigger: React.ReactNode;
   savingId?: string;
+  // Required for the manager savings detail GET, which BE scopes by parent
+  // contract: `/manager/contracts/{contractId}/payment-savings/{savingId}`.
+  // Approver detail is intentionally NOT contract-scoped per swagger.
+  contractId?: string;
   basePath?: string;
   currency?: string;
 };
@@ -33,20 +37,25 @@ type SavingsDetailDTO = {
   }>;
 };
 
-const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, basePath, currency = "USD" }) => {
+const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, contractId, basePath, currency = "USD" }) => {
   const [open, setOpen] = React.useState(false);
   const { isApprover, isManager } = useUserRole();
   const toast = useToastHandler();
 
-  // Phase 2 markdown docs only expose savings detail for manager + approver.
+  // Swagger exposes savings detail for manager + approver only.
   // Vendor/PM/view-only have no documented savings route — match the list
   // gating in `PaymentSummaryTabContent` so the URL maps stay consistent.
+  // Manager path is contract-scoped; approver path is intentionally not
+  // (swagger has `/approver/contracts/payment-savings/{savingId}` flat).
   const rolePrefix = React.useMemo(() => {
     if (basePath) return basePath;
-    if (isManager) return `/contract/manager/contracts/payment-savings`;
+    if (isManager) {
+      if (!contractId) return null;
+      return `/contract/manager/contracts/${contractId}/payment-savings`;
+    }
     if (isApprover) return `/contract/approver/contracts/payment-savings`;
     return null;
-  }, [basePath, isApprover, isManager]);
+  }, [basePath, contractId, isApprover, isManager]);
 
   const { data: detailRes, isLoading, isError, error } = useQuery<{
     message?: string;

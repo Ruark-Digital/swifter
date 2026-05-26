@@ -837,6 +837,9 @@ const AmendmentsTabContent: React.FC<Props> = ({
         isLoading={isAmendmentsLoading}
         contractId={contractId}
         basePath={basePath}
+        listInvalidateQueryKey={amendmentsQueryKey}
+        statsInvalidateQueryKey={statsQueryKey}
+        approverPoolPath={`/contract/manager/contracts/${contractId}/approvers`}
       />
     </TabsContent>
   );

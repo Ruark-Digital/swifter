@@ -180,11 +180,11 @@ const Approvers: React.FC<Props> = ({ contractId, isActive }) => {
 
   const basePath = React.useMemo(() => {
     if (isVendor || isProjectManager)
-      return `/contract/vendor/msa-contract/${contractId}`;
-    if (isApprover) return `/contract/approver/msa-contract/${contractId}`;
-    if (isViewOnly) return `/contract/user/msa-contract/${contractId}`;
-    if (isManager) return `/contract/manager/msa-contract/${contractId}`;
-    return `/contract/manager/msa-contract/${contractId}`;
+      return `/contract/vendor/msa-contracts/${contractId}`;
+    if (isApprover) return `/contract/approver/msa-contracts/${contractId}`;
+    if (isViewOnly) return `/contract/user/msa-contracts/${contractId}`;
+    if (isManager) return `/contract/manager/msa-contracts/${contractId}`;
+    return `/contract/manager/msa-contracts/${contractId}`;
   }, [
     contractId,
     isApprover,

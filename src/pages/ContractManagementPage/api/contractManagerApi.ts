@@ -913,9 +913,9 @@ export const createContractManagerApi = (
       });
       return res.data as { message?: string; data?: ContractHoldBackDTO };
     },
-    getPaymentHoldbackById: async (holdBackId: string) => {
+    getPaymentHoldbackById: async (contractId: string, holdBackId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/payment-holdbacks/${holdBackId}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/payment-holdbacks/${holdBackId}`,
       });
       return res.data as { message?: string; data?: ContractHoldBackDTO };
     },
@@ -935,9 +935,9 @@ export const createContractManagerApi = (
       });
       return res.data as { message?: string; data?: ContractSavingDTO };
     },
-    getPaymentSavingById: async (savingId: string) => {
+    getPaymentSavingById: async (contractId: string, savingId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/payment-savings/${savingId}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/payment-savings/${savingId}`,
       });
       return res.data as { message?: string; data?: ContractSavingDTO };
     },
@@ -970,7 +970,7 @@ export const createContractManagerApi = (
     ) => {
       const createPath =
         type === "MsaContract"
-          ? `/contract/manager/msa-contract/${dataId}/change/${type}`
+          ? `/contract/manager/msa-contracts/${dataId}/change/${type}`
           : `${MANAGER_CONTRACTS_PREFIX}/${dataId}/change/${type}`;
       const res = await client.post({
         url: createPath,

@@ -34,7 +34,7 @@ type SubmitLemDialogProps = {
   contractId: string;
   /** Optional override of the POST endpoint. When omitted, defaults to
    *  `vendorApi.createLem` which hits `/contract/vendor/contracts/{id}/lems`.
-   *  MSA callers pass `/contract/vendor/msa-contract/{contractId}/lems`. */
+   *  MSA callers pass `/contract/vendor/msa-contracts/{contractId}/lems`. */
   createPath?: string;
   /** Optional extra query key to invalidate after successful submission.
    *  MSA callers pass the wrapped `useUserQueryKey` list key so the MSA tab

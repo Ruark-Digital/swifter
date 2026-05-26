@@ -354,7 +354,7 @@ const Reports: React.FC<Props> = ({ contractId, isActive }) => {
           isLoading: reportsLoading,
         }}
         header={() => (
-          <div className="flex items-center gap-4 border-b border-[#E9E9EB] px-6 py-4">
+          <div className="flex items-center gap-4 border-b border-[#E9E9EB] w-full dark:border-slate-800 px-6 py-4">
             <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">Reports</div>
             <div className="relative w-[320px]">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />

@@ -354,7 +354,7 @@ const MsaDetailPage: React.FC = () => {
     isProjectManager,
     isCompanyAdmin,
   } = useUserRole();
-  const queryKey = useUserQueryKey(["msa-contract-detail", id]);
+  const queryKey = useUserQueryKey(["msa-contracts-detail", id]);
   const approveStatusQueryKey = useUserQueryKey(["msa-approve-status", id]);
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = React.useState<TabKey>("overview");
@@ -380,7 +380,7 @@ const MsaDetailPage: React.FC = () => {
             : isViewOnly
               ? "/contract/user"
               : "/contract/manager";
-      return getRequest({ url: `${base}/msa-contract/${id ?? ""}` });
+      return getRequest({ url: `${base}/msa-contracts/${id ?? ""}` });
     },
     enabled: !!id,
     staleTime: 60000,
@@ -424,7 +424,7 @@ const MsaDetailPage: React.FC = () => {
       queryKey: linkedContractsQueryKey,
       queryFn: async () => {
         return getRequest({
-          url: `/contract/manager/msa-contract/${id ?? ""}/linked-contract`,
+          url: `/contract/manager/msa-contracts/${id ?? ""}/linked-contract`,
         });
       },
       enabled:
@@ -495,7 +495,7 @@ const MsaDetailPage: React.FC = () => {
     queryKey: [approveStatusQueryKey[0], msa?._id],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/approver/msa-contract/${msa?._id ?? ""}/approve/status`,
+        url: `/contract/approver/msa-contracts/${msa?._id ?? ""}/approve/status`,
       });
       return res.data as { data?: { status?: string } };
     },
@@ -514,8 +514,8 @@ const MsaDetailPage: React.FC = () => {
     mutationFn: async (action: "approved" | "rejected") => {
       const payload = { action, comment };
       const url = canProjectManagerApprove
-        ? `/contract/vendor/msa-contract/${msa?._id ?? ""}/approve`
-        : `/contract/approver/msa-contract/${msa?._id ?? ""}/approve`;
+        ? `/contract/vendor/msa-contracts/${msa?._id ?? ""}/approve`
+        : `/contract/approver/msa-contracts/${msa?._id ?? ""}/approve`;
       const res = await postRequest({ url, payload });
       return res.data as { message?: string };
     },
@@ -764,7 +764,7 @@ const MsaDetailPage: React.FC = () => {
             <Amendments
               contractId={id ?? ""}
               isActive={activeTab === "amendments"}
-              actionsDisabled={msa?.status === "publish"}
+              actionsDisabled={msa?.status === "pending_approval"}
             />
 
             <Compliance
@@ -776,25 +776,25 @@ const MsaDetailPage: React.FC = () => {
             <ChangeManagement
               contractId={id ?? ""}
               isActive={activeTab === "change"}
-              actionsDisabled={msa?.status === "publish"}
+              actionsDisabled={msa?.status === "pending_approval"}
             />
 
             <Invoice
               contractId={id ?? ""}
               isActive={activeTab === "invoice"}
-              actionsDisabled={msa?.status === "publish"}
+              actionsDisabled={msa?.status === "pending_approval"}
             />
 
             <Claims
               contractId={id ?? ""}
               isActive={activeTab === "claims"}
-              actionsDisabled={msa?.status === "publish"}
+              actionsDisabled={msa?.status === "pending_approval"}
             />
 
             <Rfi
               contractId={id ?? ""}
               isActive={activeTab === "rfi"}
-              actionsDisabled={msa?.status === "publish"}
+              actionsDisabled={msa?.status === "pending_approval"}
             />
 
             <NcrLog

@@ -1,18 +1,19 @@
 import React from "react";
 import { TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Share2, FileText } from "lucide-react";
+import { Share2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToastHandler } from "@/hooks/useToaster";
-import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import type { ApiResponseError } from "@/types";
 import DeliverablesTable, {
   type DeliverableRow,
   type KPIDetail,
 } from "@/pages/ContractManagementPage/components/DeliverablesTable";
+import DeliverablesStatsCards, {
+  type DeliverablesStats,
+} from "@/pages/ContractManagementPage/components/DeliverablesStatsCards";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
@@ -26,45 +27,6 @@ type DeliverablesStatsData = {
   submitted?: number;
   pending?: number;
   late?: number;
-  approved?: number;
-  rejected?: number;
-  under_review?: number;
-};
-
-const toneClasses = {
-  gray: { wrap: "bg-slate-100", icon: "text-slate-700 dark:text-slate-200" },
-  green: { wrap: "bg-[#EAF7EE]", icon: "text-[#43A047]" },
-  yellow: { wrap: "bg-[#FFF8E0]", icon: "text-[#F4B400]" },
-  red: { wrap: "bg-[#FEECEC]", icon: "text-[#E53935]" },
-};
-
-const StatCard = ({
-  title,
-  value,
-  tone,
-}: {
-  title: string;
-  value: number;
-  tone: keyof typeof toneClasses;
-}) => {
-  const c = toneClasses[tone];
-  return (
-    <Card className="border-[#E5E7EB] dark:border-slate-800 rounded-xl shadow-none">
-      <CardContent className="px-6 py-5 flex items-center justify-between">
-        <div className="space-y-2">
-          <div className="text-sm text-[#6B6B6B] dark:text-slate-400 leading-5">{title}</div>
-          <div className="text-xl font-semibold leading-8 text-[#0F0F0F] dark:text-slate-100">
-            {value}
-          </div>
-        </div>
-        <div className={`h-12 w-12 rounded-full ${c.wrap} flex items-center justify-center`}>
-          <div className="h-8 w-8 rounded-full bg-white flex items-center justify-center">
-            <FileText className={`h-4 w-4 ${c.icon}`} />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
 };
 
 const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
@@ -103,20 +65,20 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
 
   // MSA-specific deliverable endpoints added in swagger v2.3.0 — same
   // shape as contract deliverables (list / stats / detail / approve /
-  // submit) but live under `/msa-contract/...` not `/contracts/...`.
+  // submit) but live under `/msa-contracts/...` not `/contracts/...`.
   // DeliverablesTable interpolates `basePath` for every action, so swapping
   // the prefix here routes the whole tab to the MSA endpoints.
   const basePath = React.useMemo(() => {
     if (!contractId) return "";
     if (isVendor || isProjectManager)
-      return `/contract/vendor/msa-contract/${contractId}/deliverables`;
+      return `/contract/vendor/msa-contracts/${contractId}/deliverables`;
     if (isApprover)
-      return `/contract/approver/msa-contract/${contractId}/deliverables`;
+      return `/contract/approver/msa-contracts/${contractId}/deliverables`;
     if (isManager || isCompanyAdminLike)
-      return `/contract/manager/msa-contract/${contractId}/deliverables`;
+      return `/contract/manager/msa-contracts/${contractId}/deliverables`;
     if (isViewOnly)
-      return `/contract/user/msa-contract/${contractId}/deliverables`;
-    return `/contract/user/msa-contract/${contractId}/deliverables`;
+      return `/contract/user/msa-contracts/${contractId}/deliverables`;
+    return `/contract/user/msa-contracts/${contractId}/deliverables`;
   }, [
     contractId,
     isApprover,
@@ -127,8 +89,8 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
     isViewOnly,
   ]);
 
-  const listQueryKey = useUserQueryKey(["msa-deliverables", contractId, basePath]);
-  const statsQueryKey = useUserQueryKey(["msa-deliverables-stats", contractId, basePath]);
+  const listQueryKey = ["msa-deliverables", contractId, basePath] as const;
+  const statsQueryKey = ["msa-deliverables-stats", contractId, basePath] as const;
 
   const { data: listRes, isLoading: listLoading, error: listError } = useQuery({
     queryKey: listQueryKey,
@@ -205,18 +167,14 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
     }));
   }, [listRes, normalizeKpi]);
 
-  const stats = React.useMemo(() => {
+  const stats = React.useMemo<DeliverablesStats>(() => {
     const payload = (statsRes as any)?.data;
     const data = payload?.data ?? payload ?? {};
-    const all = Number(data?.total ?? data?.all ?? rows.length ?? 0);
     return {
-      all,
+      all: Number(data?.total ?? data?.all ?? rows.length ?? 0),
       submitted: Number(data?.submitted ?? 0),
       pending: Number(data?.pending ?? 0),
       late: Number(data?.late ?? 0),
-      approved: Number(data?.approved ?? 0),
-      rejected: Number(data?.rejected ?? 0),
-      underReview: Number(data?.under_review ?? 0),
     };
   }, [rows.length, statsRes]);
 
@@ -237,15 +195,7 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
         </ExportReportSheet>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="All Deliverable" value={stats.all} tone="gray" />
-        <StatCard title="Submitted" value={stats.submitted} tone="green" />
-        <StatCard title="Pending Submission" value={stats.pending} tone="yellow" />
-        <StatCard title="Late Submission" value={stats.late} tone="red" />
-        <StatCard title="Approved" value={stats.approved} tone="green" />
-        <StatCard title="Rejected" value={stats.rejected} tone="red" />
-        <StatCard title="Under Review" value={stats.underReview} tone="yellow" />
-      </div>
+      <DeliverablesStatsCards stats={stats} isLoading={statsLoading} />
 
       {contractId ? (
         <DeliverablesTable
@@ -255,6 +205,9 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
           isApprover={isApprover}
           isContractManager={isManager}
           basePath={basePath}
+          listInvalidateQueryKey={listQueryKey}
+          statsInvalidateQueryKey={statsQueryKey}
+          personnelPath={`/contract/vendor/msa-contracts/${contractId}/personnel`}
         />
       ) : null}
     </TabsContent>

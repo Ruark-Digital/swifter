@@ -67,7 +67,7 @@ test.describe("Holdback Details status badge", () => {
         return;
       }
 
-      if (url.includes("/contract/manager/contracts/payment-holdbacks/HB-1")) {
+      if (url.includes("/contract/manager/contracts/c1/payment-holdbacks/HB-1")) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
