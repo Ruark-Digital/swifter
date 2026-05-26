@@ -72,12 +72,12 @@ const ChangeManagement: React.FC<Props> = ({
   });
 
   const rolePrefix = React.useMemo(() => {
-    if (isManager) return `/contract/manager/msa-contract/${contractId}`;
-    if (isApprover) return `/contract/approver/msa-contract/${contractId}`;
+    if (isManager) return `/contract/manager/msa-contracts/${contractId}`;
+    if (isApprover) return `/contract/approver/msa-contracts/${contractId}`;
     if (isVendor || isProjectManager)
-      return `/contract/vendor/msa-contract/${contractId}`;
-    if (isViewOnly) return `/contract/user/msa-contract/${contractId}`;
-    return `/contract/user/msa-contract/${contractId}`;
+      return `/contract/vendor/msa-contracts/${contractId}`;
+    if (isViewOnly) return `/contract/user/msa-contracts/${contractId}`;
+    return `/contract/user/msa-contracts/${contractId}`;
   }, [
     contractId,
     isAdmin,
@@ -245,6 +245,8 @@ const ChangeManagement: React.FC<Props> = ({
             contractId={contractId}
             changeId={row.original.changeId || (row.original as any)?._id || ""}
             basePath={listBasePath}
+            listInvalidateQueryKey={listQueryKey}
+            statsInvalidateQueryKey={statsQueryKey}
             trigger={
               <Button
                 variant="link"
@@ -257,7 +259,7 @@ const ChangeManagement: React.FC<Props> = ({
         ),
       },
     ],
-    [contractId, listBasePath],
+    [contractId, listBasePath, listQueryKey, statsQueryKey],
   );
 
   const stats = statsRes?.data;
@@ -357,7 +359,7 @@ const ChangeManagement: React.FC<Props> = ({
               totalCounts: totalCount,
             }}
             header={() => (
-              <div className="flex items-center gap-4 border-b border-[#E9E9EB] dark:border-slate-800 px-6 py-4">
+              <div className="flex items-center gap-4 border-b border-[#E9E9EB] w-full dark:border-slate-800 px-6 py-4">
                 <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">Changes</div>
                 <div className="relative w-[320px]">
                   <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />

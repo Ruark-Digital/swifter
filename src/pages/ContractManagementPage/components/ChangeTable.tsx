@@ -28,6 +28,8 @@ type ChangeTableProps = {
   pagination: PaginationState;
   setPagination: React.Dispatch<React.SetStateAction<PaginationState>>;
   variant?: "manager" | "approver";
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
 };
 
 const ChangeTable: React.FC<ChangeTableProps> = ({
@@ -39,6 +41,8 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
   pagination,
   setPagination,
   variant = "manager",
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -193,8 +197,14 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
       {
         id: "actions",
         header: "Actions",
-        cell: ({ row }) => {
+        cell: ({ row, table }) => {
           const changeId = row.original.changeId || "";
+          const meta = table.options.meta as
+            | {
+                listInvalidateQueryKey?: readonly unknown[];
+                statsInvalidateQueryKey?: readonly unknown[];
+              }
+            | undefined;
           const [sheetOpen, setSheetOpen] = React.useState(false);
           return (
             <>
@@ -204,6 +214,8 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
                 basePath={basePath}
                 open={sheetOpen}
                 onOpenChange={setSheetOpen}
+                listInvalidateQueryKey={meta?.listInvalidateQueryKey}
+                statsInvalidateQueryKey={meta?.statsInvalidateQueryKey}
               />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -222,7 +234,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         },
       },
     ],
-    [contractId],
+    [contractId, basePath],
   );
 
   const filteredRows = React.useMemo(() => {
@@ -285,6 +297,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
           manualPagination: true,
           pagination,
           setPagination,
+          meta: { listInvalidateQueryKey, statsInvalidateQueryKey },
         }}
       />
     </div>

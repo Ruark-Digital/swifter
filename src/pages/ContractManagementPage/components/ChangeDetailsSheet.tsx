@@ -53,6 +53,8 @@ type Props = {
   basePath?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
 };
 
 const LabelRow = ({
@@ -85,6 +87,8 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   basePath,
   open: controlledOpen,
   onOpenChange: setControlledOpen,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
 }) => {
   const toast = useToastHandler();
   const qc = useQueryClient();
@@ -296,8 +300,12 @@ const ChangeDetailsSheet: React.FC<Props> = ({
         (res as any)?.data?.message,
       );
       qc.invalidateQueries({
-        queryKey: ["contractChanges", contractId],
+        queryKey:
+          listInvalidateQueryKey ?? ["contractChanges", contractId],
       });
+      if (statsInvalidateQueryKey) {
+        qc.invalidateQueries({ queryKey: statsInvalidateQueryKey });
+      }
       qc.invalidateQueries({ queryKey: changeDetailQueryKey });
       setPendingAction(null);
     },
