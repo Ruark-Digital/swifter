@@ -3,23 +3,18 @@ import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TabsContent as MainTabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { DataTable } from "@/components/layouts/DataTable";
-import { Badge } from "@/components/ui/badge";
-import { Share2, Search } from "lucide-react";
-import type { ColumnDef, PaginationState } from "@tanstack/react-table";
+import { Share2 } from "lucide-react";
+import type { PaginationState } from "@tanstack/react-table";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getRequest } from "@/lib/axiosInstance";
-import { cn } from "@/lib/utils";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import ChangeStatsCards from "@/pages/ContractManagementPage/components/ChangeStatsCards";
 import CreateChangeDialog from "@/pages/ContractManagementPage/components/CreateChangeDialog";
-import ChangeDetailsSheet from "@/pages/ContractManagementPage/components/ChangeDetailsSheet";
+import ChangeTable from "@/pages/ContractManagementPage/components/ChangeTable";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import {
   changeTabToApiType,
-  formatChangeTypeLabel,
   type ChangeTabValue,
 } from "@/pages/ContractManagementPage/lib/contractChanges";
 import type {
@@ -38,22 +33,6 @@ type ChangesDataResponse = {
   total?: number;
 };
 
-const statusTone = (status?: string) => {
-  const normalized = status?.toLowerCase();
-  if (normalized === "approved") return "bg-[#EAF7EE] dark:bg-green-900/40 text-[#43A047] dark:text-green-300";
-  if (normalized === "pending") return "bg-[#FFF8E1] dark:bg-yellow-900/40 text-[#F4B400] dark:text-yellow-300";
-  if (normalized === "rejected") return "bg-[#FEECEC] dark:bg-red-900/40 text-[#E53935] dark:text-red-300";
-  if (normalized === "closed")
-    return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
-  return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
-};
-
-const formatChangeValue = (value?: number) => {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "-";
-  if (value >= 1000000) return `$${(value / 1000000).toFixed(2)}M`;
-  return `$${value.toLocaleString("en-US")}`;
-};
-
 const ChangeManagement: React.FC<Props> = ({
   contractId,
   isActive,
@@ -65,7 +44,6 @@ const ChangeManagement: React.FC<Props> = ({
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ stats?: unknown; list?: unknown }>({});
   const [activeTab, setActiveTab] = React.useState<ChangeTabValue>("all");
-  const [search, setSearch] = React.useState("");
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -163,105 +141,6 @@ const ChangeManagement: React.FC<Props> = ({
   }, [changesRes?.data?.data]);
   const totalCount = changesRes?.data?.data?.total ?? rows.length;
 
-  const filteredRows = React.useMemo(() => {
-    if (!search.trim()) return rows;
-    const query = search.toLowerCase();
-    return rows.filter((row) => {
-      const changeId = row.changeId ?? "";
-      const title = row.title ?? "";
-      const type = row.type ?? "";
-      return (
-        changeId.toLowerCase().includes(query) ||
-        title.toLowerCase().includes(query) ||
-        type.toLowerCase().includes(query)
-      );
-    });
-  }, [rows, search]);
-
-  const columns = React.useMemo<ColumnDef<ContractChangeDTO>[]>(
-    () => [
-      {
-        accessorKey: "changeId",
-        header: "Change ID",
-        cell: ({ getValue }) => (
-          <span className="font-medium text-slate-900 dark:text-slate-100">{getValue<string>() || "-"}</span>
-        ),
-      },
-      {
-        accessorKey: "title",
-        header: "Change Title",
-        cell: ({ getValue }) => (
-          <span className="font-medium text-slate-900 dark:text-slate-100">{getValue<string>() || "-"}</span>
-        ),
-      },
-      {
-        accessorKey: "type",
-        header: "Type",
-        cell: ({ getValue }) => {
-          const type = getValue<ContractChangeDTO["type"] | undefined>();
-          return type ? formatChangeTypeLabel(type) : "-";
-        },
-      },
-      {
-        accessorKey: "value",
-        header: "Value",
-        cell: ({ getValue }) => formatChangeValue(getValue<number | undefined>()),
-      },
-      {
-        accessorKey: "submittedAt",
-        header: "Submitted",
-        cell: ({ row }) => {
-          const fallback = row.original as any;
-          const date = row.original.submittedAt ?? fallback?.createdAt;
-          if (!date) return "-";
-          const parsed = new Date(date);
-          if (Number.isNaN(parsed.getTime())) return "-";
-          return parsed.toISOString().slice(0, 10);
-        },
-      },
-      {
-        accessorKey: "status",
-        header: "Status",
-        cell: ({ getValue }) => {
-          const status = getValue<string>() || "pending";
-          return (
-            <Badge
-              variant="secondary"
-              className={cn(
-                "rounded-full border-none px-4 py-1 font-semibold",
-                statusTone(status),
-              )}
-            >
-              {status.charAt(0).toUpperCase() + status.slice(1)}
-            </Badge>
-          );
-        },
-      },
-      {
-        id: "actions",
-        header: "Actions",
-        cell: ({ row }) => (
-          <ChangeDetailsSheet
-            contractId={contractId}
-            changeId={row.original.changeId || (row.original as any)?._id || ""}
-            basePath={listBasePath}
-            listInvalidateQueryKey={listQueryKey}
-            statsInvalidateQueryKey={statsQueryKey}
-            trigger={
-              <Button
-                variant="link"
-                className="h-auto p-0 font-semibold text-[#43A047] hover:no-underline"
-              >
-                View
-              </Button>
-            }
-          />
-        ),
-      },
-    ],
-    [contractId, listBasePath, listQueryKey, statsQueryKey],
-  );
-
   const stats = statsRes?.data;
   const canCreateChange = isManager || isProjectManager || isVendor;
 
@@ -347,44 +226,17 @@ const ChangeManagement: React.FC<Props> = ({
         </TabsList>
 
         <TabsContent value={activeTab}>
-          <DataTable<ContractChangeDTO>
-            data={filteredRows}
-            columns={columns}
-            options={{
-              disableSelection: true,
-              isLoading: isChangesLoading,
-              manualPagination: true,
-              pagination,
-              setPagination,
-              totalCounts: totalCount,
-            }}
-            header={() => (
-              <div className="flex items-center gap-4 border-b border-[#E9E9EB] w-full dark:border-slate-800 px-6 py-4">
-                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">Changes</div>
-                <div className="relative w-[320px]">
-                  <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />
-                  <Input
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search changes"
-                    className="h-12 rounded-lg border border-[#E5E7EB] dark:border-slate-800 pl-9 text-sm text-[#0F0F0F] dark:text-slate-100 placeholder:text-[#6B6B6B] dark:placeholder:text-slate-500 dark:text-slate-400"
-                  />
-                </div>
-              </div>
-            )}
-            classNames={{
-              container: "overflow-hidden rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900",
-              table: "border-spacing-y-0",
-              tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
-              tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
-              tBody: "bg-white dark:bg-slate-900",
-              tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
-              tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467] dark:text-blue-300",
-              tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-300 align-top",
-            }}
-            emptyPlaceholder={
-              <div className="px-6 py-8 text-sm text-slate-500 dark:text-slate-400">No changes found.</div>
-            }
+          <ChangeTable
+            contractId={contractId}
+            basePath={listBasePath}
+            rows={rows}
+            isLoading={isChangesLoading}
+            totalCount={totalCount}
+            pagination={pagination}
+            setPagination={setPagination}
+            variant={isApprover ? "approver" : "manager"}
+            listInvalidateQueryKey={listQueryKey}
+            statsInvalidateQueryKey={statsQueryKey}
           />
         </TabsContent>
       </Tabs>
