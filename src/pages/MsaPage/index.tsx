@@ -91,22 +91,22 @@ const MsaPage: React.FC = () => {
   const [dateFilter, setDateFilter] = React.useState<string>("all");
 
   const listUrl = isManagerLike
-    ? "/contract/manager/msa-contract"
+    ? "/contract/manager/msa-contracts"
     : isApprover
-      ? "/contract/approver/msa-contract"
+      ? "/contract/approver/msa-contracts"
       : isVendorLike
-        ? "/contract/vendor/msa-contract"
-        : "/contract/user/msa-contract";
+        ? "/contract/vendor/msa-contracts"
+        : "/contract/user/msa-contracts";
 
-  const myListUrl = isManager ? "/contract/manager/msa-contract/me" : undefined;
+  const myListUrl = isManager ? "/contract/manager/msa-contracts/me" : undefined;
 
   const statsUrl = isManagerLike
-    ? "/contract/manager/msa-contract/stats"
+    ? "/contract/manager/msa-contracts/stats"
     : isApprover
-      ? "/contract/approver/msa-contract/stats"
+      ? "/contract/approver/msa-contracts/stats"
       : isVendorLike
-        ? "/contract/vendor/msa-contract/stats"
-        : "/contract/user/msa-contract/stats";
+        ? "/contract/vendor/msa-contracts/stats"
+        : "/contract/user/msa-contracts/stats";
 
   const statsQuery = useQuery({
     queryKey: useUserQueryKey(["msa", "stats", statsUrl]),

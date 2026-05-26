@@ -181,7 +181,7 @@ describe("MSA RFI", () => {
     await waitFor(() => {
       expect(mockedGetRequest).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: "/contract/manager/msa-contract/msa-rfi-123/rfi?page=1&limit=10",
+          url: "/contract/manager/msa-contracts/msa-rfi-123/rfi?page=1&limit=10",
         }),
       );
     });
@@ -198,7 +198,7 @@ describe("MSA RFI", () => {
     await waitFor(() => {
       expect(mockedGetRequest).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: "/contract/manager/msa-contract/msa-rfi-123/rfi?page=2&limit=10",
+          url: "/contract/manager/msa-contracts/msa-rfi-123/rfi?page=2&limit=10",
         }),
       );
     });

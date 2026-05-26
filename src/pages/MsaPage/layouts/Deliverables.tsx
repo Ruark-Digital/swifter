@@ -65,20 +65,20 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
 
   // MSA-specific deliverable endpoints added in swagger v2.3.0 — same
   // shape as contract deliverables (list / stats / detail / approve /
-  // submit) but live under `/msa-contract/...` not `/contracts/...`.
+  // submit) but live under `/msa-contracts/...` not `/contracts/...`.
   // DeliverablesTable interpolates `basePath` for every action, so swapping
   // the prefix here routes the whole tab to the MSA endpoints.
   const basePath = React.useMemo(() => {
     if (!contractId) return "";
     if (isVendor || isProjectManager)
-      return `/contract/vendor/msa-contract/${contractId}/deliverables`;
+      return `/contract/vendor/msa-contracts/${contractId}/deliverables`;
     if (isApprover)
-      return `/contract/approver/msa-contract/${contractId}/deliverables`;
+      return `/contract/approver/msa-contracts/${contractId}/deliverables`;
     if (isManager || isCompanyAdminLike)
-      return `/contract/manager/msa-contract/${contractId}/deliverables`;
+      return `/contract/manager/msa-contracts/${contractId}/deliverables`;
     if (isViewOnly)
-      return `/contract/user/msa-contract/${contractId}/deliverables`;
-    return `/contract/user/msa-contract/${contractId}/deliverables`;
+      return `/contract/user/msa-contracts/${contractId}/deliverables`;
+    return `/contract/user/msa-contracts/${contractId}/deliverables`;
   }, [
     contractId,
     isApprover,
@@ -207,7 +207,7 @@ const Deliverables: React.FC<Props> = ({ contractId, isActive }) => {
           basePath={basePath}
           listInvalidateQueryKey={listQueryKey}
           statsInvalidateQueryKey={statsQueryKey}
-          personnelPath={`/contract/vendor/msa-contract/${contractId}/personnel`}
+          personnelPath={`/contract/vendor/msa-contracts/${contractId}/personnel`}
         />
       ) : null}
     </TabsContent>

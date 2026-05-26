@@ -31,11 +31,11 @@ const NcrLog: React.FC<Props> = ({ contractId, contract, isActive, actionsDisabl
 
   const basePath = React.useMemo(() => {
     if (isContractVendorLike)
-      return `/contract/vendor/msa-contract/${contractId}/ncrs`;
-    if (isApprover) return `/contract/approver/msa-contract/${contractId}/ncrs`;
-    if (isManager) return `/contract/manager/msa-contract/${contractId}/ncrs`;
-    if (isAdmin || isViewOnly) return `/contract/user/msa-contract/${contractId}/ncrs`;
-    return `/contract/user/msa-contract/${contractId}/ncrs`;
+      return `/contract/vendor/msa-contracts/${contractId}/ncrs`;
+    if (isApprover) return `/contract/approver/msa-contracts/${contractId}/ncrs`;
+    if (isManager) return `/contract/manager/msa-contracts/${contractId}/ncrs`;
+    if (isAdmin || isViewOnly) return `/contract/user/msa-contracts/${contractId}/ncrs`;
+    return `/contract/user/msa-contracts/${contractId}/ncrs`;
   }, [
     contractId,
     isAdmin,

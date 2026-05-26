@@ -106,7 +106,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
   const savingsQueryKey = useUserQueryKey(["msa-payment-savings", contractId]);
 
   // Note: view-only is intentionally NOT mapped — Phase 2 docs do not expose
-  // `/user/msa-contract/{contractId}/payment-*` endpoints, and the tab is
+  // `/user/msa-contracts/{contractId}/payment-*` endpoints, and the tab is
   // hidden from view-only via the MSA tab whitelist. The queries below are
   // also gated by `!isViewOnly` as a defensive guard.
   const apiPrefix = React.useMemo(() => {
@@ -123,7 +123,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
     queryKey: holdbacksQueryKey,
     queryFn: async () => {
       const res = await getRequest({
-        url: `${apiPrefix}/msa-contract/${contractId}/payment-holdbacks`,
+        url: `${apiPrefix}/msa-contracts/${contractId}/payment-holdbacks`,
       });
       return res.data as { message?: string; data?: PaymentHoldbackApi[] };
     },
@@ -140,7 +140,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
     queryKey: savingsQueryKey,
     queryFn: async () => {
       const res = await getRequest({
-        url: `${apiPrefix}/msa-contract/${contractId}/payment-savings`,
+        url: `${apiPrefix}/msa-contracts/${contractId}/payment-savings`,
       });
       return res.data as { message?: string; data?: PaymentSavingApi[] };
     },

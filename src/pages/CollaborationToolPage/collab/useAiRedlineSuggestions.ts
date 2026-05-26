@@ -103,7 +103,7 @@ type ApiResponseBody = {
 export type AiRedlineScope = {
   /** Required — id of the contract or MSA contract being analysed. */
   documentId: string | undefined;
-  /** Default false → /contracts/...; true → /msa-contract/... */
+  /** Default false → /contracts/...; true → /msa-contracts/... */
   isMsa?: boolean;
 };
 
@@ -124,7 +124,7 @@ const buildEndpoint = ({
   isProjectManager: boolean;
   isViewOnly: boolean;
 }): string | null => {
-  const resource = isMsa ? "msa-contract" : "contracts";
+  const resource = isMsa ? "msa-contracts" : "contracts";
   // axios baseURL is /api/v1/dev — swagger paths live under /contract.
   const prefix = "/contract";
   if (isManager) return `${prefix}/manager/${resource}/${documentId}/ai/redline-suggestions`;
@@ -142,7 +142,7 @@ const buildEndpoint = ({
  *
  * Swagger endpoints (all share the same request/response shape):
  *   POST /manager|approver|vendor|user/contracts/{contractId}/ai/redline-suggestions
- *   POST /manager|approver|vendor|user/msa-contract/{contractId}/ai/redline-suggestions
+ *   POST /manager|approver|vendor|user/msa-contracts/{contractId}/ai/redline-suggestions
  *
  * Body:     { redlines: RedlineSpan[] }
  * 200 data: { summary, riskLevel, overallSuggestion, redlineAnalysis: [...] }

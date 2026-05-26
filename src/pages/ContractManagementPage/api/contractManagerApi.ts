@@ -970,7 +970,7 @@ export const createContractManagerApi = (
     ) => {
       const createPath =
         type === "MsaContract"
-          ? `/contract/manager/msa-contract/${dataId}/change/${type}`
+          ? `/contract/manager/msa-contracts/${dataId}/change/${type}`
           : `${MANAGER_CONTRACTS_PREFIX}/${dataId}/change/${type}`;
       const res = await client.post({
         url: createPath,

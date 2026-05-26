@@ -63,7 +63,7 @@ async function setupRoutes(page: Page, msaId: string) {
     const pathname = new URL(url).pathname;
 
     if (
-      pathname.endsWith(`/contract/vendor/msa-contract/${msaId}`) &&
+      pathname.endsWith(`/contract/vendor/msa-contracts/${msaId}`) &&
       method === "GET"
     ) {
       await route.fulfill({
@@ -89,7 +89,7 @@ async function setupRoutes(page: Page, msaId: string) {
     }
 
     if (
-      pathname.endsWith(`/contract/vendor/msa-contract/${msaId}/payment-holdbacks`) &&
+      pathname.endsWith(`/contract/vendor/msa-contracts/${msaId}/payment-holdbacks`) &&
       method === "GET"
     ) {
       await route.fulfill({
@@ -112,7 +112,7 @@ async function setupRoutes(page: Page, msaId: string) {
     }
 
     if (
-      pathname.endsWith(`/contract/vendor/msa-contract/${msaId}/payment-savings`) &&
+      pathname.endsWith(`/contract/vendor/msa-contracts/${msaId}/payment-savings`) &&
       method === "GET"
     ) {
       await route.fulfill({
@@ -153,7 +153,7 @@ async function assertVendorLikeSavingsGating(page: Page, msaId: string) {
 
   const holdbacksResponse = page.waitForResponse(
     (res) =>
-      res.url().includes(`/msa-contract/${msaId}/payment-holdbacks`) &&
+      res.url().includes(`/msa-contracts/${msaId}/payment-holdbacks`) &&
       res.status() === 200,
     { timeout: 30000 },
   );
@@ -164,7 +164,7 @@ async function assertVendorLikeSavingsGating(page: Page, msaId: string) {
     page.getByRole("tab", { name: "Saving Reaized", exact: true }),
   ).toHaveCount(0);
 
-  expect(requests.some((u) => u.includes(`/msa-contract/${msaId}/payment-savings`))).toBe(
+  expect(requests.some((u) => u.includes(`/msa-contracts/${msaId}/payment-savings`))).toBe(
     false,
   );
 

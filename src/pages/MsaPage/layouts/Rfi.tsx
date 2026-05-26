@@ -154,18 +154,18 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
   const files = useWatch({ control, name: "files" }) as File[] | null;
 
   // Personnel endpoint is role-scoped. MSA has its own per-role personnel
-  // routes under /msa-contract/{id}/personnel for all four roles per the
+  // routes under /msa-contracts/{id}/personnel for all four roles per the
   // full swagger spec — see memory be-msa-parallel-endpoints-default-assumption.
   const personnelUrl = React.useMemo(() => {
     if (isManager || isAdmin)
-      return `/contract/manager/msa-contract/${contractId}/personnel`;
+      return `/contract/manager/msa-contracts/${contractId}/personnel`;
     if (isApprover)
-      return `/contract/approver/msa-contract/${contractId}/personnel`;
+      return `/contract/approver/msa-contracts/${contractId}/personnel`;
     if (isVendor || isProjectManager)
-      return `/contract/vendor/msa-contract/${contractId}/personnel`;
+      return `/contract/vendor/msa-contracts/${contractId}/personnel`;
     if (isViewOnly)
-      return `/contract/user/msa-contract/${contractId}/personnel`;
-    return `/contract/user/msa-contract/${contractId}/personnel`;
+      return `/contract/user/msa-contracts/${contractId}/personnel`;
+    return `/contract/user/msa-contracts/${contractId}/personnel`;
   }, [
     contractId,
     isAdmin,
@@ -1095,12 +1095,12 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   });
 
   const basePath = React.useMemo(() => {
-    if (isManager || isAdmin) return `/contract/manager/msa-contract/${contractId}/rfi`;
-    if (isApprover) return `/contract/approver/msa-contract/${contractId}/rfi`;
+    if (isManager || isAdmin) return `/contract/manager/msa-contracts/${contractId}/rfi`;
+    if (isApprover) return `/contract/approver/msa-contracts/${contractId}/rfi`;
     if (isVendor || isProjectManager)
-      return `/contract/vendor/msa-contract/${contractId}/rfi`;
-    if (isViewOnly) return `/contract/user/msa-contract/${contractId}/rfi`;
-    return `/contract/user/msa-contract/${contractId}/rfi`;
+      return `/contract/vendor/msa-contracts/${contractId}/rfi`;
+    if (isViewOnly) return `/contract/user/msa-contracts/${contractId}/rfi`;
+    return `/contract/user/msa-contracts/${contractId}/rfi`;
   }, [
     contractId,
     isAdmin,
@@ -1394,7 +1394,7 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
           isLoading: isListLoading,
         }}
         header={() => (
-          <div className="flex items-center gap-4 border-b border-[#E9E9EB] px-6 py-4">
+          <div className="flex items-center gap-4 border-b border-[#E9E9EB] w-full dark:border-slate-800 px-6 py-4">
             <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">RFI</div>
             <div className="relative w-[320px]">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />

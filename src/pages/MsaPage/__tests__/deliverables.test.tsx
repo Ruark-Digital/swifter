@@ -129,12 +129,12 @@ describe("MSA Deliverables", () => {
     await waitFor(() => {
       expect(mockedGetRequest).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: "/contract/manager/msa-contract/msa-deliv-123/deliverables",
+          url: "/contract/manager/msa-contracts/msa-deliv-123/deliverables",
         }),
       );
       expect(mockedGetRequest).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: "/contract/manager/msa-contract/msa-deliv-123/deliverables/stats",
+          url: "/contract/manager/msa-contracts/msa-deliv-123/deliverables/stats",
         }),
       );
     });
@@ -142,12 +142,12 @@ describe("MSA Deliverables", () => {
     const listKey = [
       "msa-deliverables",
       "msa-deliv-123",
-      "/contract/manager/msa-contract/msa-deliv-123/deliverables",
+      "/contract/manager/msa-contracts/msa-deliv-123/deliverables",
     ];
     const statsKey = [
       "msa-deliverables-stats",
       "msa-deliv-123",
-      "/contract/manager/msa-contract/msa-deliv-123/deliverables",
+      "/contract/manager/msa-contracts/msa-deliv-123/deliverables",
     ];
 
     const queryKeys = queryClient
@@ -167,13 +167,13 @@ describe("MSA Deliverables", () => {
 
     expect(table).toHaveAttribute(
       "data-base-path",
-      "/contract/manager/msa-contract/msa-deliv-123/deliverables",
+      "/contract/manager/msa-contracts/msa-deliv-123/deliverables",
     );
     expect(table).toHaveAttribute("data-is-contract-manager", "true");
     expect(table).toHaveAttribute("data-list-key", JSON.stringify(listKey));
     expect(table).toHaveAttribute(
       "data-personnel-path",
-      "/contract/vendor/msa-contract/msa-deliv-123/personnel",
+      "/contract/vendor/msa-contracts/msa-deliv-123/personnel",
     );
     expect(table).toHaveAttribute("data-stats-key", JSON.stringify(statsKey));
   });

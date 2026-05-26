@@ -91,19 +91,19 @@ const renderSubmitCapaDialog = (queryClient: QueryClient) => {
         contractId="msa-ncr-contract"
         ncrId="ncr-123"
         ncrTitle="NCR title"
-        basePath="/contract/vendor/msa-contract/msa-ncr-contract/ncrs"
+        basePath="/contract/vendor/msa-contracts/msa-ncr-contract/ncrs"
         listInvalidateQueryKey={[
           "msaNcrs",
           "msa-ncr-contract",
           0,
           10,
-          "/contract/vendor/msa-contract/msa-ncr-contract/ncrs",
+          "/contract/vendor/msa-contracts/msa-ncr-contract/ncrs",
         ]}
         statsInvalidateQueryKey={[
           "msaNcrs",
           "stats",
           "msa-ncr-contract",
-          "/contract/vendor/msa-contract/msa-ncr-contract/ncrs",
+          "/contract/vendor/msa-contracts/msa-ncr-contract/ncrs",
         ]}
         trigger={<button type="button">Open CAPA</button>}
       />
@@ -133,7 +133,7 @@ describe("SubmitCapaDialog", () => {
 
     await waitFor(() => {
       expect(mockedPostRequest).toHaveBeenCalledWith({
-        url: "/contract/vendor/msa-contract/msa-ncr-contract/ncrs/ncr-123/capa",
+        url: "/contract/vendor/msa-contracts/msa-ncr-contract/ncrs/ncr-123/capa",
         payload: {
           title: "CAPA response",
           timeline: "2026-06-01",
@@ -159,7 +159,7 @@ describe("SubmitCapaDialog", () => {
         "msa-ncr-contract",
         0,
         10,
-        "/contract/vendor/msa-contract/msa-ncr-contract/ncrs",
+        "/contract/vendor/msa-contracts/msa-ncr-contract/ncrs",
       ],
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
@@ -167,7 +167,7 @@ describe("SubmitCapaDialog", () => {
         "msaNcrs",
         "stats",
         "msa-ncr-contract",
-        "/contract/vendor/msa-contract/msa-ncr-contract/ncrs",
+        "/contract/vendor/msa-contracts/msa-ncr-contract/ncrs",
       ],
     });
     expect(resetMock).toHaveBeenCalled();

@@ -26,11 +26,11 @@ const Lem: React.FC<Props> = ({ contractId, isActive }) => {
 
   const basePath = React.useMemo(() => {
     if (isVendor || isProjectManager)
-      return `/contract/vendor/msa-contract/${contractId}/lems`;
-    if (isApprover) return `/contract/approver/msa-contract/${contractId}/lems`;
-    if (isManager) return `/contract/manager/msa-contract/${contractId}/lems`;
-    if (isAdmin || isViewOnly) return `/contract/user/msa-contract/${contractId}/lems`;
-    return `/contract/user/msa-contract/${contractId}/lems`;
+      return `/contract/vendor/msa-contracts/${contractId}/lems`;
+    if (isApprover) return `/contract/approver/msa-contracts/${contractId}/lems`;
+    if (isManager) return `/contract/manager/msa-contracts/${contractId}/lems`;
+    if (isAdmin || isViewOnly) return `/contract/user/msa-contracts/${contractId}/lems`;
+    return `/contract/user/msa-contracts/${contractId}/lems`;
   }, [
     contractId,
     isAdmin,
@@ -101,7 +101,7 @@ const Lem: React.FC<Props> = ({ contractId, isActive }) => {
         {isVendorLike ? (
           <SubmitLemDialog
             contractId={contractId}
-            createPath={`/contract/vendor/msa-contract/${contractId}/lems`}
+            createPath={`/contract/vendor/msa-contracts/${contractId}/lems`}
             invalidateQueryKey={lemQueryKey}
             trigger={
               <Button className="h-10 rounded-xl px-4">Submit LEM</Button>

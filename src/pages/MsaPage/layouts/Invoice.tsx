@@ -401,12 +401,12 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
   const [search, setSearch] = React.useState("");
 
   const basePath = React.useMemo(() => {
-    if (isManager || isAdmin) return `/contract/manager/msa-contract/${contractId}/invoice`;
-    if (isApprover) return `/contract/approver/msa-contract/${contractId}/invoice`;
+    if (isManager || isAdmin) return `/contract/manager/msa-contracts/${contractId}/invoice`;
+    if (isApprover) return `/contract/approver/msa-contracts/${contractId}/invoice`;
     if (isVendor || isProjectManager)
-      return `/contract/vendor/msa-contract/${contractId}/invoice`;
-    if (isViewOnly) return `/contract/user/msa-contract/${contractId}/invoice`;
-    return `/contract/user/msa-contract/${contractId}/invoice`;
+      return `/contract/vendor/msa-contracts/${contractId}/invoice`;
+    if (isViewOnly) return `/contract/user/msa-contracts/${contractId}/invoice`;
+    return `/contract/user/msa-contracts/${contractId}/invoice`;
   }, [
     contractId,
     isAdmin,
@@ -616,7 +616,7 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
           isLoading: isInvoicesLoading,
         }}
         header={() => (
-          <div className="flex items-center gap-4 border-b border-[#E9E9EB] px-6 py-4">
+          <div className="flex items-center gap-4 border-b border-[#E9E9EB] dark:border-slate-800 w-full px-6 py-4">
             <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">Invoices</div>
             <div className="relative w-[320px]">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />

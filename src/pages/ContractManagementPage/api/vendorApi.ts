@@ -97,7 +97,7 @@ export const createVendorApi = (
   ) => {
     const post = client.post ?? ((params: PostParams) => postRequest(params));
     const res = await post({
-      url: `/contract/vendor/msa-contract/${contractId}/changes`,
+      url: `/contract/vendor/msa-contracts/${contractId}/changes`,
       payload,
     });
     return res as ApiResponse<any>;

@@ -150,7 +150,7 @@ const MsaReleaseHoldbackDialog: React.FC<MsaReleaseHoldbackDialogProps> = ({
     mutationKey: ["msa-createPaymentHoldback", contractId],
     mutationFn: async (payload: any) => {
       const res = await postRequest({
-        url: `/contract/manager/msa-contract/${contractId}/payment-holdbacks`,
+        url: `/contract/manager/msa-contracts/${contractId}/payment-holdbacks`,
         payload,
       });
       const body = res.data as { status?: string; message?: string };

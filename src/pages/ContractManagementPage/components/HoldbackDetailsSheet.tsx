@@ -33,7 +33,7 @@ type Props = {
   // by the parent contract (multi-level escalation lives there).
   contractId?: string;
   // Which surface this sheet is rendered on. Drives the `/contracts` vs
-  // `/msa-contract` segment in every role-prefixed URL.
+  // `/msa-contracts` segment in every role-prefixed URL.
   contractType?: "Contract" | "MsaContract";
   basePath?: string;
   currency?: string;
@@ -79,7 +79,7 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
 
   // Path segment that distinguishes Contract from MSA across every role.
   const contractSegment =
-    contractType === "MsaContract" ? "msa-contract" : "contracts";
+    contractType === "MsaContract" ? "msa-contracts" : "contracts";
 
   // Swagger documents `/contract/{manager,approver,vendor}/{segment}/{contractId}/payment-holdbacks/{id}`
   // for holdback detail. View-only has no documented detail route.

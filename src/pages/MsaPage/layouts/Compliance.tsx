@@ -99,14 +99,14 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
 
   const basePath = React.useMemo(() => {
     if (isVendor || isProjectManager)
-      return `/contract/vendor/msa-contract/${contractId}/compliance`;
+      return `/contract/vendor/msa-contracts/${contractId}/compliance`;
     if (isApprover)
-      return `/contract/approver/msa-contract/${contractId}/compliance`;
+      return `/contract/approver/msa-contracts/${contractId}/compliance`;
     if (isManager)
-      return `/contract/manager/msa-contract/${contractId}/compliance`;
+      return `/contract/manager/msa-contracts/${contractId}/compliance`;
     if (isAdmin || isViewOnly)
-      return `/contract/user/msa-contract/${contractId}/compliance`;
-    return `/contract/user/msa-contract/${contractId}/compliance`;
+      return `/contract/user/msa-contracts/${contractId}/compliance`;
+    return `/contract/user/msa-contracts/${contractId}/compliance`;
   }, [
     contractId,
     isAdmin,
@@ -387,7 +387,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
 
   const approveMutation = useMutation({
     mutationFn: async (action: "approved" | "rejected") => {
-      const endpoint = `/contract/manager/msa-contract/${contractId}/compliance/${activeTab}/approve`;
+      const endpoint = `/contract/manager/msa-contracts/${contractId}/compliance/${activeTab}/approve`;
       const comment =
         action === "approved"
           ? `Approved all ${activeTab} items via bulk action`

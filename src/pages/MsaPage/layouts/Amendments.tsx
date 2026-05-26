@@ -49,13 +49,13 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
 
   const basePath = React.useMemo(() => {
     if (isVendor || isProjectManager)
-      return `/contract/vendor/msa-contract/${contractId}/amendment`;
+      return `/contract/vendor/msa-contracts/${contractId}/amendment`;
     if (isApprover)
-      return `/contract/approver/msa-contract/${contractId}/amendment`;
-    if (isManager) return `/contract/manager/msa-contract/${contractId}/amendments`;
+      return `/contract/approver/msa-contracts/${contractId}/amendment`;
+    if (isManager) return `/contract/manager/msa-contracts/${contractId}/amendments`;
     if (isAdmin || isViewOnly)
-      return `/contract/user/msa-contract/${contractId}/amendment`;
-    return `/contract/user/msa-contract/${contractId}/amendment`;
+      return `/contract/user/msa-contracts/${contractId}/amendment`;
+    return `/contract/user/msa-contracts/${contractId}/amendment`;
   }, [
     contractId,
     isAdmin,
@@ -68,15 +68,15 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
 
   const statsBasePath = React.useMemo(() => {
     if (isVendor || isProjectManager)
-      return `/contract/vendor/msa-contract/${contractId}/amendment`;
+      return `/contract/vendor/msa-contracts/${contractId}/amendment`;
     if (isApprover)
-      return `/contract/approver/msa-contract/${contractId}/amendment`;
+      return `/contract/approver/msa-contracts/${contractId}/amendment`;
     // Manager stats live under the plural `msa-contracts` quirk path —
     // see memory msa-contracts-plural-invoice-approve-quirk.
     if (isManager)
       return `/contract/manager/msa-contracts/${contractId}/amendments`;
     if (isAdmin || isViewOnly)
-      return `/contract/user/msa-contract/${contractId}/amendment`;
+      return `/contract/user/msa-contracts/${contractId}/amendment`;
     return "";
   }, [
     contractId,
@@ -195,7 +195,7 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
           {isManager && (
             <CreateAmendmentDialog
               contractId={contractId}
-              createPath={`/contract/manager/msa-contract/${contractId}/amendments`}
+              createPath={`/contract/manager/msa-contracts/${contractId}/amendments`}
               mutationScope="msa-amendments"
               listInvalidateQueryKey={amendmentsQueryKey}
               statsInvalidateQueryKey={statsQueryKey}
@@ -225,7 +225,7 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
         basePath={basePath}
         listInvalidateQueryKey={amendmentsQueryKey}
         statsInvalidateQueryKey={statsQueryKey}
-        approverPoolPath={`/contract/manager/msa-contract/${contractId}/approvers`}
+        approverPoolPath={`/contract/manager/msa-contracts/${contractId}/approvers`}
       />
     </TabsContent>
   );

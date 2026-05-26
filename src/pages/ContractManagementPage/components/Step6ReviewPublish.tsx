@@ -144,7 +144,7 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
 
   return (
     <div className="mt-4 space-y-4">
-      <p className="text-sm font-semibold text-slate-900">Contract Summary</p>
+      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Contract Summary</p>
 
       <Accordion
         type="single"
@@ -152,44 +152,44 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
         defaultValue="1"
         className="w-full space-y-3"
       >
-        <AccordionItem value="1" className="border border-gray-200 rounded-lg">
-          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 hover:no-underline">
+        <AccordionItem value="1" className="border border-gray-200 dark:border-slate-700 rounded-lg">
+          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 text-slate-900 dark:text-slate-100 hover:no-underline">
             <span className="font-medium">1. Basic Information</span>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-slate-500">Contract Name</p>
-                  <p className="text-slate-800">{name || "Not specified"}</p>
+                  <p className="text-slate-500 dark:text-slate-400">Contract Name</p>
+                  <p className="text-slate-800 dark:text-slate-200">{name || "Not specified"}</p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Contract Type</p>
-                  <p className="text-slate-800">
+                  <p className="text-slate-500 dark:text-slate-400">Contract Type</p>
+                  <p className="text-slate-800 dark:text-slate-200">
                     {resolvedType || "Not specified"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Category</p>
-                  <p className="text-slate-800">
+                  <p className="text-slate-500 dark:text-slate-400">Category</p>
+                  <p className="text-slate-800 dark:text-slate-200">
                     {resolvedCategory || "Not specified"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Complexity Rating</p>
-                  <p className="text-slate-800">{rating || "Not specified"}</p>
+                  <p className="text-slate-500 dark:text-slate-400">Complexity Rating</p>
+                  <p className="text-slate-800 dark:text-slate-200">{rating || "Not specified"}</p>
                 </div>
               </div>
               <div>
-                <p className="text-slate-500">Description</p>
-                <p className="text-slate-700 mt-1">
+                <p className="text-slate-500 dark:text-slate-400">Description</p>
+                <p className="text-slate-700 dark:text-slate-300 mt-1">
                   {description || "No description provided"}
                 </p>
               </div>
               <Button
                 type="button"
                 variant="outline"
-                className="w-full mt-4 border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="w-full mt-4 border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 Edit Details
               </Button>
@@ -197,8 +197,8 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="2" className="border border-gray-200 rounded-lg">
-          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 hover:no-underline">
+        <AccordionItem value="2" className="border border-gray-200 dark:border-slate-700 rounded-lg">
+          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 text-slate-900 dark:text-slate-100 hover:no-underline">
             <span className="font-medium">2. Contract Team</span>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
@@ -206,27 +206,27 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
               {hasTeamInfo ? (
                 <>
                   <div>
-                    <p className="text-slate-500">Contract Manager</p>
-                    <p className="text-slate-800">
+                    <p className="text-slate-500 dark:text-slate-400">Contract Manager</p>
+                    <p className="text-slate-800 dark:text-slate-200">
                       {resolvedManager || "Not specified"}
                     </p>
                   </div>
                   <div>
-                    <p className="text-slate-500">Vendor</p>
-                    <p className="text-slate-800">
+                    <p className="text-slate-500 dark:text-slate-400">Vendor</p>
+                    <p className="text-slate-800 dark:text-slate-200">
                       {resolvedVendor || "Not specified"}
                     </p>
                   </div>
                 </>
               ) : (
-                <p className="text-slate-500">No team members added</p>
+                <p className="text-slate-500 dark:text-slate-400">No team members added</p>
               )}
             </div>
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="3" className="border border-gray-200 rounded-lg">
-          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 hover:no-underline">
+        <AccordionItem value="3" className="border border-gray-200 dark:border-slate-700 rounded-lg">
+          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 text-slate-900 dark:text-slate-100 hover:no-underline">
             <span className="font-medium">
               3. Contract Value &amp; Payments
             </span>
@@ -235,20 +235,20 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-slate-500">Total Contract Value</p>
-                  <p className="text-slate-800">
+                  <p className="text-slate-500 dark:text-slate-400">Total Contract Value</p>
+                  <p className="text-slate-800 dark:text-slate-200">
                     {formatAmount(contractValue)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Payment Structure</p>
-                  <p className="text-slate-800">
+                  <p className="text-slate-500 dark:text-slate-400">Payment Structure</p>
+                  <p className="text-slate-800 dark:text-slate-200">
                     {paymentStructure || "Not specified"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Payment Term</p>
-                  <p className="text-slate-800">
+                  <p className="text-slate-500 dark:text-slate-400">Payment Term</p>
+                  <p className="text-slate-800 dark:text-slate-200">
                     {resolvedPaymentTerm || "Not specified"}
                   </p>
                 </div>
@@ -256,7 +256,7 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
 
               {hasMilestones ? (
                 <div className="space-y-2">
-                  <p className="text-slate-500">Milestones</p>
+                  <p className="text-slate-500 dark:text-slate-400">Milestones</p>
                   <div className="space-y-1">
                     {milestones?.map((m, idx) => (
                       <div
@@ -265,11 +265,11 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
                       >
                         <div >
                           <span className="font-medium mr-2">{idx + 1}.</span>
-                          <span className="text-slate-700">
+                          <span className="text-slate-700 dark:text-slate-300">
                             {m.name || `Milestone ${idx + 1}`}
                           </span>
                         </div>
-                        <span className="text-slate-500">
+                        <span className="text-slate-500 dark:text-slate-400">
                           {formatAmount(m.amount)}
                         </span>
                       </div>
@@ -277,14 +277,14 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
                   </div>
                 </div>
               ) : (
-                <p className="text-slate-500">No milestones added</p>
+                <p className="text-slate-500 dark:text-slate-400">No milestones added</p>
               )}
             </div>
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="4" className="border border-gray-200 rounded-lg">
-          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 hover:no-underline">
+        <AccordionItem value="4" className="border border-gray-200 dark:border-slate-700 rounded-lg">
+          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 text-slate-900 dark:text-slate-100 hover:no-underline">
             <span className="font-medium">4. Timeline</span>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
@@ -292,25 +292,25 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
               {hasTimeline ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-slate-500">Effective Date</p>
-                    <p className="text-slate-800">
+                    <p className="text-slate-500 dark:text-slate-400">Effective Date</p>
+                    <p className="text-slate-800 dark:text-slate-200">
                       {formatDate(effectiveDate)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-slate-500">End Date</p>
-                    <p className="text-slate-800">{formatDate(endDate)}</p>
+                    <p className="text-slate-500 dark:text-slate-400">End Date</p>
+                    <p className="text-slate-800 dark:text-slate-200">{formatDate(endDate)}</p>
                   </div>
                 </div>
               ) : (
-                <p className="text-slate-500">No timeline set</p>
+                <p className="text-slate-500 dark:text-slate-400">No timeline set</p>
               )}
             </div>
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="5" className="border border-gray-200 rounded-lg">
-          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 hover:no-underline">
+        <AccordionItem value="5" className="border border-gray-200 dark:border-slate-700 rounded-lg">
+          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 text-slate-900 dark:text-slate-100 hover:no-underline">
             <span className="font-medium">5. Deliverables</span>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
@@ -318,21 +318,21 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
               {hasDeliverables ? (
                 <ul className="list-disc list-inside space-y-1">
                   {deliverables?.map((d, idx) => (
-                    <li key={idx} className="text-slate-800">
+                    <li key={idx} className="text-slate-800 dark:text-slate-200">
                       {d.name || `Deliverable ${idx + 1}`} –{" "}
                       {formatDate(d.dueDate ?? undefined)}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-slate-500">No deliverables added</p>
+                <p className="text-slate-500 dark:text-slate-400">No deliverables added</p>
               )}
             </div>
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="6" className="border border-gray-200 rounded-lg">
-          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 hover:no-underline">
+        <AccordionItem value="6" className="border border-gray-200 dark:border-slate-700 rounded-lg">
+          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 text-slate-900 dark:text-slate-100 hover:no-underline">
             <span className="font-medium">6. Configure Approval Level</span>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
@@ -345,10 +345,10 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
                       className="flex items-center justify-between"
                     >
                       <div>
-                        <p className="text-slate-700 font-medium">
+                        <p className="text-slate-700 dark:text-slate-300 font-medium">
                           {g.name || `Group ${idx + 1}`}
                         </p>
-                        <p className="text-slate-500 text-xs">
+                        <p className="text-slate-500 dark:text-slate-400 text-xs">
                           Approval Level {g.approvalLevel || "-"}
                         </p>
                       </div>
@@ -356,33 +356,33 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
                   ))}
                 </div>
               ) : (
-                <p className="text-slate-500">No approval groups configured</p>
+                <p className="text-slate-500 dark:text-slate-400">No approval groups configured</p>
               )}
             </div>
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="7" className="border border-gray-200 rounded-lg">
-          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 hover:no-underline">
+        <AccordionItem value="7" className="border border-gray-200 dark:border-slate-700 rounded-lg">
+          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 text-slate-900 dark:text-slate-100 hover:no-underline">
             <span className="font-medium">7. Documents</span>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
             <div className="space-y-2 text-sm">
               {hasDocuments ? (
                 <>
-                  <p className="text-slate-500 mb-2">
+                  <p className="text-slate-500 dark:text-slate-400 mb-2">
                     Uploaded Documents ({documents?.length})
                   </p>
                   <ul className="list-disc list-inside space-y-1">
                     {documents?.map((file, idx) => (
-                      <li key={idx} className="text-slate-800">
+                      <li key={idx} className="text-slate-800 dark:text-slate-200">
                         {file.name}
                       </li>
                     ))}
                   </ul>
                 </>
               ) : (
-                <p className="text-slate-500">No documents uploaded</p>
+                <p className="text-slate-500 dark:text-slate-400">No documents uploaded</p>
               )}
             </div>
           </AccordionContent>

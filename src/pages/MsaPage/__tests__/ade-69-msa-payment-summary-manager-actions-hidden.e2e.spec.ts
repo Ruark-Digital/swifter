@@ -56,7 +56,7 @@ test.describe("ADE-69 MSA Payment Summary", () => {
       const req = route.request();
       const url = req.url();
 
-      if (url.endsWith("/contract/manager/msa-contract/m1") && req.method() === "GET") {
+      if (url.endsWith("/contract/manager/msa-contracts/m1") && req.method() === "GET") {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -87,7 +87,7 @@ test.describe("ADE-69 MSA Payment Summary", () => {
       }
 
       if (
-        url.includes("/contract/manager/msa-contract/m1/payment-holdbacks") &&
+        url.includes("/contract/manager/msa-contracts/m1/payment-holdbacks") &&
         req.method() === "GET"
       ) {
         await route.fulfill({
@@ -99,7 +99,7 @@ test.describe("ADE-69 MSA Payment Summary", () => {
       }
 
       if (
-        url.includes("/contract/manager/msa-contract/m1/payment-savings") &&
+        url.includes("/contract/manager/msa-contracts/m1/payment-savings") &&
         req.method() === "GET"
       ) {
         await route.fulfill({

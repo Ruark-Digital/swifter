@@ -135,7 +135,7 @@ describe("MSA ChangeManagement", () => {
     await waitFor(() => {
       expect(mockedGetRequest).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: "/contract/manager/msa-contract/msa-123/changes?page=1&limit=10",
+          url: "/contract/manager/msa-contracts/msa-123/changes?page=1&limit=10",
         }),
       );
     });
@@ -149,7 +149,7 @@ describe("MSA ChangeManagement", () => {
       "msaChanges",
       "stats",
       "msa-123",
-      "/contract/manager/msa-contract/msa-123",
+      "/contract/manager/msa-contracts/msa-123",
     ]);
     expect(queryKeys).toContainEqual([
       "msaChanges",
@@ -157,7 +157,7 @@ describe("MSA ChangeManagement", () => {
       "all",
       0,
       10,
-      "/contract/manager/msa-contract/msa-123",
+      "/contract/manager/msa-contracts/msa-123",
     ]);
     expect(queryKeys).not.toContainEqual(
       expect.arrayContaining(["user-1"]),
@@ -168,7 +168,7 @@ describe("MSA ChangeManagement", () => {
     await waitFor(() => {
       expect(mockedGetRequest).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: "/contract/manager/msa-contract/msa-123/changes?page=2&limit=10",
+          url: "/contract/manager/msa-contracts/msa-123/changes?page=2&limit=10",
         }),
       );
     });
@@ -185,7 +185,7 @@ describe("MSA ChangeManagement", () => {
     await waitFor(() => {
       expect(mockedGetRequest).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: "/contract/user/msa-contract/msa-123/changes?page=1&limit=10",
+          url: "/contract/user/msa-contracts/msa-123/changes?page=1&limit=10",
         }),
       );
     });
