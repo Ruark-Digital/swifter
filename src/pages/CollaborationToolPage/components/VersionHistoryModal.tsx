@@ -18,6 +18,10 @@ export interface Version {
   /** Classifier used by the Versions tab to render an icon / colour
    *  for each entry without re-parsing the label text. */
   kind?: VersionKind;
+  /** Origin of the entry. "local" rows have a Y.Doc snapshot and can
+   *  be restored client-side; "be" rows come from the backend version
+   *  endpoint and only support download-latest (no per-version restore). */
+  source?: "local" | "be";
 }
 
 interface VersionHistoryModalProps {
