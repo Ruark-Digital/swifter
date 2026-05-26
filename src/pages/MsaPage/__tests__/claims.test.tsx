@@ -85,8 +85,29 @@ vi.mock("@/pages/ContractManagementPage/components/RequestClaimDialog", () => ({
   ),
 }));
 
-vi.mock("@/pages/MsaPage/components/MSAClaimDetailsSheet", () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+vi.mock("@/pages/ContractManagementPage/components/ClaimsTable", () => ({
+  default: ({
+    setPagination,
+  }: {
+    setPagination?: (
+      updater: (prev: { pageIndex: number; pageSize: number }) =>
+        | { pageIndex: number; pageSize: number },
+    ) => void;
+  }) => (
+    <div data-testid="claims-table">
+      <button
+        type="button"
+        onClick={() =>
+          setPagination?.((prev) => ({
+            ...prev,
+            pageIndex: prev.pageIndex + 1,
+          }))
+        }
+      >
+        Next claims page
+      </button>
+    </div>
+  ),
 }));
 
 const mockedGetRequest = vi.mocked(getRequest);
@@ -146,7 +167,7 @@ describe("MSA Claims", () => {
     await waitFor(() => {
       expect(mockedGetRequest).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: "/contract/manager/msa-contract/msa-claims-123/claims?page=1&limit=10",
+          url: "/contract/manager/msa-contracts/msa-claims-123/claims?page=1&limit=10",
         }),
       );
     });
@@ -160,14 +181,14 @@ describe("MSA Claims", () => {
       "msa-claims",
       "stats",
       "msa-claims-123",
-      "/contract/manager/msa-contract/msa-claims-123/claims/stats",
+      "/contract/manager/msa-contracts/msa-claims-123/claims/stats",
     ]);
     expect(queryKeys).toContainEqual([
       "msa-claims",
       "msa-claims-123",
       0,
       10,
-      "/contract/manager/msa-contract/msa-claims-123/claims",
+      "/contract/manager/msa-contracts/msa-claims-123/claims",
     ]);
     expect(queryKeys).not.toContainEqual(expect.arrayContaining(["user-1"]));
 
@@ -176,7 +197,7 @@ describe("MSA Claims", () => {
     await waitFor(() => {
       expect(mockedGetRequest).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: "/contract/manager/msa-contract/msa-claims-123/claims?page=2&limit=10",
+          url: "/contract/manager/msa-contracts/msa-claims-123/claims?page=2&limit=10",
         }),
       );
     });
@@ -190,10 +211,13 @@ describe("MSA Claims", () => {
 
     renderClaims();
 
+    // Admin falls through to the user prefix in basePath, and per BE
+    // spec only manager uses plural `claims` — every other role uses
+    // singular `claim`.
     await waitFor(() => {
       expect(mockedGetRequest).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: "/contract/user/msa-contract/msa-claims-123/claims?page=1&limit=10",
+          url: "/contract/user/msa-contracts/msa-claims-123/claim?page=1&limit=10",
         }),
       );
     });
@@ -201,7 +225,7 @@ describe("MSA Claims", () => {
     expect(screen.queryByRole("button", { name: "Create Claim" })).not.toBeInTheDocument();
   });
 
-  test("vendor claim creation uses plural path and bare shared invalidation prefix", async () => {
+  test("vendor claim creation uses singular path per BE spec and bare shared invalidation prefix", async () => {
     Object.assign(mockedUserRole, {
       isManager: false,
       isVendor: true,
@@ -211,9 +235,12 @@ describe("MSA Claims", () => {
 
     const dialog = await screen.findByTestId("request-claim-dialog");
 
+    // BE plurality is role-asymmetric: vendor / approver / view-only use
+    // singular `claim`; only manager uses plural `claims`. See
+    // memory msa-url-routing-bug-classes Class 4.
     expect(dialog).toHaveAttribute(
       "data-create-path",
-      "/contract/vendor/msa-contract/msa-claims-123/claims",
+      "/contract/vendor/msa-contracts/msa-claims-123/claim",
     );
     expect(dialog).toHaveAttribute("data-invalidate-key", JSON.stringify(["msa-claims"]));
   });
