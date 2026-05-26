@@ -47,6 +47,9 @@ interface SidebarPanelProps {
   // Versions — auto-saved; no manual save button anymore.
   versions: Version[];
   onRestoreVersion: (versionId: string) => void;
+  onDownloadLatestVersion?: () => void;
+  isDownloadingVersion?: boolean;
+  isLoadingVersions?: boolean;
   // AI / Redline
   aiStatus: "idle" | "loading" | "ready" | "error" | "empty";
   aiItems: AiItem[];
@@ -87,6 +90,9 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   mentionables = [],
   versions,
   onRestoreVersion,
+  onDownloadLatestVersion,
+  isDownloadingVersion = false,
+  isLoadingVersions = false,
   aiStatus,
   aiItems,
   aiErrorMessage,
@@ -180,7 +186,13 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
         )}
         {activeTab === "versions" && (
           <Suspense fallback={fallbackNode}>
-            <VersionsTab versions={versions} onRestore={onRestoreVersion} />
+            <VersionsTab
+              versions={versions}
+              onRestore={onRestoreVersion}
+              onDownloadLatest={onDownloadLatestVersion}
+              isDownloading={isDownloadingVersion}
+              isLoading={isLoadingVersions}
+            />
           </Suspense>
         )}
       </div>

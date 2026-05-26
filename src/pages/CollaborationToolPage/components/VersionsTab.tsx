@@ -6,6 +6,8 @@ import {
   MessageSquare,
   Sparkles,
   Pencil,
+  Download,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Version, VersionKind } from "./VersionHistoryModal";
@@ -13,6 +15,13 @@ import type { Version, VersionKind } from "./VersionHistoryModal";
 interface VersionsTabProps {
   versions: Version[];
   onRestore: (versionId: string) => void;
+  /** Optional handler to download the latest server-stored Yjs snapshot
+   *  (GET /collab-export/{docName}/download). When omitted the header
+   *  download button is hidden. */
+  onDownloadLatest?: () => void;
+  isDownloading?: boolean;
+  /** True while the BE version list is loading on first paint. */
+  isLoading?: boolean;
 }
 
 const KIND_META: Record<
@@ -59,18 +68,45 @@ const formatRelativeOrAbsolute = (iso: string): string => {
   return new Date(iso).toLocaleString();
 };
 
-const VersionsTab: React.FC<VersionsTabProps> = ({ versions, onRestore }) => {
+const VersionsTab: React.FC<VersionsTabProps> = ({
+  versions,
+  onRestore,
+  onDownloadLatest,
+  isDownloading = false,
+  isLoading = false,
+}) => {
   return (
     <div className="flex h-full w-full flex-col">
-      <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800">
-        <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
-          Version history
+      <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-200 dark:border-slate-800">
+        <div className="min-w-0">
+          <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
+            Version history
+          </div>
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            {isLoading
+              ? "Loading versions…"
+              : versions.length === 0
+                ? "Track-change snapshots will appear here"
+                : `${versions.length} snapshot${versions.length === 1 ? "" : "s"} · newest first`}
+          </div>
         </div>
-        <div className="text-xs text-slate-500 dark:text-slate-400">
-          {versions.length === 0
-            ? "Track-change snapshots will appear here"
-            : `${versions.length} snapshot${versions.length === 1 ? "" : "s"} · newest first`}
-        </div>
+        {onDownloadLatest && (
+          <button
+            type="button"
+            onClick={onDownloadLatest}
+            disabled={isDownloading}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            aria-label="Download latest version"
+            title="Download the latest saved snapshot as a .yjs file"
+          >
+            {isDownloading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Download className="h-3.5 w-3.5" />
+            )}
+            {isDownloading ? "Downloading…" : "Download latest"}
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-4">
@@ -122,15 +158,17 @@ const VersionsTab: React.FC<VersionsTabProps> = ({ versions, onRestore }) => {
                         by {version.author}
                       </div>
                     </div>
-                    <button
-                      onClick={() => onRestore(version.id)}
-                      className="inline-flex shrink-0 items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
-                      aria-label={`Restore ${version.label ?? "version"} from ${new Date(version.timestamp).toLocaleString()}`}
-                      title="Replace the current document with this snapshot"
-                    >
-                      <RotateCcw className="h-3 w-3" />
-                      Restore
-                    </button>
+                    {version.source !== "be" && (
+                      <button
+                        onClick={() => onRestore(version.id)}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
+                        aria-label={`Restore ${version.label ?? "version"} from ${new Date(version.timestamp).toLocaleString()}`}
+                        title="Replace the current document with this snapshot"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Restore
+                      </button>
+                    )}
                   </div>
                 </li>
               );
