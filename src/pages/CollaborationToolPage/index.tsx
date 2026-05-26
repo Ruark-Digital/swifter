@@ -22,6 +22,10 @@ import {
 import type { EditorAdapter } from "./collab/editorAdapter";
 import { useCollabVersions } from "./collab/useCollabVersions";
 import {
+  useFileVersions,
+  useDownloadLatestCollab,
+} from "./collab/useFileVersionsApi";
+import {
   useAiRedlineSuggestions,
   type AiRedlineSuggestion,
 } from "./collab/useAiRedlineSuggestions";
@@ -141,7 +145,7 @@ const CollaborationToolPage: React.FC = () => {
   // Version history backed by Yjs so every client in the same room
   // sees the same timeline.
   const {
-    versions,
+    versions: localVersions,
     addVersion,
     getSnapshot: getVersionSnapshot,
   } = useCollabVersions(collabYDoc);
@@ -272,6 +276,49 @@ const CollaborationToolPage: React.FC = () => {
       presenceActive,
     };
   }, [collabDoc, contractId, fileName, presenceActive, token, wsUrlParam]);
+
+  // Server-stored version history (GET /file/versions/{docName}) and
+  // latest-snapshot download (GET /collab-export/{docName}/download).
+  // The fallback room id "collab:editor" is excluded so we don't pin a
+  // shared global key on the BE when no real document is loaded.
+  const docName =
+    collabMeta.roomId && collabMeta.roomId !== "collab:editor"
+      ? collabMeta.roomId
+      : undefined;
+  const fileVersionsQuery = useFileVersions(docName);
+  const downloadLatestMutation = useDownloadLatestCollab();
+
+  // Merge BE-fetched versions on top of in-memory Yjs snapshots. BE
+  // entries carry `source: "be"` so the Versions tab knows to suppress
+  // the per-row Restore button (no client-side snapshot to apply).
+  const versions: Version[] = useMemo(() => {
+    const be = fileVersionsQuery.data?.versions ?? [];
+    const combined = [...be, ...localVersions];
+    return combined.sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
+  }, [fileVersionsQuery.data?.versions, localVersions]);
+
+  const handleDownloadLatestVersion = useCallback(() => {
+    if (!docName) {
+      toastHandler.error(
+        "Download unavailable",
+        "Open a document before downloading the latest version.",
+      );
+      return;
+    }
+    downloadLatestMutation.mutate(
+      { docName },
+      {
+        onError: (err) => {
+          const message =
+            err instanceof Error ? err.message : "Could not download snapshot.";
+          toastHandler.error("Download failed", message);
+        },
+      },
+    );
+  }, [docName, downloadLatestMutation, toastHandler]);
 
   const importMeta = useMemo(
     () => ({ sourceUrl, fileName, fileType }),
@@ -604,6 +651,9 @@ const CollaborationToolPage: React.FC = () => {
           mentionables={mentionables}
           versions={versions}
           onRestoreVersion={handleRestoreVersion}
+          onDownloadLatestVersion={docName ? handleDownloadLatestVersion : undefined}
+          isDownloadingVersion={downloadLatestMutation.isPending}
+          isLoadingVersions={fileVersionsQuery.isLoading}
           aiStatus={aiStatus}
           aiItems={aiItems}
           aiErrorMessage={(aiMutation.error as Error | undefined)?.message}
