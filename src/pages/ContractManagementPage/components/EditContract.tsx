@@ -133,8 +133,8 @@ export const buildContractApproversPayload = (
 
 export const resolveContractSaveStatus = (
   currentStatus: unknown,
-): "draft" | "publish" => {
-  return currentStatus === "draft" ? "draft" : "publish";
+): "draft" | "pending_approval" => {
+  return currentStatus === "draft" ? "draft" : "pending_approval";
 };
 
 const EditContract: React.FC<Props> = ({
@@ -639,7 +639,7 @@ const EditContract: React.FC<Props> = ({
   });
 
   const buildPayload = React.useCallback(
-    (data: yup.InferType<typeof createSchema>, status: "draft" | "publish") => {
+    (data: yup.InferType<typeof createSchema>, status: "draft" | "pending_approval") => {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
       const relationship =
         data.relationship === "msa" || data.relationship === "msa_project"
@@ -985,7 +985,7 @@ const EditContract: React.FC<Props> = ({
             <Forge
               control={control}
               onSubmit={(data) => {
-                const payload = buildPayload(data as any, "publish");
+                const payload = buildPayload(data as any, "pending_approval");
                 setLastPayload(payload);
                 mutation.mutate(payload);
               }}
@@ -1080,7 +1080,7 @@ const EditContract: React.FC<Props> = ({
                         }
                         if (step === 9) {
                           const vals = getValues();
-                          const payload = buildPayload(vals as any, "publish");
+                          const payload = buildPayload(vals as any, "pending_approval");
                           setLastPayload(payload);
                           mutation.mutate(payload);
                           return;
