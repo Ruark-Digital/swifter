@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -9,6 +10,68 @@ type Row = {
 
 type Props = {
   rows?: Row[];
+};
+
+type CategoryRowProps = {
+  name: string;
+  valueM: number;
+  contractCount: number;
+  pct: number;
+};
+
+const CategoryRow: React.FC<CategoryRowProps> = ({
+  name,
+  valueM,
+  contractCount,
+  pct,
+}) => {
+  const nameRef = useRef<HTMLParagraphElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  useEffect(() => {
+    const el = nameRef.current;
+    if (!el) return;
+    const check = () => setIsTruncated(el.scrollWidth > el.clientWidth + 1);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [name]);
+
+  return (
+    <div className="group space-y-2 relative">
+      <div className="flex items-center justify-between gap-3 min-w-0">
+        <p
+          ref={nameRef}
+          className="text-sm font-semibold text-[#030712] dark:text-slate-100 truncate min-w-0"
+        >
+          {name}
+        </p>
+        <p className="text-sm font-semibold text-[#030712] dark:text-slate-100 shrink-0">
+          ${valueM.toFixed(1)}M
+        </p>
+      </div>
+      <div className="w-full h-2.5 bg-[#DDDDDD] dark:bg-slate-800 rounded-full overflow-hidden">
+        <div
+          className="h-2.5 bg-[#286EE0] rounded-full"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      {isTruncated && (
+        <div className="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity absolute left-1/2 -translate-x-1/2 -top-8 bg-white dark:bg-slate-900 border border-[#E5E7EB] dark:border-slate-700 rounded-2xl p-2 min-w-[180px] max-w-[260px] shadow z-10">
+          <p className="text-[14px] font-medium text-[#0F0F0F] dark:text-slate-100 break-words">
+            {name}
+          </p>
+          <p className="text-[12px] text-[#6B6B6B] dark:text-slate-400">
+            {contractCount} {contractCount === 1 ? "Contract" : "Contracts"}
+          </p>
+          <p className="text-[12px] text-[#6B6B6B] dark:text-slate-400">
+            ${valueM.toFixed(1)}M
+          </p>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export const CategoryValueCard: React.FC<Props> = ({ rows }) => {
@@ -67,36 +130,13 @@ export const CategoryValueCard: React.FC<Props> = ({ rows }) => {
                 )
               : 0;
           return (
-            <div key={idx} className="space-y-2 relative">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-[#030712] dark:text-slate-100">
-                  {row.name}
-                </p>
-                <p className="text-sm font-semibold text-[#030712] dark:text-slate-100">
-                  ${row.valueM.toFixed(1)}M
-                </p>
-              </div>
-              <div className="w-full h-2.5 bg-[#DDDDDD] dark:bg-slate-800 rounded-full overflow-hidden">
-                <div
-                  className="h-2.5 bg-[#286EE0] rounded-full"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              {idx === 3 && (
-                <div className="absolute left-1/2 -translate-x-1/2 -top-8 bg-white dark:bg-slate-900 border border-[#E5E7EB] dark:border-slate-700 rounded-2xl p-2 w-[150px] shadow">
-                  <p className="text-[14px] font-medium text-[#0F0F0F] dark:text-slate-100">
-                    {row.name}
-                  </p>
-                  <p className="text-[12px] text-[#6B6B6B] dark:text-slate-400">
-                    {row.contractCount}{" "}
-                    {row.contractCount === 1 ? "Contract" : "Contracts"}
-                  </p>
-                  <p className="text-[12px] text-[#6B6B6B] dark:text-slate-400">
-                    ${row.valueM.toFixed(1)}M
-                  </p>
-                </div>
-              )}
-            </div>
+            <CategoryRow
+              key={idx}
+              name={row.name}
+              valueM={row.valueM}
+              contractCount={row.contractCount}
+              pct={pct}
+            />
           );
         })}
         <div className="flex items-center justify-between">
