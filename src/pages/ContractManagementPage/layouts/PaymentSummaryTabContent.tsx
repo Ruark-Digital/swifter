@@ -357,7 +357,7 @@ const UpdateSavingsDialog: React.FC<{
           <div>
             <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{file.name}</p>
             <p className="text-xs text-gray-500 dark:text-slate-400">
-              {getSimpleFileExtension(file.name).toUpperCase()} â€¢{" "}
+              {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
               {formatFileSize(file.size)}
             </p>
           </div>
@@ -799,7 +799,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
 
       {(holdbacksLoading || savingsLoading) && (
         <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800/60 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
-          Loading payment dataâ€¦
+          Loading payment data…
         </div>
       )}
 

@@ -396,6 +396,12 @@ export const TextTagInput = (
                     "w-full min-w-[80px] shadow-none px-2 h-10 dark:text-slate-50 dark:placeholder:text-slate-400",
                     inputClassName,
                   ),
+                  autoComplete: {
+                    popoverContent:
+                      "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700",
+                    commandGroup: "dark:text-slate-100",
+                    commandItem: "dark:text-slate-100 dark:hover:bg-slate-800",
+                  },
                   tag: {
                     body: cn(
                       "h-7 relative bg-background border border-input hover:bg-background !rounded-lg font-medium text-xs ps-3 pe-7 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-50",
@@ -531,7 +537,10 @@ export const TextTagInput = (
             ),
 
             autoComplete: {
-              popoverContent: "bg-white"
+              popoverContent:
+                "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700",
+              commandGroup: "dark:text-slate-100",
+              commandItem: "dark:text-slate-100 dark:hover:bg-slate-800",
             },
 
             tag: {
