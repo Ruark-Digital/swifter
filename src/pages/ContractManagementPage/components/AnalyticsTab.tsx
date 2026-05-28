@@ -460,7 +460,7 @@ const AnalyticsTab: React.FC<Props> = ({
               </Badge>
             </div>
             <p className="text-blue-100 text-sm">
-              {contract?.contractId ?? "--"} â€¢ {contractVendor}
+              {contract?.contractId ?? "--"} • {contractVendor}
             </p>
           </div>
         </div>
@@ -584,7 +584,7 @@ const AnalyticsTab: React.FC<Props> = ({
           <ul className="space-y-4">
             {alertsRows.map((alert, index) => (
               <li key={index} className="flex gap-2 text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">
-                <span className="text-orange-500 mt-1.5">â€¢</span>
+                <span className="text-orange-500 mt-1.5">•</span>
                 <span dangerouslySetInnerHTML={{ 
                   __html: alert.text
                     .replace(/Renew by \d{4}-\d{2}-\d{2}/, '<span class="font-bold text-slate-800 dark:text-slate-100">$&</span>')
