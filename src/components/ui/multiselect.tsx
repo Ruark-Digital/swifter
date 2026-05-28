@@ -370,7 +370,7 @@ const MultipleSelector = React.forwardRef<
             </div>
           ) : (
             <div className="flex items-center justify-between w-full mx-auto">
-              <span className="text-sm text-muted-foreground mx-3 dark:text-gray-400">
+              <span className="text-sm font-normal text-muted-foreground mx-3 dark:text-gray-400">
                 {placeholder}
               </span>
               <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 dark:text-gray-400" />
