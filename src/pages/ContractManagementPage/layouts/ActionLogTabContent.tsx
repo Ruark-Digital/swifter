@@ -89,7 +89,7 @@ const ActionLogTabContent: React.FC<Props> = () => {
       return {
         actionId: log.logId || log.actionId || log._id || "Unknown",
         module: modStr,
-        description: "No description",
+        description: log.description || "No description",
         actorName: userName,
         actorRole: roleName,
         reference: refStr,
