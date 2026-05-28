@@ -782,7 +782,7 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
       : contract.vendor?.name || "";
   const contractManager = contract.creator;
   const internalTeam = contract.internalTeam ?? [];
-  const vendorPersonnel = contract.vendorPersonnel ?? [];
+  const vendorPersonnel = contract.personnel ?? [];
   const relationshipLabel =
     contract.contractRelationship === "standalone"
       ? "Stand-Alone Project"
