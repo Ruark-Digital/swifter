@@ -22,9 +22,11 @@ import { contractManagerApi, type ContractChangeManagerDTO } from "../api/contra
 import { vendorApi } from "../api/vendorApi";
 import {
   getCreateChangeTypeOptionsForRole,
+  getCreateChangeSubmitLabel,
   toContractChangeFileItem,
   toManagerCreateChangePayload,
   toVendorCreateChangePayload,
+  type ContractChangeType,
   type UploadURLs,
 } from "../lib/contractChanges";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -78,6 +80,11 @@ const CreateChangeDialog: React.FC<Props> = ({
   }, [open, reset, defaultChangeType]);
 
   const files = useWatch({ control, name: "files" }) as File[] | null;
+  const changeType = useWatch({ control, name: "changeType" }) as ContractChangeType | undefined;
+  const submitLabel = getCreateChangeSubmitLabel({
+    isManager,
+    changeType: changeType ?? defaultChangeType,
+  });
 
   const { mutateAsync: uploadFile, isPending: isUploadingFiles } = useMutation<
     ApiResponse<UploadURLs[]>,
@@ -326,7 +333,7 @@ const CreateChangeDialog: React.FC<Props> = ({
                 disabled={isSubmitting}
                 className="h-12 flex-1 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
               >
-                {isSubmitting ? "Sending..." : "Send Request"}
+                {isSubmitting ? "Sending..." : submitLabel}
               </Button>
             </div>
           </Forge>
