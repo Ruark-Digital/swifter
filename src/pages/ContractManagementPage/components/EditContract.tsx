@@ -396,6 +396,7 @@ const EditContract: React.FC<Props> = ({
         typeof contract.msaContract === "string"
           ? contract.msaContract
           : contract.msaContract?._id || "",
+      msaCategory: (contract as any).msaCategory ?? "",
       awardedSolicitation:
         typeof contract.solicitation === "string"
           ? contract.solicitation
@@ -818,6 +819,10 @@ const EditContract: React.FC<Props> = ({
         msaContractId:
           relationship === "msa_project"
             ? data.msaContractId || undefined
+            : undefined,
+        msaCategory:
+          data.relationship === "msa"
+            ? data.msaCategory || undefined
             : undefined,
         solicitationId: data.awardedSolicitation || undefined,
         contractId: data.contractId || undefined,

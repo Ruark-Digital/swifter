@@ -34,6 +34,12 @@ type Props = {
   }>;
 };
 
+const MSA_CATEGORY_OPTIONS = [
+  { label: "Task Order", value: "task_order" },
+  { label: "Work Order", value: "work_order" },
+  { label: "Child Contract", value: "child_contract" },
+];
+
 const ComplexityRating = ({
   value,
   onChange,
@@ -265,13 +271,31 @@ const Step1BasicInfo: React.FC<Props> = ({
       )}
 
       {relationship === "msa" && (
-        <Forger
-          name="msaContractId"
-          label="Select MSA"
-          placeholder="Select MSA"
-          component={TextSelect}
-          options={msaOptions}
-        />
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Forger
+              name="msaContractId"
+              label="Select MSA"
+              placeholder="Select MSA"
+              component={TextSelect}
+              options={msaOptions}
+            />
+            <Forger
+              name="msaCategory"
+              label="Select MSA Category"
+              placeholder="Select Category"
+              component={TextSelect}
+              options={MSA_CATEGORY_OPTIONS}
+            />
+          </div>
+          <Forger
+            name="awardedSolicitation"
+            label="Select Awarded Solicitation (Optional)"
+            placeholder="Select Solicitation"
+            component={TextSelect}
+            options={awardedOptions}
+          />
+        </>
       )}
 
       {relationship === "msa_project" && (

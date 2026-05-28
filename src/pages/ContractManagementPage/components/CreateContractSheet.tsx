@@ -61,6 +61,7 @@ export const schema = yup.object({
   businessDivision: yup.string().required("Business Division is required"),
   contractId: yup.string().optional(),
   msaContractId: yup.string().optional(),
+  msaCategory: yup.string().optional(),
   description: yup.string().required("Description is required"),
   vendor: yup
     .string()
@@ -205,6 +206,7 @@ export const defaultValues = {
   businessDivision: "",
   contractId: "",
   msaContractId: "",
+  msaCategory: "",
   description: "",
   vendor: "",
   personnel: [],
@@ -1030,6 +1032,10 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         msaContractId:
           relationship === "msa_project"
             ? data.msaContractId || undefined
+            : undefined,
+        msaCategory:
+          data.relationship === "msa"
+            ? data.msaCategory || undefined
             : undefined,
         solicitationId: data.awardedSolicitation || undefined,
         contractId: data.contractId || undefined,
