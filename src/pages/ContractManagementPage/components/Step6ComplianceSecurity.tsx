@@ -149,6 +149,10 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
                           label: "Labour Bond",
                           value: "labour_bond",
                         },
+                        {
+                          label: "Labour and Material Bond",
+                          value: "labour_and_material_bond",
+                        },
                       ]}
                     />
                     <Forger
