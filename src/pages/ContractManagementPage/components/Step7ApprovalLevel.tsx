@@ -84,7 +84,11 @@ const Step7ApprovalLevel: React.FC<Props> = ({ control }) => {
 
     return people.map((p) => {
       const email = p.email ?? "";
-      const name = p.firstName || email || p._id;
+      const fullName = [p.firstName, p.lastName]
+        .filter((part) => typeof part === "string" && part.trim())
+        .join(" ")
+        .trim();
+      const name = fullName || email || p._id;
       const label =
         email && name && email !== name ? `${name} (${email})` : name;
       const value = p._id || email;
@@ -92,7 +96,7 @@ const Step7ApprovalLevel: React.FC<Props> = ({ control }) => {
         id: value,
         value,
         text: label,
-        meta: { email },
+        meta: { email, name: fullName },
       };
     });
   }, [personnelData]);

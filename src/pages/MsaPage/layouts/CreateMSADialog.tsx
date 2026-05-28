@@ -1050,12 +1050,29 @@ const SendForApprovalDialog = React.memo(
                 )}
                 {selectedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
-                  const name =
+                  const rawText =
                     approver?.text ||
                     approver?.name ||
                     approver?.label ||
-                    "Unnamed";
-                  const email = approver?.id || approver?.email || "";
+                    "";
+                  const metaEmail =
+                    (approver?.meta?.email as string | undefined) ?? "";
+                  const fallbackEmail = approver?.email ?? "";
+                  const email =
+                    metaEmail ||
+                    (typeof fallbackEmail === "string" && fallbackEmail.includes("@")
+                      ? fallbackEmail
+                      : "");
+                  const metaName =
+                    (approver?.meta?.name as string | undefined) ?? "";
+                  const nameFromText = email
+                    ? rawText.replace(
+                        new RegExp(`\\s*\\(${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)\\s*$`),
+                        "",
+                      )
+                    : rawText;
+                  const name =
+                    metaName.trim() || nameFromText.trim() || "Unnamed";
                   const role = approver?.meta?.role
                     ? approver.meta.role
                     : selectedGroup?.approvalLevel
@@ -1102,11 +1119,22 @@ const SendForApprovalDialog = React.memo(
                 )}
                 {assignedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
-                  const name =
+                  const metaName =
+                    (approver?.meta?.name as string | undefined) ?? "";
+                  const rawText =
                     approver?.text ||
                     approver?.name ||
                     approver?.label ||
-                    "Unnamed";
+                    "";
+                  const metaEmail =
+                    (approver?.meta?.email as string | undefined) ?? "";
+                  const stripped = metaEmail
+                    ? rawText.replace(
+                        new RegExp(`\\s*\\(${metaEmail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)\\s*$`),
+                        "",
+                      )
+                    : rawText;
+                  const name = metaName.trim() || stripped.trim() || "Unnamed";
                   return (
                     <div
                       key={approverId}
