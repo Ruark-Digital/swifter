@@ -762,9 +762,9 @@ const MsaDetailPage: React.FC = () => {
                   description: msa?.description,
                 }}
                 dates={{
-                  published: formatDate(toISO(msa?.createdAt)),
-                  effective: formatDate(toISO(msa?.createdAt)),
-                  end: formatDate(toISO(msa?.updatedAt)),
+                  published: formatDate(toISO(msa?.datePublished)),
+                  effective: formatDate(toISO(msa?.startDate)),
+                  end: formatDate(toISO(msa?.endDate)),
                 }}
                 durations={{
                   draft: draftDuration,
