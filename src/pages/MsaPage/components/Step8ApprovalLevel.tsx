@@ -19,7 +19,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { InfoIcon } from "lucide-react";
-import { ApiResponseError } from "@/types";
+import { ApiResponse, ApiResponseError } from "@/types";
 
 type ApproverTag = {
   id?: string;
@@ -30,8 +30,6 @@ type ApproverTag = {
 };
 
 type Props = { control: Control<CreateMsaFormData> };
-
-type ApiListResponse<T> = { status: number; message: string; data: T[] };
 
 type Personnel = {
   _id: string;
@@ -61,20 +59,22 @@ const Step8ApprovalLevel: React.FC<Props> = ({ control }) => {
   }) as { approvers?: ApproverTag[] }[] | undefined;
 
   const { data: personnelData, isLoading: isLoadingUsers } = useQuery<
-    ApiListResponse<Personnel>,
+    ApiResponse<Personnel[]>,
     ApiResponseError
   >({
+    // Shares cache with Step2ContractTeam — both queryFns must return the
+    // full AxiosResponse so consumers can read `personnelData?.data?.data`
+    // consistently. Returning just the body here caused this dropdown to
+    // collapse to "No results found." whenever Step 2 mounted first.
     queryKey: ["contract-personnel"],
-    queryFn: async () => {
-      const res = await getRequest({ url: "/contract/manager/personnel" });
-      return res.data as ApiListResponse<Personnel>;
-    },
+    queryFn: async () =>
+      await getRequest({ url: "/contract/manager/personnel" }),
     staleTime: 60_000,
   });
 
   const approverTags = React.useMemo<ApproverTag[]>(() => {
     const people =
-      personnelData?.data?.filter?.((item) =>
+      personnelData?.data?.data?.filter?.((item) =>
         (item.role ?? []).some((r) => r?.name === "approver"),
       ) ?? [];
 
