@@ -9,6 +9,7 @@ import EditContract from "../components/EditContract";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useQueryClient } from "@tanstack/react-query";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
+import { useUserRole } from "@/hooks/useUserRole";
 
 type Props = {
   currency?: string;
@@ -26,6 +27,7 @@ const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, ef
   const [editingContractId, setEditingContractId] = React.useState<string | null>(null);
   const { success } = useToastHandler();
   const qc = useQueryClient();
+  const { isManager } = useUserRole();
 
   return (
     <TabsContent value="documents" className="space-y-6">
@@ -38,16 +40,18 @@ const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, ef
             </Button>
           </ExportReportSheet>
           
-          <Button
-            onClick={() => {
-              if (contractId) {
-                setEditingContractId(contractId);
-              }
-            }}
-            disabled={!!actionsDisabled}
-          >
-            Edit Contract
-          </Button>
+          {isManager && (
+            <Button
+              onClick={() => {
+                if (contractId) {
+                  setEditingContractId(contractId);
+                }
+              }}
+              disabled={!!actionsDisabled}
+            >
+              Edit Contract
+            </Button>
+          )}
         </div>
       </div>
 
