@@ -279,6 +279,17 @@ export function CreateVendorReportForm({
               label=""
               component={TextFileUploader}
               control={control as unknown as ForgeControl<FormValues>}
+              accept={
+                {
+                  "application/pdf": [".pdf"],
+                  "application/msword": [".doc"],
+                  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+                    ".docx",
+                  ],
+                  "image/png": [".png"],
+                  "image/jpeg": [".jpeg", ".jpg"],
+                } as any
+              }
               element={
                 <div className="text-center text-sm text-slate-600">
                   <div className="font-medium">

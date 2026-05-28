@@ -35,9 +35,11 @@ const KpiTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       typeof item.allTimeAvgScore === "number"
         ? `${item.allTimeAvgScore}%`
         : `${item.allTimeAvgScore ?? ""}`,
-    lastUpdated: item.lastUpdated
-      ? format(new Date(item.lastUpdated), "dd MMM yyyy")
-      : "",
+    lastUpdated: (() => {
+      if (!item.lastUpdated) return "-";
+      const d = new Date(item.lastUpdated);
+      return Number.isNaN(d.getTime()) ? "-" : format(d, "dd MMM yyyy");
+    })(),
     actions: ["Update", "View"],
   }));
 
