@@ -266,12 +266,37 @@ const CreateMSADialog: React.FC<Props> = ({
       typeof v === "object" && v !== null ? (v._id ?? v.id ?? "") : (v ?? "");
 
     const stage = (iv.contractFormationStage ?? {}) as Record<string, any>;
-    const personnelArr = Array.isArray(iv.vendorPersonnel)
-      ? iv.vendorPersonnel
-      : Array.isArray(iv.personnel)
-        ? iv.personnel
+    const personnelSrc = Array.isArray(iv.personnel)
+      ? iv.personnel
+      : Array.isArray(iv.vendorPersonnel)
+        ? iv.vendorPersonnel
         : [];
-    const internalTeamArr = Array.isArray(iv.internalTeam) ? iv.internalTeam : [];
+    const personnelArr = personnelSrc.map((p: any) => ({
+      id: p?._id ?? p?.email ?? "",
+      text: p?.name || p?.email || p?._id || "",
+      meta: {
+        email: p?.email ?? "",
+        role: Array.isArray(p?.role)
+          ? (p.role[0]?.name ?? "")
+          : (typeof p?.role === "string" ? p.role : p?.role?.name ?? ""),
+        phone: p?.phone ?? "",
+      },
+    }));
+    const internalTeamSrc = Array.isArray(iv.internalTeam) ? iv.internalTeam : [];
+    const internalTeamArr = internalTeamSrc.map((t: any) => {
+      const u = t?.user ?? t;
+      const id = u?._id ?? u?.id ?? u?.email ?? "";
+      return {
+        id,
+        text: u?.name || u?.email || id || "",
+        meta: {
+          email: u?.email ?? "",
+          role:
+            typeof u?.role === "string" ? u.role : (u?.role?.name ?? ""),
+          phone: u?.phone ?? "",
+        },
+      };
+    });
 
     reset({
       ...defaultValues,
@@ -290,7 +315,7 @@ const CreateMSADialog: React.FC<Props> = ({
       visibility: iv.visibility ?? defaultValues.visibility,
       personnel: personnelArr.length ? personnelArr : defaultValues.personnel,
       internalTeam: internalTeamArr.length
-        ? internalTeamArr.map((m: any) => idOf(m))
+        ? internalTeamArr
         : defaultValues.internalTeam,
       effectiveDate: iv.startDate ? new Date(iv.startDate) : undefined,
       endDate: iv.endDate ? new Date(iv.endDate) : undefined,
