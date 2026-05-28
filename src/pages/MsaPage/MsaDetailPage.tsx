@@ -71,7 +71,6 @@ type TabKey =
 
 const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "overview", label: "Overview" },
-  { key: "analytics", label: "Analytics" },
   { key: "kpi", label: "KPI" },
   { key: "compliance", label: "Compliance & Security" },
   { key: "documents", label: "Documents" },
@@ -126,7 +125,6 @@ const ROLE_TAB_WHITELIST: Record<
   ],
   manager: [
     "overview",
-    "analytics",
     "kpi",
     "compliance",
     "documents",
@@ -780,19 +778,6 @@ const MsaDetailPage: React.FC = () => {
                 internalTeam={internalTeam}
                 vendorPersonnel={vendorPersonnel}
               />
-            </TabsContent>
-
-            <TabsContent value="analytics">
-              <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-10 text-center">
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  Analytics for MSA
-                </p>
-                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                  Charts will appear here once the backend exposes
-                  /msa-contracts/&lt;id&gt;/dashboard endpoints. The tab is
-                  reserved in the UI so this surface is ready to wire up.
-                </p>
-              </div>
             </TabsContent>
 
             <Documents
