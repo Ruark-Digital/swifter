@@ -10,7 +10,7 @@ import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
-import { cn } from "@/lib/utils";
+import { cn, formatSecurityType } from "@/lib/utils";
 import { format, differenceInDays } from "date-fns";
 import { Check, Search, Share2, X } from "lucide-react";
 import type { ApiResponseError } from "@/types";
@@ -174,7 +174,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
         return {
           id: security._id || security.securityTypeId || "",
           securityId: security.securityTypeId || security._id || "-",
-          securityType: security.securityType || "-",
+          securityType: formatSecurityType(security.securityType),
           amount: formatCurrencyCompact(security.amount),
           dueDate,
           dueIn,

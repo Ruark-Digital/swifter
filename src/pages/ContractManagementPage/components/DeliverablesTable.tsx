@@ -635,7 +635,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                   ? detail.status
                       .replace(/_/g, " ")
                       .replace(/\b\w/g, (c: string) => c.toUpperCase())
-                  : "Under Review"}
+                  : ""}
               </div>
             </div>
 

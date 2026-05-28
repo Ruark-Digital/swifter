@@ -133,8 +133,8 @@ export const buildContractApproversPayload = (
 
 export const resolveContractSaveStatus = (
   currentStatus: unknown,
-): "draft" | "publish" => {
-  return currentStatus === "draft" ? "draft" : "publish";
+): "draft" | "pending_approval" => {
+  return currentStatus === "draft" ? "draft" : "pending_approval";
 };
 
 const EditContract: React.FC<Props> = ({
@@ -639,7 +639,7 @@ const EditContract: React.FC<Props> = ({
   });
 
   const buildPayload = React.useCallback(
-    (data: yup.InferType<typeof createSchema>, status: "draft" | "publish") => {
+    (data: yup.InferType<typeof createSchema>, status: "draft" | "pending_approval") => {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
       const relationship =
         data.relationship === "msa" || data.relationship === "msa_project"
@@ -985,7 +985,7 @@ const EditContract: React.FC<Props> = ({
             <Forge
               control={control}
               onSubmit={(data) => {
-                const payload = buildPayload(data as any, "publish");
+                const payload = buildPayload(data as any, "pending_approval");
                 setLastPayload(payload);
                 mutation.mutate(payload);
               }}
@@ -1080,7 +1080,7 @@ const EditContract: React.FC<Props> = ({
                         }
                         if (step === 9) {
                           const vals = getValues();
-                          const payload = buildPayload(vals as any, "publish");
+                          const payload = buildPayload(vals as any, "pending_approval");
                           setLastPayload(payload);
                           mutation.mutate(payload);
                           return;
@@ -1271,12 +1271,29 @@ const SendForApprovalDialog = React.memo(
                 )}
                 {selectedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
-                  const name =
+                  const rawText =
                     approver?.text ||
                     approver?.name ||
                     approver?.label ||
-                    "Unnamed";
-                  const email = approver?.id || approver?.email || "";
+                    "";
+                  const metaEmail =
+                    (approver?.meta?.email as string | undefined) ?? "";
+                  const fallbackEmail = approver?.email ?? "";
+                  const email =
+                    metaEmail ||
+                    (typeof fallbackEmail === "string" && fallbackEmail.includes("@")
+                      ? fallbackEmail
+                      : "");
+                  const metaName =
+                    (approver?.meta?.name as string | undefined) ?? "";
+                  const nameFromText = email
+                    ? rawText.replace(
+                        new RegExp(`\\s*\\(${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)\\s*$`),
+                        "",
+                      )
+                    : rawText;
+                  const name =
+                    metaName.trim() || nameFromText.trim() || "Unnamed";
                   const role = approver?.meta?.role
                     ? approver.meta.role
                     : selectedGroup?.approvalLevel
@@ -1323,11 +1340,22 @@ const SendForApprovalDialog = React.memo(
                 )}
                 {assignedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
-                  const name =
+                  const metaName =
+                    (approver?.meta?.name as string | undefined) ?? "";
+                  const rawText =
                     approver?.text ||
                     approver?.name ||
                     approver?.label ||
-                    "Unnamed";
+                    "";
+                  const metaEmail =
+                    (approver?.meta?.email as string | undefined) ?? "";
+                  const stripped = metaEmail
+                    ? rawText.replace(
+                        new RegExp(`\\s*\\(${metaEmail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)\\s*$`),
+                        "",
+                      )
+                    : rawText;
+                  const name = metaName.trim() || stripped.trim() || "Unnamed";
                   return (
                     <div
                       key={approverId}

@@ -50,6 +50,24 @@ export const shouldShowChangeDecisionActions = (type: string | undefined) => {
   return type !== "directive";
 };
 
+export const getCreateChangeSubmitLabel = ({
+  isManager,
+  changeType,
+}: {
+  isManager: boolean;
+  changeType: ContractChangeType | string | undefined;
+}): string => {
+  if (isManager) {
+    if (changeType === "order") return "Send Change Order";
+    if (changeType === "directive") return "Send Change Directive";
+    return "Send Request";
+  }
+  if (changeType === "order") return "Submit Change Order";
+  if (changeType === "request") return "Submit Change Request";
+  if (changeType === "proposal") return "Submit Change Proposal";
+  return "Submit Request";
+};
+
 export const getManagerApproveChangeUrl = ({
   roleBasePath,
   contractId,
