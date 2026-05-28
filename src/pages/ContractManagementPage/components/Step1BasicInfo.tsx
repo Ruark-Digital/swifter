@@ -48,7 +48,7 @@ const ComplexityRating = ({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-slate-700">
+        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
           Complexity Rating (1-10)
         </label>
         <TooltipProvider>
@@ -73,18 +73,20 @@ const ComplexityRating = ({
               className={cn(
                 "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
                 value === num
-                  ? "border-[#2A4467] bg-blue-50"
-                  : "border-slate-200 group-hover:border-slate-300"
+                  ? "border-[#2A4467] bg-blue-50 dark:border-indigo-400 dark:bg-indigo-900/40"
+                  : "border-slate-200 group-hover:border-slate-300 dark:border-slate-600 dark:group-hover:border-slate-500"
               )}
             >
               {value === num && (
-                <div className="w-2.5 h-2.5 rounded-full bg-[#2A4467]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#2A4467] dark:bg-indigo-300" />
               )}
             </div>
             <span
               className={cn(
                 "text-xs font-medium",
-                value === num ? "text-[#2A4467]" : "text-slate-500"
+                value === num
+                  ? "text-[#2A4467] dark:text-indigo-300"
+                  : "text-slate-500 dark:text-slate-400"
               )}
             >
               {num}
@@ -94,7 +96,9 @@ const ComplexityRating = ({
       </div>
       {error && <span className="text-xs text-red-500 mt-1">{error}</span>}
       {!error && helperText && (
-        <span className="text-xs text-gray-500 mt-1">{helperText}</span>
+        <span className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+          {helperText}
+        </span>
       )}
     </div>
   );

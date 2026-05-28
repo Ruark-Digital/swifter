@@ -67,7 +67,7 @@ const Step3Timeline: React.FC<Props> = ({
             component={TextDatePicker}
             showTime
           />
-          <p className="text-xs font-semibold text-[#2A4467]">
+          <p className="text-xs font-semibold text-[#2A4467] dark:text-slate-300">
             Could be in the past, present or future.
           </p>
         </div>
@@ -108,13 +108,13 @@ const Step3Timeline: React.FC<Props> = ({
         }
       />
 
-      <div className="space-y-4 rounded-2xl bg-[#F9FAFB] p-4">
-        <p className="text-sm font-medium text-[#0F0F0F]">
+      <div className="space-y-4 rounded-2xl bg-[#F9FAFB] dark:bg-slate-800/60 p-4">
+        <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
           Duration of Contract Formation  Stage
         </p>
 
         <div className="space-y-3">
-          <p className="text-sm font-medium text-[#0F0F0F]">Draft Stage</p>
+          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Draft Stage</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="draftStartDate"
@@ -135,7 +135,7 @@ const Step3Timeline: React.FC<Props> = ({
         </div>
 
         <div className="space-y-3">
-          <p className="text-sm font-medium text-[#0F0F0F]">Review Stage</p>
+          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Review Stage</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="reviewStartDate"
@@ -157,7 +157,7 @@ const Step3Timeline: React.FC<Props> = ({
         </div>
 
         <div className="space-y-3">
-          <p className="text-sm font-medium text-[#0F0F0F]">Approval Stage</p>
+          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Approval Stage</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="approvalStartDate"
@@ -179,7 +179,7 @@ const Step3Timeline: React.FC<Props> = ({
         </div>
 
         <div className="space-y-3">
-          <p className="text-sm font-medium text-[#0F0F0F]">Execution Stage</p>
+          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Execution Stage</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="executionStartDate"
