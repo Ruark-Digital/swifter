@@ -601,7 +601,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     getValues,
     reset,
     trigger: formTrigger,
-    clearErrors,
+    setError,
     setValue
   } = useForge<CreateContractFormData>({
     resolver: yupResolver(schema),
@@ -819,18 +819,36 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       const ok = await formTrigger(fields as any, { shouldFocus: true });
       if (!ok) return false;
       if (currentStep !== 5) return true;
-      // Milestone amount + due date are optional — clear any stale
-      // errors so the field doesn't render in its red error state.
+      // Step 5: when paymentStructure === "milestone", every row must
+      // have amount AND dueDate. Schema keeps them optional so the
+      // non-milestone payment structures aren't blocked.
       const values = getValues();
       if (values.paymentStructure !== "milestone") return true;
       const milestones = values.milestones ?? [];
-      milestones.forEach((_, index) => {
-        clearErrors(`milestones.${index}.amount`);
-        clearErrors(`milestones.${index}.dueDate`);
+      let allValid = true;
+      milestones.forEach((m, index) => {
+        const amountMissing =
+          m?.amount === undefined ||
+          m?.amount === null ||
+          String(m.amount).trim() === "";
+        if (amountMissing) {
+          setError(`milestones.${index}.amount` as any, {
+            type: "required",
+            message: "Amount is required",
+          });
+          allValid = false;
+        }
+        if (!m?.dueDate) {
+          setError(`milestones.${index}.dueDate` as any, {
+            type: "required",
+            message: "Due date is required",
+          });
+          allValid = false;
+        }
       });
-      return true;
+      return allValid;
     },
-    [clearErrors, formTrigger, getValues],
+    [formTrigger, getValues, setError],
   );
 
   const buildPayload = React.useCallback(
