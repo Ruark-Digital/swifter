@@ -2299,8 +2299,17 @@ export class DashboardDataTransformer {
       const contractTitle = item?.contractTitle ?? "";
       const requestedBy = item?.requestedBy ?? "";
 
+      const contractRef = item?.contractRef ?? "";
+      const contractDef = String(item?.contractDef ?? item?.type ?? "Contract");
+      const isMSA = /msa/i.test(contractDef);
+      const detailBase = isMSA ? "/dashboard/msa" : "/dashboard/contract-management";
+      const linkedContractTitle =
+        contractRef && contractTitle
+          ? `<a href="${detailBase}/${contractRef}" class="underline underline-offset-4 text-blue-600">${contractTitle}</a>`
+          : contractTitle;
+
       const strongTitle = title ? `<strong>${title}</strong>` : "<strong>Update</strong>";
-      const suffixParts = [description, contractTitle, requestedBy].filter(Boolean);
+      const suffixParts = [description, linkedContractTitle, requestedBy].filter(Boolean);
       const suffix = suffixParts.length > 0 ? ` — ${suffixParts.join(" • ")}` : "";
 
       return {

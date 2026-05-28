@@ -1,5 +1,6 @@
-import React, { lazy, Suspense, useCallback, useEffect } from "react";
+import React, { Suspense, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import "@/pages/CollaborationToolPage/collaboration.css";
 import type { CollaborationTab } from "../store/useCollaborationStore";
 import type { CommentsFeedItem } from "./CommentsTab";
@@ -8,9 +9,9 @@ import type { Version } from "./VersionHistoryModal";
 import type { RedlineSpan } from "../collab/redlineScan";
 import type { AiRedlineSuggestion } from "../collab/useAiRedlineSuggestions";
 
-const CommentsTab = lazy(() => import("./CommentsTab"));
-const VersionsTab = lazy(() => import("./VersionsTab"));
-const AiSuggestionsPanel = lazy(() => import("./AiSuggestionsPanel"));
+const CommentsTab = lazyWithRetry(() => import("./CommentsTab"));
+const VersionsTab = lazyWithRetry(() => import("./VersionsTab"));
+const AiSuggestionsPanel = lazyWithRetry(() => import("./AiSuggestionsPanel"));
 
 type FeedAttachment = {
   filename: string;

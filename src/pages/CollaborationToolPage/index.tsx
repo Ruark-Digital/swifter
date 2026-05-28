@@ -1,4 +1,5 @@
-import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { SEOWrapper } from "@/components/SEO";
 import SidebarPanel from "./components/SidebarPanel";
 import "@/pages/CollaborationToolPage/collaboration.css";
@@ -62,12 +63,12 @@ type LocalComment = {
   mentions?: Mentionable[];
 };
 
-const EditorPane = lazy(() => import("./components/EditorPanel"));
+const EditorPane = lazyWithRetry(() => import("./components/EditorPanel"));
 // TipTap is now the default editor. The legacy Yoopta panel is kept as
 // a fallback for redline / comment / AI / version-history features that
 // haven't been ported yet — opt in with `?editor=yoopta` until SP2-4
 // land those features on TipTap.
-const TipTapEditorPane = lazy(() => import("./components/TipTapEditorPanel"));
+const TipTapEditorPane = lazyWithRetry(() => import("./components/TipTapEditorPanel"));
 
 const toTimestamp = (value?: string | Date) => {
   if (!value) return "";
