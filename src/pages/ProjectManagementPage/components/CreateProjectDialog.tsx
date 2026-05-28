@@ -306,12 +306,12 @@ const CreateProjectDialog: React.FC<Props> = ({
 
   const UploadElement = () => (
     <div className="flex flex-col items-center justify-center text-center">
-      <CloudUpload className="h-12 w-12 text-[#2A4467]" />
+      <CloudUpload className="h-12 w-12 text-[#2A4467] dark:text-slate-300" />
       <div className="mt-4 space-y-2">
-        <p className="text-base font-semibold text-[#2A4467]">
+        <p className="text-base font-semibold text-[#2A4467] dark:text-slate-100">
           Drag &amp; Drop or Click to choose files
         </p>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
         </p>
       </div>
@@ -519,7 +519,9 @@ const CreateProjectDialog: React.FC<Props> = ({
           </div>
 
           <div className="space-y-3">
-            <p className="text-base font-medium text-[#0F0F0F]">Upload Files</p>
+            <p className="text-base font-medium text-[#0F0F0F] dark:text-slate-100">
+              Upload Files
+            </p>
             <FileUploader
               value={files ?? []}
               onValueChange={(nextFiles: File[] | null | undefined) => {
@@ -547,7 +549,7 @@ const CreateProjectDialog: React.FC<Props> = ({
               className="w-full"
               data-testid="project-files-input"
             >
-              <FileInput className="border border-dashed border-[#2A4467] rounded-xl bg-white px-[15px] py-[47px]">
+              <FileInput className="border border-dashed border-[#2A4467] dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 px-[15px] py-[47px]">
                 <div className="flex w-full flex-col items-center justify-center">
                   <UploadElement />
                 </div>
