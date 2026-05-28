@@ -298,6 +298,26 @@ const CreateMSADialog: React.FC<Props> = ({
       };
     });
 
+    const ins = (iv.insurance ?? {}) as Record<string, any>;
+    const policySrc = Array.isArray(ins.policy) ? ins.policy : [];
+    const insurancePolicies = policySrc.length
+      ? policySrc.map((p: any) => ({
+          name: p?.policyName ?? "",
+          limit:
+            p?.limit !== undefined && p?.limit !== null
+              ? String(p.limit)
+              : "",
+        }))
+      : defaultValues.insurancePolicies;
+    const securitiesSrc = Array.isArray(ins.contractSecurityType)
+      ? ins.contractSecurityType
+      : [];
+    const securities = securitiesSrc.map((s: any) => ({
+      type: s?.securityType ?? "",
+      amount: s?.amount ?? "",
+      dueDate: s?.dueDate ? new Date(s.dueDate) : undefined,
+    }));
+
     reset({
       ...defaultValues,
       name: iv.title ?? defaultValues.name,
@@ -376,6 +396,18 @@ const CreateMSADialog: React.FC<Props> = ({
             )
           : defaultValues.deliverables,
       documents: Array.isArray(iv.files) ? (iv.files as any) : null,
+      // Hydrating insurance is load-bearing on edit — without it, Save-as-Draft
+      // ships `{insurance: "No", contractSecurity: false}` and BE rejects with
+      // "Invalid insurance data" against the existing record.
+      contractSecurity:
+        ins.contractSecurity === true
+          ? "yes"
+          : ins.contractSecurity === false
+            ? "no"
+            : defaultValues.contractSecurity,
+      insuranceExpiryDate: ins.expiryDate ? new Date(ins.expiryDate) : undefined,
+      insurancePolicies,
+      securities,
     } as CreateMsaFormData);
 
     hydratedRef.current = true;
@@ -589,7 +621,15 @@ const CreateMSADialog: React.FC<Props> = ({
           ? (data.insurancePolicies ?? [])
               .map((p) => ({
                 policyName: p?.name,
-                limit: toNumberOrUndefined(p?.limit),
+                // Swagger declares `policy[].limit` as string; the contract
+                // edit/create flow also sends it as a string. Sending a
+                // number here trips BE validation once the field is
+                // populated (the empty-default path filters out before this
+                // matters, which is why create-with-no-insurance worked).
+                limit:
+                  p?.limit !== undefined && p?.limit !== null
+                    ? String(p.limit)
+                    : undefined,
               }))
               .filter((p) => p.policyName || p.limit)
           : undefined,
