@@ -182,6 +182,7 @@ export interface ContractDetail {
   isDeleted:              boolean;
   milestone:              any[];
   signatories:            any[];
+  datePublished?:         string;
   createdAt:              string;
   updatedAt:              string;
   __v:                    number;

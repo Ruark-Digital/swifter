@@ -799,7 +799,7 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
     contract.timezone,
   );
   const publishedDate = formatDateTZ(
-    contract.createdAt,
+    contract.datePublished,
     "dd MMM yyyy",
     contract.timezone,
   );
