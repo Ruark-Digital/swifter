@@ -22,6 +22,8 @@ import { useProjectsList } from "@/pages/ProjectManagementPage/services/useProje
 import { useToastHandler } from "@/hooks/useToaster";
 import { useWatch } from "react-hook-form";
 import { contractManagerApi } from "@/pages/ContractManagementPage/api/contractManagerApi";
+import { useUser } from "@/store/authSlice";
+import { getExchangeRate } from "@/lib/currencyUtils";
 import type { ContractDetail, ApiResponseError } from "@/types";
 import {
   schema as createSchema,
@@ -30,9 +32,12 @@ import {
 import { format } from "date-fns";
 import { X } from "lucide-react";
 import {
+  isEmailLike,
+  isObjectIdLike,
   toApproverUserKeyOrUndefined,
   toFileMetaOrUndefined,
   toIdStringOrUndefined,
+  toPersonnelOrUndefined,
 } from "@/lib/contractFormValues";
 
 type Props = {
@@ -158,6 +163,7 @@ const EditContract: React.FC<Props> = ({
   const [step, setStep] = React.useState(1);
   const qc = useQueryClient();
   const { success, error } = useToastHandler();
+  const currentUser = useUser();
   const [lastError, setLastError] = React.useState<ApiResponseError | null>(
     null,
   );
@@ -769,6 +775,29 @@ const EditContract: React.FC<Props> = ({
         },
       };
 
+      const awardedMatch = awardedQuery.data?.data?.find(
+        (a) => a._id === data.awardedSolicitation,
+      );
+
+      const vendorRaw =
+        typeof data.vendor === "string" ? data.vendor.trim() : "";
+      const vendor =
+        (vendorRaw && (isEmailLike(vendorRaw) || isObjectIdLike(vendorRaw))
+          ? vendorRaw
+          : undefined) ||
+        awardedMatch?.vendor?._id ||
+        awardedMatch?.vendor?.email ||
+        undefined;
+
+      const personnel =
+        (data.personnelMeta && data.personnelMeta.length > 0
+          ? (data.personnelMeta ?? [])
+              .map((p: any) => toPersonnelOrUndefined(p))
+              .filter(Boolean)
+          : (data.personnel ?? [])
+              .map((t: any) => toPersonnelOrUndefined(t))
+              .filter(Boolean)) ?? undefined;
+
       const payload = {
         title: data.name,
         description: data.description,
@@ -818,6 +847,10 @@ const EditContract: React.FC<Props> = ({
         rating: data.rating || 5,
         status,
         approvers,
+        currency: data.currency || undefined,
+        vendor,
+        projectManager: data.projectManager || undefined,
+        personnel,
         internalTeam:
           (data.internalTeamMeta && data.internalTeamMeta.length > 0
             ? (data.internalTeamMeta ?? [])
@@ -837,7 +870,48 @@ const EditContract: React.FC<Props> = ({
       });
       return payload;
     },
-    [paymentTermsQuery.data?.data, signatories, termTypesQuery.data?.data],
+    [
+      awardedQuery.data?.data,
+      paymentTermsQuery.data?.data,
+      signatories,
+      termTypesQuery.data?.data,
+    ],
+  );
+
+  const submit = React.useCallback(
+    async (
+      data: yup.InferType<typeof createSchema>,
+      status: "draft" | "pending_approval",
+    ) => {
+      const payload = buildPayload(data, status) as any;
+
+      const baseCurrency = currentUser?.currency;
+      const selectedCurrency = payload?.currency;
+      if (
+        typeof baseCurrency === "string" &&
+        typeof selectedCurrency === "string" &&
+        baseCurrency &&
+        selectedCurrency &&
+        baseCurrency !== selectedCurrency
+      ) {
+        try {
+          payload.currencyRate = await getExchangeRate(
+            baseCurrency,
+            selectedCurrency,
+          );
+        } catch (err) {
+          error(
+            "Failed to update contract",
+            err instanceof Error ? err.message : "Unable to fetch currency rate",
+          );
+          return;
+        }
+      }
+
+      setLastPayload(payload);
+      mutation.mutate(payload);
+    },
+    [buildPayload, currentUser?.currency, error, mutation],
   );
 
   const STEP_FIELDS: Record<
@@ -928,12 +1002,7 @@ const EditContract: React.FC<Props> = ({
         const status = resolveContractSaveStatus(
           contractRes?.data?.data?.status,
         );
-        const payload = buildPayload(
-          vals as yup.InferType<typeof createSchema>,
-          status,
-        );
-        setLastPayload(payload);
-        mutation.mutate(payload);
+        void submit(vals as yup.InferType<typeof createSchema>, status);
       } else if (e.key === "Escape") {
         e.preventDefault();
         onOpenChange(false);
@@ -944,8 +1013,7 @@ const EditContract: React.FC<Props> = ({
   }, [
     open,
     getValues,
-    buildPayload,
-    mutation,
+    submit,
     onOpenChange,
     contractRes?.data?.data?.status,
   ]);
@@ -985,9 +1053,7 @@ const EditContract: React.FC<Props> = ({
             <Forge
               control={control}
               onSubmit={(data) => {
-                const payload = buildPayload(data as any, "pending_approval");
-                setLastPayload(payload);
-                mutation.mutate(payload);
+                void submit(data as any, "pending_approval");
               }}
               className="mt-4 space-y-6"
             >
@@ -1044,21 +1110,17 @@ const EditContract: React.FC<Props> = ({
                   <Button
                     type="button"
                     variant="outline"
-                    aria-label="Save changes"
+                    aria-label="Save as draft"
                     className=" h-12 rounded-xl"
                     onClick={() => {
                       const vals = getValues();
-                      const status = resolveContractSaveStatus(
-                        contractRes?.data?.data?.status,
-                      );
-                      const payload = buildPayload(vals as any, status);
-                      setLastPayload(payload);
-                      mutation.mutate(payload);
+                      void submit(vals as any, "draft");
                     }}
                     disabled={mutation.isPending}
                   >
-                    {mutation.isPending ? "Saving..." : "Save Changes"}
+                    {mutation.isPending ? "Saving..." : "Save as Draft"}
                   </Button>
+
                   <div className="flex gap-4">
                     <Button
                       type="button"
@@ -1068,6 +1130,7 @@ const EditContract: React.FC<Props> = ({
                     >
                       Back
                     </Button>
+
                     <Button
                       type="button"
                       className="w-32 h-12 rounded-xl"
@@ -1080,9 +1143,7 @@ const EditContract: React.FC<Props> = ({
                         }
                         if (step === 9) {
                           const vals = getValues();
-                          const payload = buildPayload(vals as any, "pending_approval");
-                          setLastPayload(payload);
-                          mutation.mutate(payload);
+                          void submit(vals as any, "pending_approval");
                           return;
                         }
                         setStep(Math.min(9, step + 1));

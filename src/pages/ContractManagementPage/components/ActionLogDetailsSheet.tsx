@@ -8,7 +8,6 @@ import {
 import { Button } from "@/components/ui/button";
 // import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Share2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { contractManagerApi } from "../api/contractManagerApi";
@@ -191,7 +190,7 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
 
             <div className="space-y-3">
               <span className="text-sm text-slate-500 dark:text-slate-400">Attached Documents</span>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 {files.map((file: any, index: number) => (
                   <DocCard
                     key={index}
@@ -222,11 +221,8 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
         side="right"
       >
         <SheetHeader>
-          <div className="flex items-center justify-between mb-6">
+          <div className="mb-6">
             <SheetTitle>Details</SheetTitle>
-            <Button variant="outline" size="sm">
-              <Share2 className="mr-2 h-4 w-4" /> Export
-            </Button>
           </div>
         </SheetHeader>
         {renderContent()}

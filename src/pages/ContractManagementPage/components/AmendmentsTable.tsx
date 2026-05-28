@@ -41,6 +41,7 @@ import { getRequest, patchRequest, postRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserRole } from "@/hooks/useUserRole";
 import { DocType, DocumentItem } from "./DocumentItem";
+import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { format } from "date-fns";
 // import { useNavigate } from "react-router-dom";
@@ -595,6 +596,8 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
     "approved" | "rejected" | null
   >(null);
   const [approverCommentDraft, setApproverCommentDraft] = React.useState("");
+  const [viewerOpen, setViewerOpen] = React.useState(false);
+  const [selectedDoc, setSelectedDoc] = React.useState<DocType | null>(null);
 
   React.useEffect(() => {
     if (pendingApproverAction === null) setApproverCommentDraft("");
@@ -744,13 +747,19 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   });
 
   const handlePreview = (doc: DocType) => {
-    if (!doc.url) return;
-    // setSelectedDoc(doc);
-    // setViewerOpen(true);
+    if (!doc.url) {
+      toast.error("Preview", "File URL is missing");
+      return;
+    }
+    setSelectedDoc(doc);
+    setViewerOpen(true);
   };
 
   const handleDownload = (doc: DocType) => {
-    if (!doc.url) return;
+    if (!doc.url) {
+      toast.error("Download", "File URL is missing");
+      return;
+    }
     const a = window.document.createElement("a");
     a.href = doc.url;
     a.download = doc.name;
@@ -967,6 +976,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                           icon: getFileIcon(f.type ?? ""),
                           type: fileExtension,
                           size: f.size ?? "-",
+                          url: f.url,
                         }}
                         // canEdit={canEdit}
                         // navigate={navigate?.(contractId)}
@@ -1176,6 +1186,19 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
               />
             </div>
           </div>
+        )}
+
+        {selectedDoc && (
+          <DocumentViewer
+            isOpen={viewerOpen}
+            onClose={() => {
+              setViewerOpen(false);
+              setSelectedDoc(null);
+            }}
+            fileUrl={selectedDoc.url ?? ""}
+            fileName={selectedDoc.name}
+            fileType={selectedDoc.type}
+          />
         )}
       </SheetContent>
     </Sheet>

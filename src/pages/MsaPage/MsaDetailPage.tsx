@@ -71,7 +71,6 @@ type TabKey =
 
 const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "overview", label: "Overview" },
-  { key: "analytics", label: "Analytics" },
   { key: "kpi", label: "KPI" },
   { key: "compliance", label: "Compliance & Security" },
   { key: "documents", label: "Documents" },
@@ -592,10 +591,35 @@ const MsaDetailPage: React.FC = () => {
   const triggerClass =
     "dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3";
 
-  const draftDuration = diffDays(undefined, undefined);
-  const reviewDuration = diffDays(undefined, undefined);
-  const approvalDuration = diffDays(undefined, undefined);
-  const executionDuration = diffDays(undefined, undefined);
+  const stages = msa?.contractFormationStage;
+  const draftDuration = diffDays(stages?.draft?.startDate, stages?.draft?.endDate);
+  const reviewDuration = diffDays(
+    stages?.review?.startDate,
+    stages?.review?.endDate,
+  );
+  const approvalDuration = diffDays(
+    stages?.approval?.startDate,
+    stages?.approval?.endDate,
+  );
+  const executionDuration = diffDays(
+    stages?.execution?.startDate,
+    stages?.execution?.endDate,
+  );
+  const stageRange = (s?: { startDate?: string; endDate?: string }) => ({
+    start: formatDate(s?.startDate),
+    end: formatDate(s?.endDate),
+  });
+  const formationStages = {
+    draft: stageRange(stages?.draft),
+    review: stageRange(stages?.review),
+    approval: stageRange(stages?.approval),
+    execution: stageRange(stages?.execution),
+  };
+  const contractManagerName =
+    (msa as any)?.contractManager?.name ||
+    (msa as any)?.manager?.name ||
+    msa?.creator?.name ||
+    "";
 
   const internalTeam = Array.isArray(msa?.internalTeam)
     ? msa!.internalTeam
@@ -748,7 +772,9 @@ const MsaDetailPage: React.FC = () => {
                   approval: approvalDuration,
                   execution: executionDuration,
                 }}
+                formationStages={formationStages}
                 status={status}
+                contractManager={contractManagerName}
                 internalTeam={internalTeam}
                 vendorPersonnel={vendorPersonnel}
               />

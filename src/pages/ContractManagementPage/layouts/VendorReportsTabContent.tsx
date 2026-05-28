@@ -25,6 +25,8 @@ import {
   X,
 } from "lucide-react";
 import { getRequest } from "@/lib/axiosInstance";
+import { DocumentViewer } from "@/components/ui/DocumentViewer";
+import { useToastHandler } from "@/hooks/useToaster";
 import { getFileIcon } from "@/lib/fileUtils";
 import { useDebounceValue } from "usehooks-ts";
 import { format } from "date-fns";
@@ -58,10 +60,16 @@ const DocCard = ({
   name,
   type,
   size,
+  url,
+  onPreview,
+  onDownload,
 }: {
   name: string;
   type: string;
   size: string;
+  url?: string;
+  onPreview?: () => void;
+  onDownload?: () => void;
 }) => (
   <div className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-900 p-3">
     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EEF2FF] dark:bg-slate-800 text-xs font-semibold text-[#3B82F6] dark:text-blue-400">
@@ -76,13 +84,19 @@ const DocCard = ({
     <div className="flex items-center gap-2">
       <button
         type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F3F4F6] text-[#6B7280]"
+        aria-label="Preview"
+        disabled={!url}
+        onClick={onPreview}
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F3F4F6] dark:bg-slate-700 text-[#6B7280] dark:text-slate-400 disabled:opacity-50"
       >
         <Eye className="h-4 w-4" />
       </button>
       <button
         type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E6F0FF] text-[#2563EB]"
+        aria-label="Download"
+        disabled={!url}
+        onClick={onDownload}
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E6F0FF] dark:bg-slate-700 text-[#2563EB] dark:text-blue-400 disabled:opacity-50"
       >
         <Download className="h-4 w-4" />
       </button>
@@ -97,6 +111,33 @@ const ReportDetailsSheet: React.FC<{
   trigger: React.ReactNode;
 }> = ({ reportId, basePath, contractId, trigger }) => {
   const [open, setOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<
+    ReportDetails["files"][number] | null
+  >(null);
+  const toast = useToastHandler();
+
+  const handlePreview = (file: ReportDetails["files"][number]) => {
+    if (!file?.url) {
+      toast.error("Preview", "File URL is missing");
+      return;
+    }
+    setSelectedFile(file);
+    setViewerOpen(true);
+  };
+
+  const handleDownload = (file: ReportDetails["files"][number]) => {
+    if (!file?.url) {
+      toast.error("Download", "File URL is missing");
+      return;
+    }
+    const a = window.document.createElement("a");
+    a.href = file.url;
+    a.download = file.name;
+    window.document.body.appendChild(a);
+    a.click();
+    window.document.body.removeChild(a);
+  };
 
   const {
     data: reportDetails,
@@ -255,13 +296,16 @@ const ReportDetailsSheet: React.FC<{
                         <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                           Attached Documents
                         </div>
-                        <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-3 sm:grid-cols-1">
                           {reportDetails.files.map((file, index) => (
                             <DocCard
                               key={index}
                               name={file.name}
                               type={file.type}
                               size={`${(file.size / 1024).toFixed(0)}KB`}
+                              url={file.url}
+                              onPreview={() => handlePreview(file)}
+                              onDownload={() => handleDownload(file)}
                             />
                           ))}
                         </div>
@@ -285,6 +329,19 @@ const ReportDetailsSheet: React.FC<{
             </Tabs>
           </div>
         </div>
+
+        {selectedFile && (
+          <DocumentViewer
+            isOpen={viewerOpen}
+            onClose={() => {
+              setViewerOpen(false);
+              setSelectedFile(null);
+            }}
+            fileUrl={selectedFile.url}
+            fileName={selectedFile.name}
+            fileType={selectedFile.type}
+          />
+        )}
       </SheetContent>
     </Sheet>
   );
@@ -460,7 +517,7 @@ function VendorReportsTabContent({
       </Card>
 
       <Card className="overflow-hidden rounded-xl dark:bg-slate-900 dark:border-slate-700">
-        <div className="flex items-center gap-6 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+        <div className="flex items-center gap-6 border-b border-slate-200 dark:border-slate-800 px-6 py-4">
           <div className="text-sm font-medium text-slate-900 dark:text-slate-100">Reports</div>
 
           <div className="relative w-full max-w-[320px]">

@@ -35,6 +35,7 @@ import { ApiResponse, ApiResponseError } from "@/types";
 import { useUserRole } from "@/hooks/useUserRole";
 import { formatDate } from "date-fns";
 import { DocumentItem, type DocType } from "./DocumentItem";
+import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { getFileExtension } from "@/lib/fileUtils";
 import { cn } from "@/lib/utils";
 
@@ -103,12 +104,23 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
     enabled: !!contractId && !!lemId,
   });
 
+  const toast = useToastHandler();
+  const [viewerOpen, setViewerOpen] = React.useState(false);
+  const [selectedDoc, setSelectedDoc] = React.useState<DocType | null>(null);
+
   const handlePreview = (doc: DocType) => {
-    if (!doc.url) return;
-    window.open(doc.url, "_blank", "noopener,noreferrer");
+    if (!doc.url) {
+      toast.error("Preview", "File URL is missing");
+      return;
+    }
+    setSelectedDoc(doc);
+    setViewerOpen(true);
   };
   const handleDownload = (doc: DocType) => {
-    if (!doc.url) return;
+    if (!doc.url) {
+      toast.error("Download", "File URL is missing");
+      return;
+    }
     const a = window.document.createElement("a");
     a.href = doc.url;
     a.download = doc.name;
@@ -322,6 +334,19 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
             </div>
           )}
         </div>
+
+        {selectedDoc && (
+          <DocumentViewer
+            isOpen={viewerOpen}
+            onClose={() => {
+              setViewerOpen(false);
+              setSelectedDoc(null);
+            }}
+            fileUrl={selectedDoc.url ?? ""}
+            fileName={selectedDoc.name}
+            fileType={selectedDoc.type}
+          />
+        )}
       </SheetContent>
     </Sheet>
   );
