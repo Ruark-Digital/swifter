@@ -17,6 +17,7 @@ import { getRequest } from "@/lib/axiosInstance";
 import { getFileIcon } from "@/lib/fileUtils";
 import { ContractComplianceDTO } from "../api/contractManagerApi";
 import Spinner from "@/components/ui/Spinner";
+import { formatSecurityType } from "@/lib/utils";
 
 type PolicyItem = NonNullable<ContractComplianceDTO["policy"]>[number];
 type SecurityItem = NonNullable<ContractComplianceDTO["security"]>[number];
@@ -187,7 +188,7 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
 
         <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(100vh-80px)]">
           <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-            {detail?.policyName || detail?.securityType || ""}
+            {detail?.policyName || formatSecurityType(detail?.securityType) || ""}
           </h2>
 
           <Tabs defaultValue="overview" className="w-full">
@@ -207,7 +208,11 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
               <div className="grid grid-cols-2 gap-y-6 gap-x-12">
                 <LabelValue
                   label={type === "policy" ? "Policy Name" : "Security Type"}
-                  value={detail?.policyName || detail?.securityType || "—"}
+                  value={
+                    type === "policy"
+                      ? detail?.policyName || "—"
+                      : formatSecurityType(detail?.securityType)
+                  }
                 />
                 <LabelValue
                   label={type === "policy" ? "Limit" : "Amount"}

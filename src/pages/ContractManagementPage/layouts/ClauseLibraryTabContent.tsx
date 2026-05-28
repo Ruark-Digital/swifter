@@ -253,13 +253,26 @@ const toRiskDisplay = (
 };
 
 const formatCurrency = (value?: number | string, currency?: string) => {
-  const num = typeof value === "string" ? Number(value) : value;
-  if (typeof num !== "number" || !Number.isFinite(num)) return "—";
+  if (value == null) return "—";
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === "—") return "—";
+    const parsed = Number(trimmed.replace(/[^0-9.-]/g, ""));
+    if (Number.isFinite(parsed)) {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: currency || "USD",
+        maximumFractionDigits: 0,
+      }).format(parsed);
+    }
+    return trimmed;
+  }
+  if (!Number.isFinite(value)) return "—";
   return new Intl.NumberFormat(undefined, {
     style: "currency",
     currency: currency || "USD",
     maximumFractionDigits: 0,
-  }).format(num);
+  }).format(value);
 };
 
 const formatDateShort = (date?: string) => {
@@ -376,7 +389,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
               <div className="h-8 w-px bg-[#D1D5DB] dark:bg-slate-700" />
             </div>
             <div className="inline-flex flex-col pl-6">
-              <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">Value</div>
+              <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">Contract Value</div>
               <div className="text-base font-semibold leading-6 text-[#16A34A]">
                 {formatCurrency(contract?.value, contract?.currency)}
               </div>

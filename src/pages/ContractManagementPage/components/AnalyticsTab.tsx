@@ -700,7 +700,7 @@ const AnalyticsTab: React.FC<Props> = ({
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={activityChartData}
-                margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+                margin={{ top: 4, right: 8, left: 4, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
@@ -708,8 +708,7 @@ const AnalyticsTab: React.FC<Props> = ({
                   axisLine={false}
                   tickLine={false}
                   tick={{ fontSize: 10 }}
-                  width={20}
-                  mirror
+                  width={32}
                 />
                 <Tooltip />
                 <Line type="monotone" dataKey="change" stroke="#3B82F6" strokeWidth={2} dot={false} />

@@ -51,6 +51,17 @@ export const downloadFile = async (fileUrl: string) => {
   document.body.removeChild(link);
 };
 
+export const formatSecurityType = (raw: unknown): string => {
+  if (typeof raw !== "string") return "-";
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed === "-") return "-";
+  return trimmed
+    .split(/[\s_]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+};
+
 export const createFormData = (body: Record<string, any>) => {
   const formData = new FormData();
 
