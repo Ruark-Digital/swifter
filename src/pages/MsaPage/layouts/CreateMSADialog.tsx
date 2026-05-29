@@ -28,6 +28,7 @@ import {
   toPersonnelOrUndefined,
   toFileMetaOrUndefined,
 } from "@/lib/contractFormValues";
+import { useClearSession } from "@/store/solicitationFileSlice";
 import Step1BasicInfo from "../components/Step1BasicInfo";
 import Step2ContractTeam from "../components/Step2ContractTeam";
 import Step3Timeline from "../components/Step3Timeline";
@@ -236,29 +237,39 @@ const CreateMSADialog: React.FC<Props> = ({
     refetchOnWindowFocus: false,
   });
 
-  // Hydration guard: prefill the form ONCE the very first time the user
-  // opens the dialog for a given MSA id. We deliberately do NOT reset
-  // this flag on close — re-opening preserves the user's in-flight
-  // edits instead of stomping them with fresh server data. The flag is
-  // re-armed only when `editingMsaId` changes (different MSA) or when
-  // the user actually completes a save (handled in the mutation
-  // onSuccess by closing + leaving the flag set).
-  const hydratedRef = React.useRef(false);
+  // Hydration is two-phase: initialValues from the detail endpoint gives
+  // an immediate paint, then the /edit endpoint reload upgrades us to the
+  // authoritative form-shaped record. Both passes must run — gating after
+  // the first pass would lock in any field the detail endpoint shapes
+  // differently from /edit (e.g. an unpopulated `projectManager`). User
+  // edits between passes are preserved via `keepDirtyValues: true`.
+  const hydratedFromFetchedRef = React.useRef(false);
   const hydratedForRef = React.useRef<string | undefined>(undefined);
   React.useEffect(() => {
     if (editingMsaId !== hydratedForRef.current) {
-      hydratedRef.current = false;
+      hydratedFromFetchedRef.current = false;
       hydratedForRef.current = editingMsaId;
     }
   }, [editingMsaId]);
+
+  // Display label for the saved project manager — sourced from the BE
+  // user object so the chip can render the real name even when the
+  // vendor's PM list doesn't include this user.
+  const [defaultPmLabel, setDefaultPmLabel] = React.useState<
+    string | undefined
+  >(undefined);
+
   React.useEffect(() => {
     if (!open) return;
     if (!isEditing) return;
-    if (hydratedRef.current) return;
 
     // Prefer fetched detail; fall back to `initialValues` while the
-    // query is still loading so the form fills in immediately.
+    // query is still loading so the form fills in immediately. Once
+    // fetched arrives, re-hydrate (with keepDirtyValues so in-flight
+    // edits aren't stomped) — the /edit endpoint is form-shaped and
+    // authoritative.
     const fetched = editDetailQuery.data?.data;
+    if (hydratedFromFetchedRef.current) return;
     const iv = (fetched ?? initialValues) as Record<string, any> | undefined;
     if (!iv) return;
 
@@ -317,6 +328,17 @@ const CreateMSADialog: React.FC<Props> = ({
       amount: s?.amount ?? "",
       dueDate: s?.dueDate ? new Date(s.dueDate) : undefined,
     }));
+
+    const pmUser = iv.projectManager?.user;
+    const pmDisplayName =
+      pmUser && typeof pmUser === "object"
+        ? (pmUser.name ?? pmUser.email ?? undefined)
+        : undefined;
+    setDefaultPmLabel(
+      typeof pmDisplayName === "string" && pmDisplayName.trim()
+        ? pmDisplayName.trim()
+        : undefined,
+    );
 
     reset({
       ...defaultValues,
@@ -408,9 +430,9 @@ const CreateMSADialog: React.FC<Props> = ({
       insuranceExpiryDate: ins.expiryDate ? new Date(ins.expiryDate) : undefined,
       insurancePolicies,
       securities,
-    } as CreateMsaFormData);
+    } as CreateMsaFormData, fetched ? { keepDirtyValues: true } : undefined);
 
-    hydratedRef.current = true;
+    if (fetched) hydratedFromFetchedRef.current = true;
   }, [open, isEditing, editDetailQuery.data, initialValues, reset]);
 
   const [signatories, setSignatories] = React.useState<string[]>([]);
@@ -418,6 +440,10 @@ const CreateMSADialog: React.FC<Props> = ({
   const qc = useQueryClient();
   const toast = useToastHandler();
   const currentUser = useUser();
+  // Step4Form is backed by a persisted Zustand store shared across Solicitation/
+  // Contract/MSA/Evaluation wizards. Without clearing it on dialog dismiss,
+  // files from a prior wizard ghost into the next one — see QA bug #96.
+  const clearFileSession = useClearSession();
 
   const typesQuery = useQuery({
     queryKey: useUserQueryKey(["contract-types"]),
@@ -624,7 +650,7 @@ const CreateMSADialog: React.FC<Props> = ({
                 limit: toNumberOrUndefined(p?.limit),
               }))
               .filter((p) => p.policyName || p.limit !== undefined)
-          : undefined,
+          : [],
       };
 
       const contractFormationStage = {
@@ -764,8 +790,9 @@ const CreateMSADialog: React.FC<Props> = ({
         // truth, but on a subsequent open we want to pull the fresh
         // server copy in case anything was server-derived. Re-arm the
         // hydration guard.
-        hydratedRef.current = false;
+        hydratedFromFetchedRef.current = false;
       }
+      clearFileSession();
       setOpen(false);
       setStep(1);
       if (!isEditing) reset(defaultValues);
@@ -821,8 +848,17 @@ const CreateMSADialog: React.FC<Props> = ({
     // the create flow. The dialog just closes either way; re-opening
     // re-hydrates from the freshest server detail (hydratedRef gate).
     if (!isEditing) reset(defaultValues);
+    clearFileSession();
     setOpen(false);
   };
+
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) clearFileSession();
+      setOpen(nextOpen);
+    },
+    [clearFileSession],
+  );
 
   const handleSendForApproval = React.useCallback((sigs: string[]) => {
     setSignatories(sigs);
@@ -830,7 +866,7 @@ const CreateMSADialog: React.FC<Props> = ({
   }, []);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
         className={cn(
@@ -871,7 +907,7 @@ const CreateMSADialog: React.FC<Props> = ({
               isLoadingTypes={typesQuery.isLoading}
             />
           )}
-          {step === 2 && <Step2ContractTeam />}
+          {step === 2 && <Step2ContractTeam defaultPmLabel={defaultPmLabel} />}
           {step === 3 && (
             <Step3Timeline
               termTypeOptions={termTypeOptions}

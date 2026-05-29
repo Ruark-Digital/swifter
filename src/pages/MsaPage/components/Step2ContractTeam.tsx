@@ -13,7 +13,14 @@ import { useUser } from "@/store/authSlice";
 
 import { useFormContext, useWatch } from "react-hook-form";
 
-const Step2ContractTeam: React.FC = () => {
+type Props = {
+  /** Display label for the saved project manager — used as the chip
+   *  label when the vendor's PM list doesn't include this user (so the
+   *  trigger renders the real name instead of a raw ObjectId). */
+  defaultPmLabel?: string;
+};
+
+const Step2ContractTeam: React.FC<Props> = ({ defaultPmLabel }) => {
   const formContext = useFormContext<any>();
   const vendorId = useWatch({ control: formContext as any, name: "vendor" });
 
@@ -166,7 +173,7 @@ const Step2ContractTeam: React.FC = () => {
 
       <Forger
         name="projectManager"
-        label="Vendor/Contractor's Primary Contact for Contract Management"
+        label="Vendor/Contractor's Primary Contact"
         component={({
           value,
           onChange,
@@ -177,7 +184,7 @@ const Step2ContractTeam: React.FC = () => {
           const normalizedValue = typeof value === "string" ? value.trim() : "";
           const selectedOption = normalizedValue
             ? projectManagerOptions.find((option: any) => option.value === normalizedValue) ?? {
-                label: normalizedValue,
+                label: defaultPmLabel || normalizedValue,
                 value: normalizedValue,
               }
             : undefined;
@@ -188,7 +195,7 @@ const Step2ContractTeam: React.FC = () => {
             <TextMultiSelect
               name="projectManager"
               options={projectManagerOptions}
-              placeholder="Select Vendor/Contractor's Primary Contact for Contract Management or Type e-mail"
+              placeholder="Select Vendor/Contractor's Primary Contact or Type e-mail"
               maxCount={1}
               creatable={true}
               value={selectedValues as any}

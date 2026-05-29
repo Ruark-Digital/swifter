@@ -10,10 +10,10 @@ export const pruneEmptyValuesDeep = <T>(input: T): T => {
       return value;
     }
 
-    if (Array.isArray(value)) {
-      const next = value.map((v) => prune(v)).filter((v) => v !== undefined);
-      return next.length === 0 ? undefined : next;
-    }
+    // if (Array.isArray(value)) {
+    //   const next = value.map((v) => prune(v)).filter((v) => v !== undefined);
+    //   return next.length === 0 ? [] : next;
+    // }
 
     if (typeof value === "object") {
       const proto = Object.getPrototypeOf(value);

@@ -1144,9 +1144,14 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
   const handleOpenChange = React.useCallback(
     (nextOpen: boolean) => {
+      // Escape / outside-click dismiss skips the Cancel + onSuccess paths
+      // that explicitly call clearSession(); without this the persisted
+      // solicitation-files store leaks the contract's files into the next
+      // wizard (MSA / solicitation / evaluation). QA bug #96.
+      if (!nextOpen) clearSession();
       setOpen(nextOpen);
     },
-    [],
+    [clearSession],
   );
 
   return (
