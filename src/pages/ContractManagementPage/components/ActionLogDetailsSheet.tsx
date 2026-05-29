@@ -25,6 +25,7 @@ type ActionLogItem = {
   dateLine1: string;
   dateLine2: string;
   rawReference?: any;
+  id?: string;
 };
 
 type Props = {
@@ -78,6 +79,7 @@ const DocCard = ({
   </div>
 );
 
+
 const ActionLogDetailsSheet: React.FC<Props> = ({
   isOpen,
   onClose,
@@ -93,9 +95,9 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
     queryKey: useUserQueryKey(["actionDetail", contractId, action?.actionId, action?.reference]),
     queryFn: async () => {
       if (!action || !contractId) return null;
-      const logId = (action.actionId && action.actionId !== "Unknown")
-        ? action.actionId
-        : (action.rawReference?._id || action.reference);
+      const logId = (action.id && action.id !== "Unknown")
+        ? action.id
+        : action.actionId;
       return await contractManagerApi.getLogDetail(contractId, logId);
     },
     enabled: !!action && !!contractId && isOpen,
