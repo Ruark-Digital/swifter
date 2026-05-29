@@ -18,6 +18,7 @@ import LinkedContractsHeader from "./LinkedContractsHeader";
 import {
   useProjectDetail,
   useCompleteProject,
+  useUpdateProject,
   type Project,
 } from "../hooks/useProjectApi";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -259,6 +260,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   } = useProjectDetail(projectId);
 
   const completeMutation = useCompleteProject(projectId);
+  const updateMutation = useUpdateProject(projectId);
 
   const project = projectRes?.data?.data;
   const isCompleted = project?.status === "completed";
@@ -670,14 +672,31 @@ const ChangeDetailsSheet: React.FC<Props> = ({
               startDate: project?.startDate ? new Date(project.startDate) : undefined,
               endDate: project?.endDate ? new Date(project.endDate) : undefined,
               allowMultipleContracts: !!project?.allowMultiple,
+              businessDivision: project?.businessDivision,
+              existingFiles: project?.files ?? [],
             }}
-            isSubmitting={false}
-            onSubmit={async () => {
-              toast.error(
-                "Project",
-                "Project update endpoint is not documented in API docs"
-              );
-              throw new Error("Project update endpoint is not documented");
+            isSubmitting={updateMutation.isPending}
+            onSubmit={async (payload) => {
+              try {
+                const result = await updateMutation.mutateAsync({
+                  name: payload.name,
+                  category: payload.category,
+                  description: payload.description,
+                  budget: payload.budget,
+                  startDate: payload.startDate,
+                  endDate: payload.endDate,
+                  allowMultiple: payload.allowMultipleContracts,
+                  files: payload.files,
+                  businessDivision: payload.businessDivision,
+                });
+                toast.success(
+                  "Project",
+                  result?.data?.message ?? "Project updated successfully"
+                );
+              } catch (error) {
+                toast.error("Project", error as ApiResponseError);
+                throw error;
+              }
             }}
           />
         </div>
