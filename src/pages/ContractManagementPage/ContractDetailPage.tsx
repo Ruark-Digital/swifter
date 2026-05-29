@@ -570,14 +570,14 @@ const ContractDetailPage: React.FC = () => {
       </Tabs>
 
       <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
-        <DialogContent>
+        <DialogContent className="dark:bg-slate-900 dark:border-slate-800">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-slate-900 dark:text-slate-50">
               {approvalAction === "approved"
                 ? "Approve Contract"
                 : "Reject Contract"}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-slate-500 dark:text-slate-400">
               {approvalAction === "approved"
                 ? "Are you sure you want to approve this contract? This action cannot be undone."
                 : "Please provide a reason for rejecting this contract."}
@@ -589,7 +589,7 @@ const ContractDetailPage: React.FC = () => {
               placeholder="Add a comment (optional)"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              className="resize-none"
+              className="resize-none dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
 
@@ -597,6 +597,7 @@ const ContractDetailPage: React.FC = () => {
             <Button
               variant="outline"
               onClick={() => setApprovalDialogOpen(false)}
+              className="dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-slate-50"
             >
               Cancel
             </Button>
@@ -605,6 +606,11 @@ const ContractDetailPage: React.FC = () => {
               disabled={approvalMutation.isPending}
               variant={
                 approvalAction === "rejected" ? "destructive" : "default"
+              }
+              className={
+                approvalAction === "approved"
+                  ? "bg-[#2A4467] text-slate-50 hover:bg-[#2A4467]/90 dark:bg-[#2A4467] dark:text-slate-50 dark:hover:bg-[#2A4467]/80"
+                  : undefined
               }
             >
               {approvalMutation.isPending
