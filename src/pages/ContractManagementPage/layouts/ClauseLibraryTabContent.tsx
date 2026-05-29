@@ -299,6 +299,201 @@ const formatDateShort = (date?: string) => {
   return format(parsed, "dd MMM yyyy");
 };
 
+const escapeHtml = (s: unknown): string =>
+  String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const riskClassFor = (risk?: string): "low" | "medium" | "high" => {
+  const n = (risk || "").toLowerCase();
+  if (n === "high") return "high";
+  if (n === "medium") return "medium";
+  return "low";
+};
+
+const riskLabelFor = (risk?: string): string => {
+  const n = (risk || "").toLowerCase();
+  if (n === "high") return "HIGH RISK";
+  if (n === "medium") return "MEDIUM RISK";
+  return "LOW RISK";
+};
+
+const buildClauseLibraryPrintHtml = (
+  data: ClauseLibraryResponse | undefined,
+  vendorName?: string,
+): string => {
+  const contract = data?.data?.contract ?? {};
+  const summary = data?.data?.summary ?? {};
+  const sections = data?.data?.sections ?? [];
+
+  const sectionsHtml = sections
+    .map((section) => {
+      const clausesHtml = (section.clauses ?? [])
+        .map((clause) => {
+          const tone = riskClassFor(clause.risk);
+          const label = riskLabelFor(clause.risk);
+          const valuesRows = (clause.values ?? [])
+            .map(
+              (v) => `
+              <div class="value-row">
+                <div class="value-name">${escapeHtml(v.label || "Value")}</div>
+                <div class="value-val">${escapeHtml(v.value ?? "—")}</div>
+              </div>`,
+            )
+            .join("");
+          const valuesBlock =
+            valuesRows.length > 0
+              ? `<div class="values-block">
+                   <div class="values-label">💰 Rates &amp; Values</div>
+                   ${valuesRows}
+                 </div>`
+              : "";
+          const detailsText =
+            clause.details && clause.details.length > 0
+              ? clause.details.map((d) => escapeHtml(d)).join("<br/>")
+              : "Not specified";
+          return `
+            <div class="clause">
+              <div class="clause-header">
+                <div class="clause-title">${escapeHtml(clause.title || "Clause")}</div>
+                <span class="risk-pill risk-${tone}">${escapeHtml(label)}</span>
+              </div>
+              <div class="summary-block">
+                <div class="summary-label">📋 Summary</div>
+                <div class="summary-text">${escapeHtml(clause.summary || "Not specified")}</div>
+              </div>
+              ${valuesBlock}
+              <div class="details-block">
+                <div class="details-label">📄 Full Details</div>
+                <div class="details-text">${detailsText}</div>
+              </div>
+            </div>`;
+        })
+        .join("");
+      return `
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title">${escapeHtml(section.title || "Section")}</div>
+            <div class="section-count">${section.clauses?.length || 0} clauses</div>
+          </div>
+          <div class="section-body">${clausesHtml}</div>
+        </div>`;
+    })
+    .join("");
+
+  const docTitle = escapeHtml(
+    `Clause Library - ${contract.contractName || contract.title || contract.contractId || "Contract"}`,
+  );
+
+  const durationDisplay =
+    contract.duration ||
+    `${formatDateShort(contract.startDate)} to ${formatDateShort(contract.endDate)}`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>${docTitle}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; color: #030712; padding: 24px; background: #fff; }
+  .title { font-size: 24px; font-weight: 700; color: #2563EB; margin-bottom: 4px; }
+  .subtitle { font-size: 14px; color: #4B5563; margin-bottom: 16px; }
+  .meta-bar { background: #F5F8FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 15px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+  .meta-cells { display: flex; align-items: center; flex-wrap: wrap; }
+  .meta-cell { display: inline-flex; flex-direction: column; padding-right: 24px; border-right: 1px solid #D1D5DB; margin-right: 24px; }
+  .meta-cell:last-child { border-right: 0; margin-right: 0; padding-right: 0; }
+  .meta-label { font-size: 11px; color: #4B5563; }
+  .meta-value { font-size: 14px; font-weight: 600; color: #030712; margin-top: 2px; }
+  .meta-value-money { color: #16A34A; }
+  .status-pill { display: inline-block; background: #22C55E; color: #fff; border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 600; }
+  .section { border: 1px solid #E5E7EB; border-radius: 8px; margin-bottom: 16px; page-break-inside: avoid; background: #fff; }
+  .section-header { padding: 18px 20px; border-bottom: 1px solid #E5E7EB; }
+  .section-title { font-size: 18px; font-weight: 600; color: #030712; }
+  .section-count { font-size: 14px; color: #4B5563; margin-top: 2px; }
+  .clause { padding: 20px; border-bottom: 1px solid #F3F4F6; page-break-inside: avoid; }
+  .clause:last-child { border-bottom: 0; }
+  .clause-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 12px; }
+  .clause-title { font-size: 16px; font-weight: 600; color: #111827; }
+  .risk-pill { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .risk-low { background: #DCFCE7; color: #166534; }
+  .risk-medium { background: #FEF9C3; color: #854D0E; }
+  .risk-high { background: #FEE2E2; color: #991B1B; }
+  .summary-block { background: #EFF6FF; border-left: 4px solid #3B82F6; border-radius: 4px; padding: 10px 12px; margin-bottom: 10px; }
+  .summary-label { font-size: 13px; font-weight: 600; color: #1E3A8A; margin-bottom: 4px; }
+  .summary-text { font-size: 13px; color: #374151; line-height: 1.5; }
+  .values-block { background: #F0FDF4; border-left: 4px solid #22C55E; border-radius: 4px; padding: 10px 12px; margin-bottom: 10px; }
+  .values-label { font-size: 13px; font-weight: 600; color: #14532D; margin-bottom: 4px; }
+  .value-row { display: flex; padding: 4px 0; border-bottom: 1px solid #BBF7D0; }
+  .value-row:last-child { border-bottom: 0; }
+  .value-name { flex: 2; font-size: 13px; color: #374151; }
+  .value-val { flex: 1; font-size: 13px; font-weight: 600; color: #14532D; text-align: right; }
+  .details-block { background: #F9FAFB; border-radius: 4px; padding: 12px; }
+  .details-label { font-size: 13px; font-weight: 600; color: #111827; margin-bottom: 4px; }
+  .details-text { font-size: 13px; color: #374151; line-height: 1.55; white-space: pre-wrap; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 20px; page-break-inside: avoid; }
+  .stat { border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px; text-align: center; }
+  .stat-label { font-size: 13px; color: #4B5563; }
+  .stat-value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+  .stat-total { color: #2563EB; }
+  .stat-high { color: #DC2626; }
+  .stat-medium { color: #CA8A04; }
+  .stat-low { color: #16A34A; }
+  @page { size: A4 portrait; margin: 0.5in; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+  <div class="title">Clause Library</div>
+  <div class="subtitle">Contract Cheat Sheet — Quick Reference Guide</div>
+
+  <div class="meta-bar">
+    <div class="meta-cells">
+      <div class="meta-cell">
+        <span class="meta-label">Contract ID</span>
+        <span class="meta-value">${escapeHtml(contract.contractId || "—")}</span>
+      </div>
+      <div class="meta-cell">
+        <span class="meta-label">Contract Name</span>
+        <span class="meta-value">${escapeHtml(contract.contractName || contract.title || "—")}</span>
+      </div>
+      <div class="meta-cell">
+        <span class="meta-label">Vendor</span>
+        <span class="meta-value">${escapeHtml(vendorName || contract.vendor || "—")}</span>
+      </div>
+      <div class="meta-cell">
+        <span class="meta-label">Contract Value</span>
+        <span class="meta-value meta-value-money">${escapeHtml(formatCurrency(contract.value, contract.currency))}</span>
+      </div>
+      <div class="meta-cell">
+        <span class="meta-label">Duration</span>
+        <span class="meta-value">${escapeHtml(durationDisplay)}</span>
+      </div>
+    </div>
+    <span class="status-pill">${escapeHtml(contract.status || "—")}</span>
+  </div>
+
+  ${sectionsHtml || `<div class="section"><div class="section-header"><div class="section-title">No clauses found.</div></div></div>`}
+
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Total Clauses</div><div class="stat-value stat-total">${summary.totalClauses ?? 0}</div></div>
+    <div class="stat"><div class="stat-label">High Risk</div><div class="stat-value stat-high">${summary.highRisk ?? 0}</div></div>
+    <div class="stat"><div class="stat-label">Medium Risk</div><div class="stat-value stat-medium">${summary.mediumRisk ?? 0}</div></div>
+    <div class="stat"><div class="stat-label">Low Risk</div><div class="stat-value stat-low">${summary.lowRisk ?? 0}</div></div>
+  </div>
+
+  <script>
+    window.addEventListener("load", function () {
+      setTimeout(function () { window.focus(); window.print(); }, 100);
+    });
+  </script>
+</body>
+</html>`;
+};
+
 const ClauseLibraryTabContent: React.FC<Props> = ({ isActive, vendorName }) => {
   const { id = "" } = useParams<{ id: string }>();
   const [search, setSearch] = React.useState("");
@@ -320,6 +515,21 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive, vendorName }) => {
     () => data?.data?.sections ?? [],
     [data?.data?.sections],
   );
+
+  const handleExportPdf = React.useCallback(() => {
+    if (!data) return;
+    const html = buildClauseLibraryPrintHtml(data, vendorName);
+    const printWindow = window.open("", "_blank", "noopener,noreferrer");
+    if (!printWindow) {
+      // Popup blocked. Surface a console hint; toast plumbing isn't wired
+      // here and ad-hoc browser alerts would feel out of place on a doc view.
+      console.warn("Export PDF: popup blocked. Allow popups for this site.");
+      return;
+    }
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  }, [data, vendorName]);
 
   const filteredSections = React.useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -360,7 +570,9 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive, vendorName }) => {
           </div>
           <button
             type="button"
-            className="inline-flex items-center rounded-lg bg-[#2563EB] px-4 py-2"
+            onClick={handleExportPdf}
+            disabled={isLoading || !data}
+            className="inline-flex items-center rounded-lg bg-[#2563EB] px-4 py-2 hover:bg-[#1D4ED8] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <img
               src="/assets/contract-management/clause-library/export-pdf.svg"
