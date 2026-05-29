@@ -213,7 +213,7 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
 
       <Forger
         name="projectManager"
-        label="Vendor/Contractor's Primary Contact for Contract Management"
+        label="Vendor/Contractor's Primary Contact"
         component={({
           value,
           onChange,
@@ -235,7 +235,7 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
             <TextMultiSelect
               name="projectManager"
               options={projectManagerOptions}
-              placeholder="Select Vendor/Contractor's Primary Contact for Contract Management or Type e-mail"
+              placeholder="Select Vendor/Contractor's Primary Contact or Type e-mail"
               maxCount={1}
               creatable={true}
               value={selectedValues as any}
