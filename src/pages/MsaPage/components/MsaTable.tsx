@@ -44,8 +44,8 @@ const columns: ColumnDef<MsaRow>[] = [
     header: "MSA",
     cell: ({ row }) => (
       <div className="flex flex-col">
-        <span className="font-medium text-slate-900">{row.original.title}</span>
-        <span className="text-xs text-slate-500">{row.original.code}</span>
+        <span className="font-medium text-slate-900 dark:text-slate-100">{row.original.title}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">{row.original.code}</span>
       </div>
     ),
   },
@@ -55,7 +55,7 @@ const columns: ColumnDef<MsaRow>[] = [
     header: "Value",
     cell: ({ getValue }) => {
       const v = getValue<string | undefined>();
-      return <span className="font-semibold text-slate-900">{v ?? "-"}</span>;
+      return <span className="font-semibold text-slate-900 dark:text-slate-100">{v ?? "-"}</span>;
     },
   },
   { accessorKey: "owner", header: "Owner" },
@@ -63,7 +63,7 @@ const columns: ColumnDef<MsaRow>[] = [
     id: "date",
     header: "Date",
     cell: ({ row }) => (
-      <div className="text-xs text-slate-500">
+      <div className="text-xs text-slate-500 dark:text-slate-400">
         {row.original.published && (
           <div>
             Published: {format(new Date(row.original.published), "yyyy MMM dd")}
@@ -81,21 +81,41 @@ const columns: ColumnDef<MsaRow>[] = [
     accessorKey: "status",
     header: "Status",
     cell: ({ getValue }) => {
-      const s = getValue<MsaRow["status"]>();
+      // Backend emits raw lowercase/snake values ("publish",
+      // "pending_approval", "draft", …). Mirror ContractsTable: map to
+      // a human label, then pick the tone. Previously "publish" fell
+      // through the fallback case and rendered yellow.
+      const raw = String(getValue<MsaRow["status"]>() ?? "");
+      const label =
+        raw === "active"
+          ? "Active"
+          : raw === "publish"
+            ? "Publish"
+            : raw === "draft"
+              ? "Draft"
+              : raw === "expired"
+                ? "Expired"
+                : raw === "terminated"
+                  ? "Terminated"
+                  : raw === "suspended"
+                    ? "Suspended"
+                    : raw === "pending_approval"
+                      ? "Pending Approval"
+                      : raw;
       const tone =
-        s === "Active"
-          ? "bg-green-100 text-green-700"
-          : s === "Draft"
-            ? "bg-slate-100 text-slate-700"
-            : s === "Expired" || s === "Terminated" || s === "Suspended"
-              ? "bg-red-100 text-red-700"
-              : "bg-yellow-100 text-yellow-700"; // Pending Approval
+        label === "Active" || label === "Publish"
+          ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+          : label === "Draft"
+            ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+            : label === "Pending Approval"
+              ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"
+              : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
       return (
         <span
           data-testid="msa-status-badge"
           className={`px-2 py-1 rounded-full text-xs font-medium ${tone}`}
         >
-          {s}
+          {label}
         </span>
       );
     },
@@ -115,9 +135,15 @@ const columns: ColumnDef<MsaRow>[] = [
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild data-testid="msa-view-details">
-            <Link to={`/dashboard/msa/${row.original.id}`}>View Details</Link>
-          </DropdownMenuItem>
+          {row.original.id ? (
+            <DropdownMenuItem asChild data-testid="msa-view-details">
+              <Link to={`/dashboard/msa/${row.original.id}`}>View Details</Link>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem disabled data-testid="msa-view-details">
+              View Details
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     ),
@@ -238,7 +264,7 @@ const MsaTable: React.FC<MsaTableProps> = ({
     <div className="space-y-4" data-testid="msa-table">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-slate-700">
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
             Master Service Agreement
           </span>
           <Input
@@ -338,6 +364,15 @@ const MsaTable: React.FC<MsaTableProps> = ({
           manualPagination: true,
           pagination,
           setPagination,
+        }}
+        classNames={{
+          container: "border border-[#E5E7EB] dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
         }}
       />
     </div>

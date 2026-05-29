@@ -13,7 +13,7 @@ export const InsertionMark = createYooptaMark<any>({
         data-redline-id={leaf.redlineId || ""}
         data-author={leaf.authorId || ""}
         title={`Inserted by ${author}${createdAt ? ` • ${createdAt}` : ""}`}
-        className="bg-green-50 text-green-800 underline decoration-green-500 decoration-2 underline-offset-2"
+        className="bg-green-50 text-green-800 underline decoration-green-500 decoration-2 underline-offset-2 dark:bg-green-500/15 dark:text-green-200 dark:decoration-green-400"
       >
         {children}
       </ins>
@@ -34,7 +34,7 @@ export const DeletionMark = createYooptaMark<any>({
         data-redline-id={leaf.redlineId || ""}
         data-author={leaf.authorId || ""}
         title={`Deleted by ${author}${createdAt ? ` • ${createdAt}` : ""}`}
-        className="bg-red-50 text-red-700 line-through decoration-red-500 decoration-2"
+        className="bg-red-50 text-red-700 line-through decoration-red-500 decoration-2 dark:bg-red-500/15 dark:text-red-200 dark:decoration-red-400"
       >
         {children}
       </del>

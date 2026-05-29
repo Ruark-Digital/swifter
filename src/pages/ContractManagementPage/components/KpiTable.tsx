@@ -1,6 +1,6 @@
 import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Search, ArrowLeft, Share2 } from "lucide-react";
+import { Search, ArrowLeft, Share2, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/layouts/DataTable";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -58,11 +58,11 @@ const KpiDetailSheet: React.FC<{
 
   return (
     <SheetContent side="right" className="sm:max-w-[680px]">
-      <div className="rounded-t-xl bg-[#F9FAFB] px-6 py-6">
+      <div className="rounded-t-xl bg-[#F9FAFB] dark:bg-slate-800 px-6 py-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <ArrowLeft className="h-5 w-5 text-[#2A4467]" />
-            <span className="text-xl font-semibold text-[#2A4467]">
+            <ArrowLeft className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
+            <span className="text-xl font-semibold text-[#2A4467] dark:text-blue-300">
               KPI Details
             </span>
           </div>
@@ -79,12 +79,12 @@ const KpiDetailSheet: React.FC<{
         ) : data ? (
           <>
             <div className="flex items-center justify-between">
-              <p className="text-base font-semibold text-[#0F0F0F]">
+              <p className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 {data.category || "N/A"}
               </p>
-              <div className="inline-flex h-12 items-center gap-2 rounded-xl border border-[#E5E7EB] px-4">
-                <Share2 className="h-5 w-5 text-[#6B6B6B]" />
-                <span className="text-sm font-semibold text-[#6B6B6B]">
+              <div className="inline-flex h-12 items-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-700 px-4">
+                <Share2 className="h-5 w-5 text-[#6B6B6B] dark:text-slate-400" />
+                <span className="text-sm font-semibold text-[#6B6B6B] dark:text-slate-300">
                   Export
                 </span>
               </div>
@@ -92,47 +92,47 @@ const KpiDetailSheet: React.FC<{
 
             <div className="grid grid-cols-2 gap-x-8 gap-y-6 h-full">
               <div className="space-y-1">
-                <span className="text-slate-500">Category</span>
-                <span className="block text-[#0F0F0F]">
+                <span className="text-slate-500 dark:text-slate-400">Category</span>
+                <span className="block text-[#0F0F0F] dark:text-slate-100">
                   {data.category || "N/A"}
                 </span>
               </div>
               <div className="space-y-1">
-                <span className="text-slate-500">KPI ID</span>
-                <span className="block text-[#0F0F0F]">
+                <span className="text-slate-500 dark:text-slate-400">KPI ID</span>
+                <span className="block text-[#0F0F0F] dark:text-slate-100">
                   {(data.kpiId as string) || "N/A"}
                 </span>
               </div>
 
               <div className="space-y-1">
-                <span className="text-slate-500">Submission Date</span>
-                <span className="block font-semibold text-[#0F0F0F]">
+                <span className="text-slate-500 dark:text-slate-400">Submission Date</span>
+                <span className="block font-semibold text-[#0F0F0F] dark:text-slate-100">
                   {(data.submissionDate as string) || "N/A"}
                 </span>
               </div>
               <div className="space-y-1">
-                <span className="text-slate-500">Time-Stamp Delivery</span>
-                <span className="block font-semibold text-[#0F0F0F]">
+                <span className="text-slate-500 dark:text-slate-400">Time-Stamp Delivery</span>
+                <span className="block font-semibold text-[#0F0F0F] dark:text-slate-100">
                   {(data.target as string) ?? "N/A"}
                 </span>
               </div>
 
               <div className="space-y-1">
-                <span className="text-slate-500">Scheduled Confirmation</span>
-                <span className="block font-semibold text-[#0F0F0F]">
+                <span className="text-slate-500 dark:text-slate-400">Scheduled Confirmation</span>
+                <span className="block font-semibold text-[#0F0F0F] dark:text-slate-100">
                   {(data.scheduledConfirmation as string) || "N/A"}
                 </span>
               </div>
               <div className="space-y-1">
-                <span className="text-slate-500">Milestone Logs</span>
-                <span className="block font-semibold text-[#0F0F0F]">
+                <span className="text-slate-500 dark:text-slate-400">Milestone Logs</span>
+                <span className="block font-semibold text-[#0F0F0F] dark:text-slate-100">
                   {(data.milestoneLogs as string) || "N/A"}
                 </span>
               </div>
 
               <div className="space-y-1">
-                <span className="text-slate-500">Avg. Score</span>
-                <span className="block text-[#0F0F0F]">
+                <span className="text-slate-500 dark:text-slate-400">Avg. Score</span>
+                <span className="block text-[#0F0F0F] dark:text-slate-100">
                   {(data.currentAvgScore as string) ?? "N/A"}
                 </span>
               </div>
@@ -176,26 +176,26 @@ type MetricConfig = {
 
 const CATEGORY_METRICS: Record<string, MetricConfig[]> = {
   "On‑Time Delivery/Schedule Compliance": [
-    { key: "timestampedDelivery", label: "Timestamped delivery (Optional)" },
-    { key: "scheduleConfirmations", label: "Schedule confirmations" },
-    { key: "milestoneLogs", label: "Milestone logs" },
+    { key: "timestampDelivery", label: "Timestamped delivery (Optional)" },
+    { key: "scheduleConfirm", label: "Schedule confirmations" },
+    { key: "mileStoneLog", label: "Milestone logs" },
   ],
   "Quality & Specification Compliance": [
-    { key: "inspectionReports", label: "Inspection reports" },
-    { key: "ncrLogs", label: "NCR logs" },
-    { key: "qaDocumentation", label: "QA documentation" },
+    { key: "inspectionReport", label: "Inspection reports" },
+    { key: "NCRLog", label: "NCR logs" },
+    { key: "QADocs", label: "QA documentation" },
   ],
   Responsiveness: [
-    { key: "timestampedCommunicationLogs", label: "Timestamped communication logs" },
+    { key: "timestampComLog", label: "Timestamped communication logs" },
   ],
   "Contractual Compliance": [
     { key: "complianceTracking", label: "Compliance Tracking" },
   ],
   "Cost Variance": [
-    { key: "automatedRateMatching", label: "Automated invoice-to-contract rate matching. (Auto check of contract rates and Invoice rates or Milestone amount in contract Vs Invoice )" },
+    { key: "invoiceContract", label: "Automated invoice-to-contract rate matching. (Auto check of contract rates and Invoice rates or Milestone amount in contract Vs Invoice )" },
   ],
   "Invoice Accuracy": [
-    { key: "matchingResults", label: "2‑way/3‑way matching results. (Auto check of contract rates and Invoice rates or Milestone amount in contract Vs Invoice)" },
+    { key: "twoWay", label: "2‑way/3‑way matching results. (Auto check of contract rates and Invoice rates or Milestone amount in contract Vs Invoice)" },
   ],
   "Issue Resolution": [
     { key: "issueResolution", label: "Issue Resolution" },
@@ -210,7 +210,7 @@ const MetricScale: React.FC<{
   const current = Number(value);
   return (
     <div className="space-y-2">
-      <p className="text-[#0F0F0F] text-sm">{label}</p>
+      <p className="text-[#0F0F0F] dark:text-slate-100 text-sm">{label}</p>
       <div className="space-y-3">
         <div className="flex items-center gap-8">
           {[1, 2, 3, 4, 5].map((v) => {
@@ -224,14 +224,14 @@ const MetricScale: React.FC<{
                   className={
                     active
                       ? "flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#2A4467] bg-[#F9F5FF]"
-                      : "h-6 w-6 rounded-full border-2 border-[#E5E7EB] bg-white"
+                      : "h-6 w-6 rounded-full border-2 border-[#E5E7EB] dark:border-slate-600 bg-white dark:bg-slate-800"
                   }
                 >
                   {active && (
                     <span className="block h-2.5 w-2.5 rounded-full bg-[#2A4467]" />
                   )}
                 </button>
-                <span className="text-[#374151] text-sm font-semibold">{v}</span>
+                <span className="text-[#374151] dark:text-slate-300 text-sm font-semibold">{v}</span>
               </div>
             );
           })}
@@ -262,10 +262,13 @@ const UpdateVendorPerformanceDialog: React.FC<{
   });
   const { success, error } = useToastHandler();
   const [successOpen, setSuccessOpen] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const metrics = CATEGORY_METRICS[category] ?? [];
 
   const onSubmit = async (payload: any) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const metricsPayload: Record<string, number> = {};
       for (const m of metrics) {
@@ -274,42 +277,44 @@ const UpdateVendorPerformanceDialog: React.FC<{
       }
       await postRequest({
         url: `${basePath}/${kpiId}`,
-        payload: { metrics: metricsPayload },
+        payload: metricsPayload,
       });
       success("KPI updated", "Values submitted successfully");
       reset();
       setSuccessOpen(true);
     } catch (e) {
       error("Failed to update KPI", e as ApiResponseError);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="flex flex-col rounded-2xl bg-white p-8">
+    <div className="flex flex-col rounded-2xl bg-white dark:bg-slate-900 p-8">
       <div className="flex items-center justify-between">
-        <p className="text-xl font-semibold text-[#0F0F0F]">
+        <p className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
           Update Vendor Performance
         </p>
       </div>
 
       <Forge control={control} onSubmit={onSubmit} className="mt-6 space-y-6">
         <div className="space-y-2">
-          <p className="text-sm text-[#0F0F0F]">Category</p>
-          <div className="h-12 rounded-lg border border-[#E5E7EB] bg-[#2A4467]/5 px-4 flex items-center text-sm text-[#6B6B6B]">
+          <p className="text-sm text-[#0F0F0F] dark:text-slate-100">Category</p>
+          <div className="h-12 rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-[#2A4467]/5 dark:bg-slate-800 px-4 flex items-center text-sm text-[#6B6B6B] dark:text-slate-300">
             {category || "N/A"}
           </div>
         </div>
 
         <div className="space-y-2">
-          <p className="text-sm text-[#0F0F0F]">Target</p>
-          <div className="h-12 rounded-lg border border-[#E5E7EB] bg-[#2A4467]/5 px-4 flex items-center text-sm text-[#6B6B6B]">
+          <p className="text-sm text-[#0F0F0F] dark:text-slate-100">Target</p>
+          <div className="h-12 rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-[#2A4467]/5 dark:bg-slate-800 px-4 flex items-center text-sm text-[#6B6B6B] dark:text-slate-300">
             {target || "N/A"}
           </div>
         </div>
 
         <div className="space-y-2">
-          <p className="text-sm text-[#0F0F0F]">Non-Compliance</p>
-          <div className="h-12 rounded-lg border border-[#E5E7EB] bg-[#2A4467]/5 px-4 flex items-center text-sm text-[#6B6B6B]">
+          <p className="text-sm text-[#0F0F0F] dark:text-slate-100">Non-Compliance</p>
+          <div className="h-12 rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-[#2A4467]/5 dark:bg-slate-800 px-4 flex items-center text-sm text-[#6B6B6B] dark:text-slate-300">
             {nonCompliance || "N/A"}
           </div>
         </div>
@@ -329,15 +334,25 @@ const UpdateVendorPerformanceDialog: React.FC<{
           <Button
             type="button"
             variant="outline"
-            className="h-12 flex-1 rounded-xl bg-[#F3F4F6]"
+            disabled={isSubmitting}
+            className="h-12 flex-1 rounded-xl bg-[#F3F4F6] dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700 disabled:opacity-50"
           >
             Cancel
           </Button>
           <Button
             type="submit"
-            className="h-12 flex-1 rounded-xl bg-[#2A4467] text-white hover:bg-[#2A4467]/90"
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
+            className="h-12 flex-1 rounded-xl bg-[#2A4467] text-white hover:bg-[#2A4467]/90 disabled:opacity-80"
           >
-            Update KPI
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              "Update KPI"
+            )}
           </Button>
         </div>
       </Forge>
@@ -350,7 +365,7 @@ const UpdateVendorPerformanceDialog: React.FC<{
                 <span className="block h-4 w-2 rotate-45 border-b-2 border-r-2 border-white" />
               </span>
             </div>
-            <p className="text-center text-xl font-semibold text-[#0F0F0F]">
+            <p className="text-center text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
               KPI Updated Successfully
             </p>
             <Button
@@ -381,7 +396,7 @@ const KpiTable: React.FC<Props> = ({
       accessorKey: "kpiId",
       header: "KPI ID",
       cell: ({ getValue }) => (
-        <div className="w-[100px] py-2 text-sm font-semibold text-[#374151]">
+        <div className="w-[100px] py-2 text-sm font-semibold text-[#374151] dark:text-slate-200">
           {getValue<string>()}
         </div>
       ),
@@ -390,7 +405,7 @@ const KpiTable: React.FC<Props> = ({
       accessorKey: "category",
       header: "Category",
       cell: ({ getValue }) => (
-        <div className="w-[160px] overflow-hidden py-2 text-sm font-medium text-[#374151]">
+        <div className="w-[160px] overflow-hidden py-2 text-sm font-medium text-[#374151] dark:text-slate-200">
           {getValue<string>()}
         </div>
       ),
@@ -401,7 +416,7 @@ const KpiTable: React.FC<Props> = ({
         <div className="w-[160px] overflow-hidden">Current Avg. Score</div>
       ),
       cell: ({ getValue }) => (
-        <div className="w-[160px] py-2 text-sm font-medium text-[#374151]">
+        <div className="w-[160px] py-2 text-sm font-medium text-[#374151] dark:text-slate-200">
           {getValue<string>()}
         </div>
       ),
@@ -412,7 +427,7 @@ const KpiTable: React.FC<Props> = ({
         <div className="w-[160px] overflow-hidden">All Time Avg. Score</div>
       ),
       cell: ({ getValue }) => (
-        <div className="w-[160px] py-2 text-sm font-medium text-[#374151]">
+        <div className="w-[160px] py-2 text-sm font-medium text-[#374151] dark:text-slate-200">
           {getValue<string>()}
         </div>
       ),
@@ -423,7 +438,7 @@ const KpiTable: React.FC<Props> = ({
         <div className="w-[160px] overflow-hidden">Last Updated</div>
       ),
       cell: ({ getValue }) => (
-        <div className="w-[160px] py-2 text-sm font-medium text-[#374151]">
+        <div className="w-[160px] py-2 text-sm font-medium text-[#374151] dark:text-slate-200">
           {getValue<string>()}
         </div>
       ),
@@ -497,17 +512,17 @@ const KpiTable: React.FC<Props> = ({
 
   return (
     <div className="relative flex flex-col gap-8">
-      <div className="flex flex-col rounded-xl border border-[#E5E7EB] bg-white overflow-hidden">
-        <div className="flex items-center justify-between border-b border-[#E9E9EB] px-6 py-6">
+      <div className="flex flex-col rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+        <div className="flex items-center justify-between border-b border-[#E9E9EB] dark:border-slate-800 px-6 py-6">
           <div className="flex items-center gap-6">
-            <div className="text-base font-semibold text-[#0F0F0F]">KPI</div>
+            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">KPI</div>
             <div className="relative w-[300px]">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B]" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search"
-                className="h-12 w-[300px] rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
+                className="h-12 w-[300px] rounded-lg border border-[#E5E7EB] dark:border-slate-700 pl-9 text-sm text-[#0F0F0F] dark:text-slate-100 dark:bg-slate-900 placeholder:text-[#6B6B6B] dark:placeholder:text-slate-500"
               />
             </div>
           </div>
@@ -570,12 +585,12 @@ const KpiTable: React.FC<Props> = ({
           classNames={{
             container: "[&>div:last-child]:hidden",
             table: "border-spacing-y-0",
-            tHeader: "bg-[#F9FAFB]",
-            tHeadRow: "border-b border-[#E5E7EB]",
-            tBody: "bg-white",
-            tRow: "border-b border-[#E5E7EB]",
-            tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467]",
-            tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+            tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+            tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+            tBody: "bg-white dark:bg-slate-900",
+            tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+            tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467] dark:text-indigo-300",
+            tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
           }}
         />
       </div>

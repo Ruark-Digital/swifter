@@ -32,6 +32,7 @@ import { getHoldbackStatusBadgeProps } from "../lib/holdbacks";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import Spinner from "@/components/ui/Spinner";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type HoldbackReleaseRow = {
   releaseId: string;
@@ -49,12 +50,15 @@ type SavingsRealizedRow = {
   dateSubmitted: string;
 };
 
-const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
+const buildHoldbackReleaseColumns = (
+  contractId: string,
+  contractType: "Contract" | "MsaContract" = "Contract",
+): ColumnDef<HoldbackReleaseRow>[] => [
   {
     accessorKey: "releaseId",
     header: "Release ID",
     cell: ({ getValue }) => (
-      <div className="w-[120px] py-4 text-sm font-semibold text-[#374151]">
+      <div className="w-[120px] py-4 text-sm font-semibold text-[#374151] dark:text-slate-300">
         {getValue<string>()}
       </div>
     ),
@@ -63,7 +67,7 @@ const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
     accessorKey: "releasedType",
     header: "Released Type",
     cell: ({ getValue }) => (
-      <div className="w-[120px] py-4 text-sm font-medium text-[#374151]">
+      <div className="w-[120px] py-4 text-sm font-medium text-[#374151] dark:text-slate-300">
         {getValue<string>()}
       </div>
     ),
@@ -72,7 +76,7 @@ const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
     accessorKey: "releasedAmount",
     header: () => <div className="w-[140px] text-center">Released Amount</div>,
     cell: ({ getValue }) => (
-      <div className="w-[140px] py-4 text-center text-sm font-semibold text-[#374151]">
+      <div className="w-[140px] py-4 text-center text-sm font-semibold text-[#374151] dark:text-slate-300">
         {getValue<string>()}
       </div>
     ),
@@ -98,7 +102,7 @@ const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
     accessorKey: "dueDate",
     header: () => <div className="w-[120px] text-center">Due Date</div>,
     cell: ({ getValue }) => (
-      <div className="w-[120px] py-4 text-center text-sm font-medium text-[#374151]">
+      <div className="w-[120px] py-4 text-center text-sm font-medium text-[#374151] dark:text-slate-300">
         {getValue<string>()}
       </div>
     ),
@@ -107,10 +111,11 @@ const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
     id: "action",
     header: () => <div className="w-[80px] text-center">Action</div>,
     cell: ({ row }) => (
-      // <div className="flex justify-center py-4">
       <HoldbackDetailsSheet
         holdBackId={row.getValue<string>("releaseId")}
         currency={row.getValue<string>("currency")}
+        contractId={contractId}
+        contractType={contractType}
         trigger={
           <button
             type="button"
@@ -120,17 +125,18 @@ const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
           </button>
         }
       />
-      // </div>
     ),
   },
 ];
 
-const savingsRealizedColumns: ColumnDef<SavingsRealizedRow>[] = [
+const buildSavingsRealizedColumns = (
+  contractId: string,
+): ColumnDef<SavingsRealizedRow>[] => [
   {
     accessorKey: "savingsId",
     header: "Savings ID",
     cell: ({ getValue }) => (
-      <div className="w-[120px] py-4 text-sm font-semibold text-[#374151]">
+      <div className="w-[120px] py-4 text-sm font-semibold text-[#374151] dark:text-slate-300">
         {getValue<string>()}
       </div>
     ),
@@ -139,7 +145,7 @@ const savingsRealizedColumns: ColumnDef<SavingsRealizedRow>[] = [
     accessorKey: "savingsTitle",
     header: "Savings Title",
     cell: ({ getValue }) => (
-      <div className="w-[220px] py-4 text-sm font-medium leading-5 text-[#374151]">
+      <div className="w-[220px] py-4 text-sm font-medium leading-5 text-[#374151] dark:text-slate-300">
         {getValue<string>()}
       </div>
     ),
@@ -148,7 +154,7 @@ const savingsRealizedColumns: ColumnDef<SavingsRealizedRow>[] = [
     accessorKey: "category",
     header: "Category",
     cell: ({ getValue }) => (
-      <div className="w-[190px] py-4 text-sm font-medium text-[#374151]">
+      <div className="w-[190px] py-4 text-sm font-medium text-[#374151] dark:text-slate-300">
         {getValue<string>()}
       </div>
     ),
@@ -157,7 +163,7 @@ const savingsRealizedColumns: ColumnDef<SavingsRealizedRow>[] = [
     accessorKey: "amount",
     header: () => <div className="w-[120px] text-center">Amount</div>,
     cell: ({ getValue }) => (
-      <div className="w-[120px] py-4 text-center text-sm font-semibold text-[#374151]">
+      <div className="w-[120px] py-4 text-center text-sm font-semibold text-[#374151] dark:text-slate-300">
         {getValue<string>()}
       </div>
     ),
@@ -166,7 +172,7 @@ const savingsRealizedColumns: ColumnDef<SavingsRealizedRow>[] = [
     accessorKey: "dateSubmitted",
     header: () => <div className="w-[140px] text-center">Date Submitted</div>,
     cell: ({ getValue }) => (
-      <div className="w-[140px] py-4 text-center text-sm font-medium text-[#374151]">
+      <div className="w-[140px] py-4 text-center text-sm font-medium text-[#374151] dark:text-slate-300">
         {getValue<string>()}
       </div>
     ),
@@ -178,6 +184,7 @@ const savingsRealizedColumns: ColumnDef<SavingsRealizedRow>[] = [
       <div className="flex w-[80px] justify-center py-4">
         <SavingsDetailsSheet
           savingId={row.getValue<string>("savingsId")}
+          contractId={contractId}
           currency={row.getValue<string>("currency")}
           trigger={
             <button
@@ -212,12 +219,12 @@ const validationSchema = yup.object().shape({
 const UploadElement = () => {
   return (
     <div className="flex flex-col items-center gap-3">
-      <CloudUpload className="h-12 w-12 text-[#2A4467]" />
+      <CloudUpload className="h-12 w-12 text-[#2A4467] dark:text-blue-300" />
       <div className="space-y-1 text-center">
-        <p className="text-base font-semibold text-[#2A4467]">
+        <p className="text-base font-semibold text-[#2A4467] dark:text-blue-300">
           Drag &amp; Drop or Click to choose files
         </p>
-        <p className="text-sm text-[#6B7280]">
+        <p className="text-sm text-[#6B7280] dark:text-slate-400">
           Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
         </p>
       </div>
@@ -348,8 +355,8 @@ const UpdateSavingsDialog: React.FC<{
             <FileText className="h-5 w-5 text-blue-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-900">{file.name}</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{file.name}</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400">
               {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
               {formatFileSize(file.size)}
             </p>
@@ -363,7 +370,7 @@ const UpdateSavingsDialog: React.FC<{
               (value || []).filter((v: File) => v.name !== file.name),
             )
           }
-          className="text-gray-400 hover:text-red-500 transition-colors"
+          className="text-gray-400 dark:text-slate-500 hover:text-red-500 transition-colors"
         >
           <X className="h-4 w-4" />
         </button>
@@ -393,7 +400,7 @@ const UpdateSavingsDialog: React.FC<{
             className="flex max-h-[90vh] flex-col"
           >
             <div className="flex items-center justify-between px-8 pb-2 pt-8">
-              <div className="text-xl font-semibold text-[#0F0F0F]">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Update Savings Realized
               </div>
               <button
@@ -456,7 +463,7 @@ const UpdateSavingsDialog: React.FC<{
                 rows={5}
               />
               <div className="space-y-4">
-                <div className="text-sm font-medium text-[#6B6B6B]">
+                <div className="text-sm font-medium text-[#6B6B6B] dark:text-slate-400">
                   Upload Files
                 </div>
                 <Forger
@@ -488,7 +495,7 @@ const UpdateSavingsDialog: React.FC<{
                 type="button"
                 onClick={() => setOpen(false)}
                 disabled={isSubmitting}
-                className="inline-flex h-11 min-w-[140px] items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] disabled:opacity-50"
+                className="inline-flex h-11 min-w-[140px] items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 disabled:opacity-50"
               >
                 Back
               </button>
@@ -520,14 +527,14 @@ const UpdateSavingsDialog: React.FC<{
             <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#22C55E] text-[#22C55E]">
               <Check className="h-8 w-8" />
             </div>
-            <div className="text-base font-semibold text-[#0F0F0F]">
+            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
               Savings Updated Successfully
             </div>
             <div className="flex w-full items-center gap-4">
               <button
                 type="button"
                 onClick={() => setSuccessOpen(false)}
-                className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F]"
+                className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
                 Close
               </button>
@@ -558,7 +565,8 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
   contract,
   isActive,
 }) => {
-  const { isVendor, isProjectManager, isManager, isApprover } = useUserRole();
+  const { isVendor, isProjectManager, isManager, isApprover, isViewOnly } =
+    useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
   const isPendingApproval = contract?.status === "pending_approval";
 
@@ -699,6 +707,16 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
     }));
   }, [formatMoney, savingsResponse?.data, currency]);
 
+  const holdbackReleaseColumns = React.useMemo(
+    () => buildHoldbackReleaseColumns(contractId, "Contract"),
+    [contractId],
+  );
+
+  const savingsRealizedColumns = React.useMemo(
+    () => buildSavingsRealizedColumns(contractId),
+    [contractId],
+  );
+
   const milestoneRows = React.useMemo(() => {
     const milestones = Array.isArray(contract?.milestone)
       ? contract?.milestone
@@ -731,21 +749,23 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
   return (
     <TabsContent value="payment-summary" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-semibold text-[#0F0F0F]">
+        <h3 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
           Payment Summary
         </h3>
 
         <div className="flex items-center gap-6">
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] px-[15px] py-2 text-base font-semibold text-[#0F0F0F]"
-          >
-            <img
-              src="/assets/contract-management/payment-summary/share.svg"
-              className="h-5 w-5"
-            />
-            Export Report
-          </button>
+          <ExportReportSheet contractId={contractId} contractType="Contract">
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-700 px-[15px] py-2 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+            >
+              <img
+                src="/assets/contract-management/payment-summary/share.svg"
+                className="h-5 w-5"
+              />
+              Export Report
+            </button>
+          </ExportReportSheet>
 
           {isManager && !isPendingApproval && (
             <div className="inline-flex items-start gap-6">
@@ -754,7 +774,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
                 trigger={
                   <button
                     type="button"
-                    className="inline-flex items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] px-[15px] py-2 text-base font-semibold text-[#0F0F0F]"
+                    className="inline-flex items-center justify-center rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F3F4F6] dark:bg-slate-800 px-[15px] py-2 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
                   >
                     Update Savings
                   </button>
@@ -778,7 +798,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
       </div>
 
       {(holdbacksLoading || savingsLoading) && (
-        <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+        <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800/60 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
           Loading payment data…
         </div>
       )}
@@ -786,64 +806,64 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
       <div className="space-y-6">
         <div className="grid grid-cols-3 gap-x-6 gap-y-6">
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-sm leading-7 text-[#6B6B6B]">
+            <div className="text-sm leading-7 text-[#6B6B6B] dark:text-slate-400">
               Contract Value
             </div>
-            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F] dark:text-slate-100">
               {contractValue}
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-sm leading-7 text-[#6B6B6B]">Contigency</div>
-            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-sm leading-7 text-[#6B6B6B] dark:text-slate-400">Contigency</div>
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F] dark:text-slate-100">
               {contigency}
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-sm leading-7 text-[#6B6B6B]">Holdback</div>
-            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-sm leading-7 text-[#6B6B6B] dark:text-slate-400">Holdback</div>
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F] dark:text-slate-100">
               {holdbackValue}
             </div>
           </div>
 
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-sm leading-7 text-[#6B6B6B]">
+            <div className="text-sm leading-7 text-[#6B6B6B] dark:text-slate-400">
               Holdback Amount
             </div>
-            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F] dark:text-slate-100">
               {holdbackAmount}
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-sm leading-7 text-[#6B6B6B]">
+            <div className="text-sm leading-7 text-[#6B6B6B] dark:text-slate-400">
               Holdback Released
             </div>
-            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F] dark:text-slate-100">
               {holdbackReleased}
             </div>
           </div>
           {isManager && (
             <div className="flex flex-col justify-center gap-4">
-              <div className="text-sm leading-7 text-[#6B6B6B]">
+              <div className="text-sm leading-7 text-[#6B6B6B] dark:text-slate-400">
                 Savings Realized
               </div>
-              <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
+              <div className="text-base font-semibold leading-7 text-[#0F0F0F] dark:text-slate-100">
                 {savingAmount}
               </div>
             </div>
           )}
 
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-sm leading-7 text-[#6B6B6B]">
+            <div className="text-sm leading-7 text-[#6B6B6B] dark:text-slate-400">
               Payment Structure
             </div>
-            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F] dark:text-slate-100">
               {paymentStructure}
             </div>
           </div>
           <div className="flex flex-col justify-center gap-4">
-            <div className="text-sm leading-7 text-[#6B6B6B]">Payment Term</div>
-            <div className="text-base font-semibold leading-7 text-[#0F0F0F]">
+            <div className="text-sm leading-7 text-[#6B6B6B] dark:text-slate-400">Payment Term</div>
+            <div className="text-base font-semibold leading-7 text-[#0F0F0F] dark:text-slate-100">
               {paymentTerm}
             </div>
           </div>
@@ -855,23 +875,25 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
         defaultValue="milestones"
         className="w-full bg-transparent space-y-8"
       >
-        <TabsList className="bg-[#F3F4F6] p-2 h-fit rounded-full w-fit">
+        <TabsList className="bg-[#F3F4F6] dark:bg-slate-800 p-2 h-fit rounded-full w-fit">
           <TabsTrigger
             value="milestones"
-            className="rounded-full px-6 py-1.5 text-base font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="rounded-full px-6 py-1.5 text-base font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             MileStones
           </TabsTrigger>
-          <TabsTrigger
-            value="holdback-release"
-            className="rounded-full px-5 py-1.5 text-base font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
-          >
-            Holdback Release
-          </TabsTrigger>
+          {!isViewOnly && (
+            <TabsTrigger
+              value="holdback-release"
+              className="rounded-full px-5 py-1.5 text-base font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            >
+              Holdback Release
+            </TabsTrigger>
+          )}
           {(isManager || isApprover) && (
             <TabsTrigger
               value="saving-realized"
-              className="rounded-full px-5 py-1.5 text-base font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+              className="rounded-full px-5 py-1.5 text-base font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
             >
               Savings Realized
             </TabsTrigger>
@@ -893,33 +915,35 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
             !savingsLoading &&
             isContractVendorLike &&
             milestoneRows.length === 0 && (
-              <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800/60 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
                 No milestones found.
               </div>
             )}
         </TabsContent>
 
-        <TabsContent value="holdback-release">
-          <PaymentSummaryMilestonesTable
-            title="Holdback Release"
-            rows={holdbackRows}
-            columns={holdbackReleaseColumns}
-            getRowSearchValues={(row) => [
-              row.releaseId,
-              row.releasedType,
-              row.releasedAmount,
-              row.status,
-              row.dueDate,
-            ]}
-          />
-          {!holdbacksLoading &&
-            isContractVendorLike &&
-            holdbackRows.length === 0 && (
-              <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
-                No holdback releases available.
-              </div>
-            )}
-        </TabsContent>
+        {!isViewOnly && (
+          <TabsContent value="holdback-release">
+            <PaymentSummaryMilestonesTable
+              title="Holdback Release"
+              rows={holdbackRows}
+              columns={holdbackReleaseColumns}
+              getRowSearchValues={(row) => [
+                row.releaseId,
+                row.releasedType,
+                row.releasedAmount,
+                row.status,
+                row.dueDate,
+              ]}
+            />
+            {!holdbacksLoading &&
+              isContractVendorLike &&
+              holdbackRows.length === 0 && (
+                <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800/60 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
+                  No holdback releases available.
+                </div>
+              )}
+          </TabsContent>
+        )}
 
         {(isManager || isApprover) && (
           <TabsContent value="saving-realized">
@@ -936,7 +960,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
               ]}
             />
             {!savingsLoading && savingsRows.length === 0 && (
-              <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800/60 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
                 No savings records found.
               </div>
             )}

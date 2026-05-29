@@ -30,14 +30,14 @@ test.describe("contractChanges helpers (unit)", () => {
     expect(
       toManagerCreateChangePayload({
         changeName: "Title",
-        changeType: "proposal",
+        changeType: "order",
         urgency: "high",
         description: "Desc",
       })
     ).toEqual({
       title: "Title",
       description: "Desc",
-      type: "proposal",
+      type: "order",
       urgency: "high",
     });
 
@@ -102,8 +102,8 @@ test.describe("contractChanges helpers (unit)", () => {
 
   test("restricts create-change type options by role", async () => {
     expect(getCreateChangeTypeOptionsForRole({ isManager: true, isVendor: false })).toEqual([
-      { value: "proposal", label: "Change Proposal" },
       { value: "directive", label: "Change Directive" },
+      { value: "order", label: "Change Order" },
     ]);
 
     expect(getCreateChangeTypeOptionsForRole({ isManager: false, isVendor: true })).toEqual([
@@ -134,7 +134,7 @@ test.describe("contractChanges helpers (unit)", () => {
       name: "doc.pdf",
       url: "https://cdn.example.com/doc.pdf",
       type: "application/pdf",
-      size: 1234,
+      size: "1234",
     });
   });
 

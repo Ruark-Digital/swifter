@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { TabsContent } from "@/components/ui/tabs";
 import AnalyticsTab from "../components/AnalyticsTab";
 import { getRequest } from "@/lib/axiosInstance";
+import { useUserRole } from "@/hooks/useUserRole";
 
 type Props = { isActive?: boolean; currency?: string };
 
@@ -12,16 +13,20 @@ type AnalyticsRange = "YTD" | 90 | 60 | 7;
 
 const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
   const { id: contractId } = useParams<{ id: string }>();
+  const { isManager, isApprover } = useUserRole();
+  const roleSegment = isApprover ? "approver" : isManager ? "manager" : "manager";
+  const roleNs = `contract-${roleSegment}` as const;
+  const baseUrl = `/contract/${roleSegment}/contracts`;
   const [activitiesRange, setActivitiesRange] =
     React.useState<AnalyticsRange>("YTD");
   const [deliverySummaryRange, setDeliverySummaryRange] =
     React.useState<AnalyticsRange>("YTD");
 
   const contractQuery = useQuery({
-    queryKey: ["contract-manager", "contract", contractId],
+    queryKey: [roleNs, "contract", contractId],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/contracts/${contractId}`,
+        url: `${baseUrl}/${contractId}`,
       });
       return res.data?.data;
     },
@@ -31,10 +36,10 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
   });
 
   const overviewQuery = useQuery({
-    queryKey: ["contract-manager-dashboard", "overview", contractId],
+    queryKey: [`${roleNs}-dashboard`, "overview", contractId],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/contracts/${contractId}/dashboard/overview`,
+        url: `${baseUrl}/${contractId}/dashboard/overview`,
         config: { params: { type: DEFAULT_CONTRACT_TYPE } },
       });
       return res.data?.data;
@@ -45,10 +50,10 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
   });
 
   const financialStatementQuery = useQuery({
-    queryKey: ["contract-manager-dashboard", "financial-statement", contractId],
+    queryKey: [`${roleNs}-dashboard`, "financial-statement", contractId],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/contracts/${contractId}/dashboard/financial-statement`,
+        url: `${baseUrl}/${contractId}/dashboard/financial-statement`,
         config: { params: { type: DEFAULT_CONTRACT_TYPE } },
       });
       return res.data?.data;
@@ -59,10 +64,10 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
   });
 
   const deliverableStatusQuery = useQuery({
-    queryKey: ["contract-manager-dashboard", "deliverable-status", contractId],
+    queryKey: [`${roleNs}-dashboard`, "deliverable-status", contractId],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/contracts/${contractId}/dashboard/deliverable-status`,
+        url: `${baseUrl}/${contractId}/dashboard/deliverable-status`,
         config: { params: { type: DEFAULT_CONTRACT_TYPE } },
       });
       return res.data?.data;
@@ -73,10 +78,10 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
   });
 
   const activitiesQuery = useQuery({
-    queryKey: ["contract-manager-dashboard", "activities", contractId, activitiesRange],
+    queryKey: [`${roleNs}-dashboard`, "activities", contractId, activitiesRange],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/contracts/${contractId}/dashboard/activities`,
+        url: `${baseUrl}/${contractId}/dashboard/activities`,
         config: { params: { range: activitiesRange, type: DEFAULT_CONTRACT_TYPE } },
       });
       return res.data?.data;
@@ -88,14 +93,14 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
 
   const deliverySummaryQuery = useQuery({
     queryKey: [
-      "contract-manager-dashboard",
+      `${roleNs}-dashboard`,
       "delivery-summary",
       contractId,
       deliverySummaryRange,
     ],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/contracts/${contractId}/dashboard/delivery-summary`,
+        url: `${baseUrl}/${contractId}/dashboard/delivery-summary`,
         config: {
           params: { range: deliverySummaryRange, type: DEFAULT_CONTRACT_TYPE },
         },
@@ -108,10 +113,10 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
   });
 
   const attachmentsQuery = useQuery({
-    queryKey: ["contract-manager-dashboard", "attachment", contractId],
+    queryKey: [`${roleNs}-dashboard`, "attachment", contractId],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/contracts/${contractId}/dashboard/attachment`,
+        url: `${baseUrl}/${contractId}/dashboard/attachment`,
         config: { params: { type: DEFAULT_CONTRACT_TYPE } },
       });
       return res.data?.data;
@@ -122,10 +127,10 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
   });
 
   const vendorKpiQuery = useQuery({
-    queryKey: ["contract-manager-dashboard", "vendor-kpi", contractId],
+    queryKey: [`${roleNs}-dashboard`, "vendor-kpi", contractId],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/contracts/${contractId}/dashboard/vendor-kpi`,
+        url: `${baseUrl}/${contractId}/dashboard/vendor-kpi`,
         config: { params: { type: DEFAULT_CONTRACT_TYPE } },
       });
       return res.data?.data;
@@ -136,10 +141,10 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
   });
 
   const alertsQuery = useQuery({
-    queryKey: ["contract-manager-dashboard", "alerts", contractId],
+    queryKey: [`${roleNs}-dashboard`, "alerts", contractId],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/contracts/${contractId}/dashboard/alerts`,
+        url: `${baseUrl}/${contractId}/dashboard/alerts`,
         config: { params: { type: DEFAULT_CONTRACT_TYPE } },
       });
       return res.data?.data;
@@ -151,13 +156,13 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
 
   const clauseLegalAnalysisQuery = useQuery({
     queryKey: [
-      "contract-manager-dashboard",
+      `${roleNs}-dashboard`,
       "clause-legal-analysis",
       contractId,
     ],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/contracts/${contractId}/dashboard/clause-legal-analysis`,
+        url: `${baseUrl}/${contractId}/dashboard/clause-legal-analysis`,
         config: { params: { type: DEFAULT_CONTRACT_TYPE } },
       });
       return res.data?.data;

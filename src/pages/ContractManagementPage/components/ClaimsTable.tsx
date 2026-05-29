@@ -1,4 +1,5 @@
 import React from "react";
+import { format } from "date-fns";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { ContractClaimDTO } from "../api/contractManagerApi";
 import ChangeDetailsSheet from "./ChangeDetailsSheet";
+
+const formatImpact = (item: ContractClaimDTO) => {
+  const hasTime = typeof item.time === "number" && Number.isFinite(item.time);
+  const hasCost = typeof item.cost === "number" && Number.isFinite(item.cost);
+  if (hasTime && hasCost)
+    return `$${(item.cost || 0) / 1000000}M + ${item.time} days`;
+  if (hasTime) return `${item.time} days`;
+  if (hasCost) return `$${(item.cost || 0) / 1000000}M`;
+  return "-";
+};
 
 const columns: ColumnDef<ContractClaimDTO>[] = [
   {
@@ -25,7 +36,7 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
     header: "Claim Title",
     cell: ({ getValue }) => {
       const title = getValue<string | undefined>();
-      return <span className="font-medium text-slate-900">{title ?? "-"}</span>;
+      return <span className="font-medium text-slate-900 dark:text-slate-100">{title ?? "-"}</span>;
     },
   },
   {
@@ -36,22 +47,17 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
   {
     id: "impact",
     header: "Impact",
-    cell: ({ row }) => {
-      const impact = row.original.impact;
-      if (impact === "time") return <span className="font-semibold">{row.original.time ?? "-"}</span>;
-      if (impact === "cost") return <span className="font-semibold">{row.original.cost ?? "-"}</span>;
-      if (impact === "time_cost") {
-        const time = row.original.time ?? "-";
-        const cost = row.original.cost ?? "-";
-        return <span className="font-semibold">{`${time} + ${cost}`}</span>;
-      }
-      return <span className="font-semibold">-</span>;
-    },
+    cell: ({ row }) => (
+      <span className="font-semibold">{formatImpact(row.original)}</span>
+    ),
   },
   {
-    id: "submitted",
+    accessorKey: "createdAt",
     header: "Submitted",
-    cell: () => "-",
+    cell: ({ getValue }) => {
+      const date = getValue<string | undefined>();
+      return date ? format(new Date(date), "dd MMM yyyy") : "-";
+    },
   },
   {
     accessorKey: "status",
@@ -90,19 +96,33 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
     header: "Actions",
     cell: ({ row, table }) => {
       const [sheetOpen, setSheetOpen] = React.useState(false);
-      const contractId = (table.options.meta as any)?.contractId ?? "";
-      const basePath = (table.options.meta as any)?.basePath ?? "";
-      
+      const meta = table.options.meta as
+        | {
+            contractId?: string;
+            basePath?: string;
+            listInvalidateQueryKey?: readonly unknown[];
+            statsInvalidateQueryKey?: readonly unknown[];
+            claimAssignUrlBuilder?: (claimId: string) => string;
+          }
+        | undefined;
+      const contractId = meta?.contractId ?? "";
+      const basePath = meta?.basePath ?? "";
+      const claimId = row.original.claimId || row.original._id || "";
+      const claimAssignUrl = meta?.claimAssignUrlBuilder?.(claimId);
+
       return (
         <>
           <ChangeDetailsSheet
             open={sheetOpen}
             onOpenChange={setSheetOpen}
-            changeId={row.original.claimId || row.original._id || ""}
+            changeId={claimId}
             contractId={contractId}
             basePath={basePath}
+            listInvalidateQueryKey={meta?.listInvalidateQueryKey}
+            statsInvalidateQueryKey={meta?.statsInvalidateQueryKey}
+            claimAssignUrl={claimAssignUrl}
           />
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">⋮</Button>
@@ -127,6 +147,9 @@ type ClaimsTableProps = {
   totalCount?: number;
   pagination: PaginationState;
   setPagination: React.Dispatch<React.SetStateAction<PaginationState>>;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+  claimAssignUrlBuilder?: (claimId: string) => string;
 };
 
 const ClaimsTable: React.FC<ClaimsTableProps> = ({
@@ -137,6 +160,9 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
   totalCount,
   pagination,
   setPagination,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+  claimAssignUrlBuilder,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -192,7 +218,13 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
           manualPagination: true,
           pagination,
           setPagination,
-          meta: { contractId, basePath },
+          meta: {
+            contractId,
+            basePath,
+            listInvalidateQueryKey,
+            statsInvalidateQueryKey,
+            claimAssignUrlBuilder,
+          },
         }}
       />
     </div>

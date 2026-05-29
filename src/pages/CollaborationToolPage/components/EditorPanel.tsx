@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import YooptaEditor, { createYooptaEditor } from "@yoopta/editor";
 import Paragraph from "@yoopta/paragraph";
 import { HeadingOne, HeadingTwo, HeadingThree } from "@yoopta/headings";
@@ -23,20 +23,24 @@ import { CommentMark } from "../collab/CommentMark";
 import { InsertionMark, DeletionMark } from "../collab/RedlineMarks";
 import { cn } from "@/lib/utils";
 import "@/pages/CollaborationToolPage/collaboration.css";
-import { createCollab } from "../collab/useYooptaYjs";
+import { createCollab, type AwarenessEntry, type CollabSyncState, type CollabUser } from "../collab/useYooptaYjs";
+import PresenceBar from "./PresenceBar";
+import { extractRedlines, replaceRedline } from "../collab/redlineScan";
+import type { EditorAdapter } from "../collab/editorAdapter";
 import Table from "@yoopta/table";
 import { useNavigate } from "react-router-dom";
-import { XIcon, History, Save, MessageSquarePlus, Plus, Minus, Sparkles } from "lucide-react";
-import AiSuggestionsPanel from "./AiSuggestionsPanel";
-import { extractRedlines, replaceRedline, type RedlineSpan } from "../collab/redlineScan";
-import {
-  useAiRedlineSuggestions,
-  type AiRedlineSuggestion,
-} from "../collab/useAiRedlineSuggestions";
-import { useSearchParams } from "react-router-dom";
-import VersionHistoryModal, { Version } from "./VersionHistoryModal";
+import { XIcon, MessageSquare, Plus, Minus } from "lucide-react";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUser } from "@/store/authSlice";
+
+const USER_COLORS = [
+  "#6366f1", "#10b981", "#f59e0b", "#ec4899", "#0ea5e9", "#8b5cf6",
+];
+const hashColor = (key: string): string => {
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) hash = (hash * 31 + key.charCodeAt(i)) | 0;
+  return USER_COLORS[Math.abs(hash) % USER_COLORS.length];
+};
 
 const PLUGINS = [
   Paragraph,
@@ -94,9 +98,33 @@ const RedlineToolbarRender = (props: RedlineToolbarRenderProps) => {
       }),
     );
   };
+  const applyComment = () => {
+    const editor = (rest as any).editor as
+      | { formats?: Record<string, { update: (attrs: any) => void }> }
+      | undefined;
+    const commentId = crypto.randomUUID();
+    editor?.formats?.comment?.update({ commentId });
+    window.dispatchEvent(
+      new CustomEvent("ct-add-inline-comment", {
+        detail: { commentId },
+      }),
+    );
+  };
   return (
     <div className="ct-toolbar-fused">
       <DefaultToolbarRender {...(rest as any)} />
+      <button
+        type="button"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          applyComment();
+        }}
+        title="Comment on selection"
+        aria-label="Comment on selection"
+        className="yoopta-toolbar-item yoopta-toolbar-item-mark"
+      >
+        <MessageSquare className="w-4 h-4" strokeWidth={2} />
+      </button>
       <button
         type="button"
         onMouseDown={(e) => {
@@ -125,89 +153,6 @@ const RedlineToolbarRender = (props: RedlineToolbarRenderProps) => {
   );
 };
 
-type FloatingCommentActionProps = {
-  containerRef: React.RefObject<HTMLDivElement>;
-  onAddComment: () => void;
-};
-
-const FloatingCommentAction: React.FC<FloatingCommentActionProps> = ({
-  containerRef,
-  onAddComment,
-}) => {
-  const [pos, setPos] = React.useState<{ top: number; left: number } | null>(
-    null,
-  );
-
-  React.useEffect(() => {
-    const compute = () => {
-      const sel = window.getSelection();
-      const container = containerRef.current;
-      if (!sel || sel.isCollapsed || sel.rangeCount === 0 || !container) {
-        setPos(null);
-        return;
-      }
-      const anchor = sel.anchorNode;
-      if (!anchor || !container.contains(anchor)) {
-        setPos(null);
-        return;
-      }
-      const rect = sel.getRangeAt(0).getBoundingClientRect();
-      if (rect.width === 0 && rect.height === 0) {
-        setPos(null);
-        return;
-      }
-      const containerRect = container.getBoundingClientRect();
-      // pin to the right edge of the selection (Google Docs style),
-      // but clamp inside the canvas so the page never has to scroll
-      // horizontally to reveal the button.
-      const BUTTON = 32;
-      const GAP = 12;
-      const desiredLeft = rect.right - containerRect.left + GAP;
-      const maxLeft = container.clientWidth - BUTTON - 4;
-      const left = Math.max(0, Math.min(desiredLeft, maxLeft));
-      setPos({
-        top: rect.top - containerRect.top + rect.height / 2,
-        left,
-      });
-    };
-    const onChange = () => window.requestAnimationFrame(compute);
-    document.addEventListener("selectionchange", onChange);
-    window.addEventListener("scroll", onChange, true);
-    window.addEventListener("resize", onChange);
-    return () => {
-      document.removeEventListener("selectionchange", onChange);
-      window.removeEventListener("scroll", onChange, true);
-      window.removeEventListener("resize", onChange);
-    };
-  }, [containerRef]);
-
-  if (!pos) return null;
-  return (
-    <button
-      type="button"
-      onMouseDown={(e) => {
-        // preserve selection until after the click handler runs
-        e.preventDefault();
-      }}
-      onClick={() => {
-        onAddComment();
-        setPos(null);
-      }}
-      aria-label="Add comment to selection"
-      title="Add comment"
-      style={{
-        position: "absolute",
-        top: pos.top,
-        left: pos.left,
-        transform: "translateY(-50%)",
-      }}
-      className="z-50 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 shadow-md text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-    >
-      <MessageSquarePlus className="w-4 h-4" />
-    </button>
-  );
-};
-
 interface EditorPanelProps {
   className?: string;
   importMeta?: {
@@ -222,92 +167,27 @@ interface EditorPanelProps {
     disable?: boolean;
     presenceActive?: boolean;
   };
+  /** Publish an EditorAdapter so index.tsx can drive AI / redline /
+   *  version-history flows against either editor uniformly. */
+  onEditorReady?: (adapter: EditorAdapter | null) => void;
 }
 
 const EditorPanel: React.FC<EditorPanelProps> = ({
   className,
   importMeta,
   collabMeta,
+  onEditorReady,
 }) => {
   const navigate = useNavigate();
   const editor = useMemo(() => createYooptaEditor(), []);
   const toast = useToastHandler();
   const user = useUser();
-  const [isVersionModalOpen, setIsVersionModalOpen] = React.useState(false);
-  const [versions, setVersions] = React.useState<Version[]>([]);
-  const [searchParams] = useSearchParams();
-  const contractId = searchParams.get("contractId") || undefined;
-  const aiMutation = useAiRedlineSuggestions(contractId);
-  const [aiOpen, setAiOpen] = React.useState(false);
-  type AiItem = {
-    redline: RedlineSpan;
-    suggestion?: AiRedlineSuggestion;
-    state: "pending" | "approved" | "dismissed";
-  };
-  const [aiItems, setAiItems] = React.useState<AiItem[]>([]);
-
-  const runAiSuggestions = React.useCallback(async () => {
-    const redlines = extractRedlines(editor.getEditorValue() as any);
-    if (redlines.length === 0) {
-      setAiItems([]);
-      return;
-    }
-    const suggestions = await aiMutation.mutateAsync(redlines);
-    const byId = new Map(suggestions.map((s) => [s.redlineId, s]));
-    setAiItems(
-      redlines.map((r) => ({
-        redline: r,
-        suggestion: byId.get(r.redlineId),
-        state: "pending" as const,
-      })),
-    );
-  }, [aiMutation, editor]);
-
-  const handleOpenAi = React.useCallback(() => {
-    setAiOpen(true);
-    if (aiItems.length === 0) {
-      void runAiSuggestions();
-    }
-  }, [aiItems.length, runAiSuggestions]);
-
-  const handleApproveAi = React.useCallback(
-    (item: AiItem) => {
-      if (!item.suggestion) return;
-      const next = replaceRedline(
-        editor.getEditorValue() as any,
-        item.redline.redlineId,
-        item.suggestion.suggestion,
-      );
-      editor.setEditorValue(next as any);
-      setAiItems((prev) =>
-        prev.map((p) =>
-          p.redline.redlineId === item.redline.redlineId
-            ? { ...p, state: "approved" }
-            : p,
-        ),
-      );
-    },
-    [editor],
-  );
-
-  const handleDismissAi = React.useCallback((item: AiItem) => {
-    setAiItems((prev) =>
-      prev.map((p) =>
-        p.redline.redlineId === item.redline.redlineId
-          ? { ...p, state: "dismissed" }
-          : p,
-      ),
-    );
-  }, []);
-
-  const aiStatus: "idle" | "loading" | "ready" | "error" = aiMutation.isPending
-    ? "loading"
-    : aiMutation.isError
-      ? "error"
-      : aiItems.length > 0 || aiMutation.isSuccess
-        ? "ready"
-        : "idle";
   const didImportRef = useRef(false);
+
+  // The adapter-publishing effect needs `collab` (declared further down)
+  // for the Y.Doc reference. Adapter logic moved to a useEffect below
+  // the `collab = useMemo(...)` declaration; this comment marks where
+  // the adapter previously lived.
   const draftKey = useMemo(
     () => `ct:draft:${collabMeta?.roomId ?? "collab:editor"}`,
     [collabMeta?.roomId]
@@ -316,38 +196,10 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
   const autosaveValueRef = useRef<unknown>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
-  const handleSaveVersion = useCallback(() => {
-    const newVersion: Version = {
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      author: user?.name || "Unknown User",
-    };
-    try {
-      const editorState = editor.getEditorValue();
-      localStorage.setItem(
-        `doc-version-${newVersion.id}`,
-        JSON.stringify(editorState)
-      );
-      setVersions((prev) => [newVersion, ...prev]);
-      toast.success("Version saved", "Document version saved successfully.");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      toast.error("Version save failed", message);
-    }
-  }, [editor, toast, user?.name]);
-
-  const handleRestoreVersion = useCallback((versionId: string) => {
-    try {
-      const savedState = localStorage.getItem(`doc-version-${versionId}`);
-      if (!savedState) return;
-      editor.setEditorValue(JSON.parse(savedState));
-      setIsVersionModalOpen(false);
-      toast.success("Version restored", "Document version restored successfully.");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      toast.error("Version restore failed", message);
-    }
-  }, [editor, toast]);
+  // Held in a ref because the snapshot binding is declared further down
+  // (it depends on `collab`, which depends on `localUser`); reading it
+  // through a ref keeps `handleEditorChange` from creating a TDZ.
+  const collabBindingRef = useRef<{ markLocalChange: (v: unknown) => void } | null>(null);
 
   const handleEditorChange = useCallback(
     (value: unknown) => {
@@ -362,6 +214,10 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
           // ignore storage failures
         }
       }, 2000);
+      // Push the change through the snapshot binding so other clients
+      // in the same Yjs room converge on this value (debounced inside
+      // the binding).
+      collabBindingRef.current?.markLocalChange(value);
     },
     [draftKey]
   );
@@ -391,30 +247,156 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
       // ignore invalid drafts
     }
   }, [draftKey, editor]);
-  const collab = useMemo(() => {
-    const wsUrl = collabMeta?.wsUrl || import.meta.env.VITE_YWS_URL || "ws://localhost:1234";
-    let resolvedWsUrl = wsUrl;
+  const localUser = useMemo<CollabUser | null>(() => {
+    const name = user?.name || user?.email;
+    if (!name) return null;
+    return {
+      name,
+      color: hashColor(user?.email || user?.name || ""),
+    };
+  }, [user?.email, user?.name]);
 
-    if (collabMeta?.token) {
-      try {
-        const url = new URL(wsUrl);
-        if (!url.searchParams.get("token")) {
-          url.searchParams.set("token", collabMeta.token);
-        }
-        resolvedWsUrl = url.toString();
-      } catch {
-        resolvedWsUrl = wsUrl;
-      }
-    }
+  const collab = useMemo(() => {
+    // y-websocket attaches `?<params>` itself, so we pass token via the
+    // params option rather than mutating wsUrl — avoids the double `?` bug
+    // when wsUrl already carries query state.
+    const wsUrl =
+      collabMeta?.wsUrl ||
+      import.meta.env.VITE_WS_URL ||
+      import.meta.env.VITE_YWS_URL ||
+      "ws://localhost:1234";
 
     return createCollab({
-      wsUrl: resolvedWsUrl,
+      wsUrl,
       roomId: collabMeta?.roomId || "collab:editor",
       disable: collabMeta?.disable ?? false,
+      token: collabMeta?.token || undefined,
+      localUser: localUser ?? undefined,
     });
+    // localUser intentionally omitted from deps — re-creating the provider
+    // on identity change would tear down/reconnect the WS. Identity updates
+    // are pushed via collab.updateLocalUser below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collabMeta?.disable, collabMeta?.roomId, collabMeta?.token, collabMeta?.wsUrl]);
 
-  const collabPlugins = useMemo(() => collab.wrapPluginsWithCollab(PLUGINS), [collab]);
+  // Adapter-publishing effect — declared here (not at the top of the
+  // component) because it needs the `collab` memo's `Y.Doc`.
+  useEffect(() => {
+    const adapter: EditorAdapter = {
+      kind: "yoopta",
+      doc: collab.doc,
+      getSnapshot: () => editor.getEditorValue(),
+      setSnapshot: (snapshot) => {
+        if (snapshot && typeof snapshot === "object") {
+          editor.setEditorValue(
+            snapshot as Parameters<typeof editor.setEditorValue>[0],
+          );
+        }
+      },
+      extractRedlines: () =>
+        extractRedlines(editor.getEditorValue() as never),
+      replaceRedline: (redlineId, replacement) => {
+        const next = replaceRedline(
+          editor.getEditorValue() as never,
+          redlineId,
+          replacement,
+        );
+        editor.setEditorValue(
+          next as Parameters<typeof editor.setEditorValue>[0],
+        );
+      },
+    };
+    onEditorReady?.(adapter);
+    return () => onEditorReady?.(null);
+  }, [collab, editor, onEditorReady]);
+
+  useEffect(() => {
+    collab.updateLocalUser?.(localUser);
+  }, [collab, localUser]);
+
+  useEffect(() => {
+    const onFocusMark = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { id?: string } | undefined;
+      const id = detail?.id;
+      const root = canvasRef.current;
+      if (!id || !root) return;
+      const node = root.querySelector(
+        `[data-comment-id="${id}"], [data-redline-id="${id}"]`,
+      ) as HTMLElement | null;
+      if (!node) return;
+      node.scrollIntoView({ behavior: "smooth", block: "center" });
+      node.classList.remove("ct-mark-flash");
+      // Force reflow so the animation can restart on repeat clicks.
+      void node.offsetWidth;
+      node.classList.add("ct-mark-flash");
+    };
+    window.addEventListener("ct-focus-mark", onFocusMark);
+    return () => window.removeEventListener("ct-focus-mark", onFocusMark);
+  }, []);
+
+  // ── Presence + save-status wiring ─────────────────────────────────
+  const [presenceUsers, setPresenceUsers] = useState<AwarenessEntry[]>([]);
+  const [deviceCount, setDeviceCount] = useState<number | null>(null);
+  const [syncState, setSyncState] = useState<CollabSyncState>({
+    status: "connecting",
+    synced: false,
+  });
+  const [dirty, setDirty] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const dirtyClearTimerRef = useRef<number | null>(null);
+
+  useEffect(() => collab.subscribeAwareness?.(setPresenceUsers), [collab]);
+  useEffect(() => collab.subscribeDeviceCount?.(setDeviceCount), [collab]);
+  useEffect(
+    () =>
+      collab.subscribeSyncState?.((next) => {
+        setSyncState(next);
+        if (next.synced && next.status === "connected") {
+          setDirty(false);
+          setLastSavedAt(Date.now());
+        }
+      }),
+    [collab],
+  );
+
+  useEffect(() => {
+    // Mark dirty on any local Yjs transaction (origin !== provider).
+    const onUpdate = (_update: Uint8Array, origin: unknown) => {
+      if (origin === collab.provider) return;
+      setDirty(true);
+      if (dirtyClearTimerRef.current !== null) {
+        window.clearTimeout(dirtyClearTimerRef.current);
+      }
+      // Fallback in case provider.sync doesn't flip back to true reliably:
+      // 1.5s of editor idle while connected → treat as saved.
+      dirtyClearTimerRef.current = window.setTimeout(() => {
+        setDirty(false);
+        setLastSavedAt(Date.now());
+      }, 1500);
+    };
+    collab.doc.on("update", onUpdate);
+    return () => {
+      collab.doc.off("update", onUpdate);
+      if (dirtyClearTimerRef.current !== null) {
+        window.clearTimeout(dirtyClearTimerRef.current);
+        dirtyClearTimerRef.current = null;
+      }
+    };
+  }, [collab]);
+
+  // Snapshot-based collab binding. See useYooptaYjs.ts for rationale —
+  // we don't wrap per-block fragments anymore; instead the whole editor
+  // value is mirrored into a single Y.Map entry.
+  const collabBinding = useMemo(() => collab.createSnapshotBinding(), [collab]);
+
+  useEffect(() => {
+    collabBindingRef.current = collabBinding;
+    const detach = collabBinding.attach(editor);
+    return () => {
+      detach();
+      collabBindingRef.current = null;
+    };
+  }, [collabBinding, editor]);
 
   const tools = useMemo(() => {
     const authorName = user?.name || "Unknown User";
@@ -521,31 +503,6 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
       <div className="ct-editor-header">
         <span className="ct-editor-title">Document Editor</span>
         <div className="flex items-center gap-4">
-          <button
-            className="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200 transition-colors"
-            onClick={handleSaveVersion}
-            aria-label="Save Version"
-          >
-            <Save className="w-4 h-4" />
-            <span className="sr-only">Save Version</span>
-          </button>
-          <button
-            className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors flex items-center gap-1"
-            onClick={() => setIsVersionModalOpen(true)}
-            aria-label="View Version History"
-          >
-            <History className="w-4 h-4" />
-            <span className="sr-only">History</span>
-          </button>
-          <button
-            className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200 transition-colors flex items-center gap-1"
-            onClick={handleOpenAi}
-            aria-label="AI Polish redlines"
-            title="AI Polish — suggest professional rephrases for redlines"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span className="sr-only">AI Polish</span>
-          </button>
           <div
             className="ct-dismiss-pill cursor-pointer"
             onClick={handleNavigateBack}
@@ -554,6 +511,13 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
           </div>
         </div>
       </div>
+      <PresenceBar
+        users={presenceUsers}
+        deviceCount={deviceCount}
+        sync={syncState}
+        dirty={dirty}
+        lastSavedAt={lastSavedAt}
+      />
       <div
         ref={canvasRef}
         className="ct-editor-canvas pl-[4.5rem] mt-5"
@@ -561,7 +525,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
       >
         <YooptaEditor
           editor={editor}
-          plugins={collabPlugins}
+          plugins={PLUGINS as never}
           marks={MARKS}
           tools={tools}
           onChange={(value) => handleEditorChange(value)}
@@ -569,35 +533,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
           className="yoopta-editor w-full"
           style={{ width: "100%", paddingBottom: "120px" }}
         />
-        <FloatingCommentAction
-          containerRef={canvasRef}
-          onAddComment={() => {
-            const commentId = crypto.randomUUID();
-            editor.formats.comment.update({ commentId });
-            window.dispatchEvent(
-              new CustomEvent("ct-add-inline-comment", {
-                detail: { commentId },
-              }),
-            );
-          }}
-        />
       </div>
-      <VersionHistoryModal
-        isOpen={isVersionModalOpen}
-        onClose={() => setIsVersionModalOpen(false)}
-        versions={versions}
-        onRestore={handleRestoreVersion}
-      />
-      <AiSuggestionsPanel
-        open={aiOpen}
-        onClose={() => setAiOpen(false)}
-        status={aiStatus}
-        errorMessage={(aiMutation.error as Error | undefined)?.message}
-        items={aiItems}
-        onApprove={handleApproveAi}
-        onDismiss={handleDismissAi}
-        onRetry={runAiSuggestions}
-      />
     </div>
   );
 };
@@ -611,6 +547,7 @@ const arePropsEqual = (prev: EditorPanelProps, next: EditorPanelProps) =>
   prev.collabMeta?.roomId === next.collabMeta?.roomId &&
   prev.collabMeta?.disable === next.collabMeta?.disable &&
   prev.collabMeta?.token === next.collabMeta?.token &&
-  prev.collabMeta?.presenceActive === next.collabMeta?.presenceActive;
+  prev.collabMeta?.presenceActive === next.collabMeta?.presenceActive &&
+  prev.onEditorReady === next.onEditorReady;
 
 export default React.memo(EditorPanel, arePropsEqual);

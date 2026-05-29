@@ -18,6 +18,7 @@ import LinkedContractsHeader from "./LinkedContractsHeader";
 import {
   useProjectDetail,
   useCompleteProject,
+  useUpdateProject,
   type Project,
 } from "../hooks/useProjectApi";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -46,10 +47,14 @@ const LabelRow = ({
   highlight?: boolean;
 }) => (
   <div className="space-y-3 py-2">
-    <span className="text-sm text-slate-500 block">{label}</span>
+    <span className="text-sm text-slate-500 dark:text-slate-400 block">
+      {label}
+    </span>
     <span
       className={`text-sm block ${
-        highlight ? "font-semibold text-slate-900" : "text-slate-800 font-bold"
+        highlight
+          ? "font-semibold text-slate-900 dark:text-slate-100"
+          : "text-slate-800 dark:text-slate-200 font-bold"
       }`}
     >
       {value}
@@ -99,15 +104,17 @@ const DocCard = ({
       ? "text-orange-700"
       : "text-slate-700";
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-4">
+    <div className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
       <div
         className={`flex items-center justify-center h-12 w-12 rounded ${bg}`}
       >
         {iconEl}
       </div>
       <div className="flex-1">
-        <p className="text-sm font-medium text-slate-900">{name}</p>
-        <p className="text-xs text-slate-500">
+        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+          {name}
+        </p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           <span className={tone}>{ext}</span> • {sizeLabel}
         </p>
       </div>
@@ -115,18 +122,18 @@ const DocCard = ({
         <button
           type="button"
           aria-label="Preview"
-          className="h-9 w-9 rounded-full bg-slate-100 grid place-items-center"
+          className="h-9 w-9 rounded-full bg-slate-100 dark:bg-slate-800 grid place-items-center"
           onClick={onPreview}
         >
-          <Eye className="h-4 w-4 text-slate-600" />
+          <Eye className="h-4 w-4 text-slate-600 dark:text-slate-300" />
         </button>
         <button
           type="button"
           aria-label="Download"
-          className="h-9 w-9 rounded-full bg-slate-100 grid place-items-center"
+          className="h-9 w-9 rounded-full bg-slate-100 dark:bg-slate-800 grid place-items-center"
           onClick={onDownload}
         >
-          <Download className="h-4 w-4 text-slate-600" />
+          <Download className="h-4 w-4 text-slate-600 dark:text-slate-300" />
         </button>
       </div>
     </div>
@@ -156,11 +163,13 @@ const linkedColumns: ColumnDef<ContractRow>[] = [
         <a
           href={`/dashboard/contract-management/${row.original.id}`}
           data-testid="project-name-link"
-          className="font-medium text-slate-900 underline-offset-2 hover:underline"
+          className="font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
         >
           {row.original.title}
         </a>
-        <span className="text-xs text-slate-500">{row.original.code}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">
+          {row.original.code}
+        </span>
       </div>
     ),
   },
@@ -170,7 +179,11 @@ const linkedColumns: ColumnDef<ContractRow>[] = [
     header: "Value",
     cell: ({ getValue }) => {
       const v = getValue<string | undefined>();
-      return <span className="font-semibold text-slate-900">{v ?? "-"}</span>;
+      return (
+        <span className="font-semibold text-slate-900 dark:text-slate-100">
+          {v ?? "-"}
+        </span>
+      );
     },
   },
   { accessorKey: "owner", header: "Owner" },
@@ -178,7 +191,7 @@ const linkedColumns: ColumnDef<ContractRow>[] = [
     id: "date",
     header: "Date",
     cell: ({ row }) => (
-      <div className="text-xs text-slate-500">
+      <div className="text-xs text-slate-500 dark:text-slate-400">
         {row.original.published && (
           <div>Published: {row.original.published}</div>
         )}
@@ -247,6 +260,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   } = useProjectDetail(projectId);
 
   const completeMutation = useCompleteProject(projectId);
+  const updateMutation = useUpdateProject(projectId);
 
   const project = projectRes?.data?.data;
   const isCompleted = project?.status === "completed";
@@ -312,11 +326,11 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                   className="h-4 w-4 text-slate-500"
                   aria-hidden="true"
                 />
-                <SheetTitle className="text-[#2A4467]">
+                <SheetTitle className="text-[#2A4467] dark:text-slate-100">
                   Project Details
                 </SheetTitle>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mr-10">
                 <Button variant="outline" size="sm">
                   <Share2 className="mr-2 h-4 w-4" /> Export
                 </Button>
@@ -324,7 +338,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             </div>
           </SheetHeader>
 
-          <h3 className="text-lg font-semibold text-slate-900">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             {projectRes?.data?.data?.name ?? ""}
           </h3>
 
@@ -472,18 +486,20 @@ const ChangeDetailsSheet: React.FC<Props> = ({
               </div>
 
               <div className="space-y-2">
-                <span className="text-sm text-slate-500">Description</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400">
+                  Description
+                </span>
                 {isProjectLoading ? (
                   <Skeleton className="h-16 w-full" />
                 ) : (
-                  <p className="text-sm text-slate-800">
+                  <p className="text-sm text-slate-800 dark:text-slate-200">
                     {projectRes?.data?.data?.description ?? ""}
                   </p>
                 )}
               </div>
 
               <div className="space-y-4">
-                <span className="text-sm text-slate-800 block font-semibold">
+                <span className="text-sm text-slate-800 dark:text-slate-200 block font-semibold">
                   Attached Documents
                 </span>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -656,14 +672,31 @@ const ChangeDetailsSheet: React.FC<Props> = ({
               startDate: project?.startDate ? new Date(project.startDate) : undefined,
               endDate: project?.endDate ? new Date(project.endDate) : undefined,
               allowMultipleContracts: !!project?.allowMultiple,
+              businessDivision: project?.businessDivision,
+              existingFiles: project?.files ?? [],
             }}
-            isSubmitting={false}
-            onSubmit={async () => {
-              toast.error(
-                "Project",
-                "Project update endpoint is not documented in API docs"
-              );
-              throw new Error("Project update endpoint is not documented");
+            isSubmitting={updateMutation.isPending}
+            onSubmit={async (payload) => {
+              try {
+                const result = await updateMutation.mutateAsync({
+                  name: payload.name,
+                  category: payload.category,
+                  description: payload.description,
+                  budget: payload.budget,
+                  startDate: payload.startDate,
+                  endDate: payload.endDate,
+                  allowMultiple: payload.allowMultipleContracts,
+                  files: payload.files,
+                  businessDivision: payload.businessDivision,
+                });
+                toast.success(
+                  "Project",
+                  result?.data?.message ?? "Project updated successfully"
+                );
+              } catch (error) {
+                toast.error("Project", error as ApiResponseError);
+                throw error;
+              }
             }}
           />
         </div>

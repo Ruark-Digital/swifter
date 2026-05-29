@@ -22,10 +22,10 @@ export const CycleTimeCard: React.FC<Props> = ({
   const Row = ({ label, days }: { label: string; days: number }) => (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-[#030712]">{label}</p>
-        <p className="text-sm font-semibold text-[#030712]">{days} days</p>
+        <p className="text-sm font-semibold text-[#030712] dark:text-slate-100">{label}</p>
+        <p className="text-sm font-semibold text-[#030712] dark:text-slate-100">{days} days</p>
       </div>
-      <div className="w-full h-3 bg-gray-200 rounded-full">
+      <div className="w-full h-3 bg-gray-200 dark:bg-slate-800 rounded-full">
         <div
           className="h-3 bg-blue-600 rounded-full"
           style={{ width: `${pct(days)}%` }}
@@ -35,10 +35,10 @@ export const CycleTimeCard: React.FC<Props> = ({
   );
 
   return (
-    <Card className="rounded-2xl border border-[#E5E7EB]">
+    <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-[16px] font-semibold text-[#0F0F0F]">
+          <CardTitle className="text-[16px] font-semibold text-[#0F0F0F] dark:text-slate-100">
             Average Cycle Time per Stage
           </CardTitle>
         </div>
@@ -47,12 +47,14 @@ export const CycleTimeCard: React.FC<Props> = ({
           onValueChange={(value) => onRangeChange?.(value)}
           className="w-full"
         >
-          <TabsList className="bg-transparent p-0 gap-2">
+          {/* Horizontal scroll on overflow; `!flex-none shrink-0` defeats
+              shadcn TabsTrigger's baked-in `flex-1` so pills don't stretch. */}
+          <TabsList className="bg-transparent p-0 gap-2 flex overflow-x-auto h-auto w-full justify-start">
             <TabsTrigger
               value="ytd"
               className={cn(
-                "rounded-md px-3 py-2 text-sm font-semibold",
-                "bg-[#F0F0F0] text-[#2A4467]"
+                "!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold",
+                "bg-[#F0F0F0] text-[#2A4467] dark:bg-slate-800 dark:text-slate-100 data-[state=active]:bg-[#F0F0F0] data-[state=active]:dark:bg-slate-800"
               )}
             >
               YTD
@@ -61,7 +63,7 @@ export const CycleTimeCard: React.FC<Props> = ({
               <TabsTrigger
                 key={t}
                 value={t.replace(/\s+/g, "")}
-                className="rounded-md px-3 py-2 text-sm font-semibold text-[#667085]"
+                className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-[#667085] dark:text-slate-400"
               >
                 {t}
               </TabsTrigger>
@@ -76,8 +78,8 @@ export const CycleTimeCard: React.FC<Props> = ({
         <Row label="Execution" days={v.execution} />
 
         {(bottleneck?.stage || bottleneck?.reason) && (
-          <div className="rounded-md bg-[#FEFCE8] border border-[#FDE68A] p-3">
-            <p className="text-[#854D0E] text-sm">
+          <div className="rounded-md bg-[#FEFCE8] dark:bg-yellow-900/30 border border-[#FDE68A] dark:border-yellow-900/50 p-3">
+            <p className="text-[#854D0E] dark:text-yellow-200 text-sm">
               <span className="font-bold">Bottleneck Alert:</span>{" "}
               {bottleneck?.stage ? `${bottleneck.stage} stage` : "Stage"}{" "}
               {typeof bottleneck?.days === "number"

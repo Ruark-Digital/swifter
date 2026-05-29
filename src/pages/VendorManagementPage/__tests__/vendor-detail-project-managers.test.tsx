@@ -106,6 +106,18 @@ describe("VendorDetailPage - Project Managers tab", () => {
 
     await screen.findByText("Overview");
 
+    // PM tab content is only mounted when active — activate the tab first.
+    // Radix Tabs activates on pointerDown in jsdom (mouseDown alone is not
+    // enough on every Radix version, so fire both).
+    const pmTab = await screen.findByTestId(
+      "project-managers-tab",
+      undefined,
+      { timeout: 7000 },
+    );
+    fireEvent.pointerDown(pmTab);
+    fireEvent.mouseDown(pmTab);
+    fireEvent.click(pmTab);
+
     await screen.findByTestId("project-managers-table", undefined, {
       timeout: 7000,
     });

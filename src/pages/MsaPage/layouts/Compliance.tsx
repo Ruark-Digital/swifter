@@ -10,12 +10,14 @@ import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
-import { cn } from "@/lib/utils";
+import { cn, formatSecurityType } from "@/lib/utils";
+import { format, differenceInDays } from "date-fns";
 import { Check, Search, Share2, X } from "lucide-react";
 import type { ApiResponseError } from "@/types";
 import type { ContractComplianceDTO } from "@/pages/ContractManagementPage/api/contractManagerApi";
 import ComplianceDetailsSheet from "@/pages/ContractManagementPage/components/ComplianceDetailsSheet";
 import SubmitPolicyDialog from "@/pages/ContractManagementPage/components/SubmitPolicyDialog";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import { LabelItem } from "../components/LabelItem";
 import { Status, StatusBadge } from "../components/StatusBadge";
 
@@ -39,6 +41,8 @@ type SecurityRow = {
   securityId: string;
   securityType: string;
   amount: string;
+  dueDate: string;
+  dueIn: string;
   status: string;
 };
 
@@ -70,7 +74,9 @@ const getStatusTone = (status?: string) => {
   }
   if (normalized === "rejected")
     return "bg-[#FEECEC] text-[#E53935] dark:bg-red-900/30 dark:text-red-300";
-  return "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-200";
+  if (normalized === "closed")
+    return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+  return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 };
 
 const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
@@ -93,14 +99,14 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
 
   const basePath = React.useMemo(() => {
     if (isVendor || isProjectManager)
-      return `/contract/vendor/msa-contract/${contractId}/compliance`;
+      return `/contract/vendor/msa-contracts/${contractId}/compliance`;
     if (isApprover)
-      return `/contract/approver/msa-contract/${contractId}/compliance`;
+      return `/contract/approver/msa-contracts/${contractId}/compliance`;
     if (isManager)
-      return `/contract/manager/msa-contract/${contractId}/compliance`;
+      return `/contract/manager/msa-contracts/${contractId}/compliance`;
     if (isAdmin || isViewOnly)
-      return `/contract/user/msa-contract/${contractId}/compliance`;
-    return `/contract/user/msa-contract/${contractId}/compliance`;
+      return `/contract/user/msa-contracts/${contractId}/compliance`;
+    return `/contract/user/msa-contracts/${contractId}/compliance`;
   }, [
     contractId,
     isAdmin,
@@ -151,13 +157,30 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
 
   const securityRows = React.useMemo<SecurityRow[]>(
     () =>
-      (complianceData?.security ?? []).map((security) => ({
-        id: security._id || security.securityTypeId || "",
-        securityId: security._id || security.securityTypeId || "-",
-        securityType: security.securityType || "-",
-        amount: formatCurrencyCompact(security.amount),
-        status: security.status || "Pending",
-      })),
+      (complianceData?.security ?? []).map((security) => {
+        const dueDate = security.dueDate
+          ? format(new Date(security.dueDate), "dd MMM yyyy")
+          : "-";
+        let dueIn = "-";
+        if (security.dueDate) {
+          const days = differenceInDays(
+            new Date(security.dueDate),
+            new Date(),
+          );
+          if (days > 0) dueIn = `${days} days`;
+          else if (days === 0) dueIn = "Today";
+          else dueIn = "Overdue";
+        }
+        return {
+          id: security._id || security.securityTypeId || "",
+          securityId: security.securityTypeId || security._id || "-",
+          securityType: formatSecurityType(security.securityType),
+          amount: formatCurrencyCompact(security.amount),
+          dueDate,
+          dueIn,
+          status: security.status || "Pending",
+        };
+      }),
     [complianceData?.security],
   );
 
@@ -234,6 +257,32 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
       { accessorKey: "securityType", header: "Security Type" },
       { accessorKey: "amount", header: "Amount" },
       {
+        accessorKey: "dueDate",
+        header: "Date",
+        cell: ({ row }) => (
+          <div className="flex flex-col text-sm">
+            <div>
+              <span className="text-slate-500 dark:text-slate-400 mr-1">
+                Due Date:
+              </span>
+              <span className="font-medium text-slate-900 dark:text-slate-100">
+                {row.original.dueDate}
+              </span>
+            </div>
+            {row.original.dueIn && row.original.dueIn !== "-" && (
+              <div>
+                <span className="text-slate-500 dark:text-slate-400 mr-1">
+                  Due in:
+                </span>
+                <span className="text-slate-900 dark:text-slate-100">
+                  {row.original.dueIn}
+                </span>
+              </div>
+            )}
+          </div>
+        ),
+      },
+      {
         accessorKey: "status",
         header: "Status",
         cell: ({ getValue }) => (
@@ -298,19 +347,47 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
     [complianceData?.details],
   );
 
+  const hasFiles = React.useMemo(() => {
+    const details = complianceData?.details;
+    if (!details) return false;
+    if (activeTab === "policy") {
+      return (
+        (details.policyStatus?.files?.length ?? details.files?.length ?? 0) > 0
+      );
+    }
+    const raw = details.securityStatus as unknown;
+    if (raw && typeof raw === "object" && "files" in raw) {
+      return ((raw as { files?: unknown[] }).files?.length ?? 0) > 0;
+    }
+    return (details.files?.length ?? 0) > 0;
+  }, [activeTab, complianceData?.details]);
+
   const insuranceStatus = String(getCategoryStatus("policy") || "pending");
   const securityStatus = String(getCategoryStatus("security") || "pending");
 
   const canSubmitActiveCategory = React.useMemo(() => {
     if (!isVendorOrProjectManager) return false;
     const status = String(getCategoryStatus(activeTab) || "").toLowerCase();
-    if (!status) return false;
+    if (!status) return !hasFiles;
     return status === "pending" || status === "rejected";
-  }, [activeTab, getCategoryStatus, isVendorOrProjectManager]);
+  }, [activeTab, getCategoryStatus, hasFiles, isVendorOrProjectManager]);
+
+  const canManagerActOnActive = React.useMemo(() => {
+    if (!isContractManager) return false;
+    if (!hasFiles) return false;
+    const status = String(getCategoryStatus(activeTab) || "").toLowerCase();
+    if (!status) return false;
+    return (
+      status === "submitted" ||
+      status === "pending approval" ||
+      status === "pending_approval" ||
+      status === "awaiting approval"
+    );
+  }, [activeTab, getCategoryStatus, hasFiles, isContractManager]);
 
   const approveMutation = useMutation({
     mutationFn: async (action: "approved" | "rejected") => {
-      const endpoint = `/manager/msa-contract/${contractId}/compliance/${activeTab}/approve`;
+      const endpoint = `/contract/manager/msa-contracts/${contractId}/compliance/${activeTab}/approve`;
       const comment =
         action === "approved"
           ? `Approved all ${activeTab} items via bulk action`
@@ -337,7 +414,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
           Compliance & Security Details
         </h3>
         <div className="flex items-center gap-3">
-          {isContractManager && (
+          {canManagerActOnActive && (
             <>
               <Button
                 variant="outline"
@@ -376,18 +453,20 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
             />
           )}
 
-          <Button
-            variant="outline"
-            className="h-12 rounded-xl border-[#E5E7EB] dark:border-slate-700 px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 dark:bg-transparent"
-          >
-            <Share2 className="mr-2 h-5 w-5" />
-            Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="MsaContract">
+            <Button
+              variant="outline"
+              className="h-12 rounded-xl border-[#E5E7EB] dark:border-slate-700 px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 dark:bg-transparent"
+            >
+              <Share2 className="mr-2 h-5 w-5" />
+              Export Report
+            </Button>
+          </ExportReportSheet>
         </div>
       </div>
 
       {isLoading && (
-        <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+        <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
           Loading compliance data...
         </div>
       )}

@@ -54,7 +54,7 @@ import {
   // type ContractRfiDTO,
 } from "../api/contractManagerApi";
 import { approverApi } from "../api/approverApi";
-// import { vendorApi } from "../api/vendorApi";
+import { vendorApi } from "../api/vendorApi";
 import { formatDateTZ } from "@/lib/utils";
 import { formatFileSize, getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -93,8 +93,8 @@ const LabelRow = ({
   value: React.ReactNode;
 }) => (
   <div className="space-y-2">
-    <div className="text-xs font-medium text-[#9CA3AF]">{label}</div>
-    <div className="text-sm font-medium text-[#111827]">{value}</div>
+    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">{label}</div>
+    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
 
@@ -114,15 +114,21 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   const [isOpen, setIsOpen] = React.useState(false);
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
-  const { isApprover } = useUserRole();
+  const { isApprover, isVendor, isProjectManager } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
+  const roleNs = isApprover
+    ? "approver"
+    : isContractVendorLike
+      ? "vendor"
+      : "contractManager";
   const queryKey = useUserQueryKey([
-    isApprover ? "approver" : "contractManager",
+    roleNs,
     "contractRfis",
     "detail",
     rfiId,
   ]);
   const commentsQueryKey = useUserQueryKey([
-    isApprover ? "approver" : "contractManager",
+    roleNs,
     "contractRfis",
     "comments",
     contractId,
@@ -134,7 +140,9 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     queryFn: async () =>
       isApprover
         ? await approverApi.getRfiDetail(rfiId, contractId)
-        : await contractManagerApi.getRfiDetail(contractId, rfiId),
+        : isContractVendorLike
+          ? await vendorApi.getRfiDetail(contractId, rfiId)
+          : await contractManagerApi.getRfiDetail(contractId, rfiId),
     enabled: Boolean(rfiId) && isOpen,
     staleTime: 60000,
   });
@@ -150,7 +158,9 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     queryFn: async () =>
       isApprover
         ? await approverApi.listRfiComments(contractId, rfiId)
-        : await contractManagerApi.listRfiComments(contractId, rfiId),
+        : isContractVendorLike
+          ? await vendorApi.listRfiComments(contractId, rfiId)
+          : await contractManagerApi.listRfiComments(contractId, rfiId),
     enabled: Boolean(contractId) && Boolean(rfiId) && isOpen,
     staleTime: 60000,
   });
@@ -161,7 +171,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     ContractChangeCommentDTO
   >({
     mutationKey: [
-      isApprover ? "approver" : "contractManager",
+      roleNs,
       "contractRfis",
       "comments",
       "add",
@@ -171,7 +181,9 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     mutationFn: async (payload) =>
       isApprover
         ? await approverApi.addRfiComment(contractId, rfiId, payload)
-        : await contractManagerApi.addRfiComment(contractId, rfiId, payload),
+        : isContractVendorLike
+          ? await vendorApi.addRfiComment(contractId, rfiId, payload)
+          : await contractManagerApi.addRfiComment(contractId, rfiId, payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: commentsQueryKey });
     },
@@ -180,11 +192,20 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     },
   });
 
-  const rfiDetail = (rfiDetailRes?.data?.contractRfi ?? rfiDetailRes?.data ?? rfiDetailRes) as unknown as any;
+  const rfiDetail = ((rfiDetailRes?.data as any)?.contractRfi ?? rfiDetailRes?.data ?? rfiDetailRes) as unknown as any;
   const rfiTitle = rfiDetail?.title ?? rfi?.title ?? "-";
   const rfiDescription = rfiDetail?.description ?? rfi?.description ?? "-";
   const rfiStatus = rfi?.status ?? "-";
-  const rfiSubmittedBy = rfiDetail?.submittedBy?.name ?? rfi?.submittedBy ?? "-";
+  // Backend now returns `submittedBy` as a populated user object
+  // (`{_id, name, email}`) on both list + detail. Older rows could
+  // still be plain strings. Coerce to a string before rendering —
+  // otherwise React crashes with "Objects are not valid as a
+  // React child".
+  const submittedByRaw = rfiDetail?.submittedBy ?? rfi?.submittedBy;
+  const rfiSubmittedBy =
+    typeof submittedByRaw === "string"
+      ? submittedByRaw
+      : (submittedByRaw?.name ?? submittedByRaw?.email ?? "-");
   const rfiIdentifier = rfi?.rfiId ?? rfi?._id ?? "-";
 
   const formatDate = (value?: string | Date) =>
@@ -195,10 +216,10 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
 
   const statusTone =
     rfiStatus?.toLowerCase() === "open"
-      ? "bg-[#DCFCE7] text-[#16A34A]"
+      ? "bg-[#DCFCE7] text-[#16A34A] dark:bg-green-900/40 dark:text-green-300"
       : rfiStatus?.toLowerCase() === "closed"
-        ? "bg-red-100 text-red-600"
-        : "bg-slate-100 text-slate-700";
+        ? "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300"
+        : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 
   const files = (rfiDetail?.files ?? rfi?.files ?? []) as Array<{
     name?: string;
@@ -248,11 +269,11 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] dark:border-slate-700 text-[#111827] dark:text-slate-100"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   RFI Details
                 </SheetTitle>
               </div>
@@ -261,12 +282,12 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
 
           <div className="space-y-6">
             <div className="flex items-start justify-between">
-              <div className="text-base font-semibold text-[#0F0F0F]">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 {rfiTitle}
               </div>
               <Button
                 variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
+                className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
               >
                 <Download className="mr-2 h-4 w-4" /> Export
               </Button>
@@ -332,14 +353,14 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <div className="text-xs font-medium text-[#9CA3AF]">
+                  <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                     Description
                   </div>
-                  <div className="text-sm text-[#374151]">{rfiDescription}</div>
+                  <div className="text-sm text-[#374151] dark:text-slate-200">{rfiDescription}</div>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="text-base font-semibold text-[#0F0F0F]">
+                  <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                     Attached Documents
                   </div>
                   <div className="grid gap-3 sm:grid-cols-1">
@@ -404,7 +425,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                 <Separator />
 
                 {isCommentsLoading ? (
-                  <div className="rounded-xl border border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
                     Loading comments...
                   </div>
                 ) : comments.length ? (
@@ -412,25 +433,25 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                     {comments.map((comment, index) => (
                       <div
                         key={comment._id ?? `${index}`}
-                        className="rounded-xl border border-[#E5E7EB] p-4"
+                        className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 dark:bg-slate-900 p-4"
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div>
-                            <div className="text-sm font-semibold text-[#111827]">
+                            <div className="text-sm font-semibold text-[#111827] dark:text-slate-100">
                               {getCommentAuthor(comment)}
                             </div>
                             {getCommentEmail(comment) ? (
-                              <div className="text-xs text-[#6B7280]">
+                              <div className="text-xs text-[#6B7280] dark:text-slate-400">
                                 {getCommentEmail(comment)}
                               </div>
                             ) : null}
                           </div>
-                          <div className="text-xs text-[#6B7280]">
+                          <div className="text-xs text-[#6B7280] dark:text-slate-400">
                             {formatDateTZ(comment.createdAt, "dd MMM yyyy")}
                           </div>
                         </div>
                         <div
-                          className="text-sm text-[#374151] mt-3 prose prose-sm max-w-none"
+                          className="text-sm text-[#374151] dark:text-slate-200 mt-3 prose prose-sm dark:prose-invert max-w-none"
                           dangerouslySetInnerHTML={{
                             __html: comment.content ?? "",
                           }}
@@ -439,7 +460,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
                     No comments yet.
                   </div>
                 )}
@@ -464,7 +485,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
             </Tabs>
           </div>
 
-          {!(rfiDetailRes?.data?.isResponse ?? false) && isApprover && (
+          {!((rfiDetailRes?.data as any)?.isResponse ?? false) && isApprover && (
             <SheetFooter>
               <div className="flex w-full gap-3 pt-2">
                 <Button variant="outline" className="flex-1 h-12 rounded-xl">
@@ -493,12 +514,12 @@ const RfiResponseContent: React.FC<{
   isApprover: boolean;
 }> = ({ rfiId, contractId, isApprover }) => {
   const { data: respRes } = useQuery({
-    queryKey: [
+    queryKey: useUserQueryKey([
       isApprover ? "approver" : "contractManager",
       "contractRfis",
       "response",
       rfiId,
-    ],
+    ]),
     queryFn: async () =>
       isApprover
         ? await approverApi.getRfiResponse(contractId, rfiId)
@@ -521,13 +542,13 @@ const RfiResponseContent: React.FC<{
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <div className="text-xs font-medium text-[#9CA3AF]">
+        <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
           Response / Description
         </div>
-        <div className="text-sm text-[#374151]">{description}</div>
+        <div className="text-sm text-[#374151] dark:text-slate-200">{description}</div>
       </div>
       <div className="space-y-3">
-        <div className="text-base font-semibold text-[#0F0F0F]">
+        <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
           Attached Documents
         </div>
         <div className="grid gap-3 sm:grid-cols-1">
@@ -849,7 +870,7 @@ const columns: ColumnDef<RfiRow>[] = [
     accessorKey: "title",
     header: "Title",
     cell: ({ getValue }) => (
-      <div className="max-w-[260px] text-sm text-slate-700">
+      <div className="max-w-[260px] text-sm text-slate-700 dark:text-slate-200">
         {getValue<string>()}
       </div>
     ),
@@ -862,10 +883,10 @@ const columns: ColumnDef<RfiRow>[] = [
       const s = getValue<RfiRow["status"]>();
       const tone =
         s === "open"
-          ? "bg-green-100 text-green-700"
+          ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
           : s === "closed"
-            ? "bg-red-100 text-red-600"
-            : "bg-slate-100 text-slate-700";
+            ? "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300"
+            : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
       return (
         <span className={`px-3 py-1 rounded-full text-xs font-medium ${tone}`}>
           {s}
@@ -959,8 +980,8 @@ const RfiTable: React.FC<Props> = ({
         data={filteredRows}
         columns={columns}
         header={() => (
-          <div className="flex items-center gap-3 w-full border-b border-[#E5E7EB] px-5 py-4">
-            <span className="text-sm font-medium text-slate-900">RFI</span>
+          <div className="flex items-center gap-3 w-full border-b border-[#E5E7EB] dark:border-slate-800 px-5 py-4">
+            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">RFI</span>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
@@ -981,13 +1002,13 @@ const RfiTable: React.FC<Props> = ({
           pagination,
         }}
         classNames={{
-          container: "border border-[#E5E7EB] rounded-xl bg-white",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-xs font-semibold text-slate-500",
-          tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+          container: "border border-[#E5E7EB] dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
         }}
       />
     </div>

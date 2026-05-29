@@ -45,8 +45,8 @@ const LabelRow = ({
   value: React.ReactNode;
 }) => (
   <div className="space-y-2">
-    <div className="text-xs font-medium text-[#9CA3AF]">{label}</div>
-    <div className="text-sm font-medium text-[#111827]">{value}</div>
+    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">{label}</div>
+    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
 
@@ -99,18 +99,18 @@ const ApproverDetailsSheet = ({
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] dark:border-slate-800 text-[#111827] dark:text-slate-100"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Approver
                 </SheetTitle>
               </div>
               <SheetClose asChild>
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#FCA5A5] text-[#EF4444]"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#FCA5A5] dark:border-red-900/60 text-[#EF4444]"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -119,7 +119,7 @@ const ApproverDetailsSheet = ({
           </SheetHeader>
           <div className="space-y-6">
             <div className="flex items-start justify-between">
-              <div className="text-base font-semibold text-[#0F0F0F]">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Approver Details
               </div>
               <span
@@ -180,11 +180,11 @@ const Approvers: React.FC<Props> = ({ contractId, isActive }) => {
 
   const basePath = React.useMemo(() => {
     if (isVendor || isProjectManager)
-      return `/contract/vendor/msa-contract/${contractId}`;
-    if (isApprover) return `/contract/approver/msa-contract/${contractId}`;
-    if (isViewOnly) return `/contract/user/msa-contract/${contractId}`;
-    if (isManager) return `/contract/manager/msa-contract/${contractId}`;
-    return `/contract/manager/msa-contract/${contractId}`;
+      return `/contract/vendor/msa-contracts/${contractId}`;
+    if (isApprover) return `/contract/approver/msa-contracts/${contractId}`;
+    if (isViewOnly) return `/contract/user/msa-contracts/${contractId}`;
+    if (isManager) return `/contract/manager/msa-contracts/${contractId}`;
+    return `/contract/manager/msa-contracts/${contractId}`;
   }, [
     contractId,
     isApprover,
@@ -363,12 +363,12 @@ const Approvers: React.FC<Props> = ({ contractId, isActive }) => {
   return (
     <TabsContent value="approvers" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
+        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F] dark:text-slate-100">
           Approvers
         </h3>
         <Button
           variant="outline"
-          className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F]"
+          className="h-12 rounded-xl border-[#E5E7EB] dark:border-slate-800 px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
         >
           <Share2 className="mr-2 h-5 w-5" />
           Export Report
@@ -379,8 +379,8 @@ const Approvers: React.FC<Props> = ({ contractId, isActive }) => {
         data={rows}
         columns={columns}
         header={() => (
-          <div className="flex items-center justify-between w-full border-b border-[#E5E7EB] px-5 py-4">
-            <span className="text-base font-semibold text-[#0F0F0F]">
+          <div className="flex items-center justify-between w-full border-b border-[#E5E7EB] dark:border-slate-800 px-5 py-4">
+            <span className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
               Approvers
             </span>
           </div>
@@ -391,16 +391,16 @@ const Approvers: React.FC<Props> = ({ contractId, isActive }) => {
           isLoading: isLoading,
         }}
         classNames={{
-          container: "border border-[#E5E7EB] rounded-xl bg-white",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467]",
-          tCell: "px-6 py-4 text-sm text-[#2A4467] align-top",
+          container: "border border-[#E5E7EB] dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467] dark:text-indigo-300",
+          tCell: "px-6 py-4 text-sm text-[#2A4467] dark:text-slate-200 align-top",
         }}
         emptyPlaceholder={
-          <div className="px-6 py-8 text-sm text-slate-500">
+          <div className="px-6 py-8 text-sm text-slate-500 dark:text-slate-400">
             No approvers found.
           </div>
         }

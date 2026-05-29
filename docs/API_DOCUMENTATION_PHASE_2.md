@@ -84,6 +84,8 @@ Authorization: Bearer <your_token>
 28. [View-Only — Contracts & MSA Contracts](#28-view-only--contracts--msa-contracts)
 29. [View-Only — Contract Sub-Resources](#29-view-only--contract-sub-resources)
 30. [Collaboration (WebSocket)](#30-collaboration-websocket)
+31. [Contract Export](#31-contract-export)
+32. [File Utilities](#32-file-utilities)
 
 ***
 
@@ -334,14 +336,14 @@ MSA (Master Services Agreement) contracts are umbrella contracts that can have l
 
 | Method | Path                                                 | Description             | Roles                                              |
 | ------ | ---------------------------------------------------- | ----------------------- | -------------------------------------------------- |
-| `GET`  | `/manager/msa-contract/stats`                        | Count MSA contracts     | `contract_manager`, `procurement`, `company_admin` |
-| `GET`  | `/manager/msa-contract`                              | List MSA contracts      | `contract_manager`, `procurement`, `company_admin` |
-| `GET`  | `/manager/msa-contract/me`                           | List my MSA contracts   | `contract_manager`, `procurement`, `company_admin` |
-| `GET`  | `/manager/msa-contract/{contractId}`                 | Get MSA contract detail | `contract_manager`, `procurement`, `company_admin` |
-| `POST` | `/manager/msa-contract`                              | Create MSA contract     | `contract_manager`, `procurement`, `company_admin` |
-| `PUT`  | `/manager/msa-contract/{contractId}`                 | Update MSA contract     | `contract_manager`, `procurement`, `company_admin` |
-| `GET`  | `/manager/msa-contract/{contractId}/linked-contract` | Get linked sub-contract | `contract_manager`, `procurement`, `company_admin` |
-| `GET`  | `/manager/msa-contract/{contractId}/clauses`         | Get clause library      | `contract_manager`, `procurement`, `company_admin` |
+| `GET`  | `/manager/msa-contracts/stats`                        | Count MSA contracts     | `contract_manager`, `procurement`, `company_admin` |
+| `GET`  | `/manager/msa-contracts`                              | List MSA contracts      | `contract_manager`, `procurement`, `company_admin` |
+| `GET`  | `/manager/msa-contracts/me`                           | List my MSA contracts   | `contract_manager`, `procurement`, `company_admin` |
+| `GET`  | `/manager/msa-contracts/{contractId}`                 | Get MSA contract detail | `contract_manager`, `procurement`, `company_admin` |
+| `POST` | `/manager/msa-contracts`                              | Create MSA contract     | `contract_manager`, `procurement`, `company_admin` |
+| `PUT`  | `/manager/msa-contracts/{contractId}`                 | Update MSA contract     | `contract_manager`, `procurement`, `company_admin` |
+| `GET`  | `/manager/msa-contracts/{contractId}/linked-contract` | Get linked sub-contract | `contract_manager`, `procurement`, `company_admin` |
+| `GET`  | `/manager/msa-contracts/{contractId}/clauses`         | Get clause library      | `contract_manager`, `procurement`, `company_admin` |
 | `GET`  | `/manager/msa-contracts/{contractId}/amendments`      | List amendments         | `contract_manager`, `procurement`, `company_admin` |
 | `GET`  | `/manager/msa-contracts/{contractId}/amendments/stats`| Amendment statistics    | `contract_manager`, `procurement`, `company_admin` |
 
@@ -355,99 +357,114 @@ MSA (Master Services Agreement) contracts are umbrella contracts that can have l
 | ------ | ----------------------------------------------------------------- | -------------------------------- |
 | `GET`  | `/manager/msa-contracts/{contractId}/amendments`                  | List amendments                  |
 | `GET`  | `/manager/msa-contracts/{contractId}/amendments/stats`            | Get amendment statistics         |
-| `POST` | `/manager/msa-contract/{contractId}/amendments`                   | Create amendment                 |
-| `GET`  | `/manager/msa-contract/{contractId}/amendments/{amendmentId}`      | Get amendment details            |
-| `PUT`  | `/manager/msa-contract/{contractId}/amendments/{amendmentId}`      | Edit amendment                   |
-| `POST` | `/manager/msa-contract/{contractId}/amendments/{amendmentId}/approve`   | Approve/Reject amendment     |
-| `POST` | `/manager/msa-contract/{contractId}/amendments/{amendmentId}/approvers` | Add approvers to amendment   |
+| `POST` | `/manager/msa-contracts/{contractId}/amendments`                   | Create amendment                 |
+| `GET`  | `/manager/msa-contracts/{contractId}/amendments/{amendmentId}`      | Get amendment details            |
+| `PUT`  | `/manager/msa-contracts/{contractId}/amendments/{amendmentId}`      | Edit amendment                   |
+| `POST` | `/manager/msa-contracts/{contractId}/amendments/{amendmentId}/approve`   | Approve/Reject amendment     |
+| `POST` | `/manager/msa-contracts/{contractId}/amendments/{amendmentId}/approvers` | Add approvers to amendment   |
 
 #### Changes
 
 | Method | Path                                                                   | Description                                      |
 | ------ | ---------------------------------------------------------------------- | ------------------------------------------------ |
-| `GET`  | `/manager/msa-contract/{contractId}/changes/stats`                     | Get MSA contract change statistics               |
-| `GET`  | `/manager/msa-contract/{contractId}/changes`                           | List MSA contract changes                        |
-| `GET`  | `/manager/msa-contract/{contractId}/changes/{changeId}`                | Get an MSA contract change                       |
-| `PUT`  | `/manager/msa-contract/{contractId}/changes/{changeId}`                | Edit a rejected MSA contract change (Manager)    |
-| `POST` | `/manager/msa-contract/{contractId}/changes/{changeId}/approve`        | Approve or reject an MSA contract change (Manager) |
-| `GET`  | `/manager/msa-contract/{contractId}/changes/{changeId}/approve/status` | Check manager approval status for an MSA contract change |
-| `GET`  | `/manager/msa-contract/{contractId}/changes/{changeId}/approvers`      | Get MSA contract change approvers                |
-| `POST` | `/manager/msa-contract/{contractId}/changes/{changeId}/approvers`      | Assign multi-level approvers to an MSA contract change |
-| `POST` | `/manager/msa-contract/{dataId}/change/{type}`                         | Request an MSA contract change                   |
+| `GET`  | `/manager/msa-contracts/{contractId}/changes/stats`                     | Get MSA contract change statistics               |
+| `GET`  | `/manager/msa-contracts/{contractId}/changes`                           | List MSA contract changes                        |
+| `GET`  | `/manager/msa-contracts/{contractId}/changes/{changeId}`                | Get an MSA contract change                       |
+| `PUT`  | `/manager/msa-contracts/{contractId}/changes/{changeId}`                | Edit a rejected MSA contract change (Manager)    |
+| `POST` | `/manager/msa-contracts/{contractId}/changes/{changeId}/approve`        | Approve or reject an MSA contract change (Manager) |
+| `GET`  | `/manager/msa-contracts/{contractId}/changes/{changeId}/approve/status` | Check manager approval status for an MSA contract change |
+| `GET`  | `/manager/msa-contracts/{contractId}/changes/{changeId}/approvers`      | Get MSA contract change approvers                |
+| `POST` | `/manager/msa-contracts/{contractId}/changes/{changeId}/approvers`      | Assign multi-level approvers to an MSA contract change |
+| `POST` | `/manager/msa-contracts/{dataId}/change/{type}`                         | Request an MSA contract change                   |
 
 #### Claims
 
 | Method | Path                                                                                 | Description                                   |
 | ------ | ------------------------------------------------------------------------------------ | --------------------------------------------- |
-| `GET`  | `/manager/msa-contract/{contractId}/claims/stats`                                    | Get MSA contract claim statistics            |
-| `GET`  | `/manager/msa-contract/{contractId}/claims`                                          | List MSA contract claims                     |
-| `GET`  | `/manager/msa-contract/{contractId}/claims/{claimId}`                                | Get an MSA contract claim                    |
-| `PUT`  | `/manager/msa-contract/{contractId}/claims/{claimId}`                                | Edit an MSA contract claim                   |
-| `POST` | `/manager/msa-contract/{contractId}/claims/{claimId}/approve`                        | Approve or reject an MSA contract claim (Manager) |
-| `GET`  | `/manager/msa-contract/{contractId}/claims/{claimId}/approve/status`                 | Check manager approval status for an MSA contract claim |
-| `GET`  | `/manager/msa-contract/{contractId}/claims/{claimId}/approvers`                      | Get MSA contract claim approvers             |
-| `POST` | `/manager/msa-contract/{contractId}/claims/{claimId}/approvers`                      | Send MSA contract claim to approvers         |
-| `GET`  | `/manager/msa-contract/{contractId}/claims/{claimId}/comments`                       | Get MSA contract claim comments              |
-| `POST` | `/manager/msa-contract/{contractId}/claims/{claimId}/comments`                       | Add a comment to an MSA contract claim       |
-| `POST` | `/manager/msa-contract/{contractId}/claims/{claimId}/comments/{commentId}/reply`     | Reply to an MSA contract claim comment       |
+| `GET`  | `/manager/msa-contracts/{contractId}/claims/stats`                                    | Get MSA contract claim statistics            |
+| `GET`  | `/manager/msa-contracts/{contractId}/claims`                                          | List MSA contract claims                     |
+| `GET`  | `/manager/msa-contracts/{contractId}/claims/{claimId}`                                | Get an MSA contract claim                    |
+| `PUT`  | `/manager/msa-contracts/{contractId}/claims/{claimId}`                                | Edit an MSA contract claim                   |
+| `POST` | `/manager/msa-contracts/{contractId}/claims/{claimId}/approve`                        | Approve or reject an MSA contract claim (Manager) |
+| `GET`  | `/manager/msa-contracts/{contractId}/claims/{claimId}/approve/status`                 | Check manager approval status for an MSA contract claim |
+| `GET`  | `/manager/msa-contracts/{contractId}/claims/{claimId}/approvers`                      | Get MSA contract claim approvers             |
+| `POST` | `/manager/msa-contracts/{contractId}/claims/{claimId}/approvers`                      | Send MSA contract claim to approvers         |
+| `GET`  | `/manager/msa-contracts/{contractId}/claims/{claimId}/comments`                       | Get MSA contract claim comments              |
+| `POST` | `/manager/msa-contracts/{contractId}/claims/{claimId}/comments`                       | Add a comment to an MSA contract claim       |
+| `POST` | `/manager/msa-contracts/{contractId}/claims/{claimId}/comments/{commentId}/reply`     | Reply to an MSA contract claim comment       |
 
 #### Compliance
 
 | Method | Path                                                         | Description                                   |
 | ------ | ------------------------------------------------------------ | --------------------------------------------- |
-| `GET`  | `/manager/msa-contract/{contractId}/compliance`              | Get MSA contract compliance details           |
-| `POST` | `/manager/msa-contract/{contractId}/compliance/{type}/approve` | Approve or reject an MSA contract compliance item |
+| `GET`  | `/manager/msa-contracts/{contractId}/compliance`              | Get MSA contract compliance details           |
+| `POST` | `/manager/msa-contracts/{contractId}/compliance/{type}/approve` | Approve or reject an MSA contract compliance item |
+
+#### Deliverables
+
+| Method | Path                                                                       | Description                       |
+| ------ | -------------------------------------------------------------------------- | --------------------------------- |
+| `GET`  | `/manager/msa-contracts/{contractId}/deliverables/stats`                    | MSA deliverable statistics        |
+| `GET`  | `/manager/msa-contracts/{contractId}/deliverables`                          | List MSA deliverables             |
+| `GET`  | `/manager/msa-contracts/{contractId}/deliverables/{deliverableId}`          | Get MSA deliverable details       |
+| `POST` | `/manager/msa-contracts/{contractId}/deliverables/{deliverableId}/approve`  | Approve or reject MSA deliverable |
 
 #### Invoices
 
 | Method | Path                                                     | Description                        |
 | ------ | -------------------------------------------------------- | ---------------------------------- |
-| `GET`  | `/manager/msa-contract/{contractId}/invoice`             | List MSA contract invoices         |
-| `GET`  | `/manager/msa-contract/{contractId}/invoice/{invoiceId}` | Get MSA contract invoice details   |
+| `GET`  | `/manager/msa-contracts/{contractId}/invoice`             | List MSA contract invoices         |
+| `GET`  | `/manager/msa-contracts/{contractId}/invoice/{invoiceId}` | Get MSA contract invoice details   |
 | `POST` | `/manager/msa-contracts/{contractId}/invoice/{invoiceId}/approve` | Approve or reject a contract invoice (Manager) |
-| `GET`  | `/manager/msa-contract/{contractId}/invoice/stats`       | Get MSA contract invoice statistics |
+| `GET`  | `/manager/msa-contracts/{contractId}/invoice/stats`       | Get MSA contract invoice statistics |
 
 #### KPIs
 
 | Method | Path                                                 | Description                         |
 | ------ | ---------------------------------------------------- | ----------------------------------- |
-| `GET`  | `/manager/msa-contract/{contractId}/kpis`            | List MSA contract KPI dashboard rows |
-| `GET`  | `/manager/msa-contract/{contractId}/kpis/{kpiId}`    | Get KPI detail                      |
-| `POST` | `/manager/msa-contract/{contractId}/kpis/{kpiId}`    | Submit KPI values                   |
+| `GET`  | `/manager/msa-contracts/{contractId}/kpis`            | List MSA contract KPI dashboard rows |
+| `GET`  | `/manager/msa-contracts/{contractId}/kpis/{kpiId}`    | Get KPI detail                      |
+| `POST` | `/manager/msa-contracts/{contractId}/kpis/{kpiId}`    | Submit KPI values                   |
 
 #### Holdbacks & Savings
 
 | Method | Path                                                       | Description              |
 | ------ | ---------------------------------------------------------- | ------------------------ |
-| `GET`  | `/manager/msa-contract/{contractId}/payment-holdbacks`     | List holdbacks           |
-| `POST` | `/manager/msa-contract/{contractId}/payment-holdbacks`     | Create a new holdback    |
-| `GET`  | `/manager/msa-contract/payment-holdbacks/{holdBackId}`     | Get holdback details     |
-| `GET`  | `/manager/msa-contract/{contractId}/payment-savings`       | List savings             |
-| `POST` | `/manager/msa-contract/{contractId}/payment-savings`       | Create a new saving      |
-| `GET`  | `/manager/msa-contract/payment-savings/{savingId}`         | Get saving details       |
+| `GET`  | `/manager/msa-contracts/{contractId}/payment-holdbacks`     | List holdbacks           |
+| `POST` | `/manager/msa-contracts/{contractId}/payment-holdbacks`     | Create a new holdback    |
+| `GET`  | `/manager/msa-contracts/payment-holdbacks/{holdBackId}`     | Get holdback details     |
+| `GET`  | `/manager/msa-contracts/{contractId}/payment-savings`       | List savings             |
+| `POST` | `/manager/msa-contracts/{contractId}/payment-savings`       | Create a new saving      |
+| `GET`  | `/manager/msa-contracts/payment-savings/{savingId}`         | Get saving details       |
 
 #### RFIs
 
 | Method | Path                                                                 | Description                   |
 | ------ | -------------------------------------------------------------------- | ----------------------------- |
-| `GET`  | `/manager/msa-contract/{contractId}/rfi`                             | List contract RFIs            |
-| `GET`  | `/manager/msa-contract/{contractId}/rfi/stats`                       | Get MSA contract RFI statistics |
-| `GET`  | `/manager/msa-contract/{contractId}/rfi/{rfiId}`                     | Get a specific RFI            |
-| `GET`  | `/manager/msa-contract/{contractId}/rfi/{rfiId}/response`            | Get RFI responses             |
-| `GET`  | `/manager/msa-contract/{contractId}/rfi/{rfiId}/comment`             | Get contract RFI comments     |
-| `POST` | `/manager/msa-contract/{contractId}/rfi/{rfiId}/comment`             | Add a comment to a contract RFI |
-| `POST` | `/manager/msa-contract/{contractId}/rfi/{rfiId}/comment/{commentId}/reply` | Reply to a contract RFI comment |
-| `POST` | `/manager/msa-contract/{dataId}/rfi`                                 | Create a new RFI issue        |
-| `POST` | `/manager/msa-contract/{dataId}/rfi/{rfiId}/response`                | Create RFI response           |
+| `GET`  | `/manager/msa-contracts/{contractId}/rfi`                             | List contract RFIs            |
+| `GET`  | `/manager/msa-contracts/{contractId}/rfi/stats`                       | Get MSA contract RFI statistics |
+| `GET`  | `/manager/msa-contracts/{contractId}/rfi/{rfiId}`                     | Get a specific RFI            |
+| `GET`  | `/manager/msa-contracts/{contractId}/rfi/{rfiId}/response`            | Get RFI responses             |
+| `GET`  | `/manager/msa-contracts/{contractId}/rfi/{rfiId}/comment`             | Get contract RFI comments     |
+| `POST` | `/manager/msa-contracts/{contractId}/rfi/{rfiId}/comment`             | Add a comment to a contract RFI |
+| `POST` | `/manager/msa-contracts/{contractId}/rfi/{rfiId}/comment/{commentId}/reply` | Reply to a contract RFI comment |
+| `POST` | `/manager/msa-contracts/{dataId}/rfi`                                 | Create a new RFI issue        |
+| `POST` | `/manager/msa-contracts/{dataId}/rfi/{rfiId}/response`                | Create RFI response           |
 
 #### Approvers
 
 | Method | Path                                                        | Description                    |
 | ------ | ----------------------------------------------------------- | ------------------------------ |
-| `GET`  | `/manager/msa-contract/{contractId}/approvers`              | Get MSA contract approvers     |
-| `GET`  | `/manager/msa-contract/{contractId}/approvers/{approverId}` | Get MSA contract approver details |
+| `GET`  | `/manager/msa-contracts/{contractId}/approvers`              | Get MSA contract approvers     |
+| `GET`  | `/manager/msa-contracts/{contractId}/approvers/{approverId}` | Get MSA contract approver details |
 
-### POST `/manager/msa-contract` — Create MSA Contract
+#### Personnel
+
+| Method | Path                                               | Description                        |
+| ------ | -------------------------------------------------- | ---------------------------------- |
+| `GET`  | `/manager/msa-contracts/{contractId}/personnel`     | List personnel for an MSA contract |
+
+### POST `/manager/msa-contracts` — Create MSA Contract
 
 **Required fields:** `title`, `msaType`, `description`, `rating`, `businessDivision`
 
@@ -503,7 +520,7 @@ Contract changes capture requests, directives, proposals, and change orders.
 | `POST` | `/manager/contracts/{contractId}/changes/{changeId}/comments`                   | Add comment               | `contract_manager`, `procurement` |
 | `POST` | `/manager/contracts/{contractId}/changes/{changeId}/comments/{commentId}/reply` | Reply to comment          | `contract_manager`, `procurement` |
 
-> **MSA equivalents:** Same pattern under `/manager/msa-contract/{contractId}/changes/...`
+> **MSA equivalents:** Same pattern under `/manager/msa-contracts/{contractId}/changes/...`
 
 ***
 
@@ -572,7 +589,7 @@ Claims are formal requests for time or cost adjustments.
 | `POST` | `/manager/contracts/{contractId}/claims/{claimId}/comments`                   | Add comment            | `contract_manager`, `procurement`   |
 | `POST` | `/manager/contracts/{contractId}/claims/{claimId}/comments/{commentId}/reply` | Reply to comment       | `contract_manager`, `procurement`   |
 
-> **MSA equivalents:** Same pattern under `/manager/msa-contract/{contractId}/claims/...`
+> **MSA equivalents:** Same pattern under `/manager/msa-contracts/{contractId}/claims/...`
 
 ***
 
@@ -606,7 +623,7 @@ Invoices are created by vendors and approved by managers/approvers.
 | ------ | ------------------------------------------------------------- | ---------------------- | --------------------------------- |
 | `GET`  | `/manager/contracts/{contractId}/invoice/stats`               | Invoice counts         | All                               |
 | `GET`  | `/manager/contracts/{contractId}/invoice`                     | List invoices          | All                               |
-| `GET`  | `/manager/contracts/invoice/{invoiceId}`                      | Get invoice detail     | All                               |
+| `GET`  | `/manager/contracts/{contractId}/invoice/{invoiceId}`         | Get invoice detail     | All                               |
 | `POST` | `/manager/contracts/{contractId}/invoice/{invoiceId}/approve` | Manager approve/reject | `contract_manager`, `procurement` |
 
 **Query params for list:** `invoiceId`, `page`, `limit`
@@ -671,7 +688,7 @@ RFIs (Requests for Information) are questions issued to or received from a contr
 | `POST` | `/manager/contracts/{contractId}/rfis/{rfiId}/comment`                   | Add comment       | `contract_manager`, `procurement`                  |
 | `POST` | `/manager/contracts/{contractId}/rfis/{rfiId}/comment/{commentId}/reply` | Reply to comment  | `contract_manager`, `procurement`                  |
 
-> **MSA equivalents:** Same pattern under `/manager/msa-contract/{contractId}/rfi/...`
+> **MSA equivalents:** Same pattern under `/manager/msa-contracts/{contractId}/rfi/...`
 
 ***
 
@@ -780,7 +797,7 @@ Amendments are formal contract modifications requiring vendor acknowledgement.
 | `POST` | `/manager/contracts/{contractId}/amendments/{amendmentId}/approvers` | Add approvers          | `contract_manager`, `procurement` |
 | `POST` | `/manager/contracts/{contractId}/amendments/{amendmentId}/approve`   | Approve/reject         | `contract_manager`, `procurement` |
 
-> **MSA equivalents:** Same pattern under `/manager/msa-contract/{contractId}/amendments/...`
+> **MSA equivalents:** Same pattern under `/manager/msa-contracts/{contractId}/amendments/...`
 
 ***
 
@@ -810,7 +827,7 @@ Compliance tracks insurance policies and contract security submissions.
 
 `{type}` is `policy` or `security`.
 
-> **MSA equivalents:** Same pattern under `/manager/msa-contract/{contractId}/compliance/...`
+> **MSA equivalents:** Same pattern under `/manager/msa-contracts/{contractId}/compliance/...`
 
 ***
 
@@ -844,7 +861,7 @@ KPIs score vendor performance across 11 categories.
 | `GET`  | `/manager/contracts/{contractId}/kpis/{kpiId}` | Get KPI detail + history | `contract_manager`, `procurement` |
 | `POST` | `/manager/contracts/{contractId}/kpis/{kpiId}` | Submit KPI values        | `contract_manager`, `procurement` |
 
-> **MSA equivalents:** Same pattern under `/manager/msa-contract/{contractId}/kpis/...`
+> **MSA equivalents:** Same pattern under `/manager/msa-contracts/{contractId}/kpis/...`
 
 ***
 
@@ -878,7 +895,7 @@ All values are numbers (0–100).
 | `GET`  | `/manager/contracts/payment-holdbacks/{holdBackId}` | Get holdback detail | All                               |
 | `POST` | `/manager/contracts/{contractId}/payment-holdbacks` | Create holdback     | `contract_manager`, `procurement` |
 
-> **MSA equivalents:** Same pattern under `/manager/msa-contract/{contractId}/payment-holdbacks/...`
+> **MSA equivalents:** Same pattern under `/manager/msa-contracts/{contractId}/payment-holdbacks/...`
 
 **Holdback Request Body:**
 
@@ -900,7 +917,7 @@ All values are numbers (0–100).
 | `GET`  | `/manager/contracts/payment-savings/{savingId}`   | Get saving detail | All                               |
 | `POST` | `/manager/contracts/{contractId}/payment-savings` | Create saving     | `contract_manager`, `procurement` |
 
-> **MSA equivalents:** Same pattern under `/manager/msa-contract/{contractId}/payment-savings/...`
+> **MSA equivalents:** Same pattern under `/manager/msa-contracts/{contractId}/payment-savings/...`
 
 **Saving Request Body:**
 
@@ -923,7 +940,7 @@ All values are numbers (0–100).
 | `GET`  | `/manager/contracts/{contractId}/approvers`              | List approvers with summary         | All   |
 | `GET`  | `/manager/contracts/{contractId}/approvers/{approverId}` | Approver detail with action history | All   |
 
-> **MSA equivalents:** Same pattern under `/manager/msa-contract/{contractId}/approvers/...`
+> **MSA equivalents:** Same pattern under `/manager/msa-contracts/{contractId}/approvers/...`
 
 ***
 
@@ -1056,14 +1073,14 @@ Approvers can view and act on contracts, MSA contracts, and all related sub-reso
 
 | Method | Path                                                    | Description               |
 | ------ | ------------------------------------------------------- | ------------------------- |
-| `GET`  | `/approver/msa-contract/stats`                          | MSA contract counts       |
-| `GET`  | `/approver/msa-contract`                                | List MSA contracts        |
-| `GET`  | `/approver/msa-contract/{contractId}`                   | MSA contract detail       |
-| `GET`  | `/approver/msa-contract/{contractId}/approve/status`    | Can current user approve? |
-| `POST` | `/approver/msa-contract/{contractId}/approve`           | Approve or reject         |
-| `GET`  | `/approver/msa-contract/{contractId}/payment-holdbacks` | List holdbacks            |
-| `GET`  | `/approver/msa-contract/{contractId}/payment-savings`   | List savings              |
-| `GET`  | `/approver/msa-contract/{contractId}/compliance`        | Compliance details        |
+| `GET`  | `/approver/msa-contracts/stats`                          | MSA contract counts       |
+| `GET`  | `/approver/msa-contracts`                                | List MSA contracts        |
+| `GET`  | `/approver/msa-contracts/{contractId}`                   | MSA contract detail       |
+| `GET`  | `/approver/msa-contracts/{contractId}/approve/status`    | Can current user approve? |
+| `POST` | `/approver/msa-contracts/{contractId}/approve`           | Approve or reject         |
+| `GET`  | `/approver/msa-contracts/{contractId}/payment-holdbacks` | List holdbacks            |
+| `GET`  | `/approver/msa-contracts/{contractId}/payment-savings`   | List savings              |
+| `GET`  | `/approver/msa-contracts/{contractId}/compliance`        | Compliance details        |
 
 ***
 
@@ -1111,13 +1128,13 @@ Approvers have read/write access to sub-resources.
 
 | Method | Path                                                               | Description                            |
 | ------ | ------------------------------------------------------------------ | -------------------------------------- |
-| `GET`  | `/approver/contracts/{contractId}/claim`                           | List contract claims                   |
-| `GET`  | `/approver/contracts/{contractId}/claim/stats`                     | Get contract claim statistics          |
-| `GET`  | `/approver/contracts/{contractId}/claim/{claimId}`                 | Get a contract claim by ID             |
-| `POST` | `/approver/contracts/{contractId}/claim/{claimId}/approve`         | Approve or reject a contract claim     |
-| `GET`  | `/approver/contracts/{contractId}/claim/{claimId}/comment`         | Get comments for a contract claim      |
-| `POST` | `/approver/contracts/{contractId}/claim/{claimId}/comment`         | Add a comment to a contract claim      |
-| `POST` | `/approver/contracts/claim/{claimId}/comment/{commentId}/reply`    | Reply to a contract claim comment      |
+| `GET`  | `/approver/contracts/{contractId}/claims`                           | List contract claims                   |
+| `GET`  | `/approver/contracts/{contractId}/claims/stats`                     | Get contract claim statistics          |
+| `GET`  | `/approver/contracts/{contractId}/claims/{claimId}`                 | Get a contract claim by ID             |
+| `POST` | `/approver/contracts/{contractId}/claims/{claimId}/approve`         | Approve or reject a contract claim     |
+| `GET`  | `/approver/contracts/{contractId}/claims/{claimId}/comment`         | Get comments for a contract claim      |
+| `POST` | `/approver/contracts/{contractId}/claims/{claimId}/comment`         | Add a comment to a contract claim      |
+| `POST` | `/approver/contracts/claims/{claimId}/comment/{commentId}/reply`    | Reply to a contract claim comment      |
 
 #### Compliance
 
@@ -1204,45 +1221,51 @@ Approvers have read/write access to sub-resources.
 
 | Method | Path                                                       | Description |
 | ------ | ---------------------------------------------------------- | ----------- |
-| `GET`  | `/approver/msa-contract/{contractId}/amendment`            | List MSA contract amendments |
-| `GET`  | `/approver/msa-contract/{contractId}/amendment/stats`      | Get MSA contract amendment statistics |
-| `GET`  | `/approver/msa-contract/{contractId}/amendment/{amendmentId}` | Get MSA contract amendment details |
-| `POST` | `/approver/msa-contract/{contractId}/amendment/{amendmentId}/approve` | Approve or reject an MSA contract amendment |
-| `GET`  | `/approver/msa-contract/{contractId}/amendment/{amendmentId}/approve/status` | Check if MSA contract amendment can be approved |
-| `GET`  | `/approver/msa-contract/{contractId}/changes`             | List MSA contract changes |
-| `GET`  | `/approver/msa-contract/{contractId}/changes/stats`        | Get MSA contract change statistics |
-| `GET`  | `/approver/msa-contract/{contractId}/changes/{changeId}`   | Get an MSA contract change by ID |
-| `POST` | `/approver/msa-contract/{contractId}/changes/{changeId}/approve` | Approve or reject an MSA contract change |
-| `GET`  | `/approver/msa-contract/{contractId}/changes/{changeId}/approve/status` | Check if MSA contract change can be approved |
-| `GET`  | `/approver/msa-contract/{contractId}/changes/{changeId}/comment` | Get comments for an MSA contract change |
-| `POST` | `/approver/msa-contract/{contractId}/changes/{changeId}/comment` | Add a comment to an MSA contract change |
-| `POST` | `/approver/msa-contract/changes/{changeId}/comment/{commentId}/reply` | Reply to an MSA contract change comment |
-| `GET`  | `/approver/msa-contract/{contractId}/claim`                | List MSA contract claims |
-| `GET`  | `/approver/msa-contract/{contractId}/claim/stats`          | Get MSA contract claim statistics |
-| `GET`  | `/approver/msa-contract/{contractId}/claim/{claimId}`      | Get an MSA contract claim by ID |
-| `POST` | `/approver/msa-contract/{contractId}/claim/{claimId}/approve` | Approve or reject an MSA contract claim |
-| `GET`  | `/approver/msa-contract/{contractId}/claim/{claimId}/comment` | Get comments for an MSA contract claim |
-| `POST` | `/approver/msa-contract/{contractId}/claim/{claimId}/comment` | Add a comment to an MSA contract claim |
-| `POST` | `/approver/msa-contract/claim/{claimId}/comment/{commentId}/reply` | Reply to an MSA contract claim comment |
-| `GET`  | `/approver/msa-contract/{contractId}/invoice`              | List MSA contract invoices |
-| `GET`  | `/approver/msa-contract/{contractId}/invoice/stats`        | Get MSA contract invoice statistics |
-| `GET`  | `/approver/msa-contract/{contractId}/invoice/{invoiceId}`  | Get MSA contract invoice details |
-| `POST` | `/approver/msa-contract/{contractId}/invoice/{invoiceId}/approve` | Approve or reject an MSA contract invoice |
-| `GET`  | `/approver/msa-contract/{contractId}/invoice/{invoiceId}/approve/status` | Check if MSA contract invoice can be approved |
-| `GET`  | `/approver/msa-contract/{contractId}/compliance`           | Get MSA contract compliance details |
-| `GET`  | `/approver/msa-contract/{contractId}/payment-holdbacks`    | List holdbacks |
-| `GET`  | `/approver/msa-contract/payment-holdbacks/{holdBackId}`    | Get holdback details |
-| `GET`  | `/approver/msa-contract/{contractId}/payment-savings`      | List savings |
-| `GET`  | `/approver/msa-contract/payment-savings/{savingId}`        | Get saving details |
-| `GET`  | `/approver/msa-contract/{contractId}/rfi`                  | List contract RFIs |
-| `GET`  | `/approver/msa-contract/{contractId}/rfi/stats`            | Get MSA contract RFI statistics |
-| `GET`  | `/approver/msa-contract/{contractId}/rfi/{rfiId}`          | Get a specific RFI |
-| `GET`  | `/approver/msa-contract/{contractId}/rfi/{rfiId}/response` | Get RFI responses |
-| `GET`  | `/approver/msa-contract/{contractId}/rfi/{rfiId}/comment`  | Get contract RFI comments |
-| `POST` | `/approver/msa-contract/{contractId}/rfi/{rfiId}/comment`  | Add a comment to a contract RFI |
-| `POST` | `/approver/msa-contract/{contractId}/rfi/{rfiId}/comment/{commentId}/reply` | Reply to a contract RFI comment |
-| `POST` | `/approver/msa-contract/{dataId}/rfi`                      | Create a new RFI issue |
-| `POST` | `/approver/msa-contract/{dataId}/rfi/{rfiId}/response`     | Create RFI response |
+| `GET`  | `/approver/msa-contracts/{contractId}/amendment`            | List MSA contract amendments |
+| `GET`  | `/approver/msa-contracts/{contractId}/amendment/stats`      | Get MSA contract amendment statistics |
+| `GET`  | `/approver/msa-contracts/{contractId}/amendment/{amendmentId}` | Get MSA contract amendment details |
+| `POST` | `/approver/msa-contracts/{contractId}/amendment/{amendmentId}/approve` | Approve or reject an MSA contract amendment |
+| `GET`  | `/approver/msa-contracts/{contractId}/amendment/{amendmentId}/approve/status` | Check if MSA contract amendment can be approved |
+| `GET`  | `/approver/msa-contracts/{contractId}/changes`             | List MSA contract changes |
+| `GET`  | `/approver/msa-contracts/{contractId}/changes/stats`        | Get MSA contract change statistics |
+| `GET`  | `/approver/msa-contracts/{contractId}/changes/{changeId}`   | Get an MSA contract change by ID |
+| `POST` | `/approver/msa-contracts/{contractId}/changes/{changeId}/approve` | Approve or reject an MSA contract change |
+| `GET`  | `/approver/msa-contracts/{contractId}/changes/{changeId}/approve/status` | Check if MSA contract change can be approved |
+| `GET`  | `/approver/msa-contracts/{contractId}/changes/{changeId}/comment` | Get comments for an MSA contract change |
+| `POST` | `/approver/msa-contracts/{contractId}/changes/{changeId}/comment` | Add a comment to an MSA contract change |
+| `POST` | `/approver/msa-contracts/changes/{changeId}/comment/{commentId}/reply` | Reply to an MSA contract change comment |
+| `GET`  | `/approver/msa-contracts/{contractId}/claims`                | List MSA contract claims |
+| `GET`  | `/approver/msa-contracts/{contractId}/claims/stats`          | Get MSA contract claim statistics |
+| `GET`  | `/approver/msa-contracts/{contractId}/claims/{claimId}`      | Get an MSA contract claim by ID |
+| `POST` | `/approver/msa-contracts/{contractId}/claims/{claimId}/approve` | Approve or reject an MSA contract claim |
+| `GET`  | `/approver/msa-contracts/{contractId}/claims/{claimId}/comment` | Get comments for an MSA contract claim |
+| `POST` | `/approver/msa-contracts/{contractId}/claims/{claimId}/comment` | Add a comment to an MSA contract claim |
+| `POST` | `/approver/msa-contracts/claims/{claimId}/comment/{commentId}/reply` | Reply to an MSA contract claim comment |
+| `GET`  | `/approver/msa-contracts/{contractId}/invoice`              | List MSA contract invoices |
+| `GET`  | `/approver/msa-contracts/{contractId}/invoice/stats`        | Get MSA contract invoice statistics |
+| `GET`  | `/approver/msa-contracts/{contractId}/invoice/{invoiceId}`  | Get MSA contract invoice details |
+| `POST` | `/approver/msa-contracts/{contractId}/invoice/{invoiceId}/approve` | Approve or reject an MSA contract invoice |
+| `GET`  | `/approver/msa-contracts/{contractId}/invoice/{invoiceId}/approve/status` | Check if MSA contract invoice can be approved |
+| `GET`  | `/approver/msa-contracts/{contractId}/compliance`           | Get MSA contract compliance details |
+| `GET`  | `/approver/msa-contracts/{contractId}/payment-holdbacks`    | List holdbacks |
+| `GET`  | `/approver/msa-contracts/payment-holdbacks/{holdBackId}`    | Get holdback details |
+| `GET`  | `/approver/msa-contracts/{contractId}/payment-savings`      | List savings |
+| `GET`  | `/approver/msa-contracts/payment-savings/{savingId}`        | Get saving details |
+| `GET`  | `/approver/msa-contracts/{contractId}/rfi`                  | List contract RFIs |
+| `GET`  | `/approver/msa-contracts/{contractId}/rfi/stats`            | Get MSA contract RFI statistics |
+| `GET`  | `/approver/msa-contracts/{contractId}/rfi/{rfiId}`          | Get a specific RFI |
+| `GET`  | `/approver/msa-contracts/{contractId}/rfi/{rfiId}/response` | Get RFI responses |
+| `GET`  | `/approver/msa-contracts/{contractId}/rfi/{rfiId}/comment`  | Get contract RFI comments |
+| `POST` | `/approver/msa-contracts/{contractId}/rfi/{rfiId}/comment`  | Add a comment to a contract RFI |
+| `POST` | `/approver/msa-contracts/{contractId}/rfi/{rfiId}/comment/{commentId}/reply` | Reply to a contract RFI comment |
+| `POST` | `/approver/msa-contracts/{dataId}/rfi`                      | Create a new RFI issue |
+| `POST` | `/approver/msa-contracts/{dataId}/rfi/{rfiId}/response`     | Create RFI response |
+| `GET`  | `/approver/msa-contracts/{contractId}/deliverables/stats`   | Get MSA deliverable statistics |
+| `GET`  | `/approver/msa-contracts/{contractId}/deliverables`         | List MSA deliverables |
+| `GET`  | `/approver/msa-contracts/{contractId}/deliverables/{deliverableId}` | Get MSA deliverable details |
+| `POST` | `/approver/msa-contracts/{contractId}/deliverables/{deliverableId}/approve` | Approve or reject an MSA deliverable |
+| `GET`  | `/approver/msa-contracts/{contractId}/deliverables/{deliverableId}/approve/status` | Check MSA deliverable approval status |
+| `GET`  | `/approver/msa-contracts/{contractId}/personnel`                              | List personnel for an MSA contract |
 
 ***
 
@@ -1312,15 +1335,15 @@ All accept `?type=Contract|MsaContract`.
 
 | Method  | Path                                                                           | Description         |
 | ------- | ------------------------------------------------------------------------------ | ------------------- |
-| `GET`   | `/vendor/msa-contract/stats`                                                   | MSA contract counts |
-| `GET`   | `/vendor/msa-contract`                                                         | List MSA contracts  |
-| `GET`   | `/vendor/msa-contract/{contractId}`                                            | MSA contract detail |
-| `POST`  | `/vendor/msa-contract/{contractId}/approve`                                    | Accept or reject    |
-| `POST`  | `/vendor/msa-contract/{contractId}/project-managers/{projectManagerId}/assign` | Assign PM           |
-| `GET`   | `/vendor/msa-contract/{contractId}/payment-holdbacks`                          | List holdbacks      |
-| `GET`   | `/vendor/msa-contract/payment-holdbacks/{holdBackId}`                          | Holdback detail     |
-| `GET`   | `/vendor/msa-contract/{contractId}/compliance`                                 | Compliance details  |
-| `PATCH` | `/vendor/msa-contract/{contractId}/compliance`                                 | Update compliance   |
+| `GET`   | `/vendor/msa-contracts/stats`                                                   | MSA contract counts |
+| `GET`   | `/vendor/msa-contracts`                                                         | List MSA contracts  |
+| `GET`   | `/vendor/msa-contracts/{contractId}`                                            | MSA contract detail |
+| `POST`  | `/vendor/msa-contracts/{contractId}/approve`                                    | Accept or reject    |
+| `POST`  | `/vendor/msa-contracts/{contractId}/project-managers/{projectManagerId}/assign` | Assign PM           |
+| `GET`   | `/vendor/msa-contracts/{contractId}/payment-holdbacks`                          | List holdbacks      |
+| `GET`   | `/vendor/msa-contracts/payment-holdbacks/{holdBackId}`                          | Holdback detail     |
+| `GET`   | `/vendor/msa-contracts/{contractId}/compliance`                                 | Compliance details  |
+| `PATCH` | `/vendor/msa-contracts/{contractId}/compliance`                                 | Update compliance   |
 
 ***
 
@@ -1334,7 +1357,7 @@ All accept `?type=Contract|MsaContract`.
 }
 ```
 
-> MSA equivalent: `PATCH /vendor/msa-contract/{contractId}/compliance`
+> MSA equivalent: `PATCH /vendor/msa-contracts/{contractId}/compliance`
 
 ***
 
@@ -1382,14 +1405,14 @@ Vendors can create and manage their own activity on contracts.
 
 | Method | Path                                                             | Description                      |
 | ------ | ---------------------------------------------------------------- | -------------------------------- |
-| `GET`  | `/vendor/contracts/{contractId}/claim`                           | List contract claims             |
-| `POST` | `/vendor/contracts/{contractId}/claim`                           | Create a contract claim          |
-| `GET`  | `/vendor/contracts/{contractId}/claim/stats`                     | Get contract claim statistics    |
-| `GET`  | `/vendor/contracts/{contractId}/claim/{claimId}`                 | Get contract claim details       |
-| `PUT`  | `/vendor/contracts/{contractId}/claim/{claimId}`                 | Edit a contract claim            |
-| `GET`  | `/vendor/contracts/{contractId}/claim/{claimId}/comment`         | Get contract claim comments      |
-| `POST` | `/vendor/contracts/{contractId}/claim/{claimId}/comment`         | Add a comment to a contract claim |
-| `POST` | `/vendor/contracts/{contractId}/claim/{claimId}/comment/{commentId}/reply` | Reply to a contract claim comment |
+| `GET`  | `/vendor/contracts/{contractId}/claims`                           | List contract claims             |
+| `POST` | `/vendor/contracts/{contractId}/claims`                           | Create a contract claim          |
+| `GET`  | `/vendor/contracts/{contractId}/claims/stats`                     | Get contract claim statistics    |
+| `GET`  | `/vendor/contracts/{contractId}/claims/{claimId}`                 | Get contract claim details       |
+| `PUT`  | `/vendor/contracts/{contractId}/claims/{claimId}`                 | Edit a contract claim            |
+| `GET`  | `/vendor/contracts/{contractId}/claims/{claimId}/comment`         | Get contract claim comments      |
+| `POST` | `/vendor/contracts/{contractId}/claims/{claimId}/comment`         | Add a comment to a contract claim |
+| `POST` | `/vendor/contracts/{contractId}/claims/{claimId}/comment/{commentId}/reply` | Reply to a contract claim comment |
 
 #### Invoices
 
@@ -1470,33 +1493,38 @@ Vendors can create and manage their own activity on contracts.
 
 | Method | Path                                                            | Description |
 | ------ | --------------------------------------------------------------- | ----------- |
-| `GET`  | `/vendor/msa-contract/{contractId}/amendment`                   | List MSA contract amendments |
-| `GET`  | `/vendor/msa-contract/{contractId}/amendment/stats`             | Get MSA contract amendment statistics |
-| `GET`  | `/vendor/msa-contract/{contractId}/amendment/{amendmentId}`     | Get MSA contract amendment details |
-| `PATCH` | `/vendor/msa-contract/{contractId}/amendment/{amendmentId}/status` | Update MSA contract amendment vendor status |
-| `GET`  | `/vendor/msa-contract/{contractId}/claim`                       | List MSA contract claims |
-| `POST` | `/vendor/msa-contract/{contractId}/claim`                       | Create an MSA contract claim |
-| `GET`  | `/vendor/msa-contract/{contractId}/claim/stats`                 | Get MSA contract claim statistics |
-| `GET`  | `/vendor/msa-contract/{contractId}/claim/{claimId}`             | Get MSA contract claim details |
-| `PUT`  | `/vendor/msa-contract/{contractId}/claim/{claimId}`             | Edit an MSA contract claim |
-| `GET`  | `/vendor/msa-contract/{contractId}/claim/{claimId}/comment`     | Get MSA contract claim comments |
-| `POST` | `/vendor/msa-contract/{contractId}/claim/{claimId}/comment`     | Add a comment to an MSA contract claim |
-| `POST` | `/vendor/msa-contract/{contractId}/claim/{claimId}/comment/{commentId}/reply` | Reply to an MSA contract claim comment |
-| `GET`  | `/vendor/msa-contract/{contractId}/invoice`                     | List MSA contract invoices |
-| `POST` | `/vendor/msa-contract/{contractId}/invoice`                     | Create a new MSA contract invoice |
-| `GET`  | `/vendor/msa-contract/{contractId}/invoice/stats`               | Get MSA contract invoice statistics |
-| `GET`  | `/vendor/msa-contract/{contractId}/invoice/{invoiceId}`         | Get MSA contract invoice details |
-| `PUT`  | `/vendor/msa-contract/{contractId}/invoice/{invoiceId}`         | Update an MSA contract invoice |
-| `PUT`  | `/vendor/msa-contract/{contractId}/changes/{changeId}`          | Edit a rejected MSA contract change |
-| `GET`  | `/vendor/msa-contract/{contractId}/rfi`                         | List contract RFIs |
-| `GET`  | `/vendor/msa-contract/{contractId}/rfi/stats`                   | Get MSA contract RFI statistics |
-| `GET`  | `/vendor/msa-contract/{contractId}/rfi/{rfiId}`                 | Get a specific RFI |
-| `GET`  | `/vendor/msa-contract/{contractId}/rfi/{rfiId}/response`        | Get RFI responses |
-| `GET`  | `/vendor/msa-contract/{contractId}/rfi/{rfiId}/comment`         | Get contract RFI comments |
-| `POST` | `/vendor/msa-contract/{contractId}/rfi/{rfiId}/comment`         | Add a comment to a contract RFI |
-| `POST` | `/vendor/msa-contract/{contractId}/rfi/{rfiId}/comment/{commentId}/reply` | Reply to a contract RFI comment |
-| `POST` | `/vendor/msa-contract/{dataId}/rfi`                             | Create a new RFI issue |
-| `POST` | `/vendor/msa-contract/{dataId}/rfi/{rfiId}/response`            | Create RFI response |
+| `GET`  | `/vendor/msa-contracts/{contractId}/amendment`                   | List MSA contract amendments |
+| `GET`  | `/vendor/msa-contracts/{contractId}/amendment/stats`             | Get MSA contract amendment statistics |
+| `GET`  | `/vendor/msa-contracts/{contractId}/amendment/{amendmentId}`     | Get MSA contract amendment details |
+| `PATCH` | `/vendor/msa-contracts/{contractId}/amendment/{amendmentId}/status` | Update MSA contract amendment vendor status |
+| `GET`  | `/vendor/msa-contracts/{contractId}/claims`                       | List MSA contract claims |
+| `POST` | `/vendor/msa-contracts/{contractId}/claims`                       | Create an MSA contract claim |
+| `GET`  | `/vendor/msa-contracts/{contractId}/claims/stats`                 | Get MSA contract claim statistics |
+| `GET`  | `/vendor/msa-contracts/{contractId}/claims/{claimId}`             | Get MSA contract claim details |
+| `PUT`  | `/vendor/msa-contracts/{contractId}/claims/{claimId}`             | Edit an MSA contract claim |
+| `GET`  | `/vendor/msa-contracts/{contractId}/claims/{claimId}/comment`     | Get MSA contract claim comments |
+| `POST` | `/vendor/msa-contracts/{contractId}/claims/{claimId}/comment`     | Add a comment to an MSA contract claim |
+| `POST` | `/vendor/msa-contracts/{contractId}/claims/{claimId}/comment/{commentId}/reply` | Reply to an MSA contract claim comment |
+| `GET`  | `/vendor/msa-contracts/{contractId}/invoice`                     | List MSA contract invoices |
+| `POST` | `/vendor/msa-contracts/{contractId}/invoice`                     | Create a new MSA contract invoice |
+| `GET`  | `/vendor/msa-contracts/{contractId}/invoice/stats`               | Get MSA contract invoice statistics |
+| `GET`  | `/vendor/msa-contracts/{contractId}/invoice/{invoiceId}`         | Get MSA contract invoice details |
+| `PUT`  | `/vendor/msa-contracts/{contractId}/invoice/{invoiceId}`         | Update an MSA contract invoice |
+| `PUT`  | `/vendor/msa-contracts/{contractId}/changes/{changeId}`          | Edit a rejected MSA contract change |
+| `GET`  | `/vendor/msa-contracts/{contractId}/rfi`                         | List contract RFIs |
+| `GET`  | `/vendor/msa-contracts/{contractId}/rfi/stats`                   | Get MSA contract RFI statistics |
+| `GET`  | `/vendor/msa-contracts/{contractId}/rfi/{rfiId}`                 | Get a specific RFI |
+| `GET`  | `/vendor/msa-contracts/{contractId}/rfi/{rfiId}/response`        | Get RFI responses |
+| `GET`  | `/vendor/msa-contracts/{contractId}/rfi/{rfiId}/comment`         | Get contract RFI comments |
+| `POST` | `/vendor/msa-contracts/{contractId}/rfi/{rfiId}/comment`         | Add a comment to a contract RFI |
+| `POST` | `/vendor/msa-contracts/{contractId}/rfi/{rfiId}/comment/{commentId}/reply` | Reply to a contract RFI comment |
+| `POST` | `/vendor/msa-contracts/{dataId}/rfi`                             | Create a new RFI issue |
+| `POST` | `/vendor/msa-contracts/{dataId}/rfi/{rfiId}/response`            | Create RFI response |
+| `GET`  | `/vendor/msa-contracts/{contractId}/deliverables/stats`          | Get MSA deliverable statistics |
+| `GET`  | `/vendor/msa-contracts/{contractId}/deliverables`                | List MSA deliverables |
+| `GET`  | `/vendor/msa-contracts/{contractId}/deliverables/{deliverableId}` | Get MSA deliverable details |
+| `POST` | `/vendor/msa-contracts/{contractId}/deliverables/{deliverableId}/submit` | Submit a deliverable |
+| `GET`  | `/vendor/msa-contracts/{contractId}/personnel`                           | List personnel for an MSA contract |
 
 ***
 
@@ -1528,10 +1556,10 @@ View-only users have read access to all data but cannot create or approve anythi
 
 | Method | Path                                                | Description         |
 | ------ | --------------------------------------------------- | ------------------- |
-| `GET`  | `/user/msa-contract/stats`                          | MSA contract counts |
-| `GET`  | `/user/msa-contract`                                | List MSA contracts  |
-| `GET`  | `/user/msa-contract/{contractId}`                   | MSA contract detail |
-| `GET`  | `/user/msa-contract/{contractId}/compliance`        | Compliance details  |
+| `GET`  | `/user/msa-contracts/stats`                          | MSA contract counts |
+| `GET`  | `/user/msa-contracts`                                | List MSA contracts  |
+| `GET`  | `/user/msa-contracts/{contractId}`                   | MSA contract detail |
+| `GET`  | `/user/msa-contracts/{contractId}/compliance`        | Compliance details  |
 
 ***
 
@@ -1550,15 +1578,15 @@ Read-only access to all sub-resources under `/user/...`.
 | `GET`  | `/user/contracts/{contractId}/changes/stats`                         | Get contract change statistics |
 | `GET`  | `/user/contracts/{contractId}/changes/{changeId}`                    | Get contract change details |
 | `GET`  | `/user/contracts/{contractId}/changes/{changeId}/comment`            | Get contract change comments |
-| `GET`  | `/user/contracts/{contractId}/claim`                                 | List contract claims |
-| `GET`  | `/user/contracts/{contractId}/claim/stats`                           | Get contract claim statistics |
-| `GET`  | `/user/contracts/{contractId}/claim/{claimId}`                       | Get contract claim details |
-| `GET`  | `/user/contracts/{contractId}/claim/{claimId}/comment`               | Get contract claim comments |
+| `GET`  | `/user/contracts/{contractId}/claims`                                 | List contract claims |
+| `GET`  | `/user/contracts/{contractId}/claims/stats`                           | Get contract claim statistics |
+| `GET`  | `/user/contracts/{contractId}/claims/{claimId}`                       | Get contract claim details |
+| `GET`  | `/user/contracts/{contractId}/claims/{claimId}/comment`               | Get contract claim comments |
 | `GET`  | `/user/contracts/{contractId}/compliance`                            | Get contract compliance details |
 | `GET`  | `/user/contracts/{contractId}/deliverables`                          | List contract deliverables |
 | `GET`  | `/user/contracts/{contractId}/deliverables/stats`                    | Get contract deliverable statistics |
 | `GET`  | `/user/contracts/{contractId}/deliverables/{deliverableId}`          | Get contract deliverable details |
-| `GET`  | `/user/contracts/{contractId}/deliverables/{deliverableId}/approve/status` | Check manager approval status for a deliverable |
+| `GET`  | `/user/contracts/{contractId}/personnel`                             | List personnel attached to the contract |
 | `GET`  | `/user/contracts/{contractId}/invoice`                               | List contract invoices |
 | `GET`  | `/user/contracts/{contractId}/invoice/stats`                         | Get contract invoice statistics |
 | `GET`  | `/user/contracts/{contractId}/invoice/{invoiceId}`                   | Get contract invoice details |
@@ -1582,24 +1610,28 @@ Read-only access to all sub-resources under `/user/...`.
 
 | Method | Path                                                                 | Description |
 | ------ | -------------------------------------------------------------------- | ----------- |
-| `GET`  | `/user/msa-contract/{contractId}/amendment`                          | List MSA contract amendments |
-| `GET`  | `/user/msa-contract/{contractId}/amendment/stats`                    | Get MSA contract amendment statistics |
-| `GET`  | `/user/msa-contract/{contractId}/amendment/{amendmentId}`            | Get MSA contract amendment details |
-| `GET`  | `/user/msa-contract/{contractId}/changes`                            | List MSA contract changes |
-| `GET`  | `/user/msa-contract/{contractId}/changes/stats`                      | Get MSA contract change statistics |
-| `GET`  | `/user/msa-contract/{contractId}/changes/{changeId}`                 | Get MSA contract change details |
-| `GET`  | `/user/msa-contract/{contractId}/changes/{changeId}/comment`         | Get MSA contract change comments |
-| `GET`  | `/user/msa-contract/{contractId}/claim`                              | List MSA contract claims |
-| `GET`  | `/user/msa-contract/{contractId}/claim/stats`                        | Get MSA contract claim statistics |
-| `GET`  | `/user/msa-contract/{contractId}/claim/{claimId}`                    | Get MSA contract claim details |
-| `GET`  | `/user/msa-contract/{contractId}/compliance`                         | Get MSA contract compliance details |
-| `GET`  | `/user/msa-contract/{contractId}/invoice`                            | List MSA contract invoices |
-| `GET`  | `/user/msa-contract/{contractId}/invoice/stats`                      | Get MSA contract invoice statistics |
-| `GET`  | `/user/msa-contract/{contractId}/invoice/{invoiceId}`                | Get MSA contract invoice details |
-| `GET`  | `/user/msa-contract/{contractId}/rfi`                                | List contract RFIs |
-| `GET`  | `/user/msa-contract/{contractId}/rfi/stats`                          | Get MSA contract RFI statistics |
-| `GET`  | `/user/msa-contract/{contractId}/rfi/{rfiId}`                        | Get a specific RFI |
-| `GET`  | `/user/msa-contract/{contractId}/rfi/{rfiId}/comment`                | Get contract RFI comments |
+| `GET`  | `/user/msa-contracts/{contractId}/amendment`                          | List MSA contract amendments |
+| `GET`  | `/user/msa-contracts/{contractId}/amendment/stats`                    | Get MSA contract amendment statistics |
+| `GET`  | `/user/msa-contracts/{contractId}/amendment/{amendmentId}`            | Get MSA contract amendment details |
+| `GET`  | `/user/msa-contracts/{contractId}/changes`                            | List MSA contract changes |
+| `GET`  | `/user/msa-contracts/{contractId}/changes/stats`                      | Get MSA contract change statistics |
+| `GET`  | `/user/msa-contracts/{contractId}/changes/{changeId}`                 | Get MSA contract change details |
+| `GET`  | `/user/msa-contracts/{contractId}/changes/{changeId}/comment`         | Get MSA contract change comments |
+| `GET`  | `/user/msa-contracts/{contractId}/claims`                              | List MSA contract claims |
+| `GET`  | `/user/msa-contracts/{contractId}/claims/stats`                        | Get MSA contract claim statistics |
+| `GET`  | `/user/msa-contracts/{contractId}/claims/{claimId}`                    | Get MSA contract claim details |
+| `GET`  | `/user/msa-contracts/{contractId}/compliance`                         | Get MSA contract compliance details |
+| `GET`  | `/user/msa-contracts/{contractId}/invoice`                            | List MSA contract invoices |
+| `GET`  | `/user/msa-contracts/{contractId}/invoice/stats`                      | Get MSA contract invoice statistics |
+| `GET`  | `/user/msa-contracts/{contractId}/invoice/{invoiceId}`                | Get MSA contract invoice details |
+| `GET`  | `/user/msa-contracts/{contractId}/rfi`                                | List contract RFIs |
+| `GET`  | `/user/msa-contracts/{contractId}/rfi/stats`                          | Get MSA contract RFI statistics |
+| `GET`  | `/user/msa-contracts/{contractId}/rfi/{rfiId}`                        | Get a specific RFI |
+| `GET`  | `/user/msa-contracts/{contractId}/rfi/{rfiId}/comment`                | Get contract RFI comments |
+| `GET`  | `/user/msa-contracts/{contractId}/deliverables/stats`                 | Get MSA deliverable statistics |
+| `GET`  | `/user/msa-contracts/{contractId}/deliverables`                       | List MSA deliverables |
+| `GET`  | `/user/msa-contracts/{contractId}/deliverables/{deliverableId}`       | Get MSA deliverable details |
+| `GET`  | `/user/msa-contracts/{contractId}/personnel`                          | List personnel for an MSA contract |
 
 ***
 
@@ -3156,5 +3188,87 @@ Schemas are derived from `swagger.json`.
 | `status` | `string` |  | example: active |
 | `title` | `string` |  | example: Master Services Agreement |
 
+
+***
+
+## 31. Contract Export
+
+Export a contract or MSA contract to PDF or DOCX. Call the entities endpoint first to discover which sections have data, then pass the desired entity keys to the download endpoint.
+
+### Endpoints at a Glance
+
+| Method | Path                                        | Description                                  |
+| ------ | ------------------------------------------- | -------------------------------------------- |
+| `GET`  | `/contract-export/{contractId}/entities`    | List entity sections that have data          |
+| `POST` | `/contract-export/{contractId}/download`    | Generate and stream a PDF or DOCX file       |
+
+---
+
+### GET `/contract-export/{contractId}/entities` — Available Entity Sections
+
+Returns the entity types that have at least one record for the given contract. Use the returned keys as the `entity` array when calling the download endpoint.
+
+**Path Parameters:** `contractId` — the contract's string ID (e.g. `CON-001`) or MongoDB ObjectId.
+
+**Sample Response:**
+
+```json
+{
+  "status": 200,
+  "message": "Contract entities fetched successfully",
+  "data": ["invoice", "amendment", "kpi", "deliverable"]
+}
+```
+
+---
+
+### POST `/contract-export/{contractId}/download` — Export Contract Document
+
+Generates a binary PDF or DOCX file containing company details, contract overview, and any selected entity sections. The response is a file stream — the browser will trigger a download via `Content-Disposition`.
+
+**Path Parameters:** `contractId` — string ID or ObjectId.
+
+**Request Body:**
+
+| Field        | Type     | Required | Description                                                  |
+| ------------ | -------- | -------- | ------------------------------------------------------------ |
+| `exportType` | enum     | ✅        | `pdf` or `docx`                                              |
+| `type`       | enum     |          | `Contract` (default) or `MsaContract`                        |
+| `entity`     | string[] |          | Entity sections to include. Pass `[]` for overview only.     |
+
+**Available `entity` keys:**
+
+| Key          | Section rendered                           |
+| ------------ | ------------------------------------------ |
+| `invoice`    | Invoices table                             |
+| `change`     | Change Orders table                        |
+| `amendment`  | Amendments table + field-change sub-tables |
+| `approvers`  | Approval Groups table                      |
+| `complaince` | Insurance & Compliance table               |
+| `deliverable`| Deliverables table                         |
+| `kpi`        | KPIs table                                 |
+| `lem`        | Labour, Equipment & Materials table        |
+| `rfi`        | Requests for Information table             |
+| `ncr`        | Non-Conformance Reports table              |
+| `claim`      | Claims table                               |
+| `clause`     | Contract Clauses                           |
+
+> **Note:** `complaince` is the existing key spelling — preserved for API compatibility.
+
+**Response:** Binary file stream with `Content-Type: application/pdf` or `application/vnd.openxmlformats-officedocument.wordprocessingml.document` and a `Content-Disposition: attachment` header.
+
+---
+
+## 32. File Utilities
+
+### GET `/file/versions/{docName}` — File Version History
+
+Returns the version history for a stored file.
+
+**Path Parameters:** `docName` — the document filename/key.
+
+**Response:** Array of version records per file.
+
+---
 
 *End of SwiftPro API Reference v2.3.0*

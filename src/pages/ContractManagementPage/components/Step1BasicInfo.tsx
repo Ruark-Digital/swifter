@@ -34,6 +34,12 @@ type Props = {
   }>;
 };
 
+const MSA_CATEGORY_OPTIONS = [
+  { label: "Task Order", value: "task_order" },
+  { label: "Work Order", value: "work_order" },
+  { label: "Child Contract", value: "child_contract" },
+];
+
 const ComplexityRating = ({
   value,
   onChange,
@@ -48,7 +54,7 @@ const ComplexityRating = ({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-slate-700">
+        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
           Complexity Rating (1-10)
         </label>
         <TooltipProvider>
@@ -73,18 +79,20 @@ const ComplexityRating = ({
               className={cn(
                 "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
                 value === num
-                  ? "border-[#2A4467] bg-blue-50"
-                  : "border-slate-200 group-hover:border-slate-300"
+                  ? "border-[#2A4467] bg-blue-50 dark:border-indigo-400 dark:bg-indigo-900/40"
+                  : "border-slate-200 group-hover:border-slate-300 dark:border-slate-600 dark:group-hover:border-slate-500"
               )}
             >
               {value === num && (
-                <div className="w-2.5 h-2.5 rounded-full bg-[#2A4467]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#2A4467] dark:bg-indigo-300" />
               )}
             </div>
             <span
               className={cn(
                 "text-xs font-medium",
-                value === num ? "text-[#2A4467]" : "text-slate-500"
+                value === num
+                  ? "text-[#2A4467] dark:text-indigo-300"
+                  : "text-slate-500 dark:text-slate-400"
               )}
             >
               {num}
@@ -94,7 +102,9 @@ const ComplexityRating = ({
       </div>
       {error && <span className="text-xs text-red-500 mt-1">{error}</span>}
       {!error && helperText && (
-        <span className="text-xs text-gray-500 mt-1">{helperText}</span>
+        <span className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+          {helperText}
+        </span>
       )}
     </div>
   );
@@ -133,12 +143,18 @@ const Step1BasicInfo: React.FC<Props> = ({
     staleTime: 60000,
   });
 
+  // API spec (POST/PUT /manager/contracts) describes `category` as a
+  // string name (e.g. "Construction", "IT"), and the GET response
+  // surfaces the same name back. Using the name as the option value
+  // keeps the prefill round-trip stable — otherwise the edit form
+  // received "Construction" but the options were keyed by `_id`, so
+  // TextSelectWithSearch couldn't find a match and rendered empty.
   const categoryOptions = React.useMemo(
     () =>
       Array.isArray(categoriesData?.data?.data)
         ? categoriesData.data.data.map((c: { _id?: string; name: string }) => ({
             label: c.name,
-            value: c._id ?? c.name,
+            value: c.name,
           }))
         : [],
     [categoriesData?.data?.data],
@@ -255,15 +271,31 @@ const Step1BasicInfo: React.FC<Props> = ({
       )}
 
       {relationship === "msa" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Forger
+              name="msaContractId"
+              label="Select MSA"
+              placeholder="Select MSA"
+              component={TextSelect}
+              options={msaOptions}
+            />
+            <Forger
+              name="msaCategory"
+              label="Select MSA Category"
+              placeholder="Select Category"
+              component={TextSelect}
+              options={MSA_CATEGORY_OPTIONS}
+            />
+          </div>
           <Forger
-            name="msaContractId"
-            label="Select MSA"
-            placeholder="Select MSA"
+            name="awardedSolicitation"
+            label="Select Awarded Solicitation (Optional)"
+            placeholder="Select Solicitation"
             component={TextSelect}
-            options={msaOptions}
+            options={awardedOptions}
           />
-        </div>
+        </>
       )}
 
       {relationship === "msa_project" && (
@@ -284,15 +316,13 @@ const Step1BasicInfo: React.FC<Props> = ({
               options={projectOptions}
             />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Forger
-              name="awardedSolicitation"
-              label="Select Awarded Solicitation (Optional)"
-              placeholder="Select Solicitation"
-              component={TextSelect}
-              options={awardedOptions}
-            />
-          </div>
+          <Forger
+            name="awardedSolicitation"
+            label="Select Awarded Solicitation (Optional)"
+            placeholder="Select Solicitation"
+            component={TextSelect}
+            options={awardedOptions}
+          />
         </>
       )}
 

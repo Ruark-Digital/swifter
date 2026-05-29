@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 import type { ContractDetail } from "@/types";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type DashboardTier = "high" | "medium" | "good" | "critical" | "low" | string;
 
@@ -31,9 +32,10 @@ type DashboardOverview = {
 type FinancialStatement = {
   originalContractValue?: number;
   changeOrders?: { count?: number; value?: number };
-  pendingChangeOrders?: number;
+  pendingChangeOrders?: number | { count?: number; value?: number };
   savingsRealized?: { value?: number; percentage?: number };
   percentageIncrease?: number;
+  percentIncreaseFromOriginal?: number;
   holdbackAmount?: number;
   releasedHoldback?: number;
   currentContractValue?: number;
@@ -159,9 +161,11 @@ const tierToColor = (tier?: DashboardTier) => {
 
 const tierToBadge = (tier?: DashboardTier) => {
   const t = (tier ?? "").toLowerCase();
-  if (t === "high" || t === "critical") return "bg-red-50 text-red-700";
-  if (t === "medium") return "bg-yellow-50 text-yellow-700";
-  return "bg-green-50 text-green-700";
+  if (t === "high" || t === "critical")
+    return "bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-300";
+  if (t === "medium")
+    return "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300";
+  return "bg-green-50 text-green-700 dark:bg-green-900/40 dark:text-green-300";
 };
 
 const formatNumber = (value?: number) => {
@@ -283,30 +287,41 @@ const AnalyticsTab: React.FC<Props> = ({
           : "--",
       color: "text-red-500",
     },
-    {
-      label: "Pending Change Orders",
-      value: formatMoney(
-        financialStatement?.pendingChangeOrders,
-        financialStatement?.currency,
-      ),
-      color: "text-yellow-500",
-    },
+    (() => {
+      const pco = financialStatement?.pendingChangeOrders;
+      const pcoCount = typeof pco === "object" && pco !== null ? pco.count : undefined;
+      const pcoValue =
+        typeof pco === "object" && pco !== null ? pco.value : pco;
+      return {
+        label:
+          typeof pcoCount === "number"
+            ? `Pending Change Orders (${pcoCount})`
+            : "Pending Change Orders",
+        value:
+          typeof pcoValue === "number"
+            ? formatMoney(pcoValue, financialStatement?.currency)
+            : "--",
+        color: "text-yellow-500",
+      };
+    })(),
     {
       label: "Savings Realized",
       value:
         typeof financialStatement?.savingsRealized?.value === "number"
           ? `${formatMoney(financialStatement?.savingsRealized?.value, financialStatement?.currency)}(${formatPercent(financialStatement?.savingsRealized?.percentage)})`
           : "--",
-      color: "text-slate-700",
+      color: "text-slate-700 dark:text-slate-300",
     },
-    {
-      label: "% Increase from Original",
-      value:
-        typeof financialStatement?.percentageIncrease === "number"
-          ? `+${formatPercent(financialStatement?.percentageIncrease)}`
-          : "--",
-      color: "text-red-500",
-    },
+    (() => {
+      const pct =
+        financialStatement?.percentIncreaseFromOriginal ??
+        financialStatement?.percentageIncrease;
+      return {
+        label: "% Increase from Original",
+        value: typeof pct === "number" ? `+${formatPercent(pct)}` : "--",
+        color: "text-red-500",
+      };
+    })(),
     {
       label: "Holdback Amount",
       value: formatMoney(
@@ -438,10 +453,12 @@ const AnalyticsTab: React.FC<Props> = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-slate-800">Analytics</h3>
-        <Button variant="outline" className="text-slate-600 border-slate-300">
-          <Share2 className="mr-2 h-4 w-4" /> Export Report
-        </Button>
+        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Analytics</h3>
+        <ExportReportSheet contractId={contract?._id ?? ""} contractType="Contract">
+          <Button variant="outline" className="text-slate-600 dark:text-slate-400 dark:text-slate-500 border-slate-300">
+            <Share2 className="mr-2 h-4 w-4" /> Export Report
+          </Button>
+        </ExportReportSheet>
       </div>
 
       {/* Hero Card */}
@@ -503,8 +520,8 @@ const AnalyticsTab: React.FC<Props> = ({
               : toTitleCase(String(kpi.tier ?? "good"));
 
           return (
-          <div key={index} className="bg-white p-4 rounded-xl border shadow-sm flex flex-col items-center">
-            <p className="text-xs text-slate-500 font-medium mb-4 self-start">{kpi.label}</p>
+          <div key={index} className="bg-white dark:bg-slate-900 dark:border-slate-800 p-4 rounded-xl border shadow-sm flex flex-col items-center">
+            <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 font-medium mb-4 self-start">{kpi.label}</p>
             <div className="relative h-24 w-24 mb-2">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -546,20 +563,20 @@ const AnalyticsTab: React.FC<Props> = ({
       {/* Middle Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Financial Overview */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
+        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm">
           <div className="flex items-center gap-2 mb-6">
             <DollarSign className="h-5 w-5 text-blue-600" />
-            <h3 className="font-semibold text-slate-800">Financial Overview</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">Financial Overview</h3>
           </div>
           <div className="space-y-4">
             {financialRows.map((item, index) => (
               <div key={index} className="flex justify-between items-center text-sm">
-                <span className="text-slate-600">{item.label}</span>
-                <span className={cn("font-semibold", item.color || "text-slate-900")}>{item.value}</span>
+                <span className="text-slate-600 dark:text-slate-400 dark:text-slate-500">{item.label}</span>
+                <span className={cn("font-semibold", item.color || "text-slate-900 dark:text-slate-100")}>{item.value}</span>
               </div>
             ))}
-            <div className="pt-4 border-t mt-4 flex justify-between items-center bg-blue-50 p-3 rounded-lg">
-              <span className="font-semibold text-slate-800">Current Contract Value</span>
+            <div className="pt-4 border-t mt-4 dark:border-slate-700 flex justify-between items-center bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg">
+              <span className="font-semibold text-slate-800 dark:text-slate-100">Current Contract Value</span>
               <span className="font-bold text-blue-700 text-lg">
                 {formatMoney(
                   financialStatement?.currentContractValue,
@@ -571,20 +588,20 @@ const AnalyticsTab: React.FC<Props> = ({
         </div>
 
         {/* Alerts */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm border-l-4 border-l-orange-400">
+        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm border-l-4 border-l-orange-400">
           <div className="flex items-center gap-2 mb-6">
             <AlertTriangle className="h-5 w-5 text-orange-500" />
-            <h3 className="font-semibold text-slate-800">Alerts & Recommended Actions</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">Alerts & Recommended Actions</h3>
           </div>
           <ul className="space-y-4">
             {alertsRows.map((alert, index) => (
-              <li key={index} className="flex gap-2 text-sm text-slate-600">
+              <li key={index} className="flex gap-2 text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">
                 <span className="text-orange-500 mt-1.5">•</span>
                 <span dangerouslySetInnerHTML={{ 
                   __html: alert.text
-                    .replace(/Renew by \d{4}-\d{2}-\d{2}/, '<span class="font-bold text-slate-800">$&</span>')
-                    .replace(/Pending .*? review/, '<span class="font-bold text-slate-800">$&</span>')
-                    .replace(/requires approval/, '<span class="font-bold text-slate-800">requires approval</span>')
+                    .replace(/Renew by \d{4}-\d{2}-\d{2}/, '<span class="font-bold text-slate-800 dark:text-slate-100">$&</span>')
+                    .replace(/Pending .*? review/, '<span class="font-bold text-slate-800 dark:text-slate-100">$&</span>')
+                    .replace(/requires approval/, '<span class="font-bold text-slate-800 dark:text-slate-100">requires approval</span>')
                 }} />
               </li>
             ))}
@@ -592,23 +609,23 @@ const AnalyticsTab: React.FC<Props> = ({
         </div>
 
         {/* Legal Analysis */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
+        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm">
           <div className="flex items-center gap-2 mb-6">
             <FileText className="h-5 w-5 text-blue-600" />
-            <h3 className="font-semibold text-slate-800">Clause & Legal Analysis</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">Clause & Legal Analysis</h3>
           </div>
           <div className="space-y-4">
             {clauseRows.map((item, index) => (
               <div 
                 key={index} 
                 className={cn(
-                  "p-4 rounded-lg bg-slate-50 border-l-4",
+                  "p-4 rounded-lg bg-slate-50 dark:bg-slate-800/60 border-l-4",
                   item.color === "red" ? "border-l-red-500" :
                   item.color === "green" ? "border-l-green-500" : "border-l-yellow-500"
                 )}
               >
                 <div className="flex justify-between items-start mb-2">
-                  <h4 className="font-semibold text-slate-900 text-sm">{item.title}</h4>
+                  <h4 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">{item.title}</h4>
                   <Badge 
                     className={cn(
                       "text-[10px] px-1.5 py-0.5 border-0 rounded-sm",
@@ -620,8 +637,8 @@ const AnalyticsTab: React.FC<Props> = ({
                   </Badge>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-slate-700"><span className="font-semibold">Standard:</span> {item.desc.replace("Standard: ", "")}</p>
-                  <p className="text-xs text-slate-700"><span className="font-semibold">Actual:</span> {item.actual.replace("Actual: ", "")}</p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300"><span className="font-semibold">Standard:</span> {item.desc.replace("Standard: ", "")}</p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300"><span className="font-semibold">Actual:</span> {item.actual.replace("Actual: ", "")}</p>
                 </div>
               </div>
             ))}
@@ -632,8 +649,8 @@ const AnalyticsTab: React.FC<Props> = ({
       {/* Charts Section */}
       <div className="grid grid-cols-1 items-start lg:grid-cols-3 gap-6">
         {/* Deliverable Status */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm flex flex-col">
-          <h3 className="font-semibold text-slate-800 mb-6">Deliverable Status</h3>
+        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm flex flex-col">
+          <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-6">Deliverable Status</h3>
           <div className="relative h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -653,26 +670,26 @@ const AnalyticsTab: React.FC<Props> = ({
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-3xl font-bold text-slate-900">
+              <span className="text-3xl font-bold text-slate-900 dark:text-slate-100">
                 {formatNumber(deliverableStatus?.total)}
               </span>
-              <span className="text-xs text-slate-500">Deliverables</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">Deliverables</span>
             </div>
           </div>
           <div className="flex justify-center gap-4 mt-4">
             {deliverableChartData.map((item, index) => (
               <div key={index} className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                <span className="text-xs text-slate-600">{item.name} <span className="font-semibold text-slate-900">{item.value}</span></span>
+                <span className="text-xs text-slate-600 dark:text-slate-400 dark:text-slate-500">{item.name} <span className="font-semibold text-slate-900 dark:text-slate-100">{item.value}</span></span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Activities */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm flex flex-col">
+        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm flex flex-col">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-semibold text-slate-800">Activities</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">Activities</h3>
             <div className="flex gap-2 text-xs">
               {activitiesRanges.map((r) => (
                 <button
@@ -681,8 +698,8 @@ const AnalyticsTab: React.FC<Props> = ({
                   className={cn(
                     "px-2 py-1",
                     r.value === activitiesRange
-                      ? "bg-slate-100 rounded text-slate-600 font-medium"
-                      : "text-slate-400",
+                      ? "bg-slate-100 dark:bg-slate-800 rounded text-slate-600 dark:text-slate-300 font-medium"
+                      : "text-slate-400 dark:text-slate-500",
                   )}
                   onClick={() => onActivitiesRangeChange?.(r.value)}
                 >
@@ -695,7 +712,7 @@ const AnalyticsTab: React.FC<Props> = ({
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={activityChartData}
-                margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+                margin={{ top: 4, right: 8, left: 4, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
@@ -703,8 +720,7 @@ const AnalyticsTab: React.FC<Props> = ({
                   axisLine={false}
                   tickLine={false}
                   tick={{ fontSize: 10 }}
-                  width={20}
-                  mirror
+                  width={32}
                 />
                 <Tooltip />
                 <Line type="monotone" dataKey="change" stroke="#3B82F6" strokeWidth={2} dot={false} />
@@ -725,17 +741,17 @@ const AnalyticsTab: React.FC<Props> = ({
                   item === "RFI" ? "bg-indigo-500" :
                   item === "NCR" ? "bg-red-500" : "bg-slate-800"
                 )} />
-                <span className="text-[10px] text-slate-500">{item}</span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 dark:text-slate-500">{item}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Deliverable Summary & Vendor KPI */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm space-y-6">
+        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm space-y-6">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-800">Deliverable Summary</h3>
+              <h3 className="font-semibold text-slate-800 dark:text-slate-100">Deliverable Summary</h3>
               <div className="flex gap-2 text-xs">
                 {deliverySummaryRanges.map((r) => (
                   <button
@@ -744,8 +760,8 @@ const AnalyticsTab: React.FC<Props> = ({
                     className={cn(
                       "px-2 py-1",
                       r.value === deliverySummaryRange
-                        ? "bg-slate-100 rounded text-slate-600 font-medium"
-                        : "text-slate-400",
+                        ? "bg-slate-100 dark:bg-slate-800 rounded text-slate-600 dark:text-slate-300 font-medium"
+                        : "text-slate-400 dark:text-slate-500",
                     )}
                     onClick={() => onDeliverySummaryRangeChange?.(r.value)}
                   >
@@ -755,39 +771,39 @@ const AnalyticsTab: React.FC<Props> = ({
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 mb-6">
-              <div className="bg-slate-50 p-3 rounded-lg text-center">
-                <p className="text-xs text-slate-500">Total</p>
-                <p className="text-xl font-bold text-slate-900">{deliverySummaryTotals.total}</p>
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-lg text-center">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
+                <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{deliverySummaryTotals.total}</p>
               </div>
-              <div className="bg-green-50 p-3 rounded-lg text-center">
-                <p className="text-xs text-green-600">On Time</p>
-                <p className="text-xl font-bold text-green-700">{deliverySummaryTotals.onTime}</p>
+              <div className="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg text-center">
+                <p className="text-xs text-green-600 dark:text-green-400">On Time</p>
+                <p className="text-xl font-bold text-green-700 dark:text-green-300">{deliverySummaryTotals.onTime}</p>
               </div>
-              <div className="bg-orange-50 p-3 rounded-lg text-center">
-                <p className="text-xs text-orange-600">Rejected</p>
-                <p className="text-xl font-bold text-orange-700">{deliverySummaryTotals.rejected}</p>
+              <div className="bg-orange-50 dark:bg-orange-900/30 p-3 rounded-lg text-center">
+                <p className="text-xs text-orange-600 dark:text-orange-400">Rejected</p>
+                <p className="text-xl font-bold text-orange-700 dark:text-orange-300">{deliverySummaryTotals.rejected}</p>
               </div>
-              <div className="bg-red-50 p-3 rounded-lg text-center">
-                <p className="text-xs text-red-600">Late/Missed</p>
-                <p className="text-xl font-bold text-red-700">{deliverySummaryTotals.lateMissed}</p>
+              <div className="bg-red-50 dark:bg-red-900/30 p-3 rounded-lg text-center">
+                <p className="text-xs text-red-600 dark:text-red-400">Late/Missed</p>
+                <p className="text-xl font-bold text-red-700 dark:text-red-300">{deliverySummaryTotals.lateMissed}</p>
               </div>
             </div>
           </div>
 
           <div>
-            <h3 className="font-semibold text-slate-800 mb-4">Vendor KPI</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-4">Vendor KPI</h3>
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="font-medium text-slate-700">Avg. Response Time</span>
-                  <span className="text-slate-500">--</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-300">Avg. Response Time</span>
+                  <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">--</span>
                 </div>
                 <Progress value={0} className="h-1.5" variant="success" />
               </div>
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="font-medium text-slate-700">Quality Score</span>
-                  <span className="text-slate-500">
+                  <span className="font-medium text-slate-700 dark:text-slate-300">Quality Score</span>
+                  <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">
                     {typeof vendorAvgPercent === "number" ? `${vendorAvgPercent}%` : "--"}
                   </span>
                 </div>
@@ -795,15 +811,15 @@ const AnalyticsTab: React.FC<Props> = ({
               </div>
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="font-medium text-slate-700">On-Time Delivery</span>
-                  <span className="text-slate-500">--</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-300">On-Time Delivery</span>
+                  <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">--</span>
                 </div>
                 <Progress value={0} className="h-1.5" />
               </div>
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="font-medium text-slate-700">Customer Satisfaction</span>
-                  <span className="text-slate-500">--</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-300">Customer Satisfaction</span>
+                  <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">--</span>
                 </div>
                 <Progress value={0} className="h-1.5" variant="success" />
               </div>
@@ -816,24 +832,24 @@ const AnalyticsTab: React.FC<Props> = ({
       <div>
         <div className="flex items-center gap-2 mb-4">
           <FileCheck className="h-5 w-5 text-blue-600" />
-          <h3 className="font-semibold text-slate-800">Documents & Attachments</h3>
+          <h3 className="font-semibold text-slate-800 dark:text-slate-100">Documents & Attachments</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="border border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
+          <div className="border border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
             <div className="h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center mb-3">
               <FileText className="h-5 w-5 text-purple-600" />
             </div>
-            <p className="font-semibold text-slate-900">
+            <p className="font-semibold text-slate-900 dark:text-slate-100">
               Amendments ({formatNumber(attachments?.amendment)})
             </p>
-            <p className="text-xs text-slate-500">View all</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">View all</p>
           </div>
-          <div className="border border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
+          <div className="border border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
             <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center mb-3">
               <Shield className="h-5 w-5 text-green-600" />
             </div>
-            <p className="font-semibold text-slate-900">Insurance</p>
-            <p className="text-xs text-slate-500">
+            <p className="font-semibold text-slate-900 dark:text-slate-100">Insurance</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
               {formatNumber(attachments?.policy)} Polices
             </p>
           </div>

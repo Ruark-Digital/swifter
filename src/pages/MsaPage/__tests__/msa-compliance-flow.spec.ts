@@ -66,7 +66,7 @@ test.describe("MSA Compliance & Security flow", () => {
       const pathname = new URL(url).pathname;
 
       if (
-        pathname.endsWith(`/contract/vendor/msa-contract/${msaId}`) &&
+        pathname.endsWith(`/contract/vendor/msa-contracts/${msaId}`) &&
         route.request().method() === "GET"
       ) {
         await route.fulfill({
@@ -81,7 +81,7 @@ test.describe("MSA Compliance & Security flow", () => {
       }
 
       if (
-        pathname.endsWith(`/contract/vendor/msa-contract/${msaId}/compliance`) &&
+        pathname.endsWith(`/contract/vendor/msa-contracts/${msaId}/compliance`) &&
         route.request().method() === "GET"
       ) {
         await route.fulfill({
@@ -143,7 +143,7 @@ test.describe("MSA Compliance & Security flow", () => {
       const pathname = new URL(url).pathname;
 
       if (
-        pathname.endsWith(`/contract/manager/msa-contract/${msaId}`) &&
+        pathname.endsWith(`/contract/manager/msa-contracts/${msaId}`) &&
         route.request().method() === "GET"
       ) {
         await route.fulfill({
@@ -158,7 +158,7 @@ test.describe("MSA Compliance & Security flow", () => {
       }
 
       if (
-        pathname.endsWith(`/contract/manager/msa-contract/${msaId}/compliance`) &&
+        pathname.endsWith(`/contract/manager/msa-contracts/${msaId}/compliance`) &&
         route.request().method() === "GET"
       ) {
         await route.fulfill({
@@ -181,7 +181,7 @@ test.describe("MSA Compliance & Security flow", () => {
       }
 
       if (
-        pathname.endsWith(`/manager/msa-contract/${msaId}/compliance/policy/approve`) &&
+        pathname.endsWith(`/manager/msa-contracts/${msaId}/compliance/policy/approve`) &&
         route.request().method() === "POST"
       ) {
         await route.fulfill({

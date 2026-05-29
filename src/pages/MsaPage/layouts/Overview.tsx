@@ -11,6 +11,8 @@ type VendorPerson = {
   phone?: string;
 };
 
+type StageRange = { start?: string; end?: string };
+
 type Props = {
   msa: {
     title?: string;
@@ -27,16 +29,37 @@ type Props = {
     approval?: string;
     execution?: string;
   };
+  formationStages?: {
+    draft?: StageRange;
+    review?: StageRange;
+    approval?: StageRange;
+    execution?: StageRange;
+  };
   status: { label?: Status; className?: string };
+  contractManager?: string;
   internalTeam: InternalMember[];
   vendorPersonnel: VendorPerson[];
+};
+
+const formatStageValue = (
+  duration: string | undefined,
+  range: StageRange | undefined,
+) => {
+  const dur = duration && duration !== "N/A" ? duration : "";
+  const hasRange = range?.start || range?.end;
+  if (!dur && !hasRange) return "N/A";
+  if (!hasRange) return dur;
+  const span = `${range?.start ?? "N/A"} – ${range?.end ?? "N/A"}`;
+  return dur ? `${dur} · ${span}` : span;
 };
 
 const Overview: React.FC<Props> = ({
   msa,
   dates,
   durations,
+  formationStages,
   status,
+  contractManager,
   internalTeam,
   vendorPersonnel,
 }) => {
@@ -66,28 +89,40 @@ const Overview: React.FC<Props> = ({
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <LabelItem label="Effective Date" value={dates.effective || "N/A"} />
           <LabelItem label="End Date" value={dates.end || "N/A"} />
-          <LabelItem label="Draft Duration" value={durations.draft || "N/A"} />
+          <LabelItem
+            label="Draft Stage"
+            value={formatStageValue(durations.draft, formationStages?.draft)}
+          />
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <LabelItem
-            label="Review Duration"
-            value={durations.review || "N/A"}
+            label="Review Stage"
+            value={formatStageValue(durations.review, formationStages?.review)}
           />
           <LabelItem
-            label="Approval Duration"
-            value={durations.approval || "N/A"}
+            label="Approval Stage"
+            value={formatStageValue(
+              durations.approval,
+              formationStages?.approval,
+            )}
           />
           <LabelItem
-            label="Execution Duration"
-            value={durations.execution || "N/A"}
+            label="Execution Stage"
+            value={formatStageValue(
+              durations.execution,
+              formationStages?.execution,
+            )}
           />
         </div>
       </div>
 
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-          <LabelItem label="Contract Manager" value="N/A" />
+          <LabelItem
+            label="Contract Manager"
+            value={contractManager || "N/A"}
+          />
           <LabelItem
             label="Status"
             children={
@@ -100,12 +135,12 @@ const Overview: React.FC<Props> = ({
       </div>
 
       <div className="col-span-1 md:col-span-3 space-y-4">
-        <div className="text-base font-semibold text-gray-600">
+        <div className="text-base font-semibold text-gray-600 dark:text-slate-300">
           Contract Team
         </div>
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
           <div className="space-y-2">
-            <span className="text-slate-500 block">Internal Stakeholder</span>
+            <span className="text-slate-500 dark:text-slate-400 block">Internal Stakeholder</span>
             <div className="flex flex-col gap-1">
               {internalTeam.length > 0 ? (
                 internalTeam.map((member, idx) => {
@@ -127,12 +162,12 @@ const Overview: React.FC<Props> = ({
                   );
                 })
               ) : (
-                <span className="text-slate-900">N/A</span>
+                <span className="text-slate-900 dark:text-slate-100">N/A</span>
               )}
             </div>
           </div>
           <div className="space-y-2">
-            <span className="text-slate-500 block">
+            <span className="text-slate-500 dark:text-slate-400 block">
               Vendor/Contractor Key Personnel
             </span>
             <div className="flex flex-col gap-1">
@@ -150,7 +185,7 @@ const Overview: React.FC<Props> = ({
                   />
                 ))
               ) : (
-                <span className="text-slate-900">N/A</span>
+                <span className="text-slate-900 dark:text-slate-100">N/A</span>
               )}
             </div>
           </div>

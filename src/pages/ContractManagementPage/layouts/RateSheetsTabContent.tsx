@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import {
   Search,
@@ -27,6 +28,7 @@ import {
   formatFileSize,
   getSimpleFileExtension,
 } from "@/lib/fileUtils";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Forge, Forger, useForge } from "@/lib/forge";
 import {
@@ -45,6 +47,8 @@ import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
 import { formatDate } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import Spinner from "@/components/ui/Spinner";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
@@ -87,7 +91,7 @@ const StatusBadge = ({ status }: { status: string }) => {
       case "pending approval":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
+        return "bg-gray-100 text-gray-800 dark:text-slate-100 dark:bg-gray-800 dark:text-gray-300";
     }
   };
 
@@ -106,20 +110,20 @@ const LabelRow = ({
   value: React.ReactNode;
 }) => (
   <div className="space-y-2">
-    <div className="text-xs font-medium text-[#9CA3AF]">{label}</div>
-    <div className="text-sm font-medium text-[#111827]">{value}</div>
+    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-500">{label}</div>
+    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
 
 const RateSheetUploadElement = () => {
   return (
-    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] bg-white px-4">
-      <UploadCloud className="h-10 w-10 text-[#2A4467]" />
+    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] dark:border-slate-600 bg-white dark:bg-slate-800 px-4">
+      <UploadCloud className="h-10 w-10 text-[#2A4467] dark:text-blue-300" />
       <div className="flex flex-col items-center gap-1 text-center">
-        <div className="text-sm font-semibold text-[#2A4467]">
+        <div className="text-sm font-semibold text-[#2A4467] dark:text-blue-300">
           Drag &amp; Drop or Click to choose files
         </div>
-        <div className="text-xs font-medium text-[#9CA3AF]">
+        <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-500">
           Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
         </div>
       </div>
@@ -132,16 +136,16 @@ const RateSheetFilesListItem = ({ file }: { file: File }) => {
   const value = useWatch({ control, name: "files" });
 
   return (
-    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-3">
+    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB]">
-          <FileText className="h-5 w-5 text-[#2A4467]" />
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
+          <FileText className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium max-w-xs text-[#0F0F0F]">
+          <div className="truncate text-sm font-medium max-w-xs text-[#0F0F0F] dark:text-slate-100">
             {file.name}
           </div>
-          <div className="text-xs font-medium text-[#9CA3AF]">
+          <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-500">
             {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
             {formatFileSize(file.size)}
           </div>
@@ -155,7 +159,7 @@ const RateSheetFilesListItem = ({ file }: { file: File }) => {
             (value ?? []).filter((f: File) => f.name !== file.name),
           )
         }
-        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] hover:text-red-500 transition-colors"
+        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] dark:text-slate-500 hover:text-red-500 transition-colors"
       >
         <X className="h-4 w-4" />
       </button>
@@ -299,7 +303,7 @@ const SubmitRateSheetDialog: React.FC<{
       <DialogContent className="max-h-[70vh] overflow-auto gap-0 border-0 p-0 sm:max-w-xl">
         <Forge control={control} onSubmit={onSubmit} className="flex flex-col">
           <div className="flex items-center justify-between px-8 py-8">
-            <h2 className="text-xl font-semibold text-[#0F0F0F]">
+            <h2 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
               Submit Rate Sheet
             </h2>
           </div>
@@ -328,7 +332,7 @@ const SubmitRateSheetDialog: React.FC<{
             />
 
             <div className="flex flex-col gap-3">
-              <label className="text-base font-normal text-[#0F0F0F]">
+              <label className="text-base font-normal text-[#0F0F0F] dark:text-slate-100">
                 Upload Files
               </label>
               <Forger
@@ -359,16 +363,26 @@ const SubmitRateSheetDialog: React.FC<{
               type="button"
               onClick={() => setOpen(false)}
               disabled={isSubmitting}
-              className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-3.5 text-base font-semibold text-[#0F0F0F] shadow-sm hover:bg-[#E5E7EB]"
+              className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-3.5 text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 shadow-sm hover:bg-[#E5E7EB] dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Back
             </button>
             <button
               type="submit"
-              disabled={isPending || submitMutation.isPending}
-              className="flex-1 rounded-xl bg-[#2A4467] py-3.5 text-base font-semibold text-white shadow-sm hover:bg-[#1e3a5f]"
+              disabled={isSubmitting}
+              aria-busy={isSubmitting}
+              className="flex-1 rounded-xl bg-[#2A4467] py-3.5 text-base font-semibold text-white shadow-sm hover:bg-[#1e3a5f] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Submit Rate Sheet
+              {isSubmitting ? (
+                <div className="flex items-center justify-center gap-2">
+                  <Spinner className="h-5 w-5 text-white" />
+                  <span>
+                    {isPending ? "Uploading files…" : "Submitting…"}
+                  </span>
+                </div>
+              ) : (
+                "Submit Rate Sheet"
+              )}
             </button>
           </div>
         </Forge>
@@ -453,14 +467,33 @@ const RateSheetSummaryTable = React.memo(
       setVisibleRowCount(RATE_SHEET_SUMMARY_INITIAL_ROWS);
     }, [rows]);
 
+    // BE sometimes declares fewer headers than the rows actually carry
+    // (xlsx parsing truncates header row at the first empty cell). Union
+    // any extra row keys onto the declared headers so every populated cell
+    // gets a column to render under.
+    const effectiveHeaders = React.useMemo(() => {
+      const declared = new Set(headers);
+      const merged: string[] = [...headers];
+      for (const r of rows) {
+        if (!r) continue;
+        for (const k of Object.keys(r)) {
+          if (!declared.has(k)) {
+            declared.add(k);
+            merged.push(k);
+          }
+        }
+      }
+      return merged;
+    }, [headers, rows]);
+
     const headerCells = React.useMemo(
       () =>
-        headers.map((h) => (
+        effectiveHeaders.map((h) => (
           <th key={h} className="whitespace-nowrap px-4 py-3">
-            {h}
+            {/^__EMPTY(_\d+)?$/.test(h) ? "" : h}
           </th>
         )),
-      [headers],
+      [effectiveHeaders],
     );
 
     const bodyRows = React.useMemo(() => {
@@ -469,7 +502,10 @@ const RateSheetSummaryTable = React.memo(
       if (visibleRows.length === 0) {
         return (
           <tr className="border-t border-[#E5E7EB]">
-            <td className="px-4 py-3 text-[#6B7280]" colSpan={headers.length}>
+            <td
+              className="px-4 py-3 text-[#6B7280] dark:text-slate-400"
+              colSpan={effectiveHeaders.length}
+            >
               No rows available.
             </td>
           </tr>
@@ -478,29 +514,32 @@ const RateSheetSummaryTable = React.memo(
 
       return visibleRows.map((r, rowIndex) => (
         <tr key={rowIndex} className="border-t border-[#E5E7EB]">
-          {headers.map((h) => (
-            <td
-              key={`${rowIndex}-${h}`}
-              className="whitespace-nowrap px-4 py-3"
-            >
-              {(r as any)?.[h] ?? "—"}
-            </td>
-          ))}
+          {effectiveHeaders.map((h) => {
+            const cell = (r as any)?.[h];
+            return (
+              <td
+                key={`${rowIndex}-${h}`}
+                className="whitespace-nowrap px-4 py-3"
+              >
+                {cell == null || cell === "" ? "" : String(cell)}
+              </td>
+            );
+          })}
         </tr>
       ));
-    }, [headers, rows, visibleRowCount]);
+    }, [effectiveHeaders, rows, visibleRowCount]);
 
     return (
       <div className="overflow-x-auto rounded-lg border border-[#E5E7EB] bg-white">
         <table className="min-w-max w-full text-left text-sm">
-          <thead className="bg-[#F9FAFB] text-xs font-semibold text-[#6B7280]">
+          <thead className="bg-[#F9FAFB] text-xs font-semibold text-[#6B7280] dark:text-slate-400">
             <tr>{headerCells}</tr>
           </thead>
           <tbody>{bodyRows}</tbody>
         </table>
         {rows.length > visibleRowCount && (
           <div className="flex items-center justify-between border-t border-[#E5E7EB] px-4 py-3">
-            <div className="text-xs font-medium text-[#6B7280]">
+            <div className="text-xs font-medium text-[#6B7280] dark:text-slate-400">
               Showing {Math.min(rows.length, visibleRowCount).toLocaleString()} of{" "}
               {rows.length.toLocaleString()} rows
             </div>
@@ -528,7 +567,7 @@ const RateSheetSummarySheet = React.memo(
   ({ sheet }: { sheet: SheetElement }) => {
     return (
       <div className="space-y-3">
-        <div className="text-sm font-semibold text-[#0F0F0F]">
+        <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
           {sheet?.sheetName || "—"}
         </div>
         {Array.isArray(sheet?.headers) && sheet.headers.length > 0 ? (
@@ -537,7 +576,7 @@ const RateSheetSummarySheet = React.memo(
             rows={sheet.rows || []}
           />
         ) : (
-          <div className="text-sm text-[#6B7280]">No headers available.</div>
+          <div className="text-sm text-[#6B7280] dark:text-slate-400">No headers available.</div>
         )}
       </div>
     );
@@ -564,7 +603,7 @@ const RateSheetSummaryGroup = React.memo(
 
     return (
       <div className="space-y-4">
-        <div className="text-sm font-semibold text-[#0F0F0F]">
+        <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
           {group?.name || "Summary"}
         </div>
         <div className="space-y-5">
@@ -626,11 +665,11 @@ const RateSheetSummaryTab = React.memo(
     );
 
     return (
-      <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-6 text-sm text-[#6B7280]">
+      <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-6 text-sm text-[#6B7280] dark:text-slate-400">
         {detailLoading ? (
           <div>Loading summary...</div>
         ) : summary.length > 0 ? (
-          <div className="space-y-6 text-[#111827]">
+          <div className="space-y-6 text-[#111827] dark:text-slate-100">
             {visibleGroups.map((group, groupIndex) => (
               <RateSheetSummaryGroup
                 key={`${group?.name || "summary"}-${groupIndex}`}
@@ -683,7 +722,7 @@ const RateSheetDetailsSheet: React.FC<{
   const rateSheetId = row.sheetId || row.id;
 
   const { data: detailRes, isLoading: detailLoading } = useQuery({
-    queryKey: ["rate-sheet-detail", basePath, contractId, rateSheetId],
+    queryKey: useUserQueryKey(["rate-sheet-detail", basePath, contractId, rateSheetId]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${basePath}/${rateSheetId}`,
@@ -725,12 +764,17 @@ const RateSheetDetailsSheet: React.FC<{
 
   const canApprove = isManager && sheet?.approverStatus === "pending";
 
+  const [activeTab, setActiveTab] = React.useState("overview");
+  
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="right"
-        className="w-[95vw] sm:max-w-5xl rounded-2xl overflow-y-auto [&>button]:hidden"
+        className={cn(
+          "rounded-2xl overflow-y-auto transition-all duration-300 [&>button]:hidden",
+          activeTab === "summary" ? "w-full sm:max-w-4xl" : "w-full sm:max-w-2xl"
+        )}
       >
         <div className="space-y-6" data-testid="rate-sheet-details-sheet">
           <SheetHeader className="space-y-0">
@@ -738,11 +782,11 @@ const RateSheetDetailsSheet: React.FC<{
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827] dark:text-slate-100"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Rate Sheet Details
                 </SheetTitle>
               </div>
@@ -759,18 +803,18 @@ const RateSheetDetailsSheet: React.FC<{
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <div className="text-base font-semibold text-[#0F0F0F]">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 {sheet?.title || row.title || "—"}
               </div>
               <Button
                 variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
+                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
               >
                 <Share2 className="mr-2 h-4 w-4" /> Export
               </Button>
             </div>
 
-            <Tabs defaultValue="overview" className="space-y-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
               <TabsList className="h-auto rounded-none border-b w-full border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
                 <TabsTrigger
                   value="overview"
@@ -817,20 +861,20 @@ const RateSheetDetailsSheet: React.FC<{
                     />
                   </div>
                   <div className="space-y-2">
-                    <div className="text-xs font-medium text-[#9CA3AF]">
+                    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-500">
                       Description
                     </div>
-                    <div className="text-sm font-medium text-[#111827]">
+                    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">
                       {sheet?.description || "—"}
                     </div>
                   </div>
                   {detailLoading ? (
-                    <div className="text-sm text-[#6B7280]">
+                    <div className="text-sm text-[#6B7280] dark:text-slate-400">
                       Loading attachments...
                     </div>
                   ) : files.length > 0 ? (
                     <div className="space-y-3">
-                      <div className="text-sm font-semibold text-[#0F0F0F]">
+                      <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
                         Attachment
                       </div>
                       <div className="space-y-3">
@@ -871,7 +915,7 @@ const RateSheetDetailsSheet: React.FC<{
                       </div>
                     </div>
                   ) : (
-                    <div className="text-sm text-[#6B7280]">
+                    <div className="text-sm text-[#6B7280] dark:text-slate-400">
                       No attachments.
                     </div>
                   )}
@@ -891,7 +935,7 @@ const RateSheetDetailsSheet: React.FC<{
             <div className="flex gap-3 pt-6">
               <Button
                 variant="outline"
-                className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
                 disabled={!canApprove || isApproving}
                 onClick={() => {
                   if (!canApprove) {
@@ -996,7 +1040,7 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         accessorKey: "title",
         header: "Rate Title",
         cell: ({ getValue }) => (
-          <div className="max-w-[260px] text-sm text-slate-700">
+          <div className="max-w-[260px] text-sm text-slate-700 dark:text-slate-300">
             {getValue<string>()}
           </div>
         ),
@@ -1005,7 +1049,7 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         accessorKey: "amount",
         header: "Amount",
         cell: ({ getValue }) => (
-          <span className="font-medium text-slate-900">
+          <span className="font-medium text-slate-900 dark:text-slate-100">
             {getValue<string>()}
           </span>
         ),
@@ -1062,11 +1106,13 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   return (
     <TabsContent value="rate-sheets" className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-900">Rate Sheets</h3>
+        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Rate Sheets</h3>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="h-10 rounded-xl px-4">
-            Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="Contract">
+            <Button variant="outline" className="h-10 rounded-xl px-4">
+              Export Report
+            </Button>
+          </ExportReportSheet>
           {isContractVendorLike && (
             <SubmitRateSheetDialog
               contractId={contractId}
@@ -1085,12 +1131,12 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         data={filtered}
         columns={columns}
         header={() => (
-          <div className="flex items-center gap-3 border-b w-full border-[#E5E7EB] px-5 py-4">
-            <span className="text-sm font-medium text-slate-900">
+          <div className="flex items-center gap-3 border-b w-full border-[#E5E7EB] dark:border-slate-700 px-5 py-4">
+            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
               Rate Sheets
             </span>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
               <Input
                 placeholder="Search"
                 value={search}
@@ -1110,13 +1156,13 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
           isLoading: !!isLoading,
         }}
         classNames={{
-          container: "border border-[#E5E7EB] rounded-xl bg-white",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-xs font-semibold text-slate-500",
-          tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+          container: "border border-[#E5E7EB] dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-700",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-700",
+          tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-300 align-top",
         }}
       />
     </TabsContent>

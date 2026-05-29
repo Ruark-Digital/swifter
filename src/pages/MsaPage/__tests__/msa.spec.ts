@@ -63,7 +63,7 @@ test.describe("MSA Page (stats)", () => {
     await page.route("**/api/v1/**", async (route) => {
       const url = route.request().url();
 
-      if (url.includes("/msa-contract/stats")) {
+      if (url.includes("/msa-contracts/stats")) {
         if (url.includes("/contract/manager/")) {
           await route.fulfill({
             status: 200,
@@ -143,7 +143,7 @@ test.describe("MSA Page (stats)", () => {
         },
       ];
 
-      if (url.includes("/msa-contract/me")) {
+      if (url.includes("/msa-contracts/me")) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -152,7 +152,7 @@ test.describe("MSA Page (stats)", () => {
         return;
       }
 
-      if (url.includes("/msa-contract")) {
+      if (url.includes("/msa-contracts")) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -176,7 +176,7 @@ test.describe("MSA Page (stats)", () => {
     await seedAuth(page, "contract_manager");
 
     const statsResponse = page.waitForResponse(
-      (res) => res.url().includes("msa-contract/stats") && res.status() === 200,
+      (res) => res.url().includes("msa-contracts/stats") && res.status() === 200,
       { timeout: 30000 },
     );
 
@@ -263,7 +263,7 @@ test.describe("MSA Page (stats)", () => {
     await page.goto("/dashboard/msa", { waitUntil: "domcontentloaded" });
 
     expect(
-      requests.some((u) => u.includes("/contract/manager/msa-contract/stats")),
+      requests.some((u) => u.includes("/contract/manager/msa-contracts/stats")),
     ).toBe(false);
     await expect(page.locator('[data-testid="msa-stats-all"]')).toContainText(
       "7",
@@ -308,13 +308,13 @@ test.describe("MSA Page (stats)", () => {
     );
 
     expect(
-      requests.some((u) => u.includes("/contract/manager/msa-contract/stats")),
+      requests.some((u) => u.includes("/contract/manager/msa-contracts/stats")),
     ).toBe(true);
     expect(
-      requests.some((u) => u.includes("/contract/user/msa-contract/stats")),
+      requests.some((u) => u.includes("/contract/user/msa-contracts/stats")),
     ).toBe(false);
     expect(
-      requests.some((u) => u.includes("/contract/manager/msa-contract/me")),
+      requests.some((u) => u.includes("/contract/manager/msa-contracts/me")),
     ).toBe(false);
   });
 
@@ -337,7 +337,7 @@ test.describe("MSA Detail (project manager approval)", () => {
       const url = route.request().url();
 
       if (
-        url.includes("/contract/vendor/msa-contract/msa-1") &&
+        url.includes("/contract/vendor/msa-contracts/msa-1") &&
         route.request().method() === "GET"
       ) {
         await route.fulfill({
@@ -365,7 +365,7 @@ test.describe("MSA Detail (project manager approval)", () => {
       }
 
       if (
-        url.includes("/contract/vendor/msa-contract/msa-1/approve") &&
+        url.includes("/contract/vendor/msa-contracts/msa-1/approve") &&
         route.request().method() === "POST"
       ) {
         const body = route.request().postDataJSON() as any;
@@ -404,7 +404,7 @@ test.describe("MSA Detail (project manager approval)", () => {
 
     const approveReq = page.waitForRequest(
       (req) =>
-        req.url().includes("/contract/vendor/msa-contract/msa-1/approve") &&
+        req.url().includes("/contract/vendor/msa-contracts/msa-1/approve") &&
         req.method() === "POST",
       { timeout: 15000 },
     );
@@ -442,7 +442,7 @@ test.describe("MSA Amendments (workflow)", () => {
       const pathname = new URL(url).pathname;
 
       if (
-        pathname.endsWith(`/contract/vendor/msa-contract/${msaId}`) &&
+        pathname.endsWith(`/contract/vendor/msa-contracts/${msaId}`) &&
         route.request().method() === "GET"
       ) {
         await route.fulfill({
@@ -471,7 +471,7 @@ test.describe("MSA Amendments (workflow)", () => {
 
       if (
         pathname.endsWith(
-          `/contract/vendor/msa-contract/${msaId}/amendment/stats`,
+          `/contract/vendor/msa-contracts/${msaId}/amendment/stats`,
         ) &&
         route.request().method() === "GET"
       ) {
@@ -487,7 +487,7 @@ test.describe("MSA Amendments (workflow)", () => {
       }
 
       if (
-        pathname.endsWith(`/contract/vendor/msa-contract/${msaId}/amendment`) &&
+        pathname.endsWith(`/contract/vendor/msa-contracts/${msaId}/amendment`) &&
         route.request().method() === "GET"
       ) {
         await route.fulfill({
@@ -511,7 +511,7 @@ test.describe("MSA Amendments (workflow)", () => {
 
       if (
         pathname.endsWith(
-          `/contract/vendor/msa-contract/${msaId}/amendment/${amendmentId}`,
+          `/contract/vendor/msa-contracts/${msaId}/amendment/${amendmentId}`,
         ) &&
         route.request().method() === "GET"
       ) {
@@ -546,7 +546,7 @@ test.describe("MSA Amendments (workflow)", () => {
 
       if (
         pathname.endsWith(
-          `/contract/vendor/msa-contract/${msaId}/amendment/${amendmentId}/status`,
+          `/contract/vendor/msa-contracts/${msaId}/amendment/${amendmentId}/status`,
         ) &&
         route.request().method() === "PATCH"
       ) {
@@ -595,7 +595,7 @@ test.describe("MSA Amendments (workflow)", () => {
       const pathname = new URL(url).pathname;
 
       if (
-        pathname.endsWith(`/contract/approver/msa-contract/${msaId}`) &&
+        pathname.endsWith(`/contract/approver/msa-contracts/${msaId}`) &&
         route.request().method() === "GET"
       ) {
         await route.fulfill({
@@ -625,7 +625,7 @@ test.describe("MSA Amendments (workflow)", () => {
 
       if (
         url.includes(
-          `/contract/approver/msa-contract/${msaId}/amendment/stats`,
+          `/contract/approver/msa-contracts/${msaId}/amendment/stats`,
         ) &&
         route.request().method() === "GET"
       ) {
@@ -642,7 +642,7 @@ test.describe("MSA Amendments (workflow)", () => {
 
       if (
         pathname.endsWith(
-          `/contract/approver/msa-contract/${msaId}/amendment`,
+          `/contract/approver/msa-contracts/${msaId}/amendment`,
         ) &&
         route.request().method() === "GET"
       ) {
@@ -667,7 +667,7 @@ test.describe("MSA Amendments (workflow)", () => {
 
       if (
         pathname.endsWith(
-          `/contract/approver/msa-contract/${msaId}/amendment/${amendmentId}`,
+          `/contract/approver/msa-contracts/${msaId}/amendment/${amendmentId}`,
         ) &&
         route.request().method() === "GET"
       ) {
@@ -711,7 +711,7 @@ test.describe("MSA Amendments (workflow)", () => {
 
       if (
         pathname.endsWith(
-          `/contract/approver/msa-contract/${msaId}/amendment/${amendmentId}/approve/status`,
+          `/contract/approver/msa-contracts/${msaId}/amendment/${amendmentId}/approve/status`,
         ) &&
         route.request().method() === "GET"
       ) {
@@ -725,7 +725,7 @@ test.describe("MSA Amendments (workflow)", () => {
 
       if (
         pathname.endsWith(
-          `/contract/approver/msa-contract/${msaId}/amendment/${amendmentId}/approve`,
+          `/contract/approver/msa-contracts/${msaId}/amendment/${amendmentId}/approve`,
         ) &&
         route.request().method() === "POST"
       ) {
@@ -770,7 +770,7 @@ test.describe("MSA Detail (linked contracts)", () => {
       const url = route.request().url();
 
       if (
-        url.includes("/contract/manager/msa-contract/msa-1") &&
+        url.includes("/contract/manager/msa-contracts/msa-1") &&
         !url.includes("/linked-contract") &&
         route.request().method() === "GET"
       ) {
@@ -812,7 +812,7 @@ test.describe("MSA Detail (linked contracts)", () => {
       }
 
       if (
-        url.includes("/contract/manager/msa-contract/msa-1/linked-contract") &&
+        url.includes("/contract/manager/msa-contracts/msa-1/linked-contract") &&
         route.request().method() === "GET"
       ) {
         await route.fulfill({
@@ -931,7 +931,7 @@ test.describe("MSA Detail (deliverables)", () => {
       const url = route.request().url();
       const pathname = new URL(url).pathname;
 
-      if (pathname.endsWith(`/contract/manager/msa-contract/${msaId}`)) {
+      if (pathname.endsWith(`/contract/manager/msa-contracts/${msaId}`)) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -1043,7 +1043,7 @@ test.describe("MSA Detail (deliverables)", () => {
     await page.route("**/api/v1/**", async (route) => {
       const pathname = new URL(route.request().url()).pathname;
 
-      if (pathname.endsWith(`/contract/manager/msa-contract/${msaId}`)) {
+      if (pathname.endsWith(`/contract/manager/msa-contracts/${msaId}`)) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -1069,7 +1069,7 @@ test.describe("MSA Detail (deliverables)", () => {
 
       if (
         pathname.endsWith(
-          `/contract/manager/msa-contract/${msaId}/linked-contract`,
+          `/contract/manager/msa-contracts/${msaId}/linked-contract`,
         )
       ) {
         await route.fulfill({
@@ -1151,7 +1151,7 @@ test.describe("MSA Detail (deliverables)", () => {
     ).toBe(false);
     expect(
       requests.some((u) =>
-        u.includes(`/contract/manager/msa-contract/${msaId}/linked-contract`),
+        u.includes(`/contract/manager/msa-contracts/${msaId}/linked-contract`),
       ),
     ).toBe(true);
   });

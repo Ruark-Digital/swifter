@@ -12,7 +12,7 @@ import { Forge, useForge } from "@/lib/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getRequest, postRequest } from "@/lib/axiosInstance";
+import { getRequest, postRequest, putRequest } from "@/lib/axiosInstance";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import { format } from "date-fns";
@@ -28,6 +28,7 @@ import {
   toPersonnelOrUndefined,
   toFileMetaOrUndefined,
 } from "@/lib/contractFormValues";
+import { useClearSession } from "@/store/solicitationFileSlice";
 import Step1BasicInfo from "../components/Step1BasicInfo";
 import Step2ContractTeam from "../components/Step2ContractTeam";
 import Step3Timeline from "../components/Step3Timeline";
@@ -40,6 +41,11 @@ import Step9ReviewPublish from "../components/Step9ReviewPublish";
 
 type Props = {
   trigger: React.ReactNode;
+  /** When set, the dialog operates in edit mode: prefills the form from
+   *  `initialValues` (the loaded MSA) and PUTs to /msa-contracts/{id}
+   *  instead of POSTing to create. */
+  editingMsaId?: string;
+  initialValues?: Record<string, any>;
 };
 
 const schema = yup.object({
@@ -191,7 +197,12 @@ const STEP_TITLES = [
   "Step 9 of 9: Review & Publish",
 ];
 
-const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
+const CreateMSADialog: React.FC<Props> = ({
+  trigger,
+  editingMsaId,
+  initialValues,
+}) => {
+  const isEditing = Boolean(editingMsaId);
   const {
     control,
     reset,
@@ -205,12 +216,234 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
 
   const [step, setStep] = React.useState(1);
   const [open, setOpen] = React.useState(false);
+
+  // Fetch the MSA via the dedicated edit endpoint — swagger 2.3.0
+  // `GET /manager/msa-contracts/{contractId}/edit` returns "a fully
+  // populated MSA contract record with all associated data needed to
+  // pre-fill the editing form". That's a different shape from the
+  // read-only detail endpoint (more populated relations, the canonical
+  // edit-form representation).
+  // x-roles: contract_manager, company_admin only.
+  const editDetailQuery = useQuery({
+    queryKey: ["msa-edit-detail", editingMsaId],
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `/contract/manager/msa-contracts/${editingMsaId}/edit`,
+      });
+      return res.data as { data?: any };
+    },
+    enabled: Boolean(editingMsaId) && open,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+
+  // Hydration is two-phase: initialValues from the detail endpoint gives
+  // an immediate paint, then the /edit endpoint reload upgrades us to the
+  // authoritative form-shaped record. Both passes must run — gating after
+  // the first pass would lock in any field the detail endpoint shapes
+  // differently from /edit (e.g. an unpopulated `projectManager`). User
+  // edits between passes are preserved via `keepDirtyValues: true`.
+  const hydratedFromFetchedRef = React.useRef(false);
+  const hydratedForRef = React.useRef<string | undefined>(undefined);
+  React.useEffect(() => {
+    if (editingMsaId !== hydratedForRef.current) {
+      hydratedFromFetchedRef.current = false;
+      hydratedForRef.current = editingMsaId;
+    }
+  }, [editingMsaId]);
+
+  // Display label for the saved project manager — sourced from the BE
+  // user object so the chip can render the real name even when the
+  // vendor's PM list doesn't include this user.
+  const [defaultPmLabel, setDefaultPmLabel] = React.useState<
+    string | undefined
+  >(undefined);
+
+  React.useEffect(() => {
+    if (!open) return;
+    if (!isEditing) return;
+
+    // Prefer fetched detail; fall back to `initialValues` while the
+    // query is still loading so the form fills in immediately. Once
+    // fetched arrives, re-hydrate (with keepDirtyValues so in-flight
+    // edits aren't stomped) — the /edit endpoint is form-shaped and
+    // authoritative.
+    const fetched = editDetailQuery.data?.data;
+    if (hydratedFromFetchedRef.current) return;
+    const iv = (fetched ?? initialValues) as Record<string, any> | undefined;
+    if (!iv) return;
+
+    const idOf = (v: any) =>
+      typeof v === "object" && v !== null ? (v._id ?? v.id ?? "") : (v ?? "");
+
+    const stage = (iv.contractFormationStage ?? {}) as Record<string, any>;
+    const personnelSrc = Array.isArray(iv.personnel)
+      ? iv.personnel
+      : Array.isArray(iv.vendorPersonnel)
+        ? iv.vendorPersonnel
+        : [];
+    const personnelArr = personnelSrc.map((p: any) => ({
+      id: p?._id ?? p?.email ?? "",
+      text: p?.name || p?.email || p?._id || "",
+      meta: {
+        email: p?.email ?? "",
+        role: Array.isArray(p?.role)
+          ? (p.role[0]?.name ?? "")
+          : (typeof p?.role === "string" ? p.role : p?.role?.name ?? ""),
+        phone: p?.phone ?? "",
+      },
+    }));
+    const internalTeamSrc = Array.isArray(iv.internalTeam) ? iv.internalTeam : [];
+    const internalTeamArr = internalTeamSrc.map((t: any) => {
+      const u = t?.user ?? t;
+      const id = u?._id ?? u?.id ?? u?.email ?? "";
+      return {
+        id,
+        text: u?.name || u?.email || id || "",
+        meta: {
+          email: u?.email ?? "",
+          role:
+            typeof u?.role === "string" ? u.role : (u?.role?.name ?? ""),
+          phone: u?.phone ?? "",
+        },
+      };
+    });
+
+    const ins = (iv.insurance ?? {}) as Record<string, any>;
+    const policySrc = Array.isArray(ins.policy) ? ins.policy : [];
+    const insurancePolicies = policySrc.length
+      ? policySrc.map((p: any) => ({
+          name: p?.policyName ?? "",
+          limit:
+            p?.limit !== undefined && p?.limit !== null
+              ? String(p.limit)
+              : "",
+        }))
+      : defaultValues.insurancePolicies;
+    const securitiesSrc = Array.isArray(ins.contractSecurityType)
+      ? ins.contractSecurityType
+      : [];
+    const securities = securitiesSrc.map((s: any) => ({
+      type: s?.securityType ?? "",
+      amount: s?.amount ?? "",
+      dueDate: s?.dueDate ? new Date(s.dueDate) : undefined,
+    }));
+
+    const pmUser = iv.projectManager?.user;
+    const pmDisplayName =
+      pmUser && typeof pmUser === "object"
+        ? (pmUser.name ?? pmUser.email ?? undefined)
+        : undefined;
+    setDefaultPmLabel(
+      typeof pmDisplayName === "string" && pmDisplayName.trim()
+        ? pmDisplayName.trim()
+        : undefined,
+    );
+
+    reset({
+      ...defaultValues,
+      name: iv.title ?? defaultValues.name,
+      type: idOf(iv.msaType),
+      currency: iv.currency ?? defaultValues.currency,
+      msaId: iv.msaContractId ?? defaultValues.msaId,
+      description: iv.description ?? defaultValues.description,
+      rating: typeof iv.rating === "number" ? iv.rating : defaultValues.rating,
+      businessDivision: idOf(iv.businessDivision),
+      vendor:
+        typeof iv.vendor === "object"
+          ? (iv.vendor?.email ?? iv.vendor?._id ?? "")
+          : (iv.vendor ?? ""),
+      projectManager: idOf(iv.projectManager?.user ?? iv.projectManager),
+      visibility: iv.visibility ?? defaultValues.visibility,
+      personnel: personnelArr.length ? personnelArr : defaultValues.personnel,
+      internalTeam: internalTeamArr.length
+        ? internalTeamArr
+        : defaultValues.internalTeam,
+      effectiveDate: iv.startDate ? new Date(iv.startDate) : undefined,
+      endDate: iv.endDate ? new Date(iv.endDate) : undefined,
+      duration:
+        typeof iv.duration === "number" ? String(iv.duration) : iv.duration ?? "",
+      draftStartDate: stage.draft?.startDate
+        ? new Date(stage.draft.startDate)
+        : undefined,
+      draftEndDate: stage.draft?.endDate
+        ? new Date(stage.draft.endDate)
+        : undefined,
+      reviewStartDate: stage.review?.startDate
+        ? new Date(stage.review.startDate)
+        : undefined,
+      reviewEndDate: stage.review?.endDate
+        ? new Date(stage.review.endDate)
+        : undefined,
+      approvalStartDate: stage.approval?.startDate
+        ? new Date(stage.approval.startDate)
+        : undefined,
+      approvalEndDate: stage.approval?.endDate
+        ? new Date(stage.approval.endDate)
+        : undefined,
+      executionStartDate: stage.execution?.startDate
+        ? new Date(stage.execution.startDate)
+        : undefined,
+      executionEndDate: stage.execution?.endDate
+        ? new Date(stage.execution.endDate)
+        : undefined,
+      contractValue: iv.contractValue ?? defaultValues.contractValue,
+      contingency:
+        typeof iv.contigency === "string"
+          ? iv.contigency
+          : (iv.contingency ?? defaultValues.contingency),
+      holdback:
+        typeof iv.holdBack === "number"
+          ? String(iv.holdBack)
+          : (iv.holdback ?? defaultValues.holdback),
+      paymentStructure: iv.paymentStructure ?? defaultValues.paymentStructure,
+      milestones:
+        Array.isArray(iv.milestone) && iv.milestone.length
+          ? iv.milestone.map((m: any) => ({
+              name: m?.name ?? "",
+              amount: m?.amount ?? "",
+              dueDate: m?.dueDate ? new Date(m.dueDate) : undefined,
+              deliverable: idOf(m?.deliverable),
+            }))
+          : defaultValues.milestones,
+      deliverables:
+        Array.isArray(iv.deliverables) && iv.deliverables.length
+          ? iv.deliverables.map((d: any) =>
+              typeof d === "string"
+                ? { name: d, dueDate: undefined }
+                : {
+                    name: d?.name ?? "",
+                    dueDate: d?.dueDate ? new Date(d.dueDate) : undefined,
+                  },
+            )
+          : defaultValues.deliverables,
+      documents: Array.isArray(iv.files) ? (iv.files as any) : null,
+      // Hydrating insurance is load-bearing on edit — without it, Save-as-Draft
+      // ships `{insurance: "No", contractSecurity: false}` and BE rejects with
+      // "Invalid insurance data" against the existing record.
+      contractSecurity:
+        ins.contractSecurity === true
+          ? "yes"
+          : ins.contractSecurity === false
+            ? "no"
+            : defaultValues.contractSecurity,
+      insuranceExpiryDate: ins.expiryDate ? new Date(ins.expiryDate) : undefined,
+      insurancePolicies,
+      securities,
+    } as CreateMsaFormData, fetched ? { keepDirtyValues: true } : undefined);
+
+    if (fetched) hydratedFromFetchedRef.current = true;
+  }, [open, isEditing, editDetailQuery.data, initialValues, reset]);
+
   const [signatories, setSignatories] = React.useState<string[]>([]);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
   const qc = useQueryClient();
   const toast = useToastHandler();
   const currentUser = useUser();
-  const msaQueryKeyPrefix = useUserQueryKey(["msa"]);
+  // Step4Form is backed by a persisted Zustand store shared across Solicitation/
+  // Contract/MSA/Evaluation wizards. Without clearing it on dialog dismiss,
+  // files from a prior wizard ghost into the next one — see QA bug #96.
+  const clearFileSession = useClearSession();
 
   const typesQuery = useQuery({
     queryKey: useUserQueryKey(["contract-types"]),
@@ -416,8 +649,8 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
                 policyName: p?.name,
                 limit: toNumberOrUndefined(p?.limit),
               }))
-              .filter((p) => p.policyName || p.limit)
-          : undefined,
+              .filter((p) => p.policyName || p.limit !== undefined)
+          : [],
       };
 
       const contractFormationStage = {
@@ -443,9 +676,13 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
         (data.approvalGroups ?? [])
           .filter((item) => item.name && item.approvers?.length)
           .flatMap((g, i) => {
-            const lvl = g.approvalLevel ? Number(g.approvalLevel) : i + 1;
-            const amountValue = toNumberOrUndefined(g.amount);
-            // API expects user as array of strings
+            const rawLvl = g.approvalLevel ? Number(g.approvalLevel) : i + 1;
+            // DTO: level is z.number().int().min(1).max(5); the form default
+            // is "0" which would fail validation.
+            const lvl = Math.min(5, Math.max(1, Math.trunc(rawLvl) || i + 1));
+            // DTO: amount is z.number() (required inside the item). Missing
+            // amount would prune away and trip strict-mode rejection.
+            const amountValue = toNumberOrUndefined(g.amount) ?? 0;
             const userIds = (g.approvers ?? [])
               .map((u: any) => u?.value ?? u)
               .filter(Boolean);
@@ -469,8 +706,8 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
           const vendorRaw =
             typeof data.vendor === "string" ? data.vendor.trim() : "";
           if (!vendorRaw) return undefined;
-          const isObjectId = /^[a-f\\d]{24}$/i.test(vendorRaw);
-          const isEmail = /.+@.+\\..+/.test(vendorRaw);
+          const isObjectId = /^[a-f\d]{24}$/i.test(vendorRaw);
+          const isEmail = /.+@.+\..+/.test(vendorRaw);
           return isObjectId || isEmail ? vendorRaw : undefined;
         })(),
         businessDivision: data.businessDivision,
@@ -521,23 +758,50 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
   );
 
   const createMutation = useMutation({
-    mutationKey: ["create-msa"],
+    mutationKey: ["create-msa", editingMsaId ?? "new"],
     mutationFn: async (payload: any) => {
+      if (isEditing && editingMsaId) {
+        const res = await putRequest({
+          url: `/contract/manager/msa-contracts/${editingMsaId}`,
+          payload,
+        });
+        return res.data;
+      }
       const res = await postRequest({
-        url: "/contract/manager/msa-contract",
+        url: "/contract/manager/msa-contracts",
         payload,
       });
       return res.data;
     },
     onSuccess: () => {
-      toast.success("MSA created successfully", "Your MSA has been created.");
-      qc.invalidateQueries({ queryKey: msaQueryKeyPrefix });
+      if (isEditing) {
+        toast.success("MSA updated successfully", "Your changes have been saved.");
+      } else {
+        toast.success("MSA created successfully", "Your MSA has been created.");
+      }
+      qc.invalidateQueries({
+        predicate: (q) =>
+          q.queryKey[0] === "msa" && q.queryKey.at(-1) === currentUser?._id,
+      });
+      if (editingMsaId) {
+        qc.invalidateQueries({ queryKey: ["msa-detail", editingMsaId] });
+        qc.invalidateQueries({ queryKey: ["msa-edit-detail", editingMsaId] });
+        // After a successful save the local form is the new source of
+        // truth, but on a subsequent open we want to pull the fresh
+        // server copy in case anything was server-derived. Re-arm the
+        // hydration guard.
+        hydratedFromFetchedRef.current = false;
+      }
+      clearFileSession();
       setOpen(false);
       setStep(1);
-      reset(defaultValues);
+      if (!isEditing) reset(defaultValues);
     },
     onError: (err: any) => {
-      toast.error("Failed to create MSA", err);
+      toast.error(
+        isEditing ? "Failed to update MSA" : "Failed to create MSA",
+        err,
+      );
     },
   });
 
@@ -579,9 +843,22 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
   };
 
   const onCancel = () => {
-    reset(defaultValues);
+    // In edit mode the form mirrors a real saved record — wiping it on
+    // Cancel would discard the user's in-flight edits. Only reset for
+    // the create flow. The dialog just closes either way; re-opening
+    // re-hydrates from the freshest server detail (hydratedRef gate).
+    if (!isEditing) reset(defaultValues);
+    clearFileSession();
     setOpen(false);
   };
+
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) clearFileSession();
+      setOpen(nextOpen);
+    },
+    [clearFileSession],
+  );
 
   const handleSendForApproval = React.useCallback((sigs: string[]) => {
     setSignatories(sigs);
@@ -589,7 +866,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
   }, []);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
         className={cn(
@@ -599,8 +876,8 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
       >
         <div className="flex items-start justify-between">
           <DialogHeader className="p-0">
-            <DialogTitle className="text-[20px] font-semibold leading-[30px] text-[#0F0F0F]">
-              Create MSA
+            <DialogTitle className="text-[20px] font-semibold leading-[30px] text-[#0F0F0F] dark:text-slate-100">
+              {isEditing ? "Edit MSA" : "Create MSA"}
             </DialogTitle>
           </DialogHeader>
         </div>
@@ -630,7 +907,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
               isLoadingTypes={typesQuery.isLoading}
             />
           )}
-          {step === 2 && <Step2ContractTeam />}
+          {step === 2 && <Step2ContractTeam defaultPmLabel={defaultPmLabel} />}
           {step === 3 && (
             <Step3Timeline
               termTypeOptions={termTypeOptions}
@@ -694,7 +971,7 @@ const CreateMSADialog: React.FC<Props> = ({ trigger }) => {
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-12 px-10 rounded-xl bg-slate-300"
+                  className="h-12 px-10 rounded-xl bg-slate-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-600"
                   onClick={() => setStep(step - 1)}
                 >
                   Back
@@ -829,18 +1106,18 @@ const SendForApprovalDialog = React.memo(
         <DialogContent className="sm:max-w-2xl">
           <div className=" space-y-6">
             <div className="flex items-center justify-between">
-              <p className="text-xl font-semibold text-slate-900">
+              <p className="text-xl font-semibold text-slate-900 dark:text-slate-100">
                 Send for Approval
               </p>
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-900">
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                 Select Approvers For Contract Execution
               </p>
               <div className="relative">
                 <select
-                  className="w-full h-12 border border-gray-300 rounded-lg px-4 pr-10 text-sm text-slate-700 focus:border-[#2A4467] focus:ring-[#2A4467]"
+                  className="w-full h-12 border border-gray-300 dark:border-slate-700 rounded-lg px-4 pr-10 text-sm text-slate-700 dark:text-slate-300 focus:border-[#2A4467] focus:ring-[#2A4467]"
                   value={selectedApprovalGroup}
                   onChange={(event) =>
                     setSelectedApprovalGroup(event.target.value)
@@ -856,26 +1133,43 @@ const SendForApprovalDialog = React.memo(
               </div>
             </div>
 
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
-              <div className="grid grid-cols-[1fr_160px_140px] bg-slate-50 px-6 py-2 text-sm font-semibold text-[#2A4467]">
+            <div className="border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
+              <div className="grid grid-cols-[1fr_160px_140px] bg-slate-50 dark:bg-slate-800/60 px-6 py-2 text-sm font-semibold text-[#2A4467] dark:text-blue-300">
                 <p>Group</p>
                 <p className="text-center">Role</p>
                 <p className="text-center">Action</p>
               </div>
-              <div className="divide-y divide-gray-300">
+              <div className="divide-y divide-gray-300 dark:divide-slate-700">
                 {selectedApprovers.length === 0 && (
-                  <div className="px-6 py-6 text-sm text-slate-500">
+                  <div className="px-6 py-6 text-sm text-slate-500 dark:text-slate-400">
                     No approvers added for this group
                   </div>
                 )}
                 {selectedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
-                  const name =
+                  const rawText =
                     approver?.text ||
                     approver?.name ||
                     approver?.label ||
-                    "Unnamed";
-                  const email = approver?.id || approver?.email || "";
+                    "";
+                  const metaEmail =
+                    (approver?.meta?.email as string | undefined) ?? "";
+                  const fallbackEmail = approver?.email ?? "";
+                  const email =
+                    metaEmail ||
+                    (typeof fallbackEmail === "string" && fallbackEmail.includes("@")
+                      ? fallbackEmail
+                      : "");
+                  const metaName =
+                    (approver?.meta?.name as string | undefined) ?? "";
+                  const nameFromText = email
+                    ? rawText.replace(
+                        new RegExp(`\\s*\\(${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)\\s*$`),
+                        "",
+                      )
+                    : rawText;
+                  const name =
+                    metaName.trim() || nameFromText.trim() || "Unnamed";
                   const role = approver?.meta?.role
                     ? approver.meta.role
                     : selectedGroup?.approvalLevel
@@ -887,14 +1181,14 @@ const SendForApprovalDialog = React.memo(
                       className="grid grid-cols-[1fr_160px_140px] items-center px-6 py-4"
                     >
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold text-slate-700">
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                           {name}
                         </p>
                         {email && (
                           <p className="text-xs text-blue-600 ">{email}</p>
                         )}
                       </div>
-                      <p className="text-sm text-slate-600 text-center">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
                         {role}
                       </p>
                       <div className="flex items-center justify-center gap-2">
@@ -904,7 +1198,7 @@ const SendForApprovalDialog = React.memo(
                             toggleApprover(approverId, Boolean(checked))
                           }
                         />
-                        <span className="text-sm text-slate-700">Assign</span>
+                        <span className="text-sm text-slate-700 dark:text-slate-300">Assign</span>
                       </div>
                     </div>
                   );
@@ -913,30 +1207,41 @@ const SendForApprovalDialog = React.memo(
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-900">
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                 Assigned Approvers
               </p>
-              <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-slate-50 px-4 py-4">
+              <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-4">
                 {assignedApprovers.length === 0 && (
-                  <p className="text-sm text-slate-500">Search</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Search</p>
                 )}
                 {assignedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
-                  const name =
+                  const metaName =
+                    (approver?.meta?.name as string | undefined) ?? "";
+                  const rawText =
                     approver?.text ||
                     approver?.name ||
                     approver?.label ||
-                    "Unnamed";
+                    "";
+                  const metaEmail =
+                    (approver?.meta?.email as string | undefined) ?? "";
+                  const stripped = metaEmail
+                    ? rawText.replace(
+                        new RegExp(`\\s*\\(${metaEmail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)\\s*$`),
+                        "",
+                      )
+                    : rawText;
+                  const name = metaName.trim() || stripped.trim() || "Unnamed";
                   return (
                     <div
                       key={approverId}
-                      className="flex items-center gap-2 rounded-md bg-[#2A44671A] px-2 py-1 text-xs font-semibold text-[#2A4467]"
+                      className="flex items-center gap-2 rounded-md bg-[#2A44671A] dark:bg-blue-900/30 px-2 py-1 text-xs font-semibold text-[#2A4467] dark:text-blue-300"
                     >
                       <span>{name}</span>
                       <button
                         type="button"
                         onClick={() => toggleApprover(approverId, false)}
-                        className="text-[#2A4467]"
+                        className="text-[#2A4467] dark:text-blue-300"
                       >
                         <X className="h-3 w-3" />
                       </button>

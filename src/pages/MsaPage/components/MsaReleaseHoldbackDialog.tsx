@@ -16,8 +16,8 @@ import {
   TextFileUploader,
   TextSelect,
 } from "@/components/layouts/FormInputs";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getRequest, postRequest } from "@/lib/axiosInstance";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { postRequest } from "@/lib/axiosInstance";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "@/pages/ContractManagementPage/lib/contractChanges";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -26,7 +26,6 @@ import Spinner from "@/components/ui/Spinner";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 
 type ReleaseHoldbackFormValues = {
-  invoiceId: string;
   releaseType: string;
   amountToBeReleased: string;
   description: string;
@@ -34,7 +33,6 @@ type ReleaseHoldbackFormValues = {
 };
 
 const schema = yup.object({
-  invoiceId: yup.string().trim().required("Invoice is required"),
   releaseType: yup
     .string()
     .oneOf(["Partial Release", "Full Release"], "Release Type is required")
@@ -117,7 +115,6 @@ const MsaReleaseHoldbackDialog: React.FC<MsaReleaseHoldbackDialogProps> = ({
   const { control, reset, watch } = useForge<ReleaseHoldbackFormValues>({
     resolver: yupResolver(schema) as any,
     defaultValues: {
-      invoiceId: "",
       releaseType: "",
       amountToBeReleased: "",
       description: "",
@@ -126,40 +123,6 @@ const MsaReleaseHoldbackDialog: React.FC<MsaReleaseHoldbackDialogProps> = ({
   });
 
   const releaseType = watch("releaseType");
-
-  const { data: invoicesResponse } = useQuery({
-    queryKey: ["msaHoldbackInvoices", contractId],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      params.append("page", "1");
-      params.append("limit", "50");
-      const res = await getRequest({
-        url: `/contract/manager/msa-contract/${contractId}/invoice?${params.toString()}`,
-      });
-      return res.data as { data?: { invoices?: any[]; contractInvoices?: any[] } };
-    },
-    enabled: open && Boolean(contractId),
-    staleTime: 60000,
-    retry: false,
-  });
-
-  const invoiceOptions = React.useMemo(() => {
-    const payload = invoicesResponse?.data;
-    const invoices = Array.isArray(payload?.invoices)
-      ? payload.invoices
-      : Array.isArray(payload?.contractInvoices)
-        ? payload.contractInvoices
-        : [];
-    return invoices
-      .map((inv: any) => {
-        const value = inv?._id ?? "";
-        const labelSeed = inv?.invoiceId ?? inv?._id ?? "";
-        if (!value || !labelSeed) return null;
-        const label = inv?.title ? `${labelSeed} — ${inv.title}` : `${labelSeed}`;
-        return { label, value };
-      })
-      .filter(Boolean) as { label: string; value: string }[];
-  }, [invoicesResponse?.data]);
 
   const { mutateAsync: uploadFile } = useMutation<
     ApiResponse<UploadURLs[]>,
@@ -187,10 +150,17 @@ const MsaReleaseHoldbackDialog: React.FC<MsaReleaseHoldbackDialogProps> = ({
     mutationKey: ["msa-createPaymentHoldback", contractId],
     mutationFn: async (payload: any) => {
       const res = await postRequest({
-        url: `/contract/manager/msa-contract/${contractId}/payment-holdbacks`,
+        url: `/contract/manager/msa-contracts/${contractId}/payment-holdbacks`,
         payload,
       });
-      return res.data as { message?: string };
+      const body = res.data as { status?: string; message?: string };
+      // BE may return HTTP 200 with `{status:"fail", message:"..."}` for
+      // business-rule violations (e.g. "Pending holdback exists"). Treat that
+      // as a failure so the dialog stays open and the message surfaces.
+      if (body?.status === "fail") {
+        throw new Error(body?.message || "Failed to release holdback");
+      }
+      return body;
     },
     onSuccess: async (res) => {
       setOpen(false);
@@ -198,8 +168,13 @@ const MsaReleaseHoldbackDialog: React.FC<MsaReleaseHoldbackDialogProps> = ({
       await queryClient.invalidateQueries({ queryKey: holdbacksQueryKey });
       toastHandler.success("Success", res?.message ?? "Holdback released successfully");
     },
-    onError: (error: ApiResponseError) => {
-      toastHandler.error("Error", error);
+    onError: (error: any) => {
+      toastHandler.error(
+        "Error",
+        error?.response?.data?.message ||
+          error?.message ||
+          "Failed to release holdback",
+      );
     },
   });
 
@@ -233,7 +208,6 @@ const MsaReleaseHoldbackDialog: React.FC<MsaReleaseHoldbackDialogProps> = ({
       }
 
       const payload = {
-        invoiceId: data.invoiceId,
         type: data.releaseType === "Full Release" ? "full" : "partial",
         amount: data.releaseType === "Full Release" ? 0 : Number(data.amountToBeReleased),
         description: data.description,
@@ -285,14 +259,6 @@ const MsaReleaseHoldbackDialog: React.FC<MsaReleaseHoldbackDialogProps> = ({
                 { label: "Partial Release", value: "Partial Release" },
                 { label: "Full Release", value: "Full Release" },
               ]}
-            />
-
-            <Forger
-              name="invoiceId"
-              label="Invoice"
-              component={TextSelect}
-              placeholder="Select Invoice"
-              options={invoiceOptions}
             />
 
             {!isFullRelease && (

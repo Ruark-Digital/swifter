@@ -32,17 +32,26 @@ const schema = yup.object({
 type SubmitLemDialogProps = {
   trigger: React.ReactElement;
   contractId: string;
+  /** Optional override of the POST endpoint. When omitted, defaults to
+   *  `vendorApi.createLem` which hits `/contract/vendor/contracts/{id}/lems`.
+   *  MSA callers pass `/contract/vendor/msa-contracts/{contractId}/lems`. */
+  createPath?: string;
+  /** Optional extra query key to invalidate after successful submission.
+   *  MSA callers pass the wrapped `useUserQueryKey` list key so the MSA tab
+   *  refetches after submit. The Contract-side default keys are always
+   *  invalidated regardless. */
+  invalidateQueryKey?: readonly unknown[];
 };
 
 const UploadElement = () => {
   return (
-    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] bg-white px-4">
-      <UploadCloud className="h-10 w-10 text-[#2A4467]" />
+    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] dark:border-slate-600 bg-white dark:bg-slate-800 px-4">
+      <UploadCloud className="h-10 w-10 text-[#2A4467] dark:text-blue-300" />
       <div className="flex flex-col items-center gap-1 text-center">
-        <div className="text-sm font-semibold text-[#2A4467]">
+        <div className="text-sm font-semibold text-[#2A4467] dark:text-blue-300">
           Drag &amp; Drop or Click to choose files
         </div>
-        <div className="text-xs font-medium text-[#9CA3AF]">
+        <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
           Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
         </div>
       </div>
@@ -54,14 +63,14 @@ const FilesListItem = ({ file }: { file: File }) => {
   const { control, setValue } = useFormContext<SubmitLemFormValues>();
   const value = useWatch({ control, name: "files" });
   return (
-    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-3">
+    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB]">
-          <FileText className="h-5 w-5 text-[#2A4467]" />
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
+          <FileText className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium max-w-xs text-[#0F0F0F]">{file.name}</div>
-          <div className="text-xs font-medium text-[#9CA3AF]">
+          <div className="truncate text-sm font-medium max-w-xs text-[#0F0F0F] dark:text-slate-100">{file.name}</div>
+          <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
             {getSimpleFileExtension(file.name).toUpperCase()} • {formatFileSize(file.size)}
           </div>
         </div>
@@ -69,7 +78,7 @@ const FilesListItem = ({ file }: { file: File }) => {
       <button
         type="button"
         onClick={() => setValue("files", (value ?? []).filter((f) => f.name !== file.name))}
-        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] hover:text-red-500 transition-colors"
+        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] dark:text-slate-400 hover:text-red-500 transition-colors"
       >
         <X className="h-4 w-4" />
       </button>
@@ -77,7 +86,12 @@ const FilesListItem = ({ file }: { file: File }) => {
   );
 };
 
-const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({ trigger, contractId }) => {
+const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
+  trigger,
+  contractId,
+  createPath,
+  invalidateQueryKey,
+}) => {
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const toastHandler = useToastHandler();
@@ -116,8 +130,12 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({ trigger, contractId }
   });
 
   const createMutation = useMutation({
-    mutationKey: ["createLem", contractId],
+    mutationKey: ["createLem", contractId, createPath ?? "default"],
     mutationFn: async (data: any) => {
+      if (createPath) {
+        const res = await postRequest({ url: createPath, payload: data });
+        return res as ApiResponse<any>;
+      }
       return await vendorApi.createLem(contractId, data);
     },
     onSuccess: async () => {
@@ -129,8 +147,9 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({ trigger, contractId }
       await queryClient.invalidateQueries({
         queryKey: ["lem-list", contractId],
       });
-      // Also invalidate invoices as LEMs might affect them or appear there? 
-      // Based on InvoiceTabContent, it fetches invoices.
+      if (invalidateQueryKey) {
+        await queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
+      }
       toastHandler.success("Success", "LEM submitted successfully");
     },
     onError: (error: any) => {
@@ -200,7 +219,7 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({ trigger, contractId }
       <DialogContent className="h-[866px] max-h-[90vh] overflow-y-auto gap-0 border-0 p-0">
         <Forge control={control} onSubmit={onSubmit} className="flex flex-col h-full">
           <div className="flex items-center justify-between px-8 py-8">
-            <h2 className="text-xl font-semibold text-[#0F0F0F]">Submit LEM</h2>
+            <h2 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">Submit LEM</h2>
           </div>
 
           <div className="flex flex-1 flex-col gap-6 px-8">
@@ -227,7 +246,7 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({ trigger, contractId }
             />
 
             <div className="flex flex-col gap-3">
-              <label className="text-base font-normal text-[#0F0F0F]">Upload Files</label>
+              <label className="text-base font-normal text-[#0F0F0F] dark:text-slate-100">Upload Files</label>
               <Forger
                 name="files"
                 component={TextFileUploader}
@@ -256,7 +275,7 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({ trigger, contractId }
               type="button"
               onClick={() => setOpen(false)}
               disabled={isSubmitting}
-              className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-3.5 text-base font-semibold text-[#0F0F0F] shadow-sm hover:bg-[#E5E7EB] disabled:opacity-50"
+              className="flex-1 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F3F4F6] dark:bg-slate-800 py-3.5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 shadow-sm hover:bg-[#E5E7EB] dark:hover:bg-slate-700 disabled:opacity-50"
             >
               Back
             </button>

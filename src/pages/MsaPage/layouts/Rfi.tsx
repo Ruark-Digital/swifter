@@ -1,6 +1,6 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { TabsContent } from "@/components/ui/tabs";
 import { DataTable } from "@/components/layouts/DataTable";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,7 +28,9 @@ import {
   TextDatePicker,
   TextFileUploader,
   TextInput,
+  TextSelect,
 } from "@/components/layouts/FormInputs";
+import type { Option } from "@/components/ui/multiselect";
 import { FileUploaderItem } from "@/components/ui/file-upload";
 import { Check, CloudUpload, Search, Share2, X } from "lucide-react";
 import { useWatch } from "react-hook-form";
@@ -48,10 +50,17 @@ import type {
   ContractRfiDTO,
   ContractRFIDetailDTO,
   ContractRfiResponseDTO,
+  ContractCommentDTO,
   ManagerListRfisQuery,
 } from "@/pages/ContractManagementPage/api/contractManagerApi";
 import type { UploadURLs } from "@/pages/ContractManagementPage/lib/contractChanges";
 import RfiStatsCards from "@/pages/ContractManagementPage/components/RfiStatsCards";
+import {
+  DocumentItem,
+  type DocType,
+} from "@/pages/ContractManagementPage/components/DocumentItem";
+import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
@@ -111,8 +120,9 @@ const formatDate = (value?: string | Date) => formatDateTZ(value, "MMMM dd, yyyy
 const statusTone = (status?: string) => {
   const normalized = status?.toLowerCase();
   if (normalized === "open") return "bg-[#EAF7EE] text-[#43A047]";
-  if (normalized === "closed") return "bg-[#FEECEC] text-[#E53935]";
-  return "bg-slate-100 text-slate-700";
+  if (normalized === "closed")
+    return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+  return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 };
 
 const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
@@ -123,16 +133,80 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
+  const {
+    isManager,
+    isApprover,
+    isVendor,
+    isProjectManager,
+    isAdmin,
+    isViewOnly,
+  } = useUserRole();
   const { control, reset } = useForge({
     defaultValues: {
       rfiTitle: "",
       responseDeadline: undefined,
       question: "",
       files: null,
+      responder: "",
     },
   });
   const [isSuccess, setIsSuccess] = React.useState(false);
   const files = useWatch({ control, name: "files" }) as File[] | null;
+
+  // Personnel endpoint is role-scoped. MSA has its own per-role personnel
+  // routes under /msa-contracts/{id}/personnel for all four roles per the
+  // full swagger spec — see memory be-msa-parallel-endpoints-default-assumption.
+  const personnelUrl = React.useMemo(() => {
+    if (isManager || isAdmin)
+      return `/contract/manager/msa-contracts/${contractId}/personnel`;
+    if (isApprover)
+      return `/contract/approver/msa-contracts/${contractId}/personnel`;
+    if (isVendor || isProjectManager)
+      return `/contract/vendor/msa-contracts/${contractId}/personnel`;
+    if (isViewOnly)
+      return `/contract/user/msa-contracts/${contractId}/personnel`;
+    return `/contract/user/msa-contracts/${contractId}/personnel`;
+  }, [
+    contractId,
+    isAdmin,
+    isApprover,
+    isManager,
+    isProjectManager,
+    isVendor,
+    isViewOnly,
+  ]);
+
+  const { data: personnelData } = useQuery<
+    ApiResponse<
+      Array<{
+        _id: string;
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        role?: { name: string } | string;
+      }>
+    >,
+    ApiResponseError
+  >({
+    queryKey: ["msa-rfi-personnel", contractId, personnelUrl],
+    queryFn: async () => await getRequest({ url: personnelUrl }),
+  });
+
+  const personnelOptions = React.useMemo<Option[]>(() => {
+    const list = Array.isArray(personnelData?.data?.data)
+      ? personnelData?.data?.data
+      : [];
+    return (
+      list?.map((p) => ({
+        label:
+          p.firstName && p.lastName
+            ? `${p.firstName} (${p.lastName})`
+            : p.firstName || (p.email ?? p._id),
+        value: p._id,
+        searchText: [p.firstName, p.lastName, p.email].filter(Boolean).join(" "),
+      })) ?? []
+    );
+  }, [personnelData?.data?.data]);
 
   const { mutateAsync: uploadFile, isPending: isUploadingFiles } = useMutation<
     ApiResponse<UploadURLs[]>,
@@ -183,10 +257,15 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
     responseDeadline?: Date;
     question: string;
     files: File[] | null;
+    responder?: string;
   }) => {
     const payload: ContractRfiDTO = {
       title: data.rfiTitle,
       description: data.question,
+      // BE field is singular `responder?: string` — must be the personnel
+      // option's `_id`, not the display label.
+      // See memory project_rfi_responder_singular.
+      responder: data.responder || undefined,
       deadline: data.responseDeadline ? data.responseDeadline.toISOString() : undefined,
     };
 
@@ -238,7 +317,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
             {getFileIcon(extension)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-900 truncate">{file.name}</p>
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{file.name}</p>
             <p className="text-xs text-slate-500">
               {extension || "FILE"} • {formatFileSize(file.size)}
             </p>
@@ -264,14 +343,14 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
             <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#22C55E] text-[#22C55E]">
               <Check className="h-8 w-8" />
             </div>
-            <div className="text-base font-semibold text-[#0F0F0F]">
+            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
               RFI Issued Successfully
             </div>
             <div className="flex w-full items-center gap-4">
               <DialogClose asChild>
                 <button
                   type="button"
-                  className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F]"
+                  className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] dark:bg-slate-800 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
                 >
                   Close
                 </button>
@@ -289,7 +368,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
         ) : (
           <>
             <div className="flex items-center justify-between px-8 pt-8">
-              <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
+              <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Issue RFI
               </DialogTitle>
             </div>
@@ -314,6 +393,13 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                   component={TextArea}
                   rows={5}
                 />
+                <Forger
+                  name="responder"
+                  label="Select Responder"
+                  placeholder="Search and select a responder"
+                  component={TextSelect}
+                  options={personnelOptions}
+                />
                 <div className="space-y-2">
                   <Forger
                     name="files"
@@ -326,7 +412,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                           <p className="text-base font-semibold text-[#2A4467]">
                             Drag & Drop or Click to choose files
                           </p>
-                          <p className="text-sm text-[#6B7280]">
+                          <p className="text-sm text-[#6B7280] dark:text-slate-400">
                             Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
                           </p>
                         </div>
@@ -363,7 +449,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-12 flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB]"
+                      className="h-12 flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] dark:bg-slate-800 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 hover:bg-[#E5E7EB]"
                       disabled={isSubmitting}
                     >
                       Cancel
@@ -394,6 +480,8 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   fallback,
 }) => {
   const [open, setOpen] = React.useState(false);
+  const queryClient = useQueryClient();
+  const toastHandler = useToastHandler();
 
   const { data, isLoading } = useQuery({
     queryKey: ["msaRfiDetail", contractId, rfiId, basePath],
@@ -407,6 +495,75 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   });
 
   const detail = (data?.data as any)?.contractRfi ?? (data?.data as any) ?? fallback;
+  const isResponse = (data?.data as any)?.isResponse ?? false;
+
+  const commentsQueryKey = useUserQueryKey([
+    "msa-rfi-comments",
+    contractId,
+    rfiId,
+    basePath,
+  ]);
+
+  const { data: commentsRes, isLoading: isCommentsLoading } = useQuery<
+    { data?: { data?: ContractCommentDTO[]; page?: number; limit?: number } },
+    ApiResponseError
+  >({
+    queryKey: commentsQueryKey,
+    queryFn: async () => {
+      const response = await getRequest({
+        url: `${basePath}/${rfiId}/comment`,
+      });
+      return response.data as {
+        data?: { data?: ContractCommentDTO[]; page?: number; limit?: number };
+      };
+    },
+    enabled: open && Boolean(contractId) && Boolean(rfiId),
+    staleTime: 60000,
+  });
+
+  const addCommentMutation = useMutation({
+    mutationKey: ["msa-rfi-comments", "add", contractId, rfiId, basePath],
+    mutationFn: async (payload: { content: string }) => {
+      return await postRequest({
+        url: `${basePath}/${rfiId}/comment`,
+        payload,
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: commentsQueryKey });
+    },
+    onError: (error) => {
+      toastHandler.error("RFI Comment", error as ApiResponseError);
+    },
+  });
+
+  const comments = (commentsRes?.data?.data ?? []) as Array<
+    ContractCommentDTO & {
+      createdBy?: { name?: string; email?: string };
+    }
+  >;
+
+  const getCommentAuthor = (comment: ContractCommentDTO) =>
+    comment.user?.name ??
+    (comment as { createdBy?: { name?: string } }).createdBy?.name ??
+    comment.replyTo?.name ??
+    "Unknown";
+
+  const getCommentEmail = (comment: ContractCommentDTO) =>
+    comment.user?.email ??
+    (comment as { createdBy?: { email?: string } }).createdBy?.email ??
+    comment.replyTo?.email ??
+    "";
+
+  const handleSendComment = async (content: string) => {
+    if (!content.trim()) return;
+    if (!contractId || !rfiId) return;
+    try {
+      await addCommentMutation.mutateAsync({ content });
+    } catch {
+      return;
+    }
+  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -418,7 +575,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
         <div className="space-y-6">
           <SheetHeader className="space-y-0">
             <div className="flex items-center justify-between">
-              <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+              <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 RFI
               </SheetTitle>
               <SheetClose asChild>
@@ -435,7 +592,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <div className="text-xs font-medium text-[#9CA3AF]">RFI Details</div>
-                <div className="text-base font-semibold text-[#0F0F0F]">
+                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   {isLoading ? "Loading..." : detail?.rfiId || detail?._id || rfiId}
                 </div>
               </div>
@@ -448,69 +605,256 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                 {detail?.status || "-"}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-5">
-              <LabelRow
-                label="RFI ID"
-                value={isLoading ? "Loading..." : detail?.rfiId || detail?._id || "-"}
-              />
-              <LabelRow label="Type" value={isLoading ? "Loading..." : detail?.type || "-"} />
-              <LabelRow
-                label="Submission Date"
-                value={isLoading ? "Loading..." : formatDate(detail?.createdAt)}
-              />
-              <LabelRow
-                label="Response Deadline"
-                value={isLoading ? "Loading..." : formatDate(detail?.deadline)}
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-[#9CA3AF]">Title</div>
-              <div className="text-sm text-[#374151]">
-                {isLoading ? "Loading..." : detail?.title || "-"}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-[#9CA3AF]">Question / Description</div>
-              <div className="text-sm text-[#374151]">
-                {isLoading ? "Loading..." : detail?.description || "-"}
-              </div>
-            </div>
-            {Array.isArray(detail?.files) && detail.files.length > 0 ? (
-              <div className="space-y-2">
-                <div className="text-xs font-medium text-[#9CA3AF]">Attachments</div>
-                <div className="space-y-2">
-                  {detail.files.map((file: any, index: number) => {
-                    const ext = getFileExtension(file?.name || "", file?.type || "");
-                    return (
-                      <div
-                        key={`${file?.name || "attachment"}-${index}`}
-                        className="flex items-center justify-between rounded-xl border border-[#E5E7EB] px-3 py-2"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-md bg-slate-100 flex items-center justify-center text-xs font-semibold text-slate-700">
-                            {ext}
-                          </div>
-                          <div className="text-sm text-slate-700">{file?.name || "Attachment"}</div>
-                        </div>
-                        {file?.url ? (
-                          <Button
-                            variant="link"
-                            className="h-auto p-0 text-[#43A047] font-semibold"
-                            onClick={() => window.open(file.url, "_blank", "noopener,noreferrer")}
-                          >
-                            Open
-                          </Button>
-                        ) : null}
-                      </div>
-                    );
-                  })}
+
+            <Tabs defaultValue="overview" className="space-y-6">
+              <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
+                <TabsTrigger
+                  value="overview"
+                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                >
+                  Overview
+                </TabsTrigger>
+                {isResponse ? (
+                  <TabsTrigger
+                    value="response"
+                    className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                  >
+                    Response
+                  </TabsTrigger>
+                ) : null}
+                <TabsTrigger
+                  value="comments"
+                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                >
+                  Comments
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-6">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+                  <LabelRow
+                    label="RFI ID"
+                    value={isLoading ? "Loading..." : detail?.rfiId || detail?._id || "-"}
+                  />
+                  <LabelRow label="Type" value={isLoading ? "Loading..." : detail?.type || "-"} />
+                  <LabelRow
+                    label="Submission Date"
+                    value={isLoading ? "Loading..." : formatDate(detail?.createdAt)}
+                  />
+                  <LabelRow
+                    label="Response Deadline"
+                    value={isLoading ? "Loading..." : formatDate(detail?.deadline)}
+                  />
                 </div>
-              </div>
-            ) : null}
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-[#9CA3AF]">Title</div>
+                  <div className="text-sm text-[#374151] dark:text-slate-200">
+                    {isLoading ? "Loading..." : detail?.title || "-"}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-[#9CA3AF]">Question / Description</div>
+                  <div className="text-sm text-[#374151] dark:text-slate-200">
+                    {isLoading ? "Loading..." : detail?.description || "-"}
+                  </div>
+                </div>
+                {Array.isArray(detail?.files) && detail.files.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-[#9CA3AF]">Attachments</div>
+                    <div className="space-y-2">
+                      {detail.files.map((file: any, index: number) => {
+                        const ext = getFileExtension(file?.name || "", file?.type || "");
+                        return (
+                          <div
+                            key={`${file?.name || "attachment"}-${index}`}
+                            className="flex items-center justify-between rounded-xl border border-[#E5E7EB] px-3 py-2"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-md bg-slate-100 flex items-center justify-center text-xs font-semibold text-slate-700">
+                                {ext}
+                              </div>
+                              <div className="text-sm text-slate-700 dark:text-slate-200">{file?.name || "Attachment"}</div>
+                            </div>
+                            {file?.url ? (
+                              <Button
+                                variant="link"
+                                className="h-auto p-0 text-[#43A047] font-semibold"
+                                onClick={() => window.open(file.url, "_blank", "noopener,noreferrer")}
+                              >
+                                Open
+                              </Button>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </TabsContent>
+
+              <TabsContent value="response" className="space-y-6">
+                <RfiResponseContent
+                  contractId={contractId}
+                  rfiId={rfiId}
+                  basePath={basePath}
+                />
+              </TabsContent>
+
+              <TabsContent value="comments" className="space-y-4">
+                {isCommentsLoading ? (
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                    Loading comments...
+                  </div>
+                ) : comments.length ? (
+                  <div className="space-y-4">
+                    {comments.map((comment, index) => (
+                      <div
+                        key={comment._id ?? `${index}`}
+                        className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 dark:bg-slate-900 p-4"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-sm font-semibold text-[#111827] dark:text-slate-100">
+                              {getCommentAuthor(comment)}
+                            </div>
+                            {getCommentEmail(comment) ? (
+                              <div className="text-xs text-[#6B7280] dark:text-slate-400">
+                                {getCommentEmail(comment)}
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="text-xs text-[#6B7280] dark:text-slate-400">
+                            {formatDateTZ(comment.createdAt, "dd MMM yyyy")}
+                          </div>
+                        </div>
+                        <div
+                          className="text-sm text-[#374151] dark:text-slate-200 mt-3 prose prose-sm dark:prose-invert max-w-none"
+                          dangerouslySetInnerHTML={{
+                            __html: comment.content ?? "",
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                    No comments yet.
+                  </div>
+                )}
+
+                <MessageComposer
+                  onSend={(content) => {
+                    void handleSendComment(content);
+                  }}
+                  isLoading={addCommentMutation.isPending}
+                  replyToUser={{ name: "Vendor" }}
+                  availableUsers={[
+                    { name: "Manager" },
+                    { name: "Approver" },
+                    { name: "Vendor" },
+                  ]}
+                  currentUser={{ name: "You" }}
+                  sendType="reply"
+                  isNewChat={false}
+                  onSendTypeChange={() => {}}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </SheetContent>
     </Sheet>
+  );
+};
+
+const RfiResponseContent: React.FC<{
+  contractId: string;
+  rfiId: string;
+  basePath: string;
+}> = ({ contractId, rfiId, basePath }) => {
+  const { data: respRes } = useQuery({
+    queryKey: useUserQueryKey([
+      "msa-rfi-response",
+      contractId,
+      rfiId,
+      basePath,
+    ]),
+    queryFn: async () => {
+      const response = await getRequest({
+        url: `${basePath}/${rfiId}/response`,
+      });
+      return response.data as { data?: unknown };
+    },
+    enabled: Boolean(rfiId),
+    staleTime: 60000,
+  });
+
+  const resp = Array.isArray((respRes as any)?.data)
+    ? ((respRes as any).data[0] ?? {})
+    : ((respRes as any)?.data ?? {});
+  const description = resp?.description ?? "-";
+  const files = (resp?.files ?? []) as Array<{
+    name?: string;
+    url?: string;
+    type?: string;
+    size?: string | number;
+  }>;
+
+  const getSizeLabel = (size?: string | number) => {
+    if (size === undefined || size === null) return "N/A";
+    if (typeof size === "number") return formatFileSize(size);
+    const numeric = Number(size);
+    return Number.isFinite(numeric) ? formatFileSize(numeric) : String(size);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <div className="text-xs font-medium text-[#9CA3AF]">
+          Response / Description
+        </div>
+        <div className="text-sm text-[#374151] dark:text-slate-200">
+          {description}
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+          Attached Documents
+        </div>
+        <div className="grid gap-3 sm:grid-cols-1">
+          {files.map((file, index) => {
+            const name = file.name ?? "Untitled";
+            const type = getFileExtension(name, file.type ?? "");
+            const d: DocType = {
+              id: `${name}-${index}`,
+              name,
+              type: type || "FILE",
+              size: getSizeLabel(file.size),
+              url: file.url,
+              icon: getFileIcon(type || "FILE"),
+            };
+            return (
+              <DocumentItem
+                key={d.id}
+                d={d}
+                handlePreview={() => {
+                  window.open(d.url || "#", "_blank");
+                }}
+                handleDownload={() => {
+                  if (!d.url) return;
+                  const link = document.createElement("a");
+                  link.href = d.url;
+                  link.download = d.name;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+              />
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -523,6 +867,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
+  const { isApprover } = useUserRole();
   const { control, reset } = useForge({
     defaultValues: {
       response: "",
@@ -578,6 +923,16 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
   const fileCount = files?.length ?? 0;
 
   const handleSubmit = async (data: { response: string; files: File[] | null }) => {
+    // Mirror Contract: approver-only at the submit step. Manager and
+    // vendor/PM see the Respond button (BE permits them) but get a
+    // toast error here instead of submitting. Product decision 260525.
+    if (!isApprover) {
+      toastHandler.error("RFI Response", {
+        message: "Only approvers can respond to RFIs.",
+      } as ApiResponseError);
+      return;
+    }
+
     const payload: ContractRfiResponseDTO = {
       description: data.response,
     };
@@ -630,7 +985,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
             {getFileIcon(extension)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-900 truncate">{file.name}</p>
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{file.name}</p>
             <p className="text-xs text-slate-500">
               {extension || "FILE"} • {formatFileSize(file.size)}
             </p>
@@ -645,7 +1000,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-8 pt-8">
-          <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
+          <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
             Respond to RFI
           </DialogTitle>
         </div>
@@ -705,7 +1060,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-12 flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB]"
+                  className="h-12 flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] dark:bg-slate-800 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 hover:bg-[#E5E7EB]"
                   disabled={isSubmitting}
                 >
                   Cancel
@@ -734,14 +1089,18 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   const lastErrorRef = React.useRef<{ stats?: unknown; list?: unknown }>({});
   const [search, setSearch] = React.useState("");
   const [filterTab, setFilterTab] = React.useState<FilterTab>("all");
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   const basePath = React.useMemo(() => {
-    if (isManager || isAdmin) return `/contract/manager/msa-contract/${contractId}/rfi`;
-    if (isApprover) return `/contract/approver/msa-contract/${contractId}/rfi`;
+    if (isManager || isAdmin) return `/contract/manager/msa-contracts/${contractId}/rfi`;
+    if (isApprover) return `/contract/approver/msa-contracts/${contractId}/rfi`;
     if (isVendor || isProjectManager)
-      return `/contract/vendor/msa-contract/${contractId}/rfi`;
-    if (isViewOnly) return `/contract/user/msa-contract/${contractId}/rfi`;
-    return `/contract/user/msa-contract/${contractId}/rfi`;
+      return `/contract/vendor/msa-contracts/${contractId}/rfi`;
+    if (isViewOnly) return `/contract/user/msa-contracts/${contractId}/rfi`;
+    return `/contract/user/msa-contracts/${contractId}/rfi`;
   }, [
     contractId,
     isAdmin,
@@ -753,13 +1112,22 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   ]);
 
   const statsPath = `${basePath}/stats`;
-  const listQueryKey = useUserQueryKey(["msa-rfi-list", contractId, basePath]);
+  const listQueryKey = useUserQueryKey([
+    "msa-rfi-list",
+    contractId,
+    pagination.pageIndex,
+    pagination.pageSize,
+    basePath,
+  ]);
   const statsQueryKey = useUserQueryKey(["msa-rfi-stats", contractId, statsPath]);
 
   const { data: listRes, isLoading: isListLoading, error: listError } = useQuery({
     queryKey: listQueryKey,
     queryFn: async () => {
-      const query: ManagerListRfisQuery = { page: 1, limit: 10 };
+      const query: ManagerListRfisQuery = {
+        page: pagination.pageIndex + 1,
+        limit: pagination.pageSize,
+      };
       const params = new URLSearchParams();
       if (query.page) params.append("page", String(query.page));
       if (query.limit) params.append("limit", String(query.limit));
@@ -858,7 +1226,7 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
         accessorKey: "title",
         header: "Title",
         cell: ({ getValue }) => (
-          <div className="max-w-[280px] text-sm text-slate-700">{getValue<string>() || "-"}</div>
+          <div className="max-w-[280px] text-sm text-slate-700 dark:text-slate-200">{getValue<string>() || "-"}</div>
         ),
       },
       {
@@ -954,17 +1322,19 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   return (
     <TabsContent value="rfi" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
+        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F] dark:text-slate-100">
           RFI
         </h3>
         <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F]"
-          >
-            <Share2 className="mr-2 h-5 w-5" />
-            Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="MsaContract">
+            <Button
+              variant="outline"
+              className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+            >
+              <Share2 className="mr-2 h-5 w-5" />
+              Export Report
+            </Button>
+          </ExportReportSheet>
           {canCreate ? (
             <IssueRfiDialog
               contractId={contractId}
@@ -1017,32 +1387,35 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
         columns={columns}
         options={{
           disableSelection: true,
-          disablePagination: true,
+          manualPagination: true,
+          totalCounts: totalCount,
+          pagination,
+          setPagination,
           isLoading: isListLoading,
         }}
         header={() => (
-          <div className="flex items-center gap-4 border-b border-[#E9E9EB] px-6 py-4">
-            <div className="text-base font-semibold text-[#0F0F0F]">RFI</div>
+          <div className="flex items-center gap-4 border-b border-[#E9E9EB] w-full dark:border-slate-800 px-6 py-4">
+            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">RFI</div>
             <div className="relative w-[320px]">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B]" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search changes"
-                className="h-12 rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
+                className="h-12 rounded-lg border border-[#E5E7EB] dark:border-slate-700 dark:bg-slate-900 pl-9 text-sm text-[#0F0F0F] dark:text-slate-100 placeholder:text-[#6B6B6B] dark:placeholder:text-slate-500"
               />
             </div>
           </div>
         )}
         classNames={{
-          container: "overflow-hidden rounded-xl border border-[#E5E7EB] bg-white",
+          container: "overflow-hidden rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900",
           table: "border-spacing-y-0",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467]",
-          tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467] dark:text-indigo-300",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
         }}
         emptyPlaceholder={
           <div className="px-6 py-8 text-sm text-slate-500">No RFI found.</div>

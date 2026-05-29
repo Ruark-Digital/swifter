@@ -1,6 +1,7 @@
 import React from "react";
 import { ArrowLeft, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -14,6 +15,10 @@ import { formatCurrency } from "@/lib/utils";
 type Props = {
   trigger: React.ReactNode;
   savingId?: string;
+  // Required for the manager savings detail GET, which BE scopes by parent
+  // contract: `/manager/contracts/{contractId}/payment-savings/{savingId}`.
+  // Approver detail is intentionally NOT contract-scoped per swagger.
+  contractId?: string;
   basePath?: string;
   currency?: string;
 };
@@ -32,26 +37,31 @@ type SavingsDetailDTO = {
   }>;
 };
 
-const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, basePath, currency = "USD" }) => {
+const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, contractId, basePath, currency = "USD" }) => {
   const [open, setOpen] = React.useState(false);
   const { isApprover, isManager } = useUserRole();
   const toast = useToastHandler();
 
-  // Phase 2 markdown docs only expose savings detail for manager + approver.
+  // Swagger exposes savings detail for manager + approver only.
   // Vendor/PM/view-only have no documented savings route — match the list
   // gating in `PaymentSummaryTabContent` so the URL maps stay consistent.
+  // Manager path is contract-scoped; approver path is intentionally not
+  // (swagger has `/approver/contracts/payment-savings/{savingId}` flat).
   const rolePrefix = React.useMemo(() => {
     if (basePath) return basePath;
-    if (isManager) return `/contract/manager/contracts/payment-savings`;
+    if (isManager) {
+      if (!contractId) return null;
+      return `/contract/manager/contracts/${contractId}/payment-savings`;
+    }
     if (isApprover) return `/contract/approver/contracts/payment-savings`;
     return null;
-  }, [basePath, isApprover, isManager]);
+  }, [basePath, contractId, isApprover, isManager]);
 
   const { data: detailRes, isLoading, isError, error } = useQuery<{
     message?: string;
     data?: SavingsDetailDTO;
   }>({
-    queryKey: ["contract-savings-detail", rolePrefix, savingId],
+    queryKey: useUserQueryKey(["contract-savings-detail", rolePrefix, savingId]),
     queryFn: async () => {
       const res = await getRequest({ url: `${rolePrefix}/${savingId}` });
       return res.data as any;
@@ -107,17 +117,17 @@ const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, basePath, cur
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="right"
-        className="right-4 top-4 bottom-4 h-[calc(100vh-30px)] sm:max-w-4xl p-0 rounded-2xl border border-[#E5E7EB] overflow-hidden [&>button]:hidden"
+        className="right-4 top-4 bottom-4 h-[calc(100vh-30px)] sm:max-w-4xl p-0 rounded-2xl border border-[#E5E7EB] dark:border-slate-800 overflow-hidden [&>button]:hidden"
       >
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between px-8 pt-7">
             <div className="flex items-center gap-3">
               <SheetClose asChild>
                 <button type="button" className="inline-flex h-9 w-9 items-center justify-center">
-                  <ArrowLeft className="h-5 w-5 text-[#2A4467]" />
+                  <ArrowLeft className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
                 </button>
               </SheetClose>
-              <div className="text-base font-semibold text-[#0F0F0F]">Savings Details</div>
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">Savings Details</div>
             </div>
 
             <SheetClose asChild>
@@ -129,7 +139,7 @@ const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, basePath, cur
 
           <div className="flex-1 overflow-y-auto px-8 pb-8 pt-6">
             <div className="flex items-center justify-between gap-4">
-              <div className="text-lg font-semibold text-[#0F0F0F]">
+              <div className="text-lg font-semibold text-[#0F0F0F] dark:text-slate-100">
                 {isLoading ? (
                   <span className="inline-block h-4 w-56 rounded bg-[#E5E7EB]" />
                 ) : (
@@ -138,7 +148,7 @@ const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, basePath, cur
               </div>
               <button
                 type="button"
-                className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] bg-white px-4 py-2.5 text-sm font-semibold text-[#0F0F0F]"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
               >
                 <img
                   src="/assets/contract-management/payment-summary/share.svg"
@@ -150,7 +160,7 @@ const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, basePath, cur
 
             <div className="mt-6 space-y-6">
               {!savingId ? (
-                <div className="rounded-xl border border-dashed border-[#E5E7EB] p-6 text-sm text-[#6B7280]">
+                <div className="rounded-xl border border-dashed border-[#E5E7EB] dark:border-slate-700 p-6 text-sm text-[#6B7280] dark:text-slate-400">
                   No savings selected.
                 </div>
               ) : isLoading ? (
@@ -165,25 +175,25 @@ const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, basePath, cur
               ) : (
                 <div className="grid grid-cols-2 gap-x-16 gap-y-7">
                   <div className="space-y-2">
-                    <div className="text-xs font-medium text-[#9CA3AF]">Savings Title</div>
-                    <div className="text-sm font-semibold text-[#0F0F0F]">{detail?.title || "—"}</div>
+                    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">Savings Title</div>
+                    <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">{detail?.title || "—"}</div>
                   </div>
                   <div className="space-y-2">
-                    <div className="text-xs font-medium text-[#9CA3AF]">Category</div>
-                    <div className="text-sm font-semibold text-[#0F0F0F]">
+                    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">Category</div>
+                    <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
                       {detail?.category || "—"}
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <div className="text-xs font-medium text-[#9CA3AF]">Amount</div>
-                    <div className="text-sm font-semibold text-[#0F0F0F]">
+                    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">Amount</div>
+                    <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
                       {detail?.amount != null ? formatCurrency(detail?.amount, "en-US", currency) : "—"}
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <div className="text-xs font-medium text-[#9CA3AF]">Submission Date</div>
-                    <div className="text-sm font-semibold text-[#0F0F0F]">
+                    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">Submission Date</div>
+                    <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
                       {formatDate(detail?.submittedDate)}
                     </div>
                   </div>
@@ -191,8 +201,8 @@ const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, basePath, cur
               )}
 
               <div className="space-y-3">
-                <div className="text-xs font-medium text-[#9CA3AF]">Description</div>
-                <div className="text-sm font-medium leading-6 text-[#374151]">
+                <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">Description</div>
+                <div className="text-sm font-medium leading-6 text-[#374151] dark:text-slate-200">
                   {isLoading ? (
                     <span className="inline-block h-4 w-56 rounded bg-[#E5E7EB]" />
                   ) : (
@@ -202,11 +212,11 @@ const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, basePath, cur
               </div>
 
               <div className="space-y-4 pt-2">
-                <div className="text-sm font-semibold text-[#0F0F0F]">Attached Documents</div>
+                <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">Attached Documents</div>
                 {isLoading ? (
                   <div className="grid grid-cols-2 gap-6">
                     {Array.from({ length: 4 }).map((_, idx) => (
-                      <div key={idx} className="h-16 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] animate-pulse" />
+                      <div key={idx} className="h-16 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800 animate-pulse" />
                     ))}
                   </div>
                 ) : (
@@ -220,7 +230,7 @@ const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, basePath, cur
                       />
                     ))}
                     {docs.length === 0 && (
-                      <div className="text-sm text-[#6B7280]">No documents.</div>
+                      <div className="text-sm text-[#6B7280] dark:text-slate-400">No documents.</div>
                     )}
                   </div>
                 )}

@@ -45,11 +45,11 @@ const columns: ColumnDef<VendorContractRow>[] = [
         <a
           href={`/dashboard/contract-management/${row.original.id}`}
           data-testid="vendor-contract-name-link"
-          className="font-medium text-slate-900 underline-offset-2 hover:underline"
+          className="font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
         >
           {row.original.title}
         </a>
-        <span className="text-xs text-slate-500">{row.original.code}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">{row.original.code}</span>
       </div>
     ),
   },
@@ -60,18 +60,22 @@ const columns: ColumnDef<VendorContractRow>[] = [
     header: "Value",
     cell: ({ getValue }) => {
       const v = getValue<string | undefined>();
-      return <span className="font-semibold text-slate-900">{v ?? "-"}</span>;
+      return (
+        <span className="font-semibold text-slate-900 dark:text-slate-100">
+          {v ?? "-"}
+        </span>
+      );
     },
   },
   {
     id: "date",
     header: "Date",
     cell: ({ row }) => (
-      <div className="text-xs text-slate-500">
+      <div className="text-xs text-slate-500 dark:text-slate-400">
         {row.original.published && (
           <div>
             Published:{" "}
-            <span className="font-semibold text-slate-900">
+            <span className="font-semibold text-slate-900 dark:text-slate-100">
               {row.original.published}
             </span>
           </div>
@@ -79,7 +83,7 @@ const columns: ColumnDef<VendorContractRow>[] = [
         {row.original.endDate && (
           <div>
             End Date:{" "}
-            <span className="font-semibold text-slate-900">
+            <span className="font-semibold text-slate-900 dark:text-slate-100">
               {row.original.endDate}
             </span>
           </div>
@@ -212,7 +216,7 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
           <div className="flex items-center w-full justify-between border-b border-[#E9E9EB] dark:border-slate-600 p-3 pt-0">
             <div className="flex items-center gap-3 w-full">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-slate-700">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Contracts
                 </span>
                 <Input

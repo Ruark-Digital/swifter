@@ -258,17 +258,24 @@ const useVendorContractsStats = (enabled = true) => {
   });
 };
 
-const useVendorContracts = (pagination: PaginationState, enabled = true) => {
+const useVendorContracts = (
+  pagination: PaginationState,
+  enabled = true,
+  asPM = false,
+) => {
   const queryKey = useUserQueryKey([
-    "vendor-contracts",
+    asPM ? "pm-contracts" : "vendor-contracts",
     pagination.pageIndex,
     pagination.pageSize,
   ]);
+  const url = asPM
+    ? "/contract/vendor/contracts/me"
+    : "/contract/vendor/contracts";
   return useQuery<VendorContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/vendor/contracts",
+        url,
         config: {
           params: {
             page: pagination.pageIndex + 1,
@@ -318,6 +325,7 @@ const mapContractsToRows = (contracts?: ContractApi[]): ContractRow[] => {
         ? formatDate(c.createdAt, "dd MMM yyyy")
         : undefined,
       endDate: c.endDate ? formatDate(c.endDate, "dd MMM yyyy") : undefined,
+      createdAtRaw: c.createdAt,
       status: mapStatusToLabel(c.status),
       category: c.category,
     };
@@ -404,7 +412,11 @@ const ContractManagementPage: React.FC = () => {
   const { data: vendorStatsData } =
     useVendorContractsStats(isContractVendorLike);
   const { data: vendorContractsData, isLoading: isVendorContractsLoading } =
-    useVendorContracts(vendorPagination, isContractVendorLike);
+    useVendorContracts(
+      vendorPagination,
+      isContractVendorLike,
+      isProjectManager,
+    );
 
   const stats = isApprover ? approverStatsData?.data : statsData?.data;
   const statsCounts = stats
@@ -541,13 +553,13 @@ const ContractManagementPage: React.FC = () => {
               <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
                 <TabsTrigger
                   value="all"
-                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                  className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                 >
                   All Contracts
                 </TabsTrigger>
                 <TabsTrigger
                   value="mine"
-                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                  className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                 >
                   My Contracts
                 </TabsTrigger>

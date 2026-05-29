@@ -323,7 +323,7 @@ Base prefix: `/manager`
 | GET | `/manager/awarded-solicitation` |
 | GET | `/manager/personnel` |
 | GET | `/manager/personnel/contract/:contractId` |
-| GET | `/manager/msa-contract` |
+| GET | `/manager/msa-contracts` |
 | GET | `/manager/contracts/stats` |
 | POST | `/manager/contracts` |
 | GET | `/manager/contracts` |
@@ -437,58 +437,58 @@ Base prefix: `/manager`
 
 | Method | Path |
 |---|---|
-| GET | `/manager/msa-contract/stats` |
-| GET | `/manager/msa-contract` |
-| GET | `/manager/msa-contract/me` |
-| POST | `/manager/msa-contract` |
-| PUT | `/manager/msa-contract/:contractId` |
-| GET | `/manager/msa-contract/:contractId` |
-| GET | `/manager/msa-contract/:contractId/linked-contract` |
-| POST | `/manager/msa-contract/:contractId/payment-holdbacks` |
-| GET | `/manager/msa-contract/:contractId/payment-holdbacks` |
-| GET | `/manager/msa-contract/payment-holdbacks/:holdBackId` |
-| POST | `/manager/msa-contract/:contractId/payment-savings` |
-| GET | `/manager/msa-contract/:contractId/payment-savings` |
-| GET | `/manager/msa-contract/payment-savings/:savingId` |
-| GET | `/manager/msa-contract/:contractId/kpis` |
-| GET | `/manager/msa-contract/:contractId/kpis/:kpiId` |
-| POST | `/manager/msa-contract/:contractId/kpis/:kpiId` |
-| GET | `/manager/msa-contract/:contractId/compliance` |
-| POST | `/manager/msa-contract/:contractId/compliance/:type/:typeId/approve` |
-| GET | `/manager/msa-contract/:contractId/changes/stats` |
-| GET | `/manager/msa-contract/:contractId/changes` |
-| GET | `/manager/msa-contract/:contractId/changes/:changeId` |
-| POST | `/manager/msa-contract/:dataId/change/:type` |
-| POST | `/manager/msa-contract/:contractId/changes/:changeId/approve` |
-| GET | `/manager/msa-contract/:contractId/changes/:changeId/approve/status` |
-| GET | `/manager/msa-contract/:contractId/changes/:changeId/approvers` |
-| GET | `/manager/msa-contract/:contractId/claims/stats` |
-| GET | `/manager/msa-contract/:contractId/claims` |
-| GET | `/manager/msa-contract/:contractId/claims/:claimId` |
-| GET | `/manager/msa-contract/:contractId/claims/:claimId/comments` |
-| POST | `/manager/msa-contract/:contractId/claims/:claimId/comments` |
-| POST | `/manager/msa-contract/:contractId/claims/:claimId/comments/:commentId/reply` |
-| POST | `/manager/msa-contract/:contractId/claims/:claimId/approve` |
-| GET | `/manager/msa-contract/:contractId/claims/:claimId/approve/status` |
-| GET | `/manager/msa-contract/:contractId/claims/:claimId/approvers` |
-| POST | `/manager/msa-contract/:contractId/claims/:claimId/approvers` |
-| GET | `/manager/msa-contract/:contractId/rfi/stats` |
-| POST | `/manager/msa-contract/:dataId/rfi` |
-| POST | `/manager/msa-contract/:dataId/rfi/:rfiId/response` |
-| GET | `/manager/msa-contract/:contractId/rfi` |
-| GET | `/manager/msa-contract/:contractId/rfi/:rfiId` |
-| GET | `/manager/msa-contract/:contractId/rfi/:rfiId/response` |
-| GET | `/manager/msa-contract/:contractId/rfi/:rfiId/comment` |
-| POST | `/manager/msa-contract/:contractId/rfi/:rfiId/comment` |
-| POST | `/manager/msa-contract/:contractId/rfi/:rfiId/comment/:commentId/reply` |
-| GET | `/manager/msa-contract/:contractId/invoice/stats` |
-| GET | `/manager/msa-contract/:contractId/invoice` |
-| GET | `/manager/msa-contract/:contractId/invoice/:invoiceId` |
-| POST | `/manager/msa-contract/:contractId/amendments` |
-| GET | `/manager/msa-contract/:contractId/amendments/:amendmentId` |
-| POST | `/manager/msa-contract/:contractId/amendments/:amendmentId/approvers` |
-| POST | `/manager/msa-contract/:contractId/amendments/:amendmentId/approve` |
-| GET | `/manager/msa-contract/:contractId/clauses` |
+| GET | `/manager/msa-contracts/stats` |
+| GET | `/manager/msa-contracts` |
+| GET | `/manager/msa-contracts/me` |
+| POST | `/manager/msa-contracts` |
+| PUT | `/manager/msa-contracts/:contractId` |
+| GET | `/manager/msa-contracts/:contractId` |
+| GET | `/manager/msa-contracts/:contractId/linked-contract` |
+| POST | `/manager/msa-contracts/:contractId/payment-holdbacks` |
+| GET | `/manager/msa-contracts/:contractId/payment-holdbacks` |
+| GET | `/manager/msa-contracts/payment-holdbacks/:holdBackId` |
+| POST | `/manager/msa-contracts/:contractId/payment-savings` |
+| GET | `/manager/msa-contracts/:contractId/payment-savings` |
+| GET | `/manager/msa-contracts/payment-savings/:savingId` |
+| GET | `/manager/msa-contracts/:contractId/kpis` |
+| GET | `/manager/msa-contracts/:contractId/kpis/:kpiId` |
+| POST | `/manager/msa-contracts/:contractId/kpis/:kpiId` |
+| GET | `/manager/msa-contracts/:contractId/compliance` |
+| POST | `/manager/msa-contracts/:contractId/compliance/:type/:typeId/approve` |
+| GET | `/manager/msa-contracts/:contractId/changes/stats` |
+| GET | `/manager/msa-contracts/:contractId/changes` |
+| GET | `/manager/msa-contracts/:contractId/changes/:changeId` |
+| POST | `/manager/msa-contracts/:dataId/change/:type` |
+| POST | `/manager/msa-contracts/:contractId/changes/:changeId/approve` |
+| GET | `/manager/msa-contracts/:contractId/changes/:changeId/approve/status` |
+| GET | `/manager/msa-contracts/:contractId/changes/:changeId/approvers` |
+| GET | `/manager/msa-contracts/:contractId/claims/stats` |
+| GET | `/manager/msa-contracts/:contractId/claims` |
+| GET | `/manager/msa-contracts/:contractId/claims/:claimId` |
+| GET | `/manager/msa-contracts/:contractId/claims/:claimId/comments` |
+| POST | `/manager/msa-contracts/:contractId/claims/:claimId/comments` |
+| POST | `/manager/msa-contracts/:contractId/claims/:claimId/comments/:commentId/reply` |
+| POST | `/manager/msa-contracts/:contractId/claims/:claimId/approve` |
+| GET | `/manager/msa-contracts/:contractId/claims/:claimId/approve/status` |
+| GET | `/manager/msa-contracts/:contractId/claims/:claimId/approvers` |
+| POST | `/manager/msa-contracts/:contractId/claims/:claimId/approvers` |
+| GET | `/manager/msa-contracts/:contractId/rfi/stats` |
+| POST | `/manager/msa-contracts/:dataId/rfi` |
+| POST | `/manager/msa-contracts/:dataId/rfi/:rfiId/response` |
+| GET | `/manager/msa-contracts/:contractId/rfi` |
+| GET | `/manager/msa-contracts/:contractId/rfi/:rfiId` |
+| GET | `/manager/msa-contracts/:contractId/rfi/:rfiId/response` |
+| GET | `/manager/msa-contracts/:contractId/rfi/:rfiId/comment` |
+| POST | `/manager/msa-contracts/:contractId/rfi/:rfiId/comment` |
+| POST | `/manager/msa-contracts/:contractId/rfi/:rfiId/comment/:commentId/reply` |
+| GET | `/manager/msa-contracts/:contractId/invoice/stats` |
+| GET | `/manager/msa-contracts/:contractId/invoice` |
+| GET | `/manager/msa-contracts/:contractId/invoice/:invoiceId` |
+| POST | `/manager/msa-contracts/:contractId/amendments` |
+| GET | `/manager/msa-contracts/:contractId/amendments/:amendmentId` |
+| POST | `/manager/msa-contracts/:contractId/amendments/:amendmentId/approvers` |
+| POST | `/manager/msa-contracts/:contractId/amendments/:amendmentId/approve` |
+| GET | `/manager/msa-contracts/:contractId/clauses` |
 
 ---
 
@@ -512,7 +512,7 @@ See route source for complete list:
 
 ### 9.2 Vendor MSA Contract
 
-Base prefix: `/vendor/msa-contract`
+Base prefix: `/vendor/msa-contracts`
 
 Includes:
 - stats, list, detail
@@ -541,7 +541,7 @@ See:
 
 ### 10.2 User MSA Contract
 
-Base prefix: `/user/msa-contract`
+Base prefix: `/user/msa-contracts`
 
 Read-focused routes for MSA:
 - stats, list, detail
@@ -572,7 +572,7 @@ See:
 
 ### 11.2 Approver MSA Contract
 
-Base prefix: `/approver/msa-contract`
+Base prefix: `/approver/msa-contracts`
 
 Includes equivalent approval and read flows for MSA contract lifecycle.
 

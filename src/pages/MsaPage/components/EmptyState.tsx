@@ -14,12 +14,12 @@ const EmptyState: React.FC = () => {
     >
       <HugeiconsIcon
         icon={FolderOffIcon}
-        className="h-14 w-14 text-slate-400"
+        className="h-14 w-14 text-slate-400 dark:text-slate-500"
         aria-hidden
       />
       <div className="text-center space-y-1">
-        <p className="text-2xl font-semibold text-slate-600">No MSA Yet</p>
-        <p className="text-sm text-slate-500 max-w-md">
+        <p className="text-2xl font-semibold text-slate-600 dark:text-slate-300">No MSA Yet</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">
           You don’t have any Master Service Agreements at the moment. Click the
           button below to create your first MSA.
         </p>

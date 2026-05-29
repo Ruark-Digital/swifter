@@ -108,7 +108,7 @@ const MsaUpdateSavingsDialog: React.FC<{
     mutationKey: ["msa-createPaymentSaving", contractId],
     mutationFn: async (payload: any) => {
       const res = await postRequest({
-        url: `/contract/manager/msa-contract/${contractId}/payment-savings`,
+        url: `/contract/manager/msa-contracts/${contractId}/payment-savings`,
         payload,
       });
       return res.data as { message?: string };

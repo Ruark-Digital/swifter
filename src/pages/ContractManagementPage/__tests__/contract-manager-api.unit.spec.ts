@@ -116,9 +116,9 @@ test.describe("contractManagerApi (unit)", () => {
       payload: holdbackPayload,
     });
 
-    await api.getPaymentHoldbackById("hb1");
+    await api.getPaymentHoldbackById("c1", "hb1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/payment-holdbacks/hb1",
+      url: "/contract/manager/contracts/c1/payment-holdbacks/hb1",
     });
 
     await api.listPaymentSavings("c2");
@@ -133,9 +133,9 @@ test.describe("contractManagerApi (unit)", () => {
       payload: savingPayload,
     });
 
-    await api.getPaymentSavingById("s1");
+    await api.getPaymentSavingById("c2", "s1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/payment-savings/s1",
+      url: "/contract/manager/contracts/c2/payment-savings/s1",
     });
 
     await api.getChangeStats("c3");
@@ -278,9 +278,9 @@ test.describe("contractManagerApi (unit)", () => {
       config: { params: { invoiceId: "inv", page: 2, limit: 20 } },
     });
 
-    await api.getInvoiceDetail("inv1");
+    await api.getInvoiceDetail("c5", "inv1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/invoice/inv1",
+      url: "/contract/manager/contracts/c5/invoice/inv1",
     });
 
     await api.getAmendmentStats("c6");

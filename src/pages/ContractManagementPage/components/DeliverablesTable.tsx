@@ -27,6 +27,7 @@ import {
   X,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import {
   formatFileSize,
@@ -49,6 +50,7 @@ import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { formatDate } from "date-fns";
 import { vendorApi } from "@/pages/ContractManagementPage/api/vendorApi";
 import { Option } from "@/components/ui/multiselect";
+import { cn } from "@/lib/utils";
 
 type UploadedFilePayload = {
   name: string;
@@ -120,6 +122,9 @@ type DeliverableDetailsSheetProps = {
   isApprover?: boolean;
   isContractManager?: boolean;
   basePath: string;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+  personnelPath?: string;
 };
 
 const LabelRow = ({
@@ -130,8 +135,8 @@ const LabelRow = ({
   value: React.ReactNode;
 }) => (
   <div className="space-y-2">
-    <div className="text-xs font-medium text-[#9CA3AF]">{label}</div>
-    <div className="text-sm font-medium text-[#111827]">{value}</div>
+    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">{label}</div>
+    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
 
@@ -188,15 +193,29 @@ const SubmitDeliverableDialog: React.FC<{
   contractId: string;
   deliverableId: string;
   basePath: string;
-}> = ({ trigger, contractId, deliverableId, basePath }) => {
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+  personnelPath?: string;
+}> = ({
+  trigger,
+  contractId,
+  deliverableId,
+  basePath,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+  personnelPath,
+}) => {
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
   const { data: personnelData } = useQuery({
-    queryKey: ["deliverable-personnel", contractId],
-    queryFn: async () => vendorApi.listPersonnel(contractId),
+    queryKey: ["deliverable-personnel", contractId, personnelPath ?? "default"],
+    queryFn: async () =>
+      personnelPath
+        ? getRequest({ url: personnelPath })
+        : vendorApi.listPersonnel(contractId),
     enabled: !!contractId,
     staleTime: 60000,
   });
@@ -272,10 +291,16 @@ const SubmitDeliverableDialog: React.FC<{
     onSuccess: () => {
       toast.success("Success", "Deliverable submitted successfully");
       queryClient.invalidateQueries({
-        queryKey: ["deliverables", contractId, basePath],
+        queryKey:
+          listInvalidateQueryKey ?? ["deliverables", contractId, basePath],
       });
       queryClient.invalidateQueries({
-        queryKey: ["deliverables-stats", contractId, basePath],
+        queryKey:
+          statsInvalidateQueryKey ?? [
+            "deliverables-stats",
+            contractId,
+            basePath,
+          ],
       });
       queryClient.invalidateQueries({
         queryKey: ["deliverable-detail", contractId, deliverableId, basePath],
@@ -403,6 +428,9 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   isApprover,
   isContractManager,
   basePath,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+  personnelPath,
 }) => {
   const [open, setOpen] = React.useState(false);
   const [viewerOpen, setViewerOpen] = React.useState(false);
@@ -415,7 +443,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["deliverable-detail", contractId, deliverableId, basePath, open],
+    queryKey: useUserQueryKey(["deliverable-detail", contractId, deliverableId, basePath, open]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${basePath}/${deliverableId}`,
@@ -429,11 +457,38 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   const detail = data?.data?.data;
   const approverStatus = detail?.approverStatus;
   const isSubmitted = detail?.submissionStatus === "submitted";
-  const isRejected = approverStatus === "rejected";
+  // Backend doesn't always set `submissionStatus` — once the PM/vendor
+  // uploads, the deliverable carries `submittedBy` and a non-empty
+  // `files[]` instead. Treat that combo as "already submitted" so the
+  // Submit button doesn't re-appear after the first upload.
+  const hasBeenSubmitted =
+    Boolean(detail?.submittedBy) &&
+    Array.isArray(detail?.files) &&
+    detail.files.length > 0;
+  // Approve/Reject visibility is gated on `approverStatus === "pending"`
+  // for both the approver and the contract manager. Once the deliverable
+  // transitions out of pending the buttons hide for everyone.
   const canShowApproveButtons =
-    approverStatus && approverStatus !== "N/A" && !isSubmitted && !isRejected;
+    (isApprover || isContractManager) &&
+    approverStatus === "pending" &&
+    !isSubmitted;
   const canShowSubmitButton =
-    isVendor && !isSubmitted && approverStatus !== "N/A";
+    isVendor &&
+    !isSubmitted &&
+    !hasBeenSubmitted &&
+    approverStatus !== "N/A";
+
+  // Approve / reject opens a comment dialog first. `pendingAction` drives
+  // both the dialog visibility and which variant (Approve vs Reject) we
+  // render — `commentDraft` is reset whenever the dialog closes.
+  const [pendingAction, setPendingAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [commentDraft, setCommentDraft] = React.useState("");
+
+  React.useEffect(() => {
+    if (pendingAction === null) setCommentDraft("");
+  }, [pendingAction]);
 
   const approveRejectMutation = useMutation({
     mutationKey: [
@@ -442,27 +497,40 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
       deliverableId,
       basePath,
     ],
-    mutationFn: async (action: "approved" | "rejected") =>
+    mutationFn: async ({
+      action,
+      comment,
+    }: {
+      action: "approved" | "rejected";
+      comment: string;
+    }) =>
       postRequest({
         url: `${basePath}/${deliverableId}/approve`,
-        payload: { action, comment: "" },
+        payload: { action, comment },
       }),
-    onSuccess: (_, action) => {
+    onSuccess: (_, { action }) => {
       toast.success(
         "Success",
         `Deliverable ${action === "approved" ? "approved" : "rejected"} successfully`,
       );
       queryClient.invalidateQueries({
-        queryKey: ["deliverables", contractId, basePath],
+        queryKey:
+          listInvalidateQueryKey ?? ["deliverables", contractId, basePath],
       });
       queryClient.invalidateQueries({
-        queryKey: ["deliverables-stats", contractId, basePath],
+        queryKey:
+          statsInvalidateQueryKey ?? [
+            "deliverables-stats",
+            contractId,
+            basePath,
+          ],
       });
       queryClient.invalidateQueries({
         queryKey: ["deliverable-detail", contractId, deliverableId, basePath],
       });
+      setPendingAction(null);
     },
-    onError: (error: any, action) => {
+    onError: (error: any, { action }) => {
       toast.error(
         "Error",
         error?.response?.data?.message ||
@@ -484,11 +552,11 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827] dark:text-slate-100"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Deliverable Details
                 </SheetTitle>
               </div>
@@ -505,12 +573,12 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
 
           <div className="space-y-8">
             <div className="flex items-center justify-between">
-              <div className="text-base font-semibold text-[#0F0F0F]">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 {detail?.name ?? "Deliverable Details"}
               </div>
               <Button
                 variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
+                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
               >
                 <Share2 className="mr-2 h-4 w-4" /> Export
               </Button>
@@ -559,7 +627,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
             )}
 
             <div className="space-y-2">
-              <div className="text-xs font-medium text-[#9CA3AF]">Status</div>
+              <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">Status</div>
               <div
                 className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusTone(detail?.status)}`}
               >
@@ -567,22 +635,22 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                   ? detail.status
                       .replace(/_/g, " ")
                       .replace(/\b\w/g, (c: string) => c.toUpperCase())
-                  : "Under Review"}
+                  : ""}
               </div>
             </div>
 
             <div className="space-y-2">
-              <div className="text-xs font-medium text-[#9CA3AF]">
+              <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                 Description
               </div>
-              <div className="text-sm text-[#374151]">
+              <div className="text-sm text-[#374151] dark:text-slate-300">
                 {detail?.description ?? "-"}
               </div>
             </div>
           </div>
 
           <div className="space-y-3">
-            <div className="text-base font-semibold text-[#0F0F0F]">
+            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
               Attached Documents
             </div>
             <div className="grid gap-3 sm:grid-cols-1">
@@ -634,18 +702,18 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
               <>
                 <Button
                   variant="outline"
-                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
                   disabled={approveRejectMutation.isPending}
-                  onClick={() => approveRejectMutation.mutate("rejected")}
+                  onClick={() => setPendingAction("rejected")}
                 >
-                  {approveRejectMutation.isPending ? "Rejecting..." : "Reject"}
+                  Reject
                 </Button>
                 <Button
                   className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
                   disabled={approveRejectMutation.isPending}
-                  onClick={() => approveRejectMutation.mutate("approved")}
+                  onClick={() => setPendingAction("approved")}
                 >
-                  {approveRejectMutation.isPending ? "Approving..." : "Approve"}
+                  Approve
                 </Button>
               </>
             ) : canShowSubmitButton && !isLoading ? (
@@ -653,6 +721,9 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                 contractId={contractId}
                 deliverableId={deliverableId}
                 basePath={basePath}
+                listInvalidateQueryKey={listInvalidateQueryKey}
+                statsInvalidateQueryKey={statsInvalidateQueryKey}
+                personnelPath={personnelPath}
                 trigger={
                   <Button className="h-11 w-64 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
                     Submit
@@ -662,6 +733,77 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
             ) : null}
           </div>
         </div>
+
+        <Dialog
+          open={pendingAction !== null}
+          onOpenChange={(next) => {
+            if (!next && !approveRejectMutation.isPending) {
+              setPendingAction(null);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-2">
+              <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                {pendingAction === "approved"
+                  ? "Approve Deliverable"
+                  : "Reject Deliverable"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="px-6 pb-6 space-y-4">
+              <p className="text-sm text-[#6B7280] dark:text-slate-400">
+                {pendingAction === "approved"
+                  ? "Add an optional comment for the vendor before approving."
+                  : "Let the vendor know why this deliverable is being rejected."}
+              </p>
+              <textarea
+                value={commentDraft}
+                onChange={(e) => setCommentDraft(e.target.value)}
+                placeholder="Enter your comment"
+                rows={5}
+                className="w-full resize-none rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                autoFocus
+              />
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
+                  disabled={approveRejectMutation.isPending}
+                  onClick={() => setPendingAction(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className={cn(
+                    "h-11 flex-1 rounded-xl text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed",
+                    pendingAction === "approved"
+                      ? "bg-[#16A34A] hover:bg-[#15803D]"
+                      : "bg-[#E53935] hover:bg-[#C62828]",
+                  )}
+                  disabled={approveRejectMutation.isPending}
+                  aria-busy={approveRejectMutation.isPending}
+                  onClick={() => {
+                    if (pendingAction === null) return;
+                    approveRejectMutation.mutate({
+                      action: pendingAction,
+                      comment: commentDraft.trim(),
+                    });
+                  }}
+                >
+                  {approveRejectMutation.isPending
+                    ? pendingAction === "approved"
+                      ? "Approving..."
+                      : "Rejecting..."
+                    : pendingAction === "approved"
+                      ? "Confirm Approve"
+                      : "Confirm Reject"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </SheetContent>
     </Sheet>
   );
@@ -673,7 +815,7 @@ const columns: ColumnDef<DeliverableRow>[] = [
     accessorKey: "title",
     header: "Deliverable Title",
     cell: ({ getValue }) => (
-      <div className="max-w-[260px] text-sm text-slate-700">
+      <div className="max-w-[260px] text-sm text-slate-700 dark:text-slate-300">
         {getValue<string>()}
       </div>
     ),
@@ -682,10 +824,10 @@ const columns: ColumnDef<DeliverableRow>[] = [
     id: "date",
     header: "Date",
     cell: ({ row }) => (
-      <div className="space-y-1 text-xs text-slate-600">
+      <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
         <p>
-          <span className="text-slate-500">Due Date:&nbsp;</span>
-          <span className="text-slate-900">
+          <span className="text-slate-500 dark:text-slate-400">Due Date:&nbsp;</span>
+          <span className="text-slate-900 dark:text-slate-100">
             {row.original.dueDate
               ? formatDate(row.original.dueDate ?? "", "yyyy MMM dd")
               : "-"}
@@ -705,7 +847,7 @@ const columns: ColumnDef<DeliverableRow>[] = [
     accessorKey: "kpi",
     header: "KPI",
     cell: ({ row }) => (
-      <div className="text-sm text-slate-700">{row.original.kpi?.kpiText ?? "-"}</div>
+      <div className="text-sm text-slate-700 dark:text-slate-300">{row.original.kpi?.kpiText ?? "-"}</div>
     ),
   },
   {
@@ -736,16 +878,20 @@ const columns: ColumnDef<DeliverableRow>[] = [
     id: "actions",
     header: () => <div className="text-right">Actions</div>,
     cell: ({ row, table }) => {
-      const contractId: string = (table.options.meta as any)?.contractId ?? "";
-      const basePath: string = (table.options.meta as any)?.basePath ?? "";
+      const meta = table.options.meta as any;
+      const contractId: string = meta?.contractId ?? "";
+      const basePath: string = meta?.basePath ?? "";
       return (
         <div className="text-right">
           <DeliverableDetailsSheet
             contractId={contractId}
             deliverableId={row.original.id}
-            isApprover={(table.options.meta as any)?.isApprover}
-            isContractManager={(table.options.meta as any)?.isContractManager}
+            isApprover={meta?.isApprover}
+            isContractManager={meta?.isContractManager}
             basePath={basePath}
+            listInvalidateQueryKey={meta?.listInvalidateQueryKey}
+            statsInvalidateQueryKey={meta?.statsInvalidateQueryKey}
+            personnelPath={meta?.personnelPath}
             trigger={
               <button
                 type="button"
@@ -768,6 +914,9 @@ type DeliverablesTableProps = {
   isApprover?: boolean;
   isContractManager?: boolean;
   basePath: string;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+  personnelPath?: string;
 };
 
 const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
@@ -777,6 +926,9 @@ const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
   isApprover = false,
   isContractManager = false,
   basePath,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+  personnelPath,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -804,8 +956,8 @@ const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
         data={filteredRows}
         columns={columns}
         header={() => (
-          <div className="flex items-center w-full gap-3 border-b border-[#E5E7EB] px-5 py-4">
-            <span className="text-sm font-medium text-slate-900">
+          <div className="flex items-center w-full gap-3 border-b border-[#E5E7EB] dark:border-slate-800 px-5 py-4">
+            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
               Deliverables
             </span>
             <div className="relative">
@@ -828,16 +980,24 @@ const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
           setPagination: () => {},
           pagination: { pageIndex: 0, pageSize: 10 },
           isLoading: !!isLoading,
-          meta: { contractId, isApprover, isContractManager, basePath },
+          meta: {
+            contractId,
+            isApprover,
+            isContractManager,
+            basePath,
+            listInvalidateQueryKey,
+            statsInvalidateQueryKey,
+            personnelPath,
+          },
         }}
         classNames={{
-          container: "border border-[#E5E7EB] rounded-xl bg-white",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-xs font-semibold text-slate-500",
-          tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+          container: "border border-[#E5E7EB] dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
         }}
       />
     </div>

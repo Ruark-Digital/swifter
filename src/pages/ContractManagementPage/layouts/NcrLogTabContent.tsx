@@ -39,13 +39,17 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, act
     pageSize: 10,
   });
 
+  const statsQueryKey = ["contractNcrs", "stats", contractId, basePath] as const;
+  const listQueryKey = [
+    "contractNcrs",
+    contractId,
+    pagination.pageIndex,
+    pagination.pageSize,
+    basePath,
+  ] as const;
+
   const { data: statsRes, isLoading: isStatsLoading } = useQuery({
-    queryKey: [
-      "contractNcrs",
-      "stats",
-      contractId,
-      basePath
-    ],
+    queryKey: statsQueryKey,
     queryFn: async () => {
       const response = await getRequest({
         url: `${basePath}/stats`,
@@ -56,13 +60,7 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, act
   });
 
   const { data: ncrsRes, isLoading: isNcrsLoading } = useQuery({
-    queryKey: [
-      "contractNcrs",
-      contractId,
-      pagination.pageIndex,
-      pagination.pageSize,
-      basePath
-    ],
+    queryKey: listQueryKey,
     queryFn: async () => {
       const query: ManagerListNcrsQuery = {
         page: pagination.pageIndex + 1,
@@ -86,7 +84,7 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, act
   return (
     <TabsContent value="ncr-log" className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-900">
+        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
           Non-Compliance Report
         </h3>
         {(isApprover || isContractVendorLike) && (
@@ -94,6 +92,8 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, act
             contractId={contractId}
             contract={contract}
             basePath={basePath}
+            listInvalidateQueryKey={listQueryKey}
+            statsInvalidateQueryKey={statsQueryKey}
             trigger={
               <button
                 type="button"
@@ -122,6 +122,8 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, act
         setPagination={setPagination}
         contractId={contractId}
         basePath={basePath}
+        listInvalidateQueryKey={listQueryKey}
+        statsInvalidateQueryKey={statsQueryKey}
       />
     </TabsContent>
   );

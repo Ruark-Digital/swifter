@@ -12,6 +12,7 @@ import { getRequest } from "@/lib/axiosInstance";
 import { useParams } from "react-router-dom";
 import { useUserRole } from "@/hooks/useUserRole";
 import type { DeliverablesStats } from "../components/DeliverablesStatsCards";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 const DeliverablesTabContent: React.FC = () => {
   const { id: contractId } = useParams<{ id: string }>();
@@ -57,15 +58,14 @@ const DeliverablesTabContent: React.FC = () => {
 
   const basePath = getBasePath();
 
+  const listQueryKey = ["deliverables", contractId, basePath] as const;
+  const statsQueryKey = ["deliverables-stats", contractId, basePath] as const;
+
   const {
     data: listRes,
     isLoading: listLoading,
   } = useQuery({
-    queryKey: [
-      "deliverables",
-      contractId,
-      basePath
-    ],
+    queryKey: listQueryKey,
     queryFn: async () => {
       const res = await getRequest({
         url: basePath,
@@ -80,11 +80,7 @@ const DeliverablesTabContent: React.FC = () => {
     data: statsRes,
     isLoading: statsLoading,
   } = useQuery({
-    queryKey: [
-      "deliverables-stats",
-      contractId,
-      basePath
-    ],
+    queryKey: statsQueryKey,
     queryFn: async () => {
       const res = await getRequest({
         url: `${basePath}/stats`,
@@ -151,10 +147,12 @@ const DeliverablesTabContent: React.FC = () => {
   return (
     <TabsContent value="deliverables" className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-900">Deliverable</h3>
-        <Button variant="outline" className="h-10 rounded-xl px-4">
-          <Share2 className="mr-2 h-4 w-4" /> Export Report
-        </Button>
+        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Deliverable</h3>
+        <ExportReportSheet contractId={contractId ?? ""} contractType="Contract">
+          <Button variant="outline" className="h-10 rounded-xl px-4">
+            <Share2 className="mr-2 h-4 w-4" /> Export Report
+          </Button>
+        </ExportReportSheet>
       </div>
 
       <DeliverablesStatsCards stats={stats} isLoading={!!listLoading || !!statsLoading} />
@@ -166,6 +164,9 @@ const DeliverablesTabContent: React.FC = () => {
         isApprover={isApprover}
         isContractManager={isManager}
         basePath={basePath}
+        listInvalidateQueryKey={listQueryKey}
+        statsInvalidateQueryKey={statsQueryKey}
+        personnelPath={`/contract/vendor/contracts/${contractId ?? ""}/personnel`}
       />
     </TabsContent>
   );

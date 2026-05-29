@@ -1,10 +1,27 @@
 import React from 'react';
 import { XIcon, RotateCcw } from 'lucide-react';
 
+export type VersionKind =
+  | "edit"
+  | "insertion"
+  | "deletion"
+  | "comment"
+  | "ai-apply";
+
 export interface Version {
   id: string;
   timestamp: string;
   author: string;
+  /** Short label describing what produced this snapshot. Manual saves
+   *  use a generic label; track-change events carry the change type. */
+  label?: string;
+  /** Classifier used by the Versions tab to render an icon / colour
+   *  for each entry without re-parsing the label text. */
+  kind?: VersionKind;
+  /** Origin of the entry. "local" rows have a Y.Doc snapshot and can
+   *  be restored client-side; "be" rows come from the backend version
+   *  endpoint and only support download-latest (no per-version restore). */
+  source?: "local" | "be";
 }
 
 interface VersionHistoryModalProps {
@@ -25,27 +42,27 @@ const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity duration-300">
       <div
-        className="bg-white rounded-lg shadow-xl w-[500px] max-w-[90vw] overflow-hidden transform transition-transform duration-300 scale-100"
+        className="bg-white rounded-lg shadow-xl w-[500px] max-w-[90vw] overflow-hidden transform transition-transform duration-300 scale-100 dark:bg-slate-900"
         role="dialog"
         aria-modal="true"
         aria-labelledby="version-history-title"
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 id="version-history-title" className="text-lg font-semibold text-gray-800">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-800">
+          <h2 id="version-history-title" className="text-lg font-semibold text-gray-800 dark:text-slate-100">
             Version History
           </h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+            className="p-1 rounded-full hover:bg-gray-100 transition-colors dark:hover:bg-slate-800"
             aria-label="Close Version History"
           >
-            <XIcon className="w-5 h-5 text-gray-500" />
+            <XIcon className="w-5 h-5 text-gray-500 dark:text-slate-400" />
           </button>
         </div>
 
         <div className="p-4 max-h-[60vh] overflow-y-auto">
           {versions.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">
+            <div className="text-center text-gray-500 py-8 dark:text-slate-400">
               No version history available.
             </div>
           ) : (
@@ -53,19 +70,19 @@ const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
               {versions.map((version) => (
                 <li
                   key={version.id}
-                  className="flex items-center justify-between p-3 border border-gray-100 rounded hover:border-gray-300 hover:shadow-sm transition-all"
+                  className="flex items-center justify-between p-3 border border-gray-100 rounded hover:border-gray-300 hover:shadow-sm transition-all dark:border-slate-800 dark:hover:border-slate-700"
                 >
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium text-gray-800">
+                    <span className="text-sm font-medium text-gray-800 dark:text-slate-100">
                       {new Date(version.timestamp).toLocaleString()}
                     </span>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 dark:text-slate-400">
                       Saved by: {version.author}
                     </span>
                   </div>
                   <button
                     onClick={() => onRestore(version.id)}
-                    className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                    className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors dark:text-blue-300 dark:bg-blue-900/30 dark:hover:bg-blue-900/50"
                     aria-label={`Restore version from ${new Date(version.timestamp).toLocaleString()}`}
                   >
                     <RotateCcw className="w-4 h-4" />
@@ -76,11 +93,11 @@ const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
             </ul>
           )}
         </div>
-        
-        <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end">
+
+        <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end dark:border-slate-800 dark:bg-slate-900/60">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
           >
             Close
           </button>

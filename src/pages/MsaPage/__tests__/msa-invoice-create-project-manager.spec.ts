@@ -54,7 +54,7 @@ async function setupRoutes(page: Page, msaId: string) {
     const pathname = new URL(url).pathname;
 
     if (
-      pathname.endsWith(`/contract/vendor/msa-contract/${msaId}`) &&
+      pathname.endsWith(`/contract/vendor/msa-contracts/${msaId}`) &&
       method === "GET"
     ) {
       await route.fulfill({
@@ -76,7 +76,7 @@ async function setupRoutes(page: Page, msaId: string) {
     }
 
     if (
-      pathname.endsWith(`/contract/vendor/msa-contract/${msaId}/invoice/stats`) &&
+      pathname.endsWith(`/contract/vendor/msa-contracts/${msaId}/invoice/stats`) &&
       method === "GET"
     ) {
       await route.fulfill({
@@ -91,7 +91,7 @@ async function setupRoutes(page: Page, msaId: string) {
     }
 
     if (
-      pathname.endsWith(`/contract/vendor/msa-contract/${msaId}/invoice`) &&
+      pathname.endsWith(`/contract/vendor/msa-contracts/${msaId}/invoice`) &&
       method === "GET"
     ) {
       await route.fulfill({

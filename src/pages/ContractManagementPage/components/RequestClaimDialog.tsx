@@ -8,7 +8,12 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Forge, Forger, useForge } from "@/lib/forge";
-import { TextArea, TextInput, TextSelect } from "@/components/layouts/FormInputs";
+import {
+  TextArea,
+  TextCurrencyInput,
+  TextInput,
+  TextSelect,
+} from "@/components/layouts/FormInputs";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { postRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -216,7 +221,7 @@ const RequestClaimDialog: React.FC<Props> = ({
                   name="costImpact"
                   label="Cost"
                   placeholder="Enter Amount"
-                  component={TextInput}
+                  component={TextCurrencyInput}
                 />
               )}
               {impactType === "time_cost" && (
@@ -231,7 +236,7 @@ const RequestClaimDialog: React.FC<Props> = ({
                     name="costImpact"
                     label="Cost"
                     placeholder="Enter Amount"
-                    component={TextInput}
+                    component={TextCurrencyInput}
                   />
                 </div>
               )}

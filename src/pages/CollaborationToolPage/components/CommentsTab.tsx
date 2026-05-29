@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import FeedItem from "./FeedItem";
 import WriteComment from "./WriteComment";
 import VirtualizedFeedList from "./VirtualizedFeedList";
@@ -16,10 +16,8 @@ export type CommentsFeedItem = {
   message: string;
   showDot?: boolean;
   attachment?: FeedAttachment | null;
-  parentId?: string | null;
   redlineId?: string | null;
   mentions?: Mentionable[];
-  replies?: CommentsFeedItem[];
 };
 
 type CommentsTabProps = {
@@ -27,7 +25,7 @@ type CommentsTabProps = {
   comments: CommentsFeedItem[];
   commentValue?: string;
   onCommentChange?: (value: string, mentions: Mentionable[]) => void;
-  onCommentSubmit?: (parentId?: string | null) => void;
+  onCommentSubmit?: () => void;
   canWriteComment?: boolean;
   isSubmittingComment?: boolean;
   mentionables?: Mentionable[];
@@ -43,53 +41,59 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
   isSubmittingComment = false,
   mentionables = [],
 }) => {
-  const [replyTo, setReplyTo] = useState<string | null>(null);
-
   const handleSubmit = useCallback(() => {
-    onCommentSubmit?.(replyTo);
-    setReplyTo(null);
-  }, [onCommentSubmit, replyTo]);
+    onCommentSubmit?.();
+  }, [onCommentSubmit]);
 
   const renderCommentItem = useCallback(
-    (comment: CommentsFeedItem) => (
-      <div className="space-y-2">
-        <FeedItem
-          avatarSrc={avatarPublic}
-          name={comment.name}
-          timestamp={comment.timestamp}
-          message={comment.message}
-          attachment={comment.attachment}
-          showDot={comment.showDot}
-        />
-        <div className="pl-12 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setReplyTo(comment.id)}
-            className="text-xs font-semibold text-blue-600 hover:underline"
-          >
-            Reply
-          </button>
+    (comment: CommentsFeedItem) => {
+      const focusMark = () => {
+        if (!comment.redlineId) return;
+        window.dispatchEvent(
+          new CustomEvent("ct-focus-mark", {
+            detail: { id: comment.redlineId },
+          }),
+        );
+      };
+      return (
+        <div
+          className={`space-y-2 ${
+            comment.redlineId
+              ? "cursor-pointer rounded-md transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
+              : ""
+          }`}
+          onClick={comment.redlineId ? focusMark : undefined}
+          role={comment.redlineId ? "button" : undefined}
+          tabIndex={comment.redlineId ? 0 : undefined}
+          onKeyDown={
+            comment.redlineId
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    focusMark();
+                  }
+                }
+              : undefined
+          }
+        >
+          <FeedItem
+            avatarSrc={avatarPublic}
+            name={comment.name}
+            timestamp={comment.timestamp}
+            message={comment.message}
+            attachment={comment.attachment}
+            showDot={comment.showDot}
+          />
           {comment.redlineId && (
-            <span className="text-xs text-amber-600">redline thread</span>
+            <div className="pl-12 flex items-center gap-3">
+              <span className="text-xs text-amber-600 dark:text-amber-400">
+                anchored to document
+              </span>
+            </div>
           )}
         </div>
-        {comment.replies && comment.replies.length > 0 && (
-          <div className="pl-12 border-l-2 border-slate-200 ml-6 space-y-2">
-            {comment.replies.map((r) => (
-              <FeedItem
-                key={r.id}
-                avatarSrc={avatarPublic}
-                name={r.name}
-                timestamp={r.timestamp}
-                message={r.message}
-                attachment={r.attachment}
-                showDot={r.showDot}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    ),
+      );
+    },
     [avatarPublic],
   );
 
@@ -97,25 +101,7 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
     <div className="ct-comments-view my-5">
       <div className="ct-section-header">
         <span className="ct-section-title">Comments and activity</span>
-        <div className="ct-avatars-cluster">
-          <img src={avatarPublic} alt="" className="ct-avatar-cluster-item" />
-          <img src={avatarPublic} alt="" className="ct-avatar-cluster-item second" />
-          <img src={avatarPublic} alt="" className="ct-avatar-cluster-item second" />
-        </div>
       </div>
-
-      {replyTo && (
-        <div className="flex items-center justify-between bg-slate-100 px-3 py-1 rounded text-xs text-slate-600 mb-1">
-          <span>Replying to comment</span>
-          <button
-            type="button"
-            onClick={() => setReplyTo(null)}
-            className="font-semibold text-red-500 hover:underline"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
 
       <WriteComment
         value={commentValue}
@@ -124,13 +110,13 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
         disabled={!canWriteComment}
         isSubmitting={isSubmittingComment}
         mentionables={mentionables}
-        placeholder={replyTo ? "Write a reply… use @ to tag" : "Write a Comment… use @ to tag"}
+        placeholder="Write a Comment… use @ to tag"
       />
 
       <VirtualizedFeedList
         className="ct-feed mt-5"
-        items={comments.filter((c) => !c.parentId)}
-        itemHeight={140}
+        items={comments}
+        itemHeight={72}
         getItemKey={(item) => item.id}
         renderItem={renderCommentItem}
       />

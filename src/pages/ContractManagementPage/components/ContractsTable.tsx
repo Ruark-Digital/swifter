@@ -23,6 +23,7 @@ export type ContractRow = {
   owner: string;
   published?: string;
   endDate?: string;
+  createdAtRaw?: string;
   status:
     | "Active"
     | "Publish"
@@ -45,11 +46,11 @@ const columns: ColumnDef<ContractRow>[] = [
         <a
           href={`/dashboard/contract-management/${row.original.id}`}
           data-testid="project-name-link"
-          className="font-medium text-slate-900 underline-offset-2 hover:underline"
+          className="font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
         >
           {row.original.title}
         </a>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-slate-500 dark:text-slate-400">
           {row.original.contractId}
         </span>
       </div>
@@ -61,7 +62,7 @@ const columns: ColumnDef<ContractRow>[] = [
     header: "Value",
     cell: ({ getValue }) => {
       const v = getValue<string | undefined>();
-      return <span className="font-semibold text-slate-900">{v ?? "-"}</span>;
+      return <span className="font-semibold text-slate-900 dark:text-slate-100">{v ?? "-"}</span>;
     },
   },
   { accessorKey: "owner", header: "Owner" },
@@ -69,16 +70,16 @@ const columns: ColumnDef<ContractRow>[] = [
     id: "date",
     header: "Date",
     cell: ({ row }) => (
-      <div className="text-xs text-slate-500">
+      <div className="text-xs text-slate-500 dark:text-slate-400">
         {row.original.published && (
           <div>
-            <span className="text-black font-bold">Published:</span>{" "}
+            <span className="text-black dark:text-slate-100 font-bold">Published:</span>{" "}
             {row.original.published}
           </div>
         )}
         {row.original.endDate && (
           <div>
-            <span className="text-black font-bold">End Date:</span>{" "}
+            <span className="text-black dark:text-slate-100 font-bold">End Date:</span>{" "}
             {row.original.endDate}
           </div>
         )}
@@ -149,6 +150,21 @@ type ContractsTableProps = {
   onStatusFilterChange?: (status: string) => void;
 };
 
+const applyDateFilter = (rows: ContractRow[], dateFilter: string): ContractRow[] => {
+  if (!dateFilter || dateFilter === "all") return rows;
+  const now = new Date();
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const today = startOf(now);
+  return rows.filter((row) => {
+    if (!row.createdAtRaw) return true;
+    const created = new Date(row.createdAtRaw);
+    if (dateFilter === "today") return startOf(created).getTime() === today.getTime();
+    if (dateFilter === "last7days") return created >= new Date(today.getTime() - 6 * 86400000);
+    if (dateFilter === "last30days") return created >= new Date(today.getTime() - 29 * 86400000);
+    return true;
+  });
+};
+
 const ContractsTable: React.FC<ContractsTableProps> = ({
   rows = [],
   isLoading,
@@ -157,10 +173,11 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
   disableActions,
   pagination: paginationProp,
   setPagination: setPaginationProp,
-  statusFilter,
+  statusFilter = "all",
   onStatusFilterChange,
 }) => {
   const [search, setSearch] = React.useState("");
+  const [dateFilter, setDateFilter] = React.useState("all");
   const [localPagination, setLocalPagination] = React.useState<PaginationState>(
     {
       pageIndex: 0,
@@ -184,27 +201,34 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
 
     if (search) {
       const query = search.toLowerCase();
-      result = result.filter((row) => {
-        return (
-          row.title.toLowerCase().includes(query) ||
-          row.code.toLowerCase().includes(query)
-        );
-      });
+      result = result.filter((row) =>
+        row.title.toLowerCase().includes(query) ||
+        row.code.toLowerCase().includes(query),
+      );
     }
 
     if (statusFilter && statusFilter !== "all") {
-      result = result.filter((row) => {
-        return normalizeStatus(row.status) === normalizeStatus(statusFilter);
-      });
+      result = result.filter(
+        (row) => normalizeStatus(row.status) === normalizeStatus(statusFilter),
+      );
     }
 
-    return result;
-  }, [rows, search, statusFilter, normalizeStatus]);
+    result = applyDateFilter(result, dateFilter);
 
-  const handleFilterChange = (filters: any) => {
-    const status = filters.find((f: any) => f.title === "Status")?.value;
-    if (status && onStatusFilterChange) {
-      onStatusFilterChange(status);
+    return result;
+  }, [rows, search, statusFilter, dateFilter, normalizeStatus]);
+
+  const selectedFilterValues: Record<string, string> = {
+    Status: statusFilter ?? "all",
+    Date: dateFilter,
+  };
+
+  const handleFilterChange = (filterTitle: string, value: string) => {
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    if (filterTitle === "Status") {
+      onStatusFilterChange?.(value);
+    } else if (filterTitle === "Date") {
+      setDateFilter(value);
     }
   };
 
@@ -215,7 +239,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
           <div className="flex items-center w-full justify-between border-b border-[#E9E9EB] dark:border-slate-600 p-3 pt-0">
             <div className="flex items-center gap-3 w-full">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-slate-700">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
                   Contracts
                 </span>
                 <Input
@@ -244,18 +268,10 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                       title: "Date",
                       showIcon: true,
                       options: [
-                        {
-                          hasOptions: true,
-                          value: "date",
-                          label: "Date Created",
-                          subOptions: [
-                            { title: "All", value: "all" },
-                            { title: "Today", value: "today" },
-                            { title: "Last 7 Days", value: "last7days" },
-                            { title: "Last 30 Days", value: "last30days" },
-                            { title: "Custom", value: "custom" },
-                          ],
-                        },
+                        { label: "All", value: "all" },
+                        { label: "Today", value: "today" },
+                        { label: "Last 7 Days", value: "last7days" },
+                        { label: "Last 30 Days", value: "last30days" },
                       ],
                     },
                     {
@@ -268,22 +284,12 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                         { label: "Suspended", value: "suspended" },
                         { label: "Expired", value: "expired" },
                         { label: "Terminated", value: "terminated" },
-                        {
-                          label: "Pending Approval",
-                          value: "pending_approval",
-                        },
-                      ],
-                    },
-                    {
-                      title: "Category",
-                      options: [
-                        { label: "All", value: "all" },
-                        { label: "Software", value: "software" },
-                        { label: "Construction", value: "construction" },
+                        { label: "Pending Approval", value: "pending_approval" },
                       ],
                     },
                   ]}
                   onFilterChange={handleFilterChange}
+                  selectedValues={selectedFilterValues}
                 />
               </div>
             </div>

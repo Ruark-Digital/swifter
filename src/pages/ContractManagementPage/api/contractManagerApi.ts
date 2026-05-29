@@ -321,7 +321,7 @@ export type ContractChangeManagerDTO = {
     name?: string;
     url?: string;
     type?: string;
-    size?: number;
+    size?: string;
   }>;
   type?: "directive" | "order";
 };
@@ -355,6 +355,10 @@ export type ContractChangeStatsDTO = {
   approved?: number;
   pending?: number;
   rejected?: number;
+  // Approver `/changes/stats` returns these aliases instead of
+  // approved/rejected — surfaced as fallbacks in the UI.
+  completed?: number;
+  cancelled?: number;
 };
 
 export type ApprovalActionDTO = {
@@ -428,6 +432,9 @@ export type ContractClaimDTO = {
   }>;
   manager?: { status?: string; comment?: string };
   approvers?: ContractChangeApprover[];
+  submittedBy?: { _id?: string; name?: string; email?: string };
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type ContractClaimStatsDTO = {
@@ -515,13 +522,61 @@ export type ContractApproverAction = {
   approvedDate?: string;
 };
 
+export type ContractApproverItem = {
+  refId?: string;
+  refType?: string;
+  refCode?: string;
+  title?: string;
+  status?: "pending" | "approved" | "rejected";
+  comment?: string;
+  actionedAt?: string;
+  completedAt?: string;
+  level?: number;
+  group?: string;
+  amount?: number;
+};
+
+export type ContractApproverItemsByCategory = {
+  project?: ContractApproverItem[];
+  changes?: ContractApproverItem[];
+  claims?: ContractApproverItem[];
+  invoices?: ContractApproverItem[];
+  lems?: ContractApproverItem[];
+  amendments?: ContractApproverItem[];
+};
+
+export type ContractApproverModelSummary = {
+  status?: "pending" | "approved" | "rejected";
+  comment?: string;
+  actionedAt?: string;
+  assigned?: number;
+  completed?: number;
+};
+
 export type ContractApproverDetail = {
+  contract?: {
+    _id?: string;
+    contractId?: string;
+    title?: string;
+    status?: string;
+    currency?: string;
+    contractValue?: number;
+    startDate?: string;
+    endDate?: string;
+  };
   approver?: {
     _id?: string;
+    name?: string;
     firstName?: string;
     lastName?: string;
     email?: string;
+    role?: { _id?: string; name?: string };
   };
+  submissionDate?: string;
+  assignedApproval?: { completed?: number; total?: number };
+  status?: "pending" | "approved" | "rejected";
+  models?: Record<string, ContractApproverModelSummary>;
+  items?: ContractApproverItemsByCategory;
   details?: ContractApproverAction[];
 };
 
@@ -816,6 +871,20 @@ export const createContractManagerApi = (
       });
       return res as ApiResponse<ContractDetail>;
     },
+    /**
+     * Fetches the contract in edit-form shape — swagger 2.3.0 added
+     * `GET /manager/contracts/{contractId}/edit` which returns a fully
+     * populated record specifically meant for pre-filling the edit
+     * wizard. Use this from EditContract instead of the read-only
+     * detail endpoint above.
+     * x-roles: contract_manager, company_admin.
+     */
+    getContractForEdit: async (contractId: string) => {
+      const res = await client.get({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/edit`,
+      });
+      return res as ApiResponse<ContractDetail>;
+    },
     listContractApprovers: async (contractId: string) => {
       const res = await client.get({
         url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/approvers`,
@@ -844,9 +913,9 @@ export const createContractManagerApi = (
       });
       return res.data as { message?: string; data?: ContractHoldBackDTO };
     },
-    getPaymentHoldbackById: async (holdBackId: string) => {
+    getPaymentHoldbackById: async (contractId: string, holdBackId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/payment-holdbacks/${holdBackId}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/payment-holdbacks/${holdBackId}`,
       });
       return res.data as { message?: string; data?: ContractHoldBackDTO };
     },
@@ -866,9 +935,9 @@ export const createContractManagerApi = (
       });
       return res.data as { message?: string; data?: ContractSavingDTO };
     },
-    getPaymentSavingById: async (savingId: string) => {
+    getPaymentSavingById: async (contractId: string, savingId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/payment-savings/${savingId}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/payment-savings/${savingId}`,
       });
       return res.data as { message?: string; data?: ContractSavingDTO };
     },
@@ -901,7 +970,7 @@ export const createContractManagerApi = (
     ) => {
       const createPath =
         type === "MsaContract"
-          ? `/contract/manager/msa-contract/${dataId}/change/${type}`
+          ? `/contract/manager/msa-contracts/${dataId}/change/${type}`
           : `${MANAGER_CONTRACTS_PREFIX}/${dataId}/change/${type}`;
       const res = await client.post({
         url: createPath,
@@ -1073,9 +1142,9 @@ export const createContractManagerApi = (
         data?: { invoices?: ContractInvoiceDTO[]; total?: number };
       };
     },
-    getInvoiceDetail: async (invoiceId: string) => {
+    getInvoiceDetail: async (contractId: string, invoiceId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/invoice/${invoiceId}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/invoice/${invoiceId}`,
       });
       return res.data as { message?: string; data?: ContractInvoiceDTO };
     },

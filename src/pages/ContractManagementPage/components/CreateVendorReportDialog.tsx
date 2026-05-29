@@ -82,10 +82,15 @@ export function CreateVendorReportForm({
   onSuccess,
   contractId,
   disabled,
+  invalidateQueryKey,
 }: {
   onSuccess?: () => void;
   contractId: string;
   disabled?: boolean;
+  /** Optional extra query key to invalidate on success. MSA callers
+   *  pass the wrapped `useUserQueryKey` list key so their tab refetches.
+   *  The Contract-side keys are always invalidated regardless. */
+  invalidateQueryKey?: readonly unknown[];
 }) {
   const { control, handleSubmit, setValue, watch, reset } =
     useForge<FormValues>({
@@ -126,6 +131,9 @@ export function CreateVendorReportForm({
       queryClient.invalidateQueries({
         queryKey: ["vendor-reports-stats", contractId],
       });
+      if (invalidateQueryKey) {
+        queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
+      }
     },
   });
 
@@ -271,6 +279,17 @@ export function CreateVendorReportForm({
               label=""
               component={TextFileUploader}
               control={control as unknown as ForgeControl<FormValues>}
+              accept={
+                {
+                  "application/pdf": [".pdf"],
+                  "application/msword": [".doc"],
+                  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+                    ".docx",
+                  ],
+                  "image/png": [".png"],
+                  "image/jpeg": [".jpeg", ".jpg"],
+                } as any
+              }
               element={
                 <div className="text-center text-sm text-slate-600">
                   <div className="font-medium">
@@ -323,10 +342,12 @@ export default function CreateVendorReportDialog({
   onSuccess,
   contractId,
   disabled,
+  invalidateQueryKey,
 }: {
   onSuccess?: () => void;
   contractId: string;
   disabled?: boolean;
+  invalidateQueryKey?: readonly unknown[];
 }) {
   return (
     <DialogContent
@@ -337,6 +358,7 @@ export default function CreateVendorReportDialog({
         onSuccess={onSuccess}
         contractId={contractId}
         disabled={disabled}
+        invalidateQueryKey={invalidateQueryKey}
       />
     </DialogContent>
   );

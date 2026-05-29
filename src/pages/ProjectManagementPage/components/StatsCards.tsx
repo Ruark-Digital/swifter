@@ -18,13 +18,13 @@ const StatCard: React.FC<StatCardProps> = ({
   bgClass = "bg-slate-50",
   testId,
 }) => (
-  <Card data-testid={testId} className="border-slate-200">
+  <Card data-testid={testId} className="border-slate-200 dark:bg-slate-900 dark:border-slate-700">
     <CardContent className="p-6 flex items-center justify-between">
       <div className="space-y-1">
-        <p className="text-sm text-slate-600">{title}</p>
-        <p className="text-2xl font-semibold text-slate-900">{value}</p>
+        <p className="text-sm text-slate-600 dark:text-slate-400">{title}</p>
+        <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{value}</p>
       </div>
-      <div className={`rounded-full ${bgClass} p-2`} aria-hidden="true">
+      <div className={`rounded-full ${bgClass} dark:bg-slate-800 p-2`} aria-hidden="true">
         {icon}
       </div>
     </CardContent>
@@ -54,7 +54,7 @@ const StatsCards: React.FC<{ counts?: { all?: number; active?: number; completed
         bgClass="bg-green-50"
       />
       <StatCard
-        title="CompletedProjects"
+        title="Completed Projects"
         value={c.completed}
         testId="stats-completed-projects"
         icon={<HugeiconsIcon icon={FolderLibraryIcon} className="h-5 w-5 text-yellow-600" />}

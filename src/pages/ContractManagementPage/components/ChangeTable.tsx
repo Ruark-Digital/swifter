@@ -19,22 +19,30 @@ import { format } from "date-fns";
 
 type ChangeTableProps = {
   contractId: string;
+  /** Role-prefixed entity path, e.g. `/contract/vendor/contracts/{id}/changes`.
+   *  Required for downstream sheets to build correct comment / approve URLs. */
+  basePath?: string;
   rows?: ContractChangeDTO[];
   isLoading?: boolean;
   totalCount?: number;
   pagination: PaginationState;
   setPagination: React.Dispatch<React.SetStateAction<PaginationState>>;
   variant?: "manager" | "approver";
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
 };
 
 const ChangeTable: React.FC<ChangeTableProps> = ({
   contractId,
+  basePath,
   rows = [],
   isLoading,
   totalCount,
   pagination,
   setPagination,
   variant = "manager",
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -44,7 +52,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         accessorKey: "changeId",
         header: "Change ID",
         cell: ({ getValue }) => (
-          <span className="font-medium text-slate-900">
+          <span className="font-medium text-slate-900 dark:text-slate-100">
             {getValue<string>() ?? "-"}
           </span>
         ),
@@ -53,7 +61,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         accessorKey: "title",
         header: "Change Title",
         cell: ({ getValue }) => (
-          <span className="font-medium text-slate-900">
+          <span className="font-medium text-slate-900 dark:text-slate-100">
             {getValue<string>() ?? "-"}
           </span>
         ),
@@ -87,13 +95,17 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         header: "Status",
         cell: ({ getValue }) => {
           const status = getValue<string | undefined>();
-          let className = "bg-slate-100 text-slate-800 hover:bg-slate-100";
+          let className =
+            "bg-slate-100 text-slate-800 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300";
           if (status === "approved")
-            className = "bg-green-100 text-green-800 hover:bg-green-100";
+            className =
+              "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-300";
           if (status === "pending")
-            className = "bg-yellow-100 text-yellow-800 hover:bg-yellow-100";
+            className =
+              "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300";
           if (status === "rejected")
-            className = "bg-red-100 text-red-800 hover:bg-red-100";
+            className =
+              "bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300";
 
           return (
             <Badge className={`rounded-full px-3 py-1 font-normal ${className}`}>
@@ -114,7 +126,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
               trigger={
                 <Button
                   variant="link"
-                  className="text-green-600 font-semibold p-0 h-auto hover:no-underline"
+                  className="text-green-600 dark:text-green-400 font-semibold p-0 h-auto hover:no-underline"
                 >
                   View
                 </Button>
@@ -135,7 +147,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         cell: ({ getValue }) => {
           const title = getValue<string | undefined>();
           return (
-            <span className="font-medium text-slate-900">{title ?? "-"}</span>
+            <span className="font-medium text-slate-900 dark:text-slate-100">{title ?? "-"}</span>
           );
         },
       },
@@ -145,7 +157,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         cell: ({ getValue }) => {
           const title = getValue<string | undefined>();
           return (
-            <span className="font-medium text-slate-900">{title ?? "-"}</span>
+            <span className="font-medium text-slate-900 dark:text-slate-100">{title ?? "-"}</span>
           );
         },
       },
@@ -179,22 +191,31 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         header: "Files",
         cell: ({ row }) => {
           const count = row.original.files?.length ?? 0;
-          return <span className="font-semibold text-slate-900">{count}</span>;
+          return <span className="font-semibold text-slate-900 dark:text-slate-100">{count}</span>;
         },
       },
       {
         id: "actions",
         header: "Actions",
-        cell: ({ row }) => {
+        cell: ({ row, table }) => {
           const changeId = row.original.changeId || "";
+          const meta = table.options.meta as
+            | {
+                listInvalidateQueryKey?: readonly unknown[];
+                statsInvalidateQueryKey?: readonly unknown[];
+              }
+            | undefined;
           const [sheetOpen, setSheetOpen] = React.useState(false);
           return (
             <>
               <ChangeDetailsSheet
                 contractId={contractId}
                 changeId={changeId}
+                basePath={basePath}
                 open={sheetOpen}
                 onOpenChange={setSheetOpen}
+                listInvalidateQueryKey={meta?.listInvalidateQueryKey}
+                statsInvalidateQueryKey={meta?.statsInvalidateQueryKey}
               />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -213,7 +234,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         },
       },
     ],
-    [contractId],
+    [contractId, basePath],
   );
 
   const filteredRows = React.useMemo(() => {
@@ -236,7 +257,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         header={() => (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-slate-700">
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
                 Changes
               </span>
               <Input
@@ -250,7 +271,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
           </div>
         )}
         emptyPlaceholder={
-          <div className="rounded-xl border border-slate-200 p-6 text-sm text-slate-600">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-6 text-sm text-slate-600 dark:text-slate-400">
             No changes found.
           </div>
         }
@@ -259,6 +280,14 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
           container:
             "bg-white dark:bg-slate-950 rounded-xl px-3 border border-gray-300 dark:border-slate-600",
           expandedCell: "px-5",
+          tHeader: "bg-transparent dark:bg-slate-900",
+          tHeadRow: "border-b border-slate-200 dark:border-slate-700",
+          tHead:
+            "px-3 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400",
+          tBody: "bg-white dark:bg-slate-950",
+          tRow: "border-b border-slate-200 dark:border-slate-800",
+          tCell:
+            "px-3 py-4 text-sm text-slate-700 dark:text-slate-200 align-middle",
         }}
         columns={variant === "approver" ? approverColumns : managerColumns}
         options={{
@@ -268,6 +297,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
           manualPagination: true,
           pagination,
           setPagination,
+          meta: { listInvalidateQueryKey, statsInvalidateQueryKey },
         }}
       />
     </div>

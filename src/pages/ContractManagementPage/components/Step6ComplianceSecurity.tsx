@@ -47,7 +47,7 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
   return (
     <Accordion type="multiple" className="mt-4 space-y-6">
       <AccordionItem value="insurance" className="border-none">
-        <AccordionTrigger className="text-sm font-medium text-slate-700 hover:no-underline border-b border-slate-200 pb-4">
+        <AccordionTrigger className="text-sm font-medium text-slate-700 dark:text-slate-200 hover:no-underline border-b border-slate-200 dark:border-slate-700 pb-4">
           Insurance Coverage
         </AccordionTrigger>
         <AccordionContent className="pt-4">
@@ -70,7 +70,7 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
                 />
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-slate-700">Limit</p>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Limit</p>
                     {index > 0 && (
                       <button
                         type="button"
@@ -104,7 +104,7 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
       </AccordionItem>
 
       <AccordionItem value="security" className="border-none">
-        <AccordionTrigger className="text-sm font-medium text-slate-700 hover:no-underline border-b border-slate-200 pb-4">
+        <AccordionTrigger className="text-sm font-medium text-slate-700 dark:text-slate-200 hover:no-underline border-b border-slate-200 dark:border-slate-700 pb-4">
           Contract Security
         </AccordionTrigger>
         <AccordionContent className="pt-4">
@@ -123,10 +123,59 @@ const Step6ComplianceSecurity: React.FC<Props> = ({ control }) => {
 
             {security === "yes" && (
               <>
+                <div className="md:col-span-2 space-y-2">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Amount</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Forger
+                      name="securityType"
+                      label="Security Type"
+                      placeholder="Enter Security"
+                      component={TextSelect}
+                      options={[
+                        {
+                          label: "Letter of Credit",
+                          value: "letter_of_credit",
+                        },
+                        { label: "Bank Guarantee", value: "bank_guarantee" },
+                        {
+                          label: "Performance Bond",
+                          value: "performance_bond",
+                        },
+                        {
+                          label: "Material Bond",
+                          value: "material_bond",
+                        },
+                        {
+                          label: "Labour Bond",
+                          value: "labour_bond",
+                        },
+                        {
+                          label: "Labour and Material Bond",
+                          value: "labour_and_material_bond",
+                        },
+                      ]}
+                    />
+                    <Forger
+                      name="securityAmount"
+                      label="Amount"
+                      placeholder="Enter Amount"
+                      component={TextCurrencyInput}
+                      currency={currency}
+                    />
+                    <Forger
+                      name="securityDueDate"
+                      label="Due Date"
+                      component={TextDatePicker}
+                      placeholder="Enter Date"
+                      minDate={today}
+                      containerClass="md:col-span-2"
+                    />
+                  </div>
+                </div>
                 {secFields.map((field, index) => (
                   <div key={field.id} className="md:col-span-2 space-y-2">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-slate-700">
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                         Amount
                       </p>
                       <button

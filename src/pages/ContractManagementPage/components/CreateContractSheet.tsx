@@ -61,6 +61,7 @@ export const schema = yup.object({
   businessDivision: yup.string().required("Business Division is required"),
   contractId: yup.string().optional(),
   msaContractId: yup.string().optional(),
+  msaCategory: yup.string().optional(),
   description: yup.string().required("Description is required"),
   vendor: yup
     .string()
@@ -105,6 +106,7 @@ export const schema = yup.object({
   contingency: yup.string().optional(),
   holdback: yup.string().optional(),
   paymentStructure: yup.string().optional(),
+  selectedDeliverable: yup.string().optional(),
   paymentTerm: yup.string().optional(),
   milestones: yup
     .array(
@@ -204,6 +206,7 @@ export const defaultValues = {
   businessDivision: "",
   contractId: "",
   msaContractId: "",
+  msaCategory: "",
   description: "",
   vendor: "",
   personnel: [],
@@ -215,6 +218,7 @@ export const defaultValues = {
   contingency: "",
   holdback: "",
   paymentStructure: "",
+  selectedDeliverable: "",
   paymentTerm: "",
   milestones: [{ name: "", amount: "", dueDate: undefined, deliverable: "" }],
   effectiveDate: undefined,
@@ -411,18 +415,18 @@ const SendForApprovalDialog = React.memo(
         <DialogContent className="sm:max-w-2xl">
           <div className=" space-y-6">
             <div className="flex items-center justify-between">
-              <p className="text-xl font-semibold text-slate-900">
+              <p className="text-xl font-semibold text-slate-900 dark:text-slate-100">
                 Send for Approval
               </p>
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-900">
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                 Select Approvers For Contract Execution
               </p>
               <div className="relative">
                 <select
-                  className="w-full h-12 border border-gray-300 rounded-lg px-4 pr-10 text-sm text-slate-700 focus:border-[#2A4467] focus:ring-[#2A4467]"
+                  className="w-full h-12 border border-gray-300 dark:border-slate-700 rounded-lg px-4 pr-10 text-sm text-slate-700 dark:text-slate-300 focus:border-[#2A4467] focus:ring-[#2A4467]"
                   value={selectedApprovalGroup}
                   onChange={(event) =>
                     setSelectedApprovalGroup(event.target.value)
@@ -438,26 +442,43 @@ const SendForApprovalDialog = React.memo(
               </div>
             </div>
 
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
-              <div className="grid grid-cols-[1fr_160px_140px] bg-slate-50 px-6 py-2 text-sm font-semibold text-[#2A4467]">
+            <div className="border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
+              <div className="grid grid-cols-[1fr_160px_140px] bg-slate-50 dark:bg-slate-800/60 px-6 py-2 text-sm font-semibold text-[#2A4467] dark:text-blue-300">
                 <p>Group</p>
                 <p className="text-center">Role</p>
                 <p className="text-center">Action</p>
               </div>
-              <div className="divide-y divide-gray-300">
+              <div className="divide-y divide-gray-300 dark:divide-slate-700">
                 {selectedApprovers.length === 0 && (
-                  <div className="px-6 py-6 text-sm text-slate-500">
+                  <div className="px-6 py-6 text-sm text-slate-500 dark:text-slate-400">
                     No approvers added for this group
                   </div>
                 )}
                 {selectedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
-                  const name =
+                  const rawText =
                     approver?.text ||
                     approver?.name ||
                     approver?.label ||
-                    "Unnamed";
-                  const email = approver?.id || approver?.email || "";
+                    "";
+                  const metaEmail =
+                    (approver?.meta?.email as string | undefined) ?? "";
+                  const fallbackEmail = approver?.email ?? "";
+                  const email =
+                    metaEmail ||
+                    (typeof fallbackEmail === "string" && fallbackEmail.includes("@")
+                      ? fallbackEmail
+                      : "");
+                  const metaName =
+                    (approver?.meta?.name as string | undefined) ?? "";
+                  const nameFromText = email
+                    ? rawText.replace(
+                        new RegExp(`\\s*\\(${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)\\s*$`),
+                        "",
+                      )
+                    : rawText;
+                  const name =
+                    metaName.trim() || nameFromText.trim() || "Unnamed";
                   const role = approver?.meta?.role
                     ? approver.meta.role
                     : selectedGroup?.approvalLevel
@@ -469,14 +490,14 @@ const SendForApprovalDialog = React.memo(
                       className="grid grid-cols-[1fr_160px_140px] items-center px-6 py-4"
                     >
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold text-slate-700">
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                           {name}
                         </p>
                         {email && (
                           <p className="text-xs text-blue-600 ">{email}</p>
                         )}
                       </div>
-                      <p className="text-sm text-slate-600 text-center">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
                         {role}
                       </p>
                       <div className="flex items-center justify-center gap-2">
@@ -486,7 +507,7 @@ const SendForApprovalDialog = React.memo(
                             toggleApprover(approverId, Boolean(checked))
                           }
                         />
-                        <span className="text-sm text-slate-700">Assign</span>
+                        <span className="text-sm text-slate-700 dark:text-slate-300">Assign</span>
                       </div>
                     </div>
                   );
@@ -495,30 +516,41 @@ const SendForApprovalDialog = React.memo(
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-900">
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                 Assigned Approvers
               </p>
-              <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-slate-50 px-4 py-4">
+              <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-4">
                 {assignedApprovers.length === 0 && (
-                  <p className="text-sm text-slate-500">Search</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Search</p>
                 )}
                 {assignedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
-                  const name =
+                  const metaName =
+                    (approver?.meta?.name as string | undefined) ?? "";
+                  const rawText =
                     approver?.text ||
                     approver?.name ||
                     approver?.label ||
-                    "Unnamed";
+                    "";
+                  const metaEmail =
+                    (approver?.meta?.email as string | undefined) ?? "";
+                  const stripped = metaEmail
+                    ? rawText.replace(
+                        new RegExp(`\\s*\\(${metaEmail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)\\s*$`),
+                        "",
+                      )
+                    : rawText;
+                  const name = metaName.trim() || stripped.trim() || "Unnamed";
                   return (
                     <div
                       key={approverId}
-                      className="flex items-center gap-2 rounded-md bg-[#2A44671A] px-2 py-1 text-xs font-semibold text-[#2A4467]"
+                      className="flex items-center gap-2 rounded-md bg-[#2A44671A] dark:bg-blue-900/30 px-2 py-1 text-xs font-semibold text-[#2A4467] dark:text-blue-300"
                     >
                       <span>{name}</span>
                       <button
                         type="button"
                         onClick={() => toggleApprover(approverId, false)}
-                        className="text-[#2A4467]"
+                        className="text-[#2A4467] dark:text-blue-300"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -572,7 +604,6 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     reset,
     trigger: formTrigger,
     setError,
-    clearErrors,
     setValue
   } = useForge<CreateContractFormData>({
     resolver: yupResolver(schema),
@@ -638,7 +669,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     queryKey: useUserQueryKey(["msa-contracts-all"]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/msa-contract",
+        url: "/contract/manager/msa-contracts",
       });
       return res.data;
     },
@@ -790,38 +821,36 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       const ok = await formTrigger(fields as any, { shouldFocus: true });
       if (!ok) return false;
       if (currentStep !== 5) return true;
+      // Step 5: when paymentStructure === "milestone", every row must
+      // have amount AND dueDate. Schema keeps them optional so the
+      // non-milestone payment structures aren't blocked.
       const values = getValues();
       if (values.paymentStructure !== "milestone") return true;
       const milestones = values.milestones ?? [];
-      let hasMilestoneError = false;
-      milestones.forEach((milestone, index) => {
-        const hasAmount =
-          milestone?.amount !== undefined &&
-          milestone?.amount !== null &&
-          String(milestone.amount).trim() !== "";
-        const hasDueDate = Boolean(milestone?.dueDate);
-        if (!hasAmount) {
-          setError(`milestones.${index}.amount`, {
+      let allValid = true;
+      milestones.forEach((m, index) => {
+        const amountMissing =
+          m?.amount === undefined ||
+          m?.amount === null ||
+          String(m.amount).trim() === "";
+        if (amountMissing) {
+          setError(`milestones.${index}.amount` as any, {
             type: "required",
-            message: "Milestone amount is required",
+            message: "Amount is required",
           });
-          hasMilestoneError = true;
-        } else {
-          clearErrors(`milestones.${index}.amount`);
+          allValid = false;
         }
-        if (!hasDueDate) {
-          setError(`milestones.${index}.dueDate`, {
+        if (!m?.dueDate) {
+          setError(`milestones.${index}.dueDate` as any, {
             type: "required",
-            message: "Milestone due date is required",
+            message: "Due date is required",
           });
-          hasMilestoneError = true;
-        } else {
-          clearErrors(`milestones.${index}.dueDate`);
+          allValid = false;
         }
       });
-      return !hasMilestoneError;
+      return allValid;
     },
-    [clearErrors, formTrigger, getValues, setError],
+    [formTrigger, getValues, setError],
   );
 
   const buildPayload = React.useCallback(
@@ -920,6 +949,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         (vendorRaw && (isEmailLike(vendorRaw) || isObjectIdLike(vendorRaw))
           ? vendorRaw
           : undefined) ||
+        awardedMatch?.vendor?._id ||
         awardedMatch?.vendor?.email ||
         undefined;
 
@@ -1002,6 +1032,10 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         msaContractId:
           relationship === "msa_project"
             ? data.msaContractId || undefined
+            : undefined,
+        msaCategory:
+          data.relationship === "msa"
+            ? data.msaCategory || undefined
             : undefined,
         solicitationId: data.awardedSolicitation || undefined,
         contractId: data.contractId || undefined,
@@ -1110,9 +1144,14 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
   const handleOpenChange = React.useCallback(
     (nextOpen: boolean) => {
+      // Escape / outside-click dismiss skips the Cancel + onSuccess paths
+      // that explicitly call clearSession(); without this the persisted
+      // solicitation-files store leaks the contract's files into the next
+      // wizard (MSA / solicitation / evaluation). QA bug #96.
+      if (!nextOpen) clearSession();
       setOpen(nextOpen);
     },
-    [],
+    [clearSession],
   );
 
   return (
@@ -1129,7 +1168,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         <button
           type="button"
           onClick={resetAndClose}
-          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-slate-100 data-[state=open]:text-slate-500 dark:ring-offset-slate-950 dark:focus:ring-slate-300 dark:data-[state=open]:bg-slate-800 dark:data-[state=open]:text-slate-400"
+          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-slate-100 data-[state=open]:text-slate-500 dark:text-slate-400 dark:ring-offset-slate-950 dark:focus:ring-slate-300 dark:data-[state=open]:bg-slate-800 dark:data-[state=open]:text-slate-400"
         >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
@@ -1140,7 +1179,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
           </DialogHeader>
 
           <div className="px-4 pb-8">
-            <p className="text-sm font-medium text-slate-700">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 dark:text-slate-200">
               {STEP_TITLES[step - 1]}
             </p>
 
@@ -1226,7 +1265,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-24 h-12 rounded-xl bg-slate-300"
+                      className="w-24 h-12 rounded-xl bg-slate-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-600"
                       onClick={() => setStep(Math.max(1, step - 1))}
                     >
                       Back

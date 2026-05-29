@@ -105,10 +105,10 @@ export const SideBar = () => {
                                 child.active
                                   ? userRole === "super_admin"
                                     ? "border-l-2 border-white/40 text-white"
-                                    : "border-l-2 border-[#2A4467] text-[#0B003A]"
+                                    : "border-l-2 border-[#2A4467] dark:border-blue-400 text-[#0B003A] dark:text-blue-400 font-medium"
                                   : userRole === "super_admin"
                                   ? "text-white/80 hover:text-white"
-                                  : "text-gray-600 hover:text-gray-900"
+                                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
                               )}
                             >
                               {child.title}

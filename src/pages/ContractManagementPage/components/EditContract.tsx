@@ -22,6 +22,8 @@ import { useProjectsList } from "@/pages/ProjectManagementPage/services/useProje
 import { useToastHandler } from "@/hooks/useToaster";
 import { useWatch } from "react-hook-form";
 import { contractManagerApi } from "@/pages/ContractManagementPage/api/contractManagerApi";
+import { useUser } from "@/store/authSlice";
+import { getExchangeRate } from "@/lib/currencyUtils";
 import type { ContractDetail, ApiResponseError } from "@/types";
 import {
   schema as createSchema,
@@ -29,7 +31,14 @@ import {
 } from "@/pages/ContractManagementPage/components/CreateContractSheet";
 import { format } from "date-fns";
 import { X } from "lucide-react";
-import { toApproverUserKeyOrUndefined } from "@/lib/contractFormValues";
+import {
+  isEmailLike,
+  isObjectIdLike,
+  toApproverUserKeyOrUndefined,
+  toFileMetaOrUndefined,
+  toIdStringOrUndefined,
+  toPersonnelOrUndefined,
+} from "@/lib/contractFormValues";
 
 type Props = {
   open: boolean;
@@ -129,8 +138,8 @@ export const buildContractApproversPayload = (
 
 export const resolveContractSaveStatus = (
   currentStatus: unknown,
-): "draft" | "publish" => {
-  return currentStatus === "draft" ? "draft" : "publish";
+): "draft" | "pending_approval" => {
+  return currentStatus === "draft" ? "draft" : "pending_approval";
 };
 
 const EditContract: React.FC<Props> = ({
@@ -154,6 +163,7 @@ const EditContract: React.FC<Props> = ({
   const [step, setStep] = React.useState(1);
   const qc = useQueryClient();
   const { success, error } = useToastHandler();
+  const currentUser = useUser();
   const [lastError, setLastError] = React.useState<ApiResponseError | null>(
     null,
   );
@@ -225,7 +235,7 @@ const EditContract: React.FC<Props> = ({
     queryKey: useUserQueryKey(["msa-contracts-all"]),
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/manager/msa-contract",
+        url: "/contract/manager/msa-contracts",
       });
       return res.data as {
         status: number;
@@ -238,9 +248,13 @@ const EditContract: React.FC<Props> = ({
     staleTime: 60_000,
   });
 
+  // Use the dedicated edit endpoint (swagger 2.3.0) — returns the
+  // contract in form-ready shape with all relations populated.
+  // Distinct query key (`contract-manager-contract-edit`) so we don't
+  // clobber the read-only detail cache used elsewhere.
   const { data: contractRes } = useQuery({
-    queryKey: useUserQueryKey(["contract-manager-contracts", contractId]),
-    queryFn: () => contractManagerApi.getContract(contractId),
+    queryKey: useUserQueryKey(["contract-manager-contract-edit", contractId]),
+    queryFn: () => contractManagerApi.getContractForEdit(contractId),
     enabled: !!contractId,
     staleTime: 60_000,
   });
@@ -283,7 +297,8 @@ const EditContract: React.FC<Props> = ({
         : (contract.contractTerm?._id ?? ""));
 
     const documents =
-      (contract.files ?? []).map((f) => ({
+      (contract.files ?? []).map((f: any) => ({
+        _id: f._id,
         name: f.name,
         url: f.url,
         type: f.type,
@@ -295,21 +310,53 @@ const EditContract: React.FC<Props> = ({
         name: d.name,
         dueDate: d.dueDate ? new Date(d.dueDate) : undefined,
       })) ?? [];
+    const selectedDeliverable =
+      deliverables.find((d) => Boolean(d.name))?.name ?? "";
 
     const milestones =
-      (contract.milestone ?? []).map((m: any) => ({
-        name: m?.name ?? m?.milestoneName ?? "",
-        amount: m?.amount ?? m?.milestoneAmount ?? "",
-        dueDate: m?.dueDate ? new Date(m.dueDate) : undefined,
-        deliverable: m?.deliverable ?? "",
-      })) ?? [];
+      (contract.milestone ?? []).map((m: any) => {
+        // Backend persists the milestone deliverable as
+        // `{ name, dueDate }`, but the form's TextSelect expects a
+        // plain string (the deliverable's name) — same shape Create
+        // emits. Without this unwrap the dropdown rendered blank and
+        // on save `typeof m.deliverable === "string"` was false, so
+        // the deliverable silently dropped out of the payload.
+        const rawDeliverable = m?.deliverable;
+        const deliverable =
+          typeof rawDeliverable === "string"
+            ? rawDeliverable
+            : (rawDeliverable?.name ?? "");
+        return {
+          name: m?.name ?? m?.milestoneName ?? "",
+          amount: m?.amount ?? m?.milestoneAmount ?? "",
+          dueDate: m?.dueDate ? new Date(m.dueDate) : undefined,
+          deliverable,
+        };
+      }) ?? [];
 
-    const approvalGroups = (contract.approvers ?? []).map((a) => ({
+    const approvalGroups = (contract.approvers ?? []).map((a: any) => ({
       name: a.group,
-      approvers: (a.user ?? []).map((u, idx) => ({
-        value: u.user,
-        text: u.userRef || `Approver ${idx + 1}`,
-      })),
+      approvers: (a.user ?? []).map((u: any, idx: number) => {
+        // API shape: { user: { _id, name, email }, userRef, status }.
+        // The previous mapping set text to `userRef` (literally the
+        // string "User") which is why the chip rendered "User"; and
+        // set value to the user OBJECT, breaking id-based lookups.
+        const userObj = u?.user && typeof u.user === "object" ? u.user : u;
+        const id = userObj?._id ?? userObj?.id ?? userObj?.email ?? "";
+        return {
+          id,
+          value: id,
+          text:
+            userObj?.name || userObj?.email || id || `Approver ${idx + 1}`,
+          meta: {
+            email: userObj?.email ?? "",
+            role:
+              typeof userObj?.role === "string"
+                ? userObj.role
+                : (userObj?.role?.name ?? ""),
+          },
+        };
+      }),
       approvalLevel: String(a.level ?? 0),
       amount: a.amount ?? "",
     })) ?? [{ name: "", approvers: [], approvalLevel: "0", amount: "" }];
@@ -349,19 +396,32 @@ const EditContract: React.FC<Props> = ({
         typeof contract.msaContract === "string"
           ? contract.msaContract
           : contract.msaContract?._id || "",
+      msaCategory: (contract as any).msaCategory ?? "",
       awardedSolicitation:
         typeof contract.solicitation === "string"
           ? contract.solicitation
           : (contract.solicitation?._id ?? ""),
       type: contract.contractType?._id ?? "",
-      category: contract.category ?? "",
+      // BE detail can return `category` as either the raw string name or
+      // a populated `{_id, name}` object — coerce to the string the form
+      // expects (TextSelectWithSearch matches options by `value: c.name`).
+      category:
+        typeof contract.category === "string"
+          ? contract.category
+          : ((contract.category as any)?.name ?? ""),
       manager: contract.managers?.[0] ?? "",
       jobTitle: contract.jobTitle ?? "",
       vendor:
         typeof contract.vendor === "string"
           ? contract.vendor
           : (contract.vendor?._id ?? ""),
-      personnel: (contract.vendorPersonnel ?? []).map((p) => ({
+      // Server field name varies — the new /edit endpoint exposes a
+      // flat `personnel` array; the older detail shape used
+      // `vendorPersonnel`. Accept either.
+      personnel: ((contract.personnel as any[] | undefined) ??
+        contract.vendorPersonnel ??
+        []
+      ).map((p: any) => ({
         id: p._id ?? p.email ?? "",
         text: p.name || p.email || p._id || "",
         meta: {
@@ -369,10 +429,13 @@ const EditContract: React.FC<Props> = ({
           role: Array.isArray(p.role)
             ? (p.role[0]?.name ?? "")
             : (p.role ?? ""),
-          phone: (p as any).phone ?? "",
+          phone: p.phone ?? "",
         },
       })),
-      personnelMeta: (contract.vendorPersonnel ?? []).map((p) => ({
+      personnelMeta: ((contract.personnel as any[] | undefined) ??
+        contract.vendorPersonnel ??
+        []
+      ).map((p: any) => ({
         id: p._id ?? p.email ?? "",
         name: p.name || "",
         email: p.email ?? "",
@@ -382,24 +445,35 @@ const EditContract: React.FC<Props> = ({
             : Array.isArray(p.role)
               ? ((p.role[0] as any)?.name ?? "")
               : "",
-        phone: (p as any).phone ?? "",
+        phone: p.phone ?? "",
       })),
-      internalTeam: (contract.internalTeam ?? []).map((t) => ({
-        id: t.id ?? t.email ?? "",
-        text: t.name || t.email || t.id || "",
-        meta: {
-          email: t.email ?? "",
-          role: t.role ?? "",
-          phone: (t as any).phone ?? "",
-        },
-      })),
-      internalTeamMeta: (contract.internalTeam ?? []).map((t) => ({
-        id: t.id ?? t.email ?? "",
-        name: t.name || "",
-        email: t.email ?? "",
-        role: t.role ?? "",
-        phone: (t as any).phone ?? "",
-      })),
+      internalTeam: (contract.internalTeam ?? []).map((t: any) => {
+        const u = t?.user ?? t;
+        const role =
+          typeof u?.role === "string" ? u.role : (u?.role?.name ?? "");
+        const id = u?._id ?? u?.id ?? u?.email ?? "";
+        return {
+          id,
+          text: u?.name || u?.email || id || "",
+          meta: {
+            email: u?.email ?? "",
+            role,
+            phone: u?.phone ?? "",
+          },
+        };
+      }),
+      internalTeamMeta: (contract.internalTeam ?? []).map((t: any) => {
+        const u = t?.user ?? t;
+        const role =
+          typeof u?.role === "string" ? u.role : (u?.role?.name ?? "");
+        return {
+          id: u?._id ?? u?.id ?? u?.email ?? "",
+          name: u?.name || "",
+          email: u?.email ?? "",
+          role,
+          phone: u?.phone ?? "",
+        };
+      }),
       businessDivision:
         typeof contract.businessDivision === "string"
           ? contract.businessDivision
@@ -407,8 +481,25 @@ const EditContract: React.FC<Props> = ({
       contractId: contract.contractId ?? "",
       description: contract.description ?? "",
       visibility: contract.visibility ?? "",
+      // The /edit response carries `currency` and `projectManager` which
+      // the previous mapping ignored — the form's Currency select was
+      // stuck on "Select currency" and the PM select was unfilled even
+      // when both were saved on the contract.
+      currency:
+        typeof contract.currency === "string"
+          ? contract.currency
+          : ((contract as any).currency?._id ??
+            createDefaults.currency ??
+            ""),
+      projectManager:
+        typeof contract.projectManager === "object" &&
+        contract.projectManager !== null
+          ? (((contract.projectManager as any).user?._id ??
+            (contract.projectManager as any).user) ??
+            "")
+          : ((contract.projectManager as any) ?? ""),
       contractValue: contract.contractValue ?? "",
-      contingency: contract.contigency ?? "",
+      contingency: (contract as any).contingency ?? contract.contigency ?? "",
       holdback: String(contract.holdBack ?? ""),
       paymentStructure:
         contract.paymentStructure === "Monthly"
@@ -418,6 +509,7 @@ const EditContract: React.FC<Props> = ({
             : contract.paymentStructure === "Progress Draw"
               ? "lump_sum"
               : "",
+      selectedDeliverable,
       paymentTerm: paymentTermId,
       termType: termTypeId,
       effectiveDate: contract.startDate
@@ -554,7 +646,7 @@ const EditContract: React.FC<Props> = ({
   });
 
   const buildPayload = React.useCallback(
-    (data: yup.InferType<typeof createSchema>, status: "draft" | "publish") => {
+    (data: yup.InferType<typeof createSchema>, status: "draft" | "pending_approval") => {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
       const relationship =
         data.relationship === "msa" || data.relationship === "msa_project"
@@ -622,16 +714,8 @@ const EditContract: React.FC<Props> = ({
 
       const files =
         (data.documents ?? [])
-          .map((f: any) => ({
-            name: typeof f?.name === "string" ? f.name : undefined,
-            url: typeof f?.url === "string" ? f.url : undefined,
-            type: typeof f?.type === "string" ? f.type : undefined,
-            size:
-              typeof f?.size === "number"
-                ? f.size
-                : toNumberOrUndefined(f?.size),
-          }))
-          .filter((f) => Boolean(f?.name && f?.url && f?.type)) ?? [];
+          .map((f: any) => toFileMetaOrUndefined(f))
+          .filter(Boolean) ?? [];
 
       const formatDate = (d: any) =>
         d ? format(d, "yyyy-MM-dd'T'HH:mm:ss") : undefined;
@@ -692,10 +776,38 @@ const EditContract: React.FC<Props> = ({
         },
       };
 
+      const awardedMatch = awardedQuery.data?.data?.find(
+        (a) => a._id === data.awardedSolicitation,
+      );
+
+      const vendorRaw =
+        typeof data.vendor === "string" ? data.vendor.trim() : "";
+      const vendor =
+        (vendorRaw && (isEmailLike(vendorRaw) || isObjectIdLike(vendorRaw))
+          ? vendorRaw
+          : undefined) ||
+        awardedMatch?.vendor?._id ||
+        awardedMatch?.vendor?.email ||
+        undefined;
+
+      const personnel =
+        (data.personnelMeta && data.personnelMeta.length > 0
+          ? (data.personnelMeta ?? [])
+              .map((p: any) => toPersonnelOrUndefined(p))
+              .filter(Boolean)
+          : (data.personnel ?? [])
+              .map((t: any) => toPersonnelOrUndefined(t))
+              .filter(Boolean)) ?? undefined;
+
       const payload = {
         title: data.name,
         description: data.description,
-        category: data.category,
+        // Defensive guard: if the initial state leaked through as an object
+        // (legacy BE shape), coerce to the string name the API expects.
+        category:
+          typeof data.category === "string"
+            ? data.category
+            : ((data.category as any)?.name ?? ""),
         timezone: tz,
         contractType: data.type,
         contractRelationship: relationship,
@@ -708,6 +820,10 @@ const EditContract: React.FC<Props> = ({
           relationship === "msa_project"
             ? data.msaContractId || undefined
             : undefined,
+        msaCategory:
+          data.relationship === "msa"
+            ? data.msaCategory || undefined
+            : undefined,
         solicitationId: data.awardedSolicitation || undefined,
         contractId: data.contractId || undefined,
         jobTitle: data.jobTitle || undefined,
@@ -718,7 +834,7 @@ const EditContract: React.FC<Props> = ({
               ? data.contractValue
               : undefined
             : toNumberOrUndefined(data.contractValue),
-        contigency: data.contingency || undefined,
+        contingency: data.contingency || undefined,
         holdBack,
         contractPaymentTerm: data.paymentTerm || undefined,
         paymentTerm: paymentTermName || undefined,
@@ -736,6 +852,18 @@ const EditContract: React.FC<Props> = ({
         rating: data.rating || 5,
         status,
         approvers,
+        currency: data.currency || undefined,
+        vendor,
+        projectManager: data.projectManager || undefined,
+        personnel,
+        internalTeam:
+          (data.internalTeamMeta && data.internalTeamMeta.length > 0
+            ? (data.internalTeamMeta ?? [])
+                .map((p: any) => toIdStringOrUndefined(p))
+                .filter(Boolean)
+            : (data.internalTeam ?? [])
+                .map((t: any) => toIdStringOrUndefined(t?.value ?? t))
+                .filter(Boolean)) ?? undefined,
         signatories:
           signatories && signatories.length > 0 ? signatories : undefined,
       };
@@ -747,7 +875,48 @@ const EditContract: React.FC<Props> = ({
       });
       return payload;
     },
-    [paymentTermsQuery.data?.data, signatories, termTypesQuery.data?.data],
+    [
+      awardedQuery.data?.data,
+      paymentTermsQuery.data?.data,
+      signatories,
+      termTypesQuery.data?.data,
+    ],
+  );
+
+  const submit = React.useCallback(
+    async (
+      data: yup.InferType<typeof createSchema>,
+      status: "draft" | "pending_approval",
+    ) => {
+      const payload = buildPayload(data, status) as any;
+
+      const baseCurrency = currentUser?.currency;
+      const selectedCurrency = payload?.currency;
+      if (
+        typeof baseCurrency === "string" &&
+        typeof selectedCurrency === "string" &&
+        baseCurrency &&
+        selectedCurrency &&
+        baseCurrency !== selectedCurrency
+      ) {
+        try {
+          payload.currencyRate = await getExchangeRate(
+            baseCurrency,
+            selectedCurrency,
+          );
+        } catch (err) {
+          error(
+            "Failed to update contract",
+            err instanceof Error ? err.message : "Unable to fetch currency rate",
+          );
+          return;
+        }
+      }
+
+      setLastPayload(payload);
+      mutation.mutate(payload);
+    },
+    [buildPayload, currentUser?.currency, error, mutation],
   );
 
   const STEP_FIELDS: Record<
@@ -838,12 +1007,7 @@ const EditContract: React.FC<Props> = ({
         const status = resolveContractSaveStatus(
           contractRes?.data?.data?.status,
         );
-        const payload = buildPayload(
-          vals as yup.InferType<typeof createSchema>,
-          status,
-        );
-        setLastPayload(payload);
-        mutation.mutate(payload);
+        void submit(vals as yup.InferType<typeof createSchema>, status);
       } else if (e.key === "Escape") {
         e.preventDefault();
         onOpenChange(false);
@@ -854,8 +1018,7 @@ const EditContract: React.FC<Props> = ({
   }, [
     open,
     getValues,
-    buildPayload,
-    mutation,
+    submit,
     onOpenChange,
     contractRes?.data?.data?.status,
   ]);
@@ -870,7 +1033,7 @@ const EditContract: React.FC<Props> = ({
       >
         <div data-testid="edit-contract-sheet" className="space-y-6">
           <div className="px-8 pt-8">
-            <p className="text-xl font-semibold text-slate-900">
+            <p className="text-xl font-semibold text-slate-900 dark:text-slate-100">
               Edit Contract
             </p>
           </div>
@@ -889,15 +1052,13 @@ const EditContract: React.FC<Props> = ({
             </div>
           )}
           <div className="px-4 pb-8">
-            <p className="text-sm font-medium text-slate-700">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
               {STEP_TITLES[step - 1]}
             </p>
             <Forge
               control={control}
               onSubmit={(data) => {
-                const payload = buildPayload(data as any, "publish");
-                setLastPayload(payload);
-                mutation.mutate(payload);
+                void submit(data as any, "pending_approval");
               }}
               className="mt-4 space-y-6"
             >
@@ -954,30 +1115,27 @@ const EditContract: React.FC<Props> = ({
                   <Button
                     type="button"
                     variant="outline"
-                    aria-label="Save changes"
+                    aria-label="Save as draft"
                     className=" h-12 rounded-xl"
                     onClick={() => {
                       const vals = getValues();
-                      const status = resolveContractSaveStatus(
-                        contractRes?.data?.data?.status,
-                      );
-                      const payload = buildPayload(vals as any, status);
-                      setLastPayload(payload);
-                      mutation.mutate(payload);
+                      void submit(vals as any, "draft");
                     }}
                     disabled={mutation.isPending}
                   >
-                    {mutation.isPending ? "Saving..." : "Save Changes"}
+                    {mutation.isPending ? "Saving..." : "Save as Draft"}
                   </Button>
+
                   <div className="flex gap-4">
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-24 h-12 rounded-xl bg-slate-300"
+                      className="w-24 h-12 rounded-xl bg-slate-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-600"
                       onClick={() => setStep(Math.max(1, step - 1))}
                     >
                       Back
                     </Button>
+
                     <Button
                       type="button"
                       className="w-32 h-12 rounded-xl"
@@ -988,10 +1146,20 @@ const EditContract: React.FC<Props> = ({
                           setIsApprovalDialogOpen(true);
                           return;
                         }
+                        if (step === 9) {
+                          const vals = getValues();
+                          void submit(vals as any, "pending_approval");
+                          return;
+                        }
                         setStep(Math.min(9, step + 1));
                       }}
+                      disabled={step === 9 && mutation.isPending}
                     >
-                      Continue
+                      {step === 9
+                        ? mutation.isPending
+                          ? "Publishing..."
+                          : "Publish"
+                        : "Continue"}
                     </Button>
                   </div>
                 </div>
@@ -1041,6 +1209,20 @@ const SendForApprovalDialog = React.memo(
     const [assignedApproverIds, setAssignedApproverIds] = React.useState<
       string[]
     >([]);
+
+    // Auto-select the first group that has approvers as soon as the
+    // dialog opens, so the approver list isn't a dead empty state
+    // until the user manually picks from the dropdown.
+    React.useEffect(() => {
+      if (!open) return;
+      if (selectedApprovalGroup !== "") return;
+      const firstWithApprovers = (approvalGroups ?? []).findIndex(
+        (g) => (g?.approvers?.length ?? 0) > 0,
+      );
+      if (firstWithApprovers >= 0) {
+        setSelectedApprovalGroup(String(firstWithApprovers));
+      }
+    }, [open, approvalGroups, selectedApprovalGroup]);
 
     const approvalGroupOptions = React.useMemo(
       () =>
@@ -1114,18 +1296,18 @@ const SendForApprovalDialog = React.memo(
         <DialogContent className="sm:max-w-2xl">
           <div className=" space-y-6">
             <div className="flex items-center justify-between">
-              <p className="text-xl font-semibold text-slate-900">
+              <p className="text-xl font-semibold text-slate-900 dark:text-slate-100">
                 Send for Approval
               </p>
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-900">
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                 Select Approvers For Contract Execution
               </p>
               <div className="relative">
                 <select
-                  className="w-full h-12 border border-gray-300 rounded-lg px-4 pr-10 text-sm text-slate-700 focus:border-[#2A4467] focus:ring-[#2A4467]"
+                  className="w-full h-12 border border-gray-300 dark:border-slate-700 rounded-lg px-4 pr-10 text-sm text-slate-700 dark:text-slate-300 focus:border-[#2A4467] focus:ring-[#2A4467]"
                   value={selectedApprovalGroup}
                   onChange={(event) =>
                     setSelectedApprovalGroup(event.target.value)
@@ -1141,26 +1323,43 @@ const SendForApprovalDialog = React.memo(
               </div>
             </div>
 
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
-              <div className="grid grid-cols-[1fr_160px_140px] bg-slate-50 px-6 py-2 text-sm font-semibold text-[#2A4467]">
+            <div className="border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
+              <div className="grid grid-cols-[1fr_160px_140px] bg-slate-50 dark:bg-slate-800/60 px-6 py-2 text-sm font-semibold text-[#2A4467] dark:text-blue-300">
                 <p>Group</p>
                 <p className="text-center">Role</p>
                 <p className="text-center">Action</p>
               </div>
-              <div className="divide-y divide-gray-300">
+              <div className="divide-y divide-gray-300 dark:divide-slate-700">
                 {selectedApprovers.length === 0 && (
-                  <div className="px-6 py-6 text-sm text-slate-500">
+                  <div className="px-6 py-6 text-sm text-slate-500 dark:text-slate-400">
                     No approvers added for this group
                   </div>
                 )}
                 {selectedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
-                  const name =
+                  const rawText =
                     approver?.text ||
                     approver?.name ||
                     approver?.label ||
-                    "Unnamed";
-                  const email = approver?.id || approver?.email || "";
+                    "";
+                  const metaEmail =
+                    (approver?.meta?.email as string | undefined) ?? "";
+                  const fallbackEmail = approver?.email ?? "";
+                  const email =
+                    metaEmail ||
+                    (typeof fallbackEmail === "string" && fallbackEmail.includes("@")
+                      ? fallbackEmail
+                      : "");
+                  const metaName =
+                    (approver?.meta?.name as string | undefined) ?? "";
+                  const nameFromText = email
+                    ? rawText.replace(
+                        new RegExp(`\\s*\\(${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)\\s*$`),
+                        "",
+                      )
+                    : rawText;
+                  const name =
+                    metaName.trim() || nameFromText.trim() || "Unnamed";
                   const role = approver?.meta?.role
                     ? approver.meta.role
                     : selectedGroup?.approvalLevel
@@ -1172,14 +1371,14 @@ const SendForApprovalDialog = React.memo(
                       className="grid grid-cols-[1fr_160px_140px] items-center px-6 py-4"
                     >
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold text-slate-700">
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                           {name}
                         </p>
                         {email && (
                           <p className="text-xs text-blue-600 ">{email}</p>
                         )}
                       </div>
-                      <p className="text-sm text-slate-600 text-center">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
                         {role}
                       </p>
                       <div className="flex items-center justify-center gap-2">
@@ -1189,7 +1388,7 @@ const SendForApprovalDialog = React.memo(
                             toggleApprover(approverId, Boolean(checked))
                           }
                         />
-                        <span className="text-sm text-slate-700">Assign</span>
+                        <span className="text-sm text-slate-700 dark:text-slate-300">Assign</span>
                       </div>
                     </div>
                   );
@@ -1198,30 +1397,41 @@ const SendForApprovalDialog = React.memo(
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-900">
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                 Assigned Approvers
               </p>
-              <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-slate-50 px-4 py-4">
+              <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-4">
                 {assignedApprovers.length === 0 && (
-                  <p className="text-sm text-slate-500">Search</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Search</p>
                 )}
                 {assignedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
-                  const name =
+                  const metaName =
+                    (approver?.meta?.name as string | undefined) ?? "";
+                  const rawText =
                     approver?.text ||
                     approver?.name ||
                     approver?.label ||
-                    "Unnamed";
+                    "";
+                  const metaEmail =
+                    (approver?.meta?.email as string | undefined) ?? "";
+                  const stripped = metaEmail
+                    ? rawText.replace(
+                        new RegExp(`\\s*\\(${metaEmail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)\\s*$`),
+                        "",
+                      )
+                    : rawText;
+                  const name = metaName.trim() || stripped.trim() || "Unnamed";
                   return (
                     <div
                       key={approverId}
-                      className="flex items-center gap-2 rounded-md bg-[#2A44671A] px-2 py-1 text-xs font-semibold text-[#2A4467]"
+                      className="flex items-center gap-2 rounded-md bg-[#2A44671A] dark:bg-blue-900/30 px-2 py-1 text-xs font-semibold text-[#2A4467] dark:text-blue-300"
                     >
                       <span>{name}</span>
                       <button
                         type="button"
                         onClick={() => toggleApprover(approverId, false)}
-                        className="text-[#2A4467]"
+                        className="text-[#2A4467] dark:text-blue-300"
                       >
                         <X className="h-3 w-3" />
                       </button>

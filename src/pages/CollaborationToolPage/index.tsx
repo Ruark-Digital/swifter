@@ -1,4 +1,5 @@
-import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { SEOWrapper } from "@/components/SEO";
 import SidebarPanel from "./components/SidebarPanel";
 import "@/pages/CollaborationToolPage/collaboration.css";
@@ -10,6 +11,32 @@ import {
   useContractMentionables,
   type Mentionable,
 } from "./collab/useContractMentionables";
+import {
+  useAddFileComment,
+  useFileComments,
+  type FileCommentRich,
+} from "./collab/useFileComments";
+import { useToastHandler } from "@/hooks/useToaster";
+import {
+  type RedlineSpan,
+} from "./collab/redlineScan";
+import type { EditorAdapter } from "./collab/editorAdapter";
+import { useCollabVersions } from "./collab/useCollabVersions";
+import {
+  useFileVersions,
+  useDownloadLatestCollab,
+} from "./collab/useFileVersionsApi";
+import {
+  useAiRedlineSuggestions,
+  type AiRedlineSuggestion,
+} from "./collab/useAiRedlineSuggestions";
+import type { Version } from "./components/VersionHistoryModal";
+
+type AiItem = {
+  redline: RedlineSpan;
+  suggestion?: AiRedlineSuggestion;
+  state: "pending" | "approved" | "dismissed";
+};
 
 type SidebarAttachment = {
   filename: string;
@@ -24,8 +51,6 @@ type SidebarFeed = {
   showDot?: boolean;
   attachment?: SidebarAttachment | null;
   redlineId?: string | null;
-  parentId?: string | null;
-  replies?: SidebarFeed[];
 };
 
 type LocalComment = {
@@ -33,13 +58,17 @@ type LocalComment = {
   author: string;
   createdAt: string;
   content: string;
-  parentId?: string | null;
   redlineId?: string | null;
   redlineKind?: "insertion" | "deletion" | null;
   mentions?: Mentionable[];
 };
 
-const EditorPane = lazy(() => import("./components/EditorPanel"));
+const EditorPane = lazyWithRetry(() => import("./components/EditorPanel"));
+// TipTap is now the default editor. The legacy Yoopta panel is kept as
+// a fallback for redline / comment / AI / version-history features that
+// haven't been ported yet — opt in with `?editor=yoopta` until SP2-4
+// land those features on TipTap.
+const TipTapEditorPane = lazyWithRetry(() => import("./components/TipTapEditorPanel"));
 
 const toTimestamp = (value?: string | Date) => {
   if (!value) return "";
@@ -54,30 +83,14 @@ const toTimestamp = (value?: string | Date) => {
   }).format(date);
 };
 
-const mapLocalCommentsToFeed = (comments: LocalComment[]): SidebarFeed[] => {
-  const byParent = new Map<string, LocalComment[]>();
-  for (const c of comments) {
-    if (!c.parentId) continue;
-    const list = byParent.get(c.parentId) ?? [];
-    list.push(c);
-    byParent.set(c.parentId, list);
-  }
-  return comments
-    .filter((c) => !c.parentId)
-    .map((comment) => ({
-      id: comment.id,
-      name: comment.author || "Unknown User",
-      timestamp: toTimestamp(comment.createdAt),
-      message: comment.content,
-      redlineId: comment.redlineId ?? null,
-      replies: (byParent.get(comment.id) ?? []).map((r) => ({
-        id: r.id,
-        name: r.author || "Unknown User",
-        timestamp: toTimestamp(r.createdAt),
-        message: r.content,
-      })),
-    }));
-};
+const mapLocalCommentsToFeed = (comments: LocalComment[]): SidebarFeed[] =>
+  comments.map((comment) => ({
+    id: comment.id,
+    name: comment.author || "Unknown User",
+    timestamp: toTimestamp(comment.createdAt),
+    message: comment.content,
+    redlineId: comment.redlineId ?? null,
+  }));
 
 const readLocalComments = (storageKey: string): LocalComment[] => {
   try {
@@ -102,19 +115,58 @@ const CollaborationToolPage: React.FC = () => {
   const token = useToken();
   const user = useUser();
   const { toast } = useToast();
+  const toastHandler = useToastHandler();
   const [searchParams] = useSearchParams();
   const [commentInput, setCommentInput] = useState("");
 
   const activeTab = useCollaborationStore((state) => state.activeTab);
-  const hasVisitedLog = useCollaborationStore((state) => state.hasVisitedLog);
   const presenceActive = useCollaborationStore((state) => state.presenceActive);
   const setActiveTab = useCollaborationStore((state) => state.setActiveTab);
   const setPresenceActive = useCollaborationStore((state) => state.setPresenceActive);
+
+  // Editor adapter is owned by whichever panel is mounted (Yoopta or
+  // TipTap) and published up here so the sidebar (Redline + Versions
+  // tabs) can drive AI runs and version snapshots without depending on
+  // a specific editor's API.
+  const editorAdapterRef = useRef<EditorAdapter | null>(null);
+  // Mirror the adapter's Y.Doc into state so the version-history hook
+  // can subscribe — refs don't trigger re-renders, but the hook needs
+  // re-renders when the doc identity changes (room/token swap).
+  //
+  // Named `collabYDoc` to avoid colliding with the `collabDoc` URL
+  // search-param string declared further down.
+  const [collabYDoc, setCollabYDoc] = useState<
+    EditorAdapter["doc"] | undefined
+  >(undefined);
+  const handleEditorReady = useCallback((adapter: EditorAdapter | null) => {
+    editorAdapterRef.current = adapter;
+    setCollabYDoc(adapter?.doc);
+  }, []);
+
+  // Version history backed by Yjs so every client in the same room
+  // sees the same timeline.
+  const {
+    versions: localVersions,
+    addVersion,
+    getSnapshot: getVersionSnapshot,
+  } = useCollabVersions(collabYDoc);
+
+  // AI redline suggestions (moved out of EditorPanel)
+  const contractIdParam = searchParams.get("contractId") || undefined;
+  const msaContractIdParam = searchParams.get("msaContractId") || undefined;
+  const aiMutation = useAiRedlineSuggestions({
+    documentId: msaContractIdParam || contractIdParam,
+    isMsa: Boolean(msaContractIdParam),
+  });
+  const [aiItems, setAiItems] = useState<AiItem[]>([]);
+  const [aiHasRun, setAiHasRun] = useState(false);
+  const [aiNoRedlines, setAiNoRedlines] = useState(false);
 
   const sourceUrl = searchParams.get("sourceUrl") || "";
   const fileName = searchParams.get("fileName") || "";
   const fileType = searchParams.get("fileType") || "";
   const contractId = searchParams.get("contractId") || "";
+  const fileId = searchParams.get("fileId") || "";
   const collabDoc = searchParams.get("doc") || searchParams.get("docId") || "";
   const wsUrlParam = searchParams.get("wsUrl") || searchParams.get("collabWsUrl") || "";
 
@@ -132,6 +184,12 @@ const CollaborationToolPage: React.FC = () => {
 
   const { data: mentionables = [] } = useContractMentionables(contractId);
 
+  // Backend-backed comments via /file-comment/{fileId}. When fileId is
+  // present we treat the API as the source of truth; otherwise we fall
+  // back to localStorage so the tool still works for ad-hoc/legacy use.
+  const fileCommentsQuery = useFileComments(fileId || undefined);
+  const addFileComment = useAddFileComment(fileId || undefined);
+
   useEffect(() => {
     if (!commentsStorageKey) {
       setLocalComments([]);
@@ -140,8 +198,25 @@ const CollaborationToolPage: React.FC = () => {
     setLocalComments(readLocalComments(commentsStorageKey));
   }, [commentsStorageKey]);
 
-  const commentsFeed = useMemo(() => mapLocalCommentsToFeed(localComments), [localComments]);
-  const logsFeed = useMemo<SidebarFeed[]>(() => [], []);
+  const combinedComments: LocalComment[] = useMemo(() => {
+    if (fileId) {
+      return (fileCommentsQuery.data ?? []).map((c: FileCommentRich) => ({
+        id: c.id,
+        author: c.author,
+        createdAt: c.createdAt,
+        content: c.content,
+        redlineId: c.redlineId ?? null,
+        redlineKind: c.redlineKind ?? null,
+        mentions: c.mentions,
+      }));
+    }
+    return localComments;
+  }, [fileCommentsQuery.data, fileId, localComments]);
+
+  const commentsFeed = useMemo(
+    () => mapLocalCommentsToFeed(combinedComments),
+    [combinedComments],
+  );
 
   useEffect(() => {
     const handleOffline = () => {
@@ -181,8 +256,19 @@ const CollaborationToolPage: React.FC = () => {
   }, [activeTab, setPresenceActive]);
 
   const collabMeta = useMemo(() => {
-    const wsUrl = wsUrlParam || import.meta.env.VITE_YWS_URL || "ws://localhost:1234";
-    const roomId = collabDoc || contractId || fileName || "collab:editor";
+    // Per COLLAB_WS.md the canonical env var is `VITE_WS_URL`; keep
+     // `VITE_YWS_URL` as a deprecated fallback so existing local .env
+     // files keep working.
+    const wsUrl =
+      wsUrlParam ||
+      import.meta.env.VITE_WS_URL ||
+      import.meta.env.VITE_YWS_URL ||
+      "ws://localhost:1234";
+    // Collab room is keyed by file name so the same document opened from
+    // different contracts converges to one Yjs room. An explicit `?doc=`
+    // query param still wins (lets ops pin a custom room id); contractId
+    // is only a last-resort fallback when no fileName is supplied.
+    const roomId = collabDoc || fileName || contractId || "collab:editor";
     return {
       wsUrl,
       roomId,
@@ -192,10 +278,60 @@ const CollaborationToolPage: React.FC = () => {
     };
   }, [collabDoc, contractId, fileName, presenceActive, token, wsUrlParam]);
 
+  // Server-stored version history (GET /file/versions/{docName}) and
+  // latest-snapshot download (GET /collab-export/{docName}/download).
+  // The fallback room id "collab:editor" is excluded so we don't pin a
+  // shared global key on the BE when no real document is loaded.
+  const docName =
+    collabMeta.roomId && collabMeta.roomId !== "collab:editor"
+      ? collabMeta.roomId
+      : undefined;
+  const fileVersionsQuery = useFileVersions(docName);
+  const downloadLatestMutation = useDownloadLatestCollab();
+
+  // Merge BE-fetched versions on top of in-memory Yjs snapshots. BE
+  // entries carry `source: "be"` so the Versions tab knows to suppress
+  // the per-row Restore button (no client-side snapshot to apply).
+  const versions: Version[] = useMemo(() => {
+    const be = fileVersionsQuery.data?.versions ?? [];
+    const combined = [...be, ...localVersions];
+    return combined.sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
+  }, [fileVersionsQuery.data?.versions, localVersions]);
+
+  const handleDownloadLatestVersion = useCallback(() => {
+    if (!docName) {
+      toastHandler.error(
+        "Download unavailable",
+        "Open a document before downloading the latest version.",
+      );
+      return;
+    }
+    downloadLatestMutation.mutate(
+      { docName },
+      {
+        onError: (err) => {
+          const message =
+            err instanceof Error ? err.message : "Could not download snapshot.";
+          toastHandler.error("Download failed", message);
+        },
+      },
+    );
+  }, [docName, downloadLatestMutation, toastHandler]);
+
   const importMeta = useMemo(
     () => ({ sourceUrl, fileName, fileType }),
     [sourceUrl, fileName, fileType]
   );
+
+  // `saveVersionSnapshot` is declared further down (after version
+  // history wiring). Read it through a ref so this listener-mount
+  // effect doesn't hit the TDZ on first render.
+  const saveVersionSnapshotRef = useRef<
+    ((label: string, kind: Version["kind"]) => void) | null
+  >(null);
 
   useEffect(() => {
     const onRedline = (e: Event) => {
@@ -208,6 +344,14 @@ const CollaborationToolPage: React.FC = () => {
         kind: detail.kind,
       };
       setActiveTab("comments");
+      // Track-change snapshot — versions tab becomes the timeline so
+      // users can revert "before this insertion" / "before this deletion".
+      saveVersionSnapshotRef.current?.(
+        detail.kind === "insertion"
+          ? "Inserted redline"
+          : "Deleted redline",
+        detail.kind,
+      );
     };
     const onInlineComment = (e: Event) => {
       const detail = (e as CustomEvent).detail as
@@ -220,11 +364,19 @@ const CollaborationToolPage: React.FC = () => {
       };
       setActiveTab("comments");
     };
+    // Debounced plain-text-edit signal from the editor panel — turns
+    // every "pause after typing" into a versions-tab snapshot so users
+    // can revert ordinary edits, not just track-changes events.
+    const onDocEdit = () => {
+      saveVersionSnapshotRef.current?.("Document edit", "edit");
+    };
     window.addEventListener("ct-add-redline", onRedline);
     window.addEventListener("ct-add-inline-comment", onInlineComment);
+    window.addEventListener("ct-doc-edit", onDocEdit);
     return () => {
       window.removeEventListener("ct-add-redline", onRedline);
       window.removeEventListener("ct-add-inline-comment", onInlineComment);
+      window.removeEventListener("ct-doc-edit", onDocEdit);
     };
   }, [setActiveTab]);
 
@@ -237,46 +389,229 @@ const CollaborationToolPage: React.FC = () => {
   );
 
   const handleTabChange = useCallback(
-    (tab: "comments" | "log") => {
+    (tab: "comments" | "redline" | "versions") => {
       setActiveTab(tab);
     },
     [setActiveTab]
   );
 
-  const canWriteComment = Boolean(contractId);
+  // ── Version history handlers ────────────────────────────────────────
+  // Backed by `useCollabVersions` — the version list + snapshots live in
+  // the shared Y.Doc, so other clients see new entries automatically.
+  // There is no manual Save button; every entry comes from a track-
+  // change event (redline, AI apply, comment) so the call is always
+  // silent (no toast).
+  const saveVersionSnapshot = useCallback(
+    (label: string, kind: Version["kind"]) => {
+      const adapter = editorAdapterRef.current;
+      if (!adapter) return;
+      try {
+        const snapshot = adapter.getSnapshot();
+        addVersion({
+          label,
+          kind: kind ?? "comment",
+          author: user?.name || "Unknown User",
+          snapshot,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.warn("[versions] save failed", error);
+        }
+      }
+    },
+    [addVersion, user?.name],
+  );
 
-  const handleSubmitComment = useCallback(
-    (parentId?: string | null) => {
-      if (!canWriteComment || !commentsStorageKey) return;
+  // Keep the ref used by the early useEffect listeners in sync with
+  // the latest callback identity.
+  useEffect(() => {
+    saveVersionSnapshotRef.current = saveVersionSnapshot;
+  }, [saveVersionSnapshot]);
 
-      const trimmed = commentInput.trim();
-      if (!trimmed) return;
+  const handleRestoreVersion = useCallback(
+    (versionId: string) => {
+      const adapter = editorAdapterRef.current;
+      if (!adapter) return;
+      try {
+        const snapshot = getVersionSnapshot(versionId);
+        if (snapshot == null) {
+          toastHandler.error(
+            "Version restore failed",
+            "Snapshot is no longer available.",
+          );
+          return;
+        }
+        adapter.setSnapshot(snapshot);
+        toastHandler.success(
+          "Version restored",
+          "Document version restored successfully.",
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        toastHandler.error("Version restore failed", message);
+      }
+    },
+    [getVersionSnapshot, toastHandler],
+  );
 
-      const redline = pendingRedlineRef.current;
-      const next: LocalComment = {
-        id: crypto.randomUUID(),
-        author: user?.name || "Unknown User",
-        createdAt: new Date().toISOString(),
-        content: trimmed,
-        parentId: parentId ?? null,
-        // only the root comment of a thread carries the redline link
-        redlineId: parentId ? null : redline?.redlineId ?? null,
-        redlineKind: parentId ? null : redline?.kind ?? null,
-        mentions: pendingMentionsRef.current,
-      };
+  // ── AI redline suggestion handlers ──────────────────────────────────
+  const runAiSuggestions = useCallback(async () => {
+    const adapter = editorAdapterRef.current;
+    if (!adapter) return;
+    setAiHasRun(true);
+    const redlines = adapter.extractRedlines();
+    if (redlines.length === 0) {
+      setAiItems([]);
+      setAiNoRedlines(true);
+      return;
+    }
+    setAiNoRedlines(false);
+    const analysis = await aiMutation.mutateAsync(redlines);
+    const byId = new Map(analysis.suggestions.map((s) => [s.redlineId, s]));
+    setAiItems(
+      redlines.map((r) => ({
+        redline: r,
+        suggestion: byId.get(r.redlineId),
+        state: "pending" as const,
+      })),
+    );
+  }, [aiMutation]);
 
+  // Auto-run the first time the user opens the Redline tab.
+  useEffect(() => {
+    if (activeTab !== "redline") return;
+    if (aiHasRun) return;
+    void runAiSuggestions();
+  }, [activeTab, aiHasRun, runAiSuggestions]);
+
+  const handleApproveAi = useCallback(
+    (item: AiItem, tier: "low" | "medium" | "high" = "medium") => {
+      const adapter = editorAdapterRef.current;
+      if (!adapter || !item.suggestion) return;
+      // Pick the user's chosen alternative-language tier (or fall back
+      // through the others, then to the legacy `replacementText` field
+      // for older BE deployments).
+      const alt = item.suggestion.alternativeLanguage;
+      const replacement =
+        alt?.[tier] ??
+        alt?.medium ??
+        alt?.low ??
+        alt?.high ??
+        item.suggestion.replacementText;
+      if (typeof replacement === "string" && replacement.length > 0) {
+        adapter.replaceRedline(item.redline.redlineId, replacement);
+        // Auto-snapshot so the user can revert the AI-applied change.
+        saveVersionSnapshot(`Applied AI suggestion (${tier})`, "ai-apply");
+      } else if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "[ai-redline] apply clicked but no alternativeLanguage / replacementText available; doc not mutated.",
+          item.redline.redlineId,
+        );
+      }
+      setAiItems((prev) =>
+        prev.map((p) =>
+          p.redline.redlineId === item.redline.redlineId
+            ? { ...p, state: "approved" }
+            : p,
+        ),
+      );
+    },
+    [saveVersionSnapshot],
+  );
+
+  const handleDismissAi = useCallback((item: AiItem) => {
+    setAiItems((prev) =>
+      prev.map((p) =>
+        p.redline.redlineId === item.redline.redlineId
+          ? { ...p, state: "dismissed" }
+          : p,
+      ),
+    );
+  }, []);
+
+  const aiStatus: "idle" | "loading" | "ready" | "error" | "empty" =
+    aiMutation.isPending
+      ? "loading"
+      : aiMutation.isError
+        ? "error"
+        : aiNoRedlines
+          ? "empty"
+          : aiItems.length > 0 || aiMutation.isSuccess
+            ? "ready"
+            : "idle";
+
+  // When fileId is supplied we can persist to the backend; otherwise we
+  // require contractId (which gates the localStorage scope).
+  const canWriteComment = Boolean(fileId || contractId);
+
+  const handleSubmitComment = useCallback(() => {
+    if (!canWriteComment) return;
+
+    const trimmed = commentInput.trim();
+    if (!trimmed) return;
+
+    const redline = pendingRedlineRef.current;
+    const next: LocalComment = {
+      id: crypto.randomUUID(),
+      author: user?.name || "Unknown User",
+      createdAt: new Date().toISOString(),
+      content: trimmed,
+      redlineId: redline?.redlineId ?? null,
+      redlineKind: redline?.kind ?? null,
+      mentions: pendingMentionsRef.current,
+    };
+
+    if (fileId) {
+      // Persist to /file-comment/{fileId}; rich metadata is encoded
+      // inside the `text` field by useAddFileComment.
+      addFileComment.mutate(
+        {
+          id: next.id,
+          author: next.author,
+          createdAt: next.createdAt,
+          content: next.content,
+          redlineId: next.redlineId,
+          redlineKind: next.redlineKind,
+          mentions: next.mentions,
+        },
+        {
+          onError: () => {
+            toast({
+              title: "Comment failed to save",
+              description: "We'll retry next time you reload.",
+              variant: "destructive",
+            });
+          },
+        },
+      );
+    } else if (commentsStorageKey) {
       setLocalComments((prev) => {
         const updated = [next, ...prev];
         writeLocalComments(commentsStorageKey, updated);
         return updated;
       });
+    }
 
-      setCommentInput("");
-      pendingMentionsRef.current = [];
-      if (!parentId) pendingRedlineRef.current = null;
-    },
-    [canWriteComment, commentInput, commentsStorageKey, user?.name],
-  );
+    setCommentInput("");
+    pendingMentionsRef.current = [];
+    pendingRedlineRef.current = null;
+    // Auto-snapshot — a new comment is part of the document timeline.
+    saveVersionSnapshot(
+      redline?.redlineId ? "Added anchored comment" : "Added comment",
+      "comment",
+    );
+  }, [
+    addFileComment,
+    canWriteComment,
+    commentInput,
+    commentsStorageKey,
+    fileId,
+    saveVersionSnapshot,
+    toast,
+    user?.name,
+  ]);
 
   return (
     <>
@@ -286,25 +621,46 @@ const CollaborationToolPage: React.FC = () => {
         robots="noindex, nofollow"
         canonical="/collaboration-tool"
       />
-      <div className="flex min-h-svh bg-white">
+      <div className="flex min-h-svh bg-white dark:bg-slate-950">
         <div className="flex-1 max-w-7xl  overflow-auto">
           <Suspense fallback={<div className="ct-editor-panel" />}>
-            <EditorPane importMeta={importMeta} collabMeta={collabMeta} />
+            {searchParams.get("editor") === "yoopta" ? (
+              <EditorPane
+                importMeta={importMeta}
+                collabMeta={collabMeta}
+                onEditorReady={handleEditorReady}
+              />
+            ) : (
+              <TipTapEditorPane
+                importMeta={importMeta}
+                collabMeta={collabMeta}
+                onEditorReady={handleEditorReady}
+              />
+            )}
           </Suspense>
         </div>
         <SidebarPanel
           comments={commentsFeed}
-          logs={logsFeed}
           activeTab={activeTab}
-          hasVisitedLog={hasVisitedLog}
           onTabChange={handleTabChange}
           commentValue={commentInput}
           onCommentChange={handleCommentChange}
           onCommentSubmit={handleSubmitComment}
           canWriteComment={canWriteComment}
-          isSubmittingComment={false}
+          isSubmittingComment={addFileComment.isPending}
           useFallbackFeed={false}
           mentionables={mentionables}
+          versions={versions}
+          onRestoreVersion={handleRestoreVersion}
+          onDownloadLatestVersion={docName ? handleDownloadLatestVersion : undefined}
+          isDownloadingVersion={downloadLatestMutation.isPending}
+          isLoadingVersions={fileVersionsQuery.isLoading}
+          aiStatus={aiStatus}
+          aiItems={aiItems}
+          aiErrorMessage={(aiMutation.error as Error | undefined)?.message}
+          onAiApprove={handleApproveAi}
+          onAiDismiss={handleDismissAi}
+          onAiRetry={runAiSuggestions}
         />
       </div>
     </>

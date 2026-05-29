@@ -28,7 +28,9 @@ import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUserRole } from "@/hooks/useUserRole";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { Textarea } from "@/components/ui/textarea";
+import CreateMSADialog from "./layouts/CreateMSADialog";
 import Overview from "./layouts/Overview";
+import Analytics from "./layouts/Analytics";
 import LinkedContracts from "./layouts/LinkedContracts";
 import PaymentSummary from "./layouts/PaymentSummary";
 import Documents from "./layouts/Documents";
@@ -103,7 +105,7 @@ const ROLE_TAB_WHITELIST: Record<
     "rfi",
     "deliverables",
     "ncr-log",
-    "approvers",
+    // "approvers" intentionally omitted — approvers can't see the Approvers tab
     "reports",
     "payment-summary",
   ],
@@ -119,12 +121,13 @@ const ROLE_TAB_WHITELIST: Record<
     "rfi",
     "deliverables",
     "ncr-log",
-    "approvers",
+    // "approvers" intentionally omitted — vendors and project managers can't see the Approvers tab
     "reports",
     "payment-summary",
   ],
   manager: [
     "overview",
+    "analytics",
     "kpi",
     "compliance",
     "documents",
@@ -353,7 +356,7 @@ const MsaDetailPage: React.FC = () => {
     isProjectManager,
     isCompanyAdmin,
   } = useUserRole();
-  const queryKey = useUserQueryKey(["msa-contract-detail", id]);
+  const queryKey = useUserQueryKey(["msa-contracts-detail", id]);
   const approveStatusQueryKey = useUserQueryKey(["msa-approve-status", id]);
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = React.useState<TabKey>("overview");
@@ -379,7 +382,7 @@ const MsaDetailPage: React.FC = () => {
             : isViewOnly
               ? "/contract/user"
               : "/contract/manager";
-      return getRequest({ url: `${base}/msa-contract/${id ?? ""}` });
+      return getRequest({ url: `${base}/msa-contracts/${id ?? ""}` });
     },
     enabled: !!id,
     staleTime: 60000,
@@ -423,7 +426,7 @@ const MsaDetailPage: React.FC = () => {
       queryKey: linkedContractsQueryKey,
       queryFn: async () => {
         return getRequest({
-          url: `/contract/manager/msa-contract/${id ?? ""}/linked-contract`,
+          url: `/contract/manager/msa-contracts/${id ?? ""}/linked-contract`,
         });
       },
       enabled:
@@ -494,7 +497,7 @@ const MsaDetailPage: React.FC = () => {
     queryKey: [approveStatusQueryKey[0], msa?._id],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/approver/msa-contract/${msa?._id ?? ""}/approve/status`,
+        url: `/contract/approver/msa-contracts/${msa?._id ?? ""}/approve/status`,
       });
       return res.data as { data?: { status?: string } };
     },
@@ -513,8 +516,8 @@ const MsaDetailPage: React.FC = () => {
     mutationFn: async (action: "approved" | "rejected") => {
       const payload = { action, comment };
       const url = canProjectManagerApprove
-        ? `/contract/vendor/msa-contract/${msa?._id ?? ""}/approve`
-        : `/contract/approver/msa-contract/${msa?._id ?? ""}/approve`;
+        ? `/contract/vendor/msa-contracts/${msa?._id ?? ""}/approve`
+        : `/contract/approver/msa-contracts/${msa?._id ?? ""}/approve`;
       const res = await postRequest({ url, payload });
       return res.data as { message?: string };
     },
@@ -580,7 +583,7 @@ const MsaDetailPage: React.FC = () => {
           canonical={`/dashboard/msa/${id ?? ""}`}
           robots="noindex, nofollow"
         />
-        <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-700">
+        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-sm text-slate-700 dark:text-slate-200">
           MSA not found.
         </div>
       </div>
@@ -589,12 +592,37 @@ const MsaDetailPage: React.FC = () => {
 
   const status = formatMsaStatus(toMsaStatus(msa?.status));
   const triggerClass =
-    "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3";
+    "dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3";
 
-  const draftDuration = diffDays(undefined, undefined);
-  const reviewDuration = diffDays(undefined, undefined);
-  const approvalDuration = diffDays(undefined, undefined);
-  const executionDuration = diffDays(undefined, undefined);
+  const stages = msa?.contractFormationStage;
+  const draftDuration = diffDays(stages?.draft?.startDate, stages?.draft?.endDate);
+  const reviewDuration = diffDays(
+    stages?.review?.startDate,
+    stages?.review?.endDate,
+  );
+  const approvalDuration = diffDays(
+    stages?.approval?.startDate,
+    stages?.approval?.endDate,
+  );
+  const executionDuration = diffDays(
+    stages?.execution?.startDate,
+    stages?.execution?.endDate,
+  );
+  const stageRange = (s?: { startDate?: string; endDate?: string }) => ({
+    start: formatDate(s?.startDate),
+    end: formatDate(s?.endDate),
+  });
+  const formationStages = {
+    draft: stageRange(stages?.draft),
+    review: stageRange(stages?.review),
+    approval: stageRange(stages?.approval),
+    execution: stageRange(stages?.execution),
+  };
+  const contractManagerName =
+    (msa as any)?.contractManager?.name ||
+    (msa as any)?.manager?.name ||
+    msa?.creator?.name ||
+    "";
 
   const internalTeam = Array.isArray(msa?.internalTeam)
     ? msa!.internalTeam
@@ -630,10 +658,10 @@ const MsaDetailPage: React.FC = () => {
 
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
             {msa?.title}
           </h1>
-          <p className="text-sm text-slate-500">{msa?.msaContractId}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{msa?.msaContractId}</p>
         </div>
         <Badge className={status?.className}>{status?.label}</Badge>
       </div>
@@ -663,16 +691,16 @@ const MsaDetailPage: React.FC = () => {
         onValueChange={(v) => setTopTab(v as "details" | "linked")}
         className="w-full space-y-4"
       >
-        <TabsList className="gap-2 p-2 bg-gray-200 rounded-full dark:bg-gray-800">
+        <TabsList className="gap-2 p-2 bg-gray-200 rounded-full dark:bg-slate-800">
           <TabsTrigger
             value="details"
-            className="rounded-full px-4 py-4 text-sm font-semibold border border-[#E5E7EB] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467]"
+            className="rounded-full px-4 py-4 text-sm font-semibold border border-[#E5E7EB] dark:border-slate-700 text-slate-700 dark:text-slate-300 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467] data-[state=active]:dark:text-white"
           >
             MSA Details
           </TabsTrigger>
           <TabsTrigger
             value="linked"
-            className="rounded-full px-4 py-4 text-sm font-semibold border border-[#E5E7EB] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467]"
+            className="rounded-full px-4 py-4 text-sm font-semibold border border-[#E5E7EB] dark:border-slate-700 text-slate-700 dark:text-slate-300 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467] data-[state=active]:dark:text-white"
           >
             Linked Contracts
           </TabsTrigger>
@@ -703,16 +731,24 @@ const MsaDetailPage: React.FC = () => {
               <div className="flex items-center justify-end w-full gap-3 pb-3">
                 <Button
                   variant="outline"
-                  className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
+                  className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
                 >
                   <Share2 className="mr-2 h-4 w-4" /> Export Report
                 </Button>
-                <Button
-                  variant="secondary"
-                  className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
-                >
-                  Edit MSA
-                </Button>
+                {isManager && (
+                  <CreateMSADialog
+                    trigger={
+                      <Button
+                        variant="secondary"
+                        className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
+                      >
+                        Edit MSA
+                      </Button>
+                    }
+                    editingMsaId={msa?._id ?? undefined}
+                    initialValues={msa as any}
+                  />
+                )}
               </div>
 
               <Overview
@@ -731,9 +767,9 @@ const MsaDetailPage: React.FC = () => {
                   description: msa?.description,
                 }}
                 dates={{
-                  published: formatDate(toISO(msa?.createdAt)),
-                  effective: formatDate(toISO(msa?.createdAt)),
-                  end: formatDate(toISO(msa?.updatedAt)),
+                  published: formatDate(toISO(msa?.datePublished)),
+                  effective: formatDate(toISO(msa?.startDate)),
+                  end: formatDate(toISO(msa?.endDate)),
                 }}
                 durations={{
                   draft: draftDuration,
@@ -741,22 +777,30 @@ const MsaDetailPage: React.FC = () => {
                   approval: approvalDuration,
                   execution: executionDuration,
                 }}
+                formationStages={formationStages}
                 status={status}
+                contractManager={contractManagerName}
                 internalTeam={internalTeam}
                 vendorPersonnel={vendorPersonnel}
               />
             </TabsContent>
 
+            <Analytics
+              contractId={id ?? ""}
+              isActive={activeTab === "analytics"}
+            />
+
             <Documents
               contractId={id ?? ""}
               files={msa?.files}
               isActive={activeTab === "documents"}
+              status={msa?.status}
             />
 
             <Amendments
               contractId={id ?? ""}
               isActive={activeTab === "amendments"}
-              actionsDisabled={msa?.status === "publish"}
+              actionsDisabled={msa?.status === "pending_approval"}
             />
 
             <Compliance
@@ -768,28 +812,32 @@ const MsaDetailPage: React.FC = () => {
             <ChangeManagement
               contractId={id ?? ""}
               isActive={activeTab === "change"}
-              actionsDisabled={msa?.status === "publish"}
+              actionsDisabled={msa?.status === "pending_approval"}
             />
 
             <Invoice
               contractId={id ?? ""}
               isActive={activeTab === "invoice"}
-              actionsDisabled={msa?.status === "publish"}
+              actionsDisabled={msa?.status === "pending_approval"}
             />
 
             <Claims
               contractId={id ?? ""}
               isActive={activeTab === "claims"}
-              actionsDisabled={msa?.status === "publish"}
+              actionsDisabled={msa?.status === "pending_approval"}
             />
 
             <Rfi
               contractId={id ?? ""}
               isActive={activeTab === "rfi"}
-              actionsDisabled={msa?.status === "publish"}
+              actionsDisabled={msa?.status === "pending_approval"}
             />
 
-            <NcrLog contractId={id ?? ""} isActive={activeTab === "ncr-log"} />
+            <NcrLog
+              contractId={id ?? ""}
+              contract={msa as any}
+              isActive={activeTab === "ncr-log"}
+            />
 
             <Deliverables
               contractId={deliverablesContractId}

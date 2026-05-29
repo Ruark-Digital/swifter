@@ -16,6 +16,7 @@ import AmendmentsTable, {
   type AmendmentRow,
 } from "@/pages/ContractManagementPage/components/AmendmentsTable";
 import { CreateAmendmentDialog } from "@/pages/ContractManagementPage/layouts/AmendmentsTabContent";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
@@ -48,13 +49,13 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
 
   const basePath = React.useMemo(() => {
     if (isVendor || isProjectManager)
-      return `/contract/vendor/msa-contract/${contractId}/amendment`;
+      return `/contract/vendor/msa-contracts/${contractId}/amendment`;
     if (isApprover)
-      return `/contract/approver/msa-contract/${contractId}/amendment`;
-    if (isManager) return `/contract/manager/msa-contract/${contractId}/amendments`;
+      return `/contract/approver/msa-contracts/${contractId}/amendment`;
+    if (isManager) return `/contract/manager/msa-contracts/${contractId}/amendments`;
     if (isAdmin || isViewOnly)
-      return `/contract/user/msa-contract/${contractId}/amendment`;
-    return `/contract/user/msa-contract/${contractId}/amendment`;
+      return `/contract/user/msa-contracts/${contractId}/amendment`;
+    return `/contract/user/msa-contracts/${contractId}/amendment`;
   }, [
     contractId,
     isAdmin,
@@ -67,13 +68,25 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
 
   const statsBasePath = React.useMemo(() => {
     if (isVendor || isProjectManager)
-      return `/contract/vendor/msa-contract/${contractId}/amendment`;
+      return `/contract/vendor/msa-contracts/${contractId}/amendment`;
     if (isApprover)
-      return `/contract/approver/msa-contract/${contractId}/amendment`;
+      return `/contract/approver/msa-contracts/${contractId}/amendment`;
+    // Manager stats live under the plural `msa-contracts` quirk path —
+    // see memory msa-contracts-plural-invoice-approve-quirk.
+    if (isManager)
+      return `/contract/manager/msa-contracts/${contractId}/amendments`;
     if (isAdmin || isViewOnly)
-      return `/contract/user/msa-contract/${contractId}/amendment`;
+      return `/contract/user/msa-contracts/${contractId}/amendment`;
     return "";
-  }, [contractId, isAdmin, isApprover, isProjectManager, isVendor, isViewOnly]);
+  }, [
+    contractId,
+    isAdmin,
+    isApprover,
+    isManager,
+    isProjectManager,
+    isVendor,
+    isViewOnly,
+  ]);
 
   const statsQueryKey = useUserQueryKey([
     "msa-amendments-stats",
@@ -115,7 +128,7 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
         | { message?: string; data?: ContractAmendmentStatsDTO }
         | ContractAmendmentStatsDTO;
     },
-    enabled: Boolean(contractId) && !!isActive && !isManager,
+    enabled: Boolean(contractId) && !!isActive,
     staleTime: 60000,
     retry: false,
   });
@@ -156,40 +169,33 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
     }));
   }, [amendments]);
 
-  const derivedManagerStats = React.useMemo<ContractAmendmentStatsDTO>(() => {
-    const all = amendmentsRows.length;
-    const accepted = amendmentsRows.filter((row) => row.status === "Approved").length;
-    const rejected = amendmentsRows.filter((row) => row.status === "Rejected").length;
-    const pending = Math.max(0, all - accepted - rejected);
-    return { all, accepted, rejected, pending };
-  }, [amendmentsRows]);
-
   const resolvedStats = React.useMemo<ContractAmendmentStatsDTO | undefined>(() => {
-    if (isManager) return derivedManagerStats;
     if ((statsRes as any)?.data) return (statsRes as any).data;
     return statsRes as ContractAmendmentStatsDTO | undefined;
-  }, [derivedManagerStats, isManager, statsRes]);
+  }, [statsRes]);
 
   return (
     <TabsContent value="amendments" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-semibold text-[#0F0F0F]">Amendments</h3>
+        <h3 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">Amendments</h3>
         <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            className="rounded-xl border-[#E5E7EB] px-4 font-semibold text-[#0F0F0F]"
-          >
-            <img
-              src="/assets/contract-management/amendments/share.svg"
-              className="mr-2 h-5 w-5"
-            />
-            Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="MsaContract">
+            <Button
+              variant="outline"
+              className="rounded-xl border-[#E5E7EB] dark:border-slate-800 px-4 font-semibold text-[#0F0F0F] dark:text-slate-100"
+            >
+              <img
+                src="/assets/contract-management/amendments/share.svg"
+                className="mr-2 h-5 w-5"
+              />
+              Export Report
+            </Button>
+          </ExportReportSheet>
 
           {isManager && (
             <CreateAmendmentDialog
               contractId={contractId}
-              createPath={`/contract/manager/msa-contract/${contractId}/amendments`}
+              createPath={`/contract/manager/msa-contracts/${contractId}/amendments`}
               mutationScope="msa-amendments"
               listInvalidateQueryKey={amendmentsQueryKey}
               statsInvalidateQueryKey={statsQueryKey}
@@ -217,6 +223,9 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
         isLoading={isAmendmentsLoading}
         contractId={contractId}
         basePath={basePath}
+        listInvalidateQueryKey={amendmentsQueryKey}
+        statsInvalidateQueryKey={statsQueryKey}
+        approverPoolPath={`/contract/manager/msa-contracts/${contractId}/approvers`}
       />
     </TabsContent>
   );

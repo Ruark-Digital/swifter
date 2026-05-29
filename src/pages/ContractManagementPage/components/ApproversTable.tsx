@@ -22,7 +22,11 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import type { ApiResponseError } from "@/types";
 import { formatDateTZ } from "@/lib/utils";
-import { contractManagerApi } from "../api/contractManagerApi";
+import {
+  contractManagerApi,
+  type ContractApproverItem,
+  type ContractApproverItemsByCategory,
+} from "../api/contractManagerApi";
 export type ApproverRow = {
   id: string;
   name: string;
@@ -54,8 +58,8 @@ const LabelRow = ({
   value: React.ReactNode;
 }) => (
   <div className="space-y-2">
-    <div className="text-xs font-medium text-[#9CA3AF]">{label}</div>
-    <div className="text-sm font-medium text-[#111827]">{value}</div>
+    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">{label}</div>
+    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
 
@@ -95,44 +99,91 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
     toastErrorRef.current("Approver Details", error as ApiResponseError);
   }, [error]);
 
-  const approver = data?.data?.approver;
+  const detail = data?.data;
+  const approver = detail?.approver;
   const approverName =
+    approver?.name?.trim() ||
     [approver?.firstName, approver?.lastName]
       .filter((value) => typeof value === "string" && value.trim())
       .join(" ")
-      .trim() || summary.name;
+      .trim() ||
+    summary.name;
   const approverEmail =
     approver?.email?.trim() || (summary.email !== "-" ? summary.email : "");
-  const approvalDetails = data?.data?.details ?? [];
-  const latestApprovedDate = approvalDetails.reduce<string | undefined>(
-    (latest, detail) => {
-      if (!detail.approvedDate) return latest;
-      if (!latest) return detail.approvedDate;
-      return new Date(detail.approvedDate) > new Date(latest)
-        ? detail.approvedDate
-        : latest;
-    },
-    undefined,
-  );
 
-  const submissionDateLabel = latestApprovedDate
-    ? formatDateTZ(latestApprovedDate, "dd MMM yyyy")
+  const submissionDateLabel = detail?.submissionDate
+    ? formatDateTZ(detail.submissionDate, "dd MMM yyyy")
     : "N/A";
-  const statusTone =
-    summary.status === "Completed"
-      ? "bg-[#DBEAFE] text-[#2563EB]"
-      : "bg-[#FEF3C7] text-[#D97706]";
 
-  const formatActionTitle = (title?: string) => {
-    if (!title) return "Approval";
-    if (title === "lem") return "LEM";
-    return `${title.charAt(0).toUpperCase()}${title.slice(1)}`;
-  };
+  const assignedApprovalLabel =
+    detail?.assignedApproval &&
+    typeof detail.assignedApproval.completed === "number" &&
+    typeof detail.assignedApproval.total === "number"
+      ? `${detail.assignedApproval.completed}/${detail.assignedApproval.total}`
+      : summary.assignedApprovals;
 
   const formatActionStatus = (status?: string) => {
     if (!status) return "Pending";
     return `${status.charAt(0).toUpperCase()}${status.slice(1)}`;
   };
+
+  const headerStatusRaw = detail?.status ?? summary.status;
+  const headerStatusLabel = formatActionStatus(headerStatusRaw);
+  const headerStatusKey = (headerStatusRaw ?? "").toString().toLowerCase();
+  const headerStatusTone =
+    headerStatusKey === "approved" || headerStatusKey === "completed"
+      ? "bg-[#DBEAFE] text-[#2563EB] dark:bg-blue-900/40 dark:text-blue-200"
+      : headerStatusKey === "rejected"
+        ? "bg-[#FEE2E2] text-[#DC2626] dark:bg-red-900/40 dark:text-red-200"
+        : "bg-[#FEF3C7] text-[#D97706] dark:bg-amber-900/40 dark:text-amber-200";
+
+  const itemStatusTone = (status?: string) => {
+    const key = (status ?? "").toLowerCase();
+    if (key === "approved")
+      return "bg-[#DBEAFE] text-[#2563EB] dark:bg-blue-900/40 dark:text-blue-200";
+    if (key === "rejected")
+      return "bg-[#FEE2E2] text-[#DC2626] dark:bg-red-900/40 dark:text-red-200";
+    return "bg-[#FEF3C7] text-[#D97706] dark:bg-amber-900/40 dark:text-amber-200";
+  };
+
+  const contractCurrency = detail?.contract?.currency || "CAD";
+  const formatAmount = (amount?: number) => {
+    if (typeof amount !== "number") return null;
+    try {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: contractCurrency,
+        maximumFractionDigits: 0,
+      }).format(amount);
+    } catch {
+      return `${contractCurrency} ${amount.toLocaleString()}`;
+    }
+  };
+
+  const ITEM_GROUPS: Array<{
+    key: keyof ContractApproverItemsByCategory;
+    label: string;
+  }> = [
+    { key: "project", label: "Project" },
+    { key: "changes", label: "Change" },
+    { key: "claims", label: "Claim" },
+    { key: "invoices", label: "Invoice" },
+    { key: "lems", label: "LEM" },
+    { key: "amendments", label: "Amendment" },
+  ];
+
+  type FlatApproverItem = ContractApproverItem & {
+    categoryLabel: string;
+    rowKey: string;
+  };
+
+  const flatItems: FlatApproverItem[] = ITEM_GROUPS.flatMap(({ key, label }) =>
+    (detail?.items?.[key] ?? []).map((item, idx) => ({
+      ...item,
+      categoryLabel: label,
+      rowKey: `${key}-${item.refId ?? "x"}-${item.level ?? idx}-${idx}`,
+    })),
+  );
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -147,11 +198,11 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] dark:border-slate-700 text-[#111827] dark:text-slate-100"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Approval Scorecard
                 </SheetTitle>
               </div>
@@ -168,12 +219,12 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
 
           <div className="space-y-6">
             <div className="flex items-start justify-between">
-              <div className="text-base font-semibold text-[#0F0F0F]">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Approver Details
               </div>
               <Button
                 variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
+                className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
               >
                 <Share2 className="mr-2 h-4 w-4" /> Export
               </Button>
@@ -202,67 +253,106 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
               <LabelRow label="Submission Date" value={submissionDateLabel} />
               <LabelRow
                 label="Assigned Approval"
-                value={summary.assignedApprovals}
+                value={assignedApprovalLabel}
               />
             </div>
 
             <div className="space-y-2">
-              <div className="text-xs font-medium text-[#9CA3AF]">Status</div>
+              <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">Status</div>
               <div
-                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusTone}`}
+                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${headerStatusTone}`}
               >
-                {summary.status}
+                {headerStatusLabel}
               </div>
             </div>
 
             <div className="space-y-4">
-              <div className="text-base font-semibold text-[#0F0F0F]">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Approval Status
               </div>
               <Accordion type="single" collapsible className="space-y-4">
-                {approvalDetails.length ? (
-                  approvalDetails.map((detail) => (
-                    <AccordionItem
-                      key={
-                        detail._id ??
-                        `${detail.title}-${detail.contractDetailRef}`
-                      }
-                      value={
-                        detail._id ??
-                        detail.contractDetailRef ??
-                        detail.title ??
-                        "approval"
-                      }
-                      className="rounded-xl border border-[#E5E7EB] px-4"
-                    >
-                      <AccordionTrigger className="py-4 text-sm font-semibold text-[#0F0F0F] hover:no-underline">
-                        {formatActionTitle(detail.title)}
-                      </AccordionTrigger>
-                      <AccordionContent className="space-y-4">
-                        <LabelRow
-                          label="Status"
-                          value={formatActionStatus(detail.status)}
-                        />
-                        <div className="space-y-2">
-                          <div className="text-xs font-medium text-[#9CA3AF]">
-                            Comments
+                {flatItems.length ? (
+                  flatItems.map((item) => {
+                    const subtitle =
+                      item.refCode ||
+                      item.title ||
+                      item.group ||
+                      (typeof item.level === "number"
+                        ? `Level ${item.level}`
+                        : undefined);
+                    const amountLabel = formatAmount(item.amount);
+                    const actionedAtLabel = item.actionedAt
+                      ? formatDateTZ(item.actionedAt, "dd MMM yyyy")
+                      : item.completedAt
+                        ? formatDateTZ(item.completedAt, "dd MMM yyyy")
+                        : null;
+                    return (
+                      <AccordionItem
+                        key={item.rowKey}
+                        value={item.rowKey}
+                        className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 px-4"
+                      >
+                        <AccordionTrigger className="py-4 hover:no-underline">
+                          <div className="flex flex-1 items-center justify-between gap-3 pr-3">
+                            <div className="flex flex-col items-start text-left">
+                              <span className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+                                {item.categoryLabel}
+                              </span>
+                              {subtitle && (
+                                <span className="text-xs font-normal text-[#6B7280] dark:text-slate-400">
+                                  {subtitle}
+                                </span>
+                              )}
+                            </div>
+                            <span
+                              className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${itemStatusTone(item.status)}`}
+                            >
+                              {formatActionStatus(item.status)}
+                            </span>
                           </div>
-                          <div className="text-sm text-[#374151]">
-                            {detail.comment || "N/A"}
+                        </AccordionTrigger>
+                        <AccordionContent className="space-y-4">
+                          {item.title && item.refCode && (
+                            <LabelRow label="Title" value={item.title} />
+                          )}
+                          {item.group && (
+                            <LabelRow
+                              label="Approval Group"
+                              value={item.group}
+                            />
+                          )}
+                          {typeof item.level === "number" && (
+                            <LabelRow
+                              label="Level"
+                              value={`Level ${item.level}`}
+                            />
+                          )}
+                          {amountLabel && (
+                            <LabelRow label="Amount" value={amountLabel} />
+                          )}
+                          {actionedAtLabel && (
+                            <LabelRow
+                              label="Actioned"
+                              value={actionedAtLabel}
+                            />
+                          )}
+                          <div className="space-y-2">
+                            <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+                              Comment
+                            </div>
+                            <div className="text-sm text-[#374151] dark:text-slate-300">
+                              {item.comment || "N/A"}
+                            </div>
                           </div>
-                        </div>
-                        <button
-                          type="button"
-                          className="text-sm font-medium text-[#2563EB] underline"
-                        >
-                          View Details
-                        </button>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })
                 ) : (
-                  <div className="rounded-xl border border-dashed border-[#E5E7EB] px-4 py-6 text-sm text-[#6B7280]">
-                    No approval actions available.
+                  <div className="rounded-xl border border-dashed border-[#E5E7EB] dark:border-slate-700 px-4 py-6 text-sm text-[#6B7280] dark:text-slate-400">
+                    {isLoading
+                      ? "Loading approval actions..."
+                      : "No approval actions available."}
                   </div>
                 )}
               </Accordion>
@@ -283,18 +373,18 @@ const ApproversTable: React.FC<Props> = ({ rows, isLoading, contractId }) => {
         header: "Approver Name",
         cell: ({ row }) => (
           <div className="space-y-1">
-            <p className="text-sm font-medium text-slate-900">
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
               {row.original.name}
             </p>
             {row.original.email !== "-" ? (
               <a
                 href={`mailto:${row.original.email}`}
-                className="text-xs text-blue-600 underline"
+                className="text-xs text-blue-600 dark:text-blue-400 underline"
               >
                 {row.original.email}
               </a>
             ) : (
-              <span className="text-xs text-slate-400">-</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
             )}
           </div>
         ),
@@ -331,7 +421,7 @@ const ApproversTable: React.FC<Props> = ({ rows, isLoading, contractId }) => {
             trigger={
               <button
                 type="button"
-                className="text-sm font-medium text-green-700 hover:underline"
+                className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline"
               >
                 View
               </button>
@@ -349,8 +439,8 @@ const ApproversTable: React.FC<Props> = ({ rows, isLoading, contractId }) => {
         data={rows}
         columns={columns}
         header={() => (
-          <div className="flex items-center justify-between w-full border-b border-[#E5E7EB] px-5 py-4">
-            <span className="text-sm font-medium text-slate-900">
+          <div className="flex items-center justify-between w-full border-b border-[#E5E7EB] dark:border-slate-800 px-5 py-4">
+            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
               Approvers
             </span>
           </div>
@@ -365,16 +455,16 @@ const ApproversTable: React.FC<Props> = ({ rows, isLoading, contractId }) => {
           pagination: { pageIndex: 0, pageSize: 10 },
         }}
         classNames={{
-          container: "border border-[#E5E7EB] rounded-xl bg-white",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-xs font-semibold text-slate-500",
-          tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+          container: "border border-[#E5E7EB] dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
         }}
         emptyPlaceholder={
-          <div className="rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
+          <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-center text-sm text-slate-500 dark:text-slate-400">
             No approvers available.
           </div>
         }

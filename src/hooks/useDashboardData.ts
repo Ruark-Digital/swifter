@@ -53,12 +53,18 @@ export interface Distribution {
 
 export interface SolicitationStatusData {
   total: number;
+  // Percentage fields (fractional, summing to 100) — kept for back-compat.
   awarded: number;
   active: number;
   evaluating: number;
   closed: number;
   draft: number;
   percentage: number;
+  // Integer count fields returned alongside the percentages — these are
+  // what the dashboard pie consumes so the slices reflect real counts.
+  activeSol?: number;
+  closedSol?: number;
+  awardedSol?: number;
 }
 
 export interface VendorsDistributionData {
@@ -1038,7 +1044,9 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-change-order-impact", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: `${contractDashboardBasePath}/change-order-impact`,
+        // swagger spelling drift: manager uses `change-order-impact`,
+        // approver uses `changes-order-impact` (plural)
+        url: `${contractDashboardBasePath}/${userRole === "approver" ? "changes-order-impact" : "change-order-impact"}`,
         config: { params: { range: "YTD", type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerChangeOrderImpact>;

@@ -19,7 +19,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { InfoIcon } from "lucide-react";
-import { ApiResponseError } from "@/types";
+import { ApiResponse, ApiResponseError } from "@/types";
 
 type ApproverTag = {
   id?: string;
@@ -30,8 +30,6 @@ type ApproverTag = {
 };
 
 type Props = { control: Control<CreateMsaFormData> };
-
-type ApiListResponse<T> = { status: number; message: string; data: T[] };
 
 type Personnel = {
   _id: string;
@@ -61,38 +59,39 @@ const Step8ApprovalLevel: React.FC<Props> = ({ control }) => {
   }) as { approvers?: ApproverTag[] }[] | undefined;
 
   const { data: personnelData, isLoading: isLoadingUsers } = useQuery<
-    ApiListResponse<Personnel>,
+    ApiResponse<Personnel[]>,
     ApiResponseError
   >({
+    // Shares cache with Step2ContractTeam — both queryFns must return the
+    // full AxiosResponse so consumers can read `personnelData?.data?.data`
+    // consistently. Returning just the body here caused this dropdown to
+    // collapse to "No results found." whenever Step 2 mounted first.
     queryKey: ["contract-personnel"],
-    queryFn: async () => {
-      const res = await getRequest({ url: "/contract/manager/personnel" });
-      return res.data as ApiListResponse<Personnel>;
-    },
+    queryFn: async () =>
+      await getRequest({ url: "/contract/manager/personnel" }),
     staleTime: 60_000,
   });
 
   const approverTags = React.useMemo<ApproverTag[]>(() => {
     const people =
-      personnelData?.data?.filter?.((item) =>
+      personnelData?.data?.data?.filter?.((item) =>
         (item.role ?? []).some((r) => r?.name === "approver"),
       ) ?? [];
 
     return people.map((p) => {
       const email = p.email ?? "";
-      const name =
-        (p.firstName && p.lastName
-          ? `${p.firstName} (${p.lastName})`
-          : p.firstName) ||
-        email ||
-        p._id;
+      const fullName = [p.firstName, p.lastName]
+        .filter((part) => typeof part === "string" && part.trim())
+        .join(" ")
+        .trim();
+      const name = fullName || email || p._id;
       const label = email && name && email !== name ? `${name} (${email})` : name;
       const value = p._id || email;
       return {
         id: value,
         value,
         text: label,
-        meta: { email },
+        meta: { email, name: fullName },
       };
     });
   }, [personnelData]);

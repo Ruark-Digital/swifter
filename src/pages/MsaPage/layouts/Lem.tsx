@@ -1,12 +1,14 @@
 import React from "react";
 import { TabsContent } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
 import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import type { ApiResponseError } from "@/types";
 import LemTable, { type LemRow } from "@/pages/ContractManagementPage/components/LemTable";
+import SubmitLemDialog from "@/pages/ContractManagementPage/components/SubmitLemDialog";
 
 type Props = {
   contractId: string;
@@ -24,11 +26,11 @@ const Lem: React.FC<Props> = ({ contractId, isActive }) => {
 
   const basePath = React.useMemo(() => {
     if (isVendor || isProjectManager)
-      return `/contract/vendor/contracts/${contractId}/lems`;
-    if (isApprover) return `/contract/approver/contracts/${contractId}/lems`;
-    if (isManager) return `/contract/manager/contracts/${contractId}/lems`;
-    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/lems`;
-    return `/contract/user/contracts/${contractId}/lems`;
+      return `/contract/vendor/msa-contracts/${contractId}/lems`;
+    if (isApprover) return `/contract/approver/msa-contracts/${contractId}/lems`;
+    if (isManager) return `/contract/manager/msa-contracts/${contractId}/lems`;
+    if (isAdmin || isViewOnly) return `/contract/user/msa-contracts/${contractId}/lems`;
+    return `/contract/user/msa-contracts/${contractId}/lems`;
   }, [
     contractId,
     isAdmin,
@@ -88,12 +90,24 @@ const Lem: React.FC<Props> = ({ contractId, isActive }) => {
     toastErrorRef.current("MSA LEM", error as ApiResponseError);
   }, [error]);
 
+  const isVendorLike = isVendor || isProjectManager;
+
   return (
     <TabsContent value="lem" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
+        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F] dark:text-slate-100">
           Labor, Equipment & Material Reports
         </h3>
+        {isVendorLike ? (
+          <SubmitLemDialog
+            contractId={contractId}
+            createPath={`/contract/vendor/msa-contracts/${contractId}/lems`}
+            invalidateQueryKey={lemQueryKey}
+            trigger={
+              <Button className="h-10 rounded-xl px-4">Submit LEM</Button>
+            }
+          />
+        ) : null}
       </div>
 
       <LemTable

@@ -137,27 +137,44 @@ export const toFileMetaOrUndefined = (value: unknown) => {
 
   if (!name || !url || !type) return undefined;
 
-  // const sizeRaw = direct?.size;
-  const size = direct?.size
-    // typeof sizeRaw === "string"
-    //   ? sizeRaw.trim() || undefined
-    //   : typeof sizeRaw === "number"
-    //     ? Number.isFinite(sizeRaw)
-    //       ? String(sizeRaw)
-    //       : undefined
-    //     : sizeRaw === null || sizeRaw === undefined
-    //       ? undefined
-    //       : (() => {
-    //           const cleaned = String(sizeRaw).trim().replace(/[^0-9.]/g, "");
-    //           if (!cleaned) return undefined;
-    //           const num = Number(cleaned);
-    //           return Number.isFinite(num) ? String(num) : undefined;
-    //         })();
+  const sizeRaw = direct?.size;
+  const size =
+    typeof sizeRaw === "string"
+      ? sizeRaw.trim() || undefined
+      : typeof sizeRaw === "number"
+        ? Number.isFinite(sizeRaw)
+          ? String(sizeRaw)
+          : undefined
+        : sizeRaw === null || sizeRaw === undefined
+          ? undefined
+          : String(sizeRaw).trim() || undefined;
+
+  const comments = Array.isArray(direct?.comments)
+    ? direct.comments
+        .map((c: any) => {
+          const author = typeof c?.author === "string" ? c.author : undefined;
+          const text = typeof c?.text === "string" ? c.text : undefined;
+          const date =
+            typeof c?.date === "string"
+              ? c.date
+              : c?.date instanceof Date
+                ? c.date.toISOString()
+                : undefined;
+          if (!author && !text && !date) return undefined;
+          return {
+            ...(author ? { author } : {}),
+            ...(text ? { text } : {}),
+            ...(date ? { date } : {}),
+          };
+        })
+        .filter(Boolean)
+    : undefined;
 
   return {
     name,
     url,
     type,
     ...(size ? { size } : {}),
+    ...(comments && comments.length > 0 ? { comments } : {}),
   };
 };

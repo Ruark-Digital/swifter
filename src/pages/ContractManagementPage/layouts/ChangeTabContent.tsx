@@ -10,6 +10,7 @@ import type { PaginationState } from "@tanstack/react-table";
 import { getRequest } from "@/lib/axiosInstance";
 import {
   ContractChangeDTO,
+  type ContractChangeStatsDTO,
   type ManagerListChangesQuery,
 } from "../api/contractManagerApi";
 import {
@@ -18,6 +19,7 @@ import {
 } from "@/pages/ContractManagementPage/lib/contractChanges";
 import { useUserRole } from "@/hooks/useUserRole";
 import { ApiResponse } from "@/types";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 export interface ChangesDataResponse {
   changes: Change[];
@@ -95,22 +97,38 @@ const ChangeTabContent: React.FC<Props> = ({
 
   const basePath = getBasePath();
 
-  const { data: statsRes, isLoading: isStatsLoading } = useQuery({
-    queryKey: [
-      "contractChanges",
-      "stats",
-      contractId,
-      basePath
-    ],
+  const statsQueryKey = ["contractChanges", "stats", contractId, basePath] as const;
+  const listQueryKey = ["contractChanges", contractId] as const;
+
+  const { data: stats, isLoading: isStatsLoading } = useQuery({
+    queryKey: statsQueryKey,
     queryFn: async () => {
-      const response = await getRequest({
-        url: `${basePath}/stats`,
-      });
-      return response.data;
+      const response = await getRequest({ url: `${basePath}/stats` });
+      // Server envelope: { status, message, data: {...} }. Axios already
+      // strips one level so `response.data` is the server body. Strip the
+      // inner `.data` here so the queryFn returns the stats object
+      // directly — avoids ambiguous unwrap at the call site.
+      const body = response?.data as
+        | { data?: ContractChangeStatsDTO }
+        | ContractChangeStatsDTO
+        | undefined;
+      return (
+        ((body as { data?: ContractChangeStatsDTO })?.data ??
+          (body as ContractChangeStatsDTO) ??
+          {}) as ContractChangeStatsDTO
+      );
     },
     enabled: Boolean(contractId) && !!isActive,
     staleTime: 60000,
   });
+
+  // Reused by all 5 <ChangeTable> instances below — see comments inside
+  // ChangeDetailsSheet for the trap class this closes (memory
+  // [[feedback-shared-component-hidden-invalidation-keys]]).
+  const tableInvalidationProps = {
+    listInvalidateQueryKey: listQueryKey,
+    statsInvalidateQueryKey: statsQueryKey,
+  } as const;
 
   const { data: changesRes, isLoading: isChangesLoading } = useQuery({
     queryKey: [
@@ -156,21 +174,23 @@ const ChangeTabContent: React.FC<Props> = ({
   return (
     <TabsContent value="change" className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-[#1F2937]">
+        <h3 className="text-lg font-semibold text-[#1F2937] dark:text-slate-100">
           Change Management
         </h3>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            className="h-10 rounded-xl border-[#E5E7EB] bg-white px-4 text-sm font-medium text-[#111827] hover:bg-[#F9FAFB]"
-          >
-            <Share2 className="mr-2 h-4 w-4" /> Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="Contract">
+            <Button
+              variant="outline"
+              className="h-10 rounded-xl border-[#E5E7EB] bg-white px-4 text-sm font-medium text-[#111827] hover:bg-[#F9FAFB] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+            >
+              <Share2 className="mr-2 h-4 w-4" /> Export Report
+            </Button>
+          </ExportReportSheet>
           {(isManager || isContractVendorLike) && (
             <CreateChangeDialog
               trigger={
                 <Button
-                  className="h-10 rounded-xl bg-[#F3F4F6] px-4 text-sm font-medium text-[#111827] hover:bg-[#E5E7EB]"
+                  className="h-10 rounded-xl bg-[#F3F4F6] px-4 text-sm font-medium text-[#111827] hover:bg-[#E5E7EB] dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   disabled={!!actionsDisabled}
                 >
                   Create Change
@@ -183,16 +203,12 @@ const ChangeTabContent: React.FC<Props> = ({
         </div>
       </div>
 
-      {(() => {
-        const stats = (statsRes as any)?.data?.data ?? (statsRes as any)?.data;
-        return (
-          <ChangeStatsCards
-            stats={stats}
-            isLoading={isStatsLoading}
-            variant={isApprover ? "approver" : "manager"}
-          />
-        );
-      })()}
+      <ChangeStatsCards
+        stats={stats}
+        isLoading={isStatsLoading}
+        variant={isApprover ? "approver" : "manager"}
+      />
+
 
       <Tabs
         value={activeTab}
@@ -238,54 +254,64 @@ const ChangeTabContent: React.FC<Props> = ({
         <TabsContent value="all">
           <ChangeTable
             contractId={contractId}
+            basePath={basePath}
             variant={isApprover ? "approver" : "manager"}
             rows={filteredRows}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            {...tableInvalidationProps}
           />
         </TabsContent>
         <TabsContent value="requests">
           <ChangeTable
             contractId={contractId}
+            basePath={basePath}
             variant={isApprover ? "approver" : "manager"}
             rows={filteredRows.filter((row) => row.type === "request")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            {...tableInvalidationProps}
           />
         </TabsContent>
         <TabsContent value="orders">
           <ChangeTable
             contractId={contractId}
+            basePath={basePath}
             rows={filteredRows.filter((row) => row.type === "order")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            {...tableInvalidationProps}
           />
         </TabsContent>
         <TabsContent value="directive">
           <ChangeTable
             contractId={contractId}
+            basePath={basePath}
             rows={filteredRows.filter((row) => row.type === "directive")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            {...tableInvalidationProps}
           />
         </TabsContent>
         <TabsContent value="proposal">
           <ChangeTable
             contractId={contractId}
+            basePath={basePath}
             variant={isApprover ? "approver" : "manager"}
             rows={filteredRows.filter((row) => row.type === "proposal")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            {...tableInvalidationProps}
           />
         </TabsContent>
       </Tabs>

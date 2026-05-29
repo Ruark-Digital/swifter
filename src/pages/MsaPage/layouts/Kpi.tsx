@@ -21,7 +21,7 @@ const Kpi: React.FC<Props> = ({ contractId, isActive }) => {
   const lastErrorRef = React.useRef<unknown>(null);
   const canManageKpi = isManager || isAdmin;
   const basePath = canManageKpi
-    ? `/contract/manager/msa-contract/${contractId}/kpis`
+    ? `/contract/manager/msa-contracts/${contractId}/kpis`
     : undefined;
   const queryKey = useUserQueryKey(["msa-kpis", contractId, basePath || "none"]);
 
@@ -73,12 +73,12 @@ const Kpi: React.FC<Props> = ({ contractId, isActive }) => {
   return (
     <TabsContent value="kpi" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-[#0F0F0F]">
+        <h3 className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
           Key Performance Indicator
         </h3>
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] px-[15px] py-3 text-base font-semibold text-[#0F0F0F]"
+          className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-800 px-[15px] py-3 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
         >
           <img
             src="/assets/contract-management/kpi/share.svg"

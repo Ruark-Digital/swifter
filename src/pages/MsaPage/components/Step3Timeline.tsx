@@ -9,7 +9,7 @@ import { useForgeValues } from "@/lib/forge";
 import { CreateMsaFormData } from "../layouts/CreateMSADialog";
 import { useWatch } from "react-hook-form";
 import { formatDateTZ } from "@/lib/utils";
-import { differenceInCalendarDays, startOfDay } from "date-fns";
+import { differenceInCalendarDays } from "date-fns";
 
 type Props = {
   termTypeOptions?: Array<{ label: string; value: string }>;
@@ -22,10 +22,13 @@ const Step3Timeline: React.FC<Props> = ({
   isLoadingTermTypes,
   control,
 }) => {
-  const today = React.useMemo(() => startOfDay(new Date()), []);
+  // Past dates are intentionally allowed across every stage — MSA
+  // contracts can be backdated, and editing an in-flight MSA needs to
+  // keep the original past timeline. The chain still enforces order
+  // (stage N start >= stage N-1 end) but no longer floors at today.
   const clampMinDate = React.useCallback(
-    (d?: Date) => (d && d > today ? d : today),
-    [today],
+    (d?: Date) => (d instanceof Date && !Number.isNaN(d.getTime()) ? d : undefined),
+    [],
   );
   const { setValue } = useForgeValues({ control });
   const endDate = useWatch({ control, name: "endDate" });
@@ -63,9 +66,8 @@ const Step3Timeline: React.FC<Props> = ({
             placeholder="Select contract effective date"
             component={TextDatePicker}
             showTime
-            minDate={today}
           />
-          <p className="text-xs font-semibold text-[#2A4467]">
+          <p className="text-xs font-semibold text-[#2A4467] dark:text-slate-300">
             Could be in the past, present or future.
           </p>
         </div>
@@ -106,21 +108,19 @@ const Step3Timeline: React.FC<Props> = ({
         }
       />
 
-      <div className="space-y-4 rounded-2xl bg-[#F9FAFB] p-4">
-        <p className="text-sm font-medium text-[#0F0F0F]">
+      <div className="space-y-4 rounded-2xl bg-[#F9FAFB] dark:bg-slate-800/60 p-4">
+        <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
           Duration of Contract Formation  Stage
         </p>
 
         <div className="space-y-3">
-          <p className="text-sm font-medium text-[#0F0F0F]">Draft Stage</p>
+          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Draft Stage</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="draftStartDate"
               label="Start Date"
               placeholder="Select start date"
               component={TextDatePicker}
-              minDate={today}
-              maxDate={effectiveDate}
             />
             <Forger
               name="draftEndDate"
@@ -128,13 +128,12 @@ const Step3Timeline: React.FC<Props> = ({
               placeholder="Select end date"
               component={TextDatePicker}
               minDate={clampMinDate(draftStartDate)}
-              maxDate={effectiveDate}
             />
           </div>
         </div>
 
         <div className="space-y-3">
-          <p className="text-sm font-medium text-[#0F0F0F]">Review Stage</p>
+          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Review Stage</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="reviewStartDate"
@@ -142,7 +141,6 @@ const Step3Timeline: React.FC<Props> = ({
               placeholder="Select start date"
               component={TextDatePicker}
               minDate={clampMinDate(draftEndDate || draftStartDate)}
-              maxDate={effectiveDate}
             />
             <Forger
               name="reviewEndDate"
@@ -150,13 +148,12 @@ const Step3Timeline: React.FC<Props> = ({
               placeholder="Select end date"
               component={TextDatePicker}
               minDate={clampMinDate(reviewStartDate)}
-              maxDate={effectiveDate}
             />
           </div>
         </div>
 
         <div className="space-y-3">
-          <p className="text-sm font-medium text-[#0F0F0F]">Approval Stage</p>
+          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Approval Stage</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="approvalStartDate"
@@ -164,7 +161,6 @@ const Step3Timeline: React.FC<Props> = ({
               placeholder="Select start date"
               component={TextDatePicker}
               minDate={clampMinDate(reviewEndDate || reviewStartDate)}
-              maxDate={effectiveDate}
             />
             <Forger
               name="approvalEndDate"
@@ -172,13 +168,12 @@ const Step3Timeline: React.FC<Props> = ({
               placeholder="Select end date"
               component={TextDatePicker}
               minDate={clampMinDate(approvalStartDate)}
-              maxDate={effectiveDate}
             />
           </div>
         </div>
 
         <div className="space-y-3">
-          <p className="text-sm font-medium text-[#0F0F0F]">Execution Stage</p>
+          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Execution Stage</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="executionStartDate"
@@ -186,7 +181,6 @@ const Step3Timeline: React.FC<Props> = ({
               placeholder="Select start date"
               component={TextDatePicker}
               minDate={clampMinDate(approvalEndDate || approvalStartDate)}
-              maxDate={effectiveDate}
             />
             <Forger
               name="executionEndDate"
@@ -194,7 +188,6 @@ const Step3Timeline: React.FC<Props> = ({
               placeholder="Select end date"
               component={TextDatePicker}
               minDate={clampMinDate(executionStartDate)}
-              maxDate={effectiveDate}
             />
           </div>
         </div>

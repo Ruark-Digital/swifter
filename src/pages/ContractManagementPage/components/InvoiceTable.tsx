@@ -11,9 +11,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ArrowLeft, Edit2, Search, Share2, X } from "lucide-react";
+import { ArrowLeft, Edit2, Search, X } from "lucide-react";
 import CreateInvoiceDialog from "./CreateInvoiceDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import type { ContractInvoiceDTO } from "../api/contractManagerApi";
 import { contractManagerApi } from "../api/contractManagerApi";
 import { approverApi } from "../api/approverApi";
@@ -49,8 +50,8 @@ const LabelRow = ({
   value: React.ReactNode;
 }) => (
   <div className="space-y-2">
-    <div className="text-xs font-medium text-[#9CA3AF]">{label}</div>
-    <div className="text-sm font-medium text-[#111827]">{value}</div>
+    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">{label}</div>
+    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
 
@@ -77,7 +78,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
     message?: string;
     data?: ContractInvoiceDTO;
   }>({
-    queryKey: ["contractInvoiceDetail", contractId, invoiceId],
+    queryKey: useUserQueryKey(["contractInvoiceDetail", contractId, invoiceId]),
     queryFn: async () => {
       if (isApprover) {
         return await approverApi.getInvoiceDetail(contractId, invoiceId);
@@ -87,7 +88,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
         return { message: res.data.message, data: res.data.data };
       }
       if (isManager || isAdmin) {
-        return await contractManagerApi.getInvoiceDetail(invoiceId);
+        return await contractManagerApi.getInvoiceDetail(contractId, invoiceId);
       }
       if (isViewOnly) {
         const res = await getRequest({
@@ -103,15 +104,13 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
 
   const invoice = data?.data;
 
-  const pendingSignal = (invoice?.approverStatus || invoice?.status || "")
-    .toLowerCase()
-    .trim();
+  const isPendingApproval = invoice?.approverStatus === "pending";
 
   const { data: approveStatusData, isLoading: isApproveStatusLoading } = useQuery<
     { message?: string; data?: { status?: boolean } },
     ApiResponseError
   >({
-    queryKey: ["invoiceApproveStatus", contractId, invoiceId],
+    queryKey: useUserQueryKey(["invoiceApproveStatus", contractId, invoiceId]),
     queryFn: async () => {
       return await approverApi.getInvoiceApproveStatus(contractId, invoiceId);
     },
@@ -120,9 +119,9 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   });
 
   const canApprove =
-    pendingSignal === "pending" && approveStatusData?.data?.status === true;
+    isPendingApproval && approveStatusData?.data?.status === true;
 
-  const canManagerAct = isManager && pendingSignal === "pending";
+  const canManagerAct = isManager && isPendingApproval;
 
 
   const approveInvoiceMutation = useMutation<
@@ -238,11 +237,11 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] dark:border-slate-700 text-[#111827] dark:text-slate-100"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Invoice
                 </SheetTitle>
               </div>
@@ -260,10 +259,10 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
           <div className="space-y-6">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
-                <div className="text-xs font-medium text-[#9CA3AF]">
+                <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                   Invoice Details
                 </div>
-                <div className="text-base font-semibold text-[#0F0F0F]">
+                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   {invoice?.title ?? "-"}
                 </div>
               </div>
@@ -280,19 +279,13 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                         <Button
                           variant="outline"
                           data-testid="edit-invoice-trigger"
-                          className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#2A4467]"
+                          className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#2A4467] dark:text-slate-200"
                         >
                           <Edit2 className="mr-2 h-4 w-4" /> Edit
                         </Button>
                       }
                     />
                   )}
-                <Button
-                  variant="outline"
-                  className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
-                >
-                  <Share2 className="mr-2 h-4 w-4" /> Export
-                </Button>
               </div>
             </div>
 
@@ -327,10 +320,10 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
             </div>
 
             <div className="space-y-2">
-              <div className="text-xs font-medium text-[#9CA3AF]">
+              <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                 Description/Note
               </div>
-              <div className="text-sm text-[#374151]">
+              <div className="text-sm text-[#374151] dark:text-slate-300">
                 {isLoading
                   ? "Loading..."
                   : invoice?.description || "No description provided."}
@@ -339,7 +332,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
 
             {files.length > 0 && (
               <div className="space-y-3">
-                <div className="text-base font-semibold text-[#0F0F0F]">
+                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Attachments
                 </div>
                 <div className="space-y-2">
@@ -366,7 +359,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
             <div className="flex gap-3 pt-6">
               <Button
                 variant="outline"
-                className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                className="h-11 flex-1 rounded-xl border-[#E5E7EB] dark:border-slate-700 text-sm font-semibold text-[#111827] dark:text-slate-100"
                 disabled={approveInvoiceMutation.isPending}
                 onClick={() => approveInvoiceMutation.mutate("rejected")}
               >
@@ -386,7 +379,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
             <div className="flex gap-3 pt-6">
               <Button
                 variant="outline"
-                className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                className="h-11 flex-1 rounded-xl border-[#E5E7EB] dark:border-slate-700 text-sm font-semibold text-[#111827] dark:text-slate-100"
                 disabled={approveInvoiceMutation.isPending}
                 onClick={() => approveInvoiceMutation.mutate("rejected")}
               >
@@ -451,16 +444,16 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
         id: "amountBilled",
         header: "Amount/Billed",
         cell: ({ row }) => (
-          <div className="text-xs text-slate-600">
+          <div className="text-xs text-slate-600 dark:text-slate-300">
             <p>
-              <span className="text-slate-500">Billed:&nbsp;</span>
-              <span className="text-slate-900 font-medium">
+              <span className="text-slate-500 dark:text-slate-400">Billed:&nbsp;</span>
+              <span className="text-slate-900 dark:text-slate-100 font-medium">
                 {row.original.billed}
               </span>
             </p>
             <p>
-              <span className="text-slate-500">Remaining:&nbsp;</span>
-              <span className="text-slate-900 font-medium">
+              <span className="text-slate-500 dark:text-slate-400">Remaining:&nbsp;</span>
+              <span className="text-slate-900 dark:text-slate-100 font-medium">
                 {row.original.remaining}
               </span>
             </p>
@@ -559,8 +552,8 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
         data={invoiceRows}
         columns={columns}
         header={() => (
-          <div className="flex items-center gap-3 w-full border-b border-[#E5E7EB] px-5 py-4">
-            <span className="text-sm font-medium text-slate-900">Invoices</span>
+          <div className="flex items-center gap-3 w-full border-b border-[#E5E7EB] dark:border-slate-800 px-5 py-4">
+            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Invoices</span>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
@@ -581,13 +574,13 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
           pagination,
         }}
         classNames={{
-          container: "border border-[#E5E7EB] rounded-xl bg-white",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-xs font-semibold text-slate-500",
-          tCell: "px-6 py-4 text-sm text-slate-700",
+          container: "border border-[#E5E7EB] dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200",
         }}
       />
     </div>

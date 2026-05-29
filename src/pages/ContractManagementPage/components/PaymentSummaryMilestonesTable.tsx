@@ -25,7 +25,7 @@ const milestoneColumns: ColumnDef<PaymentMilestoneRow>[] = [
     accessorKey: "milestoneId",
     header: "Milestone ID",
     cell: ({ getValue }) => (
-      <div className="w-[100px] py-2 text-sm font-semibold text-[#374151]">
+      <div className="w-[100px] py-2 text-sm font-semibold text-[#374151] dark:text-slate-300">
         {getValue<string>()}
       </div>
     ),
@@ -34,7 +34,7 @@ const milestoneColumns: ColumnDef<PaymentMilestoneRow>[] = [
     accessorKey: "milestoneTitle",
     header: "Milestone Title",
     cell: ({ getValue }) => (
-      <div className="w-[160px] py-2 text-sm font-medium text-[#374151]">
+      <div className="w-[160px] py-2 text-sm font-medium text-[#374151] dark:text-slate-300">
         {getValue<string>()}
       </div>
     ),
@@ -43,7 +43,7 @@ const milestoneColumns: ColumnDef<PaymentMilestoneRow>[] = [
     accessorKey: "deliverable",
     header: "Deliverable",
     cell: ({ getValue }) => (
-      <div className="w-[160px] py-2 text-sm font-medium text-[#374151]">
+      <div className="w-[160px] py-2 text-sm font-medium text-[#374151] dark:text-slate-300">
         {getValue<string>()}
       </div>
     ),
@@ -52,7 +52,7 @@ const milestoneColumns: ColumnDef<PaymentMilestoneRow>[] = [
     accessorKey: "amount",
     header: () => <div className="w-[80px] text-center">Amount</div>,
     cell: ({ getValue }) => (
-      <div className="w-[80px] py-2 text-center text-sm font-semibold text-[#374151]">
+      <div className="w-[80px] py-2 text-center text-sm font-semibold text-[#374151] dark:text-slate-300">
         {getValue<string>()}
       </div>
     ),
@@ -61,7 +61,7 @@ const milestoneColumns: ColumnDef<PaymentMilestoneRow>[] = [
     accessorKey: "dueDate",
     header: () => <div className="w-[120px] text-center">Due Date</div>,
     cell: ({ getValue }) => (
-      <div className="w-[120px] py-2 text-center text-sm font-medium text-[#374151]">
+      <div className="w-[120px] py-2 text-center text-sm font-medium text-[#374151] dark:text-slate-300">
         {getValue<string>()}
       </div>
     ),
@@ -105,17 +105,17 @@ const PaymentSummaryMilestonesTable = <
   return (
     <DataTable<T>
       header={() => (
-        <div className="flex items-center gap-6 border-b w-full border-[#E9E9EB] px-4 pb-3">
-          <div className="text-base font-semibold text-[#0F0F0F]">
+        <div className="flex items-center gap-6 border-b w-full border-[#E9E9EB] dark:border-slate-700 px-4 pb-3">
+          <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
             {title}
           </div>
           <div className="relative w-[300px]">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B]" />
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={searchPlaceholder}
-              className="h-12 w-[300px] rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
+              className="h-12 w-[300px] rounded-lg border border-[#E5E7EB] dark:border-slate-700 pl-9 text-sm text-[#0F0F0F] dark:text-slate-100 placeholder:text-[#6B6B6B] dark:placeholder:text-slate-500"
             />
           </div>
         </div>
@@ -134,7 +134,7 @@ const PaymentSummaryMilestonesTable = <
         container:
           "bg-white dark:bg-slate-950 rounded-xl px- border border-gray-300 dark:border-slate-600",
         expandedCell: "px-5",
-        tHeadRow: "bg-[#F9FAFB]"
+        tHeadRow: "bg-[#F9FAFB] dark:bg-slate-800"
       }}
     />
   );

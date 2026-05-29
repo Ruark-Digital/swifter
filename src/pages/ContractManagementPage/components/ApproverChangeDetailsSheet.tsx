@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { formatFileSize, getFileIcon, getSimpleFileExtension } from "@/lib/fileUtils";
@@ -43,10 +44,12 @@ const LabelRow = ({
   highlight?: boolean;
 }) => (
   <div className="space-y-2 py-3">
-    <span className="text-sm text-slate-500 block">{label}</span>
+    <span className="text-sm text-slate-500 dark:text-slate-400 block">{label}</span>
     <span
       className={`text-sm block ${
-        highlight ? "font-semibold text-slate-900" : "text-slate-800"
+        highlight
+          ? "font-semibold text-slate-900 dark:text-slate-100"
+          : "text-slate-800 dark:text-slate-200"
       }`}
     >
       {value}
@@ -63,10 +66,11 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
   const qc = useQueryClient();
   const [open, setOpen] = React.useState(false);
 
-  const changeDetailQueryKey = React.useMemo(
-    () => ["approver-change-detail", contractId, changeId],
-    [contractId, changeId],
-  );
+  const changeDetailQueryKey = useUserQueryKey([
+    "approver-change-detail",
+    contractId,
+    changeId,
+  ]);
 
   const { data: detailRes, isLoading: isDetailLoading } = useQuery({
     queryKey: changeDetailQueryKey,
@@ -129,10 +133,11 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
     document.body.removeChild(link);
   }, []);
 
-  const commentsQueryKey = React.useMemo(
-    () => ["approver-change-comments", contractId, changeId],
-    [contractId, changeId],
-  );
+  const commentsQueryKey = useUserQueryKey([
+    "approver-change-comments",
+    contractId,
+    changeId,
+  ]);
 
   const { data: commentsRes, isLoading: isCommentsLoading } = useQuery({
     queryKey: commentsQueryKey,
@@ -209,7 +214,7 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
             </div>
           </SheetHeader>
 
-          <h3 className="text-lg font-semibold text-slate-900">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             {isDetailLoading ? "" : title}
           </h3>
 
@@ -280,10 +285,10 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
                       <Badge
                         className={
                           status === "approved"
-                            ? "bg-green-100 text-green-800"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
                             : status === "rejected"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-yellow-100 text-yellow-800"
+                              ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                              : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
                         }
                       >
                         {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -296,14 +301,14 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
               </div>
 
               <div className="space-y-2">
-                <span className="text-sm text-slate-500">Description</span>
-                <p className="text-sm text-slate-800 font-medium leading-7">
+                <span className="text-sm text-slate-500 dark:text-slate-400">Description</span>
+                <p className="text-sm text-slate-800 dark:text-slate-200 font-medium leading-7">
                   {isDetailLoading ? "" : description || "—"}
                 </p>
               </div>
 
               <div className="space-y-5">
-                <span className="text-sm font-semibold text-slate-900">
+                <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                   Attached Documents
                 </span>
                 <div className="grid grid-cols-1 gap-3">
@@ -317,7 +322,7 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
                       />
                     ))
                   ) : (
-                    <p className="text-sm text-slate-500">No documents attached.</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">No documents attached.</p>
                   )}
                 </div>
               </div>
@@ -341,25 +346,25 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
 
               <Separator />
 
-              <div className="rounded-xl border border-slate-200 p-4">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
                 {isCommentsLoading ? (
-                  <p className="text-sm text-slate-700">Loading comments...</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-300">Loading comments...</p>
                 ) : Array.isArray(comments) && comments.length > 0 ? (
                   <div className="space-y-4">
                     {comments.map((c: any) => (
                       <div key={c?._id} className="space-y-1">
-                        <div className="text-xs text-slate-500">
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
                           {(c?.user?.name || c?.user?.email || "").toString()}
                         </div>
                         <div
-                          className="text-sm text-slate-700 prose prose-sm max-w-none"
+                          className="text-sm text-slate-700 dark:text-slate-200 prose prose-sm dark:prose-invert max-w-none"
                           dangerouslySetInnerHTML={{ __html: c?.content || "" }}
                         />
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-700">No comments yet.</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-300">No comments yet.</p>
                 )}
               </div>
 

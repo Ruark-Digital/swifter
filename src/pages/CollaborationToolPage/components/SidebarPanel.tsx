@@ -1,12 +1,17 @@
-import React, { lazy, Suspense, useCallback, useEffect } from "react";
+import React, { Suspense, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import "@/pages/CollaborationToolPage/collaboration.css";
 import type { CollaborationTab } from "../store/useCollaborationStore";
 import type { CommentsFeedItem } from "./CommentsTab";
 import type { Mentionable } from "../collab/useContractMentionables";
+import type { Version } from "./VersionHistoryModal";
+import type { RedlineSpan } from "../collab/redlineScan";
+import type { AiRedlineSuggestion } from "../collab/useAiRedlineSuggestions";
 
-const CommentsTab = lazy(() => import("./CommentsTab"));
-const LogTab = lazy(() => import("./LogTab"));
+const CommentsTab = lazyWithRetry(() => import("./CommentsTab"));
+const VersionsTab = lazyWithRetry(() => import("./VersionsTab"));
+const AiSuggestionsPanel = lazyWithRetry(() => import("./AiSuggestionsPanel"));
 
 type FeedAttachment = {
   filename: string;
@@ -22,20 +27,37 @@ type Feed = {
   attachment?: FeedAttachment | null;
 };
 
+type AiItem = {
+  redline: RedlineSpan;
+  suggestion?: AiRedlineSuggestion;
+  state: "pending" | "approved" | "dismissed";
+};
+
 interface SidebarPanelProps {
   className?: string;
   comments?: Feed[];
-  logs?: Feed[];
   activeTab: CollaborationTab;
-  hasVisitedLog: boolean;
   onTabChange: (tab: CollaborationTab) => void;
   commentValue?: string;
   onCommentChange?: (value: string, mentions: Mentionable[]) => void;
-  onCommentSubmit?: (parentId?: string | null) => void;
+  onCommentSubmit?: () => void;
   canWriteComment?: boolean;
   isSubmittingComment?: boolean;
   useFallbackFeed?: boolean;
   mentionables?: Mentionable[];
+  // Versions — auto-saved; no manual save button anymore.
+  versions: Version[];
+  onRestoreVersion: (versionId: string) => void;
+  onDownloadLatestVersion?: () => void;
+  isDownloadingVersion?: boolean;
+  isLoadingVersions?: boolean;
+  // AI / Redline
+  aiStatus: "idle" | "loading" | "ready" | "error" | "empty";
+  aiItems: AiItem[];
+  aiErrorMessage?: string;
+  onAiApprove: (item: AiItem) => void;
+  onAiDismiss: (item: AiItem) => void;
+  onAiRetry: () => void;
 }
 
 const fallbackComments: Feed[] = [
@@ -55,35 +77,10 @@ const fallbackComments: Feed[] = [
   },
 ];
 
-const fallbackLogs: Feed[] = [
-  {
-    id: "fallback-log-1",
-    name: "Kate Morrison",
-    timestamp: "5:20pm 20 Jan 2022",
-    message: "Edited The contract",
-  },
-  {
-    id: "fallback-log-2",
-    name: "Kate Morrison",
-    timestamp: "5:20pm 20 Jan 2022",
-    message: "Drop a comment",
-  },
-  {
-    id: "fallback-log-3",
-    name: "Kate Morrison",
-    timestamp: "5:20pm 20 Jan 2022",
-    message: "Kate Uploaded a document",
-    attachment: { filename: "Tech requirements.pdf", size: "720 KB" },
-    showDot: false,
-  },
-];
-
 const SidebarPanel: React.FC<SidebarPanelProps> = ({
   className,
   comments = [],
-  logs = [],
   activeTab,
-  hasVisitedLog,
   onTabChange,
   commentValue,
   onCommentChange,
@@ -92,17 +89,26 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   isSubmittingComment = false,
   useFallbackFeed = false,
   mentionables = [],
+  versions,
+  onRestoreVersion,
+  onDownloadLatestVersion,
+  isDownloadingVersion = false,
+  isLoadingVersions = false,
+  aiStatus,
+  aiItems,
+  aiErrorMessage,
+  onAiApprove,
+  onAiDismiss,
+  onAiRetry,
 }) => {
   const avatarPublic = "/assets/collaboration/avatar-user.png";
   const commentsFeed: CommentsFeedItem[] = useFallbackFeed ? fallbackComments : comments;
-  const logsFeed: CommentsFeedItem[] = useFallbackFeed ? fallbackLogs : logs;
-  const shouldRenderComments = activeTab === "comments" || hasVisitedLog;
-  const shouldRenderLog = activeTab === "log" || hasVisitedLog;
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void import("./CommentsTab");
-      void import("./LogTab");
+      void import("./VersionsTab");
+      void import("./AiSuggestionsPanel");
     }, 250);
 
     return () => {
@@ -114,12 +120,14 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
     onTabChange("comments");
   }, [onTabChange]);
 
-  const handleLogTabClick = useCallback(() => {
-    onTabChange("log");
+  const handleRedlineTabClick = useCallback(() => {
+    onTabChange("redline");
   }, [onTabChange]);
 
-  const commentsPaneClassName = activeTab === "comments" ? "block h-full" : "hidden h-full";
-  const logPaneClassName = activeTab === "log" ? "block h-full" : "hidden h-full";
+  const handleVersionsTabClick = useCallback(() => {
+    onTabChange("versions");
+  }, [onTabChange]);
+
   const fallbackNode = <div className="ct-feed mt-5" />;
 
   return (
@@ -130,60 +138,67 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
           onClick={handleCommentsTabClick}
           aria-pressed={activeTab === "comments"}
         >
-          {activeTab === "comments" ? "Comments" : "Comments"}
+          Comments
         </button>
         <button
-          className={cn("ct-segment-btn", activeTab === "log" && "ct-segment-btn-active")}
-          onClick={handleLogTabClick}
-          aria-pressed={activeTab === "log"}
+          className={cn("ct-segment-btn", activeTab === "redline" && "ct-segment-btn-active")}
+          onClick={handleRedlineTabClick}
+          aria-pressed={activeTab === "redline"}
         >
-          {activeTab === "log" ? "Action Log" : "Log"}
+          Redline
+        </button>
+        <button
+          className={cn("ct-segment-btn", activeTab === "versions" && "ct-segment-btn-active")}
+          onClick={handleVersionsTabClick}
+          aria-pressed={activeTab === "versions"}
+        >
+          Versions
         </button>
       </div>
 
       <div className="flex-1 overflow-hidden">
-        {shouldRenderComments && (
-          <div className={commentsPaneClassName}>
-            <Suspense fallback={fallbackNode}>
-              <CommentsTab
-                avatarPublic={avatarPublic}
-                comments={commentsFeed}
-                commentValue={commentValue}
-                onCommentChange={onCommentChange}
-                onCommentSubmit={onCommentSubmit}
-                canWriteComment={canWriteComment}
-                isSubmittingComment={isSubmittingComment}
-                mentionables={mentionables}
-              />
-            </Suspense>
-          </div>
+        {activeTab === "comments" && (
+          <Suspense fallback={fallbackNode}>
+            <CommentsTab
+              avatarPublic={avatarPublic}
+              comments={commentsFeed}
+              commentValue={commentValue}
+              onCommentChange={onCommentChange}
+              onCommentSubmit={onCommentSubmit}
+              canWriteComment={canWriteComment}
+              isSubmittingComment={isSubmittingComment}
+              mentionables={mentionables}
+            />
+          </Suspense>
         )}
-        {shouldRenderLog && (
-          <div className={logPaneClassName}>
-            <Suspense fallback={fallbackNode}>
-              <LogTab avatarPublic={avatarPublic} logs={logsFeed} />
-            </Suspense>
-          </div>
+        {activeTab === "redline" && (
+          <Suspense fallback={fallbackNode}>
+            <AiSuggestionsPanel
+              open={true}
+              variant="inline"
+              status={aiStatus}
+              errorMessage={aiErrorMessage}
+              items={aiItems}
+              onApprove={onAiApprove}
+              onDismiss={onAiDismiss}
+              onRetry={onAiRetry}
+            />
+          </Suspense>
+        )}
+        {activeTab === "versions" && (
+          <Suspense fallback={fallbackNode}>
+            <VersionsTab
+              versions={versions}
+              onRestore={onRestoreVersion}
+              onDownloadLatest={onDownloadLatestVersion}
+              isDownloading={isDownloadingVersion}
+              isLoading={isLoadingVersions}
+            />
+          </Suspense>
         )}
       </div>
     </div>
   );
 };
 
-
-const arePropsEqual = (prev: SidebarPanelProps, next: SidebarPanelProps) =>
-  prev.className === next.className &&
-  prev.activeTab === next.activeTab &&
-  prev.hasVisitedLog === next.hasVisitedLog &&
-  prev.onTabChange === next.onTabChange &&
-  prev.commentValue === next.commentValue &&
-  prev.onCommentChange === next.onCommentChange &&
-  prev.onCommentSubmit === next.onCommentSubmit &&
-  prev.canWriteComment === next.canWriteComment &&
-  prev.isSubmittingComment === next.isSubmittingComment &&
-  prev.useFallbackFeed === next.useFallbackFeed &&
-  prev.comments === next.comments &&
-  prev.logs === next.logs;
-
-export default React.memo(SidebarPanel, arePropsEqual);
-
+export default React.memo(SidebarPanel);

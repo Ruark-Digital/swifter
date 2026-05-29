@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Share2, Search, Check, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatSecurityType } from "@/lib/utils";
 import { ContractComplianceDTO } from "../api/contractManagerApi";
 import { useUserRole } from "@/hooks/useUserRole";
 import { format, differenceInDays } from "date-fns";
@@ -15,6 +15,7 @@ import { useParams } from "react-router-dom";
 import { postRequest } from "@/lib/axiosInstance";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToastHandler } from "@/hooks/useToaster";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 export type PolicyRow = {
   id: string;
@@ -365,7 +366,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
       return {
         id: s._id || "",
         securityId: s.securityTypeId || s._id || "-",
-        securityType: s.securityType || "-",
+        securityType: formatSecurityType(s.securityType),
         amount: formatMoneyNoSymbol(s.amount),
         dueDate,
         dueIn,
@@ -445,9 +446,11 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
               }
             />
           )}
-          <Button variant="outline" className="text-slate-600 border-slate-300">
-            <Share2 className="mr-2 h-4 w-4" /> Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId ?? ""} contractType="Contract">
+            <Button variant="outline" className="text-slate-600 border-slate-300">
+              <Share2 className="mr-2 h-4 w-4" /> Export Report
+            </Button>
+          </ExportReportSheet>
         </div>
       </div>
 
@@ -492,13 +495,15 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
               {data?.details?.securityType &&
               Array.isArray(data.details.securityType)
                 ? data.details.securityType
-                    .map((t) => t.securityType)
-                    .filter(Boolean)
-                    .join(", ")
+                    .map((t) => formatSecurityType(t.securityType))
+                    .filter((label) => label && label !== "-")
+                    .join(", ") || "-"
                 : data?.details?.securityType &&
                     typeof data.details.securityType === "object"
-                  ? (data.details.securityType as { securityType?: string })
-                      .securityType || "-"
+                  ? formatSecurityType(
+                      (data.details.securityType as { securityType?: string })
+                        .securityType,
+                    )
                   : "-"}
             </p>
           </div>
