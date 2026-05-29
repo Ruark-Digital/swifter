@@ -25,6 +25,7 @@ type ActionLogItem = {
   dateLine1: string;
   dateLine2: string;
   rawReference?: any;
+  _id?: string;
 };
 
 type Props = {
@@ -93,8 +94,8 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
     queryKey: useUserQueryKey(["actionDetail", contractId, action?.actionId, action?.reference]),
     queryFn: async () => {
       if (!action || !contractId) return null;
-      const logId = (action.actionId && action.actionId !== "Unknown")
-        ? action.actionId
+      const logId = (action._id && action._id !== "Unknown")
+        ? action._id
         : (action.rawReference?._id || action.reference);
       return await contractManagerApi.getLogDetail(contractId, logId);
     },
