@@ -70,7 +70,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
-  const { isViewOnly, isVendor, isProjectManager } = useUserRole();
+  const { isViewOnly, isVendor, isProjectManager, isApprover } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
   const { control, reset } = useForge({
     resolver: yupResolver(issueRfiSchema) as any,
@@ -98,10 +98,12 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
     >,
     ApiResponseError
   >({
-    queryKey: ["contract-personnel", contractId, isContractVendorLike],
+    queryKey: ["contract-personnel", contractId, isContractVendorLike, isApprover],
     queryFn: async () =>
       await getRequest({
-        url: isContractVendorLike
+        url: isApprover
+          ? `/contract/approver/contracts/${contractId}/personnel`
+          : isContractVendorLike
           ? `/contract/vendor/contracts/${contractId}/personnel`
           : "/contract/manager/personnel",
       }),

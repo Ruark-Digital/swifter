@@ -32,9 +32,10 @@ type DashboardOverview = {
 type FinancialStatement = {
   originalContractValue?: number;
   changeOrders?: { count?: number; value?: number };
-  pendingChangeOrders?: number;
+  pendingChangeOrders?: number | { count?: number; value?: number };
   savingsRealized?: { value?: number; percentage?: number };
   percentageIncrease?: number;
+  percentIncreaseFromOriginal?: number;
   holdbackAmount?: number;
   releasedHoldback?: number;
   currentContractValue?: number;
@@ -286,14 +287,23 @@ const AnalyticsTab: React.FC<Props> = ({
           : "--",
       color: "text-red-500",
     },
-    {
-      label: "Pending Change Orders",
-      value: formatMoney(
-        financialStatement?.pendingChangeOrders,
-        financialStatement?.currency,
-      ),
-      color: "text-yellow-500",
-    },
+    (() => {
+      const pco = financialStatement?.pendingChangeOrders;
+      const pcoCount = typeof pco === "object" && pco !== null ? pco.count : undefined;
+      const pcoValue =
+        typeof pco === "object" && pco !== null ? pco.value : pco;
+      return {
+        label:
+          typeof pcoCount === "number"
+            ? `Pending Change Orders (${pcoCount})`
+            : "Pending Change Orders",
+        value:
+          typeof pcoValue === "number"
+            ? formatMoney(pcoValue, financialStatement?.currency)
+            : "--",
+        color: "text-yellow-500",
+      };
+    })(),
     {
       label: "Savings Realized",
       value:
@@ -302,14 +312,16 @@ const AnalyticsTab: React.FC<Props> = ({
           : "--",
       color: "text-slate-700 dark:text-slate-300",
     },
-    {
-      label: "% Increase from Original",
-      value:
-        typeof financialStatement?.percentageIncrease === "number"
-          ? `+${formatPercent(financialStatement?.percentageIncrease)}`
-          : "--",
-      color: "text-red-500",
-    },
+    (() => {
+      const pct =
+        financialStatement?.percentIncreaseFromOriginal ??
+        financialStatement?.percentageIncrease;
+      return {
+        label: "% Increase from Original",
+        value: typeof pct === "number" ? `+${formatPercent(pct)}` : "--",
+        color: "text-red-500",
+      };
+    })(),
     {
       label: "Holdback Amount",
       value: formatMoney(

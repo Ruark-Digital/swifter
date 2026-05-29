@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { BarChart3 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -75,13 +76,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
 };
 
 export const ProjectValueCard: React.FC<Props> = ({ rows }) => {
-  const data = (rows && rows.length > 0
-    ? rows
-    : [
-        { name: "City Hall Renovation", value: 2200000, contractCount: 3 },
-        { name: "Warehouse Expansion", value: 1800000, contractCount: 2 },
-      ]
-  ).map((r) => ({
+  const data = (rows ?? []).map((r) => ({
     name: r.name,
     valueM: r.value / 1_000_000,
     contractCount: r.contractCount ?? 0,
@@ -127,28 +122,44 @@ export const ProjectValueCard: React.FC<Props> = ({ rows }) => {
         </Tabs>
       </CardHeader>
       <CardContent className="space-y-5 flex-1 min-h-0 overflow-y-auto">
-        {data.map((row, idx) => {
-          const pct =
-            domainMax > 0
-              ? Math.min(100, Math.max(0, Math.round((row.valueM / domainMax) * 100)))
-              : 0;
-          return (
-            <ProjectRow
-              key={idx}
-              name={row.name}
-              valueM={row.valueM}
-              contractCount={row.contractCount}
-              pct={pct}
-            />
-          );
-        })}
-        <div className="flex items-center justify-between">
-          {axis.map((n) => (
-            <span key={n} className="text-[12px] font-semibold text-[#475467] dark:text-slate-400">
-              {n}
-            </span>
-          ))}
-        </div>
+        {data.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 px-4 h-full">
+            <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center mb-4">
+              <BarChart3 className="h-6 w-6 text-gray-400 dark:text-gray-500" />
+            </div>
+            <h4 className="text-sm font-medium text-gray-900 dark:text-gray-200 mb-1">
+              No project data yet
+            </h4>
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+              Contract values by project will appear here once contracts are linked to projects.
+            </p>
+          </div>
+        ) : (
+          <>
+            {data.map((row, idx) => {
+              const pct =
+                domainMax > 0
+                  ? Math.min(100, Math.max(0, Math.round((row.valueM / domainMax) * 100)))
+                  : 0;
+              return (
+                <ProjectRow
+                  key={idx}
+                  name={row.name}
+                  valueM={row.valueM}
+                  contractCount={row.contractCount}
+                  pct={pct}
+                />
+              );
+            })}
+            <div className="flex items-center justify-between">
+              {axis.map((n) => (
+                <span key={n} className="text-[12px] font-semibold text-[#475467] dark:text-slate-400">
+                  {n}
+                </span>
+              ))}
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

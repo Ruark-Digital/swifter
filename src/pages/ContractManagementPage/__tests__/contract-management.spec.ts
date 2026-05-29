@@ -640,7 +640,7 @@ test.describe("Contract Management Page (roles)", () => {
     await page.getByRole("button", { name: "Close" }).click();
   });
 
-  test("create contract shows MSA selector for MSA relationships and hides MSA category", async ({
+  test("create contract shows MSA selector and MSA category for MSA relationships", async ({
     page,
   }) => {
     test.setTimeout(120000);
@@ -692,7 +692,9 @@ test.describe("Contract Management Page (roles)", () => {
 
     await expect(selectMsa).toBeVisible({ timeout: 30000 });
     await expect(selectProject).toHaveCount(0);
-    await expect(createDialog.getByText("Select MSA Category")).toHaveCount(0);
+    await expect(
+      createDialog.getByText("Select MSA Category"),
+    ).toBeVisible({ timeout: 30000 });
 
     await selectMsa.click();
     await expect(page.getByRole("option", { name: "MSA 1" })).toBeVisible();

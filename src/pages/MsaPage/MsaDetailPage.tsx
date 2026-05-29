@@ -30,6 +30,7 @@ import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { Textarea } from "@/components/ui/textarea";
 import CreateMSADialog from "./layouts/CreateMSADialog";
 import Overview from "./layouts/Overview";
+import Analytics from "./layouts/Analytics";
 import LinkedContracts from "./layouts/LinkedContracts";
 import PaymentSummary from "./layouts/PaymentSummary";
 import Documents from "./layouts/Documents";
@@ -71,6 +72,7 @@ type TabKey =
 
 const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "overview", label: "Overview" },
+  { key: "analytics", label: "Analytics" },
   { key: "kpi", label: "KPI" },
   { key: "compliance", label: "Compliance & Security" },
   { key: "documents", label: "Documents" },
@@ -125,6 +127,7 @@ const ROLE_TAB_WHITELIST: Record<
   ],
   manager: [
     "overview",
+    "analytics",
     "kpi",
     "compliance",
     "documents",
@@ -732,18 +735,20 @@ const MsaDetailPage: React.FC = () => {
                 >
                   <Share2 className="mr-2 h-4 w-4" /> Export Report
                 </Button>
-                <CreateMSADialog
-                  trigger={
-                    <Button
-                      variant="secondary"
-                      className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
-                    >
-                      Edit MSA
-                    </Button>
-                  }
-                  editingMsaId={msa?._id ?? undefined}
-                  initialValues={msa as any}
-                />
+                {isManager && (
+                  <CreateMSADialog
+                    trigger={
+                      <Button
+                        variant="secondary"
+                        className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
+                      >
+                        Edit MSA
+                      </Button>
+                    }
+                    editingMsaId={msa?._id ?? undefined}
+                    initialValues={msa as any}
+                  />
+                )}
               </div>
 
               <Overview
@@ -779,6 +784,11 @@ const MsaDetailPage: React.FC = () => {
                 vendorPersonnel={vendorPersonnel}
               />
             </TabsContent>
+
+            <Analytics
+              contractId={id ?? ""}
+              isActive={activeTab === "analytics"}
+            />
 
             <Documents
               contractId={id ?? ""}

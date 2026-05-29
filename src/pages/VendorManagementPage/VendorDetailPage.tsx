@@ -838,14 +838,15 @@ export const VendorDetailPage = () => {
             />
           </TabsContent>
 
-          <TabsContent
-            value="project-managers"
-            className="mt-0 border-0 p-0"
-            data-testid="vendor-project-managers-content"
-            forceMount
-          >
-            <ProjectManagersTab projectManagers={projectManagers} />
-          </TabsContent>
+          {projectManagers.length > 0 && (
+            <TabsContent
+              value="project-managers"
+              className="mt-0 border-0 p-0"
+              data-testid="vendor-project-managers-content"
+            >
+              <ProjectManagersTab projectManagers={projectManagers} />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 

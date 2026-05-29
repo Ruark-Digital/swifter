@@ -258,17 +258,24 @@ const useVendorContractsStats = (enabled = true) => {
   });
 };
 
-const useVendorContracts = (pagination: PaginationState, enabled = true) => {
+const useVendorContracts = (
+  pagination: PaginationState,
+  enabled = true,
+  asPM = false,
+) => {
   const queryKey = useUserQueryKey([
-    "vendor-contracts",
+    asPM ? "pm-contracts" : "vendor-contracts",
     pagination.pageIndex,
     pagination.pageSize,
   ]);
+  const url = asPM
+    ? "/contract/vendor/contracts/me"
+    : "/contract/vendor/contracts";
   return useQuery<VendorContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
       const res = await getRequest({
-        url: "/contract/vendor/contracts",
+        url,
         config: {
           params: {
             page: pagination.pageIndex + 1,
@@ -405,7 +412,11 @@ const ContractManagementPage: React.FC = () => {
   const { data: vendorStatsData } =
     useVendorContractsStats(isContractVendorLike);
   const { data: vendorContractsData, isLoading: isVendorContractsLoading } =
-    useVendorContracts(vendorPagination, isContractVendorLike);
+    useVendorContracts(
+      vendorPagination,
+      isContractVendorLike,
+      isProjectManager,
+    );
 
   const stats = isApprover ? approverStatsData?.data : statsData?.data;
   const statsCounts = stats

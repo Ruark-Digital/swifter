@@ -1044,7 +1044,9 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["contract-manager-dashboard-change-order-impact", userRole]),
     queryFn: async () => {
       const res = await getRequest({
-        url: `${contractDashboardBasePath}/change-order-impact`,
+        // swagger spelling drift: manager uses `change-order-impact`,
+        // approver uses `changes-order-impact` (plural)
+        url: `${contractDashboardBasePath}/${userRole === "approver" ? "changes-order-impact" : "change-order-impact"}`,
         config: { params: { range: "YTD", type: "Contract" } },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerChangeOrderImpact>;

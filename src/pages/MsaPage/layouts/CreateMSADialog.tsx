@@ -621,17 +621,9 @@ const CreateMSADialog: React.FC<Props> = ({
           ? (data.insurancePolicies ?? [])
               .map((p) => ({
                 policyName: p?.name,
-                // Swagger declares `policy[].limit` as string; the contract
-                // edit/create flow also sends it as a string. Sending a
-                // number here trips BE validation once the field is
-                // populated (the empty-default path filters out before this
-                // matters, which is why create-with-no-insurance worked).
-                limit:
-                  p?.limit !== undefined && p?.limit !== null
-                    ? String(p.limit)
-                    : undefined,
+                limit: toNumberOrUndefined(p?.limit),
               }))
-              .filter((p) => p.policyName || p.limit)
+              .filter((p) => p.policyName || p.limit !== undefined)
           : undefined,
       };
 
@@ -658,9 +650,13 @@ const CreateMSADialog: React.FC<Props> = ({
         (data.approvalGroups ?? [])
           .filter((item) => item.name && item.approvers?.length)
           .flatMap((g, i) => {
-            const lvl = g.approvalLevel ? Number(g.approvalLevel) : i + 1;
-            const amountValue = toNumberOrUndefined(g.amount);
-            // API expects user as array of strings
+            const rawLvl = g.approvalLevel ? Number(g.approvalLevel) : i + 1;
+            // DTO: level is z.number().int().min(1).max(5); the form default
+            // is "0" which would fail validation.
+            const lvl = Math.min(5, Math.max(1, Math.trunc(rawLvl) || i + 1));
+            // DTO: amount is z.number() (required inside the item). Missing
+            // amount would prune away and trip strict-mode rejection.
+            const amountValue = toNumberOrUndefined(g.amount) ?? 0;
             const userIds = (g.approvers ?? [])
               .map((u: any) => u?.value ?? u)
               .filter(Boolean);

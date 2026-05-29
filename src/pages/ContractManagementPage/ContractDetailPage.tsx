@@ -556,6 +556,7 @@ const ContractDetailPage: React.FC = () => {
 
         <ClauseLibraryTabContent
           currency={contract?.currency}
+          vendorName={contract?.vendor?.name}
           isActive={activeTab === "clause-library"}
         />
 

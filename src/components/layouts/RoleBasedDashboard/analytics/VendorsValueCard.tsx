@@ -1,3 +1,4 @@
+import { BarChart3 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartConfig } from "@/components/ui/chart";
@@ -30,13 +31,7 @@ export const VendorsValueCard: React.FC<Props> = ({
   selectedRange = "ytd",
   onRangeChange,
 }) => {
-  const data = (rows && rows.length > 0
-    ? rows
-    : [
-        { name: "BuildCorp Ltd", value: 3500000, contractCount: 8 },
-        { name: "TechServices Inc", value: 2800000, contractCount: 6 },
-      ]
-  ).map((r) => ({
+  const data = (rows ?? []).map((r) => ({
     name: r.name,
     valueM: r.value / 1_000_000,
     contractCount: r.contractCount ?? 0,
@@ -87,6 +82,19 @@ export const VendorsValueCard: React.FC<Props> = ({
         </Tabs>
       </CardHeader>
       <CardContent className="pt-0 flex-1 flex flex-col min-h-0">
+        {data.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 px-4 h-full">
+            <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center mb-4">
+              <BarChart3 className="h-6 w-6 text-gray-400 dark:text-gray-500" />
+            </div>
+            <h4 className="text-sm font-medium text-gray-900 dark:text-gray-200 mb-1">
+              No vendor data yet
+            </h4>
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+              Contract values by vendor will appear here once contracts are awarded.
+            </p>
+          </div>
+        ) : (
         <ChartContainer className="flex-1 min-h-0" config={{} as ChartConfig}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
@@ -142,6 +150,7 @@ export const VendorsValueCard: React.FC<Props> = ({
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>
+        )}
       </CardContent>
     </Card>
   );
