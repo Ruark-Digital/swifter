@@ -3,6 +3,13 @@ import { getRequest, patchRequest } from "@/lib/axiosInstance";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { ApiResponse, ApiResponseError } from "@/types";
 
+type ProjectFile = {
+  name: string;
+  url: string;
+  type: string;
+  size: number;
+};
+
 type Project = {
   _id: string;
   company: string;
@@ -13,20 +20,29 @@ type Project = {
   name: string;
   category: string;
   description: string;
+  businessDivision?: string;
   startDate?: string;
   endDate?: string;
   contract: Contract[];
-  files?: Array<{
-    name: string;
-    url: string;
-    type: string;
-    size: number;
-  }>;
+  files?: ProjectFile[];
   budget: number;
   status: "active" | "completed" | "cancelled";
   allowMultiple?: boolean;
   createdAt?: string;
   updatedAt?: string;
+};
+
+type UpdateProjectPayload = {
+  name?: string;
+  category?: string;
+  description?: string;
+  budget?: number;
+  startDate?: string;
+  endDate?: string;
+  allowMultiple?: boolean;
+  status?: "active" | "completed" | "cancelled" | "pending";
+  files?: ProjectFile[];
+  businessDivision?: string;
 };
 
 type Contract = {
@@ -87,4 +103,22 @@ export const useCompleteProject = (projectId?: string) => {
   });
 };
 
-export type { Project, Contract };
+export const useUpdateProject = (projectId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation<ApiResponse<Project>, ApiResponseError, UpdateProjectPayload>({
+    mutationFn: async (payload) =>
+      await patchRequest({
+        url: `/contract/manager/projects/${projectId}`,
+        payload,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project-list"] });
+      queryClient.invalidateQueries({ queryKey: ["projects-list"] });
+      queryClient.invalidateQueries({ queryKey: ["project-detail", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project-contracts", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["projects-stats"] });
+    },
+  });
+};
+
+export type { Project, ProjectFile, Contract, UpdateProjectPayload };

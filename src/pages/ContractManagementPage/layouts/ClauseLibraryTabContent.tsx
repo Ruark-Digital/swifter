@@ -88,17 +88,27 @@ function CategoryCard({
   iconBg,
   title,
   clausesCount,
+  defaultOpen = true,
   children,
 }: {
   iconSrc: string;
   iconBg: string;
   title: string;
   clausesCount: string;
+  defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = React.useState(defaultOpen);
+  const contentId = React.useId();
   return (
     <div className="w-full rounded-lg border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900 shadow-[0px_1px_2px_0px_#0000000d]">
-      <div className="flex items-center justify-between px-5 py-5">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={contentId}
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-5 py-5 text-left"
+      >
         <div className="flex items-center">
           <div className="rounded-lg p-2" style={{ background: iconBg }}>
             <img src={iconSrc} className="h-6 w-6" />
@@ -116,12 +126,19 @@ function CategoryCard({
         <div className="flex items-center gap-4">
           <img
             src="/assets/contract-management/clause-library/chevron-down.svg"
-            className="h-6 w-6"
+            className={`h-6 w-6 transition-transform ${open ? "" : "-rotate-90"}`}
           />
         </div>
-      </div>
+      </button>
 
-      <div className="border-t border-[#E5E7EB] dark:border-slate-800">{children}</div>
+      {open && (
+        <div
+          id={contentId}
+          className="border-t border-[#E5E7EB] dark:border-slate-800"
+        >
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -166,7 +183,7 @@ function ClauseCard({
   );
 }
 
-type Props = { isActive?: boolean; currency?: string };
+type Props = { isActive?: boolean; currency?: string; vendorName?: string };
 
 type ClauseLibraryResponse = {
   status?: number;
@@ -282,7 +299,7 @@ const formatDateShort = (date?: string) => {
   return format(parsed, "dd MMM yyyy");
 };
 
-const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
+const ClauseLibraryTabContent: React.FC<Props> = ({ isActive, vendorName }) => {
   const { id = "" } = useParams<{ id: string }>();
   const [search, setSearch] = React.useState("");
 
@@ -382,7 +399,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive }) => {
             <div className="inline-flex flex-col pl-6">
               <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">Vendor</div>
               <div className="text-base font-semibold leading-6 text-[#030712] dark:text-slate-100">
-                {contract?.vendor || "—"}
+                {vendorName || contract?.vendor || "—"}
               </div>
             </div>
             <div className="flex flex-col pl-6">

@@ -1,36 +1,32 @@
 import React from "react";
-import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { TabsContent } from "@/components/ui/tabs";
-import AnalyticsTab from "../components/AnalyticsTab";
 import { getRequest } from "@/lib/axiosInstance";
-import { useUserRole } from "@/hooks/useUserRole";
+import AnalyticsTab from "@/pages/ContractManagementPage/components/AnalyticsTab";
 
-type Props = { isActive?: boolean; currency?: string };
+type Props = { contractId: string; isActive?: boolean };
 
-const DEFAULT_CONTRACT_TYPE = "Contract" as const;
+const DEFAULT_CONTRACT_TYPE = "MsaContract" as const;
 type AnalyticsRange = "YTD" | 90 | 60 | 7;
 
-const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
-  const { id: contractId } = useParams<{ id: string }>();
-  const { isManager, isApprover } = useUserRole();
-  const roleSegment = isApprover ? "approver" : isManager ? "manager" : "manager";
-  const roleNs = `contract-${roleSegment}` as const;
-  const baseUrl = `/contract/${roleSegment}/contracts`;
+const roleNs = "msa-contract-manager" as const;
+const baseUrl = "/contract/manager/msa-contracts";
+
+const Analytics: React.FC<Props> = ({ contractId, isActive = false }) => {
   const [activitiesRange, setActivitiesRange] =
     React.useState<AnalyticsRange>("YTD");
   const [deliverySummaryRange, setDeliverySummaryRange] =
     React.useState<AnalyticsRange>("YTD");
 
+  const enabled = Boolean(contractId) && Boolean(isActive);
+
   const contractQuery = useQuery({
     queryKey: [roleNs, "contract", contractId],
     queryFn: async () => {
-      const res = await getRequest({
-        url: `${baseUrl}/${contractId}`,
-      });
+      const res = await getRequest({ url: `${baseUrl}/${contractId}` });
       return res.data?.data;
     },
-    enabled: !!contractId && !!isActive,
+    enabled,
     staleTime: 60000,
     retry: false,
   });
@@ -44,7 +40,7 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
       });
       return res.data?.data;
     },
-    enabled: !!contractId && !!isActive,
+    enabled,
     staleTime: 60000,
     retry: false,
   });
@@ -58,7 +54,7 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
       });
       return res.data?.data;
     },
-    enabled: !!contractId && !!isActive,
+    enabled,
     staleTime: 60000,
     retry: false,
   });
@@ -72,7 +68,7 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
       });
       return res.data?.data;
     },
-    enabled: !!contractId && !!isActive,
+    enabled,
     staleTime: 60000,
     retry: false,
   });
@@ -82,46 +78,51 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
     queryFn: async () => {
       const res = await getRequest({
         url: `${baseUrl}/${contractId}/dashboard/activities`,
-        config: { params: { range: activitiesRange, type: DEFAULT_CONTRACT_TYPE } },
+        config: {
+          params: { range: activitiesRange, type: DEFAULT_CONTRACT_TYPE },
+        },
       });
       return res.data?.data;
     },
-    enabled: !!contractId && !!isActive,
+    enabled,
     staleTime: 60000,
     retry: false,
   });
 
+  // MSA endpoint is /deliverable-summary (singular noun, unlike Contract which
+  // uses /delivery-summary). Spec source: docs.json 2.3.0.
   const deliverySummaryQuery = useQuery({
     queryKey: [
       `${roleNs}-dashboard`,
-      "delivery-summary",
+      "deliverable-summary",
       contractId,
       deliverySummaryRange,
     ],
     queryFn: async () => {
       const res = await getRequest({
-        url: `${baseUrl}/${contractId}/dashboard/delivery-summary`,
+        url: `${baseUrl}/${contractId}/dashboard/deliverable-summary`,
         config: {
           params: { range: deliverySummaryRange, type: DEFAULT_CONTRACT_TYPE },
         },
       });
       return res.data?.data;
     },
-    enabled: !!contractId && !!isActive,
+    enabled,
     staleTime: 60000,
     retry: false,
   });
 
+  // MSA endpoint is /attachments (plural, unlike Contract's /attachment).
   const attachmentsQuery = useQuery({
-    queryKey: [`${roleNs}-dashboard`, "attachment", contractId],
+    queryKey: [`${roleNs}-dashboard`, "attachments", contractId],
     queryFn: async () => {
       const res = await getRequest({
-        url: `${baseUrl}/${contractId}/dashboard/attachment`,
+        url: `${baseUrl}/${contractId}/dashboard/attachments`,
         config: { params: { type: DEFAULT_CONTRACT_TYPE } },
       });
       return res.data?.data;
     },
-    enabled: !!contractId && !!isActive,
+    enabled,
     staleTime: 60000,
     retry: false,
   });
@@ -135,7 +136,7 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
       });
       return res.data?.data;
     },
-    enabled: !!contractId && !!isActive,
+    enabled,
     staleTime: 60000,
     retry: false,
   });
@@ -149,17 +150,13 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
       });
       return res.data?.data;
     },
-    enabled: !!contractId && !!isActive,
+    enabled,
     staleTime: 60000,
     retry: false,
   });
 
   const clauseLegalAnalysisQuery = useQuery({
-    queryKey: [
-      `${roleNs}-dashboard`,
-      "clause-legal-analysis",
-      contractId,
-    ],
+    queryKey: [`${roleNs}-dashboard`, "clause-legal-analysis", contractId],
     queryFn: async () => {
       const res = await getRequest({
         url: `${baseUrl}/${contractId}/dashboard/clause-legal-analysis`,
@@ -167,7 +164,7 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
       });
       return res.data?.data;
     },
-    enabled: !!contractId && !!isActive,
+    enabled,
     staleTime: 60000,
     retry: false,
   });
@@ -194,4 +191,4 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
   );
 };
 
-export default AnalyticsTabContent;
+export default Analytics;

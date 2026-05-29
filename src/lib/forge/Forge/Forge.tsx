@@ -83,10 +83,6 @@ export const Forge = <TFieldValues extends FieldValues = FieldValues>({
 
   // Use enhanced validation state if available, otherwise fallback to control state
   const enhancedValidationState = enhancedValidation?.validationState || control._enhancedValidationState;
-  const validationProgress = enhancedValidationState
-    ? enhancedValidationState.validationProgress
-    : 0;
-
   const buttonValidationState: ButtonValidationState = enhancedValidationState
     ? getButtonValidationState(
         enhancedValidationState,
@@ -268,22 +264,15 @@ export const Forge = <TFieldValues extends FieldValues = FieldValues>({
         } as any);
       }
 
-      // For leaf elements without children, pass control prop and enhanced validation context
-      return cloneElement(child, { 
-        control,
-        enhancedValidationState,
-        validationProgress,
-        buttonValidationState,
-        // Enhanced validation methods if available
-        ...(enhancedValidation && {
-          setValid: enhancedValidation.setValid,
-          updateContext: enhancedValidation.updateContext,
-          getFieldConfig: enhancedValidation.getFieldConfig,
-          recordInteraction: enhancedValidation.recordInteraction,
-          getAdaptiveFieldPriority: enhancedValidation.getAdaptiveFieldPriority,
-          predictNextField: enhancedValidation.predictNextField,
-        }),
-      } as any);
+      // For leaf elements without children: skip host DOM elements entirely, and for
+      // component leaves only inject `control` (the validation context is already
+      // available via FormProvider; spreading enhancedValidationState/setValid/etc.
+      // onto components that forward `{...props}` to a DOM node — e.g. shadcn Button —
+      // surfaces them as unknown lowercase DOM attrs).
+      if (typeof (child as any).type === "string") {
+        return child;
+      }
+      return cloneElement(child, { control } as any);
     });
   };
 

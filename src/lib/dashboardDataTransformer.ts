@@ -2293,21 +2293,64 @@ export class DashboardDataTransformer {
     }
 
     return data.map((item: any, index: number) => {
-      const title = item?.title ?? "";
-      const description = item?.description ?? "";
-      const createdAt = item?.createdAt ?? "";
-      const contractTitle = item?.contractTitle ?? "";
-      const requestedBy = item?.requestedBy ?? "";
-
+      const statusText: string = item?.statusText ?? "";
+      const actionText: string = item?.actionText ?? "";
       const contractRef = item?.contractRef ?? "";
       const contractDef = String(item?.contractDef ?? item?.type ?? "Contract");
       const isMSA = /msa/i.test(contractDef);
       const detailBase = isMSA ? "/dashboard/msa" : "/dashboard/contract-management";
+      const dateValue = item?.date ?? item?.createdAt;
+      const contractUrl = contractRef ? `${detailBase}/${contractRef}` : "";
+      const linkClass = "underline underline-offset-4 text-blue-600";
+
+      // Action-log shape (260528): { actionText, statusText, action, detailRef, detailType, ... }.
+      // actionText is the bold action label; statusText is the descriptive body. Wrap the body
+      // in the anchor so the whole sentence routes to the contract overview.
+      if (actionText) {
+        const body = contractUrl && statusText
+          ? `<a href="${contractUrl}" class="${linkClass}">${statusText}</a>`
+          : statusText;
+        return {
+          id: item?.id ?? `cm-${index}`,
+          title: statusText || "Action",
+          text: body ? `<strong>${actionText}</strong> — ${body}` : `<strong>${actionText}</strong>`,
+          date: dateValue ? formatDateTZ(dateValue, "MMM d, yyyy h:mm a") : undefined,
+          status: item?.status ?? undefined,
+          type: item?.type ?? undefined,
+        };
+      }
+
+      // General-update shape (260528): { statusText, date, contractRef, contractDef, type, status, id }.
+      // statusText contains the contract title in quotes — wrap that span in an <a>.
+      if (statusText) {
+        const quotedTitleMatch = statusText.match(/"([^"]+)"/);
+        const contractTitle = quotedTitleMatch?.[1] ?? "";
+        const linkedText = contractUrl && quotedTitleMatch
+          ? statusText.replace(
+              quotedTitleMatch[0],
+              `"<a href="${contractUrl}" class="${linkClass}">${contractTitle}</a>"`,
+            )
+          : statusText;
+
+        return {
+          id: item?.id ?? `cm-${index}`,
+          title: contractTitle || "Contract",
+          text: linkedText,
+          date: dateValue ? formatDateTZ(dateValue, "MMM d, yyyy h:mm a") : undefined,
+          status: item?.status ?? undefined,
+          type: item?.type ?? undefined,
+        };
+      }
+
+      // Legacy shape fallback: { title, description, contractTitle, requestedBy, createdAt, ... }
+      const title = item?.title ?? "";
+      const description = item?.description ?? "";
+      const contractTitle = item?.contractTitle ?? "";
+      const requestedBy = item?.requestedBy ?? "";
       const linkedContractTitle =
         contractRef && contractTitle
           ? `<a href="${detailBase}/${contractRef}" class="underline underline-offset-4 text-blue-600">${contractTitle}</a>`
           : contractTitle;
-
       const strongTitle = title ? `<strong>${title}</strong>` : "<strong>Update</strong>";
       const suffixParts = [description, linkedContractTitle, requestedBy].filter(Boolean);
       const suffix = suffixParts.length > 0 ? ` — ${suffixParts.join(" • ")}` : "";
@@ -2316,7 +2359,7 @@ export class DashboardDataTransformer {
         id: item?.id ?? `cm-${index}`,
         title: contractTitle || title || "Contract",
         text: `${strongTitle}${suffix}`,
-        date: createdAt ? formatDateTZ(createdAt, "MMM d, yyyy h:mm a") : undefined,
+        date: dateValue ? formatDateTZ(dateValue, "MMM d, yyyy h:mm a") : undefined,
         status: item?.status ?? undefined,
         type: item?.type ?? undefined,
       };
