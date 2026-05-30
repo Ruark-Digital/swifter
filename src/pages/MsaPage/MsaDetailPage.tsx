@@ -21,7 +21,6 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
@@ -429,23 +428,10 @@ const MsaDetailPage: React.FC = () => {
           url: `/contract/manager/msa-contracts/${id ?? ""}/linked-contract`,
         });
       },
-      enabled:
-        canFetchLinkedContracts &&
-        (topTab === "linked" || activeTab === "deliverables"),
+      enabled: canFetchLinkedContracts && topTab === "linked",
       staleTime: 60_000,
       retry: false,
     });
-
-  const deliverablesContractId = React.useMemo(() => {
-    const assignedId = msa?.assignContract?.[0]?._id
-      ? String(msa.assignContract[0]._id)
-      : undefined;
-    if (assignedId) return assignedId;
-
-    const raw = (linkedContractsResponse?.data as any)?.data;
-    const linkedId = Array.isArray(raw) ? raw?.[0]?._id : raw?._id;
-    return linkedId ? String(linkedId) : undefined;
-  }, [linkedContractsResponse?.data, msa?.assignContract]);
 
   const formatMoney = React.useCallback(
     (value?: unknown, currency?: string) => {
@@ -712,8 +698,11 @@ const MsaDetailPage: React.FC = () => {
             onValueChange={(v) => setActiveTab(v as TabKey)}
             className="w-full bg-transparent space-y-4"
           >
-            <ScrollArea className="pb-4 w-[75vw]">
-              <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
+            <div
+              className="overflow-x-auto pb-4 -mx-1 px-1"
+              style={{ width: "1px", minWidth: "100%" }}
+            >
+              <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent w-max">
                 {visibleTabs.map((t) => (
                   <TabsTrigger
                     key={t.key}
@@ -724,8 +713,7 @@ const MsaDetailPage: React.FC = () => {
                   </TabsTrigger>
                 ))}
               </TabsList>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+            </div>
 
             <TabsContent value="overview">
               <div className="flex items-center justify-end w-full gap-3 pb-3">
@@ -840,7 +828,7 @@ const MsaDetailPage: React.FC = () => {
             />
 
             <Deliverables
-              contractId={deliverablesContractId}
+              contractId={id ?? ""}
               isActive={activeTab === "deliverables"}
             />
 
@@ -893,7 +881,7 @@ const MsaDetailPage: React.FC = () => {
               placeholder="Add a comment (optional)"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              className="resize-none"
+              className="resize-none text-slate-900 dark:text-slate-100"
             />
           </div>
 

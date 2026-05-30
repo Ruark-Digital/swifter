@@ -16,6 +16,7 @@ import { TbUserHexagon } from "react-icons/tb";
 import { useNavigate, useLocation } from "react-router-dom";
 import avatarImage from "@/assets/avatar-user.png";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export const Header = () => {
   const location = useLocation();
@@ -61,9 +62,10 @@ export const Header = () => {
   };
 
   return (
-    <header className="py-[34px] px-12 flex items-center justify-between bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 h-[82px] transition-colors">
-      <div className="flex items-center">
-        <h1 className="text-2xl font-bold text-black dark:text-white font-quicksand">
+    <header className="py-[34px] px-4 sm:px-6 lg:px-12 flex items-center justify-between bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 h-[82px] transition-colors">
+      <div className="flex items-center gap-3 min-w-0">
+        <SidebarTrigger className="lg:hidden text-[#2A4467] dark:text-gray-300 -ml-1 shrink-0" />
+        <h1 className="text-2xl font-bold text-black dark:text-white font-quicksand truncate">
           {getPageTitle()}
         </h1>
       </div>
@@ -96,22 +98,22 @@ function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <div className="flex items-center gap-3 px-4 py-0 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-          <Avatar className="h-10 w-10">
+        <div className="flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-0 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+          <Avatar className="h-9 w-9 sm:h-10 sm:w-10 shrink-0">
             <AvatarImage src={user?.avatar ?? avatarImage} alt="User avatar" />
             <AvatarFallback className="bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-300">
               <FaUser />
             </AvatarFallback>
           </Avatar>
-          <div className="flex flex-col">
-            <span className="text-base font-semibold text-black dark:text-white font-quicksand">
+          <div className="hidden lg:flex flex-col min-w-0">
+            <span className="text-base font-semibold text-black dark:text-white font-quicksand truncate">
               {user?.name}
             </span>
-            <span className="text-sm text-gray-500 dark:text-gray-400 font-quicksand capitalize">
+            <span className="text-sm text-gray-500 dark:text-gray-400 font-quicksand capitalize truncate">
               {user?.role?.name?.replace('_', ' ')}
             </span>
           </div>
-          <ChevronDown className="h-6 w-6 text-[#2A4467] dark:text-gray-300 stroke-[1.5]" />
+          <ChevronDown className="h-5 w-5 sm:h-6 sm:w-6 text-[#2A4467] dark:text-gray-300 stroke-[1.5] shrink-0" />
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-48">

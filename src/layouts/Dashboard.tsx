@@ -41,7 +41,7 @@ export const Dashboard = () => {
       fullWidth
       fullHeight
       display="flex"
-      className="overflow-x-hidden overflow-y-hidden bg-[#F7F9FE] dark:bg-gray-950 relative transition-colors"
+      className="overflow-hidden bg-[#F7F9FE] dark:bg-gray-950 relative transition-colors"
       as={SidebarProvider}
     >
       <SideBar />

@@ -241,7 +241,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const canManagerActOnClaim =
     isClaim && isManager && isTimeImpact && !isClaimFinalized;
   const sendForApprovalEnabled =
-    approverStatus === "approved" && (approverList?.length ?? 0) === 0;
+    approverStatus === "pending" && (approverList?.length ?? 0) === 0;
 
   // Cost / time_cost claims: manager decides directly (Reject + Approve),
   // same comment-dialog flow as the change-flow approve path. Gated on

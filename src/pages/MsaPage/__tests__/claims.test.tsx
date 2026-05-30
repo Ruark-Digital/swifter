@@ -87,14 +87,20 @@ vi.mock("@/pages/ContractManagementPage/components/RequestClaimDialog", () => ({
 
 vi.mock("@/pages/ContractManagementPage/components/ClaimsTable", () => ({
   default: ({
+    rows,
+    totalCount,
     setPagination,
   }: {
+    rows?: unknown[];
+    totalCount?: number;
     setPagination?: (
       updater: (prev: { pageIndex: number; pageSize: number }) =>
         | { pageIndex: number; pageSize: number },
     ) => void;
   }) => (
     <div data-testid="claims-table">
+      <div data-testid="claims-row-count">{rows?.length ?? 0}</div>
+      <div data-testid="claims-total-count">{totalCount ?? 0}</div>
       <button
         type="button"
         onClick={() =>
@@ -203,6 +209,39 @@ describe("MSA Claims", () => {
     });
   });
 
+  test("renders rows when BE returns claims under the `changes` key", async () => {
+    mockedGetRequest.mockImplementation(async ({ url }: { url: string }) => {
+      if (url.endsWith("/stats")) {
+        return { data: { data: { all: 1, pending: 1, approved: 0, rejected: 0 } } };
+      }
+
+      // BE returns claims under `changes` (claims endpoint reuses the
+      // change-order list shape), not `claims`/`contractClaims`.
+      return {
+        data: {
+          data: {
+            changes: [
+              {
+                _id: "claim-1",
+                claimId: "CLR-001",
+                status: "under review",
+                title: "Eos quae aliquip lab",
+              },
+            ],
+            total: 1,
+          },
+        },
+      };
+    });
+
+    renderClaims();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("claims-row-count")).toHaveTextContent("1");
+    });
+    expect(screen.getByTestId("claims-total-count")).toHaveTextContent("1");
+  });
+
   test("treats admin like the contract reference for MSA claims", async () => {
     Object.assign(mockedUserRole, {
       isManager: false,
@@ -211,13 +250,12 @@ describe("MSA Claims", () => {
 
     renderClaims();
 
-    // Admin falls through to the user prefix in basePath, and per BE
-    // spec only manager uses plural `claims` — every other role uses
-    // singular `claim`.
+    // Admin falls through to the user prefix in basePath; every role
+    // uses plural `claims` (singular `claim` 404s on the BE).
     await waitFor(() => {
       expect(mockedGetRequest).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: "/contract/user/msa-contracts/msa-claims-123/claim?page=1&limit=10",
+          url: "/contract/user/msa-contracts/msa-claims-123/claims?page=1&limit=10",
         }),
       );
     });
@@ -225,7 +263,7 @@ describe("MSA Claims", () => {
     expect(screen.queryByRole("button", { name: "Create Claim" })).not.toBeInTheDocument();
   });
 
-  test("vendor claim creation uses singular path per BE spec and bare shared invalidation prefix", async () => {
+  test("vendor claim creation uses plural path and bare shared invalidation prefix", async () => {
     Object.assign(mockedUserRole, {
       isManager: false,
       isVendor: true,
@@ -235,12 +273,10 @@ describe("MSA Claims", () => {
 
     const dialog = await screen.findByTestId("request-claim-dialog");
 
-    // BE plurality is role-asymmetric: vendor / approver / view-only use
-    // singular `claim`; only manager uses plural `claims`. See
-    // memory msa-url-routing-bug-classes Class 4.
+    // BE expects plural `claims` for every role (singular `claim` 404s).
     expect(dialog).toHaveAttribute(
       "data-create-path",
-      "/contract/vendor/msa-contracts/msa-claims-123/claim",
+      "/contract/vendor/msa-contracts/msa-claims-123/claims",
     );
     expect(dialog).toHaveAttribute("data-invalidate-key", JSON.stringify(["msa-claims"]));
   });

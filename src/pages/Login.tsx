@@ -97,7 +97,7 @@ const Login = () => {
       </div>
 
       {/* Central card with login form */}
-      <Card className="w-[35dvw] p-6 my-auto">
+      <Card className="w-full max-w-md mx-4 p-6 my-auto sm:mx-auto">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">
             Log into SwiftPro
@@ -131,14 +131,14 @@ const Login = () => {
               data-testid="password-input"
             />
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center space-x-2">
                 <Checkbox id="remember-me" />
-                <Label htmlFor="remember-me">Remember Me</Label>
+                <Label htmlFor="remember-me" className="whitespace-nowrap text-sm">Remember Me</Label>
               </div>
               <Link
                 to="/forgot-password"
-                className="text-sm font-medium text-primary hover:underline"
+                className="text-sm font-medium text-primary hover:underline whitespace-nowrap"
               >
                 Forgot Password?
               </Link>

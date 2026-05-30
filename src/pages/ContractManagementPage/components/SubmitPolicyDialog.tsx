@@ -28,6 +28,7 @@ interface SubmitPolicyDialogProps {
   contractId: string;
   basePath: string;
   title?: string;
+  onSuccess?: () => void;
 }
 
 const schema = yup.object().shape({
@@ -41,6 +42,7 @@ const SubmitPolicyDialog: React.FC<SubmitPolicyDialogProps> = ({
   id,
   contractId,
   basePath,
+  onSuccess,
 }) => {
   const [open, setOpen] = React.useState(false);
   const toast = useToastHandler();
@@ -90,6 +92,7 @@ const SubmitPolicyDialog: React.FC<SubmitPolicyDialogProps> = ({
       toast.success("Success", "Compliance document submitted successfully");
       queryClient.invalidateQueries({ queryKey: ["contract-compliance", contractId, basePath] });
       queryClient.invalidateQueries({ queryKey: ["contract-compliance-detail", contractId, basePath] });
+      onSuccess?.();
       setOpen(false);
       reset();
     },

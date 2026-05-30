@@ -98,7 +98,7 @@ const ResetPassword = () => {
       </div>
 
       {/* Central card with reset password form */}
-      <Card className="w-[35dvw] p-6 my-auto border border-[#E5E7EB]">
+      <Card className="w-full max-w-md mx-4 sm:mx-auto p-6 my-auto border border-[#E5E7EB]">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-[#0F0F0F] dark:text-white">
             Reset Password

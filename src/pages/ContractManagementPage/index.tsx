@@ -441,7 +441,7 @@ const ContractManagementPage: React.FC = () => {
   );
 
   return (
-    <div className="space-y-8 pt-10">
+    <div className="space-y-8 pt-10 min-w-0 w-full">
       <SEOWrapper
         title="Contract Management - SwiftPro eProcurement Portal"
         description="Manage contracts efficiently with clear status tracking and quick actions."

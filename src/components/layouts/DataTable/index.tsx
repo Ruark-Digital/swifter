@@ -147,8 +147,12 @@ export function DataTable<T = unknown>({
   const canNextPage = table.getCanNextPage();
 
   const renderTable = (
+    <div
+      className="overflow-x-auto -mx-1 px-1"
+      style={{ width: "1px", minWidth: "100%" }}
+    >
     <Table
-      className={cn("border-separate border-spacing-y-3", classNames?.table)}
+      className={cn("border-separate border-spacing-y-3 min-w-max", classNames?.table)}
     >
       <TableHeader className={cn("bg-accent", classNames?.tHeader)}>
         {table.getHeaderGroups().map((headerGroup) => (
@@ -220,6 +224,7 @@ export function DataTable<T = unknown>({
           : null}
       </TableBody>
     </Table>
+    </div>
   );
 
   const renderLoadingTable = (
@@ -242,7 +247,7 @@ export function DataTable<T = unknown>({
   );
 
   return (
-    <div className={cn("w-full", classNames?.container ?? "")}>
+    <div className={cn("w-full min-w-0", classNames?.container ?? "")}>
       <div className="">
         {header && (
           <div className={cn("flex items-center py-4", classNames?.header)}>{header?.(table)}</div>
