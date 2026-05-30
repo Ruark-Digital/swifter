@@ -16,3 +16,4 @@ Test-credentials.md
 .qa/reports/
 .qa/auto-browser
 .worktrees
+.claude/worktrees
