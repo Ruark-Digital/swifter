@@ -177,11 +177,11 @@ const Reports: React.FC<Props> = ({ contractId, isActive }) => {
 
   const basePath = React.useMemo(() => {
     if (isVendor || isProjectManager)
-      return `/contract/vendor/contracts/${contractId}/reports`;
-    if (isApprover) return `/contract/approver/contracts/${contractId}/reports`;
-    if (isManager) return `/contract/manager/contracts/${contractId}/reports`;
-    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/reports`;
-    return `/contract/user/contracts/${contractId}/reports`;
+      return `/contract/vendor/msa-contracts/${contractId}/reports`;
+    if (isApprover) return `/contract/approver/msa-contracts/${contractId}/reports`;
+    if (isManager) return `/contract/manager/msa-contracts/${contractId}/reports`;
+    if (isAdmin || isViewOnly) return `/contract/user/msa-contracts/${contractId}/reports`;
+    return `/contract/user/msa-contracts/${contractId}/reports`;
   }, [
     contractId,
     isAdmin,
@@ -322,6 +322,7 @@ const Reports: React.FC<Props> = ({ contractId, isActive }) => {
             </DialogTrigger>
             <CreateVendorReportDialog
               contractId={contractId}
+              createPath={basePath}
               invalidateQueryKey={listQueryKey}
               onSuccess={() => setOpenCreate(false)}
             />
