@@ -10,7 +10,7 @@ import {
   TextDatePicker,
   TextCurrencyInput,
 } from "@/components/layouts/FormInputs";
-import { AlertTriangle, Check, CloudUpload, FileText, X } from "lucide-react";
+import { Check, CloudUpload, FileText, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import AmendmentsStatsCards from "../components/AmendmentsStatsCards";
 import AmendmentsTable, {
@@ -115,8 +115,8 @@ export const CreateAmendmentDialog: React.FC<{
       scopeEnabled: true,
       expiryEnabled: true,
       costEnabled: true,
-      clauseEnabled: false,
-      othersEnabled: false,
+      clauseEnabled: true,
+      othersEnabled: true,
       scope: "",
       newExpiryDate: "",
       otherCost: "",
@@ -458,7 +458,7 @@ export const CreateAmendmentDialog: React.FC<{
                           <Checkbox
                             checked={!!value}
                             onCheckedChange={(checked) => onChange(!!checked)}
-                            className="h-6 w-6 rounded-md border-[#2A4467] data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
+                            className="h-6 w-6 rounded-md border-[#2A4467] dark:border-slate-400 data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
                           />
                         )}
                       />
@@ -488,7 +488,7 @@ export const CreateAmendmentDialog: React.FC<{
                           <Checkbox
                             checked={!!value}
                             onCheckedChange={(checked) => onChange(!!checked)}
-                            className="h-6 w-6 rounded-md border-[#2A4467] data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
+                            className="h-6 w-6 rounded-md border-[#2A4467] dark:border-slate-400 data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
                           />
                         )}
                       />
@@ -518,7 +518,7 @@ export const CreateAmendmentDialog: React.FC<{
                           <Checkbox
                             checked={!!value}
                             onCheckedChange={(checked) => onChange(!!checked)}
-                            className="h-6 w-6 rounded-md border-[#2A4467] data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
+                            className="h-6 w-6 rounded-md border-[#2A4467] dark:border-slate-400 data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
                           />
                         )}
                       />
@@ -548,7 +548,7 @@ export const CreateAmendmentDialog: React.FC<{
                           <Checkbox
                             checked={!!value}
                             onCheckedChange={(checked) => onChange(!!checked)}
-                            className="h-6 w-6 rounded-md border-[#E5E7EB] data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
+                            className="h-6 w-6 rounded-md border-[#2A4467] dark:border-slate-400 data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
                           />
                         )}
                       />
@@ -578,7 +578,7 @@ export const CreateAmendmentDialog: React.FC<{
                           <Checkbox
                             checked={!!value}
                             onCheckedChange={(checked) => onChange(!!checked)}
-                            className="h-6 w-6 rounded-md border-[#E5E7EB] data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
+                            className="h-6 w-6 rounded-md border-[#2A4467] dark:border-slate-400 data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
                           />
                         )}
                       />
@@ -626,21 +626,6 @@ export const CreateAmendmentDialog: React.FC<{
                     } as any
                   }
                 />
-              </div>
-
-              <div className="flex items-start gap-3 rounded-2xl border border-[#2A44671A] bg-[#F8F8F8] p-4 dark:border-slate-700 dark:bg-slate-800">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#EF4444] text-[#EF4444]">
-                  <AlertTriangle className="h-4 w-4" />
-                </div>
-                <div className="space-y-1 max-w-xs">
-                  <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
-                    Vendor Acceptance Required
-                  </div>
-                  <div className="text-sm text-[#626262] dark:text-slate-400">
-                    This amendment includes a time impact, but no approver has
-                    been assigned to review time-related impacts.
-                  </div>
-                </div>
               </div>
             </div>
 

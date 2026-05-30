@@ -429,23 +429,10 @@ const MsaDetailPage: React.FC = () => {
           url: `/contract/manager/msa-contracts/${id ?? ""}/linked-contract`,
         });
       },
-      enabled:
-        canFetchLinkedContracts &&
-        (topTab === "linked" || activeTab === "deliverables"),
+      enabled: canFetchLinkedContracts && topTab === "linked",
       staleTime: 60_000,
       retry: false,
     });
-
-  const deliverablesContractId = React.useMemo(() => {
-    const assignedId = msa?.assignContract?.[0]?._id
-      ? String(msa.assignContract[0]._id)
-      : undefined;
-    if (assignedId) return assignedId;
-
-    const raw = (linkedContractsResponse?.data as any)?.data;
-    const linkedId = Array.isArray(raw) ? raw?.[0]?._id : raw?._id;
-    return linkedId ? String(linkedId) : undefined;
-  }, [linkedContractsResponse?.data, msa?.assignContract]);
 
   const formatMoney = React.useCallback(
     (value?: unknown, currency?: string) => {
@@ -840,7 +827,7 @@ const MsaDetailPage: React.FC = () => {
             />
 
             <Deliverables
-              contractId={deliverablesContractId}
+              contractId={id ?? ""}
               isActive={activeTab === "deliverables"}
             />
 
