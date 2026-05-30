@@ -12,7 +12,6 @@ import { contractManagerApi, LogModule } from "../api/contractManagerApi";
 import { format } from "date-fns";
 import ActionLogDetailsSheet from "../components/ActionLogDetailsSheet";
 import { useUserRole } from "@/hooks/useUserRole";
-import { id } from "date-fns/locale";
 
 type Props = { isActive?: boolean };
 
