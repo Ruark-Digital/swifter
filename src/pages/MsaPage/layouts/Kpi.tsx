@@ -62,9 +62,11 @@ const Kpi: React.FC<Props> = ({ contractId, isActive }) => {
           typeof item.allTimeAvgScore === "number"
             ? `${item.allTimeAvgScore}%`
             : `${item.allTimeAvgScore ?? ""}`,
-        lastUpdated: item.lastUpdated
-          ? format(new Date(item.lastUpdated), "dd-MM-yyyy")
-          : "",
+        lastUpdated: (() => {
+          if (!item.lastUpdated) return "";
+          const parsed = new Date(item.lastUpdated);
+          return isNaN(parsed.getTime()) ? "" : format(parsed, "dd-MM-yyyy");
+        })(),
         actions: canManageKpi ? ["Update", "View"] : [],
       })),
     [canManageKpi, data],

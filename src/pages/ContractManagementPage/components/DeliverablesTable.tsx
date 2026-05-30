@@ -338,7 +338,7 @@ const SubmitDeliverableDialog: React.FC<{
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="rounded-2xl p-8">
+      <DialogContent className="rounded-2xl p-8 max-h-[90vh] overflow-y-auto">
         <DialogHeader className="space-y-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-semibold text-[#0F0F0F]">

@@ -42,7 +42,6 @@ import RateSheetsTabContent from "./layouts/RateSheetsTabContent";
 import KpiTabContent from "./layouts/KpiTabContent";
 import OverviewTab from "./layouts/OverviewTab";
 import RfiTabContent from "./layouts/RfiTabContent";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import VendorReportsTabContent from "./layouts/VendorReportsTabContent";
 import {
   Dialog,
@@ -442,16 +441,18 @@ const ContractDetailPage: React.FC = () => {
         onValueChange={(v) => setActiveTab(v as TabKey)}
         className="w-full bg-transparent space-y-4"
       >
-        <ScrollArea className="pb-4 w-[75vw]">
-          <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
+        <div
+          className="overflow-x-auto pb-4 -mx-1 px-1"
+          style={{ width: "1px", minWidth: "100%" }}
+        >
+          <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent w-max">
             {visibleTabs.map((t) => (
               <TabsTrigger key={t.key} value={t.key} className={triggerClass}>
                 {t.label}
               </TabsTrigger>
             ))}
           </TabsList>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        </div>
 
         <OverviewTab
           contract={contract}

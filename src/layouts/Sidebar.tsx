@@ -37,7 +37,7 @@ export const SideBar = () => {
         Skip to main content
       </a>
       <Sidebar
-        collapsible="none"
+        collapsible="offcanvas"
         className={cn(
           "border-r border-gray-200 dark:border-gray-700 transition-colors",
           userRole === "super_admin"

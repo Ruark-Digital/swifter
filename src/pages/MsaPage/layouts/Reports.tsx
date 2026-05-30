@@ -333,7 +333,7 @@ const Reports: React.FC<Props> = ({ contractId, isActive }) => {
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-2">
             <div className="text-sm text-[#6B6B6B] dark:text-slate-400">All Report</div>
-            <div className="text-[40px] font-semibold leading-8 text-[#0F0F0F] dark:text-slate-100">
+            <div className="text-2xl font-semibold leading-8 text-[#0F0F0F] dark:text-slate-100">
               {statsLoading ? "—" : allCount}
             </div>
           </div>

@@ -88,14 +88,16 @@ export const TextCombo = (props: TextComboProps & Partial<ForgerSlotProps>) => {
             role="combobox"
             aria-expanded={open}
             className={cn(
-              "w-full h-12 justify-between border border-gray-300 rounded-lg px-4 hover:bg-transparent focus:border-[#2A4467] focus:ring-[#2A4467] text-gray-900 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-transparent truncate",
+              "w-full min-w-0 h-12 justify-between border border-gray-300 rounded-lg px-4 hover:bg-transparent focus:border-[#2A4467] focus:ring-[#2A4467] text-gray-900 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-transparent",
               error ? "border-red-500" : "",
               !selectedOption && "text-gray-500 dark:text-gray-400"
             )}
             onBlur={onBlur}
             {...comboProps}
           >
-            {selectedOption ? truncate(selectedOption.label, { length: 60 }) : placeholder}
+            <span className="truncate min-w-0 flex-1 text-left">
+              {selectedOption ? truncate(selectedOption.label, { length: 60 }) : placeholder}
+            </span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
