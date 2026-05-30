@@ -16,6 +16,7 @@ import { TbUserHexagon } from "react-icons/tb";
 import { useNavigate, useLocation } from "react-router-dom";
 import avatarImage from "@/assets/avatar-user.png";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export const Header = () => {
   const location = useLocation();
@@ -61,9 +62,10 @@ export const Header = () => {
   };
 
   return (
-    <header className="py-[34px] px-12 flex items-center justify-between bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 h-[82px] transition-colors">
-      <div className="flex items-center">
-        <h1 className="text-2xl font-bold text-black dark:text-white font-quicksand">
+    <header className="py-[34px] px-4 sm:px-6 lg:px-12 flex items-center justify-between bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 h-[82px] transition-colors">
+      <div className="flex items-center gap-3 min-w-0">
+        <SidebarTrigger className="lg:hidden text-[#2A4467] dark:text-gray-300 -ml-1 shrink-0" />
+        <h1 className="text-2xl font-bold text-black dark:text-white font-quicksand truncate">
           {getPageTitle()}
         </h1>
       </div>
