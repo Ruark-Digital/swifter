@@ -83,6 +83,7 @@ export function CreateVendorReportForm({
   contractId,
   disabled,
   invalidateQueryKey,
+  createPath,
 }: {
   onSuccess?: () => void;
   contractId: string;
@@ -91,6 +92,9 @@ export function CreateVendorReportForm({
    *  pass the wrapped `useUserQueryKey` list key so their tab refetches.
    *  The Contract-side keys are always invalidated regardless. */
   invalidateQueryKey?: readonly unknown[];
+  /** POST endpoint for the report. MSA callers pass the `msa-contracts`
+   *  reports path; falls back to the standalone vendor-contract path. */
+  createPath?: string;
 }) {
   const { control, handleSubmit, setValue, watch, reset } =
     useForge<FormValues>({
@@ -120,7 +124,7 @@ export function CreateVendorReportForm({
     mutationKey: ["vendor-create-report", contractId],
     mutationFn: async ({ payload }) =>
       await postRequest({
-        url: `/contract/vendor/contracts/${contractId}/reports`,
+        url: createPath ?? `/contract/vendor/contracts/${contractId}/reports`,
         payload,
       }),
     onSuccess: () => {
@@ -343,11 +347,13 @@ export default function CreateVendorReportDialog({
   contractId,
   disabled,
   invalidateQueryKey,
+  createPath,
 }: {
   onSuccess?: () => void;
   contractId: string;
   disabled?: boolean;
   invalidateQueryKey?: readonly unknown[];
+  createPath?: string;
 }) {
   return (
     <DialogContent
@@ -359,6 +365,7 @@ export default function CreateVendorReportDialog({
         contractId={contractId}
         disabled={disabled}
         invalidateQueryKey={invalidateQueryKey}
+        createPath={createPath}
       />
     </DialogContent>
   );

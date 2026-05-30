@@ -123,6 +123,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
             <ApproverChangeDetailsSheet
               contractId={contractId}
               changeId={changeId}
+              basePath={basePath}
               trigger={
                 <Button
                   variant="link"
@@ -136,7 +137,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         },
       },
     ],
-    [contractId],
+    [contractId, basePath],
   );
 
   const managerColumns: ColumnDef<ContractChangeDTO>[] = React.useMemo(

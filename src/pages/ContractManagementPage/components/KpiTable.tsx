@@ -11,7 +11,7 @@ import {
   // DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { Forge, Forger, useForge } from "@/lib/forge";
 // import * as yup from "yup";
@@ -149,6 +149,7 @@ const KpiDetailSheet: React.FC<{
                   <DialogContent className="sm:max-w-[700px] p-0 rounded-2xl">
                     <div className="max-h-[80vh] overflow-y-auto">
                       <UpdateVendorPerformanceDialog
+                        contractId={contractId}
                         kpiId={kpiId}
                         basePath={basePath}
                         category={(data.category as string) || ""}
@@ -246,12 +247,13 @@ const MetricScale: React.FC<{
 };
 
 const UpdateVendorPerformanceDialog: React.FC<{
+  contractId: string;
   kpiId: string;
   basePath: string;
   category: string;
   target: string;
   nonCompliance: string;
-}> = ({ kpiId, basePath, category, target, nonCompliance }) => {
+}> = ({ contractId, kpiId, basePath, category, target, nonCompliance }) => {
   const { control, reset } = useForge({
     defaultValues: {
       category,
@@ -261,6 +263,7 @@ const UpdateVendorPerformanceDialog: React.FC<{
     mode: "onChange",
   });
   const { success, error } = useToastHandler();
+  const queryClient = useQueryClient();
   const [successOpen, setSuccessOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -279,6 +282,18 @@ const UpdateVendorPerformanceDialog: React.FC<{
         url: `${basePath}/${kpiId}`,
         payload: metricsPayload,
       });
+      // Refetch the KPI list (and any open detail) so the updated scores /
+      // lastUpdated land immediately. KpiTable is shared, so invalidate both
+      // surfaces' list prefixes — MSA appends a user id via useUserQueryKey,
+      // but React Query matches by prefix so ["msa-kpis", contractId] catches
+      // it. A non-matching prefix is a harmless no-op on the other surface.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["msa-kpis", contractId] }),
+        queryClient.invalidateQueries({ queryKey: ["contract-kpis", contractId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["contract-kpi-detail", contractId, basePath, kpiId],
+        }),
+      ]);
       success("KPI updated", "Values submitted successfully");
       reset();
       setSuccessOpen(true);

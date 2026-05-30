@@ -25,6 +25,7 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { formatFileSize, getFileIcon, getSimpleFileExtension } from "@/lib/fileUtils";
 import { formatDate } from "date-fns";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { approverApi } from "../api/approverApi";
 import type { ApprovalActionDTO } from "../api/approverApi";
 
@@ -32,6 +33,11 @@ type Props = {
   trigger: React.ReactNode;
   contractId: string;
   changeId: string;
+  /** Role + contract prefixed entity path ending in `/changes`, e.g.
+   *  `/contract/approver/msa-contracts/{id}/changes`. When provided (MSA
+   *  surface) URLs are built off it; otherwise we fall back to approverApi
+   *  which targets the standalone-contract endpoints. */
+  basePath?: string;
 };
 
 const LabelRow = ({
@@ -61,13 +67,25 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
   trigger,
   contractId,
   changeId,
+  basePath,
 }) => {
   const toast = useToastHandler();
   const qc = useQueryClient();
   const [open, setOpen] = React.useState(false);
 
+  // basePath already ends in `/changes` and is role + contract prefixed.
+  const urls = React.useMemo(() => {
+    if (!basePath) return null;
+    return {
+      detail: `${basePath}/${changeId}`,
+      comment: `${basePath}/${changeId}/comment`,
+      approve: `${basePath}/${changeId}/approve`,
+    };
+  }, [basePath, changeId]);
+
   const changeDetailQueryKey = useUserQueryKey([
     "approver-change-detail",
+    basePath ?? "contract",
     contractId,
     changeId,
   ]);
@@ -75,6 +93,10 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
   const { data: detailRes, isLoading: isDetailLoading } = useQuery({
     queryKey: changeDetailQueryKey,
     queryFn: async () => {
+      if (urls) {
+        const res = await getRequest({ url: urls.detail });
+        return res.data as { message?: string; data?: any };
+      }
       const res = await approverApi.getChangeDetail(contractId, changeId);
       return res;
     },
@@ -135,6 +157,7 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
 
   const commentsQueryKey = useUserQueryKey([
     "approver-change-comments",
+    basePath ?? "contract",
     contractId,
     changeId,
   ]);
@@ -142,6 +165,10 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
   const { data: commentsRes, isLoading: isCommentsLoading } = useQuery({
     queryKey: commentsQueryKey,
     queryFn: async () => {
+      if (urls) {
+        const res = await getRequest({ url: urls.comment });
+        return res.data as { message?: string; data?: any };
+      }
       const res = await approverApi.listChangeComments(contractId, changeId);
       return res;
     },
@@ -156,6 +183,10 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
     mutationKey: ["approver-add-change-comment", contractId, changeId],
     mutationFn: async (content: string) => {
       if (!content.trim()) return;
+      if (urls) {
+        await postRequest({ url: urls.comment, payload: { content } });
+        return;
+      }
       await approverApi.addChangeComment(contractId, changeId, { content });
     },
     onSuccess: () => {
@@ -170,6 +201,10 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
     mutationKey: ["approver-approve-change", contractId, changeId],
     mutationFn: async (action: "approved" | "rejected") => {
       const payload: ApprovalActionDTO = { action, comment: "" };
+      if (urls) {
+        const res = await postRequest({ url: urls.approve, payload });
+        return res.data as { message?: string; data?: any };
+      }
       const res = await approverApi.approveChange(contractId, changeId, payload);
       return res;
     },
