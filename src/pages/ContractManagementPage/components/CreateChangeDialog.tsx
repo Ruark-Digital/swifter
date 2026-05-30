@@ -199,17 +199,17 @@ const CreateChangeDialog: React.FC<Props> = ({
     return (
       <FileUploaderItem
         index={index ?? 0}
-        className="h-auto w-full rounded-xl border border-slate-200 bg-slate-50 p-3"
+        className="h-auto w-full rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800"
       >
         <div className="flex items-center gap-3 w-full">
-          <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center dark:bg-slate-700 dark:border-slate-600">
             {getFileIcon(extension)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-900 truncate">
+            <p className="text-sm font-medium text-slate-900 truncate dark:text-slate-100">
               {file.name}
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {extension || "FILE"} • {formatFileSize(file.size)}
             </p>
           </div>
@@ -226,7 +226,7 @@ const CreateChangeDialog: React.FC<Props> = ({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-8 pt-8">
-          <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
+          <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
             Create Change
           </DialogTitle>
         </div>
@@ -278,12 +278,12 @@ const CreateChangeDialog: React.FC<Props> = ({
                 component={TextFileUploader}
                 element={
                   <div className="flex flex-col items-center gap-3">
-                    <CloudUpload className="h-12 w-12 text-[#2A4467]" />
+                    <CloudUpload className="h-12 w-12 text-[#2A4467] dark:text-blue-300" />
                     <div className="space-y-1 text-center">
-                      <p className="text-base font-semibold text-[#2A4467]">
+                      <p className="text-base font-semibold text-[#2A4467] dark:text-blue-300">
                         Drag & Drop or Click to choose files
                       </p>
-                      <p className="text-sm text-[#6B7280]">
+                      <p className="text-sm text-[#6B7280] dark:text-slate-400">
                         Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
                       </p>
                     </div>
@@ -308,7 +308,7 @@ const CreateChangeDialog: React.FC<Props> = ({
                   } as any
                 }
               />
-              <div className="flex items-center justify-between text-xs text-slate-500">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                 <span>
                   {fileCount > 0
                     ? `${fileCount} file${fileCount === 1 ? "" : "s"} ready to upload`
@@ -322,7 +322,7 @@ const CreateChangeDialog: React.FC<Props> = ({
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-12 flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB]"
+                  className="h-12 flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   disabled={isSubmitting}
                 >
                   Cancel
