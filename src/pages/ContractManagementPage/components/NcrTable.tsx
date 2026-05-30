@@ -377,12 +377,6 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                     Corrective &amp; Preventive Action Plan
                   </TabsTrigger>
                 )}
-                <TabsTrigger
-                  value="comments"
-                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-                >
-                  Comments
-                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
@@ -488,11 +482,6 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                 </TabsContent>
               )}
 
-              <TabsContent value="comments" className="space-y-4">
-                <div className="rounded-xl border border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
-                  No comments available.
-                </div>
-              </TabsContent>
             </Tabs>
           </div>
 
