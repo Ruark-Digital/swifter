@@ -1,5 +1,5 @@
 import React from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SEOWrapper } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
@@ -120,6 +120,8 @@ const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "action-log", label: "Action Log" },
 ];
 
+const ALL_TAB_KEYS = new Set<string>(ALL_TABS.map((t) => t.key));
+
 const ROLE_TAB_WHITELIST: Record<
   "approver" | "vendor" | "manager" | "view only",
   TabKey[]
@@ -196,7 +198,11 @@ const ContractDetailPage: React.FC = () => {
     "approved" | "rejected" | null
   >(null);
   const [comment, setComment] = React.useState("");
-  const [activeTab, setActiveTab] = React.useState<TabKey>("overview");
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = React.useState<TabKey>(() => {
+    const tab = searchParams.get("tab");
+    return tab && ALL_TAB_KEYS.has(tab) ? (tab as TabKey) : "overview";
+  });
 
   const {
     data: contractsResponse,
@@ -315,6 +321,13 @@ const ContractDetailPage: React.FC = () => {
     }
     return ALL_TABS;
   }, [isApprover, isContractVendorLike, isViewOnly, isManager]);
+
+  // A deep-linked ?tab= may point at a tab this role can't see — fall back to overview.
+  React.useEffect(() => {
+    if (!visibleTabs.some((t) => t.key === activeTab)) {
+      setActiveTab("overview");
+    }
+  }, [visibleTabs, activeTab]);
 
   if (isLoading) {
     return (
