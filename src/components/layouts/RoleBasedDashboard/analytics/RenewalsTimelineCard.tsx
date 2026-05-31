@@ -86,23 +86,23 @@ export const RenewalsTimelineCard: React.FC<Props> = ({ data }) => {
         {items.map((item, idx) => (
           <div
             key={idx}
-            className="flex items-center justify-between rounded-xl border border-[#E5E7EB] dark:border-slate-800 px-3 py-3"
+            className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] dark:border-slate-800 px-3 py-3"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
               <span
                 className="inline-block w-3 h-3 rounded-full shrink-0"
                 style={{ backgroundColor: item.color }}
               />
-              <div>
-                <p className="text-sm font-medium text-[#030712] dark:text-slate-100">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-[#030712] dark:text-slate-100 truncate">
                   {item.title}
                 </p>
-                <p className="text-xs text-[#6B6B6B] dark:text-slate-400">
+                <p className="text-xs text-[#6B6B6B] dark:text-slate-400 truncate">
                   {item.org} • {item.code}
                 </p>
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-right shrink-0">
               <p className="text-sm font-semibold text-[#030712] dark:text-slate-100">
                 {item.amount}
               </p>

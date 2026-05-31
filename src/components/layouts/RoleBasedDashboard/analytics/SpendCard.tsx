@@ -1,6 +1,6 @@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/utils";
+import { formatCompactCurrency } from "@/lib/utils";
 
 type Props = {
   committed?: number;
@@ -23,9 +23,9 @@ export const SpendCard: React.FC<Props> = ({
   const utilizationPct =
     safeCommitted > 0 ? Math.round((safeActual / safeCommitted) * 100) : 0;
 
-  const committedLabel = formatCurrency(safeCommitted, "en-US", currency as any);
-  const actualLabel = formatCurrency(safeActual, "en-US", currency as any);
-  const remainingLabel = formatCurrency(remaining, "en-US", currency as any);
+  const committedLabel = formatCompactCurrency(safeCommitted, currency as any);
+  const actualLabel = formatCompactCurrency(safeActual, currency as any);
+  const remainingLabel = formatCompactCurrency(remaining, currency as any);
 
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col max-h-[32rem]">

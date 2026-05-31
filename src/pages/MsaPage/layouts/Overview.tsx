@@ -90,25 +90,25 @@ const Overview: React.FC<Props> = ({
           <LabelItem label="Effective Date" value={dates.effective || "N/A"} />
           <LabelItem label="End Date" value={dates.end || "N/A"} />
           <LabelItem
-            label="Draft Stage"
+            label="Draft Duration"
             value={formatStageValue(durations.draft, formationStages?.draft)}
           />
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <LabelItem
-            label="Review Stage"
+            label="Review Duration"
             value={formatStageValue(durations.review, formationStages?.review)}
           />
           <LabelItem
-            label="Approval Stage"
+            label="Approval Duration"
             value={formatStageValue(
               durations.approval,
               formationStages?.approval,
             )}
           />
           <LabelItem
-            label="Execution Stage"
+            label="Execution Duration"
             value={formatStageValue(
               durations.execution,
               formationStages?.execution,

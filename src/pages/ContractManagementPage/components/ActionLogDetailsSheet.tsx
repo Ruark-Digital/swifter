@@ -172,21 +172,23 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
                   }
                 />
                 <LabelRow label="Submission Date" value={submissionDate} />
-                {/* <LabelRow
-                  label="Status"
-                  value={
-                    <ContractStatusBadge status={statusText} />
-                  }
-                /> */}
+                {anyData.meta?.status ? (
+                  <LabelRow
+                    label="Status"
+                    value={
+                      <span className="capitalize">
+                        {String(anyData.meta.status).replace(/_/g, " ")}
+                      </span>
+                    }
+                  />
+                ) : null}
               </div>
             </div>
 
             <div className="space-y-2">
               <span className="text-sm text-slate-500 dark:text-slate-400">Description</span>
               <p className="text-sm text-slate-700 dark:text-slate-300">
-                {typeof anyData.contractDetailRef === "object" && anyData.contractDetailRef !== null
-                  ? JSON.stringify(anyData.contractDetailRef)
-                  : anyData.contractDetailRef || "No description provided."}
+                {action?.description || "No description provided."}
               </p>
             </div>
 
