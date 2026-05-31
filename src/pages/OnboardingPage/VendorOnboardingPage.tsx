@@ -299,7 +299,6 @@ const VendorOnboardingPage = () => {
             {...{
               control: forge.control,
               onSubmit: onSubmit,
-              debug: true,
             }}
           >
             {currentStep === 1 && <VendorStep1Form />}

@@ -1187,7 +1187,6 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
               control={control}
               onSubmit={submit}
               className="mt-4 space-y-6"
-              // debug
             >
               {step === 1 && (
                 <Step1BasicInfo
