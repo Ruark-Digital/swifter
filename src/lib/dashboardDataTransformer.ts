@@ -2292,6 +2292,24 @@ export class DashboardDataTransformer {
       return [];
     }
 
+    // Map a My-Action entry's detailType/type to the contract detail tab it belongs to,
+    // so the link lands on the relevant tab instead of the contract overview.
+    const DETAIL_TYPE_TO_TAB: Record<string, string> = {
+      Deliverable: "deliverables",
+      ContractInvoice: "invoice",
+      ContractKPI: "kpi",
+      ContractInsurance: "compliance",
+      ContractChange: "change",
+      ContractRfi: "rfi",
+      ContractNcr: "ncr-log",
+      ContractNCR: "ncr-log",
+      ContractClaim: "claims",
+      ContractAmendment: "amendments",
+      ContractLem: "lem",
+      ContractHoldBack: "payment-summary",
+      ContractSaving: "payment-summary",
+    };
+
     return data.map((item: any, index: number) => {
       const statusText: string = item?.statusText ?? "";
       const actionText: string = item?.actionText ?? "";
@@ -2300,7 +2318,13 @@ export class DashboardDataTransformer {
       const isMSA = /msa/i.test(contractDef);
       const detailBase = isMSA ? "/dashboard/msa" : "/dashboard/contract-management";
       const dateValue = item?.date ?? item?.createdAt;
-      const contractUrl = contractRef ? `${detailBase}/${contractRef}` : "";
+      // Deep-link to the specific tab (contract detail only; the MSA page tabs differ).
+      const deepLinkTab = !isMSA
+        ? DETAIL_TYPE_TO_TAB[String(item?.detailType ?? item?.type ?? "")]
+        : undefined;
+      const contractUrl = contractRef
+        ? `${detailBase}/${contractRef}${deepLinkTab ? `?tab=${deepLinkTab}` : ""}`
+        : "";
       const linkClass = "underline underline-offset-4 text-blue-600";
 
       // Action-log shape (260528): { actionText, statusText, action, detailRef, detailType, ... }.

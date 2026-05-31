@@ -89,7 +89,7 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
         </p>
         <div className="space-y-6">
           <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/40 p-4 space-y-4">
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Draft Stage</p>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Draft Duration</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Forger
                 name="draftStartDate"
@@ -107,7 +107,7 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
             </div>
           </div>
           <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/40 p-4 space-y-4">
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Review Stage</p>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Review Duration</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Forger
                 name="reviewStartDate"
@@ -126,7 +126,7 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
             </div>
           </div>
           <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/40 p-4 space-y-4">
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Approval Stage</p>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Approval Duration</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Forger
                 name="approvalStartDate"
@@ -145,7 +145,7 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
             </div>
           </div>
           <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/40 p-4 space-y-4">
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Execution Stage</p>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Execution Duration</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Forger
                 name="executionStartDate"

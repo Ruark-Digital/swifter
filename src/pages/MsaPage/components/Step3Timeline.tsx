@@ -114,7 +114,7 @@ const Step3Timeline: React.FC<Props> = ({
         </p>
 
         <div className="space-y-3">
-          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Draft Stage</p>
+          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Draft Duration</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="draftStartDate"
@@ -133,7 +133,7 @@ const Step3Timeline: React.FC<Props> = ({
         </div>
 
         <div className="space-y-3">
-          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Review Stage</p>
+          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Review Duration</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="reviewStartDate"
@@ -153,7 +153,7 @@ const Step3Timeline: React.FC<Props> = ({
         </div>
 
         <div className="space-y-3">
-          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Approval Stage</p>
+          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Approval Duration</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="approvalStartDate"
@@ -173,7 +173,7 @@ const Step3Timeline: React.FC<Props> = ({
         </div>
 
         <div className="space-y-3">
-          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Execution Stage</p>
+          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Execution Duration</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="executionStartDate"

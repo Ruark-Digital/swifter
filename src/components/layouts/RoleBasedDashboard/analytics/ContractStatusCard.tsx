@@ -24,13 +24,15 @@ export const ContractStatusCard: React.FC<Props> = ({ data: api }) => {
     draft: 120,
   };
 
+  // Colors mirror the canonical status palette (ContractStatusBadge / list table):
+  // active=green, pending_approval=yellow, completed=blue, terminated=red, draft=slate.
   const data = [
-    { name: "Active", value: v.active ?? 0, color: "#ef4444" },
-    { name: "Pending Approval", value: v.pendingApproval ?? 0, color: "#f59e0b" },
+    { name: "Active", value: v.active ?? 0, color: "#22C55E" },
+    { name: "Pending Approval", value: v.pendingApproval ?? 0, color: "#EAB308" },
     { name: "Completed", value: v.completed ?? 0, color: "#286EE0" },
-    { name: "Terminated", value: v.terminated ?? 0, color: "#6B7280" },
-    { name: "Suspended", value: v.suspended ?? 0, color: "#9CA3AF" },
-    { name: "Draft", value: v.draft ?? 0, color: "#FBBF24" },
+    { name: "Terminated", value: v.terminated ?? 0, color: "#EF4444" },
+    { name: "Suspended", value: v.suspended ?? 0, color: "#F97316" },
+    { name: "Draft", value: v.draft ?? 0, color: "#64748B" },
   ];
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col max-h-[32rem]">
