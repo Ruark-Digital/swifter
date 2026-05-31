@@ -29,6 +29,28 @@ export function formatCurrency(
   }
 }
 
+// Compact currency: one decimal with K/M/B/T (e.g. $527.5M, $358.3K) per the
+// dashboard figma. Used where large spend/value figures would otherwise overflow.
+export function formatCompactCurrency(
+  amount: number,
+  currency: Intl.NumberFormatOptions["currency"] = "USD",
+  locale: string = "en-US"
+) {
+  const safe = Number.isFinite(amount) ? amount : 0;
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency,
+      notation: "compact",
+      compactDisplay: "short",
+      maximumFractionDigits: 1,
+    }).format(safe);
+  } catch (error) {
+    console.error("Error formatting currency:", error);
+    return safe.toString();
+  }
+}
+
 const getFileNameFromUrl = (url: string) => {
   const parts = url.split("/");
   return parts[parts.length - 1] || "";
