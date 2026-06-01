@@ -31,8 +31,8 @@ const formatCompactCurrency = (value?: number) => {
 const InfoItem = ({ label, value }: { label: string; value: string }) => {
   return (
     <div className="flex flex-col gap-2 font-quicksand">
-      <p className="text-sm font-medium text-[#9CA3AF]">{label}</p>
-      <p className="text-sm font-bold text-[#111827]">{value}</p>
+      <p className="text-sm font-medium text-[#9CA3AF] dark:text-slate-400">{label}</p>
+      <p className="text-sm font-bold text-[#111827] dark:text-slate-100">{value}</p>
     </div>
   );
 };
@@ -63,15 +63,15 @@ const BusinessDivisionDetailsSheet = ({
         className="sm:max-w-[720px] w-full rounded-2xl overflow-hidden p-0 [&>button.absolute]:hidden"
       >
         <div className="flex h-full flex-col">
-          <SheetHeader className="border-b border-[#E5E7EB] p-6">
+          <SheetHeader className="border-b border-[#E5E7EB] dark:border-slate-700 p-6">
             <div className="flex items-center justify-between">
               <SheetClose asChild>
                 <button
                   type="button"
                   className="flex items-center gap-3 font-quicksand"
                 >
-                  <ArrowLeft className="h-5 w-5 text-[#6B7280]" />
-                  <SheetTitle className="text-base font-semibold text-[#2A4467]">
+                  <ArrowLeft className="h-5 w-5 text-[#6B7280] dark:text-slate-400" />
+                  <SheetTitle className="text-base font-semibold text-[#2A4467] dark:text-slate-100">
                     Business Division Details
                   </SheetTitle>
                 </button>
@@ -90,12 +90,12 @@ const BusinessDivisionDetailsSheet = ({
 
           <div className="flex flex-1 flex-col gap-6 p-6">
             <div className="flex items-center justify-between">
-              <p className="text-lg font-semibold text-[#0F0F0F] font-quicksand">
+              <p className="text-lg font-semibold text-[#0F0F0F] dark:text-slate-100 font-quicksand">
                 {isLoading ? "—" : safeText(division?.name)}
               </p>
               <Button
                 variant="outline"
-                className="h-10 gap-2 rounded-lg border-[#E5E7EB] bg-white px-4 text-sm font-semibold text-[#6B6B6B] font-quicksand"
+                className="h-10 gap-2 rounded-lg border-[#E5E7EB] bg-white px-4 text-sm font-semibold text-[#6B6B6B] font-quicksand dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 type="button"
               >
                 <img
@@ -147,7 +147,7 @@ const BusinessDivisionDetailsSheet = ({
             <div className="mt-auto">
               <Button
                 type="button"
-                className="h-[52px] w-full rounded-xl bg-[#F3F4F6] text-base font-semibold text-[#111827] font-quicksand hover:bg-[#E5E7EB]"
+                className="h-[52px] w-full rounded-xl bg-[#F3F4F6] text-base font-semibold text-[#111827] font-quicksand hover:bg-[#E5E7EB] dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                 disabled={isLoading || !division}
                 onClick={() => {
                   if (!division) return;

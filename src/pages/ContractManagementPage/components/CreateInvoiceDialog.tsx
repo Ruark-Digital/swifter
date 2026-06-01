@@ -1021,7 +1021,6 @@ const CreateInvoiceDialog: React.FC<Props> = ({
             control={control}
             onSubmit={onSubmit}
             className="space-y-5"
-            // debug
           >
             <Forger
               name="invoiceTitle"

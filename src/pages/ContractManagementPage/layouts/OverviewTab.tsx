@@ -879,7 +879,7 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
           {!isContractVendorLike && !isApprover && !isViewOnly && !isCompanyAdmin && (
             <Button
               onClick={() => setEditingContractId(contract?._id ?? null)}
-              disabled={contract?.status === "publish"}
+              disabled={contract?.status !== "draft"}
             >
               Edit Contract
             </Button>
@@ -889,13 +889,15 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
 
       {renderView()}
 
-      {editingContractId !== null && (
+      {/* Kept mounted while on the detail page (not conditionally rendered) so
+          unsaved edits survive an accidental close/reopen; only `open` toggles. */}
+      {contract?._id && (
         <EditContract
-          open={true}
+          open={editingContractId !== null}
           onOpenChange={(open) => {
             if (!open) setEditingContractId(null);
           }}
-          contractId={editingContractId}
+          contractId={contract._id}
           onUpdated={() => {
             success("Contract updated successfully", "Changes saved");
             qc.invalidateQueries({ queryKey: ["contract-manager-contracts"] });

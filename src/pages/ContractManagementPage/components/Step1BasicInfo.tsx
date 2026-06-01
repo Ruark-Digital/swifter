@@ -260,13 +260,6 @@ const Step1BasicInfo: React.FC<Props> = ({
             options={projectOptions}
             data-testid="select-project-select"
           />
-          <Forger
-            name="awardedSolicitation"
-            label="Select Awarded Solicitation (Optional)"
-            placeholder="Select Solicitation"
-            component={TextSelect}
-            options={awardedOptions}
-          />
         </div>
       )}
 
@@ -288,13 +281,6 @@ const Step1BasicInfo: React.FC<Props> = ({
               options={MSA_CATEGORY_OPTIONS}
             />
           </div>
-          <Forger
-            name="awardedSolicitation"
-            label="Select Awarded Solicitation (Optional)"
-            placeholder="Select Solicitation"
-            component={TextSelect}
-            options={awardedOptions}
-          />
         </>
       )}
 
@@ -316,15 +302,17 @@ const Step1BasicInfo: React.FC<Props> = ({
               options={projectOptions}
             />
           </div>
-          <Forger
-            name="awardedSolicitation"
-            label="Select Awarded Solicitation (Optional)"
-            placeholder="Select Solicitation"
-            component={TextSelect}
-            options={awardedOptions}
-          />
         </>
       )}
+
+      {/* Awarded solicitation is selectable on every relationship (incl. standalone). */}
+      <Forger
+        name="awardedSolicitation"
+        label="Select Awarded Solicitation (Optional)"
+        placeholder="Select Solicitation"
+        component={TextSelect}
+        options={awardedOptions}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Forger

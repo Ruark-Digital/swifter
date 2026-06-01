@@ -12,6 +12,15 @@ import {
 import { Button } from "@/components/ui/button";
 import EmptyState from "./EmptyState";
 import { Link } from "react-router-dom";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
+import EditContract from "./EditContract";
+import ContractLifecycleDialog from "./ContractLifecycleDialog";
+import {
+  type LifecycleAction,
+  isEditableStatus,
+  availableLifecycleActions,
+} from "./contractLifecycle";
 
 export type ContractRow = {
   id: string;
@@ -35,6 +44,135 @@ export type ContractRow = {
     | "Cancelled"
     | "Pending Approval";
   category?: string;
+  /** Creator `_id` — fallback for owner-based action gating when the BE
+   *  `owner` boolean is absent. */
+  ownerId?: string;
+  /** BE-computed ownership for the current user (the `owner` field on the
+   *  contract list payload). Preferred over id-matching. */
+  isOwner?: boolean;
+};
+
+const ContractActionsCell: React.FC<{ row: ContractRow }> = ({ row }) => {
+  const { isManager } = useUserRole();
+  const currentUserId = useUser()?._id;
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [lifecycle, setLifecycle] = React.useState<LifecycleAction | null>(null);
+
+  // Prefer the BE-computed `owner` flag; fall back to id-matching only when it
+  // is absent (e.g. MSA payloads that don't yet expose it).
+  const isOwner =
+    typeof row.isOwner === "boolean"
+      ? row.isOwner
+      : !!currentUserId && !!row.ownerId && currentUserId === row.ownerId;
+  const lifecycleActions = availableLifecycleActions(row.status);
+  const canEdit = isManager && isOwner && isEditableStatus(row.status);
+  const canManage = isManager && !isOwner;
+  const showTerminate = isManager && isOwner && lifecycleActions.includes("terminate");
+  const showSuspend = isManager && isOwner && lifecycleActions.includes("suspend");
+  const showComplete = isManager && isOwner && lifecycleActions.includes("complete");
+
+  // Close the menu before opening a controlled dialog so the dropdown doesn't
+  // linger behind it or fight the dialog for focus.
+  const openLifecycle = (a: LifecycleAction) => {
+    setMenuOpen(false);
+    setLifecycle(a);
+  };
+
+  return (
+    <>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" data-testid="project-actions-dropdown">
+            ⋮
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem asChild>
+            <Link
+              to={`/dashboard/contract-management/${row.id}`}
+              data-testid="view-contract-detail"
+            >
+              View Contract
+            </Link>
+          </DropdownMenuItem>
+          {canManage && (
+            <DropdownMenuItem
+              data-testid="manage-contract"
+              onSelect={(e) => {
+                e.preventDefault();
+                openLifecycle("manage");
+              }}
+            >
+              Manage Contract
+            </DropdownMenuItem>
+          )}
+          {canEdit && (
+            <DropdownMenuItem
+              data-testid="edit-contract"
+              onSelect={(e) => {
+                e.preventDefault();
+                setMenuOpen(false);
+                setEditOpen(true);
+              }}
+            >
+              Edit Contract
+            </DropdownMenuItem>
+          )}
+          {showComplete && (
+            <DropdownMenuItem
+              data-testid="complete-contract"
+              onSelect={(e) => {
+                e.preventDefault();
+                openLifecycle("complete");
+              }}
+            >
+              Complete Contract
+            </DropdownMenuItem>
+          )}
+          {showSuspend && (
+            <DropdownMenuItem
+              data-testid="suspend-contract"
+              onSelect={(e) => {
+                e.preventDefault();
+                openLifecycle("suspend");
+              }}
+            >
+              Suspend Contract
+            </DropdownMenuItem>
+          )}
+          {showTerminate && (
+            <DropdownMenuItem
+              className="text-red-600 focus:text-red-600"
+              data-testid="terminate-contract"
+              onSelect={(e) => {
+                e.preventDefault();
+                openLifecycle("terminate");
+              }}
+            >
+              Terminate Contract
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <EditContract
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        contractId={row.id}
+      />
+      <ContractLifecycleDialog
+        kind="contract"
+        id={row.id}
+        title={row.title}
+        action={lifecycle}
+        open={lifecycle !== null}
+        onOpenChange={(o) => {
+          if (!o) setLifecycle(null);
+        }}
+      />
+    </>
+  );
 };
 
 const columns: ColumnDef<ContractRow>[] = [
@@ -112,29 +250,7 @@ const columns: ColumnDef<ContractRow>[] = [
   {
     id: "actions",
     header: "Actions",
-    cell: ({ row }) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            data-testid="project-actions-dropdown"
-          >
-            ⋮
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild>
-            <Link
-              to={`/dashboard/contract-management/${row.original.id}`}
-              data-testid="view-contract-detail"
-            >
-              View Details
-            </Link>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
+    cell: ({ row }) => <ContractActionsCell row={row.original} />,
   },
 ];
 

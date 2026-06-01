@@ -139,7 +139,6 @@ const CreateAdminDialog = () => {
           </DialogDescription>
         </DialogHeader>
         <Forge
-          // debug
           control={control}
           onSubmit={handleSubmit}
           className="space-y-4"
