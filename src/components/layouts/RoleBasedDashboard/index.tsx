@@ -231,6 +231,7 @@ export const RoleBasedDashboard: React.FC = () => {
     contractManagerComplianceStatus,
     contractManagerClauseIntelligence,
     contractManagerContractStatus,
+    contractManagerAiInsights,
     contractManagerVendorSummary,
     contractManagerRenewals,
     isLoading,
@@ -985,7 +986,7 @@ export const RoleBasedDashboard: React.FC = () => {
             <VendorPerformanceSummaryCard data={contractManagerVendorSummary} />
             <RenewalsTimelineCard data={contractManagerRenewals} />
           </div>
-          <AiInsightsAlerts />
+          <AiInsightsAlerts data={contractManagerAiInsights} />
         </>
       )}
 
