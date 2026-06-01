@@ -28,8 +28,13 @@ export const getNavigationForRole = (
   currentPath: string,
   modules?: Modules
 ): NavigationItem[] => {
+  const showDashboard =
+    role === "project_manager"
+      ? modules?.contractManagement === true
+      : modules?.reportsAnalytics === true && role !== "view_only";
+
   const baseNavigation: (NavigationItem | undefined)[] = [
-    modules?.reportsAnalytics && role !== "view_only" && role !== "project_manager"
+    showDashboard
       ? {
           icon: MdDashboard,
           title: "Dashboard",

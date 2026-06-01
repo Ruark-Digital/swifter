@@ -28,6 +28,7 @@ import {
   formatFileSize,
   getSimpleFileExtension,
 } from "@/lib/fileUtils";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Forge, Forger, useForge } from "@/lib/forge";
 import {
@@ -763,12 +764,17 @@ const RateSheetDetailsSheet: React.FC<{
 
   const canApprove = isManager && sheet?.approverStatus === "pending";
 
+  const [activeTab, setActiveTab] = React.useState("overview");
+  
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="right"
-        className="w-[95vw] sm:max-w-5xl rounded-2xl overflow-y-auto [&>button]:hidden"
+        className={cn(
+          "rounded-2xl overflow-y-auto transition-all duration-300 [&>button]:hidden",
+          activeTab === "summary" ? "w-full sm:max-w-4xl" : "w-full sm:max-w-2xl"
+        )}
       >
         <div className="space-y-6" data-testid="rate-sheet-details-sheet">
           <SheetHeader className="space-y-0">
@@ -808,7 +814,7 @@ const RateSheetDetailsSheet: React.FC<{
               </Button>
             </div>
 
-            <Tabs defaultValue="overview" className="space-y-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
               <TabsList className="h-auto rounded-none border-b w-full border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
                 <TabsTrigger
                   value="overview"

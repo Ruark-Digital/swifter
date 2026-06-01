@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useCallback, useMemo, useState } from "react";
 // import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useUser } from "@/store/authSlice";
@@ -12,21 +12,10 @@ import { CardStats } from "./components/StatsCard";
 import { cn } from "@/lib/utils";
 import { DashboardConfig } from "@/config/dashboardConfig";
 import { PageLoader } from "@/components/ui/PageLoader";
-import { CycleTimeCard } from "./analytics/CycleTimeCard";
-import { InvoiceStatusCard } from "./analytics/InvoiceStatusCard";
-import { SpendCard } from "./analytics/SpendCard";
-import { VendorsValueCard } from "./analytics/VendorsValueCard";
-import { ProjectValueCard } from "./analytics/ProjectValueCard";
-import { RiskDistributionCard } from "./analytics/RiskDistributionCard";
-import { ChangeOrdersImpactCard } from "./analytics/ChangeOrdersImpactCard";
-import { CategoryValueCard } from "./analytics/CategoryValueCard";
-import { ComplianceStatusCard } from "./analytics/ComplianceStatusCard";
-import { ClauseIntelligenceCard } from "./analytics/ClauseIntelligenceCard";
-import { ContractStatusCard } from "./analytics/ContractStatusCard";
-import { VendorPerformanceSummaryCard } from "./analytics/VendorPerformanceSummaryCard";
-import { RenewalsTimelineCard } from "./analytics/RenewalsTimelineCard";
-import { AiInsightsAlerts } from "./analytics/AiInsightsAlerts";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ContractsTabView } from "./ContractsTabView";
+import { VendorContractsView } from "./VendorContractsView";
+import { useLandingTabs, type LandingTabId } from "./useLandingTabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const DEFAULT_CHART_FILTER = "12months";
 
@@ -185,6 +174,21 @@ export const RoleBasedDashboard: React.FC = () => {
     "total-contracts"
   );
   const navigate = useNavigate();
+
+  const landingTabs = useLandingTabs(userRole, modules);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab") as LandingTabId | null;
+  const defaultLandingTab = landingTabs[0]?.id;
+  const activeLandingTab: LandingTabId | undefined =
+    tabFromUrl && landingTabs.some((t) => t.id === tabFromUrl)
+      ? tabFromUrl
+      : defaultLandingTab;
+
+  const setActiveLandingTab = (id: LandingTabId) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", id);
+    setSearchParams(next, { replace: true });
+  };
 
   // Fetch dashboard data based on user role (without global filter)
   const {
@@ -787,16 +791,7 @@ export const RoleBasedDashboard: React.FC = () => {
 
   const isContractAnalyticsRole =
     userRole === "contract_manager" || userRole === "approver";
-  const showCmOverviewTotalContracts =
-    isContractAnalyticsRole &&
-    cmTopTab === "overview" &&
-    cmSubTab === "total-contracts";
-  const showCmOverviewYtdContracts =
-    isContractAnalyticsRole &&
-    cmTopTab === "overview" &&
-    cmSubTab === "ytd-contracts";
-  const showCmAnalytics = isContractAnalyticsRole && cmTopTab === "analytics";
-  const showDefaultStats = !isContractAnalyticsRole || showCmOverviewTotalContracts;
+  // project_manager handled separately below
   const canShowMyActions = modules?.myActions === true;
   const canShowGeneralUpdates = modules?.generalUpdatesNotifications === true;
 
@@ -812,94 +807,166 @@ export const RoleBasedDashboard: React.FC = () => {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-medium text-gray-900 dark:text-gray-100">
-            Dashboard
-          </h1>
-        </div>
-        {/* <ExportReportSheet /> */}
+      <div className="flex justify-between items-center gap-4">
+        <h1 className="text-2xl font-medium text-gray-900 dark:text-gray-100">
+          Dashboard
+        </h1>
+
+        {/* Outer landing-tab strip — only shown when multiple tabs exist */}
+        {landingTabs.length > 1 && activeLandingTab && (
+          <Tabs
+            value={activeLandingTab}
+            onValueChange={(v) => setActiveLandingTab(v as LandingTabId)}
+          >
+            <TabsList className="bg-slate-100 rounded-full p-1.5 gap-3 h-12">
+              {landingTabs.map((t) => (
+                <TabsTrigger
+                  key={t.id}
+                  value={t.id}
+                  className={cn(
+                    "rounded-full px-4 py-2 text-sm",
+                    "data-[state=active]:bg-[#2A4467] data-[state=active]:text-white",
+                    "text-gray-600",
+                  )}
+                >
+                  {t.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        )}
       </div>
 
-      {isContractAnalyticsRole && (
-        <div className="space-y-4">
-          <Tabs
-            value={cmTopTab}
-            onValueChange={(v) =>
-              setCmTopTab((v as "overview" | "analytics") ?? "overview")
-            }
-            className="w-full"
-          >
-            <TabsList className="bg-slate-100 rounded-full p-1.5 gap-3 mb-3 h-12">
-              <TabsTrigger
-                value="overview"
-                className={cn(
-                  "rounded-full px-4 py-2 text-sm",
-                  "data-[state=active]:bg-[#2A4467] data-[state=active]:text-white",
-                  "text-gray-600"
-                )}
-              >
-                Overview
-              </TabsTrigger>
-              <TabsTrigger
-                value="analytics"
-                className={cn(
-                  "rounded-full px-4 py-2 text-sm",
-                  "text-gray-600",
-                  "data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
-                )}
-              >
-                Analytics
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview" className="space-y-4">
-              <Tabs
-                value={cmSubTab}
-                onValueChange={(v) =>
-                  setCmSubTab(
-                    (v as "total-contracts" | "ytd-contracts") ??
-                      "total-contracts"
-                  )
-                }
-                className="w-full"
-              >
-                <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
-                  <TabsTrigger
-                    value="total-contracts"
-                    className={cn(
-                      "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3",
-                    )}
-                  >
-                    Total Contracts
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="ytd-contracts"
-                    className={cn(
-                      "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3",
-                    )}
-                  >
-                    YTD Contracts
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="total-contracts" />
-                
-                <TabsContent value="ytd-contracts">
-                 
-                </TabsContent>
-              </Tabs>
-            </TabsContent>
-
-            <TabsContent value="analytics">
-              
-            </TabsContent>
-          </Tabs>
-        </div>
+      {/* project_manager: Contracts view — only when contractManagement is on */}
+      {userRole === "project_manager" && activeLandingTab === "contracts" && (
+        <VendorContractsView enabled />
       )}
 
-      {/* Stats Cards */}
-      {showDefaultStats && (
+      {/* contract_manager / approver: full analytics tabs (unchanged) */}
+      {isContractAnalyticsRole && (
+        <ContractsTabView
+          topTab={cmTopTab}
+          setTopTab={setCmTopTab}
+          subTab={cmSubTab}
+          setSubTab={setCmSubTab}
+          stats={enhancedDashboardConfig.stats}
+          rows={enhancedDashboardConfig.rows}
+          cmYtdStats={cmYtdStats}
+          cmCycleTimeValues={cmCycleTimeValues}
+          chartFilters={chartFilters}
+          contractManagerTotalCards={contractManagerTotalCards}
+          contractManagerYtdCards={contractManagerYtdCards}
+          contractManagerActionLogs={contractManagerActionLogs}
+          contractManagerGeneralUpdates={contractManagerGeneralUpdates}
+          contractManagerCycleTime={contractManagerCycleTime}
+          contractManagerInvoiceStatus={contractManagerInvoiceStatus}
+          contractManagerCommittedVsActualSpend={contractManagerCommittedVsActualSpend}
+          contractManagerVendorContractValue={contractManagerVendorContractValue}
+          contractManagerProjectContractValue={contractManagerProjectContractValue}
+          contractManagerRiskDistribution={contractManagerRiskDistribution}
+          contractManagerChangeOrderImpact={contractManagerChangeOrderImpact}
+          contractManagerCategoryValue={contractManagerCategoryValue}
+          contractManagerComplianceStatus={contractManagerComplianceStatus}
+          contractManagerClauseIntelligence={contractManagerClauseIntelligence}
+          contractManagerContractStatus={contractManagerContractStatus}
+          contractManagerVendorSummary={contractManagerVendorSummary}
+          contractManagerRenewals={contractManagerRenewals}
+          canShowMyActions={canShowMyActions}
+          canShowGeneralUpdates={canShowGeneralUpdates}
+          onFilterChange={handleFilterChange}
+          getChartFilter={getChartFilter}
+          getChartData={getChartData}
+          onStatCardClick={handleStatCardClick}
+        />
+      )}
+
+      {/* procurement Contracts tab */}
+      {userRole === "procurement" && activeLandingTab === "contracts" && (
+        <ContractsTabView
+          topTab={cmTopTab}
+          setTopTab={setCmTopTab}
+          subTab={cmSubTab}
+          setSubTab={setCmSubTab}
+          stats={enhancedDashboardConfig.stats}
+          rows={enhancedDashboardConfig.rows}
+          cmYtdStats={cmYtdStats}
+          cmCycleTimeValues={cmCycleTimeValues}
+          chartFilters={chartFilters}
+          contractManagerTotalCards={contractManagerTotalCards}
+          contractManagerYtdCards={contractManagerYtdCards}
+          contractManagerActionLogs={contractManagerActionLogs}
+          contractManagerGeneralUpdates={contractManagerGeneralUpdates}
+          contractManagerCycleTime={contractManagerCycleTime}
+          contractManagerInvoiceStatus={contractManagerInvoiceStatus}
+          contractManagerCommittedVsActualSpend={contractManagerCommittedVsActualSpend}
+          contractManagerVendorContractValue={contractManagerVendorContractValue}
+          contractManagerProjectContractValue={contractManagerProjectContractValue}
+          contractManagerRiskDistribution={contractManagerRiskDistribution}
+          contractManagerChangeOrderImpact={contractManagerChangeOrderImpact}
+          contractManagerCategoryValue={contractManagerCategoryValue}
+          contractManagerComplianceStatus={contractManagerComplianceStatus}
+          contractManagerClauseIntelligence={contractManagerClauseIntelligence}
+          contractManagerContractStatus={contractManagerContractStatus}
+          contractManagerVendorSummary={contractManagerVendorSummary}
+          contractManagerRenewals={contractManagerRenewals}
+          canShowMyActions={canShowMyActions}
+          canShowGeneralUpdates={canShowGeneralUpdates}
+          onFilterChange={handleFilterChange}
+          getChartFilter={getChartFilter}
+          getChartData={getChartData}
+          onStatCardClick={handleStatCardClick}
+        />
+      )}
+
+      {/* vendor Contracts tab */}
+      {userRole === "vendor" && activeLandingTab === "contracts" && (
+        <VendorContractsView enabled />
+      )}
+
+      {/* company_admin: Contracts tab */}
+      {userRole === "company_admin" && activeLandingTab === "contracts" && (
+        <ContractsTabView
+          topTab={cmTopTab}
+          setTopTab={setCmTopTab}
+          subTab={cmSubTab}
+          setSubTab={setCmSubTab}
+          stats={enhancedDashboardConfig.stats}
+          rows={enhancedDashboardConfig.rows}
+          cmYtdStats={cmYtdStats}
+          cmCycleTimeValues={cmCycleTimeValues}
+          chartFilters={chartFilters}
+          contractManagerTotalCards={contractManagerTotalCards}
+          contractManagerYtdCards={contractManagerYtdCards}
+          contractManagerActionLogs={contractManagerActionLogs}
+          contractManagerGeneralUpdates={contractManagerGeneralUpdates}
+          contractManagerCycleTime={contractManagerCycleTime}
+          contractManagerInvoiceStatus={contractManagerInvoiceStatus}
+          contractManagerCommittedVsActualSpend={contractManagerCommittedVsActualSpend}
+          contractManagerVendorContractValue={contractManagerVendorContractValue}
+          contractManagerProjectContractValue={contractManagerProjectContractValue}
+          contractManagerRiskDistribution={contractManagerRiskDistribution}
+          contractManagerChangeOrderImpact={contractManagerChangeOrderImpact}
+          contractManagerCategoryValue={contractManagerCategoryValue}
+          contractManagerComplianceStatus={contractManagerComplianceStatus}
+          contractManagerClauseIntelligence={contractManagerClauseIntelligence}
+          contractManagerContractStatus={contractManagerContractStatus}
+          contractManagerVendorSummary={contractManagerVendorSummary}
+          contractManagerRenewals={contractManagerRenewals}
+          canShowMyActions={canShowMyActions}
+          canShowGeneralUpdates={canShowGeneralUpdates}
+          onFilterChange={handleFilterChange}
+          getChartFilter={getChartFilter}
+          getChartData={getChartData}
+          onStatCardClick={handleStatCardClick}
+        />
+      )}
+
+      {/* Stats Cards — shown for all non-analytics roles on their primary tab */}
+      {!isContractAnalyticsRole &&
+        userRole !== "project_manager" &&
+        !(userRole === "company_admin" && activeLandingTab === "contracts") &&
+        !(userRole === "procurement" && activeLandingTab === "contracts") &&
+        !(userRole === "vendor" && activeLandingTab === "contracts") && (
         <div
           className={cn(`grid grid-cols-1 md:grid-cols-2 gap-6`, {
             "lg:grid-cols-2": enhancedDashboardConfig.stats.length === 8,
@@ -991,10 +1058,12 @@ export const RoleBasedDashboard: React.FC = () => {
       )}
 
       {/* Activities and Charts Section */}
-      {enhancedDashboardConfig.rows?.map?.((item, rowIndex) => {
-        if (showCmAnalytics) {
-          return null;
-        }
+      {!isContractAnalyticsRole &&
+        userRole !== "project_manager" &&
+        !(userRole === "company_admin" && activeLandingTab === "contracts") &&
+        !(userRole === "procurement" && activeLandingTab === "contracts") &&
+        !(userRole === "vendor" && activeLandingTab === "contracts") &&
+        enhancedDashboardConfig.rows?.map?.((item, rowIndex) => {
         if (item.type === "activity") {
           const gatedActivities = item.properties.filter((activity) => {
             if (activity.id === "my-actions" && !canShowMyActions) {

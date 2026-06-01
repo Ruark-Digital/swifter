@@ -39,4 +39,31 @@ describe("navigation role access", () => {
 
     expect(items.some((item) => item.title === "Vendor Management")).toBe(true);
   });
+
+  it("shows Dashboard for project_manager when contractManagement is on", () => {
+    const items = getNavigationForRole(
+      "project_manager",
+      "/dashboard",
+      allModules,
+    );
+    expect(items.some((i) => i?.title === "Dashboard")).toBe(true);
+  });
+
+  it("hides Dashboard for project_manager when contractManagement is off", () => {
+    const items = getNavigationForRole(
+      "project_manager",
+      "/dashboard",
+      { ...allModules, contractManagement: false },
+    );
+    expect(items.some((i) => i?.title === "Dashboard")).toBe(false);
+  });
+
+  it("hides Dashboard for view_only regardless of flag", () => {
+    const items = getNavigationForRole(
+      "view_only",
+      "/dashboard",
+      allModules,
+    );
+    expect(items.some((i) => i?.title === "Dashboard")).toBe(false);
+  });
 });
