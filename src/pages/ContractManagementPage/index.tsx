@@ -39,6 +39,7 @@ type ContractApi = {
   startDate?: string;
   endDate?: string;
   createdAt?: string;
+  datePublished?: string;
   vendor?: { name?: string; id?: string };
   creator?: { name?: string; email?: string; _id?: string };
   projectManager?: { name?: string };
@@ -50,12 +51,12 @@ type ContractApi = {
 type ContractStats = {
   all: number;
   draft: number;
-  pending_approval: number;
+  pending: number;
   active: number;
   completed: number;
   suspended: number;
   expired: number;
-  terminated: number;
+  cancelled: number;
 };
 
 type ContractStatsResponse = {
@@ -98,6 +99,7 @@ type VendorContractApi = {
   startDate?: string;
   endDate?: string;
   createdAt?: string;
+  datePublished?: string;
   company?: string | { name?: string };
   vendor?: { name?: string };
 };
@@ -320,13 +322,13 @@ const mapContractsToRows = (contracts?: ContractApi[]): ContractRow[] => {
       contractId: c.contractId,
       title: c.title,
       code: c._id,
-      vendor: c.projectManager?.name ?? c.vendor?.name ?? "-",
+      vendor: c.vendor?.name ?? c.projectManager?.name ?? "-",
       value: `$${value}`,
       owner: c.creator?.name ?? "-",
       ownerId: c.creator?._id,
       isOwner: c.owner,
-      published: c.createdAt
-        ? formatDate(c.createdAt, "dd MMM yyyy")
+      published: c.datePublished
+        ? formatDate(c.datePublished, "dd MMM yyyy")
         : undefined,
       endDate: c.endDate ? formatDate(c.endDate, "dd MMM yyyy") : undefined,
       createdAtRaw: c.createdAt,
@@ -367,8 +369,8 @@ const mapVendorContractsToRows = (
       company: mapCompanyLabel(c.company, c.vendor),
       contractRelationship: mapContractRelationshipLabel(c.contractRelationship),
       value,
-      published: c.createdAt
-        ? formatDate(c.createdAt, "dd MMM yyyy")
+      published: c.datePublished
+        ? formatDate(c.datePublished, "dd MMM yyyy")
         : undefined,
       endDate: c.endDate ? formatDate(c.endDate, "dd MMM yyyy") : undefined,
       status: mapVendorStatusToLabel(c.status),
@@ -430,8 +432,8 @@ const ContractManagementPage: React.FC = () => {
         draft: stats.draft,
         suspended: stats.suspended,
         expired: stats.expired,
-        terminated: stats.terminated,
-        pending: stats.pending_approval,
+        terminated: stats.cancelled,
+        pending: stats.pending,
       }
     : undefined;
 
