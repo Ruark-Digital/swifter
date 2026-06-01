@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { postRequest, patchRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
+import type { ApiResponseError } from "@/types";
 import { Ban, AlertTriangle, FolderPlus, BadgeCheck } from "lucide-react";
 import type { LifecycleAction } from "./contractLifecycle";
 
@@ -127,7 +128,7 @@ const ContractLifecycleDialog: React.FC<Props> = ({
       });
     },
     onError: (error) => {
-      toast.error(noun, error as Error);
+      toast.error(noun, error as ApiResponseError);
     },
   });
 
