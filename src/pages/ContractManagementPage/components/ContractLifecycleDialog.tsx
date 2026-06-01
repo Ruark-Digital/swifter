@@ -8,7 +8,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { postRequest } from "@/lib/axiosInstance";
+import { postRequest, patchRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
 import { Ban, AlertTriangle, FolderPlus, BadgeCheck } from "lucide-react";
 import type { LifecycleAction } from "./contractLifecycle";
@@ -28,6 +28,14 @@ type Props = {
 // Brand navy — shadcn's default Button variant inverts to white in dark mode,
 // so non-destructive CTAs are styled explicitly here.
 const NAVY = "#2A4467";
+
+// terminate/suspend/complete map to a single PATCH /status endpoint; the action
+// verb maps to the contract lifecycle status value the BE expects.
+const STATUS_FOR_ACTION: Record<"terminate" | "suspend" | "complete", string> = {
+  terminate: "terminated",
+  suspend: "suspended",
+  complete: "completed",
+};
 
 type ActionConfig = {
   Icon: React.ComponentType<{ className?: string }>;
@@ -99,9 +107,16 @@ const ContractLifecycleDialog: React.FC<Props> = ({
   const mutation = useMutation({
     mutationFn: async () => {
       if (!action) return;
-      // BE FOLLOW-UP (2026-06-01): lifecycle endpoints are not yet in swagger.
-      // Optimistic wiring per product decision — these 404 until BE ships them.
-      const res = await postRequest({ url: `${base}/${id}/${action}`, payload: {} });
+      if (action === "manage") {
+        // Adds the current user to the contract's managers list.
+        const res = await postRequest({ url: `${base}/${id}/manage`, payload: {} });
+        return res.data;
+      }
+      // terminate / suspend / complete → lifecycle status update.
+      const res = await patchRequest({
+        url: `${base}/${id}/status`,
+        payload: { status: STATUS_FOR_ACTION[action] },
+      });
       return res.data;
     },
     onSuccess: async () => {

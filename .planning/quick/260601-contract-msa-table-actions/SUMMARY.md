@@ -46,12 +46,15 @@ for payloads without it (MSA list may lack `owner`). Verified vs live response:
 "We create" (draft, owner:true) → Edit shows; "atavus tabesco contur" (draft,
 owner:false) → Edit hidden + Manage shown (correct, per the owner rule).
 
+## Endpoints (RESOLVED 2026-06-01 — BE shipped, FE wired to real paths)
+- terminate / suspend / complete → `PATCH /manager/{contracts|msa-contracts}/{id}/status`
+  body `{ status: "terminated" | "suspended" | "completed" }` (action verb → status value).
+- manage → `POST /manager/{contracts|msa-contracts}/{id}/manage` (no body; adds current
+  user to managers list; returns added / already-manager / creator message).
+- Both wired in ContractLifecycleDialog via patchRequest/postRequest. No more optimistic 404s.
+
 ## BE follow-up
-1. BLOCKED: lifecycle endpoints 404 today — implement for both manager routes:
-   `POST /contract/manager/contracts/{id}/{terminate|suspend|complete|manage}` and
-   `POST /contract/manager/msa-contracts/{id}/{...}`. `manage` = transfer ownership.
-   Confirm exact paths/verbs; FE wired optimistically.
-2. (Optional) Add the same `owner: boolean` to the MSA list payload so MSA
+1. (Optional) Add the same `owner: boolean` to the MSA list payload so MSA
    owner-gating doesn't depend on the creator._id fallback.
 
 ## Files
