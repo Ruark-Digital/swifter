@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   format,
   isWithinInterval,
@@ -18,6 +18,11 @@ import {
   startOfDay,
   endOfDay,
 } from "date-fns";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
+import ContractLifecycleDialog, {
+  type LifecycleAction,
+} from "@/pages/ContractManagementPage/components/ContractLifecycleDialog";
 
 export type MsaRow = {
   id: string;
@@ -36,6 +41,123 @@ export type MsaRow = {
     | "Suspended"
     | "Pending Approval";
   category?: string;
+  /** Creator `_id` — used for owner-based action gating. Requires the list
+   *  payload to include `creator._id` (BE follow-up). */
+  ownerId?: string;
+};
+
+const LIFECYCLE_LOCKED = new Set(["terminated", "completed", "cancelled"]);
+
+const MsaActionsCell: React.FC<{ row: MsaRow }> = ({ row }) => {
+  const navigate = useNavigate();
+  const { isManager } = useUserRole();
+  const currentUserId = useUser()?._id;
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const [lifecycle, setLifecycle] = React.useState<LifecycleAction | null>(null);
+
+  const hasId = !!row.id;
+  const isOwner =
+    !!currentUserId && !!row.ownerId && currentUserId === row.ownerId;
+  const locked = LIFECYCLE_LOCKED.has((row.status ?? "").toLowerCase());
+  const canEdit = isManager && isOwner && hasId;
+  const canManage = isManager && !isOwner && hasId;
+  const canLifecycle = isManager && isOwner && !locked && hasId;
+
+  // Close the menu before opening the controlled dialog so the dropdown doesn't
+  // linger behind it or fight the dialog for focus.
+  const openLifecycle = (a: LifecycleAction) => {
+    setMenuOpen(false);
+    setLifecycle(a);
+  };
+
+  return (
+    <>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" data-testid="msa-actions-dropdown">
+            ⋮
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {hasId ? (
+            <DropdownMenuItem asChild data-testid="msa-view-details">
+              <Link to={`/dashboard/msa/${row.id}`}>View MSA</Link>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem disabled data-testid="msa-view-details">
+              View MSA
+            </DropdownMenuItem>
+          )}
+          {canManage && (
+            <DropdownMenuItem
+              data-testid="manage-msa"
+              onSelect={(e) => {
+                e.preventDefault();
+                openLifecycle("manage");
+              }}
+            >
+              Manage MSA
+            </DropdownMenuItem>
+          )}
+          {canEdit && (
+            <DropdownMenuItem
+              data-testid="edit-msa"
+              onSelect={(e) => {
+                e.preventDefault();
+                setMenuOpen(false);
+                navigate(`/dashboard/msa/${row.id}`);
+              }}
+            >
+              Edit MSA
+            </DropdownMenuItem>
+          )}
+          {canLifecycle && (
+            <>
+              <DropdownMenuItem
+                data-testid="complete-msa"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  openLifecycle("complete");
+                }}
+              >
+                Complete MSA
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                data-testid="suspend-msa"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  openLifecycle("suspend");
+                }}
+              >
+                Suspend MSA
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-red-600 focus:text-red-600"
+                data-testid="terminate-msa"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  openLifecycle("terminate");
+                }}
+              >
+                Terminate MSA
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ContractLifecycleDialog
+        kind="msa"
+        id={row.id}
+        title={row.title}
+        action={lifecycle}
+        open={lifecycle !== null}
+        onOpenChange={(o) => {
+          if (!o) setLifecycle(null);
+        }}
+      />
+    </>
+  );
 };
 
 const columns: ColumnDef<MsaRow>[] = [
@@ -123,30 +245,7 @@ const columns: ColumnDef<MsaRow>[] = [
   {
     id: "actions",
     header: "Actions",
-    cell: ({ row }) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            data-testid="msa-actions-dropdown"
-          >
-            ⋮
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {row.original.id ? (
-            <DropdownMenuItem asChild data-testid="msa-view-details">
-              <Link to={`/dashboard/msa/${row.original.id}`}>View Details</Link>
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem disabled data-testid="msa-view-details">
-              View Details
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
+    cell: ({ row }) => <MsaActionsCell row={row.original} />,
   },
 ];
 

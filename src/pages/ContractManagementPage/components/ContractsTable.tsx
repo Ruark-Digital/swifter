@@ -12,6 +12,12 @@ import {
 import { Button } from "@/components/ui/button";
 import EmptyState from "./EmptyState";
 import { Link } from "react-router-dom";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
+import EditContract from "./EditContract";
+import ContractLifecycleDialog, {
+  type LifecycleAction,
+} from "./ContractLifecycleDialog";
 
 export type ContractRow = {
   id: string;
@@ -35,6 +41,126 @@ export type ContractRow = {
     | "Cancelled"
     | "Pending Approval";
   category?: string;
+  /** Creator `_id` — used for owner-based action gating. Requires the list
+   *  payload to include `creator._id` (BE follow-up). */
+  ownerId?: string;
+};
+
+const LIFECYCLE_LOCKED = new Set(["terminated", "completed", "cancelled"]);
+
+const ContractActionsCell: React.FC<{ row: ContractRow }> = ({ row }) => {
+  const { isManager } = useUserRole();
+  const currentUserId = useUser()?._id;
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [lifecycle, setLifecycle] = React.useState<LifecycleAction | null>(null);
+
+  const isOwner =
+    !!currentUserId && !!row.ownerId && currentUserId === row.ownerId;
+  const locked = LIFECYCLE_LOCKED.has((row.status ?? "").toLowerCase());
+  const canEdit = isManager && isOwner;
+  const canManage = isManager && !isOwner;
+  const canLifecycle = isManager && isOwner && !locked;
+
+  // Close the menu before opening a controlled dialog so the dropdown doesn't
+  // linger behind it or fight the dialog for focus.
+  const openLifecycle = (a: LifecycleAction) => {
+    setMenuOpen(false);
+    setLifecycle(a);
+  };
+
+  return (
+    <>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" data-testid="project-actions-dropdown">
+            ⋮
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem asChild>
+            <Link
+              to={`/dashboard/contract-management/${row.id}`}
+              data-testid="view-contract-detail"
+            >
+              View Contract
+            </Link>
+          </DropdownMenuItem>
+          {canManage && (
+            <DropdownMenuItem
+              data-testid="manage-contract"
+              onSelect={(e) => {
+                e.preventDefault();
+                openLifecycle("manage");
+              }}
+            >
+              Manage Contract
+            </DropdownMenuItem>
+          )}
+          {canEdit && (
+            <DropdownMenuItem
+              data-testid="edit-contract"
+              onSelect={(e) => {
+                e.preventDefault();
+                setMenuOpen(false);
+                setEditOpen(true);
+              }}
+            >
+              Edit Contract
+            </DropdownMenuItem>
+          )}
+          {canLifecycle && (
+            <>
+              <DropdownMenuItem
+                data-testid="complete-contract"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  openLifecycle("complete");
+                }}
+              >
+                Complete Contract
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                data-testid="suspend-contract"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  openLifecycle("suspend");
+                }}
+              >
+                Suspend Contract
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-red-600 focus:text-red-600"
+                data-testid="terminate-contract"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  openLifecycle("terminate");
+                }}
+              >
+                Terminate Contract
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <EditContract
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        contractId={row.id}
+      />
+      <ContractLifecycleDialog
+        kind="contract"
+        id={row.id}
+        title={row.title}
+        action={lifecycle}
+        open={lifecycle !== null}
+        onOpenChange={(o) => {
+          if (!o) setLifecycle(null);
+        }}
+      />
+    </>
+  );
 };
 
 const columns: ColumnDef<ContractRow>[] = [
@@ -112,29 +238,7 @@ const columns: ColumnDef<ContractRow>[] = [
   {
     id: "actions",
     header: "Actions",
-    cell: ({ row }) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            data-testid="project-actions-dropdown"
-          >
-            ⋮
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild>
-            <Link
-              to={`/dashboard/contract-management/${row.original.id}`}
-              data-testid="view-contract-detail"
-            >
-              View Details
-            </Link>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
+    cell: ({ row }) => <ContractActionsCell row={row.original} />,
   },
 ];
 

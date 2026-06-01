@@ -162,6 +162,7 @@ const MsaPage: React.FC = () => {
         ? `$${it.contractValue.toLocaleString()}`
         : undefined,
       owner: String(it?.creator?.name ?? "-"),
+      ownerId: it?.creator?._id ? String(it.creator._id) : undefined,
       published: it?.createdAt || undefined,
       endDate: it?.endDate || undefined,
       status: String(it?.status ?? "Draft") as MsaRow["status"],
