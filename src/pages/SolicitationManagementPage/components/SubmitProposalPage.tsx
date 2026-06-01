@@ -525,7 +525,6 @@ const SubmitProposalPage: React.FC<SubmitProposalPageProps> = () => {
 
           <Forge
             control={forge.control}
-            // debug
             ref={formRef}
             onSubmit={handleSubmit}
           >
