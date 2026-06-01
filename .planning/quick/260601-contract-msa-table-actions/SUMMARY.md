@@ -39,15 +39,20 @@ Per [[feedback_code_only_revalidation_false_negatives]] this is code-verified on
 Confirm on a live screen: menu visibility per role/owner, the 4 dialogs' confirm +
 success states, and that the dropdown closes cleanly when a dialog opens.
 
-## BE follow-up (BLOCKED — endpoints 404 today)
-1. Implement lifecycle endpoints for both manager routes:
+## Owner detection (RESOLVED 2026-06-01)
+Contract list payload already returns a per-row `owner: boolean` (+ `creator._id`).
+FE now consumes `row.isOwner` (from BE `owner`); id-matching kept only as a fallback
+for payloads without it (MSA list may lack `owner`). Verified vs live response:
+"We create" (draft, owner:true) → Edit shows; "atavus tabesco contur" (draft,
+owner:false) → Edit hidden + Manage shown (correct, per the owner rule).
+
+## BE follow-up
+1. BLOCKED: lifecycle endpoints 404 today — implement for both manager routes:
    `POST /contract/manager/contracts/{id}/{terminate|suspend|complete|manage}` and
    `POST /contract/manager/msa-contracts/{id}/{...}`. `manage` = transfer ownership.
    Confirm exact paths/verbs; FE wired optimistically.
-2. Include `creator._id` in list payloads (`/manager/contracts`, `.../me`,
-   `/manager/msa-contracts`, `.../me`). Without it `isOwner` is always false, so a
-   manager sees only "Manage" on their own rows (Edit/Terminate/Suspend/Complete hide).
-   A per-row boolean (`isOwner`/`canManage`) would be cleaner than exposing the id.
+2. (Optional) Add the same `owner: boolean` to the MSA list payload so MSA
+   owner-gating doesn't depend on the creator._id fallback.
 
 ## Files
 - NEW src/pages/ContractManagementPage/components/ContractLifecycleDialog.tsx

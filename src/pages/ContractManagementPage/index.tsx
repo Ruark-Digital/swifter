@@ -43,6 +43,8 @@ type ContractApi = {
   creator?: { name?: string; email?: string; _id?: string };
   projectManager?: { name?: string };
   contractValue?: number;
+  /** BE-computed ownership for the current user (preferred over id-matching). */
+  owner?: boolean;
 };
 
 type ContractStats = {
@@ -322,6 +324,7 @@ const mapContractsToRows = (contracts?: ContractApi[]): ContractRow[] => {
       value: `$${value}`,
       owner: c.creator?.name ?? "-",
       ownerId: c.creator?._id,
+      isOwner: c.owner,
       published: c.createdAt
         ? formatDate(c.createdAt, "dd MMM yyyy")
         : undefined,

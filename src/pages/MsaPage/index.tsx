@@ -46,6 +46,8 @@ export interface Contract {
   vendor: Vendor;
   category?: string;
   projectManager?: { name?: string } | string;
+  /** BE-computed ownership for the current user, when provided. */
+  owner?: boolean;
 }
 
 export interface Creator {
@@ -163,6 +165,7 @@ const MsaPage: React.FC = () => {
         : undefined,
       owner: String(it?.creator?.name ?? "-"),
       ownerId: it?.creator?._id ? String(it.creator._id) : undefined,
+      isOwner: typeof it?.owner === "boolean" ? it.owner : undefined,
       published: it?.createdAt || undefined,
       endDate: it?.endDate || undefined,
       status: String(it?.status ?? "Draft") as MsaRow["status"],

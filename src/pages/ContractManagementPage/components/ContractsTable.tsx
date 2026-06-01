@@ -44,9 +44,12 @@ export type ContractRow = {
     | "Cancelled"
     | "Pending Approval";
   category?: string;
-  /** Creator `_id` — used for owner-based action gating. Requires the list
-   *  payload to include `creator._id` (BE follow-up). */
+  /** Creator `_id` — fallback for owner-based action gating when the BE
+   *  `owner` boolean is absent. */
   ownerId?: string;
+  /** BE-computed ownership for the current user (the `owner` field on the
+   *  contract list payload). Preferred over id-matching. */
+  isOwner?: boolean;
 };
 
 const ContractActionsCell: React.FC<{ row: ContractRow }> = ({ row }) => {
@@ -56,8 +59,12 @@ const ContractActionsCell: React.FC<{ row: ContractRow }> = ({ row }) => {
   const [editOpen, setEditOpen] = React.useState(false);
   const [lifecycle, setLifecycle] = React.useState<LifecycleAction | null>(null);
 
+  // Prefer the BE-computed `owner` flag; fall back to id-matching only when it
+  // is absent (e.g. MSA payloads that don't yet expose it).
   const isOwner =
-    !!currentUserId && !!row.ownerId && currentUserId === row.ownerId;
+    typeof row.isOwner === "boolean"
+      ? row.isOwner
+      : !!currentUserId && !!row.ownerId && currentUserId === row.ownerId;
   const lifecycleActions = availableLifecycleActions(row.status);
   const canEdit = isManager && isOwner && isEditableStatus(row.status);
   const canManage = isManager && !isOwner;
