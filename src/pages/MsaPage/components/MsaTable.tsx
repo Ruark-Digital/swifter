@@ -20,9 +20,12 @@ import {
 } from "date-fns";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
-import ContractLifecycleDialog, {
+import ContractLifecycleDialog from "@/pages/ContractManagementPage/components/ContractLifecycleDialog";
+import {
   type LifecycleAction,
-} from "@/pages/ContractManagementPage/components/ContractLifecycleDialog";
+  isEditableStatus,
+  availableLifecycleActions,
+} from "@/pages/ContractManagementPage/components/contractLifecycle";
 
 export type MsaRow = {
   id: string;
@@ -46,8 +49,6 @@ export type MsaRow = {
   ownerId?: string;
 };
 
-const LIFECYCLE_LOCKED = new Set(["terminated", "completed", "cancelled"]);
-
 const MsaActionsCell: React.FC<{ row: MsaRow }> = ({ row }) => {
   const navigate = useNavigate();
   const { isManager } = useUserRole();
@@ -58,10 +59,15 @@ const MsaActionsCell: React.FC<{ row: MsaRow }> = ({ row }) => {
   const hasId = !!row.id;
   const isOwner =
     !!currentUserId && !!row.ownerId && currentUserId === row.ownerId;
-  const locked = LIFECYCLE_LOCKED.has((row.status ?? "").toLowerCase());
-  const canEdit = isManager && isOwner && hasId;
+  const lifecycleActions = availableLifecycleActions(row.status);
+  const canEdit = isManager && isOwner && hasId && isEditableStatus(row.status);
   const canManage = isManager && !isOwner && hasId;
-  const canLifecycle = isManager && isOwner && !locked && hasId;
+  const showTerminate =
+    isManager && isOwner && hasId && lifecycleActions.includes("terminate");
+  const showSuspend =
+    isManager && isOwner && hasId && lifecycleActions.includes("suspend");
+  const showComplete =
+    isManager && isOwner && hasId && lifecycleActions.includes("complete");
 
   // Close the menu before opening the controlled dialog so the dropdown doesn't
   // linger behind it or fight the dialog for focus.
@@ -111,37 +117,39 @@ const MsaActionsCell: React.FC<{ row: MsaRow }> = ({ row }) => {
               Edit MSA
             </DropdownMenuItem>
           )}
-          {canLifecycle && (
-            <>
-              <DropdownMenuItem
-                data-testid="complete-msa"
-                onSelect={(e) => {
-                  e.preventDefault();
-                  openLifecycle("complete");
-                }}
-              >
-                Complete MSA
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                data-testid="suspend-msa"
-                onSelect={(e) => {
-                  e.preventDefault();
-                  openLifecycle("suspend");
-                }}
-              >
-                Suspend MSA
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-red-600 focus:text-red-600"
-                data-testid="terminate-msa"
-                onSelect={(e) => {
-                  e.preventDefault();
-                  openLifecycle("terminate");
-                }}
-              >
-                Terminate MSA
-              </DropdownMenuItem>
-            </>
+          {showComplete && (
+            <DropdownMenuItem
+              data-testid="complete-msa"
+              onSelect={(e) => {
+                e.preventDefault();
+                openLifecycle("complete");
+              }}
+            >
+              Complete MSA
+            </DropdownMenuItem>
+          )}
+          {showSuspend && (
+            <DropdownMenuItem
+              data-testid="suspend-msa"
+              onSelect={(e) => {
+                e.preventDefault();
+                openLifecycle("suspend");
+              }}
+            >
+              Suspend MSA
+            </DropdownMenuItem>
+          )}
+          {showTerminate && (
+            <DropdownMenuItem
+              className="text-red-600 focus:text-red-600"
+              data-testid="terminate-msa"
+              onSelect={(e) => {
+                e.preventDefault();
+                openLifecycle("terminate");
+              }}
+            >
+              Terminate MSA
+            </DropdownMenuItem>
           )}
         </DropdownMenuContent>
       </DropdownMenu>

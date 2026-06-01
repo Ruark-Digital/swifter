@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/button";
 import { postRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
 import { Ban, AlertTriangle, FolderPlus, BadgeCheck } from "lucide-react";
+import type { LifecycleAction } from "./contractLifecycle";
 
-export type LifecycleAction = "terminate" | "suspend" | "complete" | "manage";
 type Kind = "contract" | "msa";
 
 type Props = {

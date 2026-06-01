@@ -14,9 +14,14 @@ status: complete
   queries by prefix predicate, toasts on error. Dark-mode-safe (navy `#2A4467`,
   red for destructive). Matches the Figma mockups.
 - **ContractsTable** kebab: was just "View Details". Now View Contract (all) ·
-  Manage (manager & not owner) · Edit (manager & owner, embeds controlled
-  `EditContract`) · Complete/Suspend/Terminate (manager & owner, hidden on
-  terminated/completed/cancelled). Controlled menu state so dialogs don't fight focus.
+  Manage (manager & not owner) · Edit (manager & owner) · Complete/Suspend/Terminate
+  (manager & owner). Controlled menu state so dialogs don't fight focus.
+- **Per-status matrix** (260601 refinement, centralized in `contractLifecycle.ts`):
+  - Edit → `draft` only
+  - Terminate + Suspend → `pending_approval` / `active` / `publish`
+  - Complete → `active` / `publish`
+  - ended states (terminated/completed/cancelled/expired) → no lifecycle actions
+  - Manage → owner-based only (status-independent)
 - **MsaTable** kebab: same action set with MSA labels. Edit navigates to
   `/dashboard/msa/{id}` (the `CreateMSADialog` edit flow is trigger-based/uncontrolled
   with documented hydration fragility, so embedding it was avoided).

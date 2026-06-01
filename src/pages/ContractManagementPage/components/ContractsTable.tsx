@@ -15,9 +15,12 @@ import { Link } from "react-router-dom";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
 import EditContract from "./EditContract";
-import ContractLifecycleDialog, {
+import ContractLifecycleDialog from "./ContractLifecycleDialog";
+import {
   type LifecycleAction,
-} from "./ContractLifecycleDialog";
+  isEditableStatus,
+  availableLifecycleActions,
+} from "./contractLifecycle";
 
 export type ContractRow = {
   id: string;
@@ -46,8 +49,6 @@ export type ContractRow = {
   ownerId?: string;
 };
 
-const LIFECYCLE_LOCKED = new Set(["terminated", "completed", "cancelled"]);
-
 const ContractActionsCell: React.FC<{ row: ContractRow }> = ({ row }) => {
   const { isManager } = useUserRole();
   const currentUserId = useUser()?._id;
@@ -57,10 +58,12 @@ const ContractActionsCell: React.FC<{ row: ContractRow }> = ({ row }) => {
 
   const isOwner =
     !!currentUserId && !!row.ownerId && currentUserId === row.ownerId;
-  const locked = LIFECYCLE_LOCKED.has((row.status ?? "").toLowerCase());
-  const canEdit = isManager && isOwner;
+  const lifecycleActions = availableLifecycleActions(row.status);
+  const canEdit = isManager && isOwner && isEditableStatus(row.status);
   const canManage = isManager && !isOwner;
-  const canLifecycle = isManager && isOwner && !locked;
+  const showTerminate = isManager && isOwner && lifecycleActions.includes("terminate");
+  const showSuspend = isManager && isOwner && lifecycleActions.includes("suspend");
+  const showComplete = isManager && isOwner && lifecycleActions.includes("complete");
 
   // Close the menu before opening a controlled dialog so the dropdown doesn't
   // linger behind it or fight the dialog for focus.
@@ -109,37 +112,39 @@ const ContractActionsCell: React.FC<{ row: ContractRow }> = ({ row }) => {
               Edit Contract
             </DropdownMenuItem>
           )}
-          {canLifecycle && (
-            <>
-              <DropdownMenuItem
-                data-testid="complete-contract"
-                onSelect={(e) => {
-                  e.preventDefault();
-                  openLifecycle("complete");
-                }}
-              >
-                Complete Contract
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                data-testid="suspend-contract"
-                onSelect={(e) => {
-                  e.preventDefault();
-                  openLifecycle("suspend");
-                }}
-              >
-                Suspend Contract
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-red-600 focus:text-red-600"
-                data-testid="terminate-contract"
-                onSelect={(e) => {
-                  e.preventDefault();
-                  openLifecycle("terminate");
-                }}
-              >
-                Terminate Contract
-              </DropdownMenuItem>
-            </>
+          {showComplete && (
+            <DropdownMenuItem
+              data-testid="complete-contract"
+              onSelect={(e) => {
+                e.preventDefault();
+                openLifecycle("complete");
+              }}
+            >
+              Complete Contract
+            </DropdownMenuItem>
+          )}
+          {showSuspend && (
+            <DropdownMenuItem
+              data-testid="suspend-contract"
+              onSelect={(e) => {
+                e.preventDefault();
+                openLifecycle("suspend");
+              }}
+            >
+              Suspend Contract
+            </DropdownMenuItem>
+          )}
+          {showTerminate && (
+            <DropdownMenuItem
+              className="text-red-600 focus:text-red-600"
+              data-testid="terminate-contract"
+              onSelect={(e) => {
+                e.preventDefault();
+                openLifecycle("terminate");
+              }}
+            >
+              Terminate Contract
+            </DropdownMenuItem>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
