@@ -1,5 +1,4 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -93,7 +92,6 @@ const ContractLifecycleDialog: React.FC<Props> = ({
   open,
   onOpenChange,
 }) => {
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const toast = useToastHandler();
 
@@ -160,13 +158,10 @@ const ContractLifecycleDialog: React.FC<Props> = ({
             <Button
               className="w-full text-white hover:opacity-90"
               style={{ backgroundColor: NAVY }}
-              data-testid="lifecycle-go-dashboard"
-              onClick={() => {
-                onOpenChange(false);
-                navigate("/dashboard");
-              }}
+              data-testid="lifecycle-done"
+              onClick={() => onOpenChange(false)}
             >
-              Go Dashboard
+              Done
             </Button>
           </div>
         ) : (
