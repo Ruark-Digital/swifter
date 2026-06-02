@@ -23,6 +23,14 @@ export interface MessageContainerProps {
   className?: string;
 }
 
+const formatTime = (date: Date) => {
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+};
+
 const MessageContainer: React.FC<MessageContainerProps> = memo(({
   content,
   sender,
@@ -31,14 +39,6 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
   className,
 }) => {
   const isUser = sender === "user";
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  };
 
   // Memoize markdown components for performance
   const markdownComponents = useMemo(() => ({
@@ -117,7 +117,7 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
     // Custom blockquote styling
     blockquote: ({ children, ...props }: any) => (
       <blockquote
-        className="border-l-4 border-blue-500 pl-4 py-2 mb-4 bg-blue-50 dark:bg-blue-900/20 rounded-r-lg"
+        className="shadow-[inset_3px_0_0_0_#3b82f6] pl-4 py-2 mb-4 bg-blue-50 dark:bg-blue-900/20 rounded-r-lg"
         {...props}
       >
         <div className="text-gray-700 dark:text-gray-300 italic">

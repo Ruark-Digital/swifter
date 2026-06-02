@@ -28,6 +28,13 @@ const formatCompactCurrency = (value?: number) => {
 
 const BusinessDivisionsPage = () => {
   const { isCompanyAdmin } = useUserRole();
+  if (!isCompanyAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <BusinessDivisionsPageContent />;
+};
+
+const BusinessDivisionsPageContent = () => {
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -42,14 +49,9 @@ const BusinessDivisionsPage = () => {
     null
   );
 
-  if (!isCompanyAdmin) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   const { data: statsRes } = useQuery({
     queryKey: ["businessDivisions", "stats"],
     queryFn: async () => await businessDivisionApi.getDivisionStats(),
-    enabled: isCompanyAdmin,
   });
 
   const { data: listRes, isLoading: isListLoading } = useQuery({
@@ -66,7 +68,6 @@ const BusinessDivisionsPage = () => {
         limit: pagination.pageSize,
         search: searchQuery || undefined,
       }),
-    enabled: isCompanyAdmin,
   });
 
   const totalDivisions = statsRes?.data?.totalDivisions ?? 0;

@@ -22,7 +22,7 @@ import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { contractManagerApi } from "../api/contractManagerApi";
 import { formatDateTZ } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useUserRole";
-import { useWatch } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import { formatFileSize, getSimpleFileExtension } from "@/lib/fileUtils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
@@ -33,6 +33,40 @@ import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import Spinner from "@/components/ui/Spinner";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
+
+function SavingsFileListItem({ file }: { file: File }) {
+  const { setValue, getValues } = useFormContext();
+  const handleRemove = () => {
+    const current = (getValues("files") as File[] | undefined) || [];
+    setValue(
+      "files",
+      current.filter((v: File) => v.name !== file.name),
+    );
+  };
+  return (
+    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+      <div className="flex items-center space-x-3">
+        <div className="w-10 h-10 bg-blue-100 rounded flex items-center justify-center">
+          <FileText className="h-5 w-5 text-blue-600" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{file.name}</p>
+          <p className="text-xs text-gray-500 dark:text-slate-400">
+            {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
+            {formatFileSize(file.size)}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleRemove}
+        className="text-gray-400 dark:text-slate-500 hover:text-red-500 transition-colors"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
 
 type HoldbackReleaseRow = {
   releaseId: string;
@@ -242,7 +276,7 @@ const UpdateSavingsDialog: React.FC<{
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
 
-  const { control, reset, setValue } = useForge<UpdateSavingsFormValues>({
+  const { control, reset } = useForge<UpdateSavingsFormValues>({
     resolver: yupResolver(validationSchema) as any,
     defaultValues: {
       title: "",
@@ -252,8 +286,6 @@ const UpdateSavingsDialog: React.FC<{
       files: null,
     },
   });
-
-  const value = useWatch({ control, name: "files" }) as File[];
 
   const { mutateAsync: uploadFile } = useMutation<
     ApiResponse<UploadURLs[]>,
@@ -345,37 +377,6 @@ const UpdateSavingsDialog: React.FC<{
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const FileListItem = ({ file }: { file: File }) => {
-    return (
-      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-blue-100 rounded flex items-center justify-center">
-            <FileText className="h-5 w-5 text-blue-600" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{file.name}</p>
-            <p className="text-xs text-gray-500 dark:text-slate-400">
-              {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
-              {formatFileSize(file.size)}
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() =>
-            setValue(
-              "files",
-              (value || []).filter((v: File) => v.name !== file.name),
-            )
-          }
-          className="text-gray-400 dark:text-slate-500 hover:text-red-500 transition-colors"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    );
   };
 
   return (
@@ -470,7 +471,7 @@ const UpdateSavingsDialog: React.FC<{
                   name="files"
                   component={TextFileUploader}
                   element={<UploadElement />}
-                  List={FileListItem}
+                  List={SavingsFileListItem}
                   className="rounded-xl border border-dashed border-[#2A4467]"
                   accept={
                     {
@@ -762,6 +763,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
               <img
                 src="/assets/contract-management/payment-summary/share.svg"
                 className="h-5 w-5"
+                alt=""
               />
               Export Report
             </button>

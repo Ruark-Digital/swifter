@@ -41,6 +41,30 @@ type Props = {
   documentType?: "Contract" | "MsaContract";
 };
 
+function FileListItem({ file, index }: { file: File; index?: number }) {
+  const extension = getSimpleFileExtension(file.name).toUpperCase();
+  return (
+    <FileUploaderItem
+      index={index ?? 0}
+      className="h-auto w-full rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800"
+    >
+      <div className="flex items-center gap-3 w-full">
+        <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center dark:bg-slate-700 dark:border-slate-600">
+          {getFileIcon(extension)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-slate-900 truncate dark:text-slate-100">
+            {file.name}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {extension || "FILE"} • {formatFileSize(file.size)}
+          </p>
+        </div>
+      </div>
+    </FileUploaderItem>
+  );
+}
+
 const CreateChangeDialog: React.FC<Props> = ({
   trigger,
   contractId,
@@ -192,30 +216,6 @@ const CreateChangeDialog: React.FC<Props> = ({
     } catch {
       return;
     }
-  };
-
-  const FileListItem = ({ file, index }: { file: File; index?: number }) => {
-    const extension = getSimpleFileExtension(file.name).toUpperCase();
-    return (
-      <FileUploaderItem
-        index={index ?? 0}
-        className="h-auto w-full rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800"
-      >
-        <div className="flex items-center gap-3 w-full">
-          <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center dark:bg-slate-700 dark:border-slate-600">
-            {getFileIcon(extension)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-900 truncate dark:text-slate-100">
-              {file.name}
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {extension || "FILE"} • {formatFileSize(file.size)}
-            </p>
-          </div>
-        </div>
-      </FileUploaderItem>
-    );
   };
 
   const isSubmitting = createMutation.isPending || isUploadingFiles;

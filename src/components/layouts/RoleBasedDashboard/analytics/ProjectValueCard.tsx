@@ -32,9 +32,13 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
   useEffect(() => {
     const el = nameRef.current;
     if (!el) return;
-    const check = () => setIsTruncated(el.scrollWidth > el.clientWidth + 1);
-    check();
-    const ro = new ResizeObserver(check);
+    // ResizeObserver fires its callback once after observe() lands, so we
+    // intentionally don't call setState synchronously here — that would trip
+    // react-doctor/no-adjust-state-on-prop-change. The observer-driven
+    // callback is the lint rule's documented subscription escape hatch.
+    const ro = new ResizeObserver(() => {
+      setIsTruncated(el.scrollWidth > el.clientWidth + 1);
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, [name]);

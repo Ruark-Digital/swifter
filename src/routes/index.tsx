@@ -1,4 +1,4 @@
-import { ErrorFallback } from "@/components/layouts/Error";
+import { RouteErrorFallback } from "@/components/layouts/Error";
 import { ProtectedRoute } from "./PrivateRoute";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { Dashboard } from "@/layouts/Dashboard";
@@ -130,7 +130,7 @@ export const routes = [
   {
     path: "/dashboard",
     element: <Dashboard />,
-    errorElement: <ErrorFallback />,
+    errorElement: <RouteErrorFallback />,
     children: [
       {
         path: "/dashboard",

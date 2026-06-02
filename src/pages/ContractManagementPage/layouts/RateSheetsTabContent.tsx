@@ -459,13 +459,17 @@ const RATE_SHEET_SUMMARY_SHEET_STEP = 3;
 
 const RateSheetSummaryTable = React.memo(
   ({ headers, rows }: { headers: string[]; rows: SheetElement["rows"] }) => {
-    const [visibleRowCount, setVisibleRowCount] = React.useState(
-      RATE_SHEET_SUMMARY_INITIAL_ROWS,
-    );
-
-    React.useEffect(() => {
-      setVisibleRowCount(RATE_SHEET_SUMMARY_INITIAL_ROWS);
-    }, [rows]);
+    // Stash the rows identity alongside the user-expanded count; whenever rows
+    // change identity (BE refetch / sheet switch) the read auto-evicts back to
+    // INITIAL without a sync-from-prop effect.
+    const [visibleState, setVisibleState] = React.useState<{
+      rowsRef: SheetElement["rows"];
+      count: number;
+    }>({ rowsRef: rows, count: RATE_SHEET_SUMMARY_INITIAL_ROWS });
+    const visibleRowCount =
+      visibleState.rowsRef === rows
+        ? visibleState.count
+        : RATE_SHEET_SUMMARY_INITIAL_ROWS;
 
     // BE sometimes declares fewer headers than the rows actually carry
     // (xlsx parsing truncates header row at the first empty cell). Union
@@ -548,9 +552,13 @@ const RateSheetSummaryTable = React.memo(
               variant="outline"
               className="h-8 rounded-md px-3 text-xs font-semibold"
               onClick={() => {
-                setVisibleRowCount((current) =>
-                  Math.min(rows.length, current + RATE_SHEET_SUMMARY_ROW_STEP),
-                );
+                setVisibleState({
+                  rowsRef: rows,
+                  count: Math.min(
+                    rows.length,
+                    visibleRowCount + RATE_SHEET_SUMMARY_ROW_STEP,
+                  ),
+                });
               }}
             >
               Show more rows
@@ -587,14 +595,17 @@ const RateSheetSummarySheet = React.memo(
 const RateSheetSummaryGroup = React.memo(
   ({ group }: { group: Summary }) => {
     const sheets = group?.sheets || [];
-    const [visibleSheetCount, setVisibleSheetCount] = React.useState(
-      RATE_SHEET_SUMMARY_INITIAL_SHEETS,
-    );
+    // Group-identity-bound visible count (see RateSheetSummaryTable for the
+    // same pattern). Avoids a sync-from-prop effect on group change.
+    const [visibleState, setVisibleState] = React.useState<{
+      groupRef: Summary;
+      count: number;
+    }>({ groupRef: group, count: RATE_SHEET_SUMMARY_INITIAL_SHEETS });
+    const visibleSheetCount =
+      visibleState.groupRef === group
+        ? visibleState.count
+        : RATE_SHEET_SUMMARY_INITIAL_SHEETS;
     const [isPending, startTransition] = React.useTransition();
-
-    React.useEffect(() => {
-      setVisibleSheetCount(RATE_SHEET_SUMMARY_INITIAL_SHEETS);
-    }, [group]);
 
     const visibleSheets = React.useMemo(
       () => sheets.slice(0, visibleSheetCount),
@@ -623,12 +634,13 @@ const RateSheetSummaryGroup = React.memo(
               disabled={isPending}
               onClick={() => {
                 startTransition(() => {
-                  setVisibleSheetCount((current) =>
-                    Math.min(
+                  setVisibleState({
+                    groupRef: group,
+                    count: Math.min(
                       sheets.length,
-                      current + RATE_SHEET_SUMMARY_SHEET_STEP,
+                      visibleSheetCount + RATE_SHEET_SUMMARY_SHEET_STEP,
                     ),
-                  );
+                  });
                 });
               }}
             >
@@ -650,14 +662,17 @@ const RateSheetSummaryTab = React.memo(
     detailLoading: boolean;
     summary: Summary[];
   }) => {
-    const [visibleGroupCount, setVisibleGroupCount] = React.useState(
-      RATE_SHEET_SUMMARY_INITIAL_GROUPS,
-    );
+    // Summary-identity-bound visible count (see RateSheetSummaryTable for the
+    // same pattern). Avoids a sync-from-prop effect on summary refresh.
+    const [visibleState, setVisibleState] = React.useState<{
+      summaryRef: Summary[];
+      count: number;
+    }>({ summaryRef: summary, count: RATE_SHEET_SUMMARY_INITIAL_GROUPS });
+    const visibleGroupCount =
+      visibleState.summaryRef === summary
+        ? visibleState.count
+        : RATE_SHEET_SUMMARY_INITIAL_GROUPS;
     const [isPending, startTransition] = React.useTransition();
-
-    React.useEffect(() => {
-      setVisibleGroupCount(RATE_SHEET_SUMMARY_INITIAL_GROUPS);
-    }, [summary]);
 
     const visibleGroups = React.useMemo(
       () => summary.slice(0, visibleGroupCount),
@@ -685,12 +700,13 @@ const RateSheetSummaryTab = React.memo(
                   disabled={isPending}
                   onClick={() => {
                     startTransition(() => {
-                      setVisibleGroupCount((current) =>
-                        Math.min(
+                      setVisibleState({
+                        summaryRef: summary,
+                        count: Math.min(
                           summary.length,
-                          current + RATE_SHEET_SUMMARY_GROUP_STEP,
+                          visibleGroupCount + RATE_SHEET_SUMMARY_GROUP_STEP,
                         ),
-                      );
+                      });
                     });
                   }}
                 >

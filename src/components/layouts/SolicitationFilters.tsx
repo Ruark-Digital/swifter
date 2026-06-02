@@ -34,15 +34,26 @@ type DropdownFiltersProps = {
   selectedValues?: Record<string, string>;
 };
 
+const getIcon = (title: string) => {
+  switch (title.toLowerCase()) {
+    case "date":
+      return <CalendarIcon className="h-4 w-4 mr-4" />;
+    case "status":
+      return <AlignCenter className="h-4 w-4 mr-4" />;
+    default:
+      return null;
+  }
+};
+
 export const DropdownFilters: React.FC<DropdownFiltersProps> = ({
   filters,
   onFilterChange,
   selectedValues = {},
 }) => {
   const [internalSelectedValues, setInternalSelectedValues] = useState<Record<string, string>>({});
-  
+
   const currentSelectedValues = selectedValues || internalSelectedValues;
-  
+
   const handleOptionChange = (filterTitle: string, value: string, label: string) => {
     if (onFilterChange) {
       onFilterChange(filterTitle, value, label);
@@ -53,11 +64,11 @@ export const DropdownFilters: React.FC<DropdownFiltersProps> = ({
       }));
     }
   };
-  
+
   const getSelectedLabel = (filter: Filter) => {
     const selectedValue = currentSelectedValues[filter.title];
     if (!selectedValue) return filter.title;
-    
+
     // Check main options first
     for (const option of filter.options) {
       if (option.value === selectedValue) {
@@ -72,18 +83,8 @@ export const DropdownFilters: React.FC<DropdownFiltersProps> = ({
         }
       }
     }
-    
+
     return filter.title;
-  };
-  const getIcon = (title: string) => {
-    switch (title.toLowerCase()) {
-      case "date":
-        return <CalendarIcon className="h-4 w-4 mr-4" />;
-      case "status":
-        return <AlignCenter className="h-4 w-4 mr-4" />;
-      default:
-        return null;
-    }
   };
 
   return (

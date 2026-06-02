@@ -48,6 +48,122 @@ import { useForge, Forge, Forger } from "@/lib/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useWatch } from "react-hook-form";
+
+function FileUploadElement() {
+  return (
+    <div className="flex flex-col items-center justify-center p-8">
+      <Upload className="h-12 w-12 text-blue-500 mb-4" />
+      <div className="text-center">
+        <p className="text-lg font-medium text-gray-900 mb-2">
+          Upload Documents
+        </p>
+        <p className="text-sm text-gray-600 mb-4">
+          <span className="font-medium text-blue-600 cursor-pointer hover:text-blue-700">
+            Click to browse
+          </span>{" "}
+          or drag and drop files here
+        </p>
+        <p className="text-xs text-gray-500">
+          Supported: PDF, DOC, DOCX, XLS, XLSX, ZIP, PNG, JPEG (Max 10MB each)
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Upload-progress state shared with the hoisted FileListItem via context (see
+// CreateAddendumDialog for the same pattern + reasoning).
+type EditAddendumUploadState = {
+  uploadingFiles: string[];
+  uploadProgress: Record<string, number>;
+  uploadErrors: Record<string, string>;
+};
+
+const EditAddendumUploadStateContext =
+  React.createContext<EditAddendumUploadState>({
+    uploadingFiles: [],
+    uploadProgress: {},
+    uploadErrors: {},
+  });
+
+function FileListItem({ file }: { file: File | any }) {
+  const { uploadingFiles, uploadProgress, uploadErrors } = React.useContext(
+    EditAddendumUploadStateContext,
+  );
+  const fileName = file.name;
+  const fileSize =
+    file instanceof File
+      ? (file.size / 1024 / 1024).toFixed(2)
+      : ((file.size || 0) / 1024 / 1024).toFixed(2); // Convert to MB
+  const isNewFile = file instanceof File;
+  const isUploading = isNewFile && uploadingFiles.includes(fileName);
+  const progress = uploadProgress[fileName] || 0;
+  const hasError = uploadErrors[fileName];
+  const isComplete =
+    isNewFile && !isUploading && !hasError && progress === 100;
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-4 bg-white hover:bg-gray-50 transition-colors">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center space-x-3">
+          <div
+            className={cn(
+              "p-2 rounded-full",
+              hasError
+                ? "bg-red-100"
+                : isComplete
+                ? "bg-green-100"
+                : isNewFile
+                ? "bg-blue-100"
+                : "bg-gray-100",
+            )}
+          >
+            {hasError ? (
+              <AlertCircle className="h-4 w-4 text-red-600" />
+            ) : isComplete ? (
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            ) : (
+              <FileIcon className="h-4 w-4 text-blue-600" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {fileName}
+            </p>
+            <p className="text-xs text-gray-500">
+              {fileSize} MB {!isNewFile && "(existing)"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {isUploading && (
+        <div className="mb-2">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-gray-500">Uploading...</span>
+            <span className="text-xs text-gray-700 font-medium">
+              {typeof progress === "number" ? progress.toFixed(0) : 0}%
+            </span>
+          </div>
+          <Progress value={progress} className="h-2" variant="default" />
+        </div>
+      )}
+
+      {hasError && (
+        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+          {hasError}
+        </div>
+      )}
+
+      {isComplete && (
+        <div className="mt-2 flex items-center text-xs text-green-700">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Upload complete
+        </div>
+      )}
+    </div>
+  );
+}
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { formatDateTZ } from "@/lib/utils";
@@ -733,105 +849,6 @@ const EditAddendumDialog: React.FC<EditAddendumDialogProps> = ({
     await onSubmit(payload);
   };
 
-  const FileUploadElement = () => (
-    <div className="flex flex-col items-center justify-center p-8">
-      <Upload className="h-12 w-12 text-blue-500 mb-4" />
-      <div className="text-center">
-        <p className="text-lg font-medium text-gray-900 mb-2">
-          Upload Documents
-        </p>
-        <p className="text-sm text-gray-600 mb-4">
-          <span className="font-medium text-blue-600 cursor-pointer hover:text-blue-700">
-            Click to browse
-          </span>{" "}
-          or drag and drop files here
-        </p>
-        <p className="text-xs text-gray-500">
-          Supported: PDF, DOC, DOCX, XLS, XLSX, ZIP, PNG, JPEG (Max 10MB each)
-        </p>
-      </div>
-    </div>
-  );
-
-  const FileListItem = ({ file }: { file: File | any }) => {
-    const fileName = file.name;
-    const fileSize =
-      file instanceof File
-        ? (file.size / 1024 / 1024).toFixed(2)
-        : ((file.size || 0) / 1024 / 1024).toFixed(2); // Convert to MB
-    const isNewFile = file instanceof File;
-    const isUploading = isNewFile && uploadingFiles.includes(fileName);
-    const progress = uploadProgress[fileName] || 0;
-    const hasError = uploadErrors[fileName];
-    const isComplete =
-      isNewFile && !isUploading && !hasError && progress === 100;
-
-    return (
-      <div className="border border-gray-200 rounded-lg p-4 bg-white hover:bg-gray-50 transition-colors">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-3">
-            <div
-              className={cn(
-                "p-2 rounded-full",
-                hasError
-                  ? "bg-red-100"
-                  : isComplete
-                  ? "bg-green-100"
-                  : isNewFile
-                  ? "bg-blue-100"
-                  : "bg-gray-100"
-              )}
-            >
-              {hasError ? (
-                <AlertCircle className="h-4 w-4 text-red-600" />
-              ) : isComplete ? (
-                <CheckCircle className="h-4 w-4 text-green-600" />
-              ) : (
-                <FileIcon className="h-4 w-4 text-blue-600" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {fileName}
-              </p>
-              <p className="text-xs text-gray-500">
-                {fileSize} MB {!isNewFile && "(existing)"}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Progress bar for new uploads */}
-        {isUploading && (
-          <div className="mb-2">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-gray-500">Uploading...</span>
-              <span className="text-xs text-gray-700 font-medium">
-                {typeof progress === "number" ? progress.toFixed(0) : 0}%
-              </span>
-            </div>
-            <Progress value={progress} className="h-2" variant="default" />
-          </div>
-        )}
-
-        {/* Error message */}
-        {hasError && (
-          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-            {hasError}
-          </div>
-        )}
-
-        {/* Success indicator */}
-        {isComplete && (
-          <div className="mt-2 flex items-center text-xs text-green-700">
-            <CheckCircle className="h-3 w-3 mr-1" />
-            Upload complete
-          </div>
-        )}
-      </div>
-    );
-  };
-
   const acceptedFileTypes = {
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
       ".xlsx",
@@ -850,10 +867,15 @@ const EditAddendumDialog: React.FC<EditAddendumDialogProps> = ({
   const isUploading =
     uploadFilesMutation.isPending || uploadingFiles.length > 0;
 
+  const uploadStateValue = React.useMemo<EditAddendumUploadState>(
+    () => ({ uploadingFiles, uploadProgress, uploadErrors }),
+    [uploadingFiles, uploadProgress, uploadErrors],
+  );
+
   if (!addendum) return null;
 
   return (
-    <>
+    <EditAddendumUploadStateContext.Provider value={uploadStateValue}>
       <DialogHeader>
         <DialogTitle>Edit Addendum</DialogTitle>
       </DialogHeader>
@@ -952,7 +974,7 @@ const EditAddendumDialog: React.FC<EditAddendumDialogProps> = ({
           </Button>
         </DialogFooter>
       </Forge>
-    </>
+    </EditAddendumUploadStateContext.Provider>
   );
 };
 

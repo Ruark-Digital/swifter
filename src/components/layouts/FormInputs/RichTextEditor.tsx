@@ -90,13 +90,14 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     if (!q) return;
 
     const current = q.root.innerHTML;
-    if (value !== current) {
-      isSettingRef.current = true;
-      q.clipboard.dangerouslyPasteHTML(value || '');
-      setTimeout(() => {
-        isSettingRef.current = false;
-      }, 0);
-    }
+    if (value === current) return;
+
+    isSettingRef.current = true;
+    q.clipboard.dangerouslyPasteHTML(value || '');
+    const id = setTimeout(() => {
+      isSettingRef.current = false;
+    }, 0);
+    return () => clearTimeout(id);
   }, [value]);
 
   // Sync disabled (readOnly) state

@@ -153,12 +153,13 @@ const RankBadge = ({
 
 const EvaluationDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  // const navigate = useNavigate();
-
   if (!id) {
     return <div>Evaluation not found</div>;
   }
+  return <EvaluationDetailPageContent id={id} />;
+};
 
+const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
   // API queries
   const {
     data: evaluationResponse,

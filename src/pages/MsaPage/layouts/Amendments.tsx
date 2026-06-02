@@ -187,6 +187,7 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
               <img
                 src="/assets/contract-management/amendments/share.svg"
                 className="mr-2 h-5 w-5"
+                alt=""
               />
               Export Report
             </Button>
@@ -207,6 +208,7 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
                   <img
                     src="/assets/contract-management/amendments/plus.svg"
                     className="mr-2 h-5 w-5"
+                    alt=""
                   />
                   Create Amendment
                 </Button>

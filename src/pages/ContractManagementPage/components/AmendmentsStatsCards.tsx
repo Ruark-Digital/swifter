@@ -26,7 +26,7 @@ const StatCard: React.FC<StatProps> = ({ title, value, iconSrc, iconBg, testId }
           </div>
         </div>
         <div className="rounded-full p-[10px]" style={{ background: iconBg }}>
-          <img src={iconSrc} className="h-[29px] w-[29px]" />
+          <img src={iconSrc} className="h-[29px] w-[29px]" alt="" />
         </div>
       </CardContent>
     </Card>
