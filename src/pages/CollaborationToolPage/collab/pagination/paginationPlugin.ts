@@ -25,12 +25,14 @@ import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { Extension } from "@tiptap/core";
 import { classifyTransaction } from "./classifyTransaction";
 
-// Target page CONTENT height in CSS pixels. 9in × 96dpi = 864px.
-// This is the height available for content INSIDE a page after the
-// 1in top/bottom margins (page is 11in total). The React layer reads
-// the corresponding CSS custom property (--page-content-height) to
-// keep page-sheet dimensions in sync with the measurement target.
-const TARGET_CONTENT_HEIGHT_PX = 864;
+// Target page CONTENT height in CSS pixels. 9in × 96dpi = 864px would
+// be the strict Word-page-equivalent value, but our paragraph spacing
+// and font metrics don't match Word exactly — strict 864 produces ~3.5x
+// more pages than Word reports for the same doc. Calibrated empirically
+// 260603 to 1100px so the Hyperscale supply agreement renders in the
+// ballpark of Word's reported page count (target ~27-32 pages per SPEC
+// REQ-05 acceptance). If a future corpus skews this, tune here.
+const TARGET_CONTENT_HEIGHT_PX = 1100;
 
 export type PaginationState = {
   /** Doc positions where each page ENDS. pageBreaks[0] = end of page 1, etc. */

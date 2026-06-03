@@ -920,7 +920,7 @@
    background-color extends to fill it. The [data-page-end]
    margin-bottom: 32px in the multi-page rules below is intentional —
    THAT margin SHOULD show backdrop = inter-page gutter. */
-.ct-tiptap .ProseMirror p { margin: 0; padding-bottom: 8pt; }
+.ct-tiptap .ProseMirror p { margin: 0; padding-bottom: 4pt; }
 /* Strip leading soft line break (<br>) inside paragraphs. Word docs use
    <w:br/> at the start of paragraphs as visual spacing-before; mammoth
    passes these through as <br> tags, which TipTap renders as full empty
@@ -928,10 +928,10 @@
    restores Word's actual layout — the 8pt padding-bottom is the only
    paragraph spacing. */
 .ct-tiptap .ProseMirror p > br:first-child { display: none; }
-.ct-tiptap .ProseMirror h1 { font-size: 16pt; font-weight: 700; margin: 0; padding: 14pt 0 6pt; }
-.ct-tiptap .ProseMirror h2 { font-size: 14pt; font-weight: 700; margin: 0; padding: 12pt 0 5pt; }
-.ct-tiptap .ProseMirror h3 { font-size: 12pt; font-weight: 700; margin: 0; padding: 10pt 0 4pt; }
-.ct-tiptap .ProseMirror ul, .ct-tiptap .ProseMirror ol { padding-left: 0.5in; padding-right: 0; padding-bottom: 8pt; margin: 0; }
+.ct-tiptap .ProseMirror h1 { font-size: 16pt; font-weight: 700; margin: 0; padding: 8pt 0 4pt; }
+.ct-tiptap .ProseMirror h2 { font-size: 14pt; font-weight: 700; margin: 0; padding: 6pt 0 3pt; }
+.ct-tiptap .ProseMirror h3 { font-size: 12pt; font-weight: 700; margin: 0; padding: 4pt 0 2pt; }
+.ct-tiptap .ProseMirror ul, .ct-tiptap .ProseMirror ol { padding-left: 0.5in; padding-right: 0; padding-bottom: 4pt; margin: 0; }
 .ct-tiptap .ProseMirror li { margin: 0; }
 /* List items contain paragraphs internally; reset their padding so
    list-bullet alignment doesn't drift from the visual baseline. */
