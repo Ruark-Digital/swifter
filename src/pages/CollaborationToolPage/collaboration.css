@@ -862,7 +862,10 @@
     0 4px 14px rgba(15, 23, 42, 0.10),
     -1px 0 3px rgba(15, 23, 42, 0.05),
     1px 0 3px rgba(15, 23, 42, 0.05);
-  margin-bottom: 32px;
+  /* Inter-page gutter: 14px gives the Google-Docs feel (their sheet gap
+     is ~14-16px). 32px in T5-C was too generous, made the doc feel like
+     a vertical stack of cards rather than a paginated document. */
+  margin-bottom: 14px;
   position: relative;
 }
 .dark .ct-tiptap .ProseMirror > [data-page-end="true"] {
@@ -880,7 +883,9 @@
 
 /* "Page N of M" footer rendered as an absolutely-positioned pseudo
    element on each page-end. Sits in the page's bottom margin (the 1in
-   padding-bottom on page-end blocks provides the room). */
+   padding-bottom on page-end blocks provides the room).
+   Contrast bumped 260603 from slate-500/400 to slate-700/300 + 11pt
+   so it's actually readable against the page sheet at 100% zoom. */
 .ct-tiptap .ProseMirror > [data-page-end="true"]::after {
   content: "Page " attr(data-page-num) " of " var(--total-pages);
   position: absolute;
@@ -889,13 +894,13 @@
   right: 0;
   text-align: center;
   font-family: "Times New Roman", serif;
-  font-size: 10pt;
-  color: #6b7280;
+  font-size: 11pt;
+  color: #475569; /* slate-600 — clearly visible on white */
   pointer-events: none;
   user-select: none;
 }
 .dark .ct-tiptap .ProseMirror > [data-page-end="true"]::after {
-  color: #94a3b8;
+  color: #cbd5e1; /* slate-300 — clearly visible on slate-900 */
 }
 .ct-tiptap {
   font-family: "Times New Roman", "Liberation Serif", Georgia, serif;
