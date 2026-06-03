@@ -806,9 +806,11 @@
   margin: 24px auto 64px;
   min-height: calc(100vh - 200px);
   /* CSS counter for "Page N of M" footers. --total-pages is set by the
-     pagination plugin's view layer after each recompute. */
+     pagination plugin's view layer after each recompute. Value must be
+     a QUOTED string for content: concatenation to work — see plugin's
+     setTotalPagesCssVar for the rationale. */
   counter-reset: page-counter;
-  --total-pages: 1;
+  --total-pages: "1";
 }
 
 /* Per-page chrome.
@@ -823,50 +825,38 @@
    The visual effect: a continuous editor flow that LOOKS like discrete
    white sheets stacked vertically with a grey gutter between each. */
 
-/* Each block gets a white background + horizontal page-margins.
-   Side shadows on EVERY block (not just start/end) so the whole page
-   sheet has a continuous rectangular shadow on both sides. T5-C polish
-   260603: applying side shadows only to start/end produced a visible
-   "raised" / embossed look at the bottom of each page because the
-   middle blocks had no shadow but the page-end did — the eye reads
-   the unshadowed middle vs shadowed page-end edges as a 3D rise.
-   Continuous side shadows kill the effect; top/bottom shadows below
-   are accents only at the page boundaries. */
+/* Per-block page chrome: white background + horizontal page-margins.
+   NO box-shadow on middle blocks — even zero-y-offset side shadows have
+   3px blur that radiates vertically and produces visible stripes at
+   every inter-block boundary (caught 260603 after the raised-section
+   fix). The trade-off: page sheets have flat (unshadowed) left/right
+   edges. This matches Google Docs' continuous-scroll mode which only
+   draws top/bottom sheet-edge shadows. */
 .ct-tiptap .ProseMirror > [data-page-num] {
   background: #ffffff;
   padding-left: 1in;
   padding-right: 1in;
   margin-left: 0;
   margin-right: 0;
-  box-shadow:
-    -1px 0 3px rgba(15, 23, 42, 0.05),
-    1px 0 3px rgba(15, 23, 42, 0.05);
 }
 .dark .ct-tiptap .ProseMirror > [data-page-num] {
   background: #0f172a;
-  box-shadow:
-    -1px 0 3px rgba(0, 0, 0, 0.25),
-    1px 0 3px rgba(0, 0, 0, 0.25);
 }
 
-/* Page-start: top accent shadow ON TOP of the inherited side shadows. */
+/* Page-start: top accent shadow only (sheet's top edge against gutter
+   above). No side shadows — see [data-page-num] rule above for why. */
 .ct-tiptap .ProseMirror > [data-page-start="true"] {
   padding-top: 1in;
   border-top-left-radius: 2px;
   border-top-right-radius: 2px;
-  box-shadow:
-    0 -1px 3px rgba(15, 23, 42, 0.06),
-    -1px 0 3px rgba(15, 23, 42, 0.05),
-    1px 0 3px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 -2px 6px rgba(15, 23, 42, 0.10);
 }
 .dark .ct-tiptap .ProseMirror > [data-page-start="true"] {
-  box-shadow:
-    0 -1px 3px rgba(0, 0, 0, 0.4),
-    -1px 0 3px rgba(0, 0, 0, 0.25),
-    1px 0 3px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.5);
 }
 
-/* Page-end: bottom accent shadow ON TOP of the inherited side shadows. */
+/* Page-end: bottom accent shadow only (sheet's bottom edge against gutter
+   below). */
 .ct-tiptap .ProseMirror > [data-page-end="true"] {
   padding-bottom: 1in;
   /* Counter increments at the END of each page so the footer text
@@ -874,25 +864,13 @@
   counter-increment: page-counter;
   border-bottom-left-radius: 2px;
   border-bottom-right-radius: 2px;
-  /* Bottom drop shadow gives the page-sheet effect. The big gap to the
-     next page comes from margin-bottom (acts as inter-page gutter). */
-  box-shadow:
-    0 1px 3px rgba(15, 23, 42, 0.12),
-    0 4px 14px rgba(15, 23, 42, 0.10),
-    -1px 0 3px rgba(15, 23, 42, 0.05),
-    1px 0 3px rgba(15, 23, 42, 0.05);
-  /* Inter-page gutter: 14px gives the Google-Docs feel (their sheet gap
-     is ~14-16px). 32px in T5-C was too generous, made the doc feel like
-     a vertical stack of cards rather than a paginated document. */
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.14);
+  /* Inter-page gutter: 14px (Google Docs sheet spacing). */
   margin-bottom: 14px;
   position: relative;
 }
 .dark .ct-tiptap .ProseMirror > [data-page-end="true"] {
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.5),
-    0 4px 14px rgba(0, 0, 0, 0.35),
-    -1px 0 3px rgba(0, 0, 0, 0.25),
-    1px 0 3px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.55);
 }
 
 /* If a single block is both start AND end (a one-block page — rare but
