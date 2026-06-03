@@ -233,18 +233,43 @@ export async function convertDocxToHtml(
   // styleName, map it to a marker class via styleMap, then post-process to
   // an inline `style="text-align: ..."` so TipTap's TextAlign extension
   // picks it up on setContent.
+  // Style IDs that map to heading tags (h1-h6) via mammoth's default
+  // styleMap OR our custom rules below. Preserved here — alignment
+  // override skipped — so the heading mapping survives. Trade-off: a
+  // paragraph that has BOTH a heading style AND direct-alignment
+  // formatting loses the alignment in the rendered output (e.g.
+  // "TABLE OF CONTENTS" is style=Heading2 + alignment=center →
+  // becomes <h2> left-aligned). Acceptable for legal-doc review: most
+  // centered content lives on the cover page with style=BodyText (which
+  // is NOT in this set, so alignment WILL be preserved there).
+  const HEADING_STYLE_IDS = new Set([
+    "Heading1",
+    "Heading2",
+    "Heading3",
+    "Heading4",
+    "Heading5",
+    "Heading6",
+    "Title",
+    "Subtitle",
+    "Article",
+    "ArticleL2",
+    "ScheduleL1",
+    "ScheduleL2",
+  ]);
+
   const transformParagraph = (element: { alignment?: string; styleId?: string } & Record<string, unknown>) => {
     const a = element.alignment;
-    // Only synthesize an alignment styleName for paragraphs that DON'T
-    // already carry a Word style — otherwise we'd clobber heading
-    // mappings ('Article', 'Schedule_L2', etc.) declared in styleMap
-    // below. The trade-off: a paragraph that has BOTH a heading style
-    // AND direct-alignment formatting loses the alignment. In practice
-    // Word's heading styles carry their own alignment via the style
-    // definition, so direct formatting overrides are rare.
+    // BUG FIXED 260603: previously gated on `!element.styleId` which
+    // skipped EVERY styled paragraph, including BodyText. The Hyperscale
+    // doc has its centered title block as BodyText + alignment=center;
+    // skipping these meant the title block rendered left-aligned (user
+    // catch: "We need to make the content of the document render
+    // correctly and not all aligned to the left side"). Now we gate
+    // only on heading-style IDs so non-heading styled paragraphs
+    // (BodyText, Centre, Normal, etc.) get their alignment preserved.
     if (
       (a === "center" || a === "right" || a === "both" || a === "justify") &&
-      !element.styleId
+      !HEADING_STYLE_IDS.has(element.styleId ?? "")
     ) {
       const styleName = a === "both" ? "Align justify" : `Align ${a}`;
       return { ...element, styleId: styleName.replace(/\s/g, ""), styleName };
