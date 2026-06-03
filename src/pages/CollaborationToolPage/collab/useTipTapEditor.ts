@@ -10,6 +10,10 @@ import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
 import TextAlign from "@tiptap/extension-text-align";
 import Image from "@tiptap/extension-image";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableHeader } from "@tiptap/extension-table-header";
+import { TableCell } from "@tiptap/extension-table-cell";
 import type * as Y from "yjs";
 import type { WebsocketProvider } from "y-websocket";
 import type { CollabUser } from "./useCollabProvider";
@@ -62,6 +66,17 @@ export function useTipTapEditor({
     // on import and embedded DOCX images vanish. `inline: false` keeps
     // images as block-level (matches Word's default behavior).
     Image.configure({ inline: false, allowBase64: true }),
+    // Tables — REQ-06 from phase 01-gdocs-editor. Mammoth emits
+    // <table><tr><td>/<th> for Word tables; without these four
+    // extensions registered, TipTap's schema strips the structure on
+    // setContent and the cells flatten into plain text runs.
+    Table.configure({
+      resizable: true,
+      HTMLAttributes: { class: "ct-tiptap-table" },
+    }),
+    TableRow,
+    TableHeader,
+    TableCell,
     CommentMark,
     InsertionMark,
     DeletionMark,
