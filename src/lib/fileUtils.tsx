@@ -277,14 +277,54 @@ export async function convertDocxToTipTapContent(
     ignoreFonts: true,
   });
 
+  // T2b: compute per-page block-index boundaries from <section> children.
+  // Side channel format: array of TOP-LEVEL BLOCK INDICES where each new
+  // page (page 2, page 3, ...) starts. Page 1 always starts at index 0
+  // implicitly. Pagination plugin consumes these to emit data-page-num
+  // decorations.
+  //
+  // Block indices (not doc-position offsets) chosen because the
+  // translation layer can't predict ProseMirror node sizes ahead of
+  // setContent; the plugin walks state.doc.forEach with index counting
+  // and converts to doc positions where needed.
+  const sectionBoundaries = computeSectionBoundaries(bodyEl);
+
   return {
     html: bodyEl.innerHTML,
     styleHtml: styleEl.innerHTML,
-    // Side channels stubbed; filled by T2b–T2d.
-    sectionBoundaries: [],
+    sectionBoundaries,
+    // Headers/footers side channels stubbed; filled by T2d.
     headers: [],
     footers: [],
   };
+}
+
+function computeSectionBoundaries(bodyEl: HTMLElement): number[] {
+  // docx-preview wraps content in `.docx-wrapper > section > article`.
+  // Each <section> is one Word page. Block count is the number of
+  // direct children of <article> within that section (headers/footers
+  // live as direct children of <section>, NOT inside article, so they
+  // don't count toward block indices).
+  const sections = Array.from(
+    bodyEl.querySelectorAll(".docx-wrapper > section, :scope > section")
+  );
+  if (sections.length === 0) return [];
+
+  const boundaries: number[] = [];
+  let cumulativeBlocks = 0;
+
+  sections.forEach((section, sectionIdx) => {
+    if (sectionIdx > 0) {
+      // New page starts here. Record the block index of its first block.
+      boundaries.push(cumulativeBlocks);
+    }
+    const article = section.querySelector(":scope > article");
+    if (article) {
+      cumulativeBlocks += article.children.length;
+    }
+  });
+
+  return boundaries;
 }
 
 export async function convertDocxToHtml(
