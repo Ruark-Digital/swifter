@@ -1144,11 +1144,15 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
   const handleOpenChange = React.useCallback(
     (nextOpen: boolean) => {
-      // Escape / outside-click dismiss skips the Cancel + onSuccess paths
-      // that explicitly call clearSession(); without this the persisted
-      // solicitation-files store leaks the contract's files into the next
-      // wizard (MSA / solicitation / evaluation). QA bug #96.
-      if (!nextOpen) clearSession();
+      // Clear the persisted solicitation-files store on BOTH open and close.
+      // On close: Escape / outside-click dismiss skips the Cancel + onSuccess
+      // paths that explicitly call clearSession(). On open: a prior Edit (or
+      // MSA / solicitation / evaluation) wizard that closed without clearing
+      // leaks its uploaded files into this fresh Create session, since the
+      // Documents step rehydrates the shared store from localStorage. Clearing
+      // on open guarantees a clean slate the moment "Create Contracts" is
+      // clicked. QA bug #96.
+      clearSession();
       setOpen(nextOpen);
     },
     [clearSession],
