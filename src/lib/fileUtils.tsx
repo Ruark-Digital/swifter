@@ -298,6 +298,16 @@ export async function convertDocxToTipTapContent(
   // TextAlign extension parses.
   unwrapDocxStructure(bodyEl);
 
+  // T2f: prep inline-font spans for TipTap's TextStyle mark.
+  // docx-preview emits <span style="font-family: X; font-size: Yp;
+  // min-height: Yp;">text</span>. TipTap's TextStyle + FontFamily +
+  // FontSize extensions (registered in T3) parse these spans during
+  // setContent and convert to text marks. min-height is a docx-preview
+  // rendering artifact (line-height-ish adjustment) with no meaning in
+  // a TipTap editor — strip it so it doesn't end up as a TextStyle
+  // attribute via the style="" parser.
+  cleanupInlineFontSpans(bodyEl);
+
   // T2e: translate Word-style class names to data-docx-style attributes.
   // docx-preview emits classes like `docx_bodytext`, `docx_heading_1`,
   // `docx_article_l2` — the Word style ID prefixed with `docx_`. We
@@ -318,6 +328,37 @@ export async function convertDocxToTipTapContent(
     headers,
     footers,
   };
+}
+
+/**
+ * Strip docx-preview's `min-height` artifact from inline-style spans.
+ * docx-preview adds `min-height: Yp` to spans alongside `font-family`
+ * and `font-size` to control line-height in its rendered output. We
+ * don't need it in TipTap; removing prevents it from leaking into
+ * TextStyle marks via TipTap's style="" parser.
+ *
+ * Leaves `font-family` and `font-size` intact — TipTap's FontFamily /
+ * FontSize extensions (registered in T3) parse them on setContent.
+ */
+function cleanupInlineFontSpans(bodyEl: HTMLElement): void {
+  const spans = bodyEl.querySelectorAll(
+    "span[style]"
+  ) as NodeListOf<HTMLSpanElement>;
+  spans.forEach((span) => {
+    const cleaned = span
+      .getAttribute("style")!
+      .split(";")
+      .map((decl) => decl.trim())
+      .filter(
+        (decl) => decl.length > 0 && !decl.toLowerCase().startsWith("min-height")
+      )
+      .join("; ");
+    if (cleaned) {
+      span.setAttribute("style", cleaned);
+    } else {
+      span.removeAttribute("style");
+    }
+  });
 }
 
 /**
