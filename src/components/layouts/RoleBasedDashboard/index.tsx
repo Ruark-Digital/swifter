@@ -266,7 +266,17 @@ export const RoleBasedDashboard: React.FC = () => {
                           ? ytd?.highRiskContracts?.count ?? 0
                           : 0;
 
-      return { ...stat, value };
+      const isMoneyStat =
+        stat.title === "Total Contract Value" ||
+        stat.title === "Savings Realized" ||
+        stat.title === "Holdbacks";
+      return {
+        ...stat,
+        value,
+        ...(isMoneyStat
+          ? { currency: ytd?.totalContractValue?.currency }
+          : {}),
+      };
     });
   }, [contractManagerYtdCards]);
 
@@ -677,7 +687,17 @@ export const RoleBasedDashboard: React.FC = () => {
                                 : stat.title === "Holdbacks"
                                   ? cards?.holdbacks?.value ?? 0
                                   : stat.value;
-        return { ...stat, value };
+        const isMoneyStat =
+          stat.title === "Total Contract Value" ||
+          stat.title === "Savings Realized" ||
+          stat.title === "Holdbacks";
+        return {
+          ...stat,
+          value,
+          ...(isMoneyStat
+            ? { currency: cards?.totalContractValue?.currency }
+            : {}),
+        };
       });
 
       const transformedMyActions =

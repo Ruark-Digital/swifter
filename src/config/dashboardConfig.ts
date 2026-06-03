@@ -9,6 +9,7 @@ export interface DashboardConfig {
     icon: string;
     color: string;
     bgColor: string;
+    currency?: string;
   }[];
   rows: {
     type: "chart" | "activity" | "mixed";
