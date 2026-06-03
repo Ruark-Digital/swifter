@@ -858,25 +858,19 @@
 /* Page-end: bottom accent shadow only (sheet's bottom edge against gutter
    below). Shadow softened 260603 — earlier 0 4px 10px rgba(_,0.14/0.55)
    was too strong; the blur halo around the bottom corners made the
-   footer area read as a raised 3D platform. Smaller offset + tighter
-   blur + lower opacity = subtle sheet edge without the rise.
+   footer area read as a raised 3D platform.
 
-   min-height (260603): user reported "each page have different height
-   size regardless of the content". Cause: greedy pagination produces
-   variable per-page content heights, so naturally-short pages (cover,
-   single-block-overflow neighbors) ended up dramatically shorter than
-   target-packed pages. min-height: 720px on the page-end is calibrated
-   so a typical page (with 1in page-start padding + a few middle blocks
-   + this page-end block) reaches ~1000-1100px total. box-sizing:
-   border-box so min-height includes padding. Pages with naturally-tall
-   page-end content (when the page-end block IS the long paragraph)
-   exceed the min-height; those pages remain naturally tall — that's
-   the unavoidable single-atomic-block-overflow case (ProseMirror
-   can't split a paragraph mid-content). */
+   min-height REMOVED (260603 iter 3): earlier added 720px min-height to
+   reduce "different page heights" variance, but user reported the
+   resulting padding produces large empty space below content on every
+   page that doesn't naturally fill to 720px. Removed entirely — pages
+   now flow at natural content height. Trade-off: pages with short
+   content (cover, sparse sections) will be shorter than target-packed
+   pages. With list flatten (commit e148e60dc) applied to fresh imports,
+   most pages should naturally pack closer to target since content can
+   now break between list items. */
 .ct-tiptap .ProseMirror > [data-page-end="true"] {
   padding-bottom: 1in;
-  min-height: 720px;
-  box-sizing: border-box;
   /* Counter increments at the END of each page so the footer text
      reflects this page's number. */
   counter-increment: page-counter;
