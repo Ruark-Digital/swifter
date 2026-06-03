@@ -298,6 +298,19 @@ export async function convertDocxToTipTapContent(
   // TextAlign extension parses.
   unwrapDocxStructure(bodyEl);
 
+  // T2e: translate Word-style class names to data-docx-style attributes.
+  // docx-preview emits classes like `docx_bodytext`, `docx_heading_1`,
+  // `docx_article_l2` — the Word style ID prefixed with `docx_`. We
+  // translate each to `data-docx-style="<word-style-name>"` so CSS rules
+  // in collaboration.css (T5) can target them via attribute selectors
+  // without depending on TipTap preserving class attributes.
+  //
+  // Requires the Paragraph extension to preserve the data-docx-style
+  // attribute (added in T3 alongside TextStyle / FontFamily / FontSize).
+  // Until T3 ships, the attribute is emitted in HTML but stripped by
+  // TipTap's default Paragraph node on setContent — harmless.
+  translateWordStyleClasses(bodyEl);
+
   return {
     html: bodyEl.innerHTML,
     styleHtml: styleEl.innerHTML,
@@ -305,6 +318,45 @@ export async function convertDocxToTipTapContent(
     headers,
     footers,
   };
+}
+
+/**
+ * Translate Word-style class names (`docx_bodytext`, `docx_heading_1`,
+ * `docx_article_l2`, etc.) emitted by docx-preview into stable
+ * `data-docx-style="<style-name>"` attributes that CSS rules in
+ * collaboration.css can target.
+ *
+ * Conversion: strip the `docx_` prefix, snake_case → Title Case with
+ * spaces. So `docx_bodytext` → "BodyText", `docx_heading_1` → "Heading 1",
+ * `docx_article_l2` → "Article L2". These match Word's style display
+ * names closely enough that CSS rule authoring can use familiar names.
+ *
+ * Removes the original `docx_*` class from the element to avoid double
+ * styling once CSS rules land — the per-Word-style appearance becomes
+ * data-attribute-driven, not class-driven.
+ */
+function translateWordStyleClasses(bodyEl: HTMLElement): void {
+  const candidates = bodyEl.querySelectorAll(
+    "[class*='docx_']"
+  ) as NodeListOf<HTMLElement>;
+  candidates.forEach((el) => {
+    const docxClasses = Array.from(el.classList).filter((c) =>
+      c.startsWith("docx_")
+    );
+    if (docxClasses.length === 0) return;
+    // Use the first docx_* class — typically there's just one per element.
+    const wordStyleId = docxClasses[0].slice("docx_".length);
+    const wordStyleName = wordStyleId
+      .split("_")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+    el.setAttribute("data-docx-style", wordStyleName);
+    // Strip docx_* classes so CSS theming becomes purely data-attr driven.
+    docxClasses.forEach((c) => el.classList.remove(c));
+    if (el.classList.length === 0) {
+      el.removeAttribute("class");
+    }
+  });
 }
 
 /**
