@@ -1,6 +1,10 @@
 import React from "react";
 import { DataTable } from "@/components/layouts/DataTable";
-import type { ColumnDef, PaginationState } from "@tanstack/react-table";
+import type {
+  CellContext,
+  ColumnDef,
+  PaginationState,
+} from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +35,52 @@ type ChangeTableProps = {
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
 };
+
+type ManagerActionsCellProps = CellContext<ContractChangeDTO, unknown> & {
+  contractId: string;
+  basePath?: string;
+};
+
+function ManagerActionsCell({
+  row,
+  table,
+  contractId,
+  basePath,
+}: ManagerActionsCellProps) {
+  const [sheetOpen, setSheetOpen] = React.useState(false);
+  const changeId = row.original.changeId || "";
+  const meta = table.options.meta as
+    | {
+        listInvalidateQueryKey?: readonly unknown[];
+        statsInvalidateQueryKey?: readonly unknown[];
+      }
+    | undefined;
+  return (
+    <>
+      <ChangeDetailsSheet
+        contractId={contractId}
+        changeId={changeId}
+        basePath={basePath}
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        listInvalidateQueryKey={meta?.listInvalidateQueryKey}
+        statsInvalidateQueryKey={meta?.statsInvalidateQueryKey}
+      />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon">
+            ⋮
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setSheetOpen(true)}>
+            View Details
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  );
+}
 
 const ChangeTable: React.FC<ChangeTableProps> = ({
   contractId,
@@ -198,41 +248,13 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
       {
         id: "actions",
         header: "Actions",
-        cell: ({ row, table }) => {
-          const changeId = row.original.changeId || "";
-          const meta = table.options.meta as
-            | {
-                listInvalidateQueryKey?: readonly unknown[];
-                statsInvalidateQueryKey?: readonly unknown[];
-              }
-            | undefined;
-          const [sheetOpen, setSheetOpen] = React.useState(false);
-          return (
-            <>
-              <ChangeDetailsSheet
-                contractId={contractId}
-                changeId={changeId}
-                basePath={basePath}
-                open={sheetOpen}
-                onOpenChange={setSheetOpen}
-                listInvalidateQueryKey={meta?.listInvalidateQueryKey}
-                statsInvalidateQueryKey={meta?.statsInvalidateQueryKey}
-              />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    ⋮
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setSheetOpen(true)}>
-                    View Details
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          );
-        },
+        cell: (ctx) => (
+          <ManagerActionsCell
+            {...ctx}
+            contractId={contractId}
+            basePath={basePath}
+          />
+        ),
       },
     ],
     [contractId, basePath],

@@ -756,14 +756,16 @@ const CloseNcrChecklistDialog: React.FC<{
     CLOSE_NCR_CHECKLIST.map(() => false),
   );
 
-  React.useEffect(() => {
-    if (!open) setChecked(CLOSE_NCR_CHECKLIST.map(() => false));
-  }, [open]);
-
   const someChecked = checked.some(Boolean);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) setChecked(CLOSE_NCR_CHECKLIST.map(() => false));
+        onOpenChange(next);
+      }}
+    >
       <DialogContent
         showCloseButton={false}
         className="max-h-[90vh] w-full max-w-xl gap-0 overflow-y-auto rounded-2xl border-0 p-0"

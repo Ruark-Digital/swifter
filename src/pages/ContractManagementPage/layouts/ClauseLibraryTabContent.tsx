@@ -44,7 +44,7 @@ function RiskPill({
 
 function RatesValuesBlock({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded border-l-4 border-[#22C55E] bg-[#F0FDF4] dark:bg-green-950/40 px-2 py-3">
+    <div className="rounded shadow-[inset_3px_0_0_0_#22C55E] bg-[#F0FDF4] dark:bg-green-950/40 px-2 py-3">
       <div className="text-sm font-semibold leading-5 text-[#14532D] dark:text-green-300">
         💰 Rates & Values
       </div>
@@ -111,7 +111,7 @@ function CategoryCard({
       >
         <div className="flex items-center">
           <div className="rounded-lg p-2" style={{ background: iconBg }}>
-            <img src={iconSrc} className="h-6 w-6" />
+            <img src={iconSrc} className="h-6 w-6" alt="" />
           </div>
           <div className="pl-3">
             <div className="text-[18px] font-semibold leading-7 text-[#030712] dark:text-slate-100">
@@ -127,6 +127,7 @@ function CategoryCard({
           <img
             src="/assets/contract-management/clause-library/chevron-down.svg"
             className={`h-6 w-6 transition-transform ${open ? "" : "-rotate-90"}`}
+            alt=""
           />
         </div>
       </button>
@@ -577,6 +578,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive, vendorName }) => {
             <img
               src="/assets/contract-management/clause-library/export-pdf.svg"
               className="h-[18px] w-[18px]"
+              alt=""
             />
             <span className="pl-2 text-base leading-6 text-white">
               Export PDF
@@ -653,6 +655,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive, vendorName }) => {
         <img
           src="/assets/contract-management/clause-library/search.svg"
           className="absolute left-[15px] top-[14px] h-5 w-5"
+          alt=""
         />
       </div>
 

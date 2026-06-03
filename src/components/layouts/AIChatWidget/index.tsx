@@ -191,7 +191,15 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
     }
   }, [isOpen, isMinimized]);
 
-  // Typing indicator simulation
+  // Typing indicator simulation.
+  // Tradeoff: this effect intentionally mirrors `isLoading`/`showTypingIndicator`
+  // into `isTyping` state, which trips react-doctor/no-adjust-state-on-prop-change.
+  // The semantics ("show while loading, auto-hide after 3s even if still loading,
+  // hide when loading stops") need a timer-driven transition that can't be purely
+  // derived during render — every alternative we tried (Pattern A discriminator,
+  // ref+forceRender, child key-reset) ends up calling setState in another effect
+  // and tripping the same rule. Documented FP; revisit if the rule learns the
+  // timer-handoff pattern.
   useEffect(() => {
     if (isLoading && showTypingIndicator) {
       setIsTyping(true);

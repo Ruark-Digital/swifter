@@ -46,6 +46,60 @@ type InitialValues = {
   existingFiles?: UploadedFile[];
 };
 
+function ExistingFileItem({
+  file,
+  onRemove,
+}: {
+  file: UploadedFile;
+  onRemove: () => void;
+}) {
+  const sizeLabel = Number.isFinite(file.size)
+    ? formatFileSize(file.size)
+    : "";
+  return (
+    <div className="flex w-full items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-700">
+          <FileText className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+            {truncate(file.name, { length: 40 })}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {[file.type || "File", sizeLabel].filter(Boolean).join(" · ")}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+        onClick={onRemove}
+        aria-label={`Remove ${file.name}`}
+        data-testid={`remove-existing-file-${file.name}`}
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+function UploadElement() {
+  return (
+    <div className="flex flex-col items-center justify-center text-center">
+      <CloudUpload className="h-12 w-12 text-[#2A4467] dark:text-slate-300" />
+      <div className="mt-4 space-y-2">
+        <p className="text-base font-semibold text-[#2A4467] dark:text-slate-100">
+          Drag &amp; Drop or Click to choose files
+        </p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
+        </p>
+      </div>
+    </div>
+  );
+}
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -121,6 +175,66 @@ type FileUploadState = {
 };
 
 const getFileKey = (file: File) => `${file.name}-${file.size}-${file.lastModified}`;
+
+function FileListItem({
+  file,
+  uploadState,
+  onRemove,
+}: {
+  file: File;
+  uploadState?: FileUploadState;
+  onRemove: () => void;
+}) {
+  const showProgress =
+    uploadState?.status === "uploading" ||
+    uploadState?.status === "success" ||
+    uploadState?.status === "error";
+
+  return (
+    <div className="flex w-full items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-700">
+          <FileText className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+            {truncate(file.name, { length: 40 })}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {file.type || "File"}
+          </p>
+          {showProgress ? (
+            <div className="mt-2 space-y-1 w-full">
+              <Progress
+                value={uploadState?.progress ?? 0}
+                variant={
+                  uploadState?.status === "success"
+                    ? "success"
+                    : uploadState?.status === "error"
+                    ? "error"
+                    : "default"
+                }
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {uploadState?.status === "error"
+                  ? "Upload failed"
+                  : `${uploadState?.progress ?? 0}%`}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+      <button
+        type="button"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+        onClick={onRemove}
+        aria-label={`Remove ${file.name}`}
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
 
 
 const CreateProjectDialog: React.FC<Props> = ({
@@ -235,138 +349,34 @@ const CreateProjectDialog: React.FC<Props> = ({
     );
   }, [initialValues, open, setValue]);
 
-  React.useEffect(() => {
-    if (!open) {
-      setFileUploadStateByKey({});
-      setRetainedExistingFiles([]);
-      return;
-    }
+  // Reset dialog-local state on close. Replaces an effect that mirrored
+  // `open`/`files` props into state (tripped react-doctor/no-adjust-state-on-prop-change
+  // + caused upload progress to flicker on parent re-renders).
+  const handleOpenChange = React.useCallback(
+    (next: boolean) => {
+      if (!next) {
+        setFileUploadStateByKey({});
+        setRetainedExistingFiles([]);
+      }
+      onOpenChange(next);
+    },
+    [onOpenChange],
+  );
 
-    const nextKeys = new Set((files ?? []).map(getFileKey));
-    setFileUploadStateByKey((prev) => {
-      const next: Record<string, FileUploadState> = { ...prev };
-
-      Object.keys(next).forEach((key) => {
-        if (!nextKeys.has(key)) delete next[key];
+  const removeFile = React.useCallback(
+    (file: File) => {
+      const nextFiles = (files ?? []).filter((f) => f !== file);
+      setValue("files", nextFiles.length > 0 ? nextFiles : null);
+      // Also drop the file's upload-state entry so the map doesn't grow
+      // unboundedly across the dialog's lifetime.
+      setFileUploadStateByKey((prev) => {
+        if (!(getFileKey(file) in prev)) return prev;
+        const nextState = { ...prev };
+        delete nextState[getFileKey(file)];
+        return nextState;
       });
-
-      (files ?? []).forEach((file) => {
-        const key = getFileKey(file);
-        if (!next[key]) {
-          next[key] = { progress: 0, status: "idle" };
-        }
-      });
-
-      return next;
-    });
-  }, [files, open]);
-
-  const FileListItem = ({ file }: { file: File; control: unknown }) => {
-    const uploadState = fileUploadStateByKey[getFileKey(file)];
-    const showProgress =
-      uploadState?.status === "uploading" ||
-      uploadState?.status === "success" ||
-      uploadState?.status === "error";
-
-    return (
-      <div className="flex w-full items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-700">
-            <FileText className="h-5 w-5 text-slate-600 dark:text-slate-300" />
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-              {truncate(file.name, { length: 40 })}
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {file.type || "File"}
-            </p>
-            {showProgress ? (
-              <div className="mt-2 space-y-1 w-full">
-                <Progress
-                  value={uploadState?.progress ?? 0}
-                  variant={
-                    uploadState?.status === "success"
-                      ? "success"
-                      : uploadState?.status === "error"
-                      ? "error"
-                      : "default"
-                  }
-                />
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {uploadState?.status === "error"
-                    ? "Upload failed"
-                    : `${uploadState?.progress ?? 0}%`}
-                </p>
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <button
-          type="button"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-          onClick={() => {
-            const nextFiles = (files ?? []).filter((f) => f !== file);
-            setValue("files", nextFiles.length > 0 ? nextFiles : null);
-          }}
-          aria-label={`Remove ${file.name}`}
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    );
-  };
-
-  const ExistingFileItem = ({
-    file,
-    onRemove,
-  }: {
-    file: UploadedFile;
-    onRemove: () => void;
-  }) => {
-    const sizeLabel = Number.isFinite(file.size)
-      ? formatFileSize(file.size)
-      : "";
-    return (
-      <div className="flex w-full items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-700">
-            <FileText className="h-5 w-5 text-slate-600 dark:text-slate-300" />
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-              {truncate(file.name, { length: 40 })}
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {[file.type || "File", sizeLabel].filter(Boolean).join(" · ")}
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-          onClick={onRemove}
-          aria-label={`Remove ${file.name}`}
-          data-testid={`remove-existing-file-${file.name}`}
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    );
-  };
-
-  const UploadElement = () => (
-    <div className="flex flex-col items-center justify-center text-center">
-      <CloudUpload className="h-12 w-12 text-[#2A4467] dark:text-slate-300" />
-      <div className="mt-4 space-y-2">
-        <p className="text-base font-semibold text-[#2A4467] dark:text-slate-100">
-          Drag &amp; Drop or Click to choose files
-        </p>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
-        </p>
-      </div>
-    </div>
+    },
+    [files, setValue],
   );
 
   const submit = async (data: FormState) => {
@@ -444,7 +454,7 @@ const CreateProjectDialog: React.FC<Props> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         showCloseButton={false}
         className=" rounded-2xl p-6 gap-6 max-h-[90vh] overflow-y-auto"
@@ -612,7 +622,12 @@ const CreateProjectDialog: React.FC<Props> = ({
                   />
                 ))}
                 {(files ?? []).map((file) => (
-                  <FileListItem key={getFileKey(file)} file={file} control={control} />
+                  <FileListItem
+                    key={getFileKey(file)}
+                    file={file}
+                    uploadState={fileUploadStateByKey[getFileKey(file)]}
+                    onRemove={() => removeFile(file)}
+                  />
                 ))}
               </FileUploaderContent>
             </FileUploader>

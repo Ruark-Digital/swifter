@@ -354,12 +354,11 @@ const CompleteInvoiceDialog = React.memo(
               <div className="divide-y divide-[#E5E7EB] dark:divide-slate-700">
                 {fields.map((field, index) => (
                   <InvoiceInputRow
-                    {...{
-                      id: field.id,
-                      index,
-                      onRemoveRow: handleRemoveRow,
-                      onAddRow: handleAddRow,
-                    }}
+                    key={field.id}
+                    id={field.id}
+                    index={index}
+                    onRemoveRow={handleRemoveRow}
+                    onAddRow={handleAddRow}
                   />
                 ))}
               </div>

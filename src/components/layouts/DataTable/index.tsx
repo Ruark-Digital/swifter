@@ -232,12 +232,13 @@ export function DataTable<T = unknown>({
       <TableBody className={cn("bg-accent", classNames?.tHeader)}>
         {[1, 2, 3, 4, 5].map((_, index) => (
           <TableRow key={index}>
-            {[1].map((_, index) => (
+            {[1].map((_, cellIndex) => (
               <TableCell
+                key={cellIndex}
                 colSpan={columns.length}
                 className="h-10 text-center w-full"
               >
-                <Skeleton key={index} className="h-8 w-full bg-slate-300" />
+                <Skeleton className="h-8 w-full bg-slate-300" />
               </TableCell>
             ))}
           </TableRow>

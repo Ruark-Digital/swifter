@@ -17,7 +17,7 @@ import {
 } from "@/components/layouts/FormInputs";
 import { postRequest } from "@/lib/axiosInstance";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useWatch } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import { formatFileSize } from "@/lib/fileUtils";
 
 type SubmitCapaDialogProps = {
@@ -29,6 +29,41 @@ type SubmitCapaDialogProps = {
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
 };
+
+function FileListItem({ file }: { file: File }) {
+  const { setValue, getValues } = useFormContext();
+  const handleRemove = () => {
+    const current = (getValues("files") as File[] | undefined) || [];
+    setValue(
+      "files",
+      current.filter((f: File) => f.name !== file.name) as any,
+    );
+  };
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
+          <CloudUpload className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
+            {file.name}
+          </div>
+          <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+            {formatFileSize(file.size)}
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleRemove}
+        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] dark:text-slate-400"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
 
 const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
   trigger,
@@ -118,39 +153,6 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
       }
     },
   });
-
-  const FileListItem = ({ file }: { file: File; control: unknown }) => {
-    const value = useWatch({ control, name: "files" }) as File[] | null;
-    return (
-      <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
-            <CloudUpload className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
-              {file.name}
-            </div>
-            <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
-              {formatFileSize(file.size)}
-            </div>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() =>
-            setValue(
-              "files",
-              (value ?? []).filter((f) => f.name !== file.name) as any,
-            )
-          }
-          className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] dark:text-slate-400"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    );
-  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

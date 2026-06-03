@@ -235,7 +235,6 @@ export const RoleBasedDashboard: React.FC = () => {
     contractManagerComplianceStatus,
     contractManagerClauseIntelligence,
     contractManagerContractStatus,
-    contractManagerAiInsights,
     contractManagerVendorSummary,
     contractManagerRenewals,
     isLoading,
@@ -267,7 +266,17 @@ export const RoleBasedDashboard: React.FC = () => {
                           ? ytd?.highRiskContracts?.count ?? 0
                           : 0;
 
-      return { ...stat, value };
+      const isMoneyStat =
+        stat.title === "Total Contract Value" ||
+        stat.title === "Savings Realized" ||
+        stat.title === "Holdbacks";
+      return {
+        ...stat,
+        value,
+        ...(isMoneyStat
+          ? { currency: ytd?.totalContractValue?.currency }
+          : {}),
+      };
     });
   }, [contractManagerYtdCards]);
 
@@ -678,7 +687,17 @@ export const RoleBasedDashboard: React.FC = () => {
                                 : stat.title === "Holdbacks"
                                   ? cards?.holdbacks?.value ?? 0
                                   : stat.value;
-        return { ...stat, value };
+        const isMoneyStat =
+          stat.title === "Total Contract Value" ||
+          stat.title === "Savings Realized" ||
+          stat.title === "Holdbacks";
+        return {
+          ...stat,
+          value,
+          ...(isMoneyStat
+            ? { currency: cards?.totalContractValue?.currency }
+            : {}),
+        };
       });
 
       const transformedMyActions =
@@ -986,76 +1005,6 @@ export const RoleBasedDashboard: React.FC = () => {
         </div>
       )}
       
-      {showCmOverviewYtdContracts && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cmYtdStats.map((stat, index) => (
-              <CardStats
-                key={`cm-ytd-${index}`}
-                {...stat}
-                onClick={() => handleStatCardClick(stat.title)}
-              />
-            ))}
-          </div>
-        )}
-      {showCmAnalytics && (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <CycleTimeCard
-              values={cmCycleTimeValues}
-              bottleneck={contractManagerCycleTime?.bottleneck}
-              selectedRange={chartFilters["cycle-time"] ?? "ytd"}
-              onRangeChange={(value) => handleFilterChange("cycle-time", value)}
-            />
-            <InvoiceStatusCard
-              approved={contractManagerInvoiceStatus?.approved}
-              pending={contractManagerInvoiceStatus?.pending}
-              rejected={contractManagerInvoiceStatus?.rejected}
-              selectedRange={chartFilters["invoice-status"] ?? "ytd"}
-              onRangeChange={(value) =>
-                handleFilterChange("invoice-status", value)
-              }
-            />
-            <SpendCard
-              committed={contractManagerCommittedVsActualSpend?.committed}
-              actual={contractManagerCommittedVsActualSpend?.actual}
-              currency={contractManagerTotalCards?.totalContractValue?.currency}
-              selectedRange={chartFilters["committed-vs-actual"] ?? "ytd"}
-              onRangeChange={(value) =>
-                handleFilterChange("committed-vs-actual", value)
-              }
-            />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <VendorsValueCard
-              rows={contractManagerVendorContractValue}
-              selectedRange={chartFilters["vendor-contract-value"] ?? "ytd"}
-              onRangeChange={(value) =>
-                handleFilterChange("vendor-contract-value", value)
-              }
-            />
-            <ProjectValueCard rows={contractManagerProjectContractValue} />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <RiskDistributionCard values={contractManagerRiskDistribution} />
-            <ChangeOrdersImpactCard data={contractManagerChangeOrderImpact} />
-            <CategoryValueCard rows={contractManagerCategoryValue} />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <ComplianceStatusCard data={contractManagerComplianceStatus} />
-            <ClauseIntelligenceCard data={contractManagerClauseIntelligence} />
-            <ContractStatusCard data={contractManagerContractStatus} />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <VendorPerformanceSummaryCard data={contractManagerVendorSummary} />
-            <RenewalsTimelineCard data={contractManagerRenewals} />
-          </div>
-          <AiInsightsAlerts data={contractManagerAiInsights} />
-        </>
-      )}
 
       {/* Activities and Charts Section */}
       {!isContractAnalyticsRole &&

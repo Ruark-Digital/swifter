@@ -425,17 +425,17 @@ const Step1BasicInfo: React.FC<Props> = ({
       />
 
       {showRateConversion && (
-        <div className="mt-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-md">
+        <div className="mt-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-md">
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-blue-600 font-medium">Rate Conversion:</span>
+            <span className="text-blue-600 dark:text-blue-300 font-medium">Rate Conversion:</span>
             {isLoadingRate ? (
-              <span className="text-slate-500">Loading...</span>
+              <span className="text-slate-500 dark:text-slate-400">Loading...</span>
             ) : exchangeRate ? (
-              <span className="text-slate-700">
+              <span className="text-slate-700 dark:text-slate-200">
                 1 {userCurrency} = {exchangeRate.toFixed(4)} {selectedCurrency}
               </span>
             ) : (
-              <span className="text-slate-500">Unable to fetch rate</span>
+              <span className="text-slate-500 dark:text-slate-400">Unable to fetch rate</span>
             )}
           </div>
         </div>

@@ -156,7 +156,7 @@ const Overview: React.FC<Props> = ({
                       triggerLabel={name || "View Member"}
                       name={name || email || "Member"}
                       email={email || "N/A"}
-                      role={role || "N/A"}
+                      jobTitle={role || "N/A"}
                       phone="N/A"
                     />
                   );
@@ -180,7 +180,7 @@ const Overview: React.FC<Props> = ({
                     }
                     name={person?.name || "N/A"}
                     email={person?.email || "N/A"}
-                    role={person?.role || "N/A"}
+                    jobTitle={person?.role || "N/A"}
                     phone={person?.phone || "N/A"}
                   />
                 ))
