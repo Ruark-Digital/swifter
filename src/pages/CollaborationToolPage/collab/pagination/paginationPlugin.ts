@@ -62,21 +62,36 @@ function computePageBreaks(view: EditorView): number[] {
   const breaks: number[] = [];
   const root = view.dom; // the .ProseMirror element
   const blocks = Array.from(root.children) as HTMLElement[];
+
+  // Collect doc-offset positions for each top-level node, in order. These
+  // are BEFORE-block positions (state.doc.forEach gives us the offset
+  // right before each child). props.decorations walks the same forEach
+  // and compares `from === pageBreaks[i]`, so the positions we push here
+  // MUST be these before-block offsets — NOT view.posAtDOM(block, 0)
+  // which returns the INSIDE-block position (offset+1).
+  //
+  // Bug caught 260603 after T5-C shipped: I had push(posAtDOM(...)) which
+  // returned N+1 while props.decorations compared against N. No block was
+  // ever recognized as a page-start → no chrome rendered.
+  const offsets: number[] = [];
+  view.state.doc.forEach((_node, offset) => {
+    offsets.push(offset);
+  });
+
   let accumulated = 0;
 
-  for (const block of blocks) {
+  for (let i = 0; i < blocks.length; i += 1) {
+    const block = blocks[i];
     const height = block.getBoundingClientRect().height;
     if (height === 0) continue; // Skip hidden/detached
 
     if (accumulated + height > TARGET_CONTENT_HEIGHT_PX && accumulated > 0) {
-      // This block would overflow — break BEFORE it.
-      try {
-        const pos = view.posAtDOM(block, 0);
-        if (pos > 0) breaks.push(pos);
-      } catch {
-        // posAtDOM throws if block isn't actually in editor DOM yet
-        // (e.g. between transactions). Skip — next recompute catches it.
-      }
+      // This block would overflow — break BEFORE it. Push the doc offset
+      // for this block (NOT a posAtDOM call). Assumes 1:1 correspondence
+      // between view.dom.children and state.doc's top-level children,
+      // which holds for all TipTap StarterKit + Table + Image nodes.
+      const pos = offsets[i];
+      if (pos !== undefined && pos > 0) breaks.push(pos);
       accumulated = height;
     } else {
       accumulated += height;
