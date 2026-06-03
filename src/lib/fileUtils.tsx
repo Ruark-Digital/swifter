@@ -278,16 +278,18 @@ export async function convertDocxToTipTapContent(
   });
 
   // T2b: compute per-page block-index boundaries from <section> children.
-  // Side channel format: array of TOP-LEVEL BLOCK INDICES where each new
-  // page (page 2, page 3, ...) starts. Page 1 always starts at index 0
-  // implicitly. Pagination plugin consumes these to emit data-page-num
-  // decorations.
-  //
-  // Block indices (not doc-position offsets) chosen because the
-  // translation layer can't predict ProseMirror node sizes ahead of
-  // setContent; the plugin walks state.doc.forEach with index counting
-  // and converts to doc positions where needed.
+  // Done BEFORE structural unwrap (T2c) so we can read .docx-wrapper >
+  // section > article hierarchy. Side channel format: array of
+  // TOP-LEVEL BLOCK INDICES where each new page starts.
   const sectionBoundaries = computeSectionBoundaries(bodyEl);
+
+  // T2c: structural unwrap — strip docx-preview's <div class="docx-wrapper">,
+  // <section> (one per Word page), and <article> wrappers. After this pass
+  // the body's direct children are the actual content blocks (<p>, <table>,
+  // <hr>, etc.) ready for TipTap setContent. <p style="text-align: ...">
+  // passthrough is automatic — docx-preview emits exactly the form TipTap's
+  // TextAlign extension parses.
+  unwrapDocxStructure(bodyEl);
 
   return {
     html: bodyEl.innerHTML,
@@ -297,6 +299,52 @@ export async function convertDocxToTipTapContent(
     headers: [],
     footers: [],
   };
+}
+
+/**
+ * Unwrap docx-preview's structural containers (`.docx-wrapper`, `<section>`,
+ * `<article>`) so the body's direct children become a flat list of content
+ * blocks that TipTap can consume via setContent. Operates in-place.
+ *
+ * `<header>` and `<footer>` are also removed here (T2d extracts their
+ * content to side channels first; this pass just strips the now-empty
+ * elements from the tree).
+ */
+function unwrapDocxStructure(bodyEl: HTMLElement): void {
+  // Find docx-wrapper (the outer container). If present, its children
+  // are <section>s; unwrap the wrapper so sections become direct children
+  // of bodyEl.
+  const wrapper = bodyEl.querySelector(":scope > .docx-wrapper");
+  if (wrapper) {
+    while (wrapper.firstChild) {
+      bodyEl.insertBefore(wrapper.firstChild, wrapper);
+    }
+    wrapper.remove();
+  }
+
+  // Now bodyEl's direct children are <section>s. Unwrap each.
+  const sections = Array.from(bodyEl.querySelectorAll(":scope > section"));
+  sections.forEach((section) => {
+    // Remove headers/footers (their content already extracted to side
+    // channels by T2d; here we just strip the empty containers).
+    section.querySelectorAll(":scope > header, :scope > footer").forEach(
+      (el) => el.remove()
+    );
+    // Unwrap <article>: move its children up to <section>, remove <article>.
+    const article = section.querySelector(":scope > article");
+    if (article) {
+      while (article.firstChild) {
+        section.insertBefore(article.firstChild, article);
+      }
+      article.remove();
+    }
+    // Now <section>'s children are the actual content blocks. Unwrap
+    // <section> itself by moving children to bodyEl.
+    while (section.firstChild) {
+      bodyEl.insertBefore(section.firstChild, section);
+    }
+    section.remove();
+  });
 }
 
 function computeSectionBoundaries(bodyEl: HTMLElement): number[] {
