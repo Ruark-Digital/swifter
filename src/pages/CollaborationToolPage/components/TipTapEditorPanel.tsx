@@ -87,6 +87,12 @@ const TipTapEditorPanel: React.FC<TipTapEditorPanelProps> = ({
   const toast = useToastHandler();
   const didImportRef = useRef(false);
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  // Bumped by the "Re-sync from source" header button to force the
+  // import effect to re-run against the latest mammoth pipeline.
+  // Useful when the import code changes (alignment fixes, list flatten,
+  // etc.) but the Yjs room is already populated — didImportRef would
+  // otherwise block forever.
+  const [reimportTrigger, setReimportTrigger] = useState(0);
 
   // Mirrors EditorPanel's ct-focus-mark handler — clicking a sidebar
   // feed item that's anchored to an editor mark dispatches this event;
@@ -287,7 +293,28 @@ const TipTapEditorPanel: React.FC<TipTapEditorPanelProps> = ({
       collab.provider?.off("sync", onSync);
       if (timeoutId !== null) window.clearTimeout(timeoutId);
     };
-  }, [collab, editor, importMeta?.fileName, importMeta?.fileType, importMeta?.sourceUrl, isEditorEmpty, toast]);
+  }, [collab, editor, importMeta?.fileName, importMeta?.fileType, importMeta?.sourceUrl, isEditorEmpty, toast, reimportTrigger]);
+
+  // "Re-sync from source": wipes the editor (and the Yjs doc fragment
+  // backing it), resets didImportRef, and bumps reimportTrigger so the
+  // import effect re-runs against the latest mammoth pipeline. The Yjs
+  // doc updates broadcast through the WebSocket so other connected
+  // clients see the new content too. Comments / redline marks anchored
+  // to specific text positions may detach if the new import doesn't
+  // align with the previous content — acceptable trade-off for dev
+  // testing of import-pipeline changes.
+  const handleResyncFromSource = useCallback(() => {
+    if (!editor) return;
+    if (!importMeta?.sourceUrl) {
+      toast.error("Re-sync unavailable", "No source URL on this doc");
+      return;
+    }
+    // Clear editor content. Because the editor is bound to a Y.Doc via
+    // Collaboration extension, this also clears the synced fragment.
+    editor.commands.clearContent();
+    didImportRef.current = false;
+    setReimportTrigger((c) => c + 1);
+  }, [editor, importMeta?.sourceUrl, toast]);
 
   // ── Presence + save-status wiring (mirrors EditorPanel.tsx) ──────
   const [presenceUsers, setPresenceUsers] = useState<AwarenessEntry[]>([]);
@@ -374,6 +401,18 @@ const TipTapEditorPanel: React.FC<TipTapEditorPanelProps> = ({
       <div className="ct-editor-header">
         <span className="ct-editor-title">Document Editor (TipTap preview)</span>
         <div className="flex items-center gap-4">
+          {/* Dev action: wipe the Yjs room and re-import from source.
+              Lets you exercise the latest mammoth pipeline (alignment,
+              list flatten, etc.) on already-populated rooms where
+              didImportRef would otherwise block re-import forever. */}
+          <button
+            type="button"
+            onClick={handleResyncFromSource}
+            title="Wipe and re-import from source URL — applies latest mammoth pipeline (alignment, list flatten)"
+            className="text-xs font-medium px-3 py-1.5 rounded-md border border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 dark:text-slate-200"
+          >
+            Re-sync from source
+          </button>
           <div
             className="ct-dismiss-pill cursor-pointer"
             onClick={() => navigate(-1)}
