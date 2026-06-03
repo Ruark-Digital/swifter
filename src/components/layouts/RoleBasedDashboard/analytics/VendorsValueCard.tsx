@@ -26,6 +26,11 @@ type Props = {
 
 const MAX_VENDOR_LABEL_LENGTH = 14;
 
+const formatVendorTick = (name: string) =>
+  name.length > MAX_VENDOR_LABEL_LENGTH
+    ? `${name.slice(0, MAX_VENDOR_LABEL_LENGTH)}…`
+    : name;
+
 export const VendorsValueCard: React.FC<Props> = ({
   rows,
   selectedRange = "ytd",
@@ -39,10 +44,6 @@ export const VendorsValueCard: React.FC<Props> = ({
 
   const max = Math.max(0, ...data.map((d) => d.valueM));
   const domainMax = max > 0 ? Math.ceil(max / 10) * 10 : 100;
-  const formatVendorTick = (name: string) =>
-    name.length > MAX_VENDOR_LABEL_LENGTH
-      ? `${name.slice(0, MAX_VENDOR_LABEL_LENGTH)}…`
-      : name;
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col max-h-[32rem]">
       <CardHeader className="pb-3 shrink-0">

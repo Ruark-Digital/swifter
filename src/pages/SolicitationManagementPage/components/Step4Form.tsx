@@ -342,7 +342,13 @@ export const FileUploadManager = ({
   const clearSession = useClearSession();
 
   const [isUploading, setIsUploading] = useState(false);
-  const [initialized, setInitialized] = useState(false);
+  // Track which sessionId we've hydrated documents for (instead of a plain
+  // boolean). Pattern A from no-adjust-state-on-prop-change: the setter's
+  // argument now derives from the trigger prop (sessionId), so the rule
+  // doesn't flag the init effect, AND we automatically re-hydrate when the
+  // user navigates between different sessions.
+  const [initializedFor, setInitializedFor] = useState<string | null>(null);
+  const initialized = initializedFor === sessionId;
   const syncedDocumentsSignatureRef = useRef<string | null>(null);
   const toast = useToastHandler();
   const { setValue } = useForgeValues({ control });
@@ -452,7 +458,7 @@ export const FileUploadManager = ({
         addFiles(newFileStates);
       }
 
-      setInitialized(true);
+      setInitializedFor(sessionId);
     }
   }, [initialized, sessionId, documents, addFiles]);
 
@@ -483,7 +489,7 @@ export const FileUploadManager = ({
       window.removeEventListener("unload", handleUnload);
 
       // Clear the initialized flag when component unmounts to allow proper re-initialization
-      setInitialized(false);
+      setInitializedFor(null);
     };
   }, [filesWithState.length, clearSession]);
 

@@ -6,17 +6,7 @@ type ErrorFallbackProps = {
   error?: any;
 };
 
-export function ErrorFallback(props: ErrorFallbackProps) {
-  // Try to use useRouteError if we're in a router context, otherwise use the error from props
-  let error;
-  try {
-    error = useRouteError();
-  } catch (e) {
-    // If useRouteError fails, use the error from props
-    error = props.error;
-  }
-
-  // If we don't have an error from either source, show a generic error
+function ErrorFallbackUI({ error }: { error: unknown }) {
   if (!error) {
     return (
       <div className="container mx-auto h-screen grid xl:grid-cols-2 gap-8 justify-center">
@@ -25,9 +15,11 @@ export function ErrorFallback(props: ErrorFallbackProps) {
     );
   }
 
-  // For route errors, show detailed information
-  const isRouteError = error && isRouteErrorResponse(error);
-  
+  const isRouteError = isRouteErrorResponse(error);
+  const message = isRouteError
+    ? ((error as any).statusText || (error as any).data?.message)
+    : ((error as any)?.message || "An unexpected error occurred");
+
   return (
     <div className="container mx-auto h-screen grid xl:grid-cols-2 gap-8 justify-center">
       <div className="flex items-center">
@@ -42,11 +34,7 @@ export function ErrorFallback(props: ErrorFallbackProps) {
         <p className="text-xl text-gray-700 mb-8">
           Oh no, there's an issue with the app.
           {/* {getEnvironment("DEVELOPMENT") && <pre>{error.message}</pre>} */}
-          <i className="text-red-400 px-3">
-            {isRouteError 
-              ? (error.statusText || error.data?.message) 
-              : (error.message || "An unexpected error occurred")}
-          </i>
+          <i className="text-red-400 px-3">{message}</i>
         </p>
         <a
           href="/"
@@ -57,4 +45,17 @@ export function ErrorFallback(props: ErrorFallbackProps) {
       </div>
     </div>
   );
+}
+
+// For use inside react-router-dom data-router `errorElement` slots — pulls the
+// thrown error from router context via the hook.
+export function RouteErrorFallback() {
+  const error = useRouteError();
+  return <ErrorFallbackUI error={error} />;
+}
+
+// For use inside non-router error boundaries (Sentry.ErrorBoundary, etc.) where
+// the caller passes the error directly as a prop.
+export function ErrorFallback(props: ErrorFallbackProps) {
+  return <ErrorFallbackUI error={props.error} />;
 }

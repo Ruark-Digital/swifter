@@ -57,6 +57,7 @@ const KpiTabContent: React.FC<Props> = ({ contractId, isActive }) => {
             <img
               src="/assets/contract-management/kpi/share.svg"
               className="h-5 w-5"
+              alt=""
             />
             Export Report
           </button>

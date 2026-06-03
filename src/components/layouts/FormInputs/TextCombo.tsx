@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useId, useState, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,6 +44,7 @@ export const TextCombo = (props: TextComboProps & Partial<ForgerSlotProps>) => {
     ...comboProps
   } = props;
 
+  const listboxId = useId();
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -87,6 +88,7 @@ export const TextCombo = (props: TextComboProps & Partial<ForgerSlotProps>) => {
             variant="outline"
             role="combobox"
             aria-expanded={open}
+            aria-controls={listboxId}
             className={cn(
               "w-full min-w-0 h-12 justify-between border border-gray-300 rounded-lg px-4 hover:bg-transparent focus:border-[#2A4467] focus:ring-[#2A4467] text-gray-900 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-transparent",
               error ? "border-red-500" : "",
@@ -101,7 +103,7 @@ export const TextCombo = (props: TextComboProps & Partial<ForgerSlotProps>) => {
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 dark:bg-gray-900 dark:border-gray-600 bg-white ">
+        <PopoverContent id={listboxId} className="w-[var(--radix-popover-trigger-width)] p-0 dark:bg-gray-900 dark:border-gray-600 bg-white ">
           <div className="p-2" onClick={() => inputRef.current?.focus()}>
             <Input
               ref={inputRef}

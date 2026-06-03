@@ -286,6 +286,7 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
                 <img
                   src="/assets/contract-management/payment-summary/share.svg"
                   className="h-4 w-4"
+                  alt=""
                 />
                 Export
               </button>

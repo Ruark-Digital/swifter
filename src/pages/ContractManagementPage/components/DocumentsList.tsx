@@ -20,9 +20,9 @@ type Props = {
    *  Edit availability is now driven by `status` (pending_approval only). */
   effectiveDate?: string;
   contractId?: string;
-  /** Contract / MSA status. Documents are editable only when the record
-   *  is `pending_approval`; once `publish`-ed (or any other terminal
-   *  state) the list is read-only. */
+  /** Contract / MSA status. Documents are editable while the record is
+   *  still being worked on — `draft` or `pending_approval`; once
+   *  `publish`-ed (or any other terminal state) the list is read-only. */
   status?: string;
 };
 
@@ -31,13 +31,14 @@ const DocumentsList: React.FC<Props> = ({ files, contractId, status }) => {
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [selectedDoc, setSelectedDoc] = React.useState<Doc | null>(null);
 
-  // Documents are mutable only while the contract is awaiting approval.
-  // Anything else — including the most common case `publish` — is
-  // read-only. If status is undefined (e.g., a stale caller hasn't
-  // passed it yet) we keep the previous lenient default.
+  // Documents are mutable while the contract is still being worked on —
+  // `draft` or awaiting approval (`pending_approval`). Anything else —
+  // including the most common case `publish` — is read-only. If status is
+  // undefined (e.g., a stale caller hasn't passed it yet) we keep the
+  // previous lenient default.
   const canEdit = React.useMemo(() => {
     if (status === undefined) return true;
-    return status === "pending_approval";
+    return status === "draft" || status === "pending_approval";
   }, [status]);
 
   const docs = React.useMemo<Doc[]>(() => {

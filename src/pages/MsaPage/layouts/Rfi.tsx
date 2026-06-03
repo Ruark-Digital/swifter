@@ -125,6 +125,34 @@ const statusTone = (status?: string) => {
   return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 };
 
+function IssueFileListItem({
+  file,
+  index,
+}: {
+  file: File;
+  index?: number;
+}) {
+  const extension = getSimpleFileExtension(file.name).toUpperCase();
+  return (
+    <FileUploaderItem
+      index={index ?? 0}
+      className="h-auto w-full rounded-xl border border-slate-200 bg-slate-50 p-3"
+    >
+      <div className="flex items-center gap-3 w-full">
+        <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
+          {getFileIcon(extension)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{file.name}</p>
+          <p className="text-xs text-slate-500">
+            {extension || "FILE"} • {formatFileSize(file.size)}
+          </p>
+        </div>
+      </div>
+    </FileUploaderItem>
+  );
+}
+
 const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
   trigger,
   contractId,
@@ -305,28 +333,6 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
     }
   };
 
-  const FileListItem = ({ file, index }: { file: File; index?: number }) => {
-    const extension = getSimpleFileExtension(file.name).toUpperCase();
-    return (
-      <FileUploaderItem
-        index={index ?? 0}
-        className="h-auto w-full rounded-xl border border-slate-200 bg-slate-50 p-3"
-      >
-        <div className="flex items-center gap-3 w-full">
-          <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
-            {getFileIcon(extension)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{file.name}</p>
-            <p className="text-xs text-slate-500">
-              {extension || "FILE"} • {formatFileSize(file.size)}
-            </p>
-          </div>
-        </div>
-      </FileUploaderItem>
-    );
-  };
-
   return (
     <Dialog
       onOpenChange={(open) => {
@@ -418,7 +424,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                         </div>
                       </div>
                     }
-                    List={FileListItem}
+                    List={IssueFileListItem}
                     className="rounded-xl border border-dashed border-[#2A4467]"
                     accept={
                       {
@@ -866,6 +872,34 @@ const RfiResponseContent: React.FC<{
   );
 };
 
+function RespondFileListItem({
+  file,
+  index,
+}: {
+  file: File;
+  index?: number;
+}) {
+  const extension = getSimpleFileExtension(file.name).toUpperCase();
+  return (
+    <FileUploaderItem
+      index={index ?? 0}
+      className="h-auto w-full rounded-xl border border-slate-200 bg-slate-50 p-3"
+    >
+      <div className="flex items-center gap-3 w-full">
+        <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
+          {getFileIcon(extension)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{file.name}</p>
+          <p className="text-xs text-slate-500">
+            {extension || "FILE"} • {formatFileSize(file.size)}
+          </p>
+        </div>
+      </div>
+    </FileUploaderItem>
+  );
+}
+
 const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
   trigger,
   contractId,
@@ -981,28 +1015,6 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
     }
   };
 
-  const FileListItem = ({ file, index }: { file: File; index?: number }) => {
-    const extension = getSimpleFileExtension(file.name).toUpperCase();
-    return (
-      <FileUploaderItem
-        index={index ?? 0}
-        className="h-auto w-full rounded-xl border border-slate-200 bg-slate-50 p-3"
-      >
-        <div className="flex items-center gap-3 w-full">
-          <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
-            {getFileIcon(extension)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{file.name}</p>
-            <p className="text-xs text-slate-500">
-              {extension || "FILE"} • {formatFileSize(file.size)}
-            </p>
-          </div>
-        </div>
-      </FileUploaderItem>
-    );
-  };
-
   return (
     <Dialog onOpenChange={(open) => !open && reset()}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -1036,7 +1048,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
                     </div>
                   </div>
                 }
-                List={FileListItem}
+                List={RespondFileListItem}
                 className="rounded-xl border border-dashed border-[#2A4467]"
                 accept={
                   {

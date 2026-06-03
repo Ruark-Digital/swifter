@@ -22,7 +22,7 @@ import type { UploadURLs } from "@/pages/ContractManagementPage/lib/contractChan
 import { Check, CloudUpload, FileText, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
-import { useWatch } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 
@@ -41,6 +41,40 @@ const validationSchema = yup.object().shape({
   description: yup.string().optional(),
   files: yup.mixed().nullable(),
 });
+
+function FileListItem({ file }: { file: File }) {
+  const { setValue, getValues } = useFormContext<MsaUpdateSavingsFormValues>();
+  const handleRemove = () => {
+    const current = (getValues("files") as File[] | undefined) || [];
+    setValue(
+      "files",
+      current.filter((v: File) => v.name !== file.name),
+    );
+  };
+  return (
+    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+      <div className="flex items-center space-x-3">
+        <div className="w-10 h-10 bg-blue-100 dark:bg-slate-700 rounded flex items-center justify-center">
+          <FileText className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{file.name}</p>
+          <p className="text-xs text-gray-500 dark:text-slate-400">
+            {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
+            {formatFileSize(file.size)}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleRemove}
+        className="text-gray-400 dark:text-slate-500 hover:text-red-500 transition-colors"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
 
 const UploadElement = () => {
   return (
@@ -69,7 +103,7 @@ const MsaUpdateSavingsDialog: React.FC<{
   const queryClient = useQueryClient();
   const savingsQueryKey = useUserQueryKey(["msa-payment-savings", contractId]);
 
-  const { control, reset, setValue } = useForge<MsaUpdateSavingsFormValues>({
+  const { control, reset } = useForge<MsaUpdateSavingsFormValues>({
     resolver: yupResolver(validationSchema) as any,
     defaultValues: {
       title: "",
@@ -79,8 +113,6 @@ const MsaUpdateSavingsDialog: React.FC<{
       files: null,
     },
   });
-
-  const value = useWatch({ control, name: "files" }) as File[];
 
   const { mutateAsync: uploadFile } = useMutation<
     ApiResponse<UploadURLs[]>,
@@ -170,37 +202,6 @@ const MsaUpdateSavingsDialog: React.FC<{
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const FileListItem = ({ file }: { file: File }) => {
-    return (
-      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-blue-100 dark:bg-slate-700 rounded flex items-center justify-center">
-            <FileText className="h-5 w-5 text-blue-600 dark:text-blue-300" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{file.name}</p>
-            <p className="text-xs text-gray-500 dark:text-slate-400">
-              {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
-              {formatFileSize(file.size)}
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() =>
-            setValue(
-              "files",
-              (value || []).filter((v: File) => v.name !== file.name),
-            )
-          }
-          className="text-gray-400 dark:text-slate-500 hover:text-red-500 transition-colors"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    );
   };
 
   return (

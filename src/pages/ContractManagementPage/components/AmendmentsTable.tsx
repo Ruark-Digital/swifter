@@ -236,12 +236,16 @@ const VendorRejectDialog: React.FC<{
 }> = ({ trigger, onConfirm, onClose, open, isPending }) => {
   const [reason, setReason] = React.useState("");
 
-  React.useEffect(() => {
-    if (!open) setReason("");
-  }, [open]);
-
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) {
+          setReason("");
+          onClose();
+        }
+      }}
+    >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="w-[700px] h-fit p-8 rounded-2xl border-0 flex flex-col gap-6">
         <div className="flex items-start justify-between">
@@ -655,6 +659,11 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   const statusLabel = detail?.status
     ? `${detail.status.charAt(0).toUpperCase()}${detail.status.slice(1)}`
     : summary.status;
+  // Once the amendment status is terminal, the approval lifecycle is over,
+  // so the manager time-impact routing step (Assign Approval) no longer applies.
+  const normalizedStatus = (detail?.status ?? "").toString().toLowerCase();
+  const isStatusFinalized =
+    normalizedStatus === "approved" || normalizedStatus === "rejected";
 
   const timeChange = detail?.changes?.find((c) =>
     ["time", "endDate", "newExpiryDate"].includes(c.field),
@@ -993,6 +1002,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
               </div>
 
               {isManager &&
+                !isStatusFinalized &&
                 hasTimeImpact &&
                 vendorAccepted &&
                 !hasApprovals && (
@@ -1161,6 +1171,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
             `assignApprover: true` even when the `approvers[]` array
             isn't populated in the response, so check both. */}
         {isManager &&
+          !isStatusFinalized &&
           !detail?.assignApprover &&
           !hasApprovals &&
           isTimeImpact &&

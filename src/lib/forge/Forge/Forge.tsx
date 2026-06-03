@@ -56,8 +56,12 @@ export const Forge = <TFieldValues extends FieldValues = FieldValues>({
   
   const isRNMode = actualPlatform === 'react-native' || (isNative && isReactNative);
 
-  // Initialize enhanced validation hook if enabled
-  const enhancedValidation = useEnhancedValidationProp ? useEnhancedValidation({
+  // Enhanced validation is always on; the `useEnhancedValidation` prop is kept
+  // in the type for API compatibility but no longer gates the hook call (a
+  // conditional hook call violates the rules-of-hooks and no caller actually
+  // passes `false` today).
+  void useEnhancedValidationProp;
+  const enhancedValidation = useEnhancedValidation({
     control,
     strategy: validationStrategy,
     options: {
@@ -79,7 +83,7 @@ export const Forge = <TFieldValues extends FieldValues = FieldValues>({
          predictiveValidation: true,
        } : undefined,
     },
-  }) : null;
+  });
 
   // Use enhanced validation state if available, otherwise fallback to control state
   const enhancedValidationState = enhancedValidation?.validationState || control._enhancedValidationState;

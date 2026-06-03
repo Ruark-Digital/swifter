@@ -8,7 +8,6 @@ import {
   forwardRef,
   useCallback,
   useContext,
-  useEffect,
   useRef,
   useState,
 } from "react";
@@ -76,7 +75,6 @@ export const FileUploader = forwardRef<
     ref,
   ) => {
     const [isFileTooBig, setIsFileTooBig] = useState(false);
-    const [isLOF, setIsLOF] = useState(false);
     const [activeIndex, setActiveIndex] = useState(-1);
     const {
       accept = {
@@ -86,6 +84,10 @@ export const FileUploader = forwardRef<
       maxSize = 4 * 1024 * 1024,
       multiple = true,
     } = dropzoneOptions;
+    // Derived from props: true when files have hit maxFiles. Previously
+    // mirrored into state via a useEffect, which caused a 1-frame stale read
+    // and tripped react-doctor/no-adjust-state-on-prop-change.
+    const isLOF = !!value && value.length === maxFiles;
     const toast = useToastHandler()
  
     const reSelectAll = maxFiles === 1 ? true : reSelect;
@@ -197,15 +199,6 @@ export const FileUploader = forwardRef<
       // eslint-disable-next-line react-hooks/exhaustive-deps
       [reSelectAll, value],
     );
- 
-    useEffect(() => {
-      if (!value) return;
-      if (value.length === maxFiles) {
-        setIsLOF(true);
-        return;
-      }
-      setIsLOF(false);
-    }, [value, maxFiles]);
  
     const opts = dropzoneOptions
       ? dropzoneOptions

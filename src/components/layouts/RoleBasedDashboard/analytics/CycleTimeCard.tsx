@@ -9,17 +9,17 @@ type Props = {
   onRangeChange?: (value: string) => void;
 };
 
-export const CycleTimeCard: React.FC<Props> = ({
-  values,
-  bottleneck,
-  selectedRange = "ytd",
-  onRangeChange,
-}) => {
-  const v = values || { draft: 5, review: 8, approval: 12, execution: 6 };
-  const max = Math.max(...Object.values(v), 12);
-  const pct = (x: number) => Math.round((x / max) * 100);
-
-  const Row = ({ label, days }: { label: string; days: number }) => (
+function Row({
+  label,
+  days,
+  max,
+}: {
+  label: string;
+  days: number;
+  max: number;
+}) {
+  const widthPct = Math.round((days / max) * 100);
+  return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-[#030712] dark:text-slate-100">{label}</p>
@@ -28,11 +28,21 @@ export const CycleTimeCard: React.FC<Props> = ({
       <div className="w-full h-3 bg-gray-200 dark:bg-slate-800 rounded-full">
         <div
           className="h-3 bg-blue-600 rounded-full"
-          style={{ width: `${pct(days)}%` }}
+          style={{ width: `${widthPct}%` }}
         />
       </div>
     </div>
   );
+}
+
+export const CycleTimeCard: React.FC<Props> = ({
+  values,
+  bottleneck,
+  selectedRange = "ytd",
+  onRangeChange,
+}) => {
+  const v = values || { draft: 5, review: 8, approval: 12, execution: 6 };
+  const max = Math.max(...Object.values(v), 12);
 
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800">
@@ -72,10 +82,10 @@ export const CycleTimeCard: React.FC<Props> = ({
         </Tabs>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Row label="Draft" days={v.draft} />
-        <Row label="Review" days={v.review} />
-        <Row label="Approval" days={v.approval} />
-        <Row label="Execution" days={v.execution} />
+        <Row label="Draft" days={v.draft} max={max} />
+        <Row label="Review" days={v.review} max={max} />
+        <Row label="Approval" days={v.approval} max={max} />
+        <Row label="Execution" days={v.execution} max={max} />
 
         {(bottleneck?.stage || bottleneck?.reason) && (
           <div className="rounded-md bg-[#FEFCE8] dark:bg-yellow-900/30 border border-[#FDE68A] dark:border-yellow-900/50 p-3">

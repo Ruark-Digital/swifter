@@ -18,7 +18,8 @@ type Props = {
   onUpdated?: (contract: ContractDetail) => void;
   effectiveDate?: string;
   /** Contract status — drives whether documents are editable. The list
-   *  becomes read-only for any status other than `pending_approval`. */
+   *  is editable while `draft` or `pending_approval`, and becomes
+   *  read-only for any other (terminal) status. */
   status?: string;
   actionsDisabled?: boolean;
 };
