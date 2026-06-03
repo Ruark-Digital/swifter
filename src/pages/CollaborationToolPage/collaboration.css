@@ -830,6 +830,12 @@
 .ct-tiptap .ProseMirror ul, .ct-tiptap .ProseMirror ol { padding-left: 0.5in; margin: 0 0 8pt; }
 .ct-tiptap .ProseMirror li { margin: 0; }
 .ct-tiptap .ProseMirror li > p { margin: 0; }
+/* Nested ordered-list markers (REQ-07): Word's typical legal-doc
+   convention is decimal → lower-alpha → lower-roman as nesting deepens. */
+.ct-tiptap .ProseMirror ol { list-style: decimal; }
+.ct-tiptap .ProseMirror ol ol { list-style: lower-alpha; }
+.ct-tiptap .ProseMirror ol ol ol { list-style: lower-roman; }
+.ct-tiptap .ProseMirror ol ol ol ol { list-style: decimal; }
 .ct-tiptap .ProseMirror blockquote { border-left: 3px solid #cbd5e1; padding-left: 1rem; color: #475569; margin: 8pt 0; }
 .ct-tiptap .ProseMirror code { background: #f1f5f9; padding: 0 4px; border-radius: 3px; font-size: 0.9em; font-family: "Courier New", monospace; }
 /* Tables — Word-faithful styling for REQ-06.

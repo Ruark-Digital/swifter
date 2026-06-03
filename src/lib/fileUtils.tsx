@@ -233,9 +233,19 @@ export async function convertDocxToHtml(
   // styleName, map it to a marker class via styleMap, then post-process to
   // an inline `style="text-align: ..."` so TipTap's TextAlign extension
   // picks it up on setContent.
-  const transformParagraph = (element: { alignment?: string } & Record<string, unknown>) => {
+  const transformParagraph = (element: { alignment?: string; styleId?: string } & Record<string, unknown>) => {
     const a = element.alignment;
-    if (a === "center" || a === "right" || a === "both" || a === "justify") {
+    // Only synthesize an alignment styleName for paragraphs that DON'T
+    // already carry a Word style — otherwise we'd clobber heading
+    // mappings ('Article', 'Schedule_L2', etc.) declared in styleMap
+    // below. The trade-off: a paragraph that has BOTH a heading style
+    // AND direct-alignment formatting loses the alignment. In practice
+    // Word's heading styles carry their own alignment via the style
+    // definition, so direct formatting overrides are rare.
+    if (
+      (a === "center" || a === "right" || a === "both" || a === "justify") &&
+      !element.styleId
+    ) {
       const styleName = a === "both" ? "Align justify" : `Align ${a}`;
       return { ...element, styleId: styleName.replace(/\s/g, ""), styleName };
     }
@@ -248,9 +258,28 @@ export async function convertDocxToHtml(
         transforms: { paragraph: (fn: typeof transformParagraph) => (element: any) => any };
       }).transforms.paragraph(transformParagraph),
       styleMap: [
+        // Alignment markers (paired with transformParagraph above for
+        // direct-formatting paragraphs). Word's 'Centre' style is the
+        // common case in legal contract templates and bypasses direct
+        // formatting entirely — map it directly.
         "p[style-name='Align center'] => p.docx-align-center:fresh",
         "p[style-name='Align right'] => p.docx-align-right:fresh",
         "p[style-name='Align justify'] => p.docx-align-justify:fresh",
+        "p[style-name='Centre'] => p.docx-align-center:fresh",
+        // Custom section-heading styles used in legal contract templates.
+        // Word's stock 'Heading 1'–'Heading 6' are already mapped by
+        // mammoth's default styleMap; these add only the TOP-LEVEL
+        // 'Article'/'Schedule' families. Article_L3/L4 are intentionally
+        // NOT mapped — in the Hyperscale agreement and similar contracts
+        // they're nested-clause continuation paragraphs (body text under
+        // a section), not visually-distinct headings. Mapping them to
+        // <h3>/<h4> would render multi-sentence Force-Majeure-clause-style
+        // paragraphs as large bold headings (verified on Hyperscale corpus
+        // 260603 — produced 250+ heading tags, almost all over-applied).
+        "p[style-name='Article'] => h1:fresh",
+        "p[style-name='Article_L2'] => h2:fresh",
+        "p[style-name='Schedule_L1'] => h1:fresh",
+        "p[style-name='Schedule_L2'] => h2:fresh",
       ],
       convertImage: mammoth.images.imgElement((element) =>
         element.read("base64").then((base64) => ({
