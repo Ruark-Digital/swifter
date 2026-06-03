@@ -870,7 +870,13 @@
    most pages should naturally pack closer to target since content can
    now break between list items. */
 .ct-tiptap .ProseMirror > [data-page-end="true"] {
-  padding-bottom: 1in;
+  /* padding-bottom is set DYNAMICALLY via inline style by the
+     pagination plugin (paginationPlugin.ts) so every page reaches
+     TARGET_TOTAL_PAGE_HEIGHT_PX. Default 1in here would conflict with
+     the inline override during CSS specificity resolution — left out
+     so the inline style cleanly defines the value. Box-sizing also
+     set inline (border-box) so padding-bottom includes the page-end's
+     full vertical extent. */
   /* Counter increments at the END of each page so the footer text
      reflects this page's number. */
   counter-increment: page-counter;

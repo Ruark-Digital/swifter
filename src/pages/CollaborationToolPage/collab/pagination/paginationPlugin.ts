@@ -33,12 +33,22 @@ import { classifyTransaction } from "./classifyTransaction";
 // ballpark of Word's reported page count (target ~27-32 pages per SPEC
 // REQ-05 acceptance). If a future corpus skews this, tune here.
 const TARGET_CONTENT_HEIGHT_PX = 1100;
+const PAGE_MARGIN_PX = 96; // 1in at 96dpi
+const TARGET_TOTAL_PAGE_HEIGHT_PX = TARGET_CONTENT_HEIGHT_PX + 2 * PAGE_MARGIN_PX;
 
 export type PaginationState = {
   /** Doc positions where each page ENDS. pageBreaks[0] = end of page 1, etc. */
   pageBreaks: number[];
   /** Total page count, == pageBreaks.length + 1 */
   totalPages: number;
+  /** Extra padding-bottom (px ABOVE the CSS default 96px = 1in) to apply
+   *  to each page's page-end block so the page's total rendered height
+   *  equals TARGET_TOTAL_PAGE_HEIGHT_PX. Index = page number - 1. Pages
+   *  with naturally-tall content (single-block overflow like Force
+   *  Majeure paragraph) get extra = 0 — those pages remain naturally
+   *  tall. The decoration layer reads this and emits inline
+   *  `padding-bottom` style on each page-end. */
+  pageEndExtraPadding: number[];
   /** Set to "structural" or "text" by `apply` when a transaction lands
    *  that requires recompute. Cleared to null after the next compute. */
   pendingRecompute: "structural" | "text" | null;
@@ -55,53 +65,95 @@ const arraysEqual = (a: number[], b: number[]): boolean => {
 };
 
 /**
- * Walk the rendered editor DOM, measuring each top-level block's
- * height, emit break positions whenever accumulated height exceeds the
- * target. Returns ProseMirror doc positions (use editor.state.doc.resolve
- * on them to verify validity).
+ * Read any inline padding-bottom we previously applied to this block.
+ * Returns the EXTRA padding above the CSS default (96px = 1in for
+ * page-end blocks). For non-page-end blocks (no inline override),
+ * returns 0. Used to subtract previously-applied extras from rect
+ * heights when computing natural content heights — ensures convergence
+ * of the dynamic-padding feedback loop. */
+function getInlineExtraPadding(block: HTMLElement): number {
+  const inlinePb = block.style.paddingBottom;
+  if (!inlinePb) return 0;
+  const match = inlinePb.match(/^(-?\d+(?:\.\d+)?)px$/);
+  if (!match) return 0;
+  const inlineValue = parseFloat(match[1]);
+  return Math.max(0, inlineValue - PAGE_MARGIN_PX);
+}
+
+/**
+ * Walk the rendered editor DOM, measure each top-level block's height
+ * (subtracting any previously-applied extra padding for convergence
+ * stability), emit break positions and per-page natural content heights.
+ *
+ * Returns:
+ *   breaks            - ProseMirror doc offsets where each new page starts
+ *   naturalPageHeights - rendered height of each page assuming no extra
+ *                        padding has been applied (so dynamic padding
+ *                        computation is stable across iterations)
  */
-function computePageBreaks(view: EditorView): number[] {
-  const breaks: number[] = [];
-  const root = view.dom; // the .ProseMirror element
+function computePagination(view: EditorView): {
+  breaks: number[];
+  naturalPageHeights: number[];
+} {
+  const root = view.dom;
   const blocks = Array.from(root.children) as HTMLElement[];
 
-  // Collect doc-offset positions for each top-level node, in order. These
-  // are BEFORE-block positions (state.doc.forEach gives us the offset
-  // right before each child). props.decorations walks the same forEach
-  // and compares `from === pageBreaks[i]`, so the positions we push here
-  // MUST be these before-block offsets — NOT view.posAtDOM(block, 0)
-  // which returns the INSIDE-block position (offset+1).
-  //
-  // Bug caught 260603 after T5-C shipped: I had push(posAtDOM(...)) which
-  // returned N+1 while props.decorations compared against N. No block was
-  // ever recognized as a page-start → no chrome rendered.
   const offsets: number[] = [];
   view.state.doc.forEach((_node, offset) => {
     offsets.push(offset);
   });
 
+  const breaks: number[] = [];
+  const naturalPageHeights: number[] = [];
   let accumulated = 0;
 
   for (let i = 0; i < blocks.length; i += 1) {
     const block = blocks[i];
-    const height = block.getBoundingClientRect().height;
-    if (height === 0) continue; // Skip hidden/detached
+    const rect = block.getBoundingClientRect().height;
+    if (rect === 0) continue;
+    // Subtract any previously-applied extra padding so the height we
+    // accumulate represents the block's "natural" rendered size. This
+    // makes the dynamic-padding feedback loop converge: new_extra is
+    // computed from natural heights, not heights already inflated by
+    // last iteration's extras.
+    const height = rect - getInlineExtraPadding(block);
 
     if (accumulated + height > TARGET_CONTENT_HEIGHT_PX && accumulated > 0) {
-      // This block would overflow — break BEFORE it. Push the doc offset
-      // for this block (NOT a posAtDOM call). Assumes 1:1 correspondence
-      // between view.dom.children and state.doc's top-level children,
-      // which holds for all TipTap StarterKit + Table + Image nodes.
+      // Break BEFORE this block. Previous block was the page-end.
       const pos = offsets[i];
       if (pos !== undefined && pos > 0) breaks.push(pos);
+      naturalPageHeights.push(accumulated);
       accumulated = height;
     } else {
       accumulated += height;
     }
   }
+  // Last page (no trailing break).
+  if (accumulated > 0) naturalPageHeights.push(accumulated);
 
-  return breaks;
+  return { breaks, naturalPageHeights };
 }
+
+/**
+ * Compute the per-page extra padding needed to make every page reach
+ * TARGET_TOTAL_PAGE_HEIGHT_PX. Pages with naturally-tall content
+ * (overflow case, e.g. Force Majeure single paragraph) get extra = 0
+ * — those pages remain at their natural height. All other pages get
+ * padded to exactly TARGET_TOTAL_PAGE_HEIGHT_PX.
+ */
+function computeExtraPaddings(naturalPageHeights: number[]): number[] {
+  return naturalPageHeights.map((h) =>
+    Math.max(0, TARGET_TOTAL_PAGE_HEIGHT_PX - h)
+  );
+}
+
+const arraysApproxEqual = (a: number[], b: number[], epsilon = 1): boolean => {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (Math.abs(a[i] - b[i]) > epsilon) return false;
+  }
+  return true;
+};
 
 export const PaginationExtension = Extension.create({
   name: "pagination",
@@ -115,6 +167,7 @@ export const PaginationExtension = Extension.create({
           init: () => ({
             pageBreaks: [],
             totalPages: 1,
+            pageEndExtraPadding: [],
             pendingRecompute: "structural", // recompute on first mount
             lastRecomputeAt: 0,
           }),
@@ -122,12 +175,17 @@ export const PaginationExtension = Extension.create({
           apply(tr, prev) {
             // Internal meta-set transaction from view().recompute below.
             const meta = tr.getMeta(paginationPluginKey) as
-              | { type: "set-breaks"; breaks: number[] }
+              | {
+                  type: "set-pagination";
+                  breaks: number[];
+                  pageEndExtraPadding: number[];
+                }
               | undefined;
-            if (meta?.type === "set-breaks") {
+            if (meta?.type === "set-pagination") {
               return {
                 pageBreaks: meta.breaks,
                 totalPages: meta.breaks.length + 1,
+                pageEndExtraPadding: meta.pageEndExtraPadding,
                 pendingRecompute: null,
                 lastRecomputeAt: performance.now(),
               };
@@ -180,18 +238,25 @@ export const PaginationExtension = Extension.create({
           const recompute = () => {
             if (destroyed) return;
             rafHandle = null;
-            const breaks = computePageBreaks(view);
+            const { breaks, naturalPageHeights } = computePagination(view);
+            const pageEndExtraPadding = computeExtraPaddings(naturalPageHeights);
             const cur = paginationPluginKey.getState(view.state);
             if (!cur) return;
-            // Skip dispatch if breaks haven't changed — avoid useless
-            // re-renders and React subscriber thrash.
-            if (arraysEqual(breaks, cur.pageBreaks) && cur.pendingRecompute === null) {
+            // Skip dispatch if both breaks AND extras are unchanged.
+            // Approximate-equal on extras (1px tolerance) so floating-
+            // point drift doesn't cause continuous re-dispatches.
+            if (
+              arraysEqual(breaks, cur.pageBreaks) &&
+              arraysApproxEqual(pageEndExtraPadding, cur.pageEndExtraPadding) &&
+              cur.pendingRecompute === null
+            ) {
               return;
             }
             view.dispatch(
               view.state.tr.setMeta(paginationPluginKey, {
-                type: "set-breaks",
+                type: "set-pagination",
                 breaks,
+                pageEndExtraPadding,
               }),
             );
             setTotalPagesCssVar(breaks.length + 1);
@@ -312,7 +377,20 @@ export const PaginationExtension = Extension.create({
                 "data-page-num": String(m.page),
               };
               if (m.isPageStart) attrs["data-page-start"] = "true";
-              if (m.isPageEnd) attrs["data-page-end"] = "true";
+              if (m.isPageEnd) {
+                attrs["data-page-end"] = "true";
+                // Dynamic per-page padding so every page reaches
+                // TARGET_TOTAL_PAGE_HEIGHT_PX. extras are computed in
+                // view().recompute from natural per-page content heights
+                // (subtracting any previously-applied extras for
+                // convergence stability). Pages with naturally-tall
+                // content (single-block overflow like Force Majeure
+                // paragraph) get extra = 0; those pages remain at their
+                // natural height.
+                const extra = ps.pageEndExtraPadding[m.page - 1] ?? 0;
+                const totalPaddingBottomPx = PAGE_MARGIN_PX + extra;
+                attrs.style = `padding-bottom: ${totalPaddingBottomPx}px; box-sizing: border-box;`;
+              }
               decorations.push(Decoration.node(m.from, m.to, attrs));
             });
 
