@@ -283,6 +283,13 @@ export async function convertDocxToTipTapContent(
   // TOP-LEVEL BLOCK INDICES where each new page starts.
   const sectionBoundaries = computeSectionBoundaries(bodyEl);
 
+  // T2d: extract <header> / <footer> content from each section into
+  // side channels keyed by page index. Headers/footers don't survive
+  // TipTap setContent as DOM elements (no extension preserves them);
+  // pagination plugin renders them as Decoration.widget overlays.
+  // MUST run before T2c's structural unwrap which strips header/footer.
+  const { headers, footers } = extractHeadersFooters(bodyEl);
+
   // T2c: structural unwrap — strip docx-preview's <div class="docx-wrapper">,
   // <section> (one per Word page), and <article> wrappers. After this pass
   // the body's direct children are the actual content blocks (<p>, <table>,
@@ -295,10 +302,52 @@ export async function convertDocxToTipTapContent(
     html: bodyEl.innerHTML,
     styleHtml: styleEl.innerHTML,
     sectionBoundaries,
-    // Headers/footers side channels stubbed; filled by T2d.
-    headers: [],
-    footers: [],
+    headers,
+    footers,
   };
+}
+
+/**
+ * Extract <header> and <footer> content from each .docx-wrapper > section.
+ * Returns side-channel arrays keyed by 0-based page index. Strips ONLY
+ * empty headers/footers from the DOM during extraction; non-empty
+ * elements are left for unwrapDocxStructure (T2c) to remove after.
+ *
+ * REQ-R-04: pagination plugin consumes these to render Decoration.widget
+ * overlays at page boundaries. Headers with no meaningful content
+ * (whitespace only, single <br>, etc.) are skipped — empty source-doc
+ * headers should produce empty margins, not blank widget chrome.
+ */
+function extractHeadersFooters(bodyEl: HTMLElement): {
+  headers: Array<{ pageIndex: number; html: string }>;
+  footers: Array<{ pageIndex: number; html: string }>;
+} {
+  const headers: Array<{ pageIndex: number; html: string }> = [];
+  const footers: Array<{ pageIndex: number; html: string }> = [];
+
+  const sections = Array.from(
+    bodyEl.querySelectorAll(".docx-wrapper > section, :scope > section")
+  );
+
+  sections.forEach((section, pageIndex) => {
+    const header = section.querySelector(":scope > header");
+    if (header && hasContent(header)) {
+      headers.push({ pageIndex, html: header.innerHTML });
+    }
+    const footer = section.querySelector(":scope > footer");
+    if (footer && hasContent(footer)) {
+      footers.push({ pageIndex, html: footer.innerHTML });
+    }
+  });
+
+  return { headers, footers };
+}
+
+/** Returns true if element has visible/meaningful content (any non-whitespace text OR any non-<br> child element). */
+function hasContent(el: Element): boolean {
+  if ((el.textContent || "").trim().length > 0) return true;
+  const children = Array.from(el.children);
+  return children.some((c) => c.tagName !== "BR");
 }
 
 /**
