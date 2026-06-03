@@ -856,7 +856,10 @@
 }
 
 /* Page-end: bottom accent shadow only (sheet's bottom edge against gutter
-   below). */
+   below). Shadow softened 260603 — earlier 0 4px 10px rgba(_,0.14/0.55)
+   was too strong; the blur halo around the bottom corners made the
+   footer area read as a raised 3D platform. Smaller offset + tighter
+   blur + lower opacity = subtle sheet edge without the rise. */
 .ct-tiptap .ProseMirror > [data-page-end="true"] {
   padding-bottom: 1in;
   /* Counter increments at the END of each page so the footer text
@@ -864,13 +867,13 @@
   counter-increment: page-counter;
   border-bottom-left-radius: 2px;
   border-bottom-right-radius: 2px;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.14);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.08);
   /* Inter-page gutter: 14px (Google Docs sheet spacing). */
   margin-bottom: 14px;
   position: relative;
 }
 .dark .ct-tiptap .ProseMirror > [data-page-end="true"] {
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.30);
 }
 
 /* If a single block is both start AND end (a one-block page — rare but

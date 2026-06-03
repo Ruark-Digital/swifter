@@ -149,19 +149,25 @@ export const PaginationExtension = Extension.create({
           let destroyed = false;
 
           const setTotalPagesCssVar = (totalPages: number) => {
-            // Walk up from view.dom to find the .ct-editor-canvas (the
-            // CSS counter scope). Set the custom property so the footer
-            // pseudo-element can render "Page N of M".
+            // Walk up from view.dom to find the .ct-tiptap-multipage
+            // container (where the CSS default `--total-pages: "1"`
+            // lives, alongside the counter-reset). Set the inline style
+            // ON THAT element — inline style wins over the stylesheet
+            // default on the same element via cascade.
             //
-            // QUOTING (260603): the value must be wrapped in CSS string
-            // quotes so it can concatenate with the rest of the
-            // `content:` string in the ::after rule. Unquoted numbers
-            // resolve as `<integer>` tokens which CSS `content:` won't
-            // mix with `<string>` tokens — pseudo-element silently
-            // fails to render. With quotes the resolved value is a
-            // proper <string> and concatenates cleanly.
+            // BUG FIXED 260603: previously set the var on the OUTER
+            // .ct-editor-canvas. The default declaration on the inner
+            // multipage container shadowed the inherited value from
+            // canvas — descendants read the default "1" instead of the
+            // runtime total. Footer rendered as "Page 5 of 1".
+            //
+            // QUOTING: the value must be wrapped in CSS string quotes
+            // so it can concatenate with the rest of the `content:`
+            // string in the ::after rule. Unquoted numbers resolve as
+            // <integer> tokens which CSS `content:` won't mix with
+            // <string> tokens — pseudo-element silently fails to render.
             let el: HTMLElement | null = view.dom as HTMLElement;
-            while (el && !el.classList.contains("ct-editor-canvas")) {
+            while (el && !el.classList.contains("ct-tiptap-multipage")) {
               el = el.parentElement;
             }
             if (el) {
