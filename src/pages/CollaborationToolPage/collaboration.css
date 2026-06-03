@@ -824,21 +824,32 @@
    white sheets stacked vertically with a grey gutter between each. */
 
 /* Each block gets a white background + horizontal page-margins.
-   Vertically, page-start gets top padding (1in margin); page-end gets
-   bottom padding (1.25in margin including footer space). Interior
-   blocks have no vertical padding so the white sheet appears
-   continuous across blocks within a page. */
+   Side shadows on EVERY block (not just start/end) so the whole page
+   sheet has a continuous rectangular shadow on both sides. T5-C polish
+   260603: applying side shadows only to start/end produced a visible
+   "raised" / embossed look at the bottom of each page because the
+   middle blocks had no shadow but the page-end did — the eye reads
+   the unshadowed middle vs shadowed page-end edges as a 3D rise.
+   Continuous side shadows kill the effect; top/bottom shadows below
+   are accents only at the page boundaries. */
 .ct-tiptap .ProseMirror > [data-page-num] {
   background: #ffffff;
   padding-left: 1in;
   padding-right: 1in;
   margin-left: 0;
   margin-right: 0;
+  box-shadow:
+    -1px 0 3px rgba(15, 23, 42, 0.05),
+    1px 0 3px rgba(15, 23, 42, 0.05);
 }
 .dark .ct-tiptap .ProseMirror > [data-page-num] {
   background: #0f172a;
+  box-shadow:
+    -1px 0 3px rgba(0, 0, 0, 0.25),
+    1px 0 3px rgba(0, 0, 0, 0.25);
 }
 
+/* Page-start: top accent shadow ON TOP of the inherited side shadows. */
 .ct-tiptap .ProseMirror > [data-page-start="true"] {
   padding-top: 1in;
   border-top-left-radius: 2px;
@@ -848,6 +859,14 @@
     -1px 0 3px rgba(15, 23, 42, 0.05),
     1px 0 3px rgba(15, 23, 42, 0.05);
 }
+.dark .ct-tiptap .ProseMirror > [data-page-start="true"] {
+  box-shadow:
+    0 -1px 3px rgba(0, 0, 0, 0.4),
+    -1px 0 3px rgba(0, 0, 0, 0.25),
+    1px 0 3px rgba(0, 0, 0, 0.25);
+}
+
+/* Page-end: bottom accent shadow ON TOP of the inherited side shadows. */
 .ct-tiptap .ProseMirror > [data-page-end="true"] {
   padding-bottom: 1in;
   /* Counter increments at the END of each page so the footer text
