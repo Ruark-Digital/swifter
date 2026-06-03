@@ -8,6 +8,8 @@ import { useEditor } from "@tiptap/react";
 import type { Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
+import TextAlign from "@tiptap/extension-text-align";
+import Image from "@tiptap/extension-image";
 import type * as Y from "yjs";
 import type { WebsocketProvider } from "y-websocket";
 import type { CollabUser } from "./useCollabProvider";
@@ -51,6 +53,15 @@ export function useTipTapEditor({
     // (TipTap v3 renamed the option from `history` to `undoRedo`.)
     StarterKit.configure({ undoRedo: false }),
     Collaboration.configure({ document: doc }),
+    // Per-block alignment (left/center/right/justify). Adds a `textAlign`
+    // attr to paragraph + heading nodes; round-trips through getJSON /
+    // setContent and syncs over the Y.Doc like any other node attribute.
+    TextAlign.configure({ types: ["heading", "paragraph"] }),
+    // Enable <img> nodes so mammoth's base64 inline images survive
+    // setContent. Without this StarterKit silently strips <img> tags
+    // on import and embedded DOCX images vanish. `inline: false` keeps
+    // images as block-level (matches Word's default behavior).
+    Image.configure({ inline: false, allowBase64: true }),
     CommentMark,
     InsertionMark,
     DeletionMark,

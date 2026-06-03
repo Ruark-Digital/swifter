@@ -227,9 +227,31 @@ export async function convertDocxToHtml(
   arrayBuffer: ArrayBuffer
 ): Promise<string> {
   const mammoth = (await import("mammoth")).default;
+  // Preserve paragraph alignment (Word direct formatting) so centered
+  // titles / "TABLE OF CONTENTS" headings don't collapse to left. Mammoth
+  // drops alignment by default; we tag aligned paragraphs with a synthetic
+  // styleName, map it to a marker class via styleMap, then post-process to
+  // an inline `style="text-align: ..."` so TipTap's TextAlign extension
+  // picks it up on setContent.
+  const transformParagraph = (element: { alignment?: string } & Record<string, unknown>) => {
+    const a = element.alignment;
+    if (a === "center" || a === "right" || a === "both" || a === "justify") {
+      const styleName = a === "both" ? "Align justify" : `Align ${a}`;
+      return { ...element, styleId: styleName.replace(/\s/g, ""), styleName };
+    }
+    return element;
+  };
   const result = await mammoth.convertToHtml(
     { arrayBuffer },
     {
+      transformDocument: (mammoth as unknown as {
+        transforms: { paragraph: (fn: typeof transformParagraph) => (element: any) => any };
+      }).transforms.paragraph(transformParagraph),
+      styleMap: [
+        "p[style-name='Align center'] => p.docx-align-center:fresh",
+        "p[style-name='Align right'] => p.docx-align-right:fresh",
+        "p[style-name='Align justify'] => p.docx-align-justify:fresh",
+      ],
       convertImage: mammoth.images.imgElement((element) =>
         element.read("base64").then((base64) => ({
           src: `data:${element.contentType};base64,${base64}`,
@@ -237,7 +259,21 @@ export async function convertDocxToHtml(
       ),
     }
   );
-  return result.value || "";
+  let html = result.value || "";
+  html = html
+    .replace(/<p class="docx-align-center">/g, '<p style="text-align: center">')
+    .replace(/<p class="docx-align-right">/g, '<p style="text-align: right">')
+    .replace(/<p class="docx-align-justify">/g, '<p style="text-align: justify">');
+  // TOC entries: mammoth wraps each entry as `<a href="#_Toc...">title 7</a>`.
+  // Split the trailing page number into a SECOND anchor with a distinct
+  // synthetic href so TipTap's link mark doesn't merge them back into one
+  // run. The CSS rule `p:has(> a[href*="__page"])` then flexes the two
+  // anchors as a two-column TOC row with leader dots.
+  html = html.replace(
+    /(<a href=")(#_Toc[^"]+)(">)([^<]*?)\s+(\d+)(<\/a>)/g,
+    '$1$2$3$4$6$1$2__page$3$5$6'
+  );
+  return html;
 }
 
 // Helper function for converting PDF to HTMl

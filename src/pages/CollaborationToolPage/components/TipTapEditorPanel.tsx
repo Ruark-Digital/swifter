@@ -16,6 +16,10 @@ import {
   Bold as BoldIcon,
   Italic as ItalicIcon,
   Underline as UnderlineIcon,
+  AlignLeft as AlignLeftIcon,
+  AlignCenter as AlignCenterIcon,
+  AlignRight as AlignRightIcon,
+  AlignJustify as AlignJustifyIcon,
   Plus,
   Minus,
   MessageSquare,
@@ -387,10 +391,11 @@ const TipTapEditorPanel: React.FC<TipTapEditorPanelProps> = ({
       />
       <div
         ref={canvasRef}
-        className="ct-editor-canvas pl-[4.5rem] pr-8 mt-5"
+        className="ct-editor-canvas mt-5"
         style={{ position: "relative" }}
         onClick={() => editor?.commands.focus()}
       >
+        <div className="ct-tiptap-page">
         {editor && (
           <BubbleMenu
             editor={editor}
@@ -431,6 +436,55 @@ const TipTapEditorPanel: React.FC<TipTapEditorPanelProps> = ({
               }}
             >
               <UnderlineIcon className="w-4 h-4" />
+            </button>
+            <div className="ct-bm-sep" aria-hidden="true" />
+            <button
+              type="button"
+              title="Align left"
+              aria-label="Align left"
+              className={`ct-bm-btn ${editor.isActive({ textAlign: "left" }) ? "ct-bm-btn--active" : ""}`}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                editor.chain().focus().setTextAlign("left").run();
+              }}
+            >
+              <AlignLeftIcon className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              title="Align center"
+              aria-label="Align center"
+              className={`ct-bm-btn ${editor.isActive({ textAlign: "center" }) ? "ct-bm-btn--active" : ""}`}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                editor.chain().focus().setTextAlign("center").run();
+              }}
+            >
+              <AlignCenterIcon className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              title="Align right"
+              aria-label="Align right"
+              className={`ct-bm-btn ${editor.isActive({ textAlign: "right" }) ? "ct-bm-btn--active" : ""}`}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                editor.chain().focus().setTextAlign("right").run();
+              }}
+            >
+              <AlignRightIcon className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              title="Justify"
+              aria-label="Justify"
+              className={`ct-bm-btn ${editor.isActive({ textAlign: "justify" }) ? "ct-bm-btn--active" : ""}`}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                editor.chain().focus().setTextAlign("justify").run();
+              }}
+            >
+              <AlignJustifyIcon className="w-4 h-4" />
             </button>
             <div className="ct-bm-sep" aria-hidden="true" />
             <button
@@ -516,6 +570,7 @@ const TipTapEditorPanel: React.FC<TipTapEditorPanelProps> = ({
           editor={editor}
           className="ct-tiptap w-full"
         />
+        </div>
       </div>
     </div>
   );
