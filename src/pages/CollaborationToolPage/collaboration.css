@@ -796,22 +796,106 @@
    Body text uses Times New Roman 12pt with Word-default ~1.15 line
    height and tight paragraph spacing so wrapped lines don't stretch
    into the loose multi-line gaps the default StarterKit theme produced. */
-.ct-tiptap-page {
+/* Multi-page layout container — replaces the T1 single-sheet wrapper.
+   Centers the page column in the canvas and provides horizontal padding;
+   per-page chrome (white background, drop shadow, footer) is applied
+   below to each top-level block via the pagination plugin's
+   [data-page-start] / [data-page-end] markers. */
+.ct-tiptap-multipage {
   max-width: 8.5in;
   margin: 24px auto 64px;
+  min-height: calc(100vh - 200px);
+  /* CSS counter for "Page N of M" footers. --total-pages is set by the
+     pagination plugin's view layer after each recompute. */
+  counter-reset: page-counter;
+  --total-pages: 1;
+}
+
+/* Per-page chrome.
+   The pagination plugin (paginationPlugin.ts) decorates each top-level
+   block with `data-page-num="N"`, `data-page-start="true"` on the first
+   block of each page, and `data-page-end="true"` on the last block.
+   That gives CSS the hooks needed to:
+   • Render a white page sheet that bleeds from page-start to page-end
+   • Draw a drop shadow on the bottom of each page-end
+   • Insert a "Page N of M" footer below each page-end via ::after
+   • Add a chunky grey gutter between consecutive pages
+   The visual effect: a continuous editor flow that LOOKS like discrete
+   white sheets stacked vertically with a grey gutter between each. */
+
+/* Each block gets a white background + horizontal page-margins.
+   Vertically, page-start gets top padding (1in margin); page-end gets
+   bottom padding (1.25in margin including footer space). Interior
+   blocks have no vertical padding so the white sheet appears
+   continuous across blocks within a page. */
+.ct-tiptap .ProseMirror > [data-page-num] {
   background: #ffffff;
+  padding-left: 1in;
+  padding-right: 1in;
+  margin-left: 0;
+  margin-right: 0;
+}
+.dark .ct-tiptap .ProseMirror > [data-page-num] {
+  background: #0f172a;
+}
+
+.ct-tiptap .ProseMirror > [data-page-start="true"] {
+  padding-top: 1in;
+  border-top-left-radius: 2px;
+  border-top-right-radius: 2px;
+  box-shadow:
+    0 -1px 3px rgba(15, 23, 42, 0.06),
+    -1px 0 3px rgba(15, 23, 42, 0.05),
+    1px 0 3px rgba(15, 23, 42, 0.05);
+}
+.ct-tiptap .ProseMirror > [data-page-end="true"] {
+  padding-bottom: 1in;
+  /* Counter increments at the END of each page so the footer text
+     reflects this page's number. */
+  counter-increment: page-counter;
+  border-bottom-left-radius: 2px;
+  border-bottom-right-radius: 2px;
+  /* Bottom drop shadow gives the page-sheet effect. The big gap to the
+     next page comes from margin-bottom (acts as inter-page gutter). */
   box-shadow:
     0 1px 3px rgba(15, 23, 42, 0.12),
-    0 4px 14px rgba(15, 23, 42, 0.08);
-  padding: 1in 1in 1.25in;
-  min-height: calc(100vh - 200px);
-  border-radius: 2px;
+    0 4px 14px rgba(15, 23, 42, 0.10),
+    -1px 0 3px rgba(15, 23, 42, 0.05),
+    1px 0 3px rgba(15, 23, 42, 0.05);
+  margin-bottom: 32px;
+  position: relative;
 }
-.dark .ct-tiptap-page {
-  background: #0f172a;
+.dark .ct-tiptap .ProseMirror > [data-page-end="true"] {
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.5),
-    0 4px 14px rgba(0, 0, 0, 0.35);
+    0 4px 14px rgba(0, 0, 0, 0.35),
+    -1px 0 3px rgba(0, 0, 0, 0.25),
+    1px 0 3px rgba(0, 0, 0, 0.25);
+}
+
+/* If a single block is both start AND end (a one-block page — rare but
+   possible for pages of a single image), it needs both top and bottom
+   shadow rules; the cascade above handles it because the [data-page-start]
+   rule sets top shadow and the [data-page-end] rule sets bottom shadow. */
+
+/* "Page N of M" footer rendered as an absolutely-positioned pseudo
+   element on each page-end. Sits in the page's bottom margin (the 1in
+   padding-bottom on page-end blocks provides the room). */
+.ct-tiptap .ProseMirror > [data-page-end="true"]::after {
+  content: "Page " attr(data-page-num) " of " var(--total-pages);
+  position: absolute;
+  bottom: 0.4in;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: "Times New Roman", serif;
+  font-size: 10pt;
+  color: #6b7280;
+  pointer-events: none;
+  user-select: none;
+}
+.dark .ct-tiptap .ProseMirror > [data-page-end="true"]::after {
+  color: #94a3b8;
 }
 .ct-tiptap {
   font-family: "Times New Roman", "Liberation Serif", Georgia, serif;

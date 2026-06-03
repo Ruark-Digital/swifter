@@ -21,6 +21,7 @@
 
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { Extension } from "@tiptap/core";
 import { classifyTransaction } from "./classifyTransaction";
 
@@ -132,6 +133,19 @@ export const PaginationExtension = Extension.create({
           let rafHandle: number | null = null;
           let destroyed = false;
 
+          const setTotalPagesCssVar = (totalPages: number) => {
+            // Walk up from view.dom to find the .ct-editor-canvas (the
+            // CSS counter scope). Set the custom property so the footer
+            // pseudo-element can render "Page N of M".
+            let el: HTMLElement | null = view.dom as HTMLElement;
+            while (el && !el.classList.contains("ct-editor-canvas")) {
+              el = el.parentElement;
+            }
+            if (el) {
+              el.style.setProperty("--total-pages", String(totalPages));
+            }
+          };
+
           const recompute = () => {
             if (destroyed) return;
             rafHandle = null;
@@ -149,6 +163,7 @@ export const PaginationExtension = Extension.create({
                 breaks,
               }),
             );
+            setTotalPagesCssVar(breaks.length + 1);
           };
 
           const scheduleStructural = () => {
@@ -167,6 +182,10 @@ export const PaginationExtension = Extension.create({
           // Initial pagination after mount — wait one frame so the
           // editor has actually rendered before we measure.
           scheduleStructural();
+
+          // Initial CSS var write so footer renders even before first
+          // recompute lands (avoids briefly showing "Page 1 of 0").
+          setTotalPagesCssVar(1);
 
           return {
             update(view, prevState) {
@@ -189,6 +208,90 @@ export const PaginationExtension = Extension.create({
               if (rafHandle !== null) cancelAnimationFrame(rafHandle);
             },
           };
+        },
+
+        props: {
+          // Emit node decorations marking which top-level block belongs
+          // to which page, and which blocks are page-start / page-end.
+          // CSS uses these attrs (collaboration.css) to render the
+          // visual page chrome: white sheet backgrounds via
+          // [data-page-start] gradients, drop shadows via
+          // [data-page-end], and the "Page N of M" footer via
+          // [data-page-end]::after using attr(data-page-num) and
+          // var(--total-pages).
+          decorations(state) {
+            const ps = paginationPluginKey.getState(state);
+            if (!ps) return null;
+            const { pageBreaks, totalPages } = ps;
+            const decorations: Decoration[] = [];
+
+            // Walk top-level blocks. Track each block's start position
+            // and which page it belongs to.
+            let blockIndex = 0;
+            let currentPage = 1;
+            let pageBreakIdx = 0;
+            const blockMeta: Array<{
+              from: number;
+              to: number;
+              page: number;
+              isPageStart: boolean;
+              isPageEnd: boolean;
+            }> = [];
+
+            state.doc.forEach((node, offset) => {
+              const from = offset;
+              const to = offset + node.nodeSize;
+
+              // Did we just cross a page break? pageBreaks[pageBreakIdx]
+              // is the position where the next page STARTS. If this
+              // block's `from` equals that position, we're now on the
+              // next page and this block is its first.
+              if (
+                pageBreakIdx < pageBreaks.length &&
+                from === pageBreaks[pageBreakIdx]
+              ) {
+                currentPage += 1;
+                pageBreakIdx += 1;
+              }
+
+              blockMeta.push({
+                from,
+                to,
+                page: currentPage,
+                isPageStart: false,
+                isPageEnd: false,
+              });
+              blockIndex += 1;
+            });
+
+            // Mark page-start / page-end. A block is page-start if it's
+            // index 0 OR if the previous block is on a different page.
+            // A block is page-end if it's the last block OR if the next
+            // block is on a different page.
+            for (let i = 0; i < blockMeta.length; i += 1) {
+              const cur = blockMeta[i];
+              const prev = i > 0 ? blockMeta[i - 1] : null;
+              const next = i < blockMeta.length - 1 ? blockMeta[i + 1] : null;
+              if (!prev || prev.page !== cur.page) cur.isPageStart = true;
+              if (!next || next.page !== cur.page) cur.isPageEnd = true;
+            }
+
+            blockMeta.forEach((m) => {
+              const attrs: Record<string, string> = {
+                "data-page-num": String(m.page),
+              };
+              if (m.isPageStart) attrs["data-page-start"] = "true";
+              if (m.isPageEnd) attrs["data-page-end"] = "true";
+              decorations.push(Decoration.node(m.from, m.to, attrs));
+            });
+
+            // totalPages reference — kept to silence unused-var if we
+            // ever drop the CSS-var path; CSS reads it via --total-pages.
+            void totalPages;
+            void blockIndex;
+
+            return DecorationSet.create(state.doc, decorations);
+          },
         },
       }),
     ];

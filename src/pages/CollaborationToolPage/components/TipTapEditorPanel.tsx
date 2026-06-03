@@ -395,7 +395,11 @@ const TipTapEditorPanel: React.FC<TipTapEditorPanelProps> = ({
         style={{ position: "relative" }}
         onClick={() => editor?.commands.focus()}
       >
-        <div className="ct-tiptap-page">
+        {/* Page chrome is now rendered by the pagination plugin via
+            data-page-start / data-page-end attrs on individual blocks
+            (REQ-05). The outer single-sheet wrapper used in T1 is gone —
+            multi-page layout flows directly inside .ct-editor-canvas. */}
+        <div className="ct-tiptap-multipage">
         {editor && (
           <BubbleMenu
             editor={editor}
