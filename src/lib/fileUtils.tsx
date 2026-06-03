@@ -223,6 +223,70 @@ export const isViewableFile = (fileName: string, fileType?: string): boolean => 
   );
 };
 
+/**
+ * Phase 02 docx-preview-rewrite: rich-fidelity DOCX → TipTap-compatible
+ * content pipeline. Replaces `convertDocxToHtml` (mammoth-based) once
+ * fully wired. This function uses docx-preview to render the DOCX into
+ * a detached DOM container, then walks the resulting HTML and extracts
+ * structural side-channels (page boundaries, headers, footers) needed
+ * by the pagination plugin.
+ *
+ * Returns:
+ *   html              — TipTap-compatible HTML for setContent (no <section>
+ *                       wrappers; <header>/<footer> stripped from main flow)
+ *   styleHtml         — Word's stylesheet rendered as <style> content;
+ *                       caller may inject into the document head to enable
+ *                       per-Word-style CSS class rendering
+ *   sectionBoundaries — doc-position offsets where each new page starts;
+ *                       consumed by pagination plugin via meta-set tr
+ *   headers           — per-page-index source-doc header HTML
+ *   footers           — per-page-index source-doc footer HTML
+ *
+ * Current scope (T2a — skeleton):
+ *   Returns docx-preview's raw output untranslated. Side channels are
+ *   stubbed. Subsequent T2 sub-tasks fill in the translation logic.
+ */
+export type DocxTipTapContent = {
+  html: string;
+  styleHtml: string;
+  sectionBoundaries: number[];
+  headers: Array<{ pageIndex: number; html: string }>;
+  footers: Array<{ pageIndex: number; html: string }>;
+};
+
+export async function convertDocxToTipTapContent(
+  arrayBuffer: ArrayBuffer
+): Promise<DocxTipTapContent> {
+  const docxPreview = await import("docx-preview");
+
+  // Detached containers — never attached to the document tree. docx-preview
+  // writes structural HTML into bodyEl and a <style> block into styleEl.
+  const bodyEl = document.createElement("div");
+  const styleEl = document.createElement("div");
+
+  await docxPreview.renderAsync(arrayBuffer, bodyEl, styleEl, {
+    breakPages: true,
+    renderHeaders: true,
+    renderFooters: true,
+    renderFootnotes: true,
+    renderEndnotes: true,
+    inWrapper: true,
+    // ignoreFonts true: don't try to download/embed Word fonts from the
+    // docx zip. We keep the inline font-family on spans via TextStyle marks
+    // (T2f + T3); browser font fallback handles missing faces.
+    ignoreFonts: true,
+  });
+
+  return {
+    html: bodyEl.innerHTML,
+    styleHtml: styleEl.innerHTML,
+    // Side channels stubbed; filled by T2b–T2d.
+    sectionBoundaries: [],
+    headers: [],
+    footers: [],
+  };
+}
+
 export async function convertDocxToHtml(
   arrayBuffer: ArrayBuffer
 ): Promise<string> {
