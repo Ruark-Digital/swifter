@@ -907,27 +907,37 @@
   min-height: calc(100vh - 320px);
   outline: none;
 }
-.ct-tiptap .ProseMirror p { margin: 0 0 8pt; }
+/* Vertical spacing via padding (NOT margin) so the per-block page
+   background extends THROUGH the inter-block gap. With margin, the
+   gap shows .ct-editor-canvas grey/dark through, producing visible
+   horizontal stripes between every paragraph (caught visually 260603
+   after T5-C shipped). Padding is inside the block's painted area;
+   background-color extends to fill it. The [data-page-end]
+   margin-bottom: 32px in the multi-page rules below is intentional —
+   THAT margin SHOULD show backdrop = inter-page gutter. */
+.ct-tiptap .ProseMirror p { margin: 0; padding-bottom: 8pt; }
 /* Strip leading soft line break (<br>) inside paragraphs. Word docs use
    <w:br/> at the start of paragraphs as visual spacing-before; mammoth
    passes these through as <br> tags, which TipTap renders as full empty
    lines that double the paragraph's vertical run length. Hiding them
-   restores Word's actual layout — the 8pt margin-bottom on <p> is the
-   correct (and only) paragraph spacing. */
+   restores Word's actual layout — the 8pt padding-bottom is the only
+   paragraph spacing. */
 .ct-tiptap .ProseMirror p > br:first-child { display: none; }
-.ct-tiptap .ProseMirror h1 { font-size: 16pt; font-weight: 700; margin: 14pt 0 6pt; }
-.ct-tiptap .ProseMirror h2 { font-size: 14pt; font-weight: 700; margin: 12pt 0 5pt; }
-.ct-tiptap .ProseMirror h3 { font-size: 12pt; font-weight: 700; margin: 10pt 0 4pt; }
-.ct-tiptap .ProseMirror ul, .ct-tiptap .ProseMirror ol { padding-left: 0.5in; margin: 0 0 8pt; }
+.ct-tiptap .ProseMirror h1 { font-size: 16pt; font-weight: 700; margin: 0; padding: 14pt 0 6pt; }
+.ct-tiptap .ProseMirror h2 { font-size: 14pt; font-weight: 700; margin: 0; padding: 12pt 0 5pt; }
+.ct-tiptap .ProseMirror h3 { font-size: 12pt; font-weight: 700; margin: 0; padding: 10pt 0 4pt; }
+.ct-tiptap .ProseMirror ul, .ct-tiptap .ProseMirror ol { padding-left: 0.5in; padding-right: 0; padding-bottom: 8pt; margin: 0; }
 .ct-tiptap .ProseMirror li { margin: 0; }
-.ct-tiptap .ProseMirror li > p { margin: 0; }
+/* List items contain paragraphs internally; reset their padding so
+   list-bullet alignment doesn't drift from the visual baseline. */
+.ct-tiptap .ProseMirror li > p { margin: 0; padding: 0; }
 /* Nested ordered-list markers (REQ-07): Word's typical legal-doc
    convention is decimal → lower-alpha → lower-roman as nesting deepens. */
 .ct-tiptap .ProseMirror ol { list-style: decimal; }
 .ct-tiptap .ProseMirror ol ol { list-style: lower-alpha; }
 .ct-tiptap .ProseMirror ol ol ol { list-style: lower-roman; }
 .ct-tiptap .ProseMirror ol ol ol ol { list-style: decimal; }
-.ct-tiptap .ProseMirror blockquote { border-left: 3px solid #cbd5e1; padding-left: 1rem; color: #475569; margin: 8pt 0; }
+.ct-tiptap .ProseMirror blockquote { border-left: 3px solid #cbd5e1; padding: 0 0 8pt 1rem; color: #475569; margin: 0; }
 .ct-tiptap .ProseMirror code { background: #f1f5f9; padding: 0 4px; border-radius: 3px; font-size: 0.9em; font-family: "Courier New", monospace; }
 /* Tables — Word-faithful styling for REQ-06.
    border-collapse: collapse + 1px solid borders matches Word's default
@@ -937,10 +947,15 @@
 .ct-tiptap .ProseMirror table,
 .ct-tiptap .ProseMirror table.ct-tiptap-table {
   border-collapse: collapse;
-  margin: 8pt 0;
+  margin: 0;
+  /* Tables can't carry padding on their root element (table-layout
+     ignores it for layout purposes), but the surrounding tableWrapper
+     div CAN; this padding is mostly defensive — actual inter-block
+     spacing for tables is handled by the adjacent block's padding-bottom. */
   width: 100%;
   table-layout: fixed;
 }
+.ct-tiptap .ProseMirror .tableWrapper { padding-bottom: 8pt; }
 .ct-tiptap .ProseMirror table td,
 .ct-tiptap .ProseMirror table th {
   border: 1px solid #000;
@@ -974,8 +989,8 @@
 }
 .ct-tiptap .ProseMirror.resize-cursor { cursor: ew-resize; cursor: col-resize; }
 .ct-tiptap .ProseMirror a { color: #1155cc; text-decoration: underline; }
-.ct-tiptap .ProseMirror hr { border: 0; border-top: 1px solid #e2e8f0; margin: 12pt 0; }
-.ct-tiptap .ProseMirror img { max-width: 100%; height: auto; display: block; margin: 8pt auto; }
+.ct-tiptap .ProseMirror hr { border: 0; border-top: 1px solid #e2e8f0; margin: 0; padding: 12pt 0; }
+.ct-tiptap .ProseMirror img { max-width: 100%; height: auto; display: block; margin: 0 auto; padding: 8pt 0; }
 
 /* TOC entry rows. Mammoth output is split (in post-process) into TWO
    adjacent anchors per entry — first carries the title text, second
