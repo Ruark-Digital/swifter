@@ -302,7 +302,133 @@ export async function convertDocxToHtml(
     /(<a href=")(#_Toc[^"]+)(">)([^<]*?)\s+(\d+)(<\/a>)/g,
     '$1$2$3$4$6$1$2__page$3$5$6'
   );
+  // Flatten <ol>/<ul> lists into individual paragraphs. The Hyperscale
+  // agreement uses a 27-item <ol> for definitions which renders ~2500px
+  // tall as one atomic ProseMirror block — pagination can't split inside
+  // a list, so the entire list lands on one page leaving the previous
+  // page mostly empty. Flattening to individual <p> elements with manual
+  // numbering makes each definition a paginable unit; pages flow
+  // naturally.
+  //
+  // Trade-off: loses semantic <ol> structure (a11y regression — screen
+  // readers no longer announce as list). Acceptable for legal-doc review
+  // workflows where pagination fidelity matters more than list semantics.
+  //
+  // DOMParser-based flattening (handles arbitrary nested list structures
+  // correctly; earlier regex approach produced nested <p> when
+  // <ul><li><ol>...</ol></li></ul> patterns appeared in the Hyperscale doc).
+  html = flattenLists(html);
   return html;
+}
+
+function flattenLists(html: string): string {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<body>${html}</body>`, "text/html");
+  const body = doc.body;
+
+  const collectLists = (): Element[] =>
+    Array.from(body.querySelectorAll("ol, ul"));
+  const depth = (el: Element): number => {
+    let d = 0;
+    let n: Element | null = el;
+    while (n && n !== body) {
+      d += 1;
+      n = n.parentElement;
+    }
+    return d;
+  };
+
+  // Process deepest-first. By the time we flatten an outer list, its
+  // inner lists have already been replaced with plain <p> elements,
+  // so we never end up with nested <p> output.
+  let lists = collectLists();
+  while (lists.length > 0) {
+    lists.sort((a, b) => depth(b) - depth(a));
+    flattenOneList(lists[0], doc);
+    lists = collectLists();
+  }
+
+  // Catch orphan <li> (some Word docs emit them outside <ol>/<ul>).
+  Array.from(body.querySelectorAll("li")).forEach((li) => {
+    const p = doc.createElement("p");
+    p.innerHTML = li.innerHTML.trim();
+    li.parentNode?.replaceChild(p, li);
+  });
+
+  return body.innerHTML;
+}
+
+function flattenOneList(listEl: Element, doc: Document): void {
+  const isOrdered = listEl.tagName === "OL";
+  const items = Array.from(listEl.children).filter(
+    (c) => c.tagName === "LI"
+  );
+  const parent = listEl.parentNode;
+  if (!parent) return;
+
+  const replacements: Node[] = [];
+  const blockTags = new Set([
+    "P",
+    "H1",
+    "H2",
+    "H3",
+    "H4",
+    "H5",
+    "H6",
+    "BLOCKQUOTE",
+    "TABLE",
+    "PRE",
+  ]);
+
+  items.forEach((li, i) => {
+    const prefix = isOrdered ? `${i + 1}.  ` : `•  `;
+    const blockChildren = Array.from(li.children).filter((c) =>
+      blockTags.has(c.tagName)
+    );
+
+    if (blockChildren.length === 0) {
+      // No nested blocks — wrap li's content in a single <p>.
+      const p = doc.createElement("p");
+      p.innerHTML = `${prefix}${li.innerHTML.trim()}`;
+      replacements.push(p);
+      return;
+    }
+
+    // Has nested blocks (typically: nested list previously flattened
+    // to <p>s, or paragraph break inside the li in source doc). Build
+    // a leading paragraph from any inline content before the first
+    // block, then hoist the block children.
+    let leading = "";
+    let hitBlock = false;
+    Array.from(li.childNodes).forEach((child) => {
+      if (hitBlock) return;
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        const el = child as Element;
+        if (blockChildren.includes(el)) {
+          hitBlock = true;
+          return;
+        }
+        leading += el.outerHTML;
+      } else if (child.nodeType === Node.TEXT_NODE) {
+        leading += child.textContent || "";
+      }
+    });
+
+    if (leading.trim()) {
+      const leadingP = doc.createElement("p");
+      leadingP.innerHTML = `${prefix}${leading.trim()}`;
+      replacements.push(leadingP);
+    } else {
+      // No leading content — inject prefix into the first block child.
+      const first = blockChildren[0] as HTMLElement;
+      first.innerHTML = `${prefix}${first.innerHTML}`;
+    }
+
+    blockChildren.forEach((b) => replacements.push(b));
+  });
+
+  replacements.forEach((r) => parent.insertBefore(r, listEl));
+  parent.removeChild(listEl);
 }
 
 // Helper function for converting PDF to HTMl
