@@ -20,6 +20,7 @@ import type { CollabUser } from "./useCollabProvider";
 import { CommentMark } from "./marks/commentMark";
 import { InsertionMark } from "./marks/insertionMark";
 import { DeletionMark } from "./marks/deletionMark";
+import { PaginationExtension } from "./pagination/paginationPlugin";
 
 // NOTE on presence carets (in-editor cursors):
 // `@tiptap/extension-collaboration-cursor@2.x` is the only published
@@ -80,6 +81,11 @@ export function useTipTapEditor({
     CommentMark,
     InsertionMark,
     DeletionMark,
+    // Pagination plugin (REQ-05). Pure measurement — never modifies
+    // doc state, never syncs through Yjs. Stores break positions in
+    // PluginState; TipTapEditorPanel subscribes and renders page chrome
+    // via DOM mutation.
+    PaginationExtension,
   ];
 
   // Key the editor on doc identity — when the room changes the parent
