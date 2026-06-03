@@ -936,13 +936,21 @@
    margin-bottom: 32px in the multi-page rules below is intentional —
    THAT margin SHOULD show backdrop = inter-page gutter. */
 .ct-tiptap .ProseMirror p { margin: 0; padding-bottom: 4pt; }
-/* Strip leading soft line break (<br>) inside paragraphs. Word docs use
-   <w:br/> at the start of paragraphs as visual spacing-before; mammoth
-   passes these through as <br> tags, which TipTap renders as full empty
-   lines that double the paragraph's vertical run length. Hiding them
-   restores Word's actual layout — the 8pt padding-bottom is the only
-   paragraph spacing. */
-.ct-tiptap .ProseMirror p > br:first-child { display: none; }
+/* Hide leading soft line break (<br>) inside BODY paragraphs only.
+   Word uses <w:br/> at the start of paragraphs for two different
+   purposes:
+   - In body text: structural artifact that doubles vertical spacing
+     when rendered (Word swallows it in display; browsers don't).
+     Hide these — 8pt padding-bottom is the only spacing needed.
+   - In CENTERED title blocks: intentional vertical spacing between
+     lines of a title block (e.g. "Supply Agreement" / "between" /
+     "Keembody Corporation." each separated by a leading <br>).
+     PRESERVE these — they're the spacing Word actually wants.
+   Heuristic: aligned paragraphs (`style="text-align: ..."`) get the
+   intentional treatment; un-styled paragraphs get the hide treatment.
+   `:not([style])` matches paragraphs without inline style attribute,
+   which our import pipeline only sets for alignment. */
+.ct-tiptap .ProseMirror p:not([style]) > br:first-child { display: none; }
 .ct-tiptap .ProseMirror h1 { font-size: 16pt; font-weight: 700; margin: 0; padding: 8pt 0 4pt; }
 .ct-tiptap .ProseMirror h2 { font-size: 14pt; font-weight: 700; margin: 0; padding: 6pt 0 3pt; }
 .ct-tiptap .ProseMirror h3 { font-size: 12pt; font-weight: 700; margin: 0; padding: 4pt 0 2pt; }
