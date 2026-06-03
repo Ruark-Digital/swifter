@@ -257,7 +257,28 @@ export async function convertDocxToHtml(
     "ScheduleL2",
   ]);
 
-  const transformParagraph = (element: { alignment?: string; styleId?: string } & Record<string, unknown>) => {
+  const transformParagraph = (element: { alignment?: string; styleId?: string; children?: Array<{ type?: string; children?: Array<{ type?: string; breakType?: string; value?: string }> }> } & Record<string, unknown>) => {
+    // Detect "page-break-only" paragraphs FIRST — Word inserts empty
+    // paragraphs containing only a `<w:r><w:br w:type="page"/></w:r>`
+    // to force a page break in the middle of a doc. Mammoth's default
+    // behavior skips these. We detect and mark them so the styleMap
+    // below can emit an <hr> the pagination plugin recognizes as a
+    // forced break.
+    const runs = (element.children || []).filter((c) => c.type === "run");
+    const hasPageBreak = runs.some((r) =>
+      (r.children || []).some((c) => c.type === "break" && c.breakType === "page")
+    );
+    const hasText = runs.some((r) =>
+      (r.children || []).some((c) => c.type === "text" && !!c.value)
+    );
+    if (hasPageBreak && !hasText) {
+      return {
+        ...element,
+        styleId: "PageBreakMarker",
+        styleName: "Page Break Marker",
+      };
+    }
+
     const a = element.alignment;
     // BUG FIXED 260603: previously gated on `!element.styleId` which
     // skipped EVERY styled paragraph, including BodyText. The Hyperscale
@@ -305,6 +326,15 @@ export async function convertDocxToHtml(
         "p[style-name='Article_L2'] => h2:fresh",
         "p[style-name='Schedule_L1'] => h1:fresh",
         "p[style-name='Schedule_L2'] => h2:fresh",
+        // Word's explicit page breaks. Hyperscale doc encodes them as
+        // empty paragraphs containing a single `<w:r><w:br w:type="page"/></w:r>`
+        // run — detected in transformParagraph above and re-tagged with
+        // styleId="PageBreakMarker". This rule maps that synthetic style
+        // to <hr> which the pagination plugin recognizes as a forced
+        // break. The styleMap rule `br[type='page'] => ...` doesn't
+        // work here because mammoth's default conversion skips inline
+        // page-break run elements entirely.
+        "p[style-name='Page Break Marker'] => hr.docx-page-break:fresh",
       ],
       convertImage: mammoth.images.imgElement((element) =>
         element.read("base64").then((base64) => ({
@@ -318,6 +348,11 @@ export async function convertDocxToHtml(
     .replace(/<p class="docx-align-center">/g, '<p style="text-align: center">')
     .replace(/<p class="docx-align-right">/g, '<p style="text-align: right">')
     .replace(/<p class="docx-align-justify">/g, '<p style="text-align: justify">');
+  // The styleMap `p[style-name='Page Break Marker'] => hr.docx-page-break:fresh`
+  // already emits <hr> directly — no post-process needed. TipTap's
+  // StarterKit HorizontalRule extension preserves <hr> through
+  // setContent; the pagination plugin detects HR elements and forces
+  // a page break at their position. CSS hides the <hr> visually.
   // TOC entries: mammoth wraps each entry as `<a href="#_Toc...">title 7</a>`.
   // Split the trailing page number into a SECOND anchor with a distinct
   // synthetic href so TipTap's link mark doesn't merge them back into one

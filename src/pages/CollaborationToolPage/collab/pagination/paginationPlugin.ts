@@ -109,6 +109,22 @@ function computePagination(view: EditorView): {
 
   for (let i = 0; i < blocks.length; i += 1) {
     const block = blocks[i];
+
+    // Forced page break (Word's `<w:br w:type="page"/>` survives mammoth
+    // import as <hr>). Detected BEFORE the zero-height skip below since
+    // hidden <hr> has rect.height = 0 but still represents a page
+    // boundary. Push a break AFTER this hr — its position belongs to
+    // the page it terminates; the next block starts a new page.
+    if (block.tagName === "HR") {
+      if (accumulated > 0 && i < blocks.length - 1) {
+        const nextPos = offsets[i + 1];
+        if (nextPos !== undefined) breaks.push(nextPos);
+        naturalPageHeights.push(accumulated);
+        accumulated = 0;
+      }
+      continue;
+    }
+
     const rect = block.getBoundingClientRect().height;
     if (rect === 0) continue;
     // Subtract any previously-applied extra padding so the height we
@@ -348,6 +364,17 @@ export const PaginationExtension = Extension.create({
               ) {
                 currentPage += 1;
                 pageBreakIdx += 1;
+              }
+
+              // Skip horizontalRule nodes — they're page-break markers,
+              // not content. Don't decorate them with data-page-* attrs
+              // (the footer ::after pseudo-element won't render on void
+              // <hr> elements anyway). They still count toward break-
+              // crossing logic above so the page transition fires when
+              // their position matches a break.
+              if (node.type.name === "horizontalRule") {
+                blockIndex += 1;
+                return;
               }
 
               blockMeta.push({

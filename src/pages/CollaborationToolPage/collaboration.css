@@ -1010,6 +1010,20 @@
 .ct-tiptap .ProseMirror.resize-cursor { cursor: ew-resize; cursor: col-resize; }
 .ct-tiptap .ProseMirror a { color: #1155cc; text-decoration: underline; }
 .ct-tiptap .ProseMirror hr { border: 0; border-top: 1px solid #e2e8f0; margin: 0; padding: 12pt 0; }
+/* Word page-break <hr> markers — invisible, no contribution to page
+   chrome. The pagination plugin (paginationPlugin.ts) detects these via
+   block.tagName === "HR" and forces a page break at their position;
+   visually they should NOT render as horizontal rules.
+   Selector is on direct child of .ProseMirror so manual <hr> the user
+   might insert later (not from mammoth) is unaffected. */
+.ct-tiptap .ProseMirror > hr {
+  border: none;
+  height: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  visibility: hidden;
+}
 .ct-tiptap .ProseMirror img { max-width: 100%; height: auto; display: block; margin: 0 auto; padding: 8pt 0; }
 
 /* TOC entry rows. Mammoth output is split (in post-process) into TWO
