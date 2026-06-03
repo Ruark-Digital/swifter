@@ -824,6 +824,13 @@
   outline: none;
 }
 .ct-tiptap .ProseMirror p { margin: 0 0 8pt; }
+/* Strip leading soft line break (<br>) inside paragraphs. Word docs use
+   <w:br/> at the start of paragraphs as visual spacing-before; mammoth
+   passes these through as <br> tags, which TipTap renders as full empty
+   lines that double the paragraph's vertical run length. Hiding them
+   restores Word's actual layout — the 8pt margin-bottom on <p> is the
+   correct (and only) paragraph spacing. */
+.ct-tiptap .ProseMirror p > br:first-child { display: none; }
 .ct-tiptap .ProseMirror h1 { font-size: 16pt; font-weight: 700; margin: 14pt 0 6pt; }
 .ct-tiptap .ProseMirror h2 { font-size: 14pt; font-weight: 700; margin: 12pt 0 5pt; }
 .ct-tiptap .ProseMirror h3 { font-size: 12pt; font-weight: 700; margin: 10pt 0 4pt; }
