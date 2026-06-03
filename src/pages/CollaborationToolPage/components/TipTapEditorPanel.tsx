@@ -241,14 +241,34 @@ const TipTapEditorPanel: React.FC<TipTapEditorPanelProps> = ({
       }
 
       try {
-        const { convertDocxToHtml, convertPdfToHtml, getFileExtension } =
-          await import("@/lib/fileUtils");
+        const {
+          convertDocxToTipTapContent,
+          convertPdfToHtml,
+          getFileExtension,
+        } = await import("@/lib/fileUtils");
         const res = await fetch(importMeta.sourceUrl);
         const ab = await res.arrayBuffer();
         const ext = getFileExtension(importMeta.fileName, importMeta.fileType);
         let html = "";
-        if (ext === "DOCX") html = await convertDocxToHtml(ab);
-        else if (ext === "PDF") html = await convertPdfToHtml(ab);
+        let docxStyleHtml = "";
+        if (ext === "DOCX") {
+          // Phase 02 docx-preview-rewrite (T2g): new translation pipeline.
+          // Replaces mammoth with docx-preview-based fidelity. The
+          // returned side channels (sectionBoundaries, headers, footers)
+          // are stored in plugin state via meta-set transactions in
+          // later tasks (T4 wires headers/footers; T6 refactors page
+          // breaks to consume sectionBoundaries instead of HR markers).
+          // For T2g we just plumb the data through and inject Word's
+          // stylesheet so per-Word-style CSS rendering becomes available
+          // once T5 lands.
+          const result = await convertDocxToTipTapContent(ab);
+          html = result.html;
+          docxStyleHtml = result.styleHtml;
+          // TODO(T4/T6): dispatch meta-set transaction to pagination
+          // plugin with result.sectionBoundaries / headers / footers.
+        } else if (ext === "PDF") {
+          html = await convertPdfToHtml(ab);
+        }
 
         if (cancelled) return;
         // Double-check: a peer may have streamed content in during the
@@ -257,6 +277,22 @@ const TipTapEditorPanel: React.FC<TipTapEditorPanelProps> = ({
           didImportRef.current = true;
           return;
         }
+
+        // Inject docx-preview's Word stylesheet into <head> so per-Word-
+        // style rendering picks up Word's actual style definitions (font
+        // sizes, indents, etc.). Scoped via a data-attribute so we can
+        // remove it on subsequent imports. T5 adds custom CSS rules
+        // on top of this baseline.
+        if (docxStyleHtml) {
+          document
+            .querySelectorAll("style[data-docx-source]")
+            .forEach((s) => s.remove());
+          const styleEl = document.createElement("style");
+          styleEl.setAttribute("data-docx-source", "true");
+          styleEl.innerHTML = docxStyleHtml;
+          document.head.appendChild(styleEl);
+        }
+
         editor.commands.setContent(html);
         didImportRef.current = true;
       } catch (error) {
