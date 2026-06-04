@@ -68,6 +68,9 @@ importers:
       '@tiptap/extension-collaboration-cursor':
         specifier: ^2.26.2
         version: 2.26.2(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))(y-prosemirror@1.3.7(prosemirror-model@1.25.7)(prosemirror-state@1.4.4)(prosemirror-view@1.41.8)(y-protocols@1.0.7(yjs@13.6.28))(yjs@13.6.28))
+      '@tiptap/extension-font-family':
+        specifier: 3.23.4
+        version: 3.23.4(@tiptap/extension-text-style@3.23.4(@tiptap/core@3.23.4(@tiptap/pm@3.23.4)))
       '@tiptap/extension-image':
         specifier: 3.23.4
         version: 3.23.4(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))
@@ -84,6 +87,9 @@ importers:
         specifier: 3.23.4
         version: 3.23.4(@tiptap/extension-table@3.23.4(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))(@tiptap/pm@3.23.4))
       '@tiptap/extension-text-align':
+        specifier: 3.23.4
+        version: 3.23.4(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))
+      '@tiptap/extension-text-style':
         specifier: 3.23.4
         version: 3.23.4(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))
       '@tiptap/pm':
@@ -2620,6 +2626,11 @@ packages:
       '@tiptap/core': 3.23.4
       '@tiptap/pm': 3.23.4
 
+  '@tiptap/extension-font-family@3.23.4':
+    resolution: {integrity: sha512-L9pNO9f2qWZwWG9PvVocu8nLoHeCpqKHE3pLx0eisP+o4aYSEIhVIJen2N9BNlElm+YznAGr+3NmUGBbamDQ8Q==}
+    peerDependencies:
+      '@tiptap/extension-text-style': 3.23.4
+
   '@tiptap/extension-gapcursor@3.23.4':
     resolution: {integrity: sha512-RuyvOlIGP6UpVOc0Lw0L63jKLtYM49CNhPV2OMSfwwwbBZ3pJGos2/SqpYg71d3sn+qpsAopS4Pfr8iPZog73A==}
     peerDependencies:
@@ -2711,6 +2722,11 @@ packages:
 
   '@tiptap/extension-text-align@3.23.4':
     resolution: {integrity: sha512-A3WVhAs6YFlkfa7hNgps21QLfitNZyWFBBepQusX35sz6BlaHSy9GVrTR/JjGwGIxhNoqU2SGApvf2xTuX89gQ==}
+    peerDependencies:
+      '@tiptap/core': 3.23.4
+
+  '@tiptap/extension-text-style@3.23.4':
+    resolution: {integrity: sha512-jb9PBkvqqn14ju37VMYOmmva9t9Th7vutoio9iB7etcu4XhL/4Z8rYPZmO+9+HLros2TQ/1JeCNZzc8LzcuBiA==}
     peerDependencies:
       '@tiptap/core': 3.23.4
 
@@ -9330,6 +9346,10 @@ snapshots:
       '@tiptap/pm': 3.23.4
     optional: true
 
+  '@tiptap/extension-font-family@3.23.4(@tiptap/extension-text-style@3.23.4(@tiptap/core@3.23.4(@tiptap/pm@3.23.4)))':
+    dependencies:
+      '@tiptap/extension-text-style': 3.23.4(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))
+
   '@tiptap/extension-gapcursor@3.23.4(@tiptap/extensions@3.23.4(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))(@tiptap/pm@3.23.4))':
     dependencies:
       '@tiptap/extensions': 3.23.4(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))(@tiptap/pm@3.23.4)
@@ -9404,6 +9424,10 @@ snapshots:
       '@tiptap/pm': 3.23.4
 
   '@tiptap/extension-text-align@3.23.4(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))':
+    dependencies:
+      '@tiptap/core': 3.23.4(@tiptap/pm@3.23.4)
+
+  '@tiptap/extension-text-style@3.23.4(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))':
     dependencies:
       '@tiptap/core': 3.23.4(@tiptap/pm@3.23.4)
 

@@ -14,6 +14,10 @@ import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { TableCell } from "@tiptap/extension-table-cell";
+import { TextStyle } from "@tiptap/extension-text-style";
+import { FontFamily } from "@tiptap/extension-font-family";
+import { FontSize } from "./fontSize";
+import { DocxStyleAttribute } from "./docxStyleAttribute";
 import type * as Y from "yjs";
 import type { WebsocketProvider } from "y-websocket";
 import type { CollabUser } from "./useCollabProvider";
@@ -78,6 +82,21 @@ export function useTipTapEditor({
     TableRow,
     TableHeader,
     TableCell,
+    // Phase 02 REQ-R-03: inline font preservation. TextStyle is the
+    // base mark; FontFamily + FontSize register attributes on it.
+    // docx-preview emits <span style="font-family: X; font-size: Yp">
+    // which these parse during setContent. Without these registered,
+    // TipTap strips the spans entirely on import.
+    TextStyle,
+    FontFamily.configure({ types: ["textStyle"] }),
+    FontSize,
+    // Phase 02 REQ-R-02/REQ-R-05: paragraph/heading data-docx-style
+    // attribute preservation. translateWordStyleClasses (fileUtils.tsx)
+    // sets `data-docx-style="<word-style-name>"` on paragraphs and
+    // headings during import; without this extension TipTap strips
+    // arbitrary data-* attrs on setContent. T5's CSS theming targets
+    // these via `[data-docx-style="..."]` selectors.
+    DocxStyleAttribute,
     CommentMark,
     InsertionMark,
     DeletionMark,
