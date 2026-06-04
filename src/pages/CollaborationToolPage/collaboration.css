@@ -905,6 +905,101 @@
    ::after rule on [data-page-end] is replaced by the .ct-page-footer
    widget rule below. */
 
+/* Phase 02 REQ-R-05: Word-style CSS theming via data-docx-style attribute.
+   docx-preview emits class names like docx_articlel1, docx_bodytext;
+   translateWordStyleClasses (fileUtils.tsx) rewrites these to
+   data-docx-style="articlel1" / "bodytext". CSS below targets the top
+   styles used in the Hyperscale corpus + the synthetic NDA/SOW fixtures.
+
+   Style ID naming is docx-preview's lowercase form (no separator) since
+   that's what comes out of the parser. Inventory taken from corpus docs;
+   add more rules as new docs surface unfamiliar styles. */
+
+/* Section headings (top-level: Article 1, Schedule 1, etc.) */
+.ct-tiptap .ProseMirror [data-docx-style="articlel1"],
+.ct-tiptap .ProseMirror [data-docx-style="schedulel1"],
+.ct-tiptap .ProseMirror [data-docx-style="heading1"],
+.ct-tiptap .ProseMirror [data-docx-style="title"] {
+  font-size: 14pt;
+  font-weight: 700;
+  margin: 0;
+  padding: 12pt 0 6pt;
+}
+
+/* Subsection headings (1.1, 1.2, Schedule 1.1, etc.) */
+.ct-tiptap .ProseMirror [data-docx-style="articlel2"],
+.ct-tiptap .ProseMirror [data-docx-style="schedulel2"],
+.ct-tiptap .ProseMirror [data-docx-style="heading2"] {
+  font-size: 12pt;
+  font-weight: 700;
+  margin: 0;
+  padding: 10pt 0 4pt;
+}
+
+/* Deeper subsections — NOT styled as headings (per Phase 01 lesson:
+   articlel3/l4 in legal contracts are clause continuation paragraphs,
+   not visual headings; mapping them to bold headings produces 200+
+   false-positive heading tags). Body text styling. */
+.ct-tiptap .ProseMirror [data-docx-style="articlel3"],
+.ct-tiptap .ProseMirror [data-docx-style="articlel4"],
+.ct-tiptap .ProseMirror [data-docx-style="articlel5"],
+.ct-tiptap .ProseMirror [data-docx-style="schedulel3"],
+.ct-tiptap .ProseMirror [data-docx-style="schedulel4"],
+.ct-tiptap .ProseMirror [data-docx-style="schedulel6"],
+.ct-tiptap .ProseMirror [data-docx-style="articlecont2"],
+.ct-tiptap .ProseMirror [data-docx-style="articlecont3"],
+.ct-tiptap .ProseMirror [data-docx-style="articlecont4"],
+.ct-tiptap .ProseMirror [data-docx-style="schedulecont3"],
+.ct-tiptap .ProseMirror [data-docx-style="heading3"] {
+  font-size: 11pt;
+  font-weight: 400;
+  margin: 0;
+  padding: 0 0 6pt;
+}
+
+/* Body paragraphs */
+.ct-tiptap .ProseMirror [data-docx-style="bodytext"],
+.ct-tiptap .ProseMirror [data-docx-style="normal"] {
+  font-size: 11pt;
+  line-height: 1.15;
+  margin: 0;
+  padding: 0 0 6pt;
+}
+
+/* Centered paragraphs (Word's "Centre" style) */
+.ct-tiptap .ProseMirror [data-docx-style="centre"] {
+  text-align: center;
+}
+
+/* TOC entries — top level (sections) and subsection */
+.ct-tiptap .ProseMirror [data-docx-style="toc1"] {
+  font-size: 11pt;
+  font-weight: 600;
+  padding: 0 0 2pt;
+  margin: 0;
+}
+.ct-tiptap .ProseMirror [data-docx-style="toc2"] {
+  font-size: 11pt;
+  font-weight: 400;
+  padding: 0 0 0 0.3in;
+  margin: 0;
+}
+
+/* Signature block — typically right-aligned or specially formatted */
+.ct-tiptap .ProseMirror [data-docx-style="signingline"] {
+  font-size: 11pt;
+  padding: 8pt 0 0;
+  margin: 0;
+}
+
+/* Body-text-first-indent variant */
+.ct-tiptap .ProseMirror [data-docx-style="btfirst1"] {
+  font-size: 11pt;
+  padding: 0 0 6pt;
+  margin: 0;
+  text-indent: 0.5in;
+}
+
 /* Source-doc header/footer widgets. Emitted by paginationPlugin's
    props.decorations as Decoration.widget at page-start (header) and
    page-end (footer) positions. Wrapper is contentEditable=false so

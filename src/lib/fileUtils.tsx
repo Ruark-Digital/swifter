@@ -362,15 +362,18 @@ function cleanupInlineFontSpans(bodyEl: HTMLElement): void {
 }
 
 /**
- * Translate Word-style class names (`docx_bodytext`, `docx_heading_1`,
- * `docx_article_l2`, etc.) emitted by docx-preview into stable
- * `data-docx-style="<style-name>"` attributes that CSS rules in
+ * Translate Word-style class names (`docx_bodytext`, `docx_articlel1`,
+ * `docx_schedulel2`, etc.) emitted by docx-preview into stable
+ * `data-docx-style="<style-id>"` attributes that CSS rules in
  * collaboration.css can target.
  *
- * Conversion: strip the `docx_` prefix, snake_case → Title Case with
- * spaces. So `docx_bodytext` → "BodyText", `docx_heading_1` → "Heading 1",
- * `docx_article_l2` → "Article L2". These match Word's style display
- * names closely enough that CSS rule authoring can use familiar names.
+ * Conversion: strip the `docx_` prefix, keep raw lowercase identifier.
+ * So `docx_bodytext` → "bodytext", `docx_articlel1` → "articlel1",
+ * `docx_schedulel2` → "schedulel2". docx-preview's class naming
+ * already lowercases + removes separators from Word's internal style
+ * IDs; trying to "humanize" the name back to "Article L1" via underscore
+ * splitting fails because the underscore is already gone. Raw identifier
+ * is what we have to work with — write CSS rules against it.
  *
  * Removes the original `docx_*` class from the element to avoid double
  * styling once CSS rules land — the per-Word-style appearance becomes
@@ -387,11 +390,7 @@ function translateWordStyleClasses(bodyEl: HTMLElement): void {
     if (docxClasses.length === 0) return;
     // Use the first docx_* class — typically there's just one per element.
     const wordStyleId = docxClasses[0].slice("docx_".length);
-    const wordStyleName = wordStyleId
-      .split("_")
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(" ");
-    el.setAttribute("data-docx-style", wordStyleName);
+    el.setAttribute("data-docx-style", wordStyleId);
     // Strip docx_* classes so CSS theming becomes purely data-attr driven.
     docxClasses.forEach((c) => el.classList.remove(c));
     if (el.classList.length === 0) {
