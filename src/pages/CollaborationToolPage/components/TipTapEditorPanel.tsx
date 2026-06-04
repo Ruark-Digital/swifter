@@ -251,6 +251,10 @@ const TipTapEditorPanel: React.FC<TipTapEditorPanelProps> = ({
         const ext = getFileExtension(importMeta.fileName, importMeta.fileType);
         let html = "";
         let docxStyleHtml = "";
+        let docxSideChannels: {
+          headers: Array<{ pageIndex: number; html: string }>;
+          footers: Array<{ pageIndex: number; html: string }>;
+        } | null = null;
         if (ext === "DOCX") {
           // Phase 02 docx-preview-rewrite (T2g): new translation pipeline.
           // Replaces mammoth with docx-preview-based fidelity. The
@@ -264,8 +268,14 @@ const TipTapEditorPanel: React.FC<TipTapEditorPanelProps> = ({
           const result = await convertDocxToTipTapContent(ab);
           html = result.html;
           docxStyleHtml = result.styleHtml;
-          // TODO(T4/T6): dispatch meta-set transaction to pagination
-          // plugin with result.sectionBoundaries / headers / footers.
+          // T4: dispatch source headers/footers to pagination plugin.
+          // Stored after setContent so positions resolve correctly.
+          docxSideChannels = {
+            headers: result.headers,
+            footers: result.footers,
+          };
+          // TODO(T6): sectionBoundaries consumed by pagination plugin
+          // (replaces HR-marker detection + measured-height greedy).
         } else if (ext === "PDF") {
           html = await convertPdfToHtml(ab);
         }
@@ -294,6 +304,25 @@ const TipTapEditorPanel: React.FC<TipTapEditorPanelProps> = ({
         }
 
         editor.commands.setContent(html);
+
+        // T4: dispatch source headers/footers into pagination plugin
+        // state via `set-source-content` meta. Must run AFTER setContent
+        // so doc positions are resolved. The plugin's props.decorations
+        // then emits Decoration.widget at page boundaries for each
+        // page's header/footer.
+        if (docxSideChannels) {
+          const { paginationPluginKey } = await import(
+            "../collab/pagination/paginationPlugin"
+          );
+          editor.view.dispatch(
+            editor.state.tr.setMeta(paginationPluginKey, {
+              type: "set-source-content",
+              headers: docxSideChannels.headers,
+              footers: docxSideChannels.footers,
+            })
+          );
+        }
+
         didImportRef.current = true;
       } catch (error) {
         if (cancelled) return;

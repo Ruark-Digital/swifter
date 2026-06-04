@@ -54,6 +54,16 @@ export type PaginationState = {
   pendingRecompute: "structural" | "text" | null;
   /** Wall-clock timestamp of last successful recompute. */
   lastRecomputeAt: number;
+  /** Phase 02 REQ-R-04: per-page header HTML extracted from docx-preview
+   *  source. Index = page number - 1. Populated via a `set-source-content`
+   *  meta-set transaction dispatched by TipTapEditorPanel during import.
+   *  Plugin emits Decoration.widget at page-start positions rendering
+   *  this HTML in a <div class="ct-page-header"> wrapper. Empty array
+   *  means no source headers — empty top margins (REQ-R-04 acceptance). */
+  sourceHeaders: Array<{ pageIndex: number; html: string }>;
+  /** Phase 02 REQ-R-04: per-page footer HTML. Same shape as sourceHeaders
+   *  but rendered at page-end positions via Decoration.widget side: 1. */
+  sourceFooters: Array<{ pageIndex: number; html: string }>;
 };
 
 export const paginationPluginKey = new PluginKey<PaginationState>("pagination");
@@ -163,6 +173,20 @@ function computeExtraPaddings(naturalPageHeights: number[]): number[] {
   );
 }
 
+/**
+ * Build a header/footer widget DOM element. Wraps the source-doc HTML
+ * (from docx-preview) in a <div> with the given class. Inside content
+ * is contentEditable=false so users can't accidentally type into it.
+ * REQ-R-04: rendered via Decoration.widget at page boundaries.
+ */
+function buildHeaderFooterWidget(className: string, html: string): HTMLElement {
+  const wrapper = document.createElement("div");
+  wrapper.className = className;
+  wrapper.setAttribute("contenteditable", "false");
+  wrapper.innerHTML = html;
+  return wrapper;
+}
+
 const arraysApproxEqual = (a: number[], b: number[], epsilon = 1): boolean => {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i += 1) {
@@ -186,6 +210,8 @@ export const PaginationExtension = Extension.create({
             pageEndExtraPadding: [],
             pendingRecompute: "structural", // recompute on first mount
             lastRecomputeAt: 0,
+            sourceHeaders: [],
+            sourceFooters: [],
           }),
 
           apply(tr, prev) {
@@ -196,14 +222,30 @@ export const PaginationExtension = Extension.create({
                   breaks: number[];
                   pageEndExtraPadding: number[];
                 }
+              | {
+                  type: "set-source-content";
+                  headers: Array<{ pageIndex: number; html: string }>;
+                  footers: Array<{ pageIndex: number; html: string }>;
+                }
               | undefined;
             if (meta?.type === "set-pagination") {
               return {
+                ...prev,
                 pageBreaks: meta.breaks,
                 totalPages: meta.breaks.length + 1,
                 pageEndExtraPadding: meta.pageEndExtraPadding,
                 pendingRecompute: null,
                 lastRecomputeAt: performance.now(),
+              };
+            }
+            if (meta?.type === "set-source-content") {
+              // Headers/footers from docx-preview pipeline. Stored in
+              // plugin state; props.decorations emits Decoration.widget
+              // at page boundaries.
+              return {
+                ...prev,
+                sourceHeaders: meta.headers,
+                sourceFooters: meta.footers,
               };
             }
 
@@ -419,6 +461,41 @@ export const PaginationExtension = Extension.create({
                 attrs.style = `padding-bottom: ${totalPaddingBottomPx}px; box-sizing: border-box;`;
               }
               decorations.push(Decoration.node(m.from, m.to, attrs));
+            });
+
+            // Phase 02 REQ-R-04: emit Decoration.widget for each per-page
+            // source header/footer. Headers attach at the page-start
+            // block's `from` with side: -1 (renders BEFORE the block in
+            // doc order). Footers attach at the page-end block's `to`
+            // with side: 1 (renders AFTER). Widgets are non-editable;
+            // their DOM is rebuilt from html on each redraw via the
+            // builder fn — TipTap caches by node-key but re-runs the
+            // builder when state changes.
+            ps.sourceHeaders.forEach((h) => {
+              const pageBlock = blockMeta.find(
+                (m) => m.page === h.pageIndex + 1 && m.isPageStart
+              );
+              if (!pageBlock) return;
+              decorations.push(
+                Decoration.widget(
+                  pageBlock.from,
+                  () => buildHeaderFooterWidget("ct-page-header", h.html),
+                  { side: -1, key: `header-${h.pageIndex}` }
+                )
+              );
+            });
+            ps.sourceFooters.forEach((f) => {
+              const pageBlock = blockMeta.find(
+                (m) => m.page === f.pageIndex + 1 && m.isPageEnd
+              );
+              if (!pageBlock) return;
+              decorations.push(
+                Decoration.widget(
+                  pageBlock.to,
+                  () => buildHeaderFooterWidget("ct-page-footer", f.html),
+                  { side: 1, key: `footer-${f.pageIndex}` }
+                )
+              );
             });
 
             // totalPages reference — kept to silence unused-var if we

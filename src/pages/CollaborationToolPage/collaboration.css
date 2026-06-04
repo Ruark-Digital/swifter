@@ -896,26 +896,40 @@
    shadow rules; the cascade above handles it because the [data-page-start]
    rule sets top shadow and the [data-page-end] rule sets bottom shadow. */
 
-/* "Page N of M" footer rendered as an absolutely-positioned pseudo
-   element on each page-end. Sits in the page's bottom margin (the 1in
-   padding-bottom on page-end blocks provides the room).
-   Contrast bumped 260603 from slate-500/400 to slate-700/300 + 11pt
-   so it's actually readable against the page sheet at 100% zoom. */
-.ct-tiptap .ProseMirror > [data-page-end="true"]::after {
-  content: "Page " attr(data-page-num) " of " var(--total-pages);
-  position: absolute;
-  bottom: 0.4in;
-  left: 0;
-  right: 0;
-  text-align: center;
+/* Phase 02 REQ-R-04: auto "Page N of M" footer REMOVED. Page footers
+   now come from source-doc headers/footers via Decoration.widget
+   emitted by the pagination plugin. When source has no footer, the
+   bottom margin is EMPTY (strict source fidelity — see
+   .planning/quick/260603-docx-preview-rewrite/02-CONTEXT.md "When
+   source has NO header/footer = EMPTY MARGINS"). The previous
+   ::after rule on [data-page-end] is replaced by the .ct-page-footer
+   widget rule below. */
+
+/* Source-doc header/footer widgets. Emitted by paginationPlugin's
+   props.decorations as Decoration.widget at page-start (header) and
+   page-end (footer) positions. Wrapper is contentEditable=false so
+   users can't accidentally type into them. */
+.ct-tiptap .ProseMirror .ct-page-header,
+.ct-tiptap .ProseMirror .ct-page-footer {
   font-family: "Times New Roman", serif;
   font-size: 11pt;
-  color: #475569; /* slate-600 — clearly visible on white */
+  color: #475569;
   pointer-events: none;
   user-select: none;
+  padding: 0 0.5in;
+  text-align: center;
 }
-.dark .ct-tiptap .ProseMirror > [data-page-end="true"]::after {
-  color: #cbd5e1; /* slate-300 — clearly visible on slate-900 */
+.ct-tiptap .ProseMirror .ct-page-header {
+  margin-bottom: 8pt;
+  padding-top: 0.5in;
+}
+.ct-tiptap .ProseMirror .ct-page-footer {
+  margin-top: 8pt;
+  padding-bottom: 0.5in;
+}
+.dark .ct-tiptap .ProseMirror .ct-page-header,
+.dark .ct-tiptap .ProseMirror .ct-page-footer {
+  color: #cbd5e1;
 }
 .ct-tiptap {
   font-family: "Times New Roman", "Liberation Serif", Georgia, serif;
