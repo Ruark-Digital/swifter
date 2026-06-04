@@ -1045,21 +1045,11 @@
    margin-bottom: 32px in the multi-page rules below is intentional —
    THAT margin SHOULD show backdrop = inter-page gutter. */
 .ct-tiptap .ProseMirror p { margin: 0; padding-bottom: 4pt; }
-/* Hide leading soft line break (<br>) inside BODY paragraphs only.
-   Word uses <w:br/> at the start of paragraphs for two different
-   purposes:
-   - In body text: structural artifact that doubles vertical spacing
-     when rendered (Word swallows it in display; browsers don't).
-     Hide these — 8pt padding-bottom is the only spacing needed.
-   - In CENTERED title blocks: intentional vertical spacing between
-     lines of a title block (e.g. "Supply Agreement" / "between" /
-     "Keembody Corporation." each separated by a leading <br>).
-     PRESERVE these — they're the spacing Word actually wants.
-   Heuristic: aligned paragraphs (`style="text-align: ..."`) get the
-   intentional treatment; un-styled paragraphs get the hide treatment.
-   `:not([style])` matches paragraphs without inline style attribute,
-   which our import pipeline only sets for alignment. */
-.ct-tiptap .ProseMirror p:not([style]) > br:first-child { display: none; }
+/* Phase 02 T6: leading-<br> hide rule REMOVED. It compensated for
+   mammoth's tendency to emit structural <w:br/> at the start of body
+   paragraphs. docx-preview emits its own paragraph spacing via
+   docx_* style classes (consumed by the data-docx-style theming in
+   Phase 02 T5) and does not produce spurious leading <br> nodes. */
 .ct-tiptap .ProseMirror h1 { font-size: 16pt; font-weight: 700; margin: 0; padding: 8pt 0 4pt; }
 .ct-tiptap .ProseMirror h2 { font-size: 14pt; font-weight: 700; margin: 0; padding: 6pt 0 3pt; }
 .ct-tiptap .ProseMirror h3 { font-size: 12pt; font-weight: 700; margin: 0; padding: 4pt 0 2pt; }
@@ -1127,20 +1117,14 @@
 .ct-tiptap .ProseMirror.resize-cursor { cursor: ew-resize; cursor: col-resize; }
 .ct-tiptap .ProseMirror a { color: #1155cc; text-decoration: underline; }
 .ct-tiptap .ProseMirror hr { border: 0; border-top: 1px solid #e2e8f0; margin: 0; padding: 12pt 0; }
-/* Word page-break <hr> markers — invisible, no contribution to page
-   chrome. The pagination plugin (paginationPlugin.ts) detects these via
-   block.tagName === "HR" and forces a page break at their position;
-   visually they should NOT render as horizontal rules.
-   Selector is on direct child of .ProseMirror so manual <hr> the user
-   might insert later (not from mammoth) is unaffected. */
-.ct-tiptap .ProseMirror > hr {
-  border: none;
-  height: 0;
-  padding: 0;
-  margin: 0;
-  background: transparent;
-  visibility: hidden;
-}
+/* Phase 02 T6: Phase 01 HR-marker hide rule REMOVED. Mammoth-era
+   pipeline emitted <hr class="docx-page-break"> as page-break markers
+   and this rule kept them visually invisible. docx-preview pipeline
+   doesn't emit such markers — page boundaries come from the
+   sectionBoundaries side channel instead. The default
+   `.ct-tiptap .ProseMirror hr` rule above handles any genuine HR
+   (Word's `<w:br w:type="page"/>` would no longer appear as HR; any
+   visible HR is now an actual horizontal-rule the user inserted). */
 .ct-tiptap .ProseMirror img { max-width: 100%; height: auto; display: block; margin: 0 auto; padding: 8pt 0; }
 
 /* TOC entry rows. Mammoth output is split (in post-process) into TWO
