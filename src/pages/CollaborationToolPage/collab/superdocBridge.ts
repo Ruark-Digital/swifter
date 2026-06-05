@@ -2,6 +2,8 @@
 // separate repo). SwiftPro talks to it ONLY through these postMessage shapes
 // — no `import` of SuperDoc, so AGPL copyleft does not reach this bundle.
 
+import type { RedlineSpan } from "./redlineScan";
+
 export type DocumentMode = "editing" | "viewing" | "suggesting";
 
 /** Messages the iframe sends to the host. */
@@ -9,7 +11,9 @@ export type SuperdocInbound =
   | { type: "superdoc:ready" }
   | { type: "superdoc:doc-edit" }
   | { type: "superdoc:editor-ready"; payload: { pageCount?: number } }
-  | { type: "superdoc:error"; payload: { message: string } };
+  | { type: "superdoc:error"; payload: { message: string } }
+  | { type: "superdoc:redlines"; payload: { redlines: RedlineSpan[] } }
+  | { type: "superdoc:redline-clicked"; payload: { redlineId: string } };
 
 /** The single message the host sends to the iframe. */
 export type SuperdocInitMessage = {
@@ -66,6 +70,16 @@ export function parseSuperdocMessage(
         payload: { message: String(p.message ?? "Unknown error") },
       };
     }
+    case "superdoc:redlines": {
+      const p = (data.payload ?? {}) as { redlines?: unknown };
+      const redlines = Array.isArray(p.redlines) ? (p.redlines as RedlineSpan[]) : [];
+      return { type: "superdoc:redlines", payload: { redlines } };
+    }
+    case "superdoc:redline-clicked": {
+      const p = (data.payload ?? {}) as { redlineId?: unknown };
+      if (typeof p.redlineId !== "string" || !p.redlineId) return null;
+      return { type: "superdoc:redline-clicked", payload: { redlineId: p.redlineId } };
+    }
     default:
       return null;
   }
@@ -80,4 +94,17 @@ export function buildInitPayload(
     type: "superdoc:init",
     payload: { ...input, roomId: `${input.roomId}:superdoc` },
   };
+}
+
+/** Commands the host sends to the iframe to act on the document. */
+export type SuperdocCommand =
+  | { type: "superdoc:apply-redline"; payload: { redlineId: string; replacement: string } }
+  | { type: "superdoc:focus-redline"; payload: { redlineId: string } };
+
+export function buildApplyRedline(redlineId: string, replacement: string): SuperdocCommand {
+  return { type: "superdoc:apply-redline", payload: { redlineId, replacement } };
+}
+
+export function buildFocusRedline(redlineId: string): SuperdocCommand {
+  return { type: "superdoc:focus-redline", payload: { redlineId } };
 }

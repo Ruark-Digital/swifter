@@ -3,6 +3,8 @@ import {
   superdocOrigin,
   parseSuperdocMessage,
   buildInitPayload,
+  buildApplyRedline,
+  buildFocusRedline,
 } from "./superdocBridge";
 
 const ORIGIN = "https://superdoc.example.com";
@@ -72,6 +74,29 @@ describe("parseSuperdocMessage", () => {
       parseSuperdocMessage(evt({ type: "superdoc:error" }), ORIGIN),
     ).toEqual({ type: "superdoc:error", payload: { message: "Unknown error" } });
   });
+
+  it("accepts superdoc:redlines and coerces the array", () => {
+    const r = [{ redlineId: "r1", kind: "insertion", text: "hi" }];
+    expect(
+      parseSuperdocMessage(evt({ type: "superdoc:redlines", payload: { redlines: r } }), ORIGIN),
+    ).toEqual({ type: "superdoc:redlines", payload: { redlines: r } });
+  });
+
+  it("defaults superdoc:redlines to an empty array when missing", () => {
+    expect(
+      parseSuperdocMessage(evt({ type: "superdoc:redlines" }), ORIGIN),
+    ).toEqual({ type: "superdoc:redlines", payload: { redlines: [] } });
+  });
+
+  it("accepts superdoc:redline-clicked", () => {
+    expect(
+      parseSuperdocMessage(evt({ type: "superdoc:redline-clicked", payload: { redlineId: "r1" } }), ORIGIN),
+    ).toEqual({ type: "superdoc:redline-clicked", payload: { redlineId: "r1" } });
+  });
+
+  it("rejects superdoc:redline-clicked with no redlineId", () => {
+    expect(parseSuperdocMessage(evt({ type: "superdoc:redline-clicked", payload: {} }), ORIGIN)).toBeNull();
+  });
 });
 
 describe("buildInitPayload", () => {
@@ -90,5 +115,20 @@ describe("buildInitPayload", () => {
     expect(msg.payload.roomId).toBe("room-1:superdoc");
     expect(msg.payload.docBytes).toBe(bytes);
     expect(msg.payload.documentMode).toBe("editing");
+  });
+});
+
+describe("redline command builders", () => {
+  it("buildApplyRedline", () => {
+    expect(buildApplyRedline("r1", "new text")).toEqual({
+      type: "superdoc:apply-redline",
+      payload: { redlineId: "r1", replacement: "new text" },
+    });
+  });
+  it("buildFocusRedline", () => {
+    expect(buildFocusRedline("r1")).toEqual({
+      type: "superdoc:focus-redline",
+      payload: { redlineId: "r1" },
+    });
   });
 });
