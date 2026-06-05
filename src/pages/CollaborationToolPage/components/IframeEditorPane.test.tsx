@@ -13,9 +13,17 @@ vi.mock("@/hooks/useToaster", () => ({
 const importMeta = { sourceUrl: "https://files.x.com/a.docx", fileName: "a.docx", fileType: "DOCX" };
 const collabMeta = { wsUrl: "ws://localhost:1234", roomId: "room-1", token: "", disable: false, presenceActive: false };
 
+const readyEvent = () =>
+  new MessageEvent("message", {
+    data: { type: "superdoc:ready" },
+    origin: superdocOrigin(),
+  });
+
 describe("IframeEditorPane", () => {
   beforeEach(() => {
     global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
     }) as unknown as typeof fetch;
   });
@@ -37,18 +45,16 @@ describe("IframeEditorPane", () => {
     });
 
     await act(async () => {
-      window.dispatchEvent(
-        new MessageEvent("message", {
-          data: { type: "superdoc:ready" },
-          origin: superdocOrigin(),
-        }),
-      );
+      window.dispatchEvent(readyEvent());
     });
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(importMeta.sourceUrl);
       expect(postMessage).toHaveBeenCalledTimes(1);
     });
+    expect(global.fetch).toHaveBeenCalledWith(
+      importMeta.sourceUrl,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
     const [msg, targetOrigin] = postMessage.mock.calls[0];
     expect(msg.type).toBe("superdoc:init");
     expect(msg.payload.roomId).toBe("room-1:superdoc");
@@ -78,5 +84,38 @@ describe("IframeEditorPane", () => {
       );
     });
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("shows an error overlay when the document fetch is not ok", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+    }) as unknown as typeof fetch;
+
+    render(
+      <IframeEditorPane importMeta={importMeta} collabMeta={collabMeta} onEditorReady={vi.fn()} />,
+    );
+    const iframe = screen.getByTitle("SuperDoc editor") as HTMLIFrameElement;
+    Object.defineProperty(iframe, "contentWindow", {
+      configurable: true,
+      value: { postMessage: vi.fn() },
+    });
+
+    await act(async () => {
+      window.dispatchEvent(readyEvent());
+    });
+
+    const overlay = await screen.findByText("Could not load the editor.");
+    expect(overlay).toBeTruthy();
+  });
+
+  it("calls onEditorReady(null) on unmount", () => {
+    const onEditorReady = vi.fn();
+    const { unmount } = render(
+      <IframeEditorPane importMeta={importMeta} collabMeta={collabMeta} onEditorReady={onEditorReady} />,
+    );
+    unmount();
+    expect(onEditorReady).toHaveBeenLastCalledWith(null);
   });
 });
