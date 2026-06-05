@@ -3,7 +3,8 @@ import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { SEOWrapper } from "@/components/SEO";
 import SidebarPanel from "./components/SidebarPanel";
 import "@/pages/CollaborationToolPage/collaboration.css";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useToken, useUser } from "@/store/authSlice";
 import { useCollaborationStore } from "./store/useCollaborationStore";
@@ -121,6 +122,7 @@ const CollaborationToolPage: React.FC = () => {
   const { toast } = useToast();
   const toastHandler = useToastHandler();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [commentInput, setCommentInput] = useState("");
 
   const activeTab = useCollaborationStore((state) => state.activeTab);
@@ -625,9 +627,27 @@ const CollaborationToolPage: React.FC = () => {
         robots="noindex, nofollow"
         canonical="/collaboration-tool"
       />
-      <div className="flex min-h-svh bg-white dark:bg-slate-950">
-        <div className="flex-1 max-w-7xl  overflow-auto">
-          <Suspense fallback={<div className="ct-editor-panel" />}>
+      <div className="flex h-svh flex-col bg-white dark:bg-slate-950">
+        {/* Header — lets the user close the editor and return to the contract
+            detail they came from (same-tab navigation). */}
+        <header className="flex items-center gap-3 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Close editor and return to contract"
+            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to contract
+          </button>
+          <div className="h-5 w-px bg-slate-200 dark:bg-slate-800" />
+          <h1 className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+            {fileName || "Document Editor"}
+          </h1>
+        </header>
+        <div className="flex min-h-0 flex-1">
+          <div className="flex-1 max-w-7xl overflow-auto">
+            <Suspense fallback={<div className="ct-editor-panel" />}>
             {(() => {
               const editorParam = searchParams.get("editor");
               if (editorParam === "superdoc") {
@@ -681,6 +701,7 @@ const CollaborationToolPage: React.FC = () => {
           onAiDismiss={handleDismissAi}
           onAiRetry={runAiSuggestions}
         />
+        </div>
       </div>
     </>
   );
