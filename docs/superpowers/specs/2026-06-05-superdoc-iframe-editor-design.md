@@ -57,14 +57,18 @@ the existing TipTap/Yoopta panels are retained only as escape hatches.
 ### In scope (this repo, this MVP)
 - `src/pages/CollaborationToolPage/components/IframeEditorPane.tsx` — NEW.
   Owns the iframe element and the postMessage host bridge.
-- `src/pages/CollaborationToolPage/index.tsx` — make SuperDoc the **default**
-  editor; keep `?editor=tiptap` and `?editor=yoopta` as fallbacks.
+- `src/pages/CollaborationToolPage/index.tsx` — add SuperDoc as a **third
+  editor branch gated behind `?editor=superdoc`**. TipTap stays the default and
+  `?editor=yoopta` is unchanged. (Rollout decision 260605: SuperDoc is flagged,
+  not default, until the separate AGPL app is built + deployed — otherwise the
+  default page would point an iframe at a non-existent target.)
 - Host-side `.docx` fetch → `ArrayBuffer`, sent to the iframe (transferable).
 - New env var `VITE_SUPERDOC_APP_URL` (iframe origin) — added to `.env`
   example / config the same way `VITE_WS_URL` is.
 - Graceful sidebar degradation: `onEditorReady(null)` so AI-redline and
   version handlers no-op (they already guard `if (!adapter) return`); backend
-  comments keep working (they don't use the adapter).
+  comments keep working (they don't use the adapter). Sidebar stays **visible
+  but inert** in SuperDoc mode (not hidden — decision 260605).
 
 ### Out of scope (this MVP)
 - Creating / deploying the separate AGPL repo (spec documents its contract).
