@@ -52,6 +52,21 @@ describe("parseSuperdocMessage", () => {
     ).toEqual({ type: "superdoc:editor-ready", payload: { pageCount: 12 } });
   });
 
+  it("drops a non-number pageCount from editor-ready", () => {
+    expect(
+      parseSuperdocMessage(
+        evt({ type: "superdoc:editor-ready", payload: { pageCount: "oops" } }),
+        ORIGIN,
+      ),
+    ).toEqual({ type: "superdoc:editor-ready", payload: { pageCount: undefined } });
+  });
+
+  it("accepts editor-ready with a missing payload", () => {
+    expect(
+      parseSuperdocMessage(evt({ type: "superdoc:editor-ready" }), ORIGIN),
+    ).toEqual({ type: "superdoc:editor-ready", payload: { pageCount: undefined } });
+  });
+
   it("coerces a missing error message to a default string", () => {
     expect(
       parseSuperdocMessage(evt({ type: "superdoc:error" }), ORIGIN),

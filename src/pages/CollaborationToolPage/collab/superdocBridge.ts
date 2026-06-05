@@ -25,7 +25,8 @@ export type SuperdocInitMessage = {
   };
 };
 
-/** Where the AGPL SuperDoc app is served from. Override per-env. */
+/** Where the AGPL SuperDoc app is served from. MUST be a full URL incl. scheme
+ *  (e.g. https://superdoc.example.com) — `superdocOrigin()` calls `new URL()`. */
 export const SUPERDOC_APP_URL: string =
   import.meta.env.VITE_SUPERDOC_APP_URL || "http://localhost:5174";
 
@@ -53,8 +54,10 @@ export function parseSuperdocMessage(
     case "superdoc:doc-edit":
       return { type: "superdoc:doc-edit" };
     case "superdoc:editor-ready": {
-      const p = (data.payload ?? {}) as { pageCount?: number };
-      return { type: "superdoc:editor-ready", payload: { pageCount: p.pageCount } };
+      const raw = (data.payload ?? {}) as Record<string, unknown>;
+      const pageCount =
+        typeof raw.pageCount === "number" ? raw.pageCount : undefined;
+      return { type: "superdoc:editor-ready", payload: { pageCount } };
     }
     case "superdoc:error": {
       const p = (data.payload ?? {}) as { message?: unknown };
@@ -70,15 +73,9 @@ export function parseSuperdocMessage(
 
 /** Build the init message; namespaces the collab room so SuperDoc never
  *  collides with the legacy y-prosemirror rooms (incompatible schema). */
-export function buildInitPayload(input: {
-  docBytes: ArrayBuffer;
-  fileName: string;
-  fileType: string;
-  documentMode: DocumentMode;
-  user: { name: string; email: string };
-  roomId: string;
-  wsUrl: string;
-}): SuperdocInitMessage {
+export function buildInitPayload(
+  input: SuperdocInitMessage["payload"],
+): SuperdocInitMessage {
   return {
     type: "superdoc:init",
     payload: { ...input, roomId: `${input.roomId}:superdoc` },
