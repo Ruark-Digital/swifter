@@ -69,6 +69,10 @@ const EditorPane = lazyWithRetry(() => import("./components/EditorPanel"));
 // haven't been ported yet — opt in with `?editor=yoopta` until SP2-4
 // land those features on TipTap.
 const TipTapEditorPane = lazyWithRetry(() => import("./components/TipTapEditorPanel"));
+// SuperDoc runs as a separate AGPL app inside an iframe; this pane is the
+// host-side postMessage bridge. Gated behind `?editor=superdoc` until the
+// separate app is deployed (TipTap stays the default).
+const IframeEditorPane = lazyWithRetry(() => import("./components/IframeEditorPane"));
 
 const toTimestamp = (value?: string | Date) => {
   if (!value) return "";
@@ -624,19 +628,34 @@ const CollaborationToolPage: React.FC = () => {
       <div className="flex min-h-svh bg-white dark:bg-slate-950">
         <div className="flex-1 max-w-7xl  overflow-auto">
           <Suspense fallback={<div className="ct-editor-panel" />}>
-            {searchParams.get("editor") === "yoopta" ? (
-              <EditorPane
-                importMeta={importMeta}
-                collabMeta={collabMeta}
-                onEditorReady={handleEditorReady}
-              />
-            ) : (
-              <TipTapEditorPane
-                importMeta={importMeta}
-                collabMeta={collabMeta}
-                onEditorReady={handleEditorReady}
-              />
-            )}
+            {(() => {
+              const editorParam = searchParams.get("editor");
+              if (editorParam === "superdoc") {
+                return (
+                  <IframeEditorPane
+                    importMeta={importMeta}
+                    collabMeta={collabMeta}
+                    onEditorReady={handleEditorReady}
+                  />
+                );
+              }
+              if (editorParam === "yoopta") {
+                return (
+                  <EditorPane
+                    importMeta={importMeta}
+                    collabMeta={collabMeta}
+                    onEditorReady={handleEditorReady}
+                  />
+                );
+              }
+              return (
+                <TipTapEditorPane
+                  importMeta={importMeta}
+                  collabMeta={collabMeta}
+                  onEditorReady={handleEditorReady}
+                />
+              );
+            })()}
           </Suspense>
         </div>
         <SidebarPanel
