@@ -68,7 +68,9 @@ describe("IframeEditorPane", () => {
         }),
       );
     });
-    await waitFor(() => expect(onEditorReady).toHaveBeenCalledWith(null));
+    await waitFor(() => expect(onEditorReady).toHaveBeenCalled());
+    const adapter = onEditorReady.mock.calls.map((c) => c[0]).find((a) => a);
+    expect(adapter?.kind).toBe("superdoc");
   });
 
   it("ignores messages from an untrusted origin", async () => {
@@ -86,7 +88,7 @@ describe("IframeEditorPane", () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
-  it("shows an error overlay when the document fetch is not ok", async () => {
+  it("shows the HTTP status in the overlay when the document fetch is not ok", async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 403,
@@ -106,7 +108,8 @@ describe("IframeEditorPane", () => {
       window.dispatchEvent(readyEvent());
     });
 
-    const overlay = await screen.findByText("Could not load the editor.");
+    // Phase-aware overlay surfaces the actual failure instead of a generic message.
+    const overlay = await screen.findByText(/Couldn't download the document \(HTTP 403\)/);
     expect(overlay).toBeTruthy();
   });
 
@@ -117,5 +120,41 @@ describe("IframeEditorPane", () => {
     );
     unmount();
     expect(onEditorReady).toHaveBeenLastCalledWith(null);
+  });
+
+  it("publishes a bridge-backed adapter: caches redlines, applies on replaceRedline", async () => {
+    let adapter: any = null;
+    render(
+      <IframeEditorPane
+        importMeta={importMeta}
+        collabMeta={collabMeta}
+        onEditorReady={(a) => { if (a) adapter = a; }}
+      />,
+    );
+    const iframe = screen.getByTitle("SuperDoc editor") as HTMLIFrameElement;
+    const postMessage = vi.fn();
+    Object.defineProperty(iframe, "contentWindow", { configurable: true, value: { postMessage } });
+
+    await act(async () => {
+      window.dispatchEvent(new MessageEvent("message", {
+        data: { type: "superdoc:editor-ready", payload: {} }, origin: superdocOrigin(),
+      }));
+    });
+    await waitFor(() => expect(adapter).not.toBeNull());
+    expect(adapter.kind).toBe("superdoc");
+
+    await act(async () => {
+      window.dispatchEvent(new MessageEvent("message", {
+        data: { type: "superdoc:redlines", payload: { redlines: [{ redlineId: "r1", kind: "insertion", text: "x" }] } },
+        origin: superdocOrigin(),
+      }));
+    });
+    expect(adapter.extractRedlines()).toEqual([{ redlineId: "r1", kind: "insertion", text: "x" }]);
+
+    adapter.replaceRedline("r1", "fixed");
+    expect(postMessage).toHaveBeenCalledWith(
+      { type: "superdoc:apply-redline", payload: { redlineId: "r1", replacement: "fixed" } },
+      superdocOrigin(),
+    );
   });
 });

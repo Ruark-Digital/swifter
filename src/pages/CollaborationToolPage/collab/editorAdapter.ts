@@ -9,15 +9,16 @@
 import type * as Y from "yjs";
 import type { RedlineSpan } from "./redlineScan";
 
-export type EditorKind = "yoopta" | "tiptap";
+export type EditorKind = "yoopta" | "tiptap" | "superdoc";
 
 export type EditorAdapter = {
   /** Identifies which editor is mounted. Mainly for debug. */
   kind: EditorKind;
   /** The Y.Doc backing this editor. Shared with other clients via the
    *  collab provider; used by `useCollabVersions` to persist the
-   *  version history list/snapshots into a place every client sees. */
-  doc: Y.Doc;
+   *  version history list/snapshots into a place every client sees.
+   *  Absent for the SuperDoc iframe adapter (no host-side Y.Doc). */
+  doc?: Y.Doc;
   /** Serialize the current document for version snapshots. */
   getSnapshot: () => unknown;
   /** Restore a previous snapshot. */
