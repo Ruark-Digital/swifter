@@ -64,15 +64,13 @@ type LocalComment = {
   mentions?: Mentionable[];
 };
 
+// Legacy editors, kept as escape hatches: `?editor=yoopta` (Yoopta) and
+// `?editor=tiptap` (TipTap). SuperDoc is the default (see below).
 const EditorPane = lazyWithRetry(() => import("./components/EditorPanel"));
-// TipTap is now the default editor. The legacy Yoopta panel is kept as
-// a fallback for redline / comment / AI / version-history features that
-// haven't been ported yet — opt in with `?editor=yoopta` until SP2-4
-// land those features on TipTap.
 const TipTapEditorPane = lazyWithRetry(() => import("./components/TipTapEditorPanel"));
 // SuperDoc runs as a separate AGPL app inside an iframe; this pane is the
-// host-side postMessage bridge. Gated behind `?editor=superdoc` until the
-// separate app is deployed (TipTap stays the default).
+// host-side postMessage bridge. It is the DEFAULT editor (requires the AGPL app
+// deployed at VITE_SUPERDOC_APP_URL).
 const IframeEditorPane = lazyWithRetry(() => import("./components/IframeEditorPane"));
 
 const toTimestamp = (value?: string | Date) => {
@@ -649,10 +647,12 @@ const CollaborationToolPage: React.FC = () => {
           <div className="flex-1 max-w-7xl overflow-auto">
             <Suspense fallback={<div className="ct-editor-panel" />}>
             {(() => {
+              // SuperDoc is the default editor. TipTap/Yoopta stay reachable as
+              // escape hatches via `?editor=tiptap` / `?editor=yoopta`.
               const editorParam = searchParams.get("editor");
-              if (editorParam === "superdoc") {
+              if (editorParam === "tiptap") {
                 return (
-                  <IframeEditorPane
+                  <TipTapEditorPane
                     importMeta={importMeta}
                     collabMeta={collabMeta}
                     onEditorReady={handleEditorReady}
@@ -669,7 +669,7 @@ const CollaborationToolPage: React.FC = () => {
                 );
               }
               return (
-                <TipTapEditorPane
+                <IframeEditorPane
                   importMeta={importMeta}
                   collabMeta={collabMeta}
                   onEditorReady={handleEditorReady}

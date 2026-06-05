@@ -27,20 +27,25 @@ describe('DocumentItem', () => {
     expect(screen.queryByLabelText('Edit in Collaboration Tool')).not.toBeInTheDocument();
   });
 
-  it('renders the edit button when canEdit is true and calls navigate with correct URL', () => {
+  it('renders the edit button (docx + canEdit) and navigates to the SuperDoc editor', () => {
     const mockNavigate = vi.fn();
-    
-    render(<DocumentItem d={mockDoc} canEdit={true} navigate={mockNavigate} />);
-    
+    // The edit button only renders for .docx files; use a docx variant.
+    const docxDoc: DocType = { ...mockDoc, name: 'Test Document.docx', type: 'docx' };
+
+    render(<DocumentItem d={docxDoc} canEdit={true} navigate={mockNavigate} />);
+
     const editBtn = screen.getByLabelText('Edit in Collaboration Tool');
     expect(editBtn).toBeInTheDocument();
-    
+
     fireEvent.click(editBtn);
-    
+
     // Check if navigate was called with correct encoded URL parameters
-    const expectedUrl = `/collaboration-tool?sourceUrl=${encodeURIComponent(mockDoc.url!)}&fileName=${encodeURIComponent(mockDoc.name)}&fileType=${encodeURIComponent(mockDoc.type)}`;
-    expect(mockNavigate).toHaveBeenCalledWith(expectedUrl);
+    const expectedPrefix = `/collaboration-tool?sourceUrl=${encodeURIComponent(docxDoc.url!)}&fileName=${encodeURIComponent(docxDoc.name)}&fileType=${encodeURIComponent(docxDoc.type)}`;
     expect(mockNavigate).toHaveBeenCalledTimes(1);
+    const navUrl = mockNavigate.mock.calls[0][0] as string;
+    expect(navUrl.startsWith(expectedPrefix)).toBe(true);
+    // SuperDoc is now the default editor for the edit-in-collaboration-tool link.
+    expect(navUrl).toContain("&editor=superdoc");
   });
 
   it('calls handlePreview when preview button is clicked', () => {
