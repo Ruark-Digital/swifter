@@ -4,7 +4,7 @@ import { SEOWrapper } from "@/components/SEO";
 import SidebarPanel from "./components/SidebarPanel";
 import "@/pages/CollaborationToolPage/collaboration.css";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useToken, useUser } from "@/store/authSlice";
 import { useCollaborationStore } from "./store/useCollaborationStore";
@@ -642,6 +642,23 @@ const CollaborationToolPage: React.FC = () => {
           <h1 className="truncate text-sm font-semibold text-slate-900 dark:text-white">
             {fileName || "Document Editor"}
           </h1>
+          {docName && (
+            <button
+              type="button"
+              onClick={handleDownloadLatestVersion}
+              disabled={downloadLatestMutation.isPending}
+              className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              aria-label="Download latest version"
+              title="Download the latest saved snapshot as a .yjs file"
+            >
+              {downloadLatestMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5" />
+              )}
+              {downloadLatestMutation.isPending ? "Downloading…" : "Download"}
+            </button>
+          )}
         </header>
         <div className="flex min-h-0 flex-1">
           <div className="flex-1 max-w-7xl overflow-auto">
@@ -691,8 +708,6 @@ const CollaborationToolPage: React.FC = () => {
           mentionables={mentionables}
           versions={versions}
           onRestoreVersion={handleRestoreVersion}
-          onDownloadLatestVersion={docName ? handleDownloadLatestVersion : undefined}
-          isDownloadingVersion={downloadLatestMutation.isPending}
           isLoadingVersions={fileVersionsQuery.isLoading}
           aiStatus={aiStatus}
           aiItems={aiItems}
