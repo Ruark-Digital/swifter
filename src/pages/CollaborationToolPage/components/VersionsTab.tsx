@@ -6,8 +6,6 @@ import {
   MessageSquare,
   Sparkles,
   Pencil,
-  Download,
-  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Version, VersionKind } from "./VersionHistoryModal";
@@ -15,11 +13,6 @@ import type { Version, VersionKind } from "./VersionHistoryModal";
 interface VersionsTabProps {
   versions: Version[];
   onRestore: (versionId: string) => void;
-  /** Optional handler to download the latest server-stored Yjs snapshot
-   *  (GET /collab-export/{docName}/download). When omitted the header
-   *  download button is hidden. */
-  onDownloadLatest?: () => void;
-  isDownloading?: boolean;
   /** True while the BE version list is loading on first paint. */
   isLoading?: boolean;
 }
@@ -71,8 +64,6 @@ const formatRelativeOrAbsolute = (iso: string): string => {
 const VersionsTab: React.FC<VersionsTabProps> = ({
   versions,
   onRestore,
-  onDownloadLatest,
-  isDownloading = false,
   isLoading = false,
 }) => {
   return (
@@ -90,23 +81,6 @@ const VersionsTab: React.FC<VersionsTabProps> = ({
                 : `${versions.length} snapshot${versions.length === 1 ? "" : "s"} · newest first`}
           </div>
         </div>
-        {onDownloadLatest && (
-          <button
-            type="button"
-            onClick={onDownloadLatest}
-            disabled={isDownloading}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-            aria-label="Download latest version"
-            title="Download the latest saved snapshot as a .yjs file"
-          >
-            {isDownloading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Download className="h-3.5 w-3.5" />
-            )}
-            {isDownloading ? "Downloading…" : "Download latest"}
-          </button>
-        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-4">
