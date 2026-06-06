@@ -26,6 +26,10 @@ export type SuperdocInitMessage = {
     user: { name: string; email: string };
     roomId: string;
     wsUrl: string;
+    /** JWT forwarded to the iframe so its Yjs provider can authenticate the WS
+     *  via the `Sec-WebSocket-Protocol` subprotocol, exactly like the host's
+     *  own collab client (see useCollabProvider.makeAuthWebSocketClass). */
+    token: string;
   };
 };
 
@@ -103,13 +107,16 @@ export function parseSuperdocMessage(
 }
 
 /** Build the init message; namespaces the collab room so SuperDoc never
- *  collides with the legacy y-prosemirror rooms (incompatible schema). */
+ *  collides with the legacy y-prosemirror rooms (incompatible schema). The
+ *  suffix is colon-free and stays a single URL-path/query-safe token — the
+ *  editor app sends it as `?doc=<room>` to the same `/collab` endpoint the host
+ *  uses, so the healthy server routes it (a `:`-suffixed room previously 502'd). */
 export function buildInitPayload(
   input: SuperdocInitMessage["payload"],
 ): SuperdocInitMessage {
   return {
     type: "superdoc:init",
-    payload: { ...input, roomId: `${input.roomId}:superdoc` },
+    payload: { ...input, roomId: `${input.roomId}-superdoc` },
   };
 }
 

@@ -119,6 +119,7 @@ const IframeEditorPane: React.FC<Props> = ({
           user: { name: user?.name || "Unknown User", email: user?.email || "" },
           roomId: collabMeta.roomId,
           wsUrl: collabMeta.wsUrl,
+          token: collabMeta.token,
         });
         frame.postMessage(msg, origin, [docBytes]);
       } catch (error) {
@@ -137,6 +138,7 @@ const IframeEditorPane: React.FC<Props> = ({
     },
     [
       collabMeta.roomId,
+      collabMeta.token,
       collabMeta.wsUrl,
       fail,
       importMeta.fileName,
