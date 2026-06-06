@@ -4,7 +4,13 @@ import React from "react";
 // component (the pane hides it), but it's accepted for prop-type symmetry.
 export type EditorLoadPhase = "connecting" | "fetching" | "rendering" | "ready" | "error";
 
-type Props = { phase: EditorLoadPhase; errorMsg: string };
+type Props = {
+  phase: EditorLoadPhase;
+  errorMsg: string;
+  /** When provided, the error state shows a "Try again" button that calls this
+   *  to re-attempt the editor handshake. */
+  onRetry?: () => void;
+};
 
 const STEPS: { key: EditorLoadPhase; label: string }[] = [
   { key: "connecting", label: "Connecting to the editor" },
@@ -27,16 +33,64 @@ const SkeletonLine: React.FC<{ w: string }> = ({ w }) => (
   />
 );
 
-const EditorLoadingSkeleton: React.FC<Props> = ({ phase, errorMsg }) => {
+const EditorLoadingSkeleton: React.FC<Props> = ({ phase, errorMsg, onRetry }) => {
   if (phase === "error") {
+    // Opaque canvas (matches the loading state) so a failed/blank iframe never
+    // bleeds through behind the card.
     return (
-      <div className="absolute inset-0 flex items-center justify-center p-6">
+      <div className="absolute inset-0 flex items-center justify-center bg-slate-100 p-6 dark:bg-slate-900">
         <div
           role="alert"
-          className="max-w-md rounded-lg border border-rose-200 bg-rose-50 p-5 text-center text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300"
+          className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-7 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800"
         >
-          <p className="font-medium">We couldn't open the document</p>
-          <p className="mt-1 opacity-90">{errorMsg || "Could not load the editor."}</p>
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-500 dark:bg-amber-500/10 dark:text-amber-400">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+              <path d="M12 9v4" />
+              <path d="M12 17h.01" />
+            </svg>
+          </div>
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+            We couldn&rsquo;t open the editor
+          </h2>
+          <p className="mx-auto mt-1.5 max-w-[280px] text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            {errorMsg || "Something went wrong while loading the document. Please try again."}
+          </p>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-5 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 dark:focus-visible:ring-indigo-500"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+              Try again
+            </button>
+          )}
         </div>
       </div>
     );

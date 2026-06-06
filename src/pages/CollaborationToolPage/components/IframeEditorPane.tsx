@@ -57,8 +57,21 @@ const IframeEditorPane: React.FC<Props> = ({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [phase, setPhase] = useState<Phase>("connecting");
   const [errorMsg, setErrorMsg] = useState("");
+  // Bumped by `retry` to remount the iframe (force a fresh load) and re-run the
+  // handshake effect. Stable between renders, so it never causes the spurious
+  // effect re-runs the mount-once pattern below guards against.
+  const [reloadKey, setReloadKey] = useState(0);
   // Whether the app has posted `superdoc:ready` (read by the connect watchdog).
   const readyRef = useRef(false);
+
+  // Re-attempt the editor handshake after a failure: reset to the connecting
+  // state and remount the iframe so it reloads its src from scratch.
+  const retry = useCallback(() => {
+    readyRef.current = false;
+    setErrorMsg("");
+    setPhase("connecting");
+    setReloadKey((k) => k + 1);
+  }, []);
 
   const origin = superdocOrigin();
 
@@ -213,8 +226,12 @@ const IframeEditorPane: React.FC<Props> = ({
     // Watchdog: if the app hasn't announced itself, the iframe didn't load.
     const connectTimer = window.setTimeout(() => {
       if (!readyRef.current) {
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.warn(`[superdoc] editor app at ${SUPERDOC_APP_URL} never posted superdoc:ready`);
+        }
         failRef.current(
-          `The editor app didn't respond. Check it's running at ${SUPERDOC_APP_URL} and isn't blocked by a browser extension.`,
+          "The editor didn't respond. This can happen on a slow connection or if a browser extension is blocking it.",
         );
       }
     }, CONNECT_TIMEOUT_MS);
@@ -226,7 +243,10 @@ const IframeEditorPane: React.FC<Props> = ({
       controller.abort();
       onEditorReadyRef.current(null);
     };
-  }, [origin, postCommand]);
+    // `reloadKey` re-runs this effect on an explicit retry (fresh controller +
+    // watchdog for the remounted iframe). It only changes inside `retry`, never
+    // on a normal re-render, so the mount-once guarantee still holds.
+  }, [origin, postCommand, reloadKey]);
 
   // Not `.ct-editor-panel` — that class forces height:100vh (for the legacy
   // full-page editors), which overflows the header'd column and adds a second
@@ -238,10 +258,11 @@ const IframeEditorPane: React.FC<Props> = ({
           className="absolute inset-0 z-10 transition-opacity duration-300"
           aria-busy={phase !== "error"}
         >
-          <EditorLoadingSkeleton phase={phase} errorMsg={errorMsg} />
+          <EditorLoadingSkeleton phase={phase} errorMsg={errorMsg} onRetry={retry} />
         </div>
       )}
       <iframe
+        key={reloadKey}
         ref={iframeRef}
         title="SuperDoc editor"
         src={SUPERDOC_APP_URL}
