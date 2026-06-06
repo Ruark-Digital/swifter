@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  resolveSuperdocAppUrl,
   superdocOrigin,
   parseSuperdocMessage,
   buildInitPayload,
@@ -130,5 +131,20 @@ describe("redline command builders", () => {
       type: "superdoc:focus-redline",
       payload: { redlineId: "r1" },
     });
+  });
+});
+
+describe("resolveSuperdocAppUrl", () => {
+  it("returns the configured url when set", () => {
+    expect(resolveSuperdocAppUrl({ VITE_SUPERDOC_APP_URL: "https://editor.swiftpro.tech", PROD: true }))
+      .toBe("https://editor.swiftpro.tech");
+  });
+  it("falls back to localhost in dev when unset", () => {
+    expect(resolveSuperdocAppUrl({ VITE_SUPERDOC_APP_URL: undefined, PROD: false }))
+      .toBe("http://localhost:5174");
+  });
+  it("throws in production when unset", () => {
+    expect(() => resolveSuperdocAppUrl({ VITE_SUPERDOC_APP_URL: undefined, PROD: true }))
+      .toThrow(/VITE_SUPERDOC_APP_URL/);
   });
 });

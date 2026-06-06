@@ -29,10 +29,27 @@ export type SuperdocInitMessage = {
   };
 };
 
+/** Resolve the editor app URL. In a production build a missing
+ *  VITE_SUPERDOC_APP_URL is fatal — otherwise the iframe would point at
+ *  localhost and never connect. Dev keeps the localhost default. */
+export function resolveSuperdocAppUrl(
+  env: { VITE_SUPERDOC_APP_URL?: string; PROD: boolean },
+): string {
+  const value = env.VITE_SUPERDOC_APP_URL?.trim();
+  if (value) return value;
+  if (env.PROD) {
+    throw new Error(
+      "VITE_SUPERDOC_APP_URL is not set. The collaboration editor iframe needs " +
+        "the editor app origin (e.g. https://editor.swiftpro.tech). Set it as a " +
+        "build-time env var in Amplify.",
+    );
+  }
+  return "http://localhost:5174";
+}
+
 /** Where the AGPL SuperDoc app is served from. MUST be a full URL incl. scheme
- *  (e.g. https://superdoc.example.com) — `superdocOrigin()` calls `new URL()`. */
-export const SUPERDOC_APP_URL: string =
-  import.meta.env.VITE_SUPERDOC_APP_URL || "http://localhost:5174";
+ *  (e.g. https://editor.swiftpro.tech) — `superdocOrigin()` calls `new URL()`. */
+export const SUPERDOC_APP_URL: string = resolveSuperdocAppUrl(import.meta.env);
 
 /** The bare origin of the app url — used for postMessage targeting + checks. */
 export function superdocOrigin(appUrl: string = SUPERDOC_APP_URL): string {
