@@ -327,7 +327,16 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
   const isContractManager = userRole === "contract_manager";
   const isVendorOrProjectManager = isVendor || isProjectManager;
 
-  const securityTypeCount = complianceData?.details?.securityType?.length || 0;
+  const securityTypeLabel = React.useMemo(() => {
+    const names = Array.from(
+      new Set(
+        securityRows
+          .map((row) => row.securityType)
+          .filter((label) => label && label !== "-"),
+      ),
+    );
+    return names.length > 0 ? names.join(", ") : "-";
+  }, [securityRows]);
 
   const getCategoryStatus = React.useCallback(
     (type: "policy" | "security") => {
@@ -442,6 +451,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
               contractId={contractId}
               basePath={basePath}
               title={`Submit ${activeTab === "policy" ? "Policies" : "Security"}`}
+              onSuccess={() => queryClient.invalidateQueries({ queryKey })}
               trigger={
                 <Button
                   className="h-12 rounded-xl bg-[#2A4467] px-5 text-base font-semibold text-white hover:bg-[#1f3552]"
@@ -498,7 +508,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
        
        <LabelItem
           label="Security Type"
-          value={securityTypeCount || "-"}
+          value={securityTypeLabel}
         />
 
         <LabelItem

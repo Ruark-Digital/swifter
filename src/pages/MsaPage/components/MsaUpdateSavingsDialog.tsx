@@ -22,7 +22,7 @@ import type { UploadURLs } from "@/pages/ContractManagementPage/lib/contractChan
 import { Check, CloudUpload, FileText, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
-import { useWatch } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 
@@ -42,15 +42,49 @@ const validationSchema = yup.object().shape({
   files: yup.mixed().nullable(),
 });
 
+function FileListItem({ file }: { file: File }) {
+  const { setValue, getValues } = useFormContext<MsaUpdateSavingsFormValues>();
+  const handleRemove = () => {
+    const current = (getValues("files") as File[] | undefined) || [];
+    setValue(
+      "files",
+      current.filter((v: File) => v.name !== file.name),
+    );
+  };
+  return (
+    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+      <div className="flex items-center space-x-3">
+        <div className="w-10 h-10 bg-blue-100 dark:bg-slate-700 rounded flex items-center justify-center">
+          <FileText className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{file.name}</p>
+          <p className="text-xs text-gray-500 dark:text-slate-400">
+            {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
+            {formatFileSize(file.size)}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleRemove}
+        className="text-gray-400 dark:text-slate-500 hover:text-red-500 transition-colors"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
 const UploadElement = () => {
   return (
     <div className="flex flex-col items-center gap-3">
-      <CloudUpload className="h-12 w-12 text-[#2A4467]" />
+      <CloudUpload className="h-12 w-12 text-[#2A4467] dark:text-blue-300" />
       <div className="space-y-1 text-center">
-        <p className="text-base font-semibold text-[#2A4467]">
+        <p className="text-base font-semibold text-[#2A4467] dark:text-blue-300">
           Drag &amp; Drop or Click to choose files
         </p>
-        <p className="text-sm text-[#6B7280]">
+        <p className="text-sm text-[#6B7280] dark:text-slate-400">
           Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
         </p>
       </div>
@@ -69,7 +103,7 @@ const MsaUpdateSavingsDialog: React.FC<{
   const queryClient = useQueryClient();
   const savingsQueryKey = useUserQueryKey(["msa-payment-savings", contractId]);
 
-  const { control, reset, setValue } = useForge<MsaUpdateSavingsFormValues>({
+  const { control, reset } = useForge<MsaUpdateSavingsFormValues>({
     resolver: yupResolver(validationSchema) as any,
     defaultValues: {
       title: "",
@@ -79,8 +113,6 @@ const MsaUpdateSavingsDialog: React.FC<{
       files: null,
     },
   });
-
-  const value = useWatch({ control, name: "files" }) as File[];
 
   const { mutateAsync: uploadFile } = useMutation<
     ApiResponse<UploadURLs[]>,
@@ -172,37 +204,6 @@ const MsaUpdateSavingsDialog: React.FC<{
     }
   };
 
-  const FileListItem = ({ file }: { file: File }) => {
-    return (
-      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-blue-100 rounded flex items-center justify-center">
-            <FileText className="h-5 w-5 text-blue-600" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-900">{file.name}</p>
-            <p className="text-xs text-gray-500">
-              {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
-              {formatFileSize(file.size)}
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() =>
-            setValue(
-              "files",
-              (value || []).filter((v: File) => v.name !== file.name),
-            )
-          }
-          className="text-gray-400 hover:text-red-500 transition-colors"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    );
-  };
-
   return (
     <>
       <Dialog
@@ -226,7 +227,7 @@ const MsaUpdateSavingsDialog: React.FC<{
             className="flex max-h-[90vh] flex-col"
           >
             <div className="flex items-center justify-between px-8 pb-2 pt-8">
-              <div className="text-xl font-semibold text-[#0F0F0F]">
+              <div className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Update Savings Realized
               </div>
               <button
@@ -286,7 +287,7 @@ const MsaUpdateSavingsDialog: React.FC<{
                 rows={5}
               />
               <div className="space-y-4">
-                <div className="text-sm font-medium text-[#6B6B6B]">
+                <div className="text-sm font-medium text-[#6B6B6B] dark:text-slate-300">
                   Upload Files
                 </div>
                 <Forger
@@ -318,7 +319,7 @@ const MsaUpdateSavingsDialog: React.FC<{
                 type="button"
                 onClick={() => setOpen(false)}
                 disabled={isSubmitting}
-                className="inline-flex h-11 min-w-[140px] items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] disabled:opacity-50"
+                className="inline-flex h-11 min-w-[140px] items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
                 Back
               </button>
@@ -351,14 +352,14 @@ const MsaUpdateSavingsDialog: React.FC<{
             <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#22C55E] text-[#22C55E]">
               <Check className="h-8 w-8" />
             </div>
-            <div className="text-base font-semibold text-[#0F0F0F]">
+            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
               Savings Updated Successfully
             </div>
             <div className="flex w-full items-center gap-4">
               <button
                 type="button"
                 onClick={() => setSuccessOpen(false)}
-                className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F]"
+                className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
                 Close
               </button>

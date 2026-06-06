@@ -33,7 +33,7 @@ type ApproverRow = {
   role: string;
   approvalLevel: string;
   assignedApprovals: string;
-  status: "Completed" | "Pending";
+  status: string;
   raw: any;
 };
 
@@ -53,10 +53,10 @@ const LabelRow = ({
 const normalizeStatus = (
   value?: string,
   assignedApprovals?: string,
-): "Completed" | "Pending" => {
-  const normalized = value?.toLowerCase();
-  if (normalized === "completed" || normalized === "approved")
-    return "Completed";
+): string => {
+  // BE provides a meaningful status label ("Not Assigned", "Pending",
+  // "Approved", "Rejected", "Completed") — preserve it verbatim.
+  if (value && value.trim()) return value.trim();
   if (assignedApprovals) {
     const [done, total] = assignedApprovals
       .split("/")
@@ -73,10 +73,15 @@ const normalizeStatus = (
   return "Pending";
 };
 
-const getStatusClass = (status: "Completed" | "Pending") =>
-  status === "Completed"
-    ? "bg-[#EAF2FF] text-[#2563EB]"
-    : "bg-[#FFF8E0] text-[#E8AE00]";
+const getStatusClass = (status: string) => {
+  const key = status.toLowerCase();
+  if (key === "completed" || key === "approved")
+    return "bg-[#EAF2FF] text-[#2563EB]";
+  if (key === "rejected") return "bg-[#FEE2E2] text-[#DC2626]";
+  if (key === "not assigned")
+    return "bg-[#F3F4F6] text-[#6B7280] dark:bg-slate-800 dark:text-slate-300";
+  return "bg-[#FFF8E0] text-[#E8AE00]";
+};
 
 const ApproverDetailsSheet = ({
   trigger,
@@ -229,14 +234,53 @@ const Approvers: React.FC<Props> = ({ contractId, isActive }) => {
 
   const rows = React.useMemo<ApproverRow[]>(() => {
     const payload = (data as any)?.data;
-    const groups = Array.isArray(payload)
+    const list = Array.isArray(payload)
       ? payload
       : Array.isArray(payload?.approvers)
         ? payload.approvers
         : Array.isArray(payload?.data?.approvers)
           ? payload.data.approvers
-          : [];
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
 
+    // Current BE shape: a flat array where each item is a single approver
+    // (has approverId/name and no nested `user[]` group array).
+    const isFlatApproverShape = list.some(
+      (item: any) =>
+        item &&
+        (item.approverId || item.name || item.approvalLevels) &&
+        !Array.isArray(item?.user),
+    );
+
+    if (isFlatApproverShape) {
+      return list.map((item: any, index: number): ApproverRow => {
+        const name = item?.name?.trim?.() || "Unknown";
+        const email = item?.email?.trim?.() || "-";
+        const rawRole = item?.role?.name ?? item?.role;
+        const role =
+          typeof rawRole === "string" && rawRole.trim() ? rawRole.trim() : "N/A";
+        const level = Array.isArray(item?.approvalLevels)
+          ? item.approvalLevels.join(", ")
+          : (item?.approvalLevel ?? item?.level ?? index + 1);
+        const assignedApprovals =
+          typeof item?.assignedApprovals === "string"
+            ? item.assignedApprovals
+            : `${item?.approvedCount ?? 0}/${item?.totalCount ?? 0}`;
+        return {
+          id: item?.approverId || item?._id || `approver-${index}`,
+          name,
+          email,
+          role,
+          approvalLevel: String(level),
+          assignedApprovals,
+          status: normalizeStatus(item?.status, assignedApprovals),
+          raw: item,
+        };
+      });
+    }
+
+    const groups = list;
     const mapped = groups.flatMap((group: any, groupIndex: number) => {
       const users = Array.isArray(group?.user) ? group.user : [];
       const level =

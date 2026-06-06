@@ -1,7 +1,11 @@
 import React from "react";
 import { format } from "date-fns";
 import { DataTable } from "@/components/layouts/DataTable";
-import type { ColumnDef, PaginationState } from "@tanstack/react-table";
+import type {
+  CellContext,
+  ColumnDef,
+  PaginationState,
+} from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +26,51 @@ const formatImpact = (item: ContractClaimDTO) => {
   if (hasCost) return `$${(item.cost || 0) / 1000000}M`;
   return "-";
 };
+
+function ClaimActionsCell({
+  row,
+  table,
+}: CellContext<ContractClaimDTO, unknown>) {
+  const [sheetOpen, setSheetOpen] = React.useState(false);
+  const meta = table.options.meta as
+    | {
+        contractId?: string;
+        basePath?: string;
+        listInvalidateQueryKey?: readonly unknown[];
+        statsInvalidateQueryKey?: readonly unknown[];
+        claimAssignUrlBuilder?: (claimId: string) => string;
+      }
+    | undefined;
+  const contractId = meta?.contractId ?? "";
+  const basePath = meta?.basePath ?? "";
+  const claimId = row.original.claimId || row.original._id || "";
+  const claimAssignUrl = meta?.claimAssignUrlBuilder?.(claimId);
+  return (
+    <>
+      <ChangeDetailsSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        changeId={claimId}
+        contractId={contractId}
+        basePath={basePath}
+        listInvalidateQueryKey={meta?.listInvalidateQueryKey}
+        statsInvalidateQueryKey={meta?.statsInvalidateQueryKey}
+        claimAssignUrl={claimAssignUrl}
+      />
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon">⋮</Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setSheetOpen(true)}>
+            View Details
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  );
+}
 
 const columns: ColumnDef<ContractClaimDTO>[] = [
   {
@@ -94,48 +143,7 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
   {
     id: "actions",
     header: "Actions",
-    cell: ({ row, table }) => {
-      const [sheetOpen, setSheetOpen] = React.useState(false);
-      const meta = table.options.meta as
-        | {
-            contractId?: string;
-            basePath?: string;
-            listInvalidateQueryKey?: readonly unknown[];
-            statsInvalidateQueryKey?: readonly unknown[];
-            claimAssignUrlBuilder?: (claimId: string) => string;
-          }
-        | undefined;
-      const contractId = meta?.contractId ?? "";
-      const basePath = meta?.basePath ?? "";
-      const claimId = row.original.claimId || row.original._id || "";
-      const claimAssignUrl = meta?.claimAssignUrlBuilder?.(claimId);
-
-      return (
-        <>
-          <ChangeDetailsSheet
-            open={sheetOpen}
-            onOpenChange={setSheetOpen}
-            changeId={claimId}
-            contractId={contractId}
-            basePath={basePath}
-            listInvalidateQueryKey={meta?.listInvalidateQueryKey}
-            statsInvalidateQueryKey={meta?.statsInvalidateQueryKey}
-            claimAssignUrl={claimAssignUrl}
-          />
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">⋮</Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setSheetOpen(true)}>
-                View Details
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </>
-      );
-    },
+    cell: (ctx) => <ClaimActionsCell {...ctx} />,
   },
 ];
 

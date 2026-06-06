@@ -56,19 +56,13 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
     isViewOnly,
   ]);
 
-  // BE plurality is role-asymmetric (Class 4 per
-  // msa-url-routing-bug-classes): manager hits plural `claims`, every
-  // other role hits singular `claim`. Three roles silently 404 if we
-  // always send plural.
-  const claimsPath = React.useMemo(
-    () => (isManager ? `${basePath}/claims` : `${basePath}/claim`),
-    [basePath, isManager],
-  );
+  // BE expects plural `claims` for every role (singular `claim` 404s,
+  // e.g. vendor `/msa-contracts/{id}/claim`). Matches contract surface.
+  const claimsPath = `${basePath}/claims`;
   const statsPath = `${claimsPath}/stats`;
 
   const createPath = React.useMemo(() => {
-    if (isVendor || isProjectManager) return `${basePath}/claim`;
-    if (isManager) return `${basePath}/claims`;
+    if (isVendor || isProjectManager || isManager) return `${basePath}/claims`;
     return undefined;
   }, [basePath, isVendor, isProjectManager, isManager]);
 
@@ -116,6 +110,7 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
       });
       return response.data as {
         data?: {
+          changes?: ContractClaimDTO[];
           contractClaims?: ContractClaimDTO[];
           claims?: ContractClaimDTO[];
           total?: number;
@@ -147,6 +142,10 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
 
   const rows = React.useMemo(() => {
     const payload = claimsRes?.data;
+    // BE returns claims under `changes` (claims endpoint reuses the
+    // change-order list shape — same as the contract surface). Keep the
+    // older keys as defensive fallbacks.
+    if (Array.isArray(payload?.changes)) return payload.changes;
     if (Array.isArray(payload?.contractClaims)) return payload.contractClaims;
     if (Array.isArray(payload?.claims)) return payload.claims;
     return [];

@@ -723,23 +723,24 @@ const AnalyticsTab: React.FC<Props> = ({
                   width={32}
                 />
                 <Tooltip />
-                <Line type="monotone" dataKey="change" stroke="#3B82F6" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="claims" stroke="#10B981" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="invoice" stroke="#F59E0B" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="rfi" stroke="#6366F1" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="ncr" stroke="#EF4444" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="change" name="Changes" stroke="#3B82F6" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="claims" name="Claims" stroke="#10B981" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="invoice" name="Invoices" stroke="#F59E0B" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="rfi" name="RFI" stroke="#6366F1" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="ncr" name="NCR" stroke="#EF4444" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="deliverables" name="Deliverables" stroke="#14B8A6" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
           <div className="flex flex-wrap gap-3 mt-4 justify-center">
-            {["Change", "Claims", "Invoice", "RFI", "NCR", "Deliverables"].map((item, i) => (
+            {["Changes", "Claims", "Invoices", "RFI", "NCR", "Deliverables"].map((item, i) => (
               <div key={i} className="flex items-center gap-1.5">
-                <div className={cn("w-2 h-2 rounded-full", 
-                  item === "Change" ? "bg-blue-500" : 
+                <div className={cn("w-2 h-2 rounded-full",
+                  item === "Changes" ? "bg-blue-500" :
                   item === "Claims" ? "bg-green-500" :
-                  item === "Invoice" ? "bg-yellow-500" :
+                  item === "Invoices" ? "bg-yellow-500" :
                   item === "RFI" ? "bg-indigo-500" :
-                  item === "NCR" ? "bg-red-500" : "bg-slate-800"
+                  item === "NCR" ? "bg-red-500" : "bg-teal-500"
                 )} />
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 dark:text-slate-500">{item}</span>
               </div>

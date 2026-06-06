@@ -17,7 +17,7 @@ const REPORTS = resolve(ROOT, ".qa", "reports");
 mkdirSync(SHOTS, { recursive: true });
 mkdirSync(REPORTS, { recursive: true });
 
-const BASE = "http://localhost:5173";
+const BASE = process.env.BASE || "http://localhost:5173";
 
 const ROLES = [
   { key: "cm",       label: "Contract Manager", email: "adediran.dbs+cm@gmail.com",       password: "password" },

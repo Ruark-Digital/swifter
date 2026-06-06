@@ -73,7 +73,7 @@ const SendApprovalDialog: React.FC<Props> = ({
     queryKey: ["contract-approvers-pool", contractId],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/contracts/${contractId}/approvers`,
+        url: `/contract/manager/msa-contracts/${contractId}/approvers`,
       });
       return res.data as PoolResponse;
     },

@@ -177,11 +177,11 @@ const Reports: React.FC<Props> = ({ contractId, isActive }) => {
 
   const basePath = React.useMemo(() => {
     if (isVendor || isProjectManager)
-      return `/contract/vendor/contracts/${contractId}/reports`;
-    if (isApprover) return `/contract/approver/contracts/${contractId}/reports`;
-    if (isManager) return `/contract/manager/contracts/${contractId}/reports`;
-    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/reports`;
-    return `/contract/user/contracts/${contractId}/reports`;
+      return `/contract/vendor/msa-contracts/${contractId}/reports`;
+    if (isApprover) return `/contract/approver/msa-contracts/${contractId}/reports`;
+    if (isManager) return `/contract/manager/msa-contracts/${contractId}/reports`;
+    if (isAdmin || isViewOnly) return `/contract/user/msa-contracts/${contractId}/reports`;
+    return `/contract/user/msa-contracts/${contractId}/reports`;
   }, [
     contractId,
     isAdmin,
@@ -322,6 +322,7 @@ const Reports: React.FC<Props> = ({ contractId, isActive }) => {
             </DialogTrigger>
             <CreateVendorReportDialog
               contractId={contractId}
+              createPath={basePath}
               invalidateQueryKey={listQueryKey}
               onSuccess={() => setOpenCreate(false)}
             />
@@ -333,7 +334,7 @@ const Reports: React.FC<Props> = ({ contractId, isActive }) => {
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-2">
             <div className="text-sm text-[#6B6B6B] dark:text-slate-400">All Report</div>
-            <div className="text-[40px] font-semibold leading-8 text-[#0F0F0F] dark:text-slate-100">
+            <div className="text-2xl font-semibold leading-8 text-[#0F0F0F] dark:text-slate-100">
               {statsLoading ? "—" : allCount}
             </div>
           </div>

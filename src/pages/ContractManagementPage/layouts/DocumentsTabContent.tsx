@@ -18,12 +18,13 @@ type Props = {
   onUpdated?: (contract: ContractDetail) => void;
   effectiveDate?: string;
   /** Contract status — drives whether documents are editable. The list
-   *  becomes read-only for any status other than `pending_approval`. */
+   *  is editable while `draft` or `pending_approval`, and becomes
+   *  read-only for any other (terminal) status. */
   status?: string;
   actionsDisabled?: boolean;
 };
 
-const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, effectiveDate, status, actionsDisabled }) => {
+const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, effectiveDate, status }) => {
   const [editingContractId, setEditingContractId] = React.useState<string | null>(null);
   const { success } = useToastHandler();
   const qc = useQueryClient();
@@ -47,7 +48,7 @@ const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, ef
                   setEditingContractId(contractId);
                 }
               }}
-              disabled={!!actionsDisabled}
+              disabled={status !== "draft"}
             >
               Edit Contract
             </Button>
@@ -64,13 +65,15 @@ const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, ef
         status={status}
       />
 
-      {editingContractId !== null && (
+      {/* Kept mounted while on the detail page (not conditionally rendered) so
+          unsaved edits survive an accidental close/reopen; only `open` toggles. */}
+      {contractId && (
         <EditContract
-          open={true}
+          open={editingContractId !== null}
           onOpenChange={(open) => {
             if (!open) setEditingContractId(null);
           }}
-          contractId={editingContractId}
+          contractId={contractId}
           onUpdated={(contract) => {
             success("Contract updated successfully", "Changes saved");
             qc.invalidateQueries({ queryKey: ["contract-manager-contracts"] });

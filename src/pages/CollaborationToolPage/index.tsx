@@ -3,7 +3,8 @@ import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { SEOWrapper } from "@/components/SEO";
 import SidebarPanel from "./components/SidebarPanel";
 import "@/pages/CollaborationToolPage/collaboration.css";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Download, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useToken, useUser } from "@/store/authSlice";
 import { useCollaborationStore } from "./store/useCollaborationStore";
@@ -63,12 +64,14 @@ type LocalComment = {
   mentions?: Mentionable[];
 };
 
+// Legacy editors, kept as escape hatches: `?editor=yoopta` (Yoopta) and
+// `?editor=tiptap` (TipTap). SuperDoc is the default (see below).
 const EditorPane = lazyWithRetry(() => import("./components/EditorPanel"));
-// TipTap is now the default editor. The legacy Yoopta panel is kept as
-// a fallback for redline / comment / AI / version-history features that
-// haven't been ported yet — opt in with `?editor=yoopta` until SP2-4
-// land those features on TipTap.
 const TipTapEditorPane = lazyWithRetry(() => import("./components/TipTapEditorPanel"));
+// SuperDoc runs as a separate AGPL app inside an iframe; this pane is the
+// host-side postMessage bridge. It is the DEFAULT editor (requires the AGPL app
+// deployed at VITE_SUPERDOC_APP_URL).
+const IframeEditorPane = lazyWithRetry(() => import("./components/IframeEditorPane"));
 
 const toTimestamp = (value?: string | Date) => {
   if (!value) return "";
@@ -117,6 +120,7 @@ const CollaborationToolPage: React.FC = () => {
   const { toast } = useToast();
   const toastHandler = useToastHandler();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [commentInput, setCommentInput] = useState("");
 
   const activeTab = useCollaborationStore((state) => state.activeTab);
@@ -621,22 +625,74 @@ const CollaborationToolPage: React.FC = () => {
         robots="noindex, nofollow"
         canonical="/collaboration-tool"
       />
-      <div className="flex min-h-svh bg-white dark:bg-slate-950">
-        <div className="flex-1 max-w-7xl  overflow-auto">
-          <Suspense fallback={<div className="ct-editor-panel" />}>
-            {searchParams.get("editor") === "yoopta" ? (
-              <EditorPane
-                importMeta={importMeta}
-                collabMeta={collabMeta}
-                onEditorReady={handleEditorReady}
-              />
-            ) : (
-              <TipTapEditorPane
-                importMeta={importMeta}
-                collabMeta={collabMeta}
-                onEditorReady={handleEditorReady}
-              />
-            )}
+      <div className="flex h-svh flex-col bg-white dark:bg-slate-950">
+        {/* Header — lets the user close the editor and return to the contract
+            detail they came from (same-tab navigation). */}
+        <header className="flex items-center gap-3 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Close editor and return to contract"
+            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to contract
+          </button>
+          <div className="h-5 w-px bg-slate-200 dark:bg-slate-800" />
+          <h1 className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+            {fileName || "Document Editor"}
+          </h1>
+          {docName && (
+            <button
+              type="button"
+              onClick={handleDownloadLatestVersion}
+              disabled={downloadLatestMutation.isPending}
+              className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              aria-label="Download latest version"
+              title="Download the latest saved snapshot as a .yjs file"
+            >
+              {downloadLatestMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5" />
+              )}
+              {downloadLatestMutation.isPending ? "Downloading…" : "Download"}
+            </button>
+          )}
+        </header>
+        <div className="flex min-h-0 flex-1">
+          <div className="flex-1 max-w-7xl overflow-auto">
+            <Suspense fallback={<div className="ct-editor-panel" />}>
+            {(() => {
+              // SuperDoc is the default editor. TipTap/Yoopta stay reachable as
+              // escape hatches via `?editor=tiptap` / `?editor=yoopta`.
+              const editorParam = searchParams.get("editor");
+              if (editorParam === "tiptap") {
+                return (
+                  <TipTapEditorPane
+                    importMeta={importMeta}
+                    collabMeta={collabMeta}
+                    onEditorReady={handleEditorReady}
+                  />
+                );
+              }
+              if (editorParam === "yoopta") {
+                return (
+                  <EditorPane
+                    importMeta={importMeta}
+                    collabMeta={collabMeta}
+                    onEditorReady={handleEditorReady}
+                  />
+                );
+              }
+              return (
+                <IframeEditorPane
+                  importMeta={importMeta}
+                  collabMeta={collabMeta}
+                  onEditorReady={handleEditorReady}
+                />
+              );
+            })()}
           </Suspense>
         </div>
         <SidebarPanel
@@ -652,8 +708,6 @@ const CollaborationToolPage: React.FC = () => {
           mentionables={mentionables}
           versions={versions}
           onRestoreVersion={handleRestoreVersion}
-          onDownloadLatestVersion={docName ? handleDownloadLatestVersion : undefined}
-          isDownloadingVersion={downloadLatestMutation.isPending}
           isLoadingVersions={fileVersionsQuery.isLoading}
           aiStatus={aiStatus}
           aiItems={aiItems}
@@ -662,6 +716,7 @@ const CollaborationToolPage: React.FC = () => {
           onAiDismiss={handleDismissAi}
           onAiRetry={runAiSuggestions}
         />
+        </div>
       </div>
     </>
   );

@@ -1117,15 +1117,15 @@ const SendForApprovalDialog = React.memo(
               </p>
               <div className="relative">
                 <select
-                  className="w-full h-12 border border-gray-300 dark:border-slate-700 rounded-lg px-4 pr-10 text-sm text-slate-700 dark:text-slate-300 focus:border-[#2A4467] focus:ring-[#2A4467]"
+                  className="w-full h-12 border border-gray-300 dark:border-slate-700 rounded-lg px-4 pr-10 text-sm text-slate-700 dark:text-slate-300 dark:bg-slate-900 dark:[color-scheme:dark] focus:border-[#2A4467] focus:ring-[#2A4467]"
                   value={selectedApprovalGroup}
                   onChange={(event) =>
                     setSelectedApprovalGroup(event.target.value)
                   }
                 >
-                  <option value="">Select Group</option>
+                  <option value="" className="dark:bg-slate-900 dark:text-slate-100">Select Group</option>
                   {approvalGroupOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
+                    <option key={option.value} value={option.value} className="dark:bg-slate-900 dark:text-slate-100">
                       {option.label}
                     </option>
                   ))}

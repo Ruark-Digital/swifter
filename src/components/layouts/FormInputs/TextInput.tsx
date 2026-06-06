@@ -586,22 +586,31 @@ export const TextDatePicker = (
     disabled
   } = props;
   const id = useId();
-  const [timeValue, setTimeValue] = useState<string>("");
-
-  useEffect(() => {
-    if (value) {
-      const val =
-        typeof value === "string"
-          ? value?.includes("T")
-            ? value?.split("T")?.[1]?.split?.(".")?.[0]
-            : ""
-          : format(value, "HH:mm");
-
-      setTimeValue(val);
-    } else {
-      setTimeValue("");
+  // timeValue tracks both the parent-driven `value` prop (a Date or ISO string)
+  // and the user's in-progress typing. Pattern A from react-doctor's
+  // no-adjust-state-on-prop-change recipe: store which `value` produced the
+  // current local string so the read auto-evicts to the prop-derived default
+  // when the parent changes — no prop-mirroring effect, no flash.
+  const computeTimeFromValue = (val: typeof value): string => {
+    if (!val) return "";
+    if (typeof val === "string") {
+      return val?.includes("T")
+        ? (val?.split("T")?.[1]?.split?.(".")?.[0] ?? "")
+        : "";
     }
-  }, [value]);
+    return format(val, "HH:mm");
+  };
+  const [timeState, setTimeState] = useState<{
+    forValue: typeof value;
+    time: string;
+  }>(() => ({ forValue: value, time: computeTimeFromValue(value) }));
+  const timeValue =
+    timeState.forValue === value
+      ? timeState.time
+      : computeTimeFromValue(value);
+  const setTimeValue = (next: string) => {
+    setTimeState({ forValue: value, time: next });
+  };
 
   const combineDateTime = (date: Date | undefined, time: string) => {
     if (!date) return undefined;

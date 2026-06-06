@@ -10,7 +10,7 @@ import {
   TextDatePicker,
   TextCurrencyInput,
 } from "@/components/layouts/FormInputs";
-import { AlertTriangle, Check, CloudUpload, FileText, X } from "lucide-react";
+import { Check, CloudUpload, FileText, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import AmendmentsStatsCards from "../components/AmendmentsStatsCards";
 import AmendmentsTable, {
@@ -31,6 +31,41 @@ import { postRequest } from "@/lib/axiosInstance";
 import type { UploadURLs } from "../lib/contractChanges";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
+import { useFormContext } from "react-hook-form";
+
+function FileListItem({ file }: { file: File }) {
+  const { setValue, getValues } = useFormContext();
+  const handleRemove = () => {
+    const current = (getValues("files") as File[] | undefined) || [];
+    setValue(
+      "files",
+      current.filter((v: File) => v.name !== file.name),
+    );
+  };
+  return (
+    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 dark:border-slate-700 dark:bg-slate-800">
+      <div className="flex items-center space-x-3">
+        <div className="w-10 h-10 bg-blue-100 dark:bg-slate-700 rounded flex items-center justify-center">
+          <FileText className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{file.name}</p>
+          <p className="text-xs text-gray-500 dark:text-slate-400">
+            {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
+            {formatFileSize(file.size)}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleRemove}
+        className="text-gray-400 dark:text-slate-400 hover:text-red-500 transition-colors"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
 
 type CreateAmendmentFormValues = {
   amendmentTitle: string;
@@ -106,7 +141,7 @@ export const CreateAmendmentDialog: React.FC<{
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
 
-  const { control, reset, setValue, watch } = useForge<CreateAmendmentFormValues>({
+  const { control, reset, watch } = useForge<CreateAmendmentFormValues>({
     defaultValues: {
       amendmentTitle: "",
       impactType: "time",
@@ -115,8 +150,8 @@ export const CreateAmendmentDialog: React.FC<{
       scopeEnabled: true,
       expiryEnabled: true,
       costEnabled: true,
-      clauseEnabled: false,
-      othersEnabled: false,
+      clauseEnabled: true,
+      othersEnabled: true,
       scope: "",
       newExpiryDate: "",
       otherCost: "",
@@ -127,7 +162,6 @@ export const CreateAmendmentDialog: React.FC<{
     },
   });
   
-  const value = watch("files") as File[] | null;
   const impactType = watch("impactType");
   const scopeEnabled = watch("scopeEnabled");
   const expiryEnabled = watch("expiryEnabled");
@@ -273,37 +307,6 @@ export const CreateAmendmentDialog: React.FC<{
   };
 
   const isSubmitting = createMutation.isPending || isUploadingFiles;
-
-  const FileListItem = ({ file }: { file: File }) => {
-    return (
-      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 dark:border-slate-700 dark:bg-slate-800">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-blue-100 dark:bg-slate-700 rounded flex items-center justify-center">
-            <FileText className="h-5 w-5 text-blue-600 dark:text-blue-300" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{file.name}</p>
-            <p className="text-xs text-gray-500 dark:text-slate-400">
-              {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
-              {formatFileSize(file.size)}
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() =>
-            setValue(
-              "files",
-              (value || []).filter((v: File) => v.name !== file.name),
-            )
-          }
-          className="text-gray-400 dark:text-slate-400 hover:text-red-500 transition-colors"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    );
-  };
 
   return (
     <>
@@ -458,7 +461,7 @@ export const CreateAmendmentDialog: React.FC<{
                           <Checkbox
                             checked={!!value}
                             onCheckedChange={(checked) => onChange(!!checked)}
-                            className="h-6 w-6 rounded-md border-[#2A4467] data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
+                            className="h-6 w-6 rounded-md border-[#2A4467] dark:border-slate-400 data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
                           />
                         )}
                       />
@@ -488,7 +491,7 @@ export const CreateAmendmentDialog: React.FC<{
                           <Checkbox
                             checked={!!value}
                             onCheckedChange={(checked) => onChange(!!checked)}
-                            className="h-6 w-6 rounded-md border-[#2A4467] data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
+                            className="h-6 w-6 rounded-md border-[#2A4467] dark:border-slate-400 data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
                           />
                         )}
                       />
@@ -518,7 +521,7 @@ export const CreateAmendmentDialog: React.FC<{
                           <Checkbox
                             checked={!!value}
                             onCheckedChange={(checked) => onChange(!!checked)}
-                            className="h-6 w-6 rounded-md border-[#2A4467] data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
+                            className="h-6 w-6 rounded-md border-[#2A4467] dark:border-slate-400 data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
                           />
                         )}
                       />
@@ -548,7 +551,7 @@ export const CreateAmendmentDialog: React.FC<{
                           <Checkbox
                             checked={!!value}
                             onCheckedChange={(checked) => onChange(!!checked)}
-                            className="h-6 w-6 rounded-md border-[#E5E7EB] data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
+                            className="h-6 w-6 rounded-md border-[#2A4467] dark:border-slate-400 data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
                           />
                         )}
                       />
@@ -578,7 +581,7 @@ export const CreateAmendmentDialog: React.FC<{
                           <Checkbox
                             checked={!!value}
                             onCheckedChange={(checked) => onChange(!!checked)}
-                            className="h-6 w-6 rounded-md border-[#E5E7EB] data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
+                            className="h-6 w-6 rounded-md border-[#2A4467] dark:border-slate-400 data-[state=checked]:bg-[#2A4467] data-[state=checked]:border-[#2A4467]"
                           />
                         )}
                       />
@@ -626,21 +629,6 @@ export const CreateAmendmentDialog: React.FC<{
                     } as any
                   }
                 />
-              </div>
-
-              <div className="flex items-start gap-3 rounded-2xl border border-[#2A44671A] bg-[#F8F8F8] p-4 dark:border-slate-700 dark:bg-slate-800">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#EF4444] text-[#EF4444]">
-                  <AlertTriangle className="h-4 w-4" />
-                </div>
-                <div className="space-y-1 max-w-xs">
-                  <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
-                    Vendor Acceptance Required
-                  </div>
-                  <div className="text-sm text-[#626262] dark:text-slate-400">
-                    This amendment includes a time impact, but no approver has
-                    been assigned to review time-related impacts.
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -805,6 +793,7 @@ const AmendmentsTabContent: React.FC<Props> = ({
               <img
                 src="/assets/contract-management/amendments/share.svg"
                 className="mr-2 h-5 w-5"
+                alt=""
               />
               Export Report
             </Button>
@@ -821,6 +810,7 @@ const AmendmentsTabContent: React.FC<Props> = ({
                   <img
                     src="/assets/contract-management/amendments/plus.svg"
                     className="mr-2 h-5 w-5"
+                    alt=""
                   />
                   Create Amendment
                 </Button>

@@ -13,12 +13,14 @@ export const Dashboard = () => {
   // Enable inactivity logout for authenticated users in dashboard
   useInactivityLogout();
   const { userRole } = useUserRole();
-  const location = useLocation();
+  // Renamed from `location` so it doesn't shadow `window.location`, which
+  // trips react-doctor/no-mutable-in-deps' name-based detection.
+  const routerLocation = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (userRole !== "project_manager") return;
-    const path = location.pathname;
+    const path = routerLocation.pathname;
     const isAllowed =
       path === "/dashboard" ||
       path === "/dashboard/profile" ||
@@ -33,7 +35,7 @@ export const Dashboard = () => {
     if (path === "/dashboard") {
       navigate("/dashboard/contract-management", { replace: true });
     }
-  }, [userRole, location.pathname, navigate]);
+  }, [userRole, routerLocation.pathname, navigate]);
 
   return (
     <Container
@@ -41,7 +43,7 @@ export const Dashboard = () => {
       fullWidth
       fullHeight
       display="flex"
-      className="overflow-x-hidden overflow-y-hidden bg-[#F7F9FE] dark:bg-gray-950 relative transition-colors"
+      className="overflow-hidden bg-[#F7F9FE] dark:bg-gray-950 relative transition-colors"
       as={SidebarProvider}
     >
       <SideBar />

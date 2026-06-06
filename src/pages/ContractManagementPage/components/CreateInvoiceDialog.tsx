@@ -18,6 +18,7 @@ import {
   TextInput,
   TextSelect,
 } from "@/components/layouts/FormInputs";
+import { useFileUpload } from "@/components/ui/file-upload";
 import { X, Plus, Trash2, FileText, UploadCloud, Edit2 } from "lucide-react";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -353,12 +354,11 @@ const CompleteInvoiceDialog = React.memo(
               <div className="divide-y divide-[#E5E7EB] dark:divide-slate-700">
                 {fields.map((field, index) => (
                   <InvoiceInputRow
-                    {...{
-                      id: field.id,
-                      index,
-                      onRemoveRow: handleRemoveRow,
-                      onAddRow: handleAddRow,
-                    }}
+                    key={field.id}
+                    id={field.id}
+                    index={index}
+                    onRemoveRow={handleRemoveRow}
+                    onAddRow={handleAddRow}
                   />
                 ))}
               </div>
@@ -483,21 +483,16 @@ const UploadElement = () => {
 };
 
 const FilesListItem = ({ file, index }: { file: File; index?: number }) => {
-  // TextFileUploader calls List with { file, control, index } — not
-  // value/onChange — so the previous remove handler silently no-op'd.
-  // Pull the live files array off form context, splice by index, and
-  // write back. Index is more reliable than name because dropzone
-  // allows duplicates and a name-match would remove both rows.
-  const { setValue } = useFormContext<{ files: File[] | null }>();
-  const value = useWatch({ name: "files" }) as File[] | null | undefined;
+  // Remove via the FileUploader's own removeFileFromSet, which routes through
+  // the same onValueChange that drops use — so the controlled list actually
+  // re-renders. (Writing to the field directly with useFormContext().setValue
+  // updates form state but does NOT reliably re-render the Forger controller
+  // under Forge's FormProvider wiring, so the row stayed on screen.)
+  const { removeFileFromSet } = useFileUpload();
 
   const handleRemove = () => {
     if (typeof index !== "number") return;
-    const next = (value ?? []).filter((_, i) => i !== index);
-    setValue("files", next.length > 0 ? next : null, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
+    removeFileFromSet(index);
   };
 
   return (
@@ -667,7 +662,15 @@ const CreateInvoiceDialog: React.FC<Props> = ({
           url: createPath,
           payload,
         });
-        return res.data;
+        const body = res.data as { status?: string; message?: string };
+        // BE may return HTTP 200 with `{status:"fail", message:"..."}` for
+        // business-rule failures (e.g. "Could not determine invoice amount
+        // from the uploaded files"). Surface that message instead of a
+        // generic success. Sibling pattern: MsaReleaseHoldbackDialog.
+        if (body?.status === "fail") {
+          throw new Error(body?.message || "Failed to submit invoice");
+        }
+        return body;
       }
       return await vendorApi.createInvoice(contractId, payload);
     },
@@ -689,12 +692,6 @@ const CreateInvoiceDialog: React.FC<Props> = ({
       setOpen(false);
       setCompleteOpen(false);
       setInvoiceCompleted(false);
-    },
-    onError: (error: ApiResponseError) => {
-      toastHandler.error(
-        "Error",
-        error?.response?.data?.message || "Failed to submit invoice",
-      );
     },
   });
 
@@ -972,10 +969,12 @@ const CreateInvoiceDialog: React.FC<Props> = ({
 
         await createInvoiceMutation.mutateAsync(payload);
         reset();
-      } catch (error) {
+      } catch (error: any) {
         toastHandler.error(
           "Submission Failed",
-          "An error occurred while submitting the invoice. Please try again.",
+          error?.response?.data?.message ||
+            error?.message ||
+            "An error occurred while submitting the invoice. Please try again.",
         );
       } finally {
         setIsSubmitting(false);
@@ -1021,7 +1020,6 @@ const CreateInvoiceDialog: React.FC<Props> = ({
             control={control}
             onSubmit={onSubmit}
             className="space-y-5"
-            // debug
           >
             <Forger
               name="invoiceTitle"

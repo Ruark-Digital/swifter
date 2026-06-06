@@ -10,6 +10,7 @@ interface CardStatsProps {
   icon: string;
   color: string;
   bgColor: string;
+  currency?: string;
   onClick?: () => void;
 }
 
@@ -408,6 +409,7 @@ export const CardStats: React.FC<CardStatsProps> = ({
   icon,
   color,
   bgColor,
+  currency,
   onClick,
 }) => {
   const IconComponent = IconMap[icon as IconMapKey] || IconMap.folder;
@@ -423,6 +425,22 @@ export const CardStats: React.FC<CardStatsProps> = ({
       title === "Savings Realized" ||
       title === "Holdbacks"
     ) {
+      // Prefix with the currency code (e.g. "CAD 101.1B") when the API
+      // supplies one. Guard against unknown codes — Intl throws on those.
+      if (currency) {
+        try {
+          return new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency,
+            currencyDisplay: "code",
+            notation: "compact",
+            compactDisplay: "short",
+            maximumFractionDigits: 1,
+          }).format(safeValue);
+        } catch {
+          // Fall through to the plain compact format below.
+        }
+      }
       return new Intl.NumberFormat("en-US", {
         notation: "compact",
         compactDisplay: "short",
@@ -431,7 +449,7 @@ export const CardStats: React.FC<CardStatsProps> = ({
     }
 
     return String(safeValue);
-  }, [title, value]);
+  }, [title, value, currency]);
 
   return (
     <Card 

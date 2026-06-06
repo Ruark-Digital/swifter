@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Share2, Loader2 } from "lucide-react";
 import {
@@ -51,9 +51,6 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
   children,
 }) => {
   const [exportFormat, setExportFormat] = useState("pdf");
-  const [selectedSections, setSelectedSections] = useState<
-    Record<string, boolean>
-  >({});
   const [isDownloading, setIsDownloading] = useState(false);
   const toast = useToastHandler();
 
@@ -94,34 +91,44 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
     enabled: !!(solicitationId || evaluationId || contractId),
   });
 
-  // Update selected sections based on API response. The contract
-  // endpoint *currently* returns a flat `Record<string, boolean>` map
-  // (matching solicitation/evaluation) even though swagger advertises
-  // `{ available: string[], data: {...} }`. Handle both: if `available`
-  // exists, use it; otherwise treat the payload itself as the map.
-  useEffect(() => {
-    const payload = docsOptionsData?.data?.data;
-    if (!payload || typeof payload !== "object") return;
-
-    const initialSections: Record<string, boolean> = {};
+  // Pattern A from react-doctor's no-adjust-state-on-prop-change recipe:
+  // keep the user's selections bound to which docsOptionsData they came from.
+  // When the query refetches (new identity), the read auto-evicts to fresh
+  // server defaults — no useEffect mirror, no flash of stale checkboxes.
+  // The contract endpoint *currently* returns a flat `Record<string, boolean>`
+  // map (matching solicitation/evaluation) even though swagger advertises
+  // `{ available: string[], data: {...} }`. Handle both shapes here.
+  const computeDefaults = (
+    payload: DocsOptionResponse | ContractEntitiesResponse | undefined,
+  ): Record<string, boolean> => {
+    if (!payload || typeof payload !== "object") return {};
+    const result: Record<string, boolean> = {};
     const available = (payload as ContractEntitiesResponse).available;
     if (Array.isArray(available)) {
       available.forEach((key) => {
-        initialSections[key] = true;
+        result[key] = true;
       });
     } else {
       Object.entries(payload as DocsOptionResponse).forEach(([key, value]) => {
-        initialSections[key] = Boolean(value);
+        result[key] = Boolean(value);
       });
     }
-    setSelectedSections(initialSections);
-  }, [docsOptionsData]);
+    return result;
+  };
+  const [sectionsState, setSectionsState] = useState<{
+    forData: typeof docsOptionsData;
+    sections: Record<string, boolean>;
+  }>({ forData: undefined, sections: {} });
+  const selectedSections =
+    sectionsState.forData === docsOptionsData
+      ? sectionsState.sections
+      : computeDefaults(docsOptionsData?.data?.data);
 
   const handleSectionChange = (section: string, checked: boolean) => {
-    setSelectedSections((prev) => ({
-      ...prev,
-      [section]: checked,
-    }));
+    setSectionsState({
+      forData: docsOptionsData,
+      sections: { ...selectedSections, [section]: checked },
+    });
   };
 
   // Handle download functionality

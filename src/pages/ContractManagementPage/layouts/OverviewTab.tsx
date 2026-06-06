@@ -101,7 +101,7 @@ const ManagerView: React.FC<ViewProps> = ({
               triggerLabel={contractManager.name || "N/A"}
               name={contractManager.name || "N/A"}
               email={contractManager.email || "N/A"}
-              role={contractManager.role || "N/A"}
+              jobTitle={contractManager.role || "N/A"}
               phone="N/A"
             />
           ) : (
@@ -128,7 +128,7 @@ const ManagerView: React.FC<ViewProps> = ({
               triggerLabel={contractManager.name}
               name={contractManager.name}
               email={contractManager.email || "N/A"}
-              role={contractManager.role || "N/A"}
+              jobTitle={contractManager.role || "N/A"}
               phone="N/A"
             />
           ) : (
@@ -145,7 +145,7 @@ const ManagerView: React.FC<ViewProps> = ({
                   triggerLabel={member.name}
                   name={member.name}
                   email={member.email || "N/A"}
-                  role={member.role || "N/A"}
+                  jobTitle={member.role || "N/A"}
                   phone="N/A"
                 />
               ))
@@ -162,7 +162,7 @@ const ManagerView: React.FC<ViewProps> = ({
               triggerLabel={vendorName}
               name={vendorName}
               email="N/A"
-              role="N/A"
+              jobTitle="N/A"
               phone="N/A"
             />
           ) : (
@@ -179,7 +179,7 @@ const ManagerView: React.FC<ViewProps> = ({
                   triggerLabel={person.name}
                   name={person.name}
                   email={person.email || "N/A"}
-                  role={person.role || "N/A"}
+                  jobTitle={person.role || "N/A"}
                   phone={person.phone || "N/A"}
                 />
               ))
@@ -270,7 +270,7 @@ const VendorView: React.FC<ViewProps> = ({
               triggerLabel={contractManager.name}
               name={contractManager.name}
               email={contractManager.email || "N/A"}
-              role={contractManager.role || "N/A"}
+              jobTitle={contractManager.role || "N/A"}
               phone="N/A"
             />
           ) : (
@@ -325,7 +325,7 @@ const VendorView: React.FC<ViewProps> = ({
               triggerLabel={contractManager.name}
               name={contractManager.name}
               email={contractManager.email || "N/A"}
-              role={contractManager.role || "N/A"}
+              jobTitle={contractManager.role || "N/A"}
               phone="N/A"
             />
           ) : (
@@ -342,7 +342,7 @@ const VendorView: React.FC<ViewProps> = ({
                   triggerLabel={member.name}
                   name={member.name}
                   email={member.email || "N/A"}
-                  role={member.role || "N/A"}
+                  jobTitle={member.role || "N/A"}
                   phone="N/A"
                 />
               ))
@@ -359,7 +359,7 @@ const VendorView: React.FC<ViewProps> = ({
               triggerLabel={vendorName}
               name={vendorName}
               email="N/A"
-              role="N/A"
+              jobTitle="N/A"
               phone="N/A"
             />
           ) : (
@@ -376,7 +376,7 @@ const VendorView: React.FC<ViewProps> = ({
                   triggerLabel={person.name}
                   name={person.name}
                   email={person.email || "N/A"}
-                  role={person.role || "N/A"}
+                  jobTitle={person.role || "N/A"}
                   phone={person.phone || "N/A"}
                 />
               ))
@@ -471,7 +471,7 @@ const ApproverView: React.FC<ViewProps> = ({
                     triggerLabel={contractManager.name}
                     name={contractManager.name}
                     email={contractManager.email || "N/A"}
-                    role={contractManager.role || "N/A"}
+                    jobTitle={contractManager.role || "N/A"}
                     phone="N/A"
                   />
                 ) : (
@@ -508,7 +508,7 @@ const ApproverView: React.FC<ViewProps> = ({
                   triggerLabel={contractManager.name}
                   name={contractManager.name}
                   email={contractManager.email || "N/A"}
-                  role={contractManager.role || "N/A"}
+                  jobTitle={contractManager.role || "N/A"}
                   phone="N/A"
                 />
               ) : (
@@ -525,7 +525,7 @@ const ApproverView: React.FC<ViewProps> = ({
                       triggerLabel={member.name}
                       name={member.name}
                       email={member.email || "N/A"}
-                      role={member.role || "N/A"}
+                      jobTitle={member.role || "N/A"}
                       phone="N/A"
                     />
                   ))
@@ -542,7 +542,7 @@ const ApproverView: React.FC<ViewProps> = ({
                   triggerLabel={vendorName}
                   name={vendorName}
                   email="N/A"
-                  role="N/A"
+                  jobTitle="N/A"
                   phone="N/A"
                 />
               ) : (
@@ -559,7 +559,7 @@ const ApproverView: React.FC<ViewProps> = ({
                       triggerLabel={person.name}
                       name={person.name}
                       email={person.email || "N/A"}
-                      role={person.role || "N/A"}
+                      jobTitle={person.role || "N/A"}
                       phone={person.phone || "N/A"}
                     />
                   ))
@@ -633,7 +633,7 @@ const ApproverView: React.FC<ViewProps> = ({
                 triggerLabel={contractManager.name}
                 name={contractManager.name}
                 email={contractManager.email || "N/A"}
-                role={contractManager.role || "N/A"}
+                jobTitle={contractManager.role || "N/A"}
                 phone="N/A"
               />
             ) : (
@@ -689,7 +689,7 @@ const ApproverView: React.FC<ViewProps> = ({
                 triggerLabel={contractManager.name}
                 name={contractManager.name}
                 email={contractManager.email || "N/A"}
-                role={contractManager.role || "N/A"}
+                jobTitle={contractManager.role || "N/A"}
                 phone="N/A"
               />
             ) : (
@@ -706,7 +706,7 @@ const ApproverView: React.FC<ViewProps> = ({
                     triggerLabel={member.name}
                     name={member.name}
                     email={member.email || "N/A"}
-                    role={member.role || "N/A"}
+                    jobTitle={member.role || "N/A"}
                     phone="N/A"
                   />
                 ))
@@ -723,7 +723,7 @@ const ApproverView: React.FC<ViewProps> = ({
                 triggerLabel={vendorName}
                 name={vendorName}
                 email="N/A"
-                role="N/A"
+                jobTitle="N/A"
                 phone="N/A"
               />
             ) : (
@@ -740,7 +740,7 @@ const ApproverView: React.FC<ViewProps> = ({
                     triggerLabel={person.name}
                     name={person.name}
                     email={person.email || "N/A"}
-                    role={person.role || "N/A"}
+                    jobTitle={person.role || "N/A"}
                     phone={person.phone || "N/A"}
                   />
                 ))
@@ -879,7 +879,7 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
           {!isContractVendorLike && !isApprover && !isViewOnly && !isCompanyAdmin && (
             <Button
               onClick={() => setEditingContractId(contract?._id ?? null)}
-              disabled={contract?.status === "publish"}
+              disabled={contract?.status !== "draft"}
             >
               Edit Contract
             </Button>
@@ -889,13 +889,15 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
 
       {renderView()}
 
-      {editingContractId !== null && (
+      {/* Kept mounted while on the detail page (not conditionally rendered) so
+          unsaved edits survive an accidental close/reopen; only `open` toggles. */}
+      {contract?._id && (
         <EditContract
-          open={true}
+          open={editingContractId !== null}
           onOpenChange={(open) => {
             if (!open) setEditingContractId(null);
           }}
-          contractId={editingContractId}
+          contractId={contract._id}
           onUpdated={() => {
             success("Contract updated successfully", "Changes saved");
             qc.invalidateQueries({ queryKey: ["contract-manager-contracts"] });

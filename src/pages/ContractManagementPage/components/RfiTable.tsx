@@ -43,7 +43,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { useWatch } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import { ContractRfis, type ApiResponseError } from "@/types";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import {
@@ -588,6 +588,41 @@ const RfiResponseContent: React.FC<{
   );
 };
 
+function RespondFileListItem({ file }: { file: File }) {
+  const { setValue, getValues } = useFormContext();
+  const handleRemove = () => {
+    const current = (getValues("files") as File[] | undefined) || [];
+    setValue(
+      "files",
+      current.filter((f: File) => f.name !== file.name) as any,
+    );
+  };
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-3">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB]">
+          <CloudUpload className="h-5 w-5 text-[#2A4467]" />
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium text-[#0F0F0F]">
+            {file.name}
+          </div>
+          <div className="text-xs font-medium text-[#9CA3AF]">
+            {formatFileSize(file.size)}
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleRemove}
+        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF]"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
 const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
   trigger,
   rfiId,
@@ -668,6 +703,11 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
       await queryClient.invalidateQueries({
         queryKey: ["approver", "contractRfis", "detail", rfiId],
       });
+      // Refresh the RFI list + stats so the row's status/action update
+      // (list/stats use the ["contractRfis", ...] prefix, not ["approver", ...]).
+      await queryClient.invalidateQueries({
+        queryKey: ["contractRfis"],
+      });
     },
     onError: (error: ApiResponseError) => {
       toastHandler.error("RFI Response", error);
@@ -695,39 +735,6 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
     }
   };
 
-  const FileListItem = ({ file }: { file: File; control: unknown }) => {
-    const value = useWatch({ control, name: "files" }) as File[] | null;
-    return (
-      <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB]">
-            <CloudUpload className="h-5 w-5 text-[#2A4467]" />
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-medium text-[#0F0F0F]">
-              {file.name}
-            </div>
-            <div className="text-xs font-medium text-[#9CA3AF]">
-              {formatFileSize(file.size)}
-            </div>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() =>
-            setValue(
-              "files",
-              (value ?? []).filter((f) => f.name !== file.name) as any,
-            )
-          }
-          className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF]"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    );
-  };
-
   return (
     <Dialog
       onOpenChange={(open) => {
@@ -744,7 +751,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
             <div className="flex h-16 w-16 items-center justify-center rounded-full">
               <Check className="h-16 w-16 text-green-600" />
             </div>
-            <div className="text-base font-semibold text-[#0F0F0F]">
+            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
               RFI Issued Successfully
             </div>
             <div className="flex w-full items-center gap-4">
@@ -769,7 +776,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
         ) : (
           <>
             <div className="flex items-center justify-between px-8 pt-8">
-              <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
+              <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Respond to RFI
               </DialogTitle>
             </div>
@@ -778,7 +785,6 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
                 control={control}
                 onSubmit={handleSubmit}
                 className="space-y-5"
-                debug
               >
                 <Forger
                   name="rfiTitle"
@@ -807,20 +813,20 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
                   component={TextFileUploader}
                   element={
                     <div className="flex flex-col items-center gap-3">
-                      <CloudUpload className="h-12 w-12 text-[#2A4467]" />
+                      <CloudUpload className="h-12 w-12 text-[#2A4467] dark:text-slate-300" />
                       <div className="space-y-1 text-center">
-                        <p className="text-base font-semibold text-[#2A4467]">
+                        <p className="text-base font-semibold text-[#2A4467] dark:text-slate-100">
                           Drag & Drop or Click to choose files
                         </p>
-                        <p className="text-sm text-[#6B7280]">
+                        <p className="text-sm text-[#6B7280] dark:text-slate-400">
                           Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG,
                           JPEG
                         </p>
                       </div>
                     </div>
                   }
-                  List={FileListItem}
-                  className="rounded-xl border-2 border-dashed border-[#9CA3AF] bg-white"
+                  List={RespondFileListItem}
+                  className="rounded-xl border-2 border-dashed border-[#9CA3AF] bg-white dark:border-slate-600 dark:bg-slate-900"
                   accept={
                     {
                       "application/pdf": [".pdf"],

@@ -426,15 +426,15 @@ const SendForApprovalDialog = React.memo(
               </p>
               <div className="relative">
                 <select
-                  className="w-full h-12 border border-gray-300 dark:border-slate-700 rounded-lg px-4 pr-10 text-sm text-slate-700 dark:text-slate-300 focus:border-[#2A4467] focus:ring-[#2A4467]"
+                  className="w-full h-12 border border-gray-300 dark:border-slate-700 rounded-lg px-4 pr-10 text-sm text-slate-700 dark:text-slate-300 dark:bg-slate-900 dark:[color-scheme:dark] focus:border-[#2A4467] focus:ring-[#2A4467]"
                   value={selectedApprovalGroup}
                   onChange={(event) =>
                     setSelectedApprovalGroup(event.target.value)
                   }
                 >
-                  <option value="">Select Group</option>
+                  <option value="" className="dark:bg-slate-900 dark:text-slate-100">Select Group</option>
                   {approvalGroupOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
+                    <option key={option.value} value={option.value} className="dark:bg-slate-900 dark:text-slate-100">
                       {option.label}
                     </option>
                   ))}
@@ -1144,11 +1144,15 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
   const handleOpenChange = React.useCallback(
     (nextOpen: boolean) => {
-      // Escape / outside-click dismiss skips the Cancel + onSuccess paths
-      // that explicitly call clearSession(); without this the persisted
-      // solicitation-files store leaks the contract's files into the next
-      // wizard (MSA / solicitation / evaluation). QA bug #96.
-      if (!nextOpen) clearSession();
+      // Clear the persisted solicitation-files store on BOTH open and close.
+      // On close: Escape / outside-click dismiss skips the Cancel + onSuccess
+      // paths that explicitly call clearSession(). On open: a prior Edit (or
+      // MSA / solicitation / evaluation) wizard that closed without clearing
+      // leaks its uploaded files into this fresh Create session, since the
+      // Documents step rehydrates the shared store from localStorage. Clearing
+      // on open guarantees a clean slate the moment "Create Contracts" is
+      // clicked. QA bug #96.
+      clearSession();
       setOpen(nextOpen);
     },
     [clearSession],
@@ -1187,7 +1191,6 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
               control={control}
               onSubmit={submit}
               className="mt-4 space-y-6"
-              // debug
             >
               {step === 1 && (
                 <Step1BasicInfo

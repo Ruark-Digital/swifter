@@ -164,8 +164,13 @@ type SolicitationQueryParams = {
   endDate?: string;
 };
 
+type SolicitationsQueryOptions = { enabled?: boolean };
+
 // Custom hooks for API calls based on Swagger documentation
-const useAllSolicitations = (params?: SolicitationQueryParams) => {
+const useAllSolicitations = (
+  params?: SolicitationQueryParams,
+  options?: SolicitationsQueryOptions,
+) => {
   const queryParams = new URLSearchParams();
   if (params?.page) queryParams.append("page", params.page.toString());
   if (params?.limit) queryParams.append("limit", params.limit.toString());
@@ -184,10 +189,14 @@ const useAllSolicitations = (params?: SolicitationQueryParams) => {
   return useQuery<ApiResponse<SolicitationsResponse>, ApiResponseError>({
     queryKey: ["solicitations", params],
     queryFn: () => getRequest({ url }),
+    enabled: options?.enabled ?? true,
   });
 };
 
-const useMySolicitations = (params?: SolicitationQueryParams) => {
+const useMySolicitations = (
+  params?: SolicitationQueryParams,
+  options?: SolicitationsQueryOptions,
+) => {
   const queryParams = new URLSearchParams();
   if (params?.page) queryParams.append("page", params.page.toString());
   if (params?.limit) queryParams.append("limit", params.limit.toString());
@@ -205,11 +214,15 @@ const useMySolicitations = (params?: SolicitationQueryParams) => {
   return useQuery<ApiResponse<SolicitationsResponse>, ApiResponseError>({
     queryKey: ["my-solicitations", params],
     queryFn: () => getRequest({ url }),
+    enabled: options?.enabled ?? true,
   });
 };
 
 // Vendor-specific hooks for API calls
-const useVendorAllSolicitations = (params?: SolicitationQueryParams) => {
+const useVendorAllSolicitations = (
+  params?: SolicitationQueryParams,
+  options?: SolicitationsQueryOptions,
+) => {
   const queryParams = new URLSearchParams();
   if (params?.page) queryParams.append("page", params.page.toString());
   if (params?.limit) queryParams.append("limit", params.limit.toString());
@@ -226,10 +239,14 @@ const useVendorAllSolicitations = (params?: SolicitationQueryParams) => {
   return useQuery<ApiResponse<SolicitationsResponse>, ApiResponseError>({
     queryKey: ["vendor-solicitations", params],
     queryFn: () => getRequest({ url }),
+    enabled: options?.enabled ?? true,
   });
 };
 
-const useVendorMySolicitations = (params?: SolicitationQueryParams) => {
+const useVendorMySolicitations = (
+  params?: SolicitationQueryParams,
+  options?: SolicitationsQueryOptions,
+) => {
   const queryParams = new URLSearchParams();
   if (params?.page) queryParams.append("page", params.page.toString());
   if (params?.limit) queryParams.append("limit", params.limit.toString());
@@ -246,6 +263,7 @@ const useVendorMySolicitations = (params?: SolicitationQueryParams) => {
   return useQuery<ApiResponse<SolicitationsResponse>, ApiResponseError>({
     queryKey: ["vendor-my-solicitations", params],
     queryFn: () => getRequest({ url }),
+    enabled: options?.enabled ?? true,
   });
 };
 
@@ -619,53 +637,40 @@ export const SolicitationManagementPage = () => {
     setIsDatePickerOpen(false);
   };
 
-  // API hooks based on user role
+  // API hooks based on user role.
+  // Call both vendor- and internal-flavored hooks unconditionally to keep the
+  // hook call count stable across role changes; only the role-matching one
+  // actually fires a request thanks to `enabled`. The pair is then selected
+  // post-hook with a plain ternary on the already-resolved query results.
+  const queryArgs = {
+    ...filters,
+    startDate:
+      filters.date && dateRange.startDate
+        ? formatDateSlash(dateRange.startDate)
+        : undefined,
+    endDate:
+      filters.date && dateRange.endDate
+        ? formatDateSlash(dateRange.endDate)
+        : undefined,
+  };
+  const vendorAllSolicitations = useVendorAllSolicitations(queryArgs, {
+    enabled: isVendor,
+  });
+  const internalAllSolicitations = useAllSolicitations(queryArgs, {
+    enabled: !isVendor,
+  });
+  const vendorMySolicitations = useVendorMySolicitations(queryArgs, {
+    enabled: isVendor,
+  });
+  const internalMySolicitations = useMySolicitations(queryArgs, {
+    enabled: !isVendor,
+  });
   const { data: allSolicitationsData, isLoading: isLoadingAll } = isVendor
-    ? useVendorAllSolicitations({
-        ...filters,
-        startDate:
-          filters.date && dateRange.startDate
-            ? formatDateSlash(dateRange.startDate)
-            : undefined,
-        endDate:
-          filters.date && dateRange.endDate
-            ? formatDateSlash(dateRange.endDate)
-            : undefined,
-      })
-    : useAllSolicitations({
-        ...filters,
-        startDate:
-          filters.date && dateRange.startDate
-            ? formatDateSlash(dateRange.startDate)
-            : undefined,
-        endDate:
-          filters.date && dateRange.endDate
-            ? formatDateSlash(dateRange.endDate)
-            : undefined,
-      });
+    ? vendorAllSolicitations
+    : internalAllSolicitations;
   const { data: mySolicitationsData, isLoading: isLoadingMy } = isVendor
-    ? useVendorMySolicitations({
-        ...filters,
-        startDate:
-          filters.date && dateRange.startDate
-            ? formatDateSlash(dateRange.startDate)
-            : undefined,
-        endDate:
-          filters.date && dateRange.endDate
-            ? formatDateSlash(dateRange.endDate)
-            : undefined,
-      })
-    : useMySolicitations({
-        ...filters,
-        startDate:
-          filters.date && dateRange.startDate
-            ? formatDateSlash(dateRange.startDate)
-            : undefined,
-        endDate:
-          filters.date && dateRange.endDate
-            ? formatDateSlash(dateRange.endDate)
-            : undefined,
-      });
+    ? vendorMySolicitations
+    : internalMySolicitations;
   const { data: dashboardStatsData } = useDashboardStats();
 
   // Mutation hooks
@@ -1006,9 +1011,9 @@ export const SolicitationManagementPage = () => {
           accessorKey: "categories",
           header: "Categories",
           cell: ({ row }) => (
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 max-w-[240px]">
               {row.original.categoryIds?.map((category) => (
-                <span className="text-muted-foreground">{category.name}</span>
+                <span key={category._id} className="text-muted-foreground break-words">{category.name}</span>
               )) || (
                 <span className="text-muted-foreground">No categories</span>
               )}
@@ -1202,7 +1207,7 @@ export const SolicitationManagementPage = () => {
           accessorKey: "categories",
           header: "Categories",
           cell: ({ row }) => (
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 max-w-[240px]">
               {row.original.categoryIds?.map((category) => (
                 <Badge
                   key={category._id}

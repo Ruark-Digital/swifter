@@ -47,7 +47,7 @@ import { useWatch, useFormContext } from "react-hook-form";
 import Spinner from "@/components/ui/Spinner";
 import { DocumentItem } from "@/pages/ContractManagementPage/components/DocumentItem";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
-import { formatDate } from "date-fns";
+import { formatDate, isValid } from "date-fns";
 import { vendorApi } from "@/pages/ContractManagementPage/api/vendorApi";
 import { Option } from "@/components/ui/multiselect";
 import { cn } from "@/lib/utils";
@@ -95,6 +95,14 @@ const getStatusTone = (status?: string) => {
     return "bg-[#FEECEC] text-[#E53935]";
   }
   return "bg-gray-100 text-gray-700";
+};
+
+// Guard against malformed/unparseable date strings from the backend.
+// date-fns formatDate throws "RangeError: Invalid time value" on invalid dates.
+const safeFormatDate = (value: string | undefined | null, fmt: string) => {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  return isValid(parsed) ? formatDate(parsed, fmt) : "-";
 };
 
 export type DeliverableRow = {
@@ -338,7 +346,7 @@ const SubmitDeliverableDialog: React.FC<{
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="rounded-2xl p-8">
+      <DialogContent className="rounded-2xl p-8 max-h-[90vh] overflow-y-auto">
         <DialogHeader className="space-y-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-semibold text-[#0F0F0F]">
@@ -609,19 +617,11 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                 />
                 <LabelRow
                   label="Due Date"
-                  value={
-                    detail?.dueDate
-                      ? formatDate(detail?.dueDate, "dd MMM yyyy")
-                      : "-"
-                  }
+                  value={safeFormatDate(detail?.dueDate, "dd MMM yyyy")}
                 />
                 <LabelRow
                   label="Submission Date"
-                  value={
-                    detail?.submissionDate
-                      ? formatDate(detail?.submissionDate, "dd MMM yyyy")
-                      : "-"
-                  }
+                  value={safeFormatDate(detail?.submissionDate, "dd MMM yyyy")}
                 />
               </div>
             )}
@@ -828,9 +828,7 @@ const columns: ColumnDef<DeliverableRow>[] = [
         <p>
           <span className="text-slate-500 dark:text-slate-400">Due Date:&nbsp;</span>
           <span className="text-slate-900 dark:text-slate-100">
-            {row.original.dueDate
-              ? formatDate(row.original.dueDate ?? "", "yyyy MMM dd")
-              : "-"}
+            {safeFormatDate(row.original.dueDate, "yyyy MMM dd")}
           </span>
         </p>
         {/* {row.original.submissionDate && <p>

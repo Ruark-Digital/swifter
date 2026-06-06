@@ -230,6 +230,15 @@ export type ContractManagerDashboardResponse<T> = {
   data?: T;
 };
 
+export type ContractAiInsight = {
+  type: string;
+  title: string;
+  description: string;
+  severity: "critical" | "warning" | "info";
+  count: number;
+  value?: number;
+};
+
 export type ContractManagerCycleTimeStage = {
   name: string;
   days: number;
@@ -1141,6 +1150,28 @@ export const useDashboardData = (
     refetchOnMount: false,
   });
 
+  // AI Insights & Alerts (manager-only endpoint; approver base path has no equivalent).
+  const {
+    data: contractManagerAiInsights,
+    isLoading: isLoadingContractManagerAiInsights,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractAiInsight[]>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-ai-insights", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/ai-insights`,
+        config: { params: { type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractAiInsight[]>;
+    },
+    enabled: userRole === "contract_manager",
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
   const {
     data: contractManagerVendorSummary,
     isLoading: isLoadingContractManagerVendorSummary,
@@ -1331,6 +1362,7 @@ export const useDashboardData = (
     isLoadingContractManagerComplianceStatus ||
     isLoadingContractManagerClauseIntelligence ||
     isLoadingContractManagerContractStatus ||
+    isLoadingContractManagerAiInsights ||
     isLoadingContractManagerVendorSummary ||
     isLoadingContractManagerRenewals;
 
@@ -1390,6 +1422,7 @@ export const useDashboardData = (
     contractManagerComplianceStatus: contractManagerComplianceStatus?.data,
     contractManagerClauseIntelligence: contractManagerClauseIntelligence?.data,
     contractManagerContractStatus: contractManagerContractStatus?.data,
+    contractManagerAiInsights: contractManagerAiInsights?.data,
     contractManagerVendorSummary: contractManagerVendorSummary?.data,
     contractManagerRenewals: contractManagerRenewals?.data,
 

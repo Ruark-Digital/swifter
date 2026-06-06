@@ -55,10 +55,9 @@ export const DocumentItem = ({
               title="Edit in Collaboration Tool"
               onClick={() =>
                 navigate?.(
-                  // Editor pinned to `tiptap` even though that's the
-                  // current default — keeps the link sticky if the
-                  // default is ever flipped back during SP2-4 work.
-                  `/collaboration-tool?sourceUrl=${encodeURIComponent(d.url || "")}&fileName=${encodeURIComponent(d.name)}&fileType=${encodeURIComponent(d.type || "")}${contractId ? `&contractId=${encodeURIComponent(contractId)}` : ""}${d.id ? `&fileId=${encodeURIComponent(d.id)}` : ""}&editor=tiptap`,
+                  // SuperDoc is the default editor. The legacy TipTap/Yoopta
+                  // panels stay reachable via `?editor=tiptap` / `?editor=yoopta`.
+                  `/collaboration-tool?sourceUrl=${encodeURIComponent(d.url || "")}&fileName=${encodeURIComponent(d.name)}&fileType=${encodeURIComponent(d.type || "")}${contractId ? `&contractId=${encodeURIComponent(contractId)}` : ""}${d.id ? `&fileId=${encodeURIComponent(d.id)}` : ""}&editor=superdoc`,
                 )
               }
             >

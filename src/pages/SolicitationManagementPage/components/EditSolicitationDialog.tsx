@@ -185,11 +185,6 @@ const EditSolicitationDialog = ({
   solicitation,
   isLink,
 }: EditSolicitationDialogProps) => {
-  const toast = useToastHandler();
-  const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
-  const clearSession = useClearSession();
   const { isCompanyAdmin } = useUserRole();
 
   // Hide edit button for non-company admin when solicitation is closed or awarded
@@ -199,6 +194,20 @@ const EditSolicitationDialog = ({
   ) {
     return null;
   }
+  return (
+    <EditSolicitationDialogContent solicitation={solicitation} isLink={isLink} />
+  );
+};
+
+const EditSolicitationDialogContent = ({
+  solicitation,
+  isLink,
+}: EditSolicitationDialogProps) => {
+  const toast = useToastHandler();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const clearSession = useClearSession();
 
   // Types for category API
   type VendorCategory = {

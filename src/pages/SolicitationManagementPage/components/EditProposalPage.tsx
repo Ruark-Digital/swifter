@@ -409,9 +409,10 @@ const ProposalForm = ({
   });
 
   useEffect(() => {
-    setTimeout(() => {
+    const id = setTimeout(() => {
       setShouldUnregister(true);
     }, 3000);
+    return () => clearTimeout(id);
   }, []);
 
   // Check if proposal has priceAction data and mark pricing document as completed

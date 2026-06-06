@@ -60,6 +60,7 @@ export const TextSelectWithSearch = (props: TextSelectWithSearchProps & Partial<
   } = props;
 
   const id = useId();
+  const listboxId = `${id}-listbox`;
   const [open, setOpen] = useState<boolean>(false);
 
   const handleSelect = (selectedValue: string) => {
@@ -109,6 +110,7 @@ export const TextSelectWithSearch = (props: TextSelectWithSearchProps & Partial<
             variant="outline"
             role="combobox"
             aria-expanded={open}
+            aria-controls={listboxId}
             className={cn(
               "bg-background hover:bg-background border-input w-full h-12 justify-between px-4 font-normal outline-offset-0 outline-none focus-visible:outline-[3px] focus:border-[#2A4467] focus:ring-[#2A4467] text-gray-900 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-transparent",
               error ? "border-red-500" : "",
@@ -128,6 +130,7 @@ export const TextSelectWithSearch = (props: TextSelectWithSearchProps & Partial<
           </Button>
         </PopoverTrigger>
         <PopoverContent
+          id={listboxId}
           className="border-input w-full min-w-[var(--radix-popper-anchor-width)] p-0 dark:bg-gray-800 dark:border-gray-700"
           align="start"
         >

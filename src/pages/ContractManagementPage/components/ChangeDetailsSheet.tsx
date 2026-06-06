@@ -73,11 +73,10 @@ const LabelRow = ({
   <div className="space-y-2 py-3">
     <span className="text-sm text-slate-500 dark:text-slate-400 block">{label}</span>
     <span
-      className={`text-sm block ${
-        highlight
+      className={`text-sm block ${highlight
           ? "font-semibold text-slate-900 dark:text-slate-100"
           : "text-slate-800 dark:text-slate-200"
-      }`}
+        }`}
     >
       {value}
     </span>
@@ -168,7 +167,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const approverStatus = detail?.approverStatus ?? "";
   const value = detail?.value;
   const files = detail?.files;
-  
+
   // Claim specific fields
   const impact = detail?.impact;
   const time = detail?.time;
@@ -240,8 +239,10 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   // the manager auto-approves and then routes to approvers.
   const canManagerActOnClaim =
     isClaim && isManager && isTimeImpact && !isClaimFinalized;
+  const isClaimOrChangeManagerSendForApprovalStatus =
+    isClaim ? "pending" : "approved";
   const sendForApprovalEnabled =
-    approverStatus === "approved" && (approverList?.length ?? 0) === 0;
+    approverStatus === isClaimOrChangeManagerSendForApprovalStatus && (approverList?.length ?? 0) === 0;
 
   // Cost / time_cost claims: manager decides directly (Reject + Approve),
   // same comment-dialog flow as the change-flow approve path. Gated on
@@ -434,13 +435,13 @@ const ChangeDetailsSheet: React.FC<Props> = ({
       >
         <div className="space-y-6" data-testid="change-details-sheet">
           <SheetHeader>
-              <div className="flex items-center justify-between">
-                <SheetTitle>{isClaim ? "Claim Details" : "Change Details"}</SheetTitle>
-                <Button variant="outline" size="sm">
-                  <Share2 className="mr-2 h-4 w-4" /> Export
-                </Button>
-              </div>
-            </SheetHeader>
+            <div className="flex items-center justify-between">
+              <SheetTitle>{isClaim ? "Claim Details" : "Change Details"}</SheetTitle>
+              <Button variant="outline" size="sm">
+                <Share2 className="mr-2 h-4 w-4" /> Export
+              </Button>
+            </div>
+          </SheetHeader>
 
           <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             {title}
@@ -465,61 +466,61 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             <TabsContent value="overview" className="space-y-4">
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                    <LabelRow label={isClaim ? "Claim Title" : "Change Title"} value={title} />
-                    <LabelRow label={isClaim ? "Claim Type" : "Change Type"} value={changeType} />
-                    {isClaim && impact && (
-                      <LabelRow label="Impact" value={impact.replace("_", " ")} highlight />
-                    )}
-                    <LabelRow
-                      label="Submission Date"
-                      value={submittedAt ? formatDate(submittedAt, "yyyy MMM dd HH:mm aa") : null}
-                    />
-                    <LabelRow
-                      label="Submitted by"
-                      value={
-                        <a className="text-blue-600 dark:text-blue-400 underline">
-                          {isDetailLoading ? "" : submittedByName}
-                        </a>
-                      }
-                    />
-                  </div>
+                  <LabelRow label={isClaim ? "Claim Title" : "Change Title"} value={title} />
+                  <LabelRow label={isClaim ? "Claim Type" : "Change Type"} value={changeType} />
+                  {isClaim && impact && (
+                    <LabelRow label="Impact" value={impact.replace("_", " ")} highlight />
+                  )}
+                  <LabelRow
+                    label="Submission Date"
+                    value={submittedAt ? formatDate(submittedAt, "yyyy MMM dd HH:mm aa") : null}
+                  />
+                  <LabelRow
+                    label="Submitted by"
+                    value={
+                      <a className="text-blue-600 dark:text-blue-400 underline">
+                        {isDetailLoading ? "" : submittedByName}
+                      </a>
+                    }
+                  />
+                </div>
 
-                  <div>
+                <div>
+                  <LabelRow
+                    label="Vendor/Contractor"
+                    value={
+                      <a className="text-blue-600 dark:text-blue-400 underline">
+                        {isDetailLoading ? "" : vendorEmail}
+                      </a>
+                    }
+                  />
+                  {isClaim ? (
+                    <>
+                      {(impact === "time" || impact === "time_cost") && (
+                        <LabelRow label="Time Impact (Days)" value={time ?? "—"} />
+                      )}
+                      {(impact === "cost" || impact === "time_cost") && (
+                        <LabelRow
+                          label="Cost Impact"
+                          value={cost != null ? `$${Number(cost).toLocaleString()}` : "—"}
+                          highlight
+                        />
+                      )}
+                    </>
+                  ) : (
                     <LabelRow
-                      label="Vendor/Contractor"
+                      label="Value"
                       value={
-                        <a className="text-blue-600 dark:text-blue-400 underline">
-                          {isDetailLoading ? "" : vendorEmail}
-                        </a>
+                        isDetailLoading
+                          ? ""
+                          : value != null
+                            ? `$${(Number(value) / 1000000).toFixed(2)}M`
+                            : "-"
                       }
+                      highlight
                     />
-                    {isClaim ? (
-                      <>
-                        {(impact === "time" || impact === "time_cost") && (
-                          <LabelRow label="Time Impact (Days)" value={time ?? "—"} />
-                        )}
-                        {(impact === "cost" || impact === "time_cost") && (
-                          <LabelRow
-                            label="Cost Impact"
-                            value={cost != null ? `$${Number(cost).toLocaleString()}` : "—"}
-                            highlight
-                          />
-                        )}
-                      </>
-                    ) : (
-                      <LabelRow
-                        label="Value"
-                        value={
-                          isDetailLoading
-                            ? ""
-                            : value != null
-                              ? `$${(Number(value) / 1000000).toFixed(2)}M`
-                              : "-"
-                        }
-                        highlight
-                      />
-                    )}
-                    <LabelRow
+                  )}
+                  <LabelRow
                     label="Status"
                     value={
                       <Badge
@@ -606,7 +607,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                 currentUser={{ name: "You" }}
                 sendType="reply"
                 isNewChat={false}
-                onSendTypeChange={() => {}}
+                onSendTypeChange={() => { }}
               />
             </TabsContent>
           </Tabs>

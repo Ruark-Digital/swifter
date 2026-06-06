@@ -1,5 +1,5 @@
 import React from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SEOWrapper } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +42,6 @@ import RateSheetsTabContent from "./layouts/RateSheetsTabContent";
 import KpiTabContent from "./layouts/KpiTabContent";
 import OverviewTab from "./layouts/OverviewTab";
 import RfiTabContent from "./layouts/RfiTabContent";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import VendorReportsTabContent from "./layouts/VendorReportsTabContent";
 import {
   Dialog,
@@ -121,6 +120,8 @@ const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "action-log", label: "Action Log" },
 ];
 
+const ALL_TAB_KEYS = new Set<string>(ALL_TABS.map((t) => t.key));
+
 const ROLE_TAB_WHITELIST: Record<
   "approver" | "vendor" | "manager" | "view only",
   TabKey[]
@@ -197,7 +198,11 @@ const ContractDetailPage: React.FC = () => {
     "approved" | "rejected" | null
   >(null);
   const [comment, setComment] = React.useState("");
-  const [activeTab, setActiveTab] = React.useState<TabKey>("overview");
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = React.useState<TabKey>(() => {
+    const tab = searchParams.get("tab");
+    return tab && ALL_TAB_KEYS.has(tab) ? (tab as TabKey) : "overview";
+  });
 
   const {
     data: contractsResponse,
@@ -316,6 +321,13 @@ const ContractDetailPage: React.FC = () => {
     }
     return ALL_TABS;
   }, [isApprover, isContractVendorLike, isViewOnly, isManager]);
+
+  // A deep-linked ?tab= may point at a tab this role can't see — fall back to overview.
+  React.useEffect(() => {
+    if (!visibleTabs.some((t) => t.key === activeTab)) {
+      setActiveTab("overview");
+    }
+  }, [visibleTabs, activeTab]);
 
   if (isLoading) {
     return (
@@ -442,16 +454,18 @@ const ContractDetailPage: React.FC = () => {
         onValueChange={(v) => setActiveTab(v as TabKey)}
         className="w-full bg-transparent space-y-4"
       >
-        <ScrollArea className="pb-4 w-[75vw]">
-          <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
+        <div
+          className="overflow-x-auto pb-4 -mx-1 px-1"
+          style={{ width: "1px", minWidth: "100%" }}
+        >
+          <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent w-max">
             {visibleTabs.map((t) => (
               <TabsTrigger key={t.key} value={t.key} className={triggerClass}>
                 {t.label}
               </TabsTrigger>
             ))}
           </TabsList>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        </div>
 
         <OverviewTab
           contract={contract}
