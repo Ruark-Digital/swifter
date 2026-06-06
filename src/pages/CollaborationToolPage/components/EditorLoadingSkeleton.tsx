@@ -56,14 +56,14 @@ const EditorLoadingSkeleton: React.FC<Props> = ({ phase, errorMsg }) => {
         </div>
         <div className="flex flex-col gap-3">
           {["100%", "96%", "98%", "60%", "100%", "92%", "100%", "48%"].map((w, i) => (
-            <SkeletonLine key={i} w={w} />
+            <SkeletonLine key={`line-${i}`} w={w} />
           ))}
         </div>
       </div>
 
       {/* Quiet status line. */}
       <div className="mt-6 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-        <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-slate-500 motion-reduce:animate-none dark:border-slate-600 dark:border-t-slate-300" />
+        <span aria-hidden="true" className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-slate-500 motion-reduce:animate-none dark:border-slate-600 dark:border-t-slate-300" />
         <span>
           {(STEPS.find((s) => s.key === phase) ?? STEPS[0]).label}…
         </span>
@@ -77,7 +77,7 @@ const EditorLoadingSkeleton: React.FC<Props> = ({ phase, errorMsg }) => {
             className={
               "h-1.5 w-6 rounded-full transition-colors " +
               (i <= active
-                ? "bg-slate-400 dark:bg-slate-400"
+                ? "bg-slate-400 dark:bg-slate-300"
                 : "bg-slate-200 dark:bg-slate-700")
             }
           />

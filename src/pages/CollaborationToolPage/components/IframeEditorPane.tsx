@@ -4,6 +4,7 @@ import { useToastHandler } from "@/hooks/useToaster";
 import type { EditorAdapter } from "../collab/editorAdapter";
 import type { RedlineSpan } from "../collab/redlineScan";
 import EditorLoadingSkeleton from "./EditorLoadingSkeleton";
+import type { EditorLoadPhase as Phase } from "./EditorLoadingSkeleton";
 import {
   SUPERDOC_APP_URL,
   superdocOrigin,
@@ -34,7 +35,6 @@ type Props = {
 //  rendering  → bytes sent; waiting for SuperDoc to report `editor-ready`
 //  ready      → editor visible (overlay hidden)
 //  error      → errorMsg shown
-type Phase = "connecting" | "fetching" | "rendering" | "ready" | "error";
 
 // If the app never announces itself, the iframe almost certainly failed to load
 // (app not running, blocked by an extension, or an origin mismatch).
