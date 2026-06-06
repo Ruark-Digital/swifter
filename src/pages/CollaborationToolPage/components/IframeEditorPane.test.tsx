@@ -57,7 +57,7 @@ describe("IframeEditorPane", () => {
     );
     const [msg, targetOrigin] = postMessage.mock.calls[0];
     expect(msg.type).toBe("superdoc:init");
-    expect(msg.payload.roomId).toBe("room-1:superdoc");
+    expect(msg.payload.roomId).toBe("room-1-superdoc");
     expect(targetOrigin).toBe(superdocOrigin());
 
     await act(async () => {
