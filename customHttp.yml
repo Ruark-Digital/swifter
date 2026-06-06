@@ -1,0 +1,16 @@
+# AWS Amplify custom response headers for the SwiftPro host.
+# Allows embedding the SuperDoc editor iframe and connecting to the API/WS.
+# connect-src includes the API origin (REST + the Yjs collab WebSocket) so the
+# host's existing collab/versions traffic is not blocked; frame-src whitelists
+# the editor app so the collaboration editor renders.
+customHeaders:
+  - pattern: '**'
+    headers:
+      - key: 'Content-Security-Policy'
+        value: >-
+          frame-src https://editor.swiftpro.tech;
+          connect-src 'self' https://api.swiftpro.tech wss://api.swiftpro.tech;
+      - key: 'X-Content-Type-Options'
+        value: 'nosniff'
+      - key: 'Referrer-Policy'
+        value: 'strict-origin-when-cross-origin'

@@ -2,6 +2,7 @@ node_modules
 api_documentation
 
 .env*
+!.env.example
 .figma
 /dist
 
