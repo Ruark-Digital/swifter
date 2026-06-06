@@ -3,6 +3,7 @@ import { useUser } from "@/store/authSlice";
 import { useToastHandler } from "@/hooks/useToaster";
 import type { EditorAdapter } from "../collab/editorAdapter";
 import type { RedlineSpan } from "../collab/redlineScan";
+import EditorLoadingSkeleton from "./EditorLoadingSkeleton";
 import {
   SUPERDOC_APP_URL,
   superdocOrigin,
@@ -227,30 +228,27 @@ const IframeEditorPane: React.FC<Props> = ({
     };
   }, [origin, postCommand]);
 
-  const overlayText =
-    phase === "error"
-      ? errorMsg || "Could not load the editor."
-      : phase === "fetching"
-        ? "Loading editor… (downloading document)"
-        : phase === "rendering"
-          ? "Loading editor… (rendering document)"
-          : "Loading editor… (connecting to editor app)";
-
   // Not `.ct-editor-panel` — that class forces height:100vh (for the legacy
   // full-page editors), which overflows the header'd column and adds a second
   // scrollbar. We fill the column (h-full) and let the iframe scroll inside.
   return (
     <div className="relative h-full w-full overflow-hidden bg-white dark:bg-slate-950">
       {phase !== "ready" && (
-        <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-slate-500 dark:text-slate-400">
-          {overlayText}
+        <div
+          className="absolute inset-0 z-10 transition-opacity duration-300"
+          aria-busy={phase !== "error"}
+        >
+          <EditorLoadingSkeleton phase={phase} errorMsg={errorMsg} />
         </div>
       )}
       <iframe
         ref={iframeRef}
         title="SuperDoc editor"
         src={SUPERDOC_APP_URL}
-        className="h-full w-full border-0"
+        className={
+          "h-full w-full border-0 transition-opacity duration-300 " +
+          (phase === "ready" ? "opacity-100" : "opacity-0")
+        }
         // The framed app is untrusted AGPL code on another origin. Sandbox it,
         // but KEEP allow-same-origin: without it the frame gets an opaque
         // origin, which (a) makes its postMessages arrive as origin "null" so
