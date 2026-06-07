@@ -11,7 +11,7 @@ import { ActivityComponent } from "./components/ActivityCard";
 import { CardStats } from "./components/StatsCard";
 import { cn } from "@/lib/utils";
 import { DashboardConfig } from "@/config/dashboardConfig";
-import { PageLoader } from "@/components/ui/PageLoader";
+import { DashboardSkeleton } from "./components/DashboardSkeleton";
 import { ContractsTabView } from "./ContractsTabView";
 import { VendorContractsView } from "./VendorContractsView";
 import { useLandingTabs, type LandingTabId } from "./useLandingTabs";
@@ -237,7 +237,7 @@ export const RoleBasedDashboard: React.FC = () => {
     contractManagerContractStatus,
     contractManagerVendorSummary,
     contractManagerRenewals,
-    isLoading,
+    isInitialLoading,
     // Individual chart data fetchers
     getChartData,
   } = useDashboardData(userRole, chartFilters);
@@ -814,13 +814,8 @@ export const RoleBasedDashboard: React.FC = () => {
   const canShowMyActions = modules?.myActions === true;
   const canShowGeneralUpdates = modules?.generalUpdatesNotifications === true;
 
-  if (isLoading && LOADING_ROLES.has(userRole)) {
-    return (
-      <PageLoader
-        title="Dashboard"
-        // headerContent={<ExportReportSheet />}
-      />
-    );
+  if (isInitialLoading && LOADING_ROLES.has(userRole)) {
+    return <DashboardSkeleton />;
   }
 
   return (

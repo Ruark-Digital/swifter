@@ -1366,6 +1366,19 @@ export const useDashboardData = (
     isLoadingContractManagerVendorSummary ||
     isLoadingContractManagerRenewals;
 
+  // Initial-paint gate: block the dashboard only until the role's PRIMARY
+  // stats query resolves — NOT until every chart/activity query finishes.
+  // The stat cards (above the fold) all derive from this single query per
+  // role; charts and activity panels render their own card shells and stream
+  // in afterward. This is what turns a multi-second blank spinner (the slowest
+  // of ~6-17 parallel calls) into an instant first paint.
+  const isInitialLoading =
+    (userRole === "super_admin" && isLoadingCount) ||
+    (userRole === "company_admin" && isLoadingSolicitationStatus) ||
+    (userRole === "procurement" && isLoadingProcurement) ||
+    (userRole === "evaluator" && isLoadingEvaluatorDashboard) ||
+    (userRole === "vendor" && isLoadingVendorDashboard);
+
   return {
     // SuperAdmin data
     dashboardCount: dashboardCount?.data?.data,
@@ -1431,6 +1444,7 @@ export const useDashboardData = (
 
     // Loading states
     isLoading,
+    isInitialLoading,
     isLoadingCount,
     isLoadingRoles,
     isLoadingActivities,
