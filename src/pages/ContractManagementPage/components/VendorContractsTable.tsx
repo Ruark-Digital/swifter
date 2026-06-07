@@ -41,15 +41,16 @@ const columns: ColumnDef<VendorContractRow>[] = [
     accessorKey: "title",
     header: "Contracts",
     cell: ({ row }) => (
-      <div className="flex flex-col">
+      <div className="flex flex-col max-w-[320px] min-w-0">
         <a
           href={`/dashboard/contract-management/${row.original.id}`}
           data-testid="vendor-contract-name-link"
-          className="font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
+          title={row.original.title}
+          className="block truncate font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
         >
           {row.original.title}
         </a>
-        <span className="text-xs text-slate-500 dark:text-slate-400">{row.original.code}</span>
+        <span className="truncate text-xs text-slate-500 dark:text-slate-400">{row.original.code}</span>
       </div>
     ),
   },
