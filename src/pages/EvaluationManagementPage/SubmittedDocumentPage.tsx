@@ -460,9 +460,15 @@ const SubmittedDocumentPage: React.FC = () => {
       return newState;
     });
 
-    // Reset form and close
-    reset();
-    setActiveCriteriaId(null);
+    // Keep the panel open showing the saved score (read-only).
+    // Restore the form to the just-saved values so the disabled radios
+    // reflect the selection instead of going blank; leaving editingCriteriaId
+    // null lands the row in read-only "Edit Score" mode.
+    reset({
+      comment: data.comment,
+      score: data.score,
+      type: data.type,
+    });
     setEditingCriteriaId(null);
   };
 
