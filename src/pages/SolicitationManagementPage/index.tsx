@@ -1011,9 +1011,9 @@ export const SolicitationManagementPage = () => {
           accessorKey: "categories",
           header: "Categories",
           cell: ({ row }) => (
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 max-w-[240px]">
               {row.original.categoryIds?.map((category) => (
-                <span key={category._id} className="text-muted-foreground">{category.name}</span>
+                <span key={category._id} className="text-muted-foreground break-words">{category.name}</span>
               )) || (
                 <span className="text-muted-foreground">No categories</span>
               )}
@@ -1207,7 +1207,7 @@ export const SolicitationManagementPage = () => {
           accessorKey: "categories",
           header: "Categories",
           cell: ({ row }) => (
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 max-w-[240px]">
               {row.original.categoryIds?.map((category) => (
                 <Badge
                   key={category._id}
