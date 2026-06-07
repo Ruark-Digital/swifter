@@ -39,17 +39,22 @@ const Step2Form = ({ control, isEdit = false }: Step2FormProps) => {
       }),
   });
 
-  // Transform evaluators data to options format
+  // Transform evaluators data to options format.
+  // Show the evaluator's name as the label, falling back to email when the
+  // account has no name set. Email stays searchable via fieldMap.
   const evaluatorOptions =
     evaluatorsData?.data?.data
-      ?.map((evaluator) => ({
-        label: evaluator.email,
-        value: evaluator._id,
-        fieldMap: {
-          name: evaluator.name?.toLowerCase?.() ?? "",
-          email: evaluator.email ?? "",
-        },
-      })) || [];
+      ?.map((evaluator) => {
+        const name = evaluator.name?.trim();
+        return {
+          label: name || evaluator.email,
+          value: evaluator._id,
+          fieldMap: {
+            name: name?.toLowerCase?.() ?? "",
+            email: evaluator.email ?? "",
+          },
+        };
+      }) || [];
 
 
   const addGroup = () => {
