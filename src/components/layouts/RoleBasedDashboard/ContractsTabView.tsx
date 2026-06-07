@@ -51,6 +51,8 @@ interface ContractsTabViewProps {
   contractManagerContractStatus: any;
   contractManagerVendorSummary: any;
   contractManagerRenewals: any;
+  contractManagerAiInsights: any;
+  isLoadingContractManagerAiInsights?: boolean;
   canShowMyActions: boolean;
   canShowGeneralUpdates: boolean;
   onFilterChange: (chartId?: string, filter?: string) => void;
@@ -83,6 +85,8 @@ export const ContractsTabView: React.FC<ContractsTabViewProps> = ({
   contractManagerContractStatus,
   contractManagerVendorSummary,
   contractManagerRenewals,
+  contractManagerAiInsights,
+  isLoadingContractManagerAiInsights,
   canShowMyActions,
   canShowGeneralUpdates,
   onFilterChange,
@@ -258,7 +262,10 @@ export const ContractsTabView: React.FC<ContractsTabViewProps> = ({
             <VendorPerformanceSummaryCard data={contractManagerVendorSummary} />
             <RenewalsTimelineCard data={contractManagerRenewals} />
           </div>
-          <AiInsightsAlerts />
+          <AiInsightsAlerts
+            data={contractManagerAiInsights}
+            isLoading={isLoadingContractManagerAiInsights}
+          />
         </>
       )}
 

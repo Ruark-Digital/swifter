@@ -237,6 +237,8 @@ export const RoleBasedDashboard: React.FC = () => {
     contractManagerContractStatus,
     contractManagerVendorSummary,
     contractManagerRenewals,
+    contractManagerAiInsights,
+    isLoadingContractManagerAiInsights,
     isInitialLoading,
     // Individual chart data fetchers
     getChartData,
@@ -885,6 +887,8 @@ export const RoleBasedDashboard: React.FC = () => {
           contractManagerContractStatus={contractManagerContractStatus}
           contractManagerVendorSummary={contractManagerVendorSummary}
           contractManagerRenewals={contractManagerRenewals}
+          contractManagerAiInsights={contractManagerAiInsights}
+          isLoadingContractManagerAiInsights={isLoadingContractManagerAiInsights}
           canShowMyActions={canShowMyActions}
           canShowGeneralUpdates={canShowGeneralUpdates}
           onFilterChange={handleFilterChange}
@@ -923,6 +927,8 @@ export const RoleBasedDashboard: React.FC = () => {
           contractManagerContractStatus={contractManagerContractStatus}
           contractManagerVendorSummary={contractManagerVendorSummary}
           contractManagerRenewals={contractManagerRenewals}
+          contractManagerAiInsights={contractManagerAiInsights}
+          isLoadingContractManagerAiInsights={isLoadingContractManagerAiInsights}
           canShowMyActions={canShowMyActions}
           canShowGeneralUpdates={canShowGeneralUpdates}
           onFilterChange={handleFilterChange}
@@ -966,6 +972,8 @@ export const RoleBasedDashboard: React.FC = () => {
           contractManagerContractStatus={contractManagerContractStatus}
           contractManagerVendorSummary={contractManagerVendorSummary}
           contractManagerRenewals={contractManagerRenewals}
+          contractManagerAiInsights={contractManagerAiInsights}
+          isLoadingContractManagerAiInsights={isLoadingContractManagerAiInsights}
           canShowMyActions={canShowMyActions}
           canShowGeneralUpdates={canShowGeneralUpdates}
           onFilterChange={handleFilterChange}
