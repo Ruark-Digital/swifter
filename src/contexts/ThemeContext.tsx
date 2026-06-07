@@ -69,8 +69,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
       document.body.offsetHeight; // Trigger a reflow
       document.body.style.display = '';
       
-      // Log for debugging
-      console.log(`Applied theme: ${finalTheme} (selected: ${theme})`);
+      if (import.meta.env.DEV) console.log(`Applied theme: ${finalTheme} (selected: ${theme})`);
     };
     
     // Apply theme immediately
@@ -85,7 +84,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(storageKey, theme);
-        console.log(`Theme saved to localStorage: ${theme}`);
+        if (import.meta.env.DEV) console.log(`Theme saved to localStorage: ${theme}`);
       } catch (error) {
         console.error('Failed to save theme to localStorage:', error);
       }
@@ -94,7 +93,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   
   // Debug current theme state
   useEffect(() => {
-    console.log(`Current theme state - theme: ${theme}, actualTheme: ${actualTheme}`);
+    if (import.meta.env.DEV) console.log(`Current theme state - theme: ${theme}, actualTheme: ${actualTheme}`);
   }, [theme, actualTheme]);
 
   // Listen for system theme changes
@@ -113,8 +112,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
         document.body.offsetHeight; // Trigger a reflow
         document.body.style.display = '';
         
-        // Log for debugging
-        console.log(`System theme changed to: ${systemTheme}`);
+        if (import.meta.env.DEV) console.log(`System theme changed to: ${systemTheme}`);
       }
     };
 
