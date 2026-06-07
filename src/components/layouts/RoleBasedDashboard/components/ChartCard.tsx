@@ -165,8 +165,10 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({
   onFilterChange,
   chartData,
 }) => {
-  // Use dynamic chartData if provided, otherwise fallback to chart.data
-  let data = chartData || chart.data;
+  // Use dynamic chartData if provided, otherwise fallback to chart.data.
+  // Default to an empty array so charts can render their frame before their
+  // data query resolves (progressive load) without `.map`/`.every` throwing.
+  let data = chartData || chart.data || [];
 
   // Transform single key-value data for bar charts
   if (chart.type === "bar" && data && data.length > 0) {
