@@ -1484,5 +1484,6 @@ export const useDashboardData = (
     isLoadingContractManagerContractStatus,
     isLoadingContractManagerVendorSummary,
     isLoadingContractManagerRenewals,
+    isLoadingContractManagerAiInsights,
   };
 };

@@ -221,6 +221,9 @@ type ClauseLibraryResponse = {
         risk?: "low" | "medium" | "high";
         summary?: string;
         values?: Array<{ label?: string; value?: string | number }>;
+        /** 2-4 sentence breakdown from the API. */
+        fullDetails?: string;
+        /** Legacy array shape kept as a fallback. */
         details?: string[];
       }>;
     }>;
@@ -352,8 +355,9 @@ const buildClauseLibraryPrintHtml = (
                    ${valuesRows}
                  </div>`
               : "";
-          const detailsText =
-            clause.details && clause.details.length > 0
+          const detailsText = clause.fullDetails?.trim()
+            ? escapeHtml(clause.fullDetails)
+            : clause.details && clause.details.length > 0
               ? clause.details.map((d) => escapeHtml(d)).join("<br/>")
               : "Not specified";
           return `
@@ -543,6 +547,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive, vendorName }) => {
             const haystack = [
               clause.title,
               clause.summary,
+              clause.fullDetails,
               ...(clause.details || []),
               ...(clause.values?.flatMap((v) => [
                 v.label,
@@ -705,18 +710,20 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive, vendorName }) => {
                             ) : undefined
                           }
                           fullDetails={
-                            clause.details && clause.details.length > 0
-                              ? clause.details.map((d, index) => (
-                                  <React.Fragment
-                                    key={`${clause.id || clause.title}-detail-${index}`}
-                                  >
-                                    {d}
-                                    {index < clause.details!.length - 1 ? (
-                                      <br />
-                                    ) : null}
-                                  </React.Fragment>
-                                ))
-                              : "Not specified"
+                            clause.fullDetails?.trim()
+                              ? clause.fullDetails
+                              : clause.details && clause.details.length > 0
+                                ? clause.details.map((d, index) => (
+                                    <React.Fragment
+                                      key={`${clause.id || clause.title}-detail-${index}`}
+                                    >
+                                      {d}
+                                      {index < clause.details!.length - 1 ? (
+                                        <br />
+                                      ) : null}
+                                    </React.Fragment>
+                                  ))
+                                : "Not specified"
                           }
                         />
                       );

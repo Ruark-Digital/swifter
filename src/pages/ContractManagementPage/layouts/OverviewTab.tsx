@@ -47,6 +47,9 @@ type ViewProps = {
   reviewDuration: string;
   approvalDuration: string;
   executionDuration: string;
+  /** Durations and Deviation Scale are hidden on the vendor side (Vendor/PM). */
+  showDurations?: boolean;
+  showDeviationScale?: boolean;
 };
 
 const ManagerView: React.FC<ViewProps> = ({
@@ -208,6 +211,8 @@ const VendorView: React.FC<ViewProps> = ({
   vendorName,
   vendorPersonnel,
   internalTeam,
+  showDurations = true,
+  showDeviationScale = true,
 }) => (
   <>
     <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
@@ -219,24 +224,30 @@ const VendorView: React.FC<ViewProps> = ({
             {contract.title || "N/A"}
           </span>
         </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Deviation Scale</span>
-          {/* <span className="text-slate-900 dark:text-slate-100">
-            {contract.deviationScale ?? "N/A"}
-          </span> */}
-        </div>
+        {showDeviationScale && (
+          <div className="flex flex-col gap-1">
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Deviation Scale</span>
+            {/* <span className="text-slate-900 dark:text-slate-100">
+              {contract.deviationScale ?? "N/A"}
+            </span> */}
+          </div>
+        )}
         <div className="flex flex-col gap-1">
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Published Date</span>
           <span className="text-slate-900 dark:text-slate-100">{publishedDate}</span>
         </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Draft Duration</span>
-          <span className="text-slate-900 dark:text-slate-100">{draftDuration}</span>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Execution Duration</span>
-          <span className="text-slate-900 dark:text-slate-100">{executionDuration}</span>
-        </div>
+        {showDurations && (
+          <div className="flex flex-col gap-1">
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Draft Duration</span>
+            <span className="text-slate-900 dark:text-slate-100">{draftDuration}</span>
+          </div>
+        )}
+        {showDurations && (
+          <div className="flex flex-col gap-1">
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Execution Duration</span>
+            <span className="text-slate-900 dark:text-slate-100">{executionDuration}</span>
+          </div>
+        )}
       </div>
 
       {/* Column 2 */}
@@ -259,10 +270,12 @@ const VendorView: React.FC<ViewProps> = ({
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Effective Date</span>
           <span className="text-slate-900 dark:text-slate-100">{effectiveDate}</span>
         </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Review Duration</span>
-          <span className="text-slate-900 dark:text-slate-100">{reviewDuration}</span>
-        </div>
+        {showDurations && (
+          <div className="flex flex-col gap-1">
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Review Duration</span>
+            <span className="text-slate-900 dark:text-slate-100">{reviewDuration}</span>
+          </div>
+        )}
         <div className="flex flex-col gap-1">
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Manager</span>
           {contractManager ? (
@@ -295,10 +308,12 @@ const VendorView: React.FC<ViewProps> = ({
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">End Date</span>
           <span className="text-slate-900 dark:text-slate-100">{endDate}</span>
         </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Approval Duration</span>
-          <span className="text-slate-900 dark:text-slate-100">{approvalDuration}</span>
-        </div>
+        {showDurations && (
+          <div className="flex flex-col gap-1">
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Approval Duration</span>
+            <span className="text-slate-900 dark:text-slate-100">{approvalDuration}</span>
+          </div>
+        )}
         <div className="flex flex-col gap-1">
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Status</span>
           <Badge className={cn("w-fit", status.className)}>
@@ -853,7 +868,15 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
   };
 
   const renderView = () => {
-    if (isContractVendorLike) return <VendorView {...viewProps} />;
+    // Vendor side (Vendor/PM): Durations and Deviation Scale are not required.
+    if (isContractVendorLike)
+      return (
+        <VendorView
+          {...viewProps}
+          showDurations={false}
+          showDeviationScale={false}
+        />
+      );
     if (isApprover) return <ApproverView {...viewProps} />;
     if (isCompanyAdmin) return <VendorView {...viewProps} />;
     if (isViewOnly) return <ManagerView {...viewProps} />;
