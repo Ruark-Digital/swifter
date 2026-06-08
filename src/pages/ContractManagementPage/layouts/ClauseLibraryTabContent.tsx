@@ -1,4 +1,5 @@
 import React from "react";
+import { ChevronDown } from "lucide-react";
 import { TabsContent } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
@@ -88,7 +89,7 @@ function CategoryCard({
   iconBg,
   title,
   clausesCount,
-  defaultOpen = true,
+  defaultOpen = false,
   children,
 }: {
   iconSrc: string;
@@ -124,10 +125,9 @@ function CategoryCard({
         </div>
 
         <div className="flex items-center gap-4">
-          <img
-            src="/assets/contract-management/clause-library/chevron-down.svg"
-            className={`h-6 w-6 transition-transform ${open ? "" : "-rotate-90"}`}
-            alt=""
+          <ChevronDown
+            aria-hidden="true"
+            className={`h-6 w-6 text-[#4B5563] dark:text-slate-400 transition-transform ${open ? "" : "-rotate-90"}`}
           />
         </div>
       </button>
@@ -221,6 +221,9 @@ type ClauseLibraryResponse = {
         risk?: "low" | "medium" | "high";
         summary?: string;
         values?: Array<{ label?: string; value?: string | number }>;
+        /** 2-4 sentence breakdown from the API. */
+        fullDetails?: string;
+        /** Legacy array shape kept as a fallback. */
         details?: string[];
       }>;
     }>;
@@ -352,8 +355,9 @@ const buildClauseLibraryPrintHtml = (
                    ${valuesRows}
                  </div>`
               : "";
-          const detailsText =
-            clause.details && clause.details.length > 0
+          const detailsText = clause.fullDetails?.trim()
+            ? escapeHtml(clause.fullDetails)
+            : clause.details && clause.details.length > 0
               ? clause.details.map((d) => escapeHtml(d)).join("<br/>")
               : "Not specified";
           return `
@@ -543,6 +547,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive, vendorName }) => {
             const haystack = [
               clause.title,
               clause.summary,
+              clause.fullDetails,
               ...(clause.details || []),
               ...(clause.values?.flatMap((v) => [
                 v.label,
@@ -705,18 +710,20 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive, vendorName }) => {
                             ) : undefined
                           }
                           fullDetails={
-                            clause.details && clause.details.length > 0
-                              ? clause.details.map((d, index) => (
-                                  <React.Fragment
-                                    key={`${clause.id || clause.title}-detail-${index}`}
-                                  >
-                                    {d}
-                                    {index < clause.details!.length - 1 ? (
-                                      <br />
-                                    ) : null}
-                                  </React.Fragment>
-                                ))
-                              : "Not specified"
+                            clause.fullDetails?.trim()
+                              ? clause.fullDetails
+                              : clause.details && clause.details.length > 0
+                                ? clause.details.map((d, index) => (
+                                    <React.Fragment
+                                      key={`${clause.id || clause.title}-detail-${index}`}
+                                    >
+                                      {d}
+                                      {index < clause.details!.length - 1 ? (
+                                        <br />
+                                      ) : null}
+                                    </React.Fragment>
+                                  ))
+                                : "Not specified"
                           }
                         />
                       );
