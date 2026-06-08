@@ -1,4 +1,5 @@
 import React from "react";
+import { ChevronDown } from "lucide-react";
 import { TabsContent } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
@@ -88,7 +89,7 @@ function CategoryCard({
   iconBg,
   title,
   clausesCount,
-  defaultOpen = true,
+  defaultOpen = false,
   children,
 }: {
   iconSrc: string;
@@ -124,10 +125,9 @@ function CategoryCard({
         </div>
 
         <div className="flex items-center gap-4">
-          <img
-            src="/assets/contract-management/clause-library/chevron-down.svg"
-            className={`h-6 w-6 transition-transform ${open ? "" : "-rotate-90"}`}
-            alt=""
+          <ChevronDown
+            aria-hidden="true"
+            className={`h-6 w-6 text-[#4B5563] dark:text-slate-400 transition-transform ${open ? "" : "-rotate-90"}`}
           />
         </div>
       </button>
