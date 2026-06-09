@@ -35,9 +35,9 @@ type Props = {
 };
 
 const MSA_CATEGORY_OPTIONS = [
-  { label: "Task Order", value: "task_order" },
-  { label: "Work Order", value: "work_order" },
-  { label: "Child Contract", value: "child_contract" },
+  { label: "Task Order", value: "Task Order" },
+  { label: "Work Order", value: "Work Order" },
+  { label: "Child Contract", value: "Child Contract" },
 ];
 
 const ComplexityRating = ({
