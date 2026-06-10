@@ -237,7 +237,9 @@ const columns: ColumnDef<ContractRow>[] = [
             ? "bg-slate-100 text-slate-700"
             : s === "Pending Approval"
               ? "bg-yellow-100 text-yellow-700"
-              : "bg-red-100 text-red-700";
+              : s === "Completed"
+                ? "bg-blue-100 text-blue-700"
+                : "bg-red-100 text-red-700";
       return (
         <span
           data-testid="contract-status-badge"
