@@ -161,7 +161,9 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
         </button>
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      {/* Flex column so each tab's root (h-full / flex-1) gets a constrained
+          height and scrolls internally instead of growing the page. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {activeTab === "comments" && (
           <Suspense fallback={fallbackNode}>
             <CommentsTab

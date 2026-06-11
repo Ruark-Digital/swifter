@@ -687,7 +687,7 @@ const CollaborationToolPage: React.FC = () => {
         robots="noindex, nofollow"
         canonical="/collaboration-tool"
       />
-      <div className="flex h-svh flex-col bg-white dark:bg-slate-950">
+      <div className="flex h-svh flex-col overflow-hidden bg-white dark:bg-slate-950">
         {/* Header — lets the user close the editor and return to the contract
             detail they came from (same-tab navigation). */}
         <header className="flex items-center gap-3 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
