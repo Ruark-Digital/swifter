@@ -1,8 +1,9 @@
 import React from "react";
 import { TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Share2 } from "lucide-react";
+import { Share2, Upload } from "lucide-react";
 import DocumentsStatsCard from "../components/DocumentsStatsCard";
+import UploadDocumentsDialog from "../components/UploadDocumentsDialog";
 import DocumentsList from "../components/DocumentsList";
 import type { ContractDetail } from "@/types";
 import EditContract from "../components/EditContract";
@@ -41,6 +42,17 @@ const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, ef
             </Button>
           </ExportReportSheet>
           
+          {isManager && contractId && (
+            <UploadDocumentsDialog
+              contractId={contractId}
+              trigger={
+                <Button variant="outline" disabled={status !== "pending_approval"}>
+                  <Upload className="mr-2 h-4 w-4" /> Upload Documents
+                </Button>
+              }
+            />
+          )}
+
           {isManager && (
             <Button
               onClick={() => {

@@ -29,6 +29,8 @@ interface AiSuggestionsPanelProps {
    *  replacement text to write into the document. */
   onApprove: (item: Item, tier: AlternativeTier) => void;
   onDismiss: (item: Item) => void;
+  /** Click a card body to scroll/select the redline in the editor. */
+  onFocus?: (item: Item) => void;
   onRetry: () => void;
   /** When "inline", renders without the fixed-overlay chrome so the
    *  panel can live inside a sidebar tab. */
@@ -102,12 +104,14 @@ type SuggestionCardProps = {
   item: Item;
   onApprove: (item: Item, tier: AlternativeTier) => void;
   onDismiss: (item: Item) => void;
+  onFocus?: (item: Item) => void;
 };
 
 const SuggestionCard: React.FC<SuggestionCardProps> = ({
   item,
   onApprove,
   onDismiss,
+  onFocus,
 }) => {
   const { suggestion } = item;
   const isPending = item.state === "pending";
@@ -121,10 +125,28 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
   const replacementPreview = alt?.[tier] ?? "";
   const hasReplacement = Boolean(replacementPreview);
 
+  const focusable = Boolean(onFocus);
+
   return (
     <div
+      onClick={onFocus ? () => onFocus(item) : undefined}
+      onKeyDown={
+        onFocus
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onFocus(item);
+              }
+            }
+          : undefined
+      }
+      role={focusable ? "button" : undefined}
+      tabIndex={focusable ? 0 : undefined}
+      title={focusable ? "Scroll to this redline in the document" : undefined}
       className={cn(
         "rounded-xl border p-3 transition-opacity",
+        focusable &&
+          "cursor-pointer hover:border-indigo-300 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 dark:hover:border-indigo-700",
         isPending
           ? "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
           : "border-slate-200 bg-slate-50 opacity-70 dark:border-slate-800 dark:bg-slate-800/30",
@@ -200,7 +222,10 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
                       key={t}
                       type="button"
                       title={TIER_HINT[t]}
-                      onClick={() => setTier(t)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTier(t);
+                      }}
                       className={cn(
                         "flex-1 rounded px-2 py-1 text-[11px] font-semibold transition-colors",
                         active
@@ -226,7 +251,10 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
             <div className="mb-2">
               <button
                 type="button"
-                onClick={() => setShowDetails((s) => !s)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDetails((s) => !s);
+                }}
                 className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
               >
                 {showDetails ? (
@@ -283,7 +311,10 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
             <div className="mt-3 flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => onDismiss(item)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDismiss(item);
+                }}
                 className="rounded-md border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 Dismiss
@@ -291,7 +322,10 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
               <button
                 type="button"
                 disabled={!hasReplacement}
-                onClick={() => onApprove(item, tier)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onApprove(item, tier);
+                }}
                 title={
                   hasReplacement
                     ? `Apply ${TIER_LABEL[tier].toLowerCase()} replacement`
@@ -326,6 +360,7 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
   items,
   onApprove,
   onDismiss,
+  onFocus,
   onRetry,
   variant = "overlay",
 }) => {
@@ -464,6 +499,7 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
               item={item}
               onApprove={onApprove}
               onDismiss={onDismiss}
+              onFocus={onFocus}
             />
           ))}
       </div>

@@ -13,6 +13,8 @@ export type FileCommentRich = {
   content: string;
   redlineId?: string | null;
   redlineKind?: "insertion" | "deletion" | null;
+  /** SuperDoc document-comment id this comment is anchored to (click-to-scroll). */
+  anchorCommentId?: string | null;
   mentions?: Mentionable[];
 };
 
@@ -39,6 +41,7 @@ const encodeRichToWire = (rich: FileCommentRich): FileCommentWire => {
   const meta: Record<string, unknown> = { [SENTINEL_KEY]: 1, id: rich.id };
   if (rich.redlineId) meta.redlineId = rich.redlineId;
   if (rich.redlineKind) meta.redlineKind = rich.redlineKind;
+  if (rich.anchorCommentId) meta.anchorCommentId = rich.anchorCommentId;
   if (rich.mentions && rich.mentions.length > 0) meta.mentions = rich.mentions;
   meta.content = rich.content;
   return {
@@ -81,6 +84,8 @@ const decodeWireToRich = (
         parsed.redlineKind === "insertion" || parsed.redlineKind === "deletion"
           ? parsed.redlineKind
           : null,
+      anchorCommentId:
+        typeof parsed.anchorCommentId === "string" ? parsed.anchorCommentId : null,
       mentions: Array.isArray(parsed.mentions) ? parsed.mentions : undefined,
     };
   } catch {
