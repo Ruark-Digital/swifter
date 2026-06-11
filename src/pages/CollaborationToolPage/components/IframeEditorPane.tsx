@@ -219,6 +219,8 @@ const IframeEditorPane: React.FC<Props> = ({
     // One controller for the component's lifetime — aborted only on real unmount
     // (or by the per-fetch timeout inside sendInit), never on a re-render.
     const controller = new AbortController();
+    // Stable Map identity for the cleanup below (react-hooks/exhaustive-deps).
+    const pendingAnchors = pendingAnchorsRef.current;
     const onMessage = (event: MessageEvent) => {
       const msg = parseSuperdocMessage(event, origin);
       if (!msg) return;
@@ -307,7 +309,7 @@ const IframeEditorPane: React.FC<Props> = ({
       window.clearTimeout(connectTimer);
       controller.abort();
       // Settle any in-flight anchor requests so awaiting callers don't hang.
-      for (const requestId of [...pendingAnchorsRef.current.keys()]) {
+      for (const requestId of [...pendingAnchors.keys()]) {
         settleAnchor(requestId, null);
       }
       onEditorReadyRef.current(null);

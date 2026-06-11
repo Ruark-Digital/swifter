@@ -1,4 +1,5 @@
 import React, { useCallback } from "react";
+import { X } from "lucide-react";
 import FeedItem from "./FeedItem";
 import WriteComment from "./WriteComment";
 import VirtualizedFeedList from "./VirtualizedFeedList";
@@ -17,6 +18,7 @@ export type CommentsFeedItem = {
   showDot?: boolean;
   attachment?: FeedAttachment | null;
   redlineId?: string | null;
+  anchorCommentId?: string | null;
   mentions?: Mentionable[];
 };
 
@@ -29,6 +31,9 @@ type CommentsTabProps = {
   canWriteComment?: boolean;
   isSubmittingComment?: boolean;
   mentionables?: Mentionable[];
+  /** Excerpt of the document selection the next comment will anchor to. */
+  anchorExcerpt?: string | null;
+  onDismissAnchor?: () => void;
 };
 
 const CommentsTab: React.FC<CommentsTabProps> = ({
@@ -40,6 +45,8 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
   canWriteComment = false,
   isSubmittingComment = false,
   mentionables = [],
+  anchorExcerpt = null,
+  onDismissAnchor,
 }) => {
   const handleSubmit = useCallback(() => {
     onCommentSubmit?.();
@@ -47,7 +54,18 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
 
   const renderCommentItem = useCallback(
     (comment: CommentsFeedItem) => {
+      const isAnchored = Boolean(comment.anchorCommentId || comment.redlineId);
       const focusMark = () => {
+        // Selection-anchored comments scroll via the SuperDoc comment entity;
+        // redline-anchored ones keep the legacy mark event.
+        if (comment.anchorCommentId) {
+          window.dispatchEvent(
+            new CustomEvent("ct-focus-comment", {
+              detail: { commentId: comment.anchorCommentId },
+            }),
+          );
+          return;
+        }
         if (!comment.redlineId) return;
         window.dispatchEvent(
           new CustomEvent("ct-focus-mark", {
@@ -58,15 +76,15 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
       return (
         <div
           className={`space-y-2 ${
-            comment.redlineId
+            isAnchored
               ? "cursor-pointer rounded-md transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
               : ""
           }`}
-          onClick={comment.redlineId ? focusMark : undefined}
-          role={comment.redlineId ? "button" : undefined}
-          tabIndex={comment.redlineId ? 0 : undefined}
+          onClick={isAnchored ? focusMark : undefined}
+          role={isAnchored ? "button" : undefined}
+          tabIndex={isAnchored ? 0 : undefined}
           onKeyDown={
-            comment.redlineId
+            isAnchored
               ? (e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
@@ -84,7 +102,7 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
             attachment={comment.attachment}
             showDot={comment.showDot}
           />
-          {comment.redlineId && (
+          {isAnchored && (
             <div className="pl-12 flex items-center gap-3">
               <span className="text-xs text-amber-600 dark:text-amber-400">
                 anchored to document
@@ -102,6 +120,22 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
       <div className="ct-section-header">
         <span className="ct-section-title">Comments and activity</span>
       </div>
+
+      {anchorExcerpt !== null && (
+        <div className="mb-2 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 dark:border-amber-700/60 dark:bg-amber-900/20 dark:text-amber-300">
+          <span className="min-w-0 truncate">
+            anchored to: “{anchorExcerpt || "selection"}”
+          </span>
+          <button
+            type="button"
+            aria-label="Remove anchor"
+            onClick={onDismissAnchor}
+            className="ml-auto shrink-0 rounded p-0.5 transition-colors hover:bg-amber-100 dark:hover:bg-amber-800/40"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
 
       <WriteComment
         value={commentValue}
