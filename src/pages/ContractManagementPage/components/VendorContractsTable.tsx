@@ -31,6 +31,7 @@ export type VendorContractRow = {
     | "Terminated"
     | "Expired"
     | "Cancelled"
+    | "Completed"
     | "Published"
     | "Draft"
     | "Pending Approval";
