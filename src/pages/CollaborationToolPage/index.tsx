@@ -601,6 +601,15 @@ const CollaborationToolPage: React.FC = () => {
         // eslint-disable-next-line no-console
         console.warn("[anchored-comment] anchor failed; saving unanchored");
       }
+    } else if (pendingAnchor && import.meta.env.DEV) {
+      // Chip active but no usable adapter — typically a stale-HMR tab where
+      // IframeEditorPane's effect cleanup nulled the adapter and the iframe
+      // never re-announced editor-ready. A full page reload fixes it.
+      // eslint-disable-next-line no-console
+      console.warn("[anchored-comment] chip active but no adapter", {
+        hasAdapter: Boolean(adapter),
+        hasAnchorComment: Boolean(adapter?.anchorComment),
+      });
     }
 
     const redline = pendingRedlineRef.current;
