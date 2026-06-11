@@ -28,4 +28,9 @@ export type EditorAdapter = {
   /** Replace the text of a redlined span by id. Strips the mark in the
    *  process (so accepted/rejected redlines no longer render). */
   replaceRedline: (redlineId: string, replacement: string) => void;
+  /** Anchor a comment at the editor's current selection. Resolves the new
+   *  document-comment id, or null when anchoring fails/times out (caller
+   *  saves the comment unanchored). Only the SuperDoc iframe adapter
+   *  implements this. */
+  anchorComment?: (text: string) => Promise<string | null>;
 };
