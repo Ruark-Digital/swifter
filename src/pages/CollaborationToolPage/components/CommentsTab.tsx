@@ -2,7 +2,6 @@ import React, { useCallback } from "react";
 import { X } from "lucide-react";
 import FeedItem from "./FeedItem";
 import WriteComment from "./WriteComment";
-import VirtualizedFeedList from "./VirtualizedFeedList";
 import type { Mentionable } from "../collab/useContractMentionables";
 
 type FeedAttachment = {
@@ -147,13 +146,16 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
         placeholder="Write a Comment… use @ to tag"
       />
 
-      <VirtualizedFeedList
-        className="ct-feed mt-5"
-        items={comments}
-        itemHeight={72}
-        getItemKey={(item) => item.id}
-        renderItem={renderCommentItem}
-      />
+      {/* Natural-flow list: comment heights vary (multi-line messages, the
+          "anchored to document" footer), which a fixed-slot virtualizer
+          clipped/overlapped. `.ct-feed` itself provides column+gap+scroll. */}
+      <div className="ct-feed mt-5">
+        {comments.map((comment) => (
+          <React.Fragment key={comment.id}>
+            {renderCommentItem(comment)}
+          </React.Fragment>
+        ))}
+      </div>
     </div>
   );
 };
