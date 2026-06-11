@@ -6,6 +6,8 @@ import {
   buildInitPayload,
   buildApplyRedline,
   buildFocusRedline,
+  buildAddComment,
+  buildFocusComment,
 } from "./superdocBridge";
 
 const ORIGIN = "https://superdoc.example.com";
@@ -98,6 +100,41 @@ describe("parseSuperdocMessage", () => {
   it("rejects superdoc:redline-clicked with no redlineId", () => {
     expect(parseSuperdocMessage(evt({ type: "superdoc:redline-clicked", payload: {} }), ORIGIN)).toBeNull();
   });
+
+  it("accepts superdoc:presence and keeps valid users", () => {
+    const users = [
+      { clientId: 2, name: "Ada", avatarUrl: "a.png" },
+      { clientId: 3, name: "Grace" },
+    ];
+    expect(
+      parseSuperdocMessage(evt({ type: "superdoc:presence", payload: { users } }), ORIGIN),
+    ).toEqual({
+      type: "superdoc:presence",
+      payload: {
+        users: [
+          { clientId: 2, name: "Ada", avatarUrl: "a.png" },
+          { clientId: 3, name: "Grace", avatarUrl: undefined },
+        ],
+      },
+    });
+  });
+
+  it("drops malformed presence entries and defaults missing users to []", () => {
+    const users = [
+      { clientId: "nope", name: "Bad" },
+      { clientId: 4, name: 99 },
+      { clientId: 5, name: "Ok" },
+    ];
+    expect(
+      parseSuperdocMessage(evt({ type: "superdoc:presence", payload: { users } }), ORIGIN),
+    ).toEqual({
+      type: "superdoc:presence",
+      payload: { users: [{ clientId: 5, name: "Ok", avatarUrl: undefined }] },
+    });
+    expect(
+      parseSuperdocMessage(evt({ type: "superdoc:presence" }), ORIGIN),
+    ).toEqual({ type: "superdoc:presence", payload: { users: [] } });
+  });
 });
 
 describe("buildInitPayload", () => {
@@ -170,5 +207,55 @@ describe("buildInitPayload token + room", () => {
     const room = buildInitPayload(base).payload.roomId;
     expect(room).toBe("room123-superdoc");
     expect(room).not.toContain(":");
+  });
+});
+
+describe("anchored-comment messages", () => {
+  it("accepts superdoc:selection", () => {
+    expect(
+      parseSuperdocMessage(
+        evt({ type: "superdoc:selection", payload: { hasSelection: true, excerpt: "quoted" } }),
+        ORIGIN,
+      ),
+    ).toEqual({ type: "superdoc:selection", payload: { hasSelection: true, excerpt: "quoted" } });
+  });
+
+  it("coerces a malformed superdoc:selection payload", () => {
+    expect(parseSuperdocMessage(evt({ type: "superdoc:selection" }), ORIGIN)).toEqual({
+      type: "superdoc:selection",
+      payload: { hasSelection: false, excerpt: "" },
+    });
+  });
+
+  it("accepts superdoc:comment-created with a string or null commentId", () => {
+    expect(
+      parseSuperdocMessage(
+        evt({ type: "superdoc:comment-created", payload: { requestId: "q1", commentId: "c1" } }),
+        ORIGIN,
+      ),
+    ).toEqual({ type: "superdoc:comment-created", payload: { requestId: "q1", commentId: "c1" } });
+    expect(
+      parseSuperdocMessage(
+        evt({ type: "superdoc:comment-created", payload: { requestId: "q1", commentId: null } }),
+        ORIGIN,
+      ),
+    ).toEqual({ type: "superdoc:comment-created", payload: { requestId: "q1", commentId: null } });
+  });
+
+  it("rejects superdoc:comment-created without a requestId", () => {
+    expect(
+      parseSuperdocMessage(evt({ type: "superdoc:comment-created", payload: { commentId: "c1" } }), ORIGIN),
+    ).toBeNull();
+  });
+
+  it("builds add-comment and focus-comment commands", () => {
+    expect(buildAddComment("q1", "hello")).toEqual({
+      type: "superdoc:add-comment",
+      payload: { requestId: "q1", text: "hello" },
+    });
+    expect(buildFocusComment("c1")).toEqual({
+      type: "superdoc:focus-comment",
+      payload: { commentId: "c1" },
+    });
   });
 });
