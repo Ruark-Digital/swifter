@@ -10,7 +10,7 @@ import { ChartComponent } from "./components/ChartCard";
 import { ActivityComponent } from "./components/ActivityCard";
 import { CardStats } from "./components/StatsCard";
 import { cn } from "@/lib/utils";
-import { DashboardConfig } from "@/config/dashboardConfig";
+import { DashboardConfig, dashboardConfigs } from "@/config/dashboardConfig";
 import { DashboardSkeleton } from "./components/DashboardSkeleton";
 import { ContractsTabView } from "./ContractsTabView";
 import { VendorContractsView } from "./VendorContractsView";
@@ -162,6 +162,50 @@ const CM_YTD_STATS = [
   },
 ];
 
+// Maps the total-contract stat template onto live contract card values.
+// Shared by the contract_manager branch and the procurement Contracts tab so
+// both render identical contract stats.
+const buildContractTotalStats = (template: any[], cards: any) =>
+  template.map((stat) => {
+    const value =
+      stat.title === "All Contracts"
+        ? cards?.allContracts?.value ?? 0
+        : stat.title === "Active Contracts"
+          ? cards?.activeContracts?.value ?? 0
+          : stat.title === "Draft Contracts"
+            ? cards?.draftContracts?.value ?? 0
+            : stat.title === "Suspended"
+              ? cards?.suspendedContracts?.value ?? 0
+              : stat.title === "Expired"
+                ? cards?.expiredContracts?.value ?? 0
+                : stat.title === "Terminated"
+                  ? cards?.terminatedContracts?.value ?? 0
+                  : stat.title === "Total Contract Value"
+                    ? cards?.totalContractValue?.value ?? 0
+                    : stat.title === "Committed vs Actual Value"
+                      ? Math.round(cards?.committedVsActual?.percentage ?? 0)
+                      : stat.title === "Savings Realized"
+                        ? cards?.savingsRealized?.value ?? 0
+                        : stat.title === "Upcoming Renewals"
+                          ? cards?.upcomingRenewals?.count ?? 0
+                          : stat.title === "High Risk Contracts"
+                            ? cards?.highRiskContracts?.count ?? 0
+                            : stat.title === "Holdbacks"
+                              ? cards?.holdbacks?.value ?? 0
+                              : stat.value;
+    const isMoneyStat =
+      stat.title === "Total Contract Value" ||
+      stat.title === "Savings Realized" ||
+      stat.title === "Holdbacks";
+    return {
+      ...stat,
+      value,
+      ...(isMoneyStat
+        ? { currency: cards?.totalContractValue?.currency }
+        : {}),
+    };
+  });
+
 // Main Role-Based Dashboard Component
 export const RoleBasedDashboard: React.FC = () => {
   const { dashboardConfig, userRole } = useUserRole();
@@ -281,6 +325,18 @@ export const RoleBasedDashboard: React.FC = () => {
       };
     });
   }, [contractManagerYtdCards]);
+
+  // Total-contract stats for roles whose base config isn't contract-shaped
+  // (e.g. procurement's Contracts landing tab) — sourced from the canonical
+  // contract_manager stat template.
+  const cmTotalStats = useMemo(
+    () =>
+      buildContractTotalStats(
+        dashboardConfigs.contract_manager.stats,
+        contractManagerTotalCards,
+      ),
+    [contractManagerTotalCards],
+  );
 
   const cmCycleTimeValues = useMemo(() => {
     const stages = contractManagerCycleTime?.stages ?? [];
@@ -661,46 +717,10 @@ export const RoleBasedDashboard: React.FC = () => {
     }
 
     if (userRole === "contract_manager" || userRole === "approver") {
-      const cards = contractManagerTotalCards;
-      const transformedStats = dashboardConfig.stats.map((stat) => {
-        const value =
-          stat.title === "All Contracts"
-            ? cards?.allContracts?.value ?? 0
-            : stat.title === "Active Contracts"
-              ? cards?.activeContracts?.value ?? 0
-              : stat.title === "Draft Contracts"
-                ? cards?.draftContracts?.value ?? 0
-                : stat.title === "Suspended"
-                  ? cards?.suspendedContracts?.value ?? 0
-                  : stat.title === "Expired"
-                    ? cards?.expiredContracts?.value ?? 0
-                    : stat.title === "Terminated"
-                      ? cards?.terminatedContracts?.value ?? 0
-                      : stat.title === "Total Contract Value"
-                        ? cards?.totalContractValue?.value ?? 0
-                        : stat.title === "Committed vs Actual Value"
-                          ? Math.round(cards?.committedVsActual?.percentage ?? 0)
-                          : stat.title === "Savings Realized"
-                            ? cards?.savingsRealized?.value ?? 0
-                            : stat.title === "Upcoming Renewals"
-                              ? cards?.upcomingRenewals?.count ?? 0
-                              : stat.title === "High Risk Contracts"
-                                ? cards?.highRiskContracts?.count ?? 0
-                                : stat.title === "Holdbacks"
-                                  ? cards?.holdbacks?.value ?? 0
-                                  : stat.value;
-        const isMoneyStat =
-          stat.title === "Total Contract Value" ||
-          stat.title === "Savings Realized" ||
-          stat.title === "Holdbacks";
-        return {
-          ...stat,
-          value,
-          ...(isMoneyStat
-            ? { currency: cards?.totalContractValue?.currency }
-            : {}),
-        };
-      });
+      const transformedStats = buildContractTotalStats(
+        dashboardConfig.stats,
+        contractManagerTotalCards,
+      );
 
       const transformedMyActions =
         DashboardDataTransformer.transformContractManagerDashboardActivity(
@@ -816,6 +836,14 @@ export const RoleBasedDashboard: React.FC = () => {
   const canShowMyActions = modules?.myActions === true;
   const canShowGeneralUpdates = modules?.generalUpdatesNotifications === true;
 
+  // Procurement's Contracts tab reuses the solicitation config's activity rows
+  // (My Actions / General Updates) but must NOT render its solicitation charts
+  // (Solicitation Status, Solicitations Vs Evaluations, etc.).
+  const procurementContractsRows = useMemo(
+    () => enhancedDashboardConfig.rows.filter((row) => row.type === "activity"),
+    [enhancedDashboardConfig.rows],
+  );
+
   if (isInitialLoading && LOADING_ROLES.has(userRole)) {
     return <DashboardSkeleton />;
   }
@@ -905,8 +933,8 @@ export const RoleBasedDashboard: React.FC = () => {
           setTopTab={setCmTopTab}
           subTab={cmSubTab}
           setSubTab={setCmSubTab}
-          stats={enhancedDashboardConfig.stats}
-          rows={enhancedDashboardConfig.rows}
+          stats={cmTotalStats}
+          rows={procurementContractsRows}
           cmYtdStats={cmYtdStats}
           cmCycleTimeValues={cmCycleTimeValues}
           chartFilters={chartFilters}
