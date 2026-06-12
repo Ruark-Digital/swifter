@@ -464,6 +464,7 @@ const MsaDetailPage: React.FC = () => {
       value: formatMoney(it?.contractValue, it?.currency),
       published: it?.datePublished ? formatDate(it.datePublished) : undefined,
       endDate: it?.endDate ? formatDate(it.endDate) : undefined,
+      createdAtRaw: it?.createdAt ?? it?.datePublished,
       status: String(it?.status ?? "-"),
     }));
   }, [formatMoney, linkedContractsResponse?.data]);
