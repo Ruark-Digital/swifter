@@ -215,7 +215,7 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
         pagination,
       }}
       classNames={{
-        container: "bg-white rounded-xl px-3",
+        container: "bg-white dark:bg-slate-900 rounded-xl px-3",
       }}
       emptyPlaceholder={
         <div className="text-center py-8">
