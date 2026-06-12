@@ -23,6 +23,7 @@ import {
 } from "./collab/redlineScan";
 import type { EditorAdapter } from "./collab/editorAdapter";
 import { useCollabVersions } from "./collab/useCollabVersions";
+import { deriveRoomId } from "./collab/deriveRoomId";
 import {
   useFileVersions,
   useDownloadLatestCollab,
@@ -52,6 +53,7 @@ type SidebarFeed = {
   showDot?: boolean;
   attachment?: SidebarAttachment | null;
   redlineId?: string | null;
+  anchorCommentId?: string | null;
 };
 
 type LocalComment = {
@@ -61,6 +63,7 @@ type LocalComment = {
   content: string;
   redlineId?: string | null;
   redlineKind?: "insertion" | "deletion" | null;
+  anchorCommentId?: string | null;
   mentions?: Mentionable[];
 };
 
@@ -93,6 +96,7 @@ const mapLocalCommentsToFeed = (comments: LocalComment[]): SidebarFeed[] =>
     timestamp: toTimestamp(comment.createdAt),
     message: comment.content,
     redlineId: comment.redlineId ?? null,
+    anchorCommentId: comment.anchorCommentId ?? null,
   }));
 
 const readLocalComments = (storageKey: string): LocalComment[] => {
@@ -185,6 +189,10 @@ const CollaborationToolPage: React.FC = () => {
     redlineId: string;
     kind: "insertion" | "deletion";
   } | null>(null);
+  // Selection-anchor chip state, fed by `ct-selection-change` from the
+  // SuperDoc iframe. While set, the next submitted comment anchors to the
+  // document selection. Dismissible (the X on the chip).
+  const [pendingAnchor, setPendingAnchor] = useState<{ excerpt: string } | null>(null);
 
   const { data: mentionables = [] } = useContractMentionables(contractId);
 
@@ -211,6 +219,7 @@ const CollaborationToolPage: React.FC = () => {
         content: c.content,
         redlineId: c.redlineId ?? null,
         redlineKind: c.redlineKind ?? null,
+        anchorCommentId: c.anchorCommentId ?? null,
         mentions: c.mentions,
       }));
     }
@@ -268,11 +277,11 @@ const CollaborationToolPage: React.FC = () => {
       import.meta.env.VITE_WS_URL ||
       import.meta.env.VITE_YWS_URL ||
       "ws://localhost:1234";
-    // Collab room is keyed by file name so the same document opened from
-    // different contracts converges to one Yjs room. An explicit `?doc=`
-    // query param still wins (lets ops pin a custom room id); contractId
-    // is only a last-resort fallback when no fileName is supplied.
-    const roomId = collabDoc || fileName || contractId || "collab:editor";
+    // Collab room is scoped per (contract, document) so the same file
+    // opened from two different contracts stays in two independent rooms
+    // (edits/presence/version history don't leak across contracts). An
+    // explicit `?doc=` query param still wins (lets ops pin a room id).
+    const roomId = deriveRoomId({ collabDoc, fileId, fileName, contractId });
     return {
       wsUrl,
       roomId,
@@ -280,7 +289,7 @@ const CollaborationToolPage: React.FC = () => {
       disable: !roomId,
       presenceActive,
     };
-  }, [collabDoc, contractId, fileName, presenceActive, token, wsUrlParam]);
+  }, [collabDoc, contractId, fileId, fileName, presenceActive, token, wsUrlParam]);
 
   // Server-stored version history (GET /file/versions/{docName}) and
   // latest-snapshot download (GET /collab-export/{docName}/download).
@@ -383,6 +392,20 @@ const CollaborationToolPage: React.FC = () => {
       window.removeEventListener("ct-doc-edit", onDocEdit);
     };
   }, [setActiveTab]);
+
+  useEffect(() => {
+    const onSelectionChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | { hasSelection?: boolean; excerpt?: string }
+        | undefined;
+      setPendingAnchor(
+        detail?.hasSelection ? { excerpt: detail.excerpt ?? "" } : null,
+      );
+    };
+    window.addEventListener("ct-selection-change", onSelectionChange);
+    return () =>
+      window.removeEventListener("ct-selection-change", onSelectionChange);
+  }, []);
 
   const handleCommentChange = useCallback(
     (value: string, mentions: Mentionable[]) => {
@@ -535,6 +558,17 @@ const CollaborationToolPage: React.FC = () => {
     );
   }, []);
 
+  // Clicking a suggestion card scrolls the editor to that redline.
+  // IframeEditorPane listens for `ct-focus-redline` and forwards it to the
+  // SuperDoc iframe (buildFocusRedline → navigateTo).
+  const handleFocusAi = useCallback((item: AiItem) => {
+    window.dispatchEvent(
+      new CustomEvent("ct-focus-redline", {
+        detail: { redlineId: item.redline.redlineId },
+      }),
+    );
+  }, []);
+
   const aiStatus: "idle" | "loading" | "ready" | "error" | "empty" =
     aiMutation.isPending
       ? "loading"
@@ -550,11 +584,33 @@ const CollaborationToolPage: React.FC = () => {
   // require contractId (which gates the localStorage scope).
   const canWriteComment = Boolean(fileId || contractId);
 
-  const handleSubmitComment = useCallback(() => {
+  const handleSubmitComment = useCallback(async () => {
     if (!canWriteComment) return;
 
     const trimmed = commentInput.trim();
     if (!trimmed) return;
+
+    // Anchor to the live document selection when the chip is active. A null
+    // result (timeout/failed create) degrades to a plain comment — saving
+    // never blocks on the iframe.
+    let anchorCommentId: string | null = null;
+    const adapter = editorAdapterRef.current;
+    if (pendingAnchor && adapter?.anchorComment) {
+      anchorCommentId = await adapter.anchorComment(trimmed);
+      if (!anchorCommentId && import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn("[anchored-comment] anchor failed; saving unanchored");
+      }
+    } else if (pendingAnchor && import.meta.env.DEV) {
+      // Chip active but no usable adapter — typically a stale-HMR tab where
+      // IframeEditorPane's effect cleanup nulled the adapter and the iframe
+      // never re-announced editor-ready. A full page reload fixes it.
+      // eslint-disable-next-line no-console
+      console.warn("[anchored-comment] chip active but no adapter", {
+        hasAdapter: Boolean(adapter),
+        hasAnchorComment: Boolean(adapter?.anchorComment),
+      });
+    }
 
     const redline = pendingRedlineRef.current;
     const next: LocalComment = {
@@ -564,6 +620,7 @@ const CollaborationToolPage: React.FC = () => {
       content: trimmed,
       redlineId: redline?.redlineId ?? null,
       redlineKind: redline?.kind ?? null,
+      anchorCommentId,
       mentions: pendingMentionsRef.current,
     };
 
@@ -578,6 +635,7 @@ const CollaborationToolPage: React.FC = () => {
           content: next.content,
           redlineId: next.redlineId,
           redlineKind: next.redlineKind,
+          anchorCommentId: next.anchorCommentId,
           mentions: next.mentions,
         },
         {
@@ -601,9 +659,12 @@ const CollaborationToolPage: React.FC = () => {
     setCommentInput("");
     pendingMentionsRef.current = [];
     pendingRedlineRef.current = null;
+    setPendingAnchor(null);
     // Auto-snapshot — a new comment is part of the document timeline.
     saveVersionSnapshot(
-      redline?.redlineId ? "Added anchored comment" : "Added comment",
+      redline?.redlineId || anchorCommentId
+        ? "Added anchored comment"
+        : "Added comment",
       "comment",
     );
   }, [
@@ -612,6 +673,7 @@ const CollaborationToolPage: React.FC = () => {
     commentInput,
     commentsStorageKey,
     fileId,
+    pendingAnchor,
     saveVersionSnapshot,
     toast,
     user?.name,
@@ -625,7 +687,7 @@ const CollaborationToolPage: React.FC = () => {
         robots="noindex, nofollow"
         canonical="/collaboration-tool"
       />
-      <div className="flex h-svh flex-col bg-white dark:bg-slate-950">
+      <div className="flex h-svh flex-col overflow-hidden bg-white dark:bg-slate-950">
         {/* Header — lets the user close the editor and return to the contract
             detail they came from (same-tab navigation). */}
         <header className="flex items-center gap-3 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
@@ -704,6 +766,8 @@ const CollaborationToolPage: React.FC = () => {
           onCommentSubmit={handleSubmitComment}
           canWriteComment={canWriteComment}
           isSubmittingComment={addFileComment.isPending}
+          anchorExcerpt={pendingAnchor?.excerpt ?? null}
+          onDismissAnchor={() => setPendingAnchor(null)}
           useFallbackFeed={false}
           mentionables={mentionables}
           versions={versions}
@@ -714,6 +778,7 @@ const CollaborationToolPage: React.FC = () => {
           aiErrorMessage={(aiMutation.error as Error | undefined)?.message}
           onAiApprove={handleApproveAi}
           onAiDismiss={handleDismissAi}
+          onAiFocus={handleFocusAi}
           onAiRetry={runAiSuggestions}
         />
         </div>

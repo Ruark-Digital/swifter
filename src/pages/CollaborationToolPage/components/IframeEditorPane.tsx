@@ -5,6 +5,7 @@ import type { EditorAdapter } from "../collab/editorAdapter";
 import type { RedlineSpan } from "../collab/redlineScan";
 import EditorLoadingSkeleton from "./EditorLoadingSkeleton";
 import type { EditorLoadPhase as Phase } from "./EditorLoadingSkeleton";
+import IframePresenceBar from "./IframePresenceBar";
 import {
   SUPERDOC_APP_URL,
   superdocOrigin,
@@ -12,6 +13,9 @@ import {
   buildInitPayload,
   buildApplyRedline,
   buildFocusRedline,
+  buildAddComment,
+  buildFocusComment,
+  type PresenceUser,
 } from "../collab/superdocBridge";
 
 type EditorImportMeta = { sourceUrl: string; fileName: string; fileType: string };
@@ -63,6 +67,11 @@ const IframeEditorPane: React.FC<Props> = ({
   const [reloadKey, setReloadKey] = useState(0);
   // Whether the app has posted `superdoc:ready` (read by the connect watchdog).
   const readyRef = useRef(false);
+  // Room presence (peers, self already excluded by the iframe). `presenceReady`
+  // flips on the first `superdoc:presence` message so the bar only appears when
+  // collaboration actually connected (document-only fallback → no bar).
+  const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([]);
+  const [presenceReady, setPresenceReady] = useState(false);
 
   // Re-attempt the editor handshake after a failure: reset to the connecting
   // state and remount the iframe so it reloads its src from scratch.
@@ -83,6 +92,21 @@ const IframeEditorPane: React.FC<Props> = ({
     [origin],
   );
 
+  // In-flight anchorComment requests, keyed by requestId. Resolved by the
+  // iframe's `superdoc:comment-created` reply, or with null on timeout/unmount
+  // so awaiting callers never hang (the comment then saves unanchored).
+  const ANCHOR_TIMEOUT_MS = 5000;
+  const pendingAnchorsRef = useRef(
+    new Map<string, { resolve: (id: string | null) => void; timer: number }>(),
+  );
+  const settleAnchor = useCallback((requestId: string, commentId: string | null) => {
+    const entry = pendingAnchorsRef.current.get(requestId);
+    if (!entry) return;
+    pendingAnchorsRef.current.delete(requestId);
+    window.clearTimeout(entry.timer);
+    entry.resolve(commentId);
+  }, []);
+
   const buildAdapter = useCallback((): EditorAdapter => ({
     kind: "superdoc",
     doc: undefined,
@@ -91,7 +115,17 @@ const IframeEditorPane: React.FC<Props> = ({
     extractRedlines: () => redlinesRef.current,
     replaceRedline: (redlineId, replacement) =>
       postCommand(buildApplyRedline(redlineId, replacement)),
-  }), [postCommand]);
+    anchorComment: (text) =>
+      new Promise<string | null>((resolve) => {
+        const requestId = crypto.randomUUID();
+        const timer = window.setTimeout(
+          () => settleAnchor(requestId, null),
+          ANCHOR_TIMEOUT_MS,
+        );
+        pendingAnchorsRef.current.set(requestId, { resolve, timer });
+        postCommand(buildAddComment(requestId, text));
+      }),
+  }), [postCommand, settleAnchor]);
   const buildAdapterRef = useRef(buildAdapter);
 
   const fail = useCallback((message: string) => {
@@ -185,6 +219,8 @@ const IframeEditorPane: React.FC<Props> = ({
     // One controller for the component's lifetime — aborted only on real unmount
     // (or by the per-fetch timeout inside sendInit), never on a re-render.
     const controller = new AbortController();
+    // Stable Map identity for the cleanup below (react-hooks/exhaustive-deps).
+    const pendingAnchors = pendingAnchorsRef.current;
     const onMessage = (event: MessageEvent) => {
       const msg = parseSuperdocMessage(event, origin);
       if (!msg) return;
@@ -207,6 +243,19 @@ const IframeEditorPane: React.FC<Props> = ({
             }),
           );
           break;
+        case "superdoc:presence":
+          setPresenceUsers(msg.payload.users);
+          setPresenceReady(true);
+          break;
+        case "superdoc:comment-created":
+          settleAnchor(msg.payload.requestId, msg.payload.commentId);
+          break;
+        case "superdoc:selection":
+          // Drives the comments tab's "anchored to selection" chip.
+          window.dispatchEvent(
+            new CustomEvent("ct-selection-change", { detail: msg.payload }),
+          );
+          break;
         case "superdoc:doc-edit":
           window.dispatchEvent(new CustomEvent("ct-doc-edit"));
           break;
@@ -222,6 +271,22 @@ const IframeEditorPane: React.FC<Props> = ({
       if (typeof id === "string") postCommand(buildFocusRedline(id));
     };
     window.addEventListener("ct-focus-redline", onFocusRedline);
+
+    const onFocusComment = (e: Event) => {
+      const id = (e as CustomEvent).detail?.commentId;
+      if (typeof id === "string" && id) postCommand(buildFocusComment(id));
+    };
+    window.addEventListener("ct-focus-comment", onFocusComment);
+
+    // CommentsTab's click affordance fires `ct-focus-mark { id }` (legacy mark
+    // event the full-page editors handle). For the iframe path the id is a
+    // tracked-change id — route it to the same focus-redline command so
+    // redline-anchored comments scroll too.
+    const onFocusMark = (e: Event) => {
+      const id = (e as CustomEvent).detail?.id;
+      if (typeof id === "string" && id) postCommand(buildFocusRedline(id));
+    };
+    window.addEventListener("ct-focus-mark", onFocusMark);
 
     // Watchdog: if the app hasn't announced itself, the iframe didn't load.
     const connectTimer = window.setTimeout(() => {
@@ -239,44 +304,56 @@ const IframeEditorPane: React.FC<Props> = ({
     return () => {
       window.removeEventListener("message", onMessage);
       window.removeEventListener("ct-focus-redline", onFocusRedline);
+      window.removeEventListener("ct-focus-comment", onFocusComment);
+      window.removeEventListener("ct-focus-mark", onFocusMark);
       window.clearTimeout(connectTimer);
       controller.abort();
+      // Settle any in-flight anchor requests so awaiting callers don't hang.
+      for (const requestId of [...pendingAnchors.keys()]) {
+        settleAnchor(requestId, null);
+      }
       onEditorReadyRef.current(null);
     };
     // `reloadKey` re-runs this effect on an explicit retry (fresh controller +
     // watchdog for the remounted iframe). It only changes inside `retry`, never
     // on a normal re-render, so the mount-once guarantee still holds.
-  }, [origin, postCommand, reloadKey]);
+    // `settleAnchor` is a stable useCallback([]) — it never retriggers this.
+  }, [origin, postCommand, reloadKey, settleAnchor]);
 
   // Not `.ct-editor-panel` — that class forces height:100vh (for the legacy
   // full-page editors), which overflows the header'd column and adds a second
   // scrollbar. We fill the column (h-full) and let the iframe scroll inside.
   return (
-    <div className="relative h-full w-full overflow-hidden bg-white dark:bg-slate-950">
-      {phase !== "ready" && (
-        <div
-          className="absolute inset-0 z-10 transition-opacity duration-300"
-          aria-busy={phase !== "error"}
-        >
-          <EditorLoadingSkeleton phase={phase} errorMsg={errorMsg} onRetry={retry} />
-        </div>
+    <div className="flex h-full w-full flex-col overflow-hidden bg-white dark:bg-slate-950">
+      {presenceReady && phase === "ready" && (
+        <IframePresenceBar users={presenceUsers} />
       )}
-      <iframe
-        key={reloadKey}
-        ref={iframeRef}
-        title="SuperDoc editor"
-        src={SUPERDOC_APP_URL}
-        className={
-          "h-full w-full border-0 transition-opacity duration-300 " +
-          (phase === "ready" ? "opacity-100" : "opacity-0")
-        }
-        // The framed app is untrusted AGPL code on another origin. Sandbox it,
-        // but KEEP allow-same-origin: without it the frame gets an opaque
-        // origin, which (a) makes its postMessages arrive as origin "null" so
-        // our origin check rejects them, and (b) blocks SuperDoc's IndexedDB
-        // persistence. Cross-origin SOP still prevents it reaching SwiftPro.
-        sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"
-      />
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        {phase !== "ready" && (
+          <div
+            className="absolute inset-0 z-10 transition-opacity duration-300"
+            aria-busy={phase !== "error"}
+          >
+            <EditorLoadingSkeleton phase={phase} errorMsg={errorMsg} onRetry={retry} />
+          </div>
+        )}
+        <iframe
+          key={reloadKey}
+          ref={iframeRef}
+          title="SuperDoc editor"
+          src={SUPERDOC_APP_URL}
+          className={
+            "h-full w-full border-0 transition-opacity duration-300 " +
+            (phase === "ready" ? "opacity-100" : "opacity-0")
+          }
+          // The framed app is untrusted AGPL code on another origin. Sandbox it,
+          // but KEEP allow-same-origin: without it the frame gets an opaque
+          // origin, which (a) makes its postMessages arrive as origin "null" so
+          // our origin check rejects them, and (b) blocks SuperDoc's IndexedDB
+          // persistence. Cross-origin SOP still prevents it reaching SwiftPro.
+          sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"
+        />
+      </div>
     </div>
   );
 };

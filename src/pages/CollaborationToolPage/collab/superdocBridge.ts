@@ -6,6 +6,15 @@ import type { RedlineSpan } from "./redlineScan";
 
 export type DocumentMode = "editing" | "viewing" | "suggesting";
 
+/** One peer in the collaboration room (from the iframe's Yjs awareness). The
+ *  iframe relays these — excluding self — so the host can render the presence
+ *  avatar stack for the SuperDoc editor (which owns the WS connection). */
+export type PresenceUser = {
+  clientId: number;
+  name: string;
+  avatarUrl?: string;
+};
+
 /** Messages the iframe sends to the host. */
 export type SuperdocInbound =
   | { type: "superdoc:ready" }
@@ -13,7 +22,13 @@ export type SuperdocInbound =
   | { type: "superdoc:editor-ready"; payload: { pageCount?: number } }
   | { type: "superdoc:error"; payload: { message: string } }
   | { type: "superdoc:redlines"; payload: { redlines: RedlineSpan[] } }
-  | { type: "superdoc:redline-clicked"; payload: { redlineId: string } };
+  | { type: "superdoc:redline-clicked"; payload: { redlineId: string } }
+  | { type: "superdoc:presence"; payload: { users: PresenceUser[] } }
+  | { type: "superdoc:selection"; payload: { hasSelection: boolean; excerpt: string } }
+  | {
+      type: "superdoc:comment-created";
+      payload: { requestId: string; commentId: string | null };
+    };
 
 /** The single message the host sends to the iframe. */
 export type SuperdocInitMessage = {
@@ -101,6 +116,45 @@ export function parseSuperdocMessage(
       if (typeof p.redlineId !== "string" || !p.redlineId) return null;
       return { type: "superdoc:redline-clicked", payload: { redlineId: p.redlineId } };
     }
+    case "superdoc:presence": {
+      const p = (data.payload ?? {}) as { users?: unknown };
+      const raw = Array.isArray(p.users) ? p.users : [];
+      const users: PresenceUser[] = [];
+      for (const u of raw) {
+        const entry = u as { clientId?: unknown; name?: unknown; avatarUrl?: unknown };
+        if (typeof entry?.clientId !== "number" || typeof entry?.name !== "string") {
+          continue;
+        }
+        users.push({
+          clientId: entry.clientId,
+          name: entry.name,
+          avatarUrl:
+            typeof entry.avatarUrl === "string" ? entry.avatarUrl : undefined,
+        });
+      }
+      return { type: "superdoc:presence", payload: { users } };
+    }
+    case "superdoc:selection": {
+      const p = (data.payload ?? {}) as { hasSelection?: unknown; excerpt?: unknown };
+      return {
+        type: "superdoc:selection",
+        payload: {
+          hasSelection: p.hasSelection === true,
+          excerpt: typeof p.excerpt === "string" ? p.excerpt : "",
+        },
+      };
+    }
+    case "superdoc:comment-created": {
+      const p = (data.payload ?? {}) as { requestId?: unknown; commentId?: unknown };
+      if (typeof p.requestId !== "string" || !p.requestId) return null;
+      return {
+        type: "superdoc:comment-created",
+        payload: {
+          requestId: p.requestId,
+          commentId: typeof p.commentId === "string" && p.commentId ? p.commentId : null,
+        },
+      };
+    }
     default:
       return null;
   }
@@ -123,7 +177,9 @@ export function buildInitPayload(
 /** Commands the host sends to the iframe to act on the document. */
 export type SuperdocCommand =
   | { type: "superdoc:apply-redline"; payload: { redlineId: string; replacement: string } }
-  | { type: "superdoc:focus-redline"; payload: { redlineId: string } };
+  | { type: "superdoc:focus-redline"; payload: { redlineId: string } }
+  | { type: "superdoc:add-comment"; payload: { requestId: string; text: string } }
+  | { type: "superdoc:focus-comment"; payload: { commentId: string } };
 
 export function buildApplyRedline(redlineId: string, replacement: string): SuperdocCommand {
   return { type: "superdoc:apply-redline", payload: { redlineId, replacement } };
@@ -131,4 +187,14 @@ export function buildApplyRedline(redlineId: string, replacement: string): Super
 
 export function buildFocusRedline(redlineId: string): SuperdocCommand {
   return { type: "superdoc:focus-redline", payload: { redlineId } };
+}
+
+/** Ask the iframe to anchor a comment at its current selection. The iframe
+ *  replies with `superdoc:comment-created` carrying the same requestId. */
+export function buildAddComment(requestId: string, text: string): SuperdocCommand {
+  return { type: "superdoc:add-comment", payload: { requestId, text } };
+}
+
+export function buildFocusComment(commentId: string): SuperdocCommand {
+  return { type: "superdoc:focus-comment", payload: { commentId } };
 }

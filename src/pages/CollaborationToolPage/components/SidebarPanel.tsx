@@ -25,6 +25,8 @@ type Feed = {
   message: string;
   showDot?: boolean;
   attachment?: FeedAttachment | null;
+  redlineId?: string | null;
+  anchorCommentId?: string | null;
 };
 
 type AiItem = {
@@ -43,6 +45,9 @@ interface SidebarPanelProps {
   onCommentSubmit?: () => void;
   canWriteComment?: boolean;
   isSubmittingComment?: boolean;
+  /** Excerpt of the document selection the next comment will anchor to. */
+  anchorExcerpt?: string | null;
+  onDismissAnchor?: () => void;
   useFallbackFeed?: boolean;
   mentionables?: Mentionable[];
   // Versions — auto-saved; no manual save button anymore.
@@ -55,6 +60,7 @@ interface SidebarPanelProps {
   aiErrorMessage?: string;
   onAiApprove: (item: AiItem) => void;
   onAiDismiss: (item: AiItem) => void;
+  onAiFocus?: (item: AiItem) => void;
   onAiRetry: () => void;
 }
 
@@ -85,6 +91,8 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   onCommentSubmit,
   canWriteComment = false,
   isSubmittingComment = false,
+  anchorExcerpt = null,
+  onDismissAnchor,
   useFallbackFeed = false,
   mentionables = [],
   versions,
@@ -95,6 +103,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   aiErrorMessage,
   onAiApprove,
   onAiDismiss,
+  onAiFocus,
   onAiRetry,
 }) => {
   const avatarPublic = "/assets/collaboration/avatar-user.png";
@@ -152,7 +161,9 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
         </button>
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      {/* Flex column so each tab's root (h-full / flex-1) gets a constrained
+          height and scrolls internally instead of growing the page. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {activeTab === "comments" && (
           <Suspense fallback={fallbackNode}>
             <CommentsTab
@@ -163,6 +174,8 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
               onCommentSubmit={onCommentSubmit}
               canWriteComment={canWriteComment}
               isSubmittingComment={isSubmittingComment}
+              anchorExcerpt={anchorExcerpt}
+              onDismissAnchor={onDismissAnchor}
               mentionables={mentionables}
             />
           </Suspense>
@@ -177,6 +190,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
               items={aiItems}
               onApprove={onAiApprove}
               onDismiss={onAiDismiss}
+              onFocus={onAiFocus}
               onRetry={onAiRetry}
             />
           </Suspense>

@@ -157,4 +157,113 @@ describe("IframeEditorPane", () => {
       superdocOrigin(),
     );
   });
+
+  it("anchorComment posts add-comment and resolves with the created id", async () => {
+    let adapter: any = null;
+    render(
+      <IframeEditorPane
+        importMeta={importMeta}
+        collabMeta={collabMeta}
+        onEditorReady={(a) => { if (a) adapter = a; }}
+      />,
+    );
+    const iframe = screen.getByTitle("SuperDoc editor") as HTMLIFrameElement;
+    const postMessage = vi.fn();
+    Object.defineProperty(iframe, "contentWindow", { configurable: true, value: { postMessage } });
+
+    await act(async () => {
+      window.dispatchEvent(new MessageEvent("message", {
+        data: { type: "superdoc:editor-ready", payload: {} }, origin: superdocOrigin(),
+      }));
+    });
+    await waitFor(() => expect(adapter).not.toBeNull());
+
+    const pending: Promise<string | null> = adapter.anchorComment("a note");
+    const sent = postMessage.mock.calls.find((c) => c[0]?.type === "superdoc:add-comment");
+    expect(sent).toBeTruthy();
+    const requestId = sent![0].payload.requestId;
+    expect(sent![0].payload.text).toBe("a note");
+
+    await act(async () => {
+      window.dispatchEvent(new MessageEvent("message", {
+        data: { type: "superdoc:comment-created", payload: { requestId, commentId: "c9" } },
+        origin: superdocOrigin(),
+      }));
+    });
+    await expect(pending).resolves.toBe("c9");
+  });
+
+  it("anchorComment resolves null when the iframe never answers (timeout)", async () => {
+    vi.useFakeTimers();
+    try {
+      let adapter: any = null;
+      render(
+        <IframeEditorPane
+          importMeta={importMeta}
+          collabMeta={collabMeta}
+          onEditorReady={(a) => { if (a) adapter = a; }}
+        />,
+      );
+      const iframe = screen.getByTitle("SuperDoc editor") as HTMLIFrameElement;
+      Object.defineProperty(iframe, "contentWindow", {
+        configurable: true, value: { postMessage: vi.fn() },
+      });
+      await act(async () => {
+        window.dispatchEvent(new MessageEvent("message", {
+          data: { type: "superdoc:editor-ready", payload: {} }, origin: superdocOrigin(),
+        }));
+      });
+      expect(adapter).not.toBeNull();
+
+      const pending: Promise<string | null> = adapter.anchorComment("a note");
+      await act(async () => {
+        vi.advanceTimersByTime(6000);
+      });
+      await expect(pending).resolves.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("relays superdoc:selection as a ct-selection-change window event", async () => {
+    render(
+      <IframeEditorPane importMeta={importMeta} collabMeta={collabMeta} onEditorReady={vi.fn()} />,
+    );
+    const seen: any[] = [];
+    const onSelection = (e: Event) => seen.push((e as CustomEvent).detail);
+    window.addEventListener("ct-selection-change", onSelection);
+    try {
+      await act(async () => {
+        window.dispatchEvent(new MessageEvent("message", {
+          data: { type: "superdoc:selection", payload: { hasSelection: true, excerpt: "quoted" } },
+          origin: superdocOrigin(),
+        }));
+      });
+      expect(seen).toEqual([{ hasSelection: true, excerpt: "quoted" }]);
+    } finally {
+      window.removeEventListener("ct-selection-change", onSelection);
+    }
+  });
+
+  it("forwards ct-focus-comment and ct-focus-mark to the iframe", async () => {
+    render(
+      <IframeEditorPane importMeta={importMeta} collabMeta={collabMeta} onEditorReady={vi.fn()} />,
+    );
+    const iframe = screen.getByTitle("SuperDoc editor") as HTMLIFrameElement;
+    const postMessage = vi.fn();
+    Object.defineProperty(iframe, "contentWindow", { configurable: true, value: { postMessage } });
+
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent("ct-focus-comment", { detail: { commentId: "c1" } }));
+      window.dispatchEvent(new CustomEvent("ct-focus-mark", { detail: { id: "r1" } }));
+    });
+    expect(postMessage).toHaveBeenCalledWith(
+      { type: "superdoc:focus-comment", payload: { commentId: "c1" } },
+      superdocOrigin(),
+    );
+    expect(postMessage).toHaveBeenCalledWith(
+      { type: "superdoc:focus-redline", payload: { redlineId: "r1" } },
+      superdocOrigin(),
+    );
+  });
 });

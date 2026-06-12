@@ -16,6 +16,7 @@ export type LinkedContractRow = {
   value?: string;
   published?: string;
   endDate?: string;
+  createdAtRaw?: string;
   status: string;
 };
 
@@ -38,24 +39,75 @@ const statusTone = (s: LinkedContractRow["status"]) => {
   return "bg-[#E5E7EB] text-[#374151] dark:text-slate-200";
 };
 
+const normalizeStatus = (value?: string) =>
+  (value ?? "").trim().toLowerCase().replace(/\s+/g, "_");
+
+const applyDateFilter = (
+  rows: LinkedContractRow[],
+  dateFilter: string,
+): LinkedContractRow[] => {
+  if (!dateFilter || dateFilter === "all") return rows;
+  const now = new Date();
+  const startOf = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const today = startOf(now);
+  return rows.filter((row) => {
+    if (!row.createdAtRaw) return true;
+    const created = new Date(row.createdAtRaw);
+    if (dateFilter === "today")
+      return startOf(created).getTime() === today.getTime();
+    if (dateFilter === "last7days")
+      return created >= new Date(today.getTime() - 6 * 86400000);
+    if (dateFilter === "last30days")
+      return created >= new Date(today.getTime() - 29 * 86400000);
+    return true;
+  });
+};
+
 const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
   const [search, setSearch] = React.useState("");
+  const [dateFilter, setDateFilter] = React.useState("all");
+  const [statusFilter, setStatusFilter] = React.useState("all");
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
 
   const filtered = React.useMemo(() => {
-    if (!search) return rows;
-    const q = search.toLowerCase();
-    return rows.filter(
-      (r) =>
-        r.title.toLowerCase().includes(q) ||
-        r.code.toLowerCase().includes(q) ||
-        r.company.toLowerCase().includes(q) ||
-        r.relationship.toLowerCase().includes(q),
-    );
-  }, [rows, search]);
+    let result = rows;
+
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (r) =>
+          r.title.toLowerCase().includes(q) ||
+          r.code.toLowerCase().includes(q) ||
+          r.company.toLowerCase().includes(q) ||
+          r.relationship.toLowerCase().includes(q),
+      );
+    }
+
+    if (statusFilter && statusFilter !== "all") {
+      result = result.filter(
+        (r) => normalizeStatus(r.status) === normalizeStatus(statusFilter),
+      );
+    }
+
+    result = applyDateFilter(result, dateFilter);
+
+    return result;
+  }, [rows, search, statusFilter, dateFilter]);
+
+  const selectedFilterValues: Record<string, string> = {
+    Status: statusFilter,
+    Date: dateFilter,
+  };
+
+  const handleFilterChange = (filterTitle: string, value: string) => {
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    if (filterTitle === "Status") setStatusFilter(value);
+    else if (filterTitle === "Date") setDateFilter(value);
+  };
 
   const columns = React.useMemo<ColumnDef<LinkedContractRow>[]>(() => {
     return [
@@ -148,38 +200,23 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
         title: "Date",
         showIcon: true,
         options: [
-          { value: "any", label: "Any" },
-          {
-            hasOptions: true,
-            value: "range",
-            label: "Range",
-            subOptions: [
-              { title: "Last 7 days", value: "7" },
-              { title: "Last 30 days", value: "30" },
-              { title: "Last 60 days", value: "60" },
-              { title: "YTD", value: "YTD" },
-            ],
-          },
+          { label: "All", value: "all" },
+          { label: "Today", value: "today" },
+          { label: "Last 7 Days", value: "last7days" },
+          { label: "Last 30 Days", value: "last30days" },
         ],
       },
       {
         title: "Status",
         showIcon: true,
         options: [
-          { value: "all", label: "All" },
-          { value: "active", label: "Active" },
-          { value: "terminated", label: "Terminated" },
-          { value: "closed", label: "Closed" },
-          { value: "suspended", label: "Suspended" },
-        ],
-      },
-      {
-        title: "Category",
-        options: [
-          { value: "all", label: "All" },
-          { value: "construction", label: "Construction" },
-          { value: "it", label: "IT" },
-          { value: "facilities", label: "Facilities" },
+          { label: "All", value: "all" },
+          { label: "Active", value: "active" },
+          { label: "Draft", value: "draft" },
+          { label: "Suspended", value: "suspended" },
+          { label: "Expired", value: "expired" },
+          { label: "Terminated", value: "terminated" },
+          { label: "Pending Approval", value: "pending_approval" },
         ],
       },
     ],
@@ -202,7 +239,11 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
               setSearchQuery={setSearch}
             />
           </div>
-          <DropdownFilters filters={filters as any} />
+          <DropdownFilters
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            selectedValues={selectedFilterValues}
+          />
         </div>
       )}
       options={{
@@ -215,7 +256,7 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
         pagination,
       }}
       classNames={{
-        container: "bg-white rounded-xl px-3",
+        container: "bg-white dark:bg-slate-900 rounded-xl px-3",
       }}
       emptyPlaceholder={
         <div className="text-center py-8">
