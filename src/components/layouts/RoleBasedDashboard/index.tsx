@@ -836,13 +836,38 @@ export const RoleBasedDashboard: React.FC = () => {
   const canShowMyActions = modules?.myActions === true;
   const canShowGeneralUpdates = modules?.generalUpdatesNotifications === true;
 
-  // Procurement's Contracts tab reuses the solicitation config's activity rows
-  // (My Actions / General Updates) but must NOT render its solicitation charts
-  // (Solicitation Status, Solicitations Vs Evaluations, etc.).
-  const procurementContractsRows = useMemo(
-    () => enhancedDashboardConfig.rows.filter((row) => row.type === "activity"),
-    [enhancedDashboardConfig.rows],
-  );
+  // Procurement's Contracts tab reuses the solicitation config's activity row
+  // shells (My Actions / General Updates) but must render CONTRACT activity data
+  // — not the solicitation data those rows carry — and must NOT render its
+  // solicitation charts (Solicitation Status, Solicitations Vs Evaluations, etc.).
+  const procurementContractsRows = useMemo(() => {
+    const contractMyActions =
+      DashboardDataTransformer.transformContractManagerDashboardActivity(
+        contractManagerActionLogs
+      );
+    const contractGeneralUpdates =
+      DashboardDataTransformer.transformContractManagerDashboardActivity(
+        contractManagerGeneralUpdates
+      );
+    return enhancedDashboardConfig.rows
+      .filter((row) => row.type === "activity")
+      .map((row) => ({
+        ...row,
+        properties: row.properties.map((activity) => {
+          if (activity.id === "my-actions") {
+            return { ...activity, items: contractMyActions };
+          }
+          if (activity.id === "general-updates") {
+            return { ...activity, items: contractGeneralUpdates };
+          }
+          return activity;
+        }),
+      }));
+  }, [
+    enhancedDashboardConfig.rows,
+    contractManagerActionLogs,
+    contractManagerGeneralUpdates,
+  ]);
 
   if (isInitialLoading && LOADING_ROLES.has(userRole)) {
     return <DashboardSkeleton />;
