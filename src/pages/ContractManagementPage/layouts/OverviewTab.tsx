@@ -64,6 +64,10 @@ const ManagerView: React.FC<ViewProps> = ({
   vendorName,
   internalTeam,
   vendorPersonnel,
+  draftDuration,
+  reviewDuration,
+  approvalDuration,
+  executionDuration,
 }) => (
   <>
     <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
@@ -79,6 +83,10 @@ const ManagerView: React.FC<ViewProps> = ({
           <span className="text-slate-900 dark:text-slate-100">{effectiveDate}</span>
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Published Date</span>
           <span className="text-slate-900 dark:text-slate-100">{publishedDate}</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Draft Duration</span>
+          <span className="text-slate-900 dark:text-slate-100">{draftDuration}</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Review Duration</span>
+          <span className="text-slate-900 dark:text-slate-100">{reviewDuration}</span>
         </div>
         <div className="space-y-2 grid grid-cols-2 gap-3">
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Status</span>
@@ -98,6 +106,10 @@ const ManagerView: React.FC<ViewProps> = ({
           <span className="text-slate-900 dark:text-slate-100">{relationshipLabel}</span>
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">End Date</span>
           <span className="text-slate-900 dark:text-slate-100">{endDate}</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Approval Duration</span>
+          <span className="text-slate-900 dark:text-slate-100">{approvalDuration}</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Execution Duration</span>
+          <span className="text-slate-900 dark:text-slate-100">{executionDuration}</span>
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Manager</span>
           {contractManager ? (
             <EmployeeCardPopover

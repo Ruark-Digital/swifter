@@ -19,8 +19,8 @@ import { format } from "date-fns";
 import { pruneEmptyValuesDeep } from "@/lib/pruneEmptyValuesDeep";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
-import { X } from "lucide-react";
-import { useWatch } from "react-hook-form";
+import { X, FileText } from "lucide-react";
+import { useWatch, useFormContext } from "react-hook-form";
 import { useUser } from "@/store/authSlice";
 import { getExchangeRate } from "@/lib/currencyUtils";
 import {
@@ -40,12 +40,18 @@ import Step8ApprovalLevel from "../components/Step8ApprovalLevel";
 import Step9ReviewPublish from "../components/Step9ReviewPublish";
 
 type Props = {
-  trigger: React.ReactNode;
+  /** Trigger node for the self-managed (Create) flow. Omit when driving the
+   *  dialog in controlled mode via `open`/`onOpenChange` (e.g. a row action). */
+  trigger?: React.ReactNode;
   /** When set, the dialog operates in edit mode: prefills the form from
    *  `initialValues` (the loaded MSA) and PUTs to /msa-contracts/{id}
    *  instead of POSTing to create. */
   editingMsaId?: string;
   initialValues?: Record<string, any>;
+  /** Controlled open state. When provided, the dialog defers its open state to
+   *  the parent (mirrors the EditContract pattern used by the Contracts table). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 const schema = yup.object({
@@ -122,6 +128,9 @@ const schema = yup.object({
     )
     .optional(),
   documents: yup.array().nullable().optional(),
+  // Tracks ids/urls/names of previously-uploaded files the user removed in
+  // Step 7. Subtracted from the submitted `files` payload so removals persist.
+  removedDocuments: yup.array().of(yup.string().required()).optional(),
   approvalGroupSelection: yup.string().optional(),
   assignedApprovers: yup.array().optional(),
   approvalGroups: yup
@@ -180,6 +189,7 @@ const defaultValues: CreateMsaFormData = {
   insurancePolicies: [{ name: "", limit: "" }],
   securities: [],
   documents: null,
+  removedDocuments: [],
   approvalGroupSelection: "",
   assignedApprovers: [],
   approvalGroups: [{ name: "", approvers: [], approvalLevel: "0", amount: "" }],
@@ -201,6 +211,8 @@ const CreateMSADialog: React.FC<Props> = ({
   trigger,
   editingMsaId,
   initialValues,
+  open: controlledOpen,
+  onOpenChange,
 }) => {
   const isEditing = Boolean(editingMsaId);
   const {
@@ -208,6 +220,7 @@ const CreateMSADialog: React.FC<Props> = ({
     reset,
     trigger: formTrigger,
     getValues,
+    setValue,
   } = useForge<CreateMsaFormData>({
     resolver: yupResolver(schema),
     defaultValues,
@@ -215,7 +228,16 @@ const CreateMSADialog: React.FC<Props> = ({
   });
 
   const [step, setStep] = React.useState(1);
-  const [open, setOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = React.useCallback(
+    (next: boolean) => {
+      if (isControlled) onOpenChange?.(next);
+      else setInternalOpen(next);
+    },
+    [isControlled, onOpenChange],
+  );
 
   // Fetch the MSA via the dedicated edit endpoint — swagger 2.3.0
   // `GET /manager/msa-contracts/{contractId}/edit` returns "a fully
@@ -233,6 +255,26 @@ const CreateMSADialog: React.FC<Props> = ({
       return res.data as { data?: any };
     },
     enabled: Boolean(editingMsaId) && open,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+
+  // `/edit` is form-shaped and may omit `files`; the read-only detail endpoint
+  // is authoritative for already-uploaded documents. When opened from a table
+  // row (no `initialValues` prop), fetch detail in parallel so Step 7 can
+  // surface existing uploads.
+  const detailFilesQuery = useQuery({
+    queryKey: ["msa-detail-files", editingMsaId],
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `/contract/manager/msa-contracts/${editingMsaId}`,
+      });
+      return res.data as { data?: { files?: any[] } };
+    },
+    enabled:
+      Boolean(editingMsaId) &&
+      open &&
+      !Array.isArray((initialValues as any)?.files),
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
@@ -293,13 +335,20 @@ const CreateMSADialog: React.FC<Props> = ({
         phone: p?.phone ?? "",
       },
     }));
+    // Compose a display name from name parts — invited users come back with
+    // firstName/lastName but no `name`, so the chip would otherwise show the
+    // raw email. Name on display, email as fallback (matches Step7ApprovalLevel).
+    const displayName = (u: any): string => {
+      const full = [u?.firstName, u?.lastName].filter(Boolean).join(" ").trim();
+      return (u?.name && String(u.name).trim()) || full || u?.email || "";
+    };
     const internalTeamSrc = Array.isArray(iv.internalTeam) ? iv.internalTeam : [];
     const internalTeamArr = internalTeamSrc.map((t: any) => {
       const u = t?.user ?? t;
       const id = u?._id ?? u?.id ?? u?.email ?? "";
       return {
         id,
-        text: u?.name || u?.email || id || "",
+        text: displayName(u) || id || "",
         meta: {
           email: u?.email ?? "",
           role:
@@ -312,13 +361,19 @@ const CreateMSADialog: React.FC<Props> = ({
     const ins = (iv.insurance ?? {}) as Record<string, any>;
     const policySrc = Array.isArray(ins.policy) ? ins.policy : [];
     const insurancePolicies = policySrc.length
-      ? policySrc.map((p: any) => ({
-          name: p?.policyName ?? "",
-          limit:
-            p?.limit !== undefined && p?.limit !== null
-              ? String(p.limit)
-              : "",
-        }))
+      ? policySrc.map((p: any) => {
+          // BE persists policy limit as `value` on the stored doc, but the
+          // submit path writes `limit`. Read both so edit pre-fills regardless
+          // of which key the /edit endpoint returns.
+          const rawLimit = p?.limit ?? p?.value;
+          return {
+            name: p?.policyName ?? "",
+            limit:
+              rawLimit !== undefined && rawLimit !== null
+                ? String(rawLimit)
+                : "",
+          };
+        })
       : defaultValues.insurancePolicies;
     const securitiesSrc = Array.isArray(ins.contractSecurityType)
       ? ins.contractSecurityType
@@ -329,16 +384,87 @@ const CreateMSADialog: React.FC<Props> = ({
       dueDate: s?.dueDate ? new Date(s.dueDate) : undefined,
     }));
 
-    const pmUser = iv.projectManager?.user;
-    const pmDisplayName =
-      pmUser && typeof pmUser === "object"
-        ? (pmUser.name ?? pmUser.email ?? undefined)
-        : undefined;
-    setDefaultPmLabel(
-      typeof pmDisplayName === "string" && pmDisplayName.trim()
-        ? pmDisplayName.trim()
-        : undefined,
+    // Step 8 approval groups: BE returns `approvers: [{user: [{user, userRef,
+    // status}], level, amount, group}]` (one entry per group). Step8
+    // ApprovalLevel is RHF-bound on `approvalGroups.${i}.{name,approvers,
+    // amount,approvalLevel}` — so we can pre-fill on edit. Each TextTagInput
+    // approver entry needs `{id, text, value, email, meta}` so the chip
+    // renders with a name (and the autocomplete dedupe by `value`/`id` works).
+    const approvalGroupsSrc = Array.isArray(iv.approvers) ? iv.approvers : [];
+    const approverDisplayName = (u: any): string => {
+      const full = [u?.firstName, u?.lastName]
+        .filter((p) => typeof p === "string" && p.trim())
+        .join(" ")
+        .trim();
+      return (u?.name && String(u.name).trim()) || full || u?.email || "";
+    };
+    const approvalGroups = approvalGroupsSrc.length
+      ? approvalGroupsSrc.map((g: any) => {
+          const userEntries = Array.isArray(g?.user) ? g.user : [];
+          const approvers = userEntries
+            .map((entry: any) => {
+              const u =
+                entry?.user && typeof entry.user === "object" ? entry.user : entry;
+              const email = u?.email ?? "";
+              const id = u?._id ?? u?.id ?? email ?? "";
+              const text = approverDisplayName(u) || email || id || "";
+              return id || email || text
+                ? {
+                    id,
+                    value: id || email,
+                    text,
+                    email,
+                    meta: { email, name: approverDisplayName(u) },
+                  }
+                : null;
+            })
+            .filter(Boolean);
+          return {
+            name: typeof g?.group === "string" ? g.group : "",
+            approvers,
+            amount:
+              g?.amount !== undefined && g?.amount !== null
+                ? String(g.amount)
+                : "",
+            approvalLevel:
+              g?.level !== undefined && g?.level !== null
+                ? String(g.level)
+                : "",
+          };
+        })
+      : defaultValues.approvalGroups;
+
+    // Milestone `deliverable` is stored as a deliverable `_id`, but Step 5's
+    // deliverable Select is valued by deliverable *name* (and the submit path
+    // matches by name). Build an id→name lookup so the milestone pre-fills.
+    const deliverablesList = Array.isArray(iv.deliverables) ? iv.deliverables : [];
+    const deliverableNameById = new Map<string, string>(
+      deliverablesList
+        .filter((d: any) => d && typeof d === "object")
+        .map((d: any) => [String(d._id ?? d.id ?? ""), d.name ?? ""]),
     );
+    const milestoneDeliverableName = (raw: any, index: number): string => {
+      if (raw && typeof raw === "object") return raw.name ?? "";
+      const key = String(raw ?? "");
+      if (deliverableNameById.has(key))
+        return deliverableNameById.get(key) as string;
+      // Unresolved ObjectId ref — BE sometimes points milestone.deliverable at
+      // a stale embedded sub-doc id that doesn't match deliverables[]._id.
+      // Fall back to the deliverable at the same ordinal position so the
+      // common 1:1 milestone↔deliverable case pre-fills.
+      if (/^[a-f\d]{24}$/i.test(key)) {
+        const byIndex = deliverablesList[index];
+        if (byIndex && typeof byIndex === "object" && byIndex.name)
+          return byIndex.name as string;
+        return "";
+      }
+      return key; // already a name
+    };
+
+    const pmUser = iv.projectManager?.user;
+    const pmLabel =
+      pmUser && typeof pmUser === "object" ? displayName(pmUser).trim() : "";
+    setDefaultPmLabel(pmLabel || undefined);
 
     reset({
       ...defaultValues,
@@ -363,6 +489,10 @@ const CreateMSADialog: React.FC<Props> = ({
       endDate: iv.endDate ? new Date(iv.endDate) : undefined,
       duration:
         typeof iv.duration === "number" ? String(iv.duration) : iv.duration ?? "",
+      // Stored as `contractTerm` on the record (the term-type ref). Step 3's
+      // Select is valued by `_id`, so idOf() matches the loaded option — same
+      // convention as `type`/`msaType` in Step 1.
+      termType: idOf(iv.contractTerm ?? iv.termType),
       draftStartDate: stage.draft?.startDate
         ? new Date(stage.draft.startDate)
         : undefined,
@@ -396,14 +526,28 @@ const CreateMSADialog: React.FC<Props> = ({
         typeof iv.holdBack === "number"
           ? String(iv.holdBack)
           : (iv.holdback ?? defaultValues.holdback),
-      paymentStructure: iv.paymentStructure ?? defaultValues.paymentStructure,
+      // BE stores the label ("Monthly"/"Milestone"/"Progress Draw"); Step 5's
+      // Select is valued by the short form ("monthly"/"milestone"/"lump_sum").
+      // Reverse the submit-side map so the Select matches — and so the
+      // milestone sub-section (gated on `=== "milestone"`) renders on edit.
+      paymentStructure:
+        iv.paymentStructure === "Milestone"
+          ? "milestone"
+          : iv.paymentStructure === "Monthly"
+            ? "monthly"
+            : iv.paymentStructure === "Progress Draw"
+              ? "lump_sum"
+              : (iv.paymentStructure ?? defaultValues.paymentStructure),
+      // Stored as `paymentTerms` (plural) on the record. Step 5's Select is
+      // valued by `_id`; idOf() resolves the ref to the matching option.
+      paymentTerm: idOf(iv.paymentTerms ?? iv.paymentTerm),
       milestones:
         Array.isArray(iv.milestone) && iv.milestone.length
-          ? iv.milestone.map((m: any) => ({
+          ? iv.milestone.map((m: any, i: number) => ({
               name: m?.name ?? "",
               amount: m?.amount ?? "",
               dueDate: m?.dueDate ? new Date(m.dueDate) : undefined,
-              deliverable: idOf(m?.deliverable),
+              deliverable: milestoneDeliverableName(m?.deliverable, i),
             }))
           : defaultValues.milestones,
       deliverables:
@@ -417,7 +561,21 @@ const CreateMSADialog: React.FC<Props> = ({
                   },
             )
           : defaultValues.deliverables,
-      documents: Array.isArray(iv.files) ? (iv.files as any) : null,
+      // /edit endpoint may omit `files` (or return an empty array) even when
+      // the record has uploads — the detail endpoint is authoritative for the
+      // file list. Fall back to initialValues (passed from MsaDetailPage) or
+      // the detailFilesQuery (when opened from a table row) so already-
+      // uploaded docs surface in Step 7 on edit.
+      documents: (() => {
+        const fetchedFiles = Array.isArray(iv.files) ? iv.files : null;
+        if (fetchedFiles && fetchedFiles.length) return fetchedFiles as any;
+        const initFiles = (initialValues as any)?.files;
+        if (Array.isArray(initFiles) && initFiles.length) return initFiles as any;
+        const detailFiles = detailFilesQuery.data?.data?.files;
+        if (Array.isArray(detailFiles) && detailFiles.length)
+          return detailFiles as any;
+        return fetchedFiles ?? null;
+      })(),
       // Hydrating insurance is load-bearing on edit — without it, Save-as-Draft
       // ships `{insurance: "No", contractSecurity: false}` and BE rejects with
       // "Invalid insurance data" against the existing record.
@@ -430,10 +588,32 @@ const CreateMSADialog: React.FC<Props> = ({
       insuranceExpiryDate: ins.expiryDate ? new Date(ins.expiryDate) : undefined,
       insurancePolicies,
       securities,
+      approvalGroups,
     } as CreateMsaFormData, fetched ? { keepDirtyValues: true } : undefined);
 
     if (fetched) hydratedFromFetchedRef.current = true;
-  }, [open, isEditing, editDetailQuery.data, initialValues, reset]);
+  }, [
+    open,
+    isEditing,
+    editDetailQuery.data,
+    initialValues,
+    reset,
+    detailFilesQuery.data?.data?.files,
+  ]);
+
+  // Late-arriving detail files: when /edit completes before the detail query
+  // and contains no `files`, the hydration above locks in a null/empty
+  // documents value. Backfill from detail once it lands so Step 7 still shows
+  // existing uploads. Skipped when the user has already touched the field
+  // (don't stomp dirty edits) or when documents already contains entries.
+  React.useEffect(() => {
+    if (!open || !isEditing) return;
+    const detailFiles = detailFilesQuery.data?.data?.files;
+    if (!Array.isArray(detailFiles) || !detailFiles.length) return;
+    const current = (getValues("documents") as any[] | null | undefined) ?? null;
+    if (Array.isArray(current) && current.length) return;
+    setValue("documents", detailFiles as any, { shouldDirty: false });
+  }, [open, isEditing, detailFilesQuery.data, getValues, setValue]);
 
   const [signatories, setSignatories] = React.useState<string[]>([]);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
@@ -530,10 +710,40 @@ const CreateMSADialog: React.FC<Props> = ({
         return Number.isFinite(num) ? num : undefined;
       };
 
-      const files =
-        (data.documents ?? [])
-          .map((f: any) => toFileMetaOrUndefined(f))
-          .filter(Boolean) ?? [];
+      // Compose the final files payload from three sources:
+      //  1. Existing BE files (initialValues / detail / edit), minus the ids
+      //     the user explicitly removed via Step 7's "Previously uploaded" list.
+      //  2. Any plain-object entries in data.documents (form value, BE shape).
+      //  3. Newly uploaded File instances (or their uploadedData) added via
+      //     Step4Form's dropzone.
+      // toFileMetaOrUndefined normalizes the heterogeneous mix; dedupe by url
+      // (falls back to name) so existing entries don't double-up.
+      const removedSet = new Set(
+        Array.isArray(data.removedDocuments) ? data.removedDocuments : [],
+      );
+      const isRemoved = (f: any): boolean =>
+        removedSet.has(f?._id) ||
+        removedSet.has(f?.url) ||
+        removedSet.has(f?.name);
+      const existingBackendFiles = ((initialValues as any)?.files ??
+        editDetailQuery.data?.data?.files ??
+        detailFilesQuery.data?.data?.files ??
+        []) as any[];
+      const candidates = [
+        ...existingBackendFiles.filter((f: any) => !isRemoved(f)),
+        ...((data.documents ?? []) as any[]),
+      ];
+      const seenKeys = new Set<string>();
+      const files = candidates
+        .map((f: any) => toFileMetaOrUndefined(f))
+        .filter((f): f is NonNullable<typeof f> => Boolean(f))
+        .filter((f) => {
+          const key = (f as any).url ?? (f as any).name;
+          if (!key) return true;
+          if (seenKeys.has(key)) return false;
+          seenKeys.add(key);
+          return true;
+        });
 
       const paymentStructure =
         data.paymentStructure === "milestone"
@@ -754,7 +964,12 @@ const CreateMSADialog: React.FC<Props> = ({
 
       return pruneEmptyValuesDeep(payload);
     },
-    [signatories],
+    [
+      signatories,
+      initialValues,
+      editDetailQuery.data?.data?.files,
+      detailFilesQuery.data?.data?.files,
+    ],
   );
 
   const createMutation = useMutation({
@@ -857,7 +1072,7 @@ const CreateMSADialog: React.FC<Props> = ({
       if (!nextOpen) clearFileSession();
       setOpen(nextOpen);
     },
-    [clearFileSession],
+    [clearFileSession, setOpen],
   );
 
   const handleSendForApproval = React.useCallback((sigs: string[]) => {
@@ -867,7 +1082,7 @@ const CreateMSADialog: React.FC<Props> = ({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
         className={cn(
           "rounded-2xl p-6 gap-6 max-h-[90vh] overflow-y-auto",
@@ -891,6 +1106,11 @@ const CreateMSADialog: React.FC<Props> = ({
           open={isApprovalDialogOpen}
           onOpenChange={setIsApprovalDialogOpen}
           onSendForApproval={handleSendForApproval}
+          initialSignatories={
+            (editDetailQuery.data?.data?.signatories as any[] | undefined) ??
+            (detailFilesQuery.data?.data as any)?.signatories ??
+            ((initialValues as any)?.signatories as any[] | undefined)
+          }
         />
 
         <Forge
@@ -924,7 +1144,14 @@ const CreateMSADialog: React.FC<Props> = ({
             />
           )}
           {step === 6 && <Step6ComplianceSecurity control={control} />}
-          {step === 7 && <Step4Form control={control} documents={[]} />}
+          {step === 7 && (
+            <Step7Body
+              control={control}
+              editFiles={editDetailQuery.data?.data?.files}
+              detailFiles={detailFilesQuery.data?.data?.files}
+              initialValuesFiles={(initialValues as any)?.files}
+            />
+          )}
           {step === 8 && <Step8ApprovalLevel control={control} />}
           {step === 9 && <Step9ReviewPublish control={control} />}
 
@@ -1005,11 +1232,120 @@ const CreateMSADialog: React.FC<Props> = ({
 
 export default CreateMSADialog;
 
+// Step 7 wraps the Solicitation/Contract `Step4Form` (file-upload state machine
+// for NEW uploads) and renders a self-owned list of previously-uploaded docs
+// above it. Step4Form's own init-from-documents-prop path is racy on edit:
+// when the parent useWatch returns the hydrated files AFTER Step4Form mounts,
+// its sync-back effect runs first with empty `filesWithState` and overwrites
+// the form's `documents` to `null`, defeating the init. The dedicated list
+// below reads BE files directly (form value → detailFilesQuery → initialValues
+// → editDetailQuery) and uses a sibling form field `removedDocuments` to track
+// per-id removals, so submit can subtract them from the final files payload.
+const Step7Body: React.FC<{
+  control: any;
+  detailFiles?: any[];
+  initialValuesFiles?: any[];
+  editFiles?: any[];
+}> = ({ control, detailFiles, initialValuesFiles, editFiles }) => {
+  const documents = useWatch({ control, name: "documents" }) as any[] | undefined;
+  const removed = (useWatch({ control, name: "removedDocuments" }) as
+    | string[]
+    | undefined) ?? [];
+
+  // Existing files: prefer the form-value array (post-hydration), fall back
+  // through every other source so the panel paints even before useWatch
+  // returns the hydrated value.
+  const sources: any[][] = [
+    Array.isArray(documents) ? documents : [],
+    Array.isArray(editFiles) ? editFiles : [],
+    Array.isArray(detailFiles) ? detailFiles : [],
+    Array.isArray(initialValuesFiles) ? initialValuesFiles : [],
+  ];
+  const firstWithFiles = sources.find((arr) => arr.length > 0) ?? [];
+  const existing = firstWithFiles
+    .filter((f: any) => f && typeof f === "object" && !(f instanceof File))
+    .filter((f: any) => !removed.includes(f?._id ?? f?.url ?? f?.name));
+
+  const { setValue } = useFormContext<CreateMsaFormData>();
+  const handleRemove = (id: string) => {
+    const next = Array.from(new Set([...removed, id]));
+    setValue("removedDocuments" as any, next as any, { shouldDirty: true });
+  };
+
+  return (
+    <div className="space-y-4">
+      {existing.length > 0 && (
+        <div className="space-y-2 px-6 pt-4">
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            Previously uploaded
+          </p>
+          <div className="space-y-2">
+            {existing.map((file: any, i: number) => {
+              const id = file._id ?? file.url ?? `${file.name}-${i}`;
+              const ext = String(file.name ?? "").split(".").pop()?.toUpperCase() ?? "";
+              return (
+                <div
+                  key={id}
+                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"
+                >
+                  <div className="flex items-center space-x-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded flex items-center justify-center shrink-0">
+                      <FileText className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      {file.url ? (
+                        <a
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-gray-900 dark:text-slate-100 hover:underline truncate block"
+                          title={file.name}
+                        >
+                          {file.name}
+                        </a>
+                      ) : (
+                        <p
+                          className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate"
+                          title={file.name}
+                        >
+                          {file.name}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500 dark:text-slate-400">
+                        {ext}
+                        {file.size != null ? ` • ${String(file.size)}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(id)}
+                    className="text-gray-400 hover:text-red-500 transition-colors shrink-0"
+                    aria-label={`Remove ${file.name}`}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      <Step4Form control={control} documents={[]} />
+    </div>
+  );
+};
+
 type SendForApprovalDialogProps = {
   control: any;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSendForApproval: (signatories: string[]) => void;
+  // BE-shaped existing signatories from the edit payload, e.g.
+  //   [{ user: "<userId>", userRef: "Invite", level: 3, status: "pending" }]
+  // Used to pre-check the approver rows on edit so the user doesn't have to
+  // re-assign approvers they already picked.
+  initialSignatories?: Array<{ user?: string; level?: number | string }>;
 };
 
 const SendForApprovalDialog = React.memo(
@@ -1018,6 +1354,7 @@ const SendForApprovalDialog = React.memo(
     open,
     onOpenChange,
     onSendForApproval,
+    initialSignatories,
   }: SendForApprovalDialogProps) => {
     const approvalGroups = useWatch({ control, name: "approvalGroups" }) as
       | {
@@ -1100,6 +1437,44 @@ const SendForApprovalDialog = React.memo(
           .map(({ approver }) => approver),
       [allApprovers, assignedApproverIds],
     );
+
+    // Pre-fill from existing BE signatories on open (edit mode). Match each
+    // BE signatory's `user` id to an approver chip's `id`/`value` so the
+    // checkbox is pre-checked AND select the group of the FIRST signatory by
+    // matching `approvalLevel`. Runs only on the open→true transition so the
+    // user's subsequent manual toggles aren't stomped while the dialog is open.
+    const prefilledForOpenRef = React.useRef(false);
+    React.useEffect(() => {
+      if (!open) {
+        prefilledForOpenRef.current = false;
+        return;
+      }
+      if (prefilledForOpenRef.current) return;
+      const sigs = Array.isArray(initialSignatories) ? initialSignatories : [];
+      if (!sigs.length || !allApprovers.length) return;
+      const sigUserIds = new Set(
+        sigs
+          .map((s) => (typeof s?.user === "string" ? s.user : ""))
+          .filter(Boolean),
+      );
+      const matchingKeys = allApprovers
+        .filter(({ approver }) => {
+          const candidates = [approver?.id, approver?.value].filter(Boolean);
+          return candidates.some((c: any) => sigUserIds.has(String(c)));
+        })
+        .map(({ key }) => key);
+      if (matchingKeys.length) {
+        setAssignedApproverIds(matchingKeys);
+      }
+      const firstLevel = sigs.find((s) => s?.level !== undefined)?.level;
+      if (firstLevel !== undefined && Array.isArray(approvalGroups)) {
+        const groupIdx = approvalGroups.findIndex(
+          (g) => String(g?.approvalLevel ?? "") === String(firstLevel),
+        );
+        if (groupIdx >= 0) setSelectedApprovalGroup(String(groupIdx));
+      }
+      prefilledForOpenRef.current = true;
+    }, [open, initialSignatories, allApprovers, approvalGroups]);
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
