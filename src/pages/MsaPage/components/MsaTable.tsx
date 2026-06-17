@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   format,
   isWithinInterval,
@@ -21,6 +21,7 @@ import {
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
 import ContractLifecycleDialog from "@/pages/ContractManagementPage/components/ContractLifecycleDialog";
+import CreateMSADialog from "@/pages/MsaPage/layouts/CreateMSADialog";
 import {
   type LifecycleAction,
   isEditableStatus,
@@ -52,10 +53,10 @@ export type MsaRow = {
 };
 
 const MsaActionsCell: React.FC<{ row: MsaRow }> = ({ row }) => {
-  const navigate = useNavigate();
   const { isManager } = useUserRole();
   const currentUserId = useUser()?._id;
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const [editOpen, setEditOpen] = React.useState(false);
   const [lifecycle, setLifecycle] = React.useState<LifecycleAction | null>(null);
 
   const hasId = !!row.id;
@@ -116,7 +117,7 @@ const MsaActionsCell: React.FC<{ row: MsaRow }> = ({ row }) => {
               onSelect={(e) => {
                 e.preventDefault();
                 setMenuOpen(false);
-                navigate(`/dashboard/msa/${row.id}`);
+                setEditOpen(true);
               }}
             >
               Edit MSA
@@ -158,6 +159,14 @@ const MsaActionsCell: React.FC<{ row: MsaRow }> = ({ row }) => {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {canEdit && (
+        <CreateMSADialog
+          editingMsaId={row.id}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+        />
+      )}
 
       <ContractLifecycleDialog
         kind="msa"
