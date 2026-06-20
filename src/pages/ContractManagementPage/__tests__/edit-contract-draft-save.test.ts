@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   buildContractApproversPayload,
+  composeContractFiles,
+  fileKey,
   resolveContractSaveStatus,
 } from "../components/EditContract";
 import { toPersonnelOrUndefined } from "../../../lib/contractFormValues";
@@ -70,6 +72,63 @@ describe("EditContract payload helpers", () => {
     expect(resolveContractSaveStatus("publish")).toBe("publish");
     expect(resolveContractSaveStatus("active")).toBe("publish");
     expect(resolveContractSaveStatus(null)).toBe("publish");
+  });
+});
+
+describe("composeContractFiles (QA #127 — draft documents disappearing on edit)", () => {
+  const fileA = {
+    _id: "a1",
+    name: "A.pdf",
+    url: "http://x/A.pdf",
+    type: "application/pdf",
+    size: "1 KB",
+  };
+  const fileB = {
+    _id: "b2",
+    name: "B.docx",
+    url: "http://x/B.docx",
+    type: "application/msword",
+    size: "2 KB",
+  };
+  const upload = {
+    name: "C.pdf",
+    url: "http://x/C.pdf",
+    type: "application/pdf",
+    size: "3 KB",
+  };
+
+  it("keys a file by url, then _id, then name", () => {
+    expect(fileKey(fileA)).toBe("http://x/A.pdf");
+    expect(fileKey({ _id: "z9", name: "Z.pdf" })).toBe("z9");
+    expect(fileKey({ name: "Z.pdf" })).toBe("Z.pdf");
+  });
+
+  it("retains existing files even when new uploads come through as null (the bug)", () => {
+    expect(composeContractFiles([fileA, fileB], new Set(), null)).toEqual([
+      { name: "A.pdf", url: "http://x/A.pdf", type: "application/pdf", size: "1 KB" },
+      { name: "B.docx", url: "http://x/B.docx", type: "application/msword", size: "2 KB" },
+    ]);
+  });
+
+  it("merges existing files with new uploads", () => {
+    expect(composeContractFiles([fileA], new Set(), [upload])).toEqual([
+      { name: "A.pdf", url: "http://x/A.pdf", type: "application/pdf", size: "1 KB" },
+      { name: "C.pdf", url: "http://x/C.pdf", type: "application/pdf", size: "3 KB" },
+    ]);
+  });
+
+  it("drops existing files the user removed (by url key)", () => {
+    expect(
+      composeContractFiles([fileA, fileB], new Set(["http://x/A.pdf"]), null),
+    ).toEqual([
+      { name: "B.docx", url: "http://x/B.docx", type: "application/msword", size: "2 KB" },
+    ]);
+  });
+
+  it("dedupes a re-uploaded existing file by url", () => {
+    expect(composeContractFiles([fileA], new Set(), [fileA])).toEqual([
+      { name: "A.pdf", url: "http://x/A.pdf", type: "application/pdf", size: "1 KB" },
+    ]);
   });
 });
 
