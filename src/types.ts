@@ -137,6 +137,9 @@ export interface ProjectManager {
 export interface ContractDetail {
   contractFormationStage: ContractFormationStage;
   _id:                    string;
+  /** BE-computed: true when the authenticated user owns/manages this contract.
+   *  Used to gate owner-only actions like Approve/Reject (QA #140/#144/#164). */
+  owner?:                 boolean;
   company:                Company;
   project:                Company;
   solicitation:           Company;

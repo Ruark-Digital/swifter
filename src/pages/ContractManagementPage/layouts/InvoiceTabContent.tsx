@@ -16,12 +16,14 @@ type Props = {
   currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
+  owner?: boolean;
 };
 
 const InvoiceTabContent: React.FC<Props> = ({
   contractId,
   isActive,
   actionsDisabled,
+  owner,
 }) => {
   const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
     useUserRole();
@@ -119,6 +121,7 @@ const InvoiceTabContent: React.FC<Props> = ({
         invoiceIdSearch={invoiceIdSearch}
         setInvoiceIdSearch={setInvoiceIdSearch}
         actionsDisabled={actionsDisabled}
+        owner={owner}
       />
     </TabsContent>
   );

@@ -488,6 +488,7 @@ const ContractDetailPage: React.FC = () => {
           currency={contract?.currency}
           isActive={activeTab === "compliance"}
           actionsDisabled={actionsDisabled}
+          owner={contract?.owner}
         />
 
         <ChangeTabContent
@@ -515,6 +516,7 @@ const ContractDetailPage: React.FC = () => {
           currency={contract?.currency}
           isActive={activeTab === "invoice"}
           actionsDisabled={actionsDisabled}
+          owner={contract?.owner}
         />
 
         <DeliverablesTabContent />
