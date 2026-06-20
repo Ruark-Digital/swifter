@@ -41,6 +41,9 @@ interface ComplianceSecurityTabProps {
   basePath: string;
   currency?: string;
   actionsDisabled?: boolean;
+  /** True when the current user owns/manages this contract — only then may
+   *  they approve/reject compliance submissions (QA #140/#144). */
+  owner?: boolean;
 }
 
 const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
@@ -49,6 +52,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
   basePath,
   currency,
   actionsDisabled,
+  owner,
 }) => {
   const { id: contractId } = useParams<{ id: string }>();
   const [search, setSearch] = React.useState("");
@@ -103,6 +107,9 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
 
   const canManagerActOnActive = React.useMemo(() => {
     if (!isContractManager) return false;
+    // Only the contract owner/manager may approve/reject — a CM/PL who isn't
+    // the owner must not see these buttons (QA #140/#144).
+    if (!owner) return false;
     if (!hasFiles) return false;
     const status = getSubmissionStatus(activeView);
     if (!status) return false;
@@ -113,7 +120,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
       normalized === "pending_approval" ||
       normalized === "awaiting approval"
     );
-  }, [activeView, hasFiles, isContractManager, data?.details]);
+  }, [activeView, hasFiles, isContractManager, owner, data?.details]);
 
   const formatMoneyNoSymbol = (value: unknown) => {
     const num = Number(value);

@@ -33,7 +33,6 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Forge, Forger, useForge } from "@/lib/forge";
 import {
   TextArea,
-  TextCurrencyInput,
   TextFileUploader,
   TextInput,
 } from "@/components/layouts/FormInputs";
@@ -74,7 +73,7 @@ type SubmitRateSheetFormValues = {
 
 const submitRateSheetSchema = yup.object({
   title: yup.string().required("Rate Title is required"),
-  amount: yup.string().required("Amount is required"),
+  amount: yup.string().notRequired(),
   description: yup.string().required("Description is required"),
   files: yup.mixed().nullable().notRequired(),
 });
@@ -278,7 +277,7 @@ const SubmitRateSheetDialog: React.FC<{
 
         await submitMutation.mutateAsync({
           title: data.title,
-          amount: Number(data.amount),
+          amount: data.amount ? Number(data.amount) : 0,
           description: data.description,
           files: uploadedFiles,
         });
@@ -317,17 +316,10 @@ const SubmitRateSheetDialog: React.FC<{
             />
 
             <Forger
-              name="amount"
-              label="Amount"
-              component={TextCurrencyInput}
-              placeholder="Enter Amount"
-            />
-
-            <Forger
               name="description"
               label="Description"
               component={TextArea}
-              placeholder="Duration"
+              placeholder="Enter description"
               rows={6}
             />
 

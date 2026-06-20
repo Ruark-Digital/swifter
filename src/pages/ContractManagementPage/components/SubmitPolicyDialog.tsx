@@ -228,7 +228,7 @@ const SubmitPolicyDialog: React.FC<SubmitPolicyDialogProps> = ({
               <Forger
                 name="description"
                 component={TextArea}
-                placeholder="Duration"
+                placeholder="Enter description"
                 className="min-h-[180px] rounded-xl border-slate-200 dark:border-slate-700 focus:border-[#2A4467] focus:ring-1 focus:ring-[#2A4467] text-lg p-6 placeholder:text-slate-300 dark:placeholder:text-slate-500"
               />
             </div>
@@ -251,7 +251,7 @@ const SubmitPolicyDialog: React.FC<SubmitPolicyDialogProps> = ({
               >
                 {submitMutation.isPending || isUploadingFiles
                   ? "Submitting..."
-                  : "Submit Policy"}
+                  : "Submit"}
               </Button>
             </div>
           </Forge>

@@ -40,6 +40,8 @@ type InvoiceDetailsSheetProps = {
   contractId: string;
   invoiceId: string;
   actionsDisabled?: boolean;
+  /** Only the contract owner/manager may approve/reject an invoice (QA #164). */
+  owner?: boolean;
 };
 
 const LabelRow = ({
@@ -61,6 +63,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   contractId,
   invoiceId,
   actionsDisabled,
+  owner,
 }) => {
   const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
@@ -121,7 +124,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   const canApprove =
     isPendingApproval && approveStatusData?.data?.status === true;
 
-  const canManagerAct = isManager && isPendingApproval;
+  const canManagerAct = isManager && isPendingApproval && !!owner;
 
 
   const approveInvoiceMutation = useMutation<
@@ -423,6 +426,7 @@ type InvoiceTableProps = {
   invoiceIdSearch: string;
   setInvoiceIdSearch: (next: string) => void;
   actionsDisabled?: boolean;
+  owner?: boolean;
 };
 
 const InvoiceTable: React.FC<InvoiceTableProps> = ({
@@ -435,6 +439,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
   invoiceIdSearch,
   setInvoiceIdSearch,
   actionsDisabled,
+  owner,
 }) => {
   const columns = React.useMemo<ColumnDef<InvoiceRow>[]>(() => {
     return [
@@ -493,6 +498,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
               contractId={contractId}
               invoiceId={row.original.id}
               actionsDisabled={actionsDisabled}
+              owner={owner}
               trigger={
                 <button
                   type="button"
@@ -507,7 +513,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
         ),
       },
     ];
-  }, [contractId, actionsDisabled]);
+  }, [contractId, actionsDisabled, owner]);
 
   const invoiceRows: InvoiceRow[] = React.useMemo(() => {
     const currencyFormatter = new Intl.NumberFormat(undefined, {
