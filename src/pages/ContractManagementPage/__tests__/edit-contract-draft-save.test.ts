@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  buildAwardedOptions,
   buildContractApproversPayload,
   composeContractFiles,
   fileKey,
@@ -130,6 +131,64 @@ describe("composeContractFiles (QA #127 — draft documents disappearing on edit
   it("dedupes a re-uploaded existing file by url", () => {
     expect(composeContractFiles([fileA], new Set(), [fileA])).toEqual([
       { name: "A.pdf", url: "http://x/A.pdf", type: "application/pdf", size: "1 KB" },
+    ]);
+  });
+});
+
+describe("buildAwardedOptions (QA #126 — awarded solicitation not retained on edit)", () => {
+  const fetched = [
+    {
+      _id: "sol-available",
+      name: "RFP Roadworks",
+      vendor: { _id: "v1", name: "Acme", email: "a@acme.com" },
+    },
+  ];
+
+  it("maps fetched awarded solicitations to labelled options", () => {
+    expect(buildAwardedOptions(fetched, null, null)).toEqual([
+      {
+        label: "RFP Roadworks — Acme",
+        value: "sol-available",
+        vendorEmail: "a@acme.com",
+        vendorId: "v1",
+      },
+    ]);
+  });
+
+  it("injects the contract's linked solicitation when the endpoint omits it", () => {
+    const options = buildAwardedOptions(
+      fetched,
+      { _id: "sol-linked", name: "RFP Bridge" },
+      { _id: "v9", name: "Zenith" },
+    );
+    expect(options).toHaveLength(2);
+    expect(options[0]).toEqual({
+      label: "RFP Bridge — Zenith",
+      value: "sol-linked",
+      vendorId: "v9",
+    });
+    expect(options[1].value).toBe("sol-available");
+  });
+
+  it("does not duplicate the linked solicitation if already in the fetched list", () => {
+    const options = buildAwardedOptions(
+      fetched,
+      { _id: "sol-available", name: "RFP Roadworks" },
+      { _id: "v1", name: "Acme" },
+    );
+    expect(options).toHaveLength(1);
+    expect(options[0].value).toBe("sol-available");
+  });
+
+  it("skips injection when there is no linked solicitation", () => {
+    expect(buildAwardedOptions(fetched, { _id: "", name: "" }, null)).toHaveLength(1);
+    expect(buildAwardedOptions(fetched, undefined, undefined)).toHaveLength(1);
+  });
+
+  it("handles a linked solicitation passed as a bare id string", () => {
+    const options = buildAwardedOptions(undefined, "sol-linked", null);
+    expect(options).toEqual([
+      { label: "Awarded Solicitation", value: "sol-linked" },
     ]);
   });
 });

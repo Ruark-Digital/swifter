@@ -181,6 +181,65 @@ export const composeContractFiles = (
   });
 };
 
+export type AwardedOption = {
+  label: string;
+  value: string;
+  vendorEmail?: string;
+  vendorId?: string;
+};
+
+// Build the "Awarded Solicitation" select options for edit. The
+// `/awarded-solicitation` endpoint only lists solicitations still available
+// to link — the one already attached to THIS contract has been consumed and
+// is absent, so on edit the saved value matches no option and renders blank.
+// Inject the contract's own linked solicitation so it pre-fills (QA #126).
+export const buildAwardedOptions = (
+  fetched:
+    | Array<{
+        _id: string;
+        name: string;
+        vendor: { _id: string; name: string; email: string };
+      }>
+    | undefined,
+  linkedSolicitation: { _id?: string; name?: string } | string | null | undefined,
+  linkedVendor: { _id?: string; name?: string } | string | null | undefined,
+): AwardedOption[] => {
+  const base: AwardedOption[] = Array.isArray(fetched)
+    ? fetched.map((a) => ({
+        label: `${a.name} — ${a.vendor.name}`,
+        value: a._id,
+        vendorEmail: a.vendor.email,
+        vendorId: a.vendor._id,
+      }))
+    : [];
+
+  const linkedId =
+    typeof linkedSolicitation === "string"
+      ? linkedSolicitation
+      : linkedSolicitation?._id;
+
+  if (linkedId && !base.some((o) => o.value === linkedId)) {
+    const linkedName =
+      (typeof linkedSolicitation === "object" && linkedSolicitation?.name) ||
+      "Awarded Solicitation";
+    const vendorName =
+      typeof linkedVendor === "object" && linkedVendor
+        ? linkedVendor.name
+        : undefined;
+    const vendorId =
+      typeof linkedVendor === "object" && linkedVendor
+        ? linkedVendor._id
+        : undefined;
+    base.unshift({
+      label: vendorName ? `${linkedName} — ${vendorName}` : linkedName,
+      value: linkedId,
+      ...(vendorId ? { vendorId } : {}),
+    });
+  }
+
+  return base;
+};
+
 const EditContract: React.FC<Props> = ({
   open,
   onOpenChange,
@@ -658,15 +717,16 @@ const EditContract: React.FC<Props> = ({
   );
   const awardedOptions = React.useMemo(
     () =>
-      Array.isArray(awardedQuery.data?.data)
-        ? awardedQuery.data.data.map((a) => ({
-            label: `${a.name} — ${a.vendor.name}`,
-            value: a._id,
-            vendorEmail: a.vendor.email,
-            vendorId: a.vendor._id,
-          }))
-        : [],
-    [awardedQuery.data?.data],
+      buildAwardedOptions(
+        awardedQuery.data?.data,
+        contractRes?.data?.data?.solicitation,
+        contractRes?.data?.data?.vendor,
+      ),
+    [
+      awardedQuery.data?.data,
+      contractRes?.data?.data?.solicitation,
+      contractRes?.data?.data?.vendor,
+    ],
   );
 
   const msaOptions = React.useMemo(() => {
