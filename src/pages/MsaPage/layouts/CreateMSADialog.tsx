@@ -1286,11 +1286,17 @@ const Step7Body: React.FC<{
               return (
                 <div
                   key={id}
-                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"
+                  // Mirror DialogContent's `bg-white dark:bg-slate-950` swap:
+                  // semantic surface that auto-flips on theme without relying
+                  // on the dark: variant being compiled for these specific
+                  // tokens. `bg-secondary` resolves via the project's CSS
+                  // theme tokens (light: near-white, dark: dark slate) — same
+                  // pattern shadcn primitives use across the app.
+                  className="flex items-center justify-between p-3 bg-secondary rounded-lg border border-border"
                 >
                   <div className="flex items-center space-x-3 min-w-0 flex-1">
-                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded flex items-center justify-center shrink-0">
-                      <FileText className="h-5 w-5 text-blue-600" />
+                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded flex items-center justify-center shrink-0">
+                      <FileText className="h-5 w-5 text-blue-600 dark:text-blue-300" />
                     </div>
                     <div className="min-w-0 flex-1">
                       {file.url ? (
@@ -1298,20 +1304,20 @@ const Step7Body: React.FC<{
                           href={file.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm font-medium text-gray-900 dark:text-slate-100 hover:underline truncate block"
+                          className="text-sm font-medium text-foreground hover:underline truncate block"
                           title={file.name}
                         >
                           {file.name}
                         </a>
                       ) : (
                         <p
-                          className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate"
+                          className="text-sm font-medium text-foreground truncate"
                           title={file.name}
                         >
                           {file.name}
                         </p>
                       )}
-                      <p className="text-xs text-gray-500 dark:text-slate-400">
+                      <p className="text-xs text-muted-foreground">
                         {ext}
                         {file.size != null ? ` • ${String(file.size)}` : ""}
                       </p>
@@ -1320,7 +1326,7 @@ const Step7Body: React.FC<{
                   <button
                     type="button"
                     onClick={() => handleRemove(id)}
-                    className="text-gray-400 hover:text-red-500 transition-colors shrink-0"
+                    className="text-muted-foreground hover:text-red-500 transition-colors shrink-0"
                     aria-label={`Remove ${file.name}`}
                   >
                     <X className="h-4 w-4" />
