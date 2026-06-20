@@ -743,7 +743,8 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
     contract?.holdBack != null ? String(contract?.holdBack) : "-";
   const holdbackAmount =
     contract?.holdBackBank != null ? formatMoney(contract?.holdBackBank) : "-";
-  const contigency = formatMoney(Number(contract?.contigency)) ?? "-";
+  const contigency =
+    formatMoney(Number(contract?.contingency ?? contract?.contigency)) ?? "-";
   const paymentStructure = contract?.paymentStructure ?? "-";
   const paymentTerm = contract?.paymentTerms?.name ?? "-";
 
@@ -815,16 +816,19 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
               {contractValue}
             </div>
           </div>
-          <div className="flex flex-col justify-center gap-4">
-            <div className="text-sm leading-7 text-[#6B6B6B] dark:text-slate-400">Contigency</div>
-            <div className="text-base font-semibold leading-7 text-[#0F0F0F] dark:text-slate-100">
-              {contigency}
+          {/* Contingency is internal-only — hidden from the vendor/PM side (QA #132). */}
+          {!isContractVendorLike && (
+            <div className="flex flex-col justify-center gap-4">
+              <div className="text-sm leading-7 text-[#6B6B6B] dark:text-slate-400">Contigency</div>
+              <div className="text-base font-semibold leading-7 text-[#0F0F0F] dark:text-slate-100">
+                {contigency}
+              </div>
             </div>
-          </div>
+          )}
           <div className="flex flex-col justify-center gap-4">
             <div className="text-sm leading-7 text-[#6B6B6B] dark:text-slate-400">Holdback</div>
             <div className="text-base font-semibold leading-7 text-[#0F0F0F] dark:text-slate-100">
-              {holdbackValue}
+              {holdbackValue === "-" ? "-" : `${holdbackValue}%`}
             </div>
           </div>
 

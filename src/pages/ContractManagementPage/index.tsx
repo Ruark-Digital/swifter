@@ -348,6 +348,13 @@ const mapVendorStatusToLabel = (
   if (status === "expired") return "Expired";
   if (status === "suspended") return "Suspended";
   if (status === "terminated") return "Terminated";
+  // Align with the manager/approver mapper so the same backend status reads
+  // the same on the vendor/PM side (QA #124): completed/cancelled were both
+  // collapsing to "Closed", and a rejected contract showed "Closed" here but
+  // "Suspended" on the CM/approver side.
+  if (status === "completed") return "Completed";
+  if (status === "cancelled") return "Cancelled";
+  if (status === "rejection") return "Suspended";
   return "Closed";
 };
 

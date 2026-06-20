@@ -47,9 +47,8 @@ type ViewProps = {
   reviewDuration: string;
   approvalDuration: string;
   executionDuration: string;
-  /** Durations and Deviation Scale are hidden on the vendor side (Vendor/PM). */
+  /** Durations are hidden on the vendor side (Vendor/PM). */
   showDurations?: boolean;
-  showDeviationScale?: boolean;
 };
 
 const ManagerView: React.FC<ViewProps> = ({
@@ -102,6 +101,12 @@ const ManagerView: React.FC<ViewProps> = ({
           <span className="text-slate-900 dark:text-slate-100">
             {contract.contractId || contract._id || "N/A"}
           </span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Type</span>
+          <span className="text-slate-900 dark:text-slate-100">
+            {typeof contract.contractType === "string"
+              ? contract.contractType
+              : contract.contractType?.name || "N/A"}
+          </span>
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Project Relationship</span>
           <span className="text-slate-900 dark:text-slate-100">{relationshipLabel}</span>
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">End Date</span>
@@ -128,7 +133,7 @@ const ManagerView: React.FC<ViewProps> = ({
 
     <div className="space-y-2">
       <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Description</span>
-      <p className="text-slate-700 dark:text-slate-300 max-w-3xl">
+      <p className="text-slate-700 dark:text-slate-300 w-full">
         {contract.description || "N/A"}
       </p>
     </div>
@@ -224,7 +229,6 @@ const VendorView: React.FC<ViewProps> = ({
   vendorPersonnel,
   internalTeam,
   showDurations = true,
-  showDeviationScale = true,
 }) => (
   <>
     <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
@@ -236,14 +240,9 @@ const VendorView: React.FC<ViewProps> = ({
             {contract.title || "N/A"}
           </span>
         </div>
-        {showDeviationScale && (
-          <div className="flex flex-col gap-1">
-            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Deviation Scale</span>
-            {/* <span className="text-slate-900 dark:text-slate-100">
-              {contract.deviationScale ?? "N/A"}
-            </span> */}
-          </div>
-        )}
+        {/* Deviation Scale hidden until the backend field is wired — its
+            value was commented out, leaving an empty labelled slot that
+            created a large left-side gap on the Vendor/PM overview (QA #161). */}
         <div className="flex flex-col gap-1">
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Published Date</span>
           <span className="text-slate-900 dark:text-slate-100">{publishedDate}</span>
@@ -337,7 +336,7 @@ const VendorView: React.FC<ViewProps> = ({
 
     <div className="space-y-2 pt-4">
       <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Description</span>
-      <p className="text-slate-700 dark:text-slate-300 max-w-3xl">
+      <p className="text-slate-700 dark:text-slate-300 w-full">
         {contract.description || "N/A"}
       </p>
     </div>
@@ -518,7 +517,7 @@ const ApproverView: React.FC<ViewProps> = ({
 
         <div className="space-y-2 pt-2">
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Description</span>
-          <p className="text-slate-700 dark:text-slate-300 max-w-3xl">
+          <p className="text-slate-700 dark:text-slate-300 w-full">
             {contract.description || "N/A"}
           </p>
         </div>
@@ -699,7 +698,7 @@ const ApproverView: React.FC<ViewProps> = ({
 
       <div className="space-y-2 pt-4">
         <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Description</span>
-        <p className="text-slate-700 dark:text-slate-300 max-w-3xl">
+        <p className="text-slate-700 dark:text-slate-300 w-full">
           {contract.description || "N/A"}
         </p>
       </div>
@@ -883,11 +882,7 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
     // Vendor side (Vendor/PM): Durations and Deviation Scale are not required.
     if (isContractVendorLike)
       return (
-        <VendorView
-          {...viewProps}
-          showDurations={false}
-          showDeviationScale={false}
-        />
+        <VendorView {...viewProps} showDurations={false} />
       );
     if (isApprover) return <ApproverView {...viewProps} />;
     if (isCompanyAdmin) return <VendorView {...viewProps} />;

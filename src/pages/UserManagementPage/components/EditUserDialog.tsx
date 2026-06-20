@@ -128,10 +128,19 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
 
   const roles = rolesData?.data?.data || [];
 
-  const roleOptions = roles.map((role: { _id: string; name: string }) => ({
-    value: role._id,
-    label: role.name?.replace?.('_', " ")?.toUpperCase(),
-  }));
+  // Company Admins cannot assign Super Admin or Project Manager roles (QA #129).
+  // Super Admin is platform-level and Project Manager is a vendor-side role
+  // assigned through the vendor flow — neither belongs in this dropdown.
+  const RESTRICTED_ROLE_NAMES = ["super_admin", "project_manager"];
+  const roleOptions = roles
+    .filter(
+      (role: { _id: string; name: string }) =>
+        !RESTRICTED_ROLE_NAMES.includes(role.name?.toLowerCase?.()),
+    )
+    .map((role: { _id: string; name: string }) => ({
+      value: role._id,
+      label: role.name?.replace?.('_', " ")?.toUpperCase(),
+    }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

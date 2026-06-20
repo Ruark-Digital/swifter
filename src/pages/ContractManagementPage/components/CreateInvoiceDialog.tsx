@@ -276,8 +276,10 @@ const CompleteInvoiceDialog = React.memo(
       let total = 0;
 
       watchedItems.forEach((item, index) => {
-        const quantity = parseFloat(item?.quantity ?? "") || 0;
-        const unitPrice = parseFloat(item?.unitPrice ?? "") || 0;
+        // Strip thousands-separator commas so pasted values like "1,000"
+        // parse correctly instead of truncating at the comma (QA #163).
+        const quantity = parseFloat((item?.quantity ?? "").replace(/,/g, "")) || 0;
+        const unitPrice = parseFloat((item?.unitPrice ?? "").replace(/,/g, "")) || 0;
         const subtotal = quantity * unitPrice;
 
         total += subtotal;
@@ -839,8 +841,8 @@ const CreateInvoiceDialog: React.FC<Props> = ({
         if (uploadMode === "manual" && Array.isArray(values.items)) {
           itemsPayload = values.items
             .map((item) => {
-              const quantity = parseFloat(item.quantity ?? "");
-              const unitPrice = parseFloat(item.unitPrice ?? "");
+              const quantity = parseFloat((item.quantity ?? "").replace(/,/g, ""));
+              const unitPrice = parseFloat((item.unitPrice ?? "").replace(/,/g, ""));
               const quantityNum = Number.isFinite(quantity) ? quantity : undefined;
               const unitPriceNum = Number.isFinite(unitPrice) ? unitPrice : undefined;
 

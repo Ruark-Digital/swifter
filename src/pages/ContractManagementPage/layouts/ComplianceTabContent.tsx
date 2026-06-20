@@ -11,12 +11,14 @@ type Props = {
   isActive?: boolean;
   currency?: string;
   actionsDisabled?: boolean;
+  owner?: boolean;
 };
 
 const ComplianceTabContent: React.FC<Props> = ({
   isActive,
   currency,
   actionsDisabled,
+  owner,
 }) => {
   const { id: contractId } = useParams<{ id: string }>();
   const {
@@ -70,6 +72,7 @@ const ComplianceTabContent: React.FC<Props> = ({
         basePath={basePath}
         currency={currency}
         actionsDisabled={actionsDisabled}
+        owner={owner}
       />
     </TabsContent>
   );

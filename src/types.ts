@@ -137,6 +137,9 @@ export interface ProjectManager {
 export interface ContractDetail {
   contractFormationStage: ContractFormationStage;
   _id:                    string;
+  /** BE-computed: true when the authenticated user owns/manages this contract.
+   *  Used to gate owner-only actions like Approve/Reject (QA #140/#144/#164). */
+  owner?:                 boolean;
   company:                Company;
   project:                Company;
   solicitation:           Company;
@@ -164,6 +167,10 @@ export interface ContractDetail {
   currency:               string;
   contractValue:          number;
   contigency:             string;
+  /** API v2.3.0 corrected the spelling on the contract-detail response
+   *  (ContractServiceDetail.contingency). Accept either; `contigency`
+   *  is the legacy key. */
+  contingency?:           string;
   holdBack:               number;
   holdBackBank:           number;
   paymentTerms:           Company;

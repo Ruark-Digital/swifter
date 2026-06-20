@@ -608,14 +608,6 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                   value={detail?.name ?? "-"}
                 />
                 <LabelRow
-                  label="Amount"
-                  value={
-                    typeof detail?.amount === "number"
-                      ? `$${detail.amount.toLocaleString()}`
-                      : (detail?.amount ?? "-")
-                  }
-                />
-                <LabelRow
                   label="Due Date"
                   value={safeFormatDate(detail?.dueDate, "dd MMM yyyy")}
                 />
