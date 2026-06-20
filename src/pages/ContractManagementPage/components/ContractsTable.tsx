@@ -35,7 +35,7 @@ export type ContractRow = {
   createdAtRaw?: string;
   status:
     | "Active"
-    | "Publish"
+    | "Published"
     | "Draft"
     | "Expired"
     | "Terminated"
@@ -231,7 +231,7 @@ const columns: ColumnDef<ContractRow>[] = [
     cell: ({ getValue }) => {
       const s = getValue<ContractRow["status"]>();
       const tone =
-        s === "Active" || s === "Publish"
+        s === "Active" || s === "Published"
           ? "bg-green-100 text-green-700"
           : s === "Draft"
             ? "bg-slate-100 text-slate-700"

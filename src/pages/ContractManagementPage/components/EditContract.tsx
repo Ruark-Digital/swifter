@@ -30,7 +30,8 @@ import {
   defaultValues as createDefaults,
 } from "@/pages/ContractManagementPage/components/CreateContractSheet";
 import { format } from "date-fns";
-import { X } from "lucide-react";
+import { X, FileText } from "lucide-react";
+import { useClearSession } from "@/store/solicitationFileSlice";
 import {
   isEmailLike,
   isObjectIdLike,
@@ -142,6 +143,103 @@ export const resolveContractSaveStatus = (
   return currentStatus === "draft" ? "draft" : "pending_approval";
 };
 
+// Stable key for an attached file. URL is the authoritative identity (the BE
+// echoes it back), with the document `_id` and finally the file name as
+// fallbacks for entries that predate a URL.
+export const fileKey = (file: unknown): string => {
+  const f = file as any;
+  return (
+    (typeof f?.url === "string" && f.url) ||
+    (typeof f?._id === "string" && f._id) ||
+    (typeof f?.name === "string" && f.name) ||
+    ""
+  );
+};
+
+// Compose the final `files` payload for a contract edit from three sources:
+// the contract's existing BE files, the set of files the user removed in the
+// UI, and any newly-uploaded documents. Existing files are tracked
+// independently of the form's `documents` field so the shared Step4Form's
+// hydrate/sync race can no longer null them out (QA #127). Deduped by url||name.
+export const composeContractFiles = (
+  existingFiles: unknown[] | undefined,
+  removedKeys: Set<string>,
+  newDocuments: unknown[] | null | undefined,
+) => {
+  const kept = (existingFiles ?? []).filter((f) => !removedKeys.has(fileKey(f)));
+  const merged = [...kept, ...(newDocuments ?? [])]
+    .map((f) => toFileMetaOrUndefined(f))
+    .filter(Boolean) as Array<NonNullable<ReturnType<typeof toFileMetaOrUndefined>>>;
+
+  const seen = new Set<string>();
+  return merged.filter((f) => {
+    const key = f.url || f.name;
+    if (!key) return true;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+export type AwardedOption = {
+  label: string;
+  value: string;
+  vendorEmail?: string;
+  vendorId?: string;
+};
+
+// Build the "Awarded Solicitation" select options for edit. The
+// `/awarded-solicitation` endpoint only lists solicitations still available
+// to link — the one already attached to THIS contract has been consumed and
+// is absent, so on edit the saved value matches no option and renders blank.
+// Inject the contract's own linked solicitation so it pre-fills (QA #126).
+export const buildAwardedOptions = (
+  fetched:
+    | Array<{
+        _id: string;
+        name: string;
+        vendor: { _id: string; name: string; email: string };
+      }>
+    | undefined,
+  linkedSolicitation: { _id?: string; name?: string } | string | null | undefined,
+  linkedVendor: { _id?: string; name?: string } | string | null | undefined,
+): AwardedOption[] => {
+  const base: AwardedOption[] = Array.isArray(fetched)
+    ? fetched.map((a) => ({
+        label: `${a.name} — ${a.vendor.name}`,
+        value: a._id,
+        vendorEmail: a.vendor.email,
+        vendorId: a.vendor._id,
+      }))
+    : [];
+
+  const linkedId =
+    typeof linkedSolicitation === "string"
+      ? linkedSolicitation
+      : linkedSolicitation?._id;
+
+  if (linkedId && !base.some((o) => o.value === linkedId)) {
+    const linkedName =
+      (typeof linkedSolicitation === "object" && linkedSolicitation?.name) ||
+      "Awarded Solicitation";
+    const vendorName =
+      typeof linkedVendor === "object" && linkedVendor
+        ? linkedVendor.name
+        : undefined;
+    const vendorId =
+      typeof linkedVendor === "object" && linkedVendor
+        ? linkedVendor._id
+        : undefined;
+    base.unshift({
+      label: vendorName ? `${linkedName} — ${vendorName}` : linkedName,
+      value: linkedId,
+      ...(vendorId ? { vendorId } : {}),
+    });
+  }
+
+  return base;
+};
+
 const EditContract: React.FC<Props> = ({
   open,
   onOpenChange,
@@ -171,7 +269,12 @@ const EditContract: React.FC<Props> = ({
   const [signatories, setSignatories] = React.useState<string[]>([]);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
 
-  const watchedDocuments = useWatch({ control, name: "documents" }) as any[];
+  const clearSession = useClearSession();
+  // Existing BE files are tracked outside the form's `documents` field so the
+  // shared Step4Form's hydrate/sync race can't null them out (QA #127).
+  const [removedFileKeys, setRemovedFileKeys] = React.useState<Set<string>>(
+    () => new Set(),
+  );
 
   const typesQuery = useQuery({
     queryKey: useUserQueryKey(["contract-types"]),
@@ -295,15 +398,6 @@ const EditContract: React.FC<Props> = ({
       (typeof contract.contractTerm === "string"
         ? contract.contractTerm
         : (contract.contractTerm?._id ?? ""));
-
-    const documents =
-      (contract.files ?? []).map((f: any) => ({
-        _id: f._id,
-        name: f.name,
-        url: f.url,
-        type: f.type,
-        size: f.size,
-      })) ?? [];
 
     const deliverables =
       (contract.deliverables ?? []).map((d) => ({
@@ -518,7 +612,9 @@ const EditContract: React.FC<Props> = ({
       endDate: contract.endDate ? new Date(contract.endDate) : undefined,
       duration: contract.duration ? String(contract.duration) : "",
       deliverables,
-      documents,
+      // The form's `documents` field holds NEW uploads only; existing BE
+      // files render in a self-owned panel sourced from `contract.files`.
+      documents: [],
       milestones,
       draftStartDate: contract.contractFormationStage?.draft?.startDate
         ? new Date(contract.contractFormationStage.draft.startDate)
@@ -565,6 +661,28 @@ const EditContract: React.FC<Props> = ({
     reset,
   ]);
 
+  // Authoritative list of the contract's already-attached files (from /edit),
+  // independent of the racy `documents` form field.
+  const existingFiles = React.useMemo(
+    () => (contractRes?.data?.data?.files ?? []) as any[],
+    [contractRes?.data?.data?.files],
+  );
+  const visibleExistingFiles = React.useMemo(
+    () => existingFiles.filter((f) => !removedFileKeys.has(fileKey(f))),
+    [existingFiles, removedFileKeys],
+  );
+
+  // Clear the shared (localStorage-persisted) solicitation-files store when
+  // the edit dialog opens, and reset removals. Without this, NEW uploads from
+  // a prior Create/Edit/MSA wizard leak into this contract's Documents step
+  // (same class as Create's QA #96 guard). Existing files are NOT seeded into
+  // that store — they render in the self-owned panel below.
+  React.useEffect(() => {
+    if (!open) return;
+    clearSession();
+    setRemovedFileKeys(new Set());
+  }, [open, clearSession]);
+
   const typeOptions = React.useMemo(
     () =>
       Array.isArray(typesQuery.data?.data)
@@ -599,15 +717,16 @@ const EditContract: React.FC<Props> = ({
   );
   const awardedOptions = React.useMemo(
     () =>
-      Array.isArray(awardedQuery.data?.data)
-        ? awardedQuery.data.data.map((a) => ({
-            label: `${a.name} — ${a.vendor.name}`,
-            value: a._id,
-            vendorEmail: a.vendor.email,
-            vendorId: a.vendor._id,
-          }))
-        : [],
-    [awardedQuery.data?.data],
+      buildAwardedOptions(
+        awardedQuery.data?.data,
+        contractRes?.data?.data?.solicitation,
+        contractRes?.data?.data?.vendor,
+      ),
+    [
+      awardedQuery.data?.data,
+      contractRes?.data?.data?.solicitation,
+      contractRes?.data?.data?.vendor,
+    ],
   );
 
   const msaOptions = React.useMemo(() => {
@@ -712,10 +831,15 @@ const EditContract: React.FC<Props> = ({
         (t) => t._id === data.termType,
       )?.name;
 
-      const files =
-        (data.documents ?? [])
-          .map((f: any) => toFileMetaOrUndefined(f))
-          .filter(Boolean) ?? [];
+      // Existing files (minus user removals) ∪ new uploads from Step4Form.
+      // Composing from `existingFiles` directly — rather than trusting the
+      // form's `documents` field — is what keeps previously-attached docs from
+      // vanishing on a draft re-save (QA #127).
+      const files = composeContractFiles(
+        existingFiles,
+        removedFileKeys,
+        data.documents as any[] | null | undefined,
+      );
 
       const formatDate = (d: any) =>
         d ? format(d, "yyyy-MM-dd'T'HH:mm:ss") : undefined;
@@ -880,6 +1004,8 @@ const EditContract: React.FC<Props> = ({
       paymentTermsQuery.data?.data,
       signatories,
       termTypesQuery.data?.data,
+      existingFiles,
+      removedFileKeys,
     ],
   );
 
@@ -1086,7 +1212,62 @@ const EditContract: React.FC<Props> = ({
               {step === 4 && <Step5Deliverables control={control} />}
               {step === 6 && <Step6ComplianceSecurity control={control} />}
               {step === 7 && (
-                <Step4Form control={control} documents={watchedDocuments} />
+                <div className="space-y-4">
+                  {visibleExistingFiles.length > 0 && (
+                    <div className="px-6">
+                      <p className="mb-2 text-sm font-medium text-foreground">
+                        Previously uploaded
+                      </p>
+                      <div className="space-y-2">
+                        {visibleExistingFiles.map((f) => {
+                          const key = fileKey(f);
+                          return (
+                            <div
+                              key={key}
+                              className="flex items-center justify-between rounded-lg border border-border bg-secondary p-3"
+                            >
+                              <a
+                                href={f.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex min-w-0 items-center gap-3"
+                              >
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-blue-100 dark:bg-blue-900/30">
+                                  <FileText className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                                </span>
+                                <span className="min-w-0">
+                                  <span className="block truncate text-sm font-medium text-foreground">
+                                    {f.name || "Document"}
+                                  </span>
+                                  {f.size && (
+                                    <span className="block text-xs text-muted-foreground">
+                                      {f.size}
+                                    </span>
+                                  )}
+                                </span>
+                              </a>
+                              <button
+                                type="button"
+                                aria-label={`Remove ${f.name || "document"}`}
+                                onClick={() =>
+                                  setRemovedFileKeys((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(key);
+                                    return next;
+                                  })
+                                }
+                                className="ml-3 shrink-0 text-muted-foreground transition-colors hover:text-red-500"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  <Step4Form control={control} documents={[]} />
+                </div>
               )}
               {step === 8 && <Step7ApprovalLevel control={control} />}
               {step === 9 && <Step8ReviewPublish control={control} />}
