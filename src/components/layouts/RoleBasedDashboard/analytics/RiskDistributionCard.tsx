@@ -10,8 +10,8 @@ type Props = {
 export const RiskDistributionCard: React.FC<Props> = ({ values }) => {
   const v = values || { low: 98, medium: 34, high: 12 };
   const data = [
-    { name: "Low", value: v.low, color: "#10b981" },
-    { name: "Medium", value: v.medium, color: "#f59e0b" },
+    { name: "Low (< $1M)", value: v.low, color: "#10b981" },
+    { name: "Medium ($1M – $5M)", value: v.medium, color: "#f59e0b" },
     { name: "High (> $5M)", value: v.high, color: "#ef4444" },
   ];
   return (
