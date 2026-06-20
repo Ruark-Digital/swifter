@@ -4,7 +4,7 @@ import { Search, Users, MoreHorizontal } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getRequest, putRequest, postRequest } from "@/lib/axiosInstance";
+import { getRequest, putRequest, postRequest, deleteRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { DataTable } from "@/components/layouts/DataTable";
@@ -124,6 +124,7 @@ const UserManagementPage = () => {
   const [isActivateUserOpen, setIsActivateUserOpen] = useState(false);
   const [isSuspendUserOpen, setIsSuspendUserOpen] = useState(false);
   const [isUnsuspendUserOpen, setIsUnsuspendUserOpen] = useState(false);
+  const [isDeleteUserOpen, setIsDeleteUserOpen] = useState(false);
 
   // Initialize filters from URL parameters
   useEffect(() => {
@@ -213,6 +214,31 @@ const UserManagementPage = () => {
     },
   });
 
+  // Delete user mutation — frees a resigned/inactive user's seat (QA #130).
+  // DELETE /users/{id} exists (also used by UserDetailsSheet); the older
+  // "no delete endpoint" note above predates it.
+  const { mutateAsync: deleteUser, isPending: isDeletingUser } = useMutation<
+    ApiResponse<any>,
+    ApiResponseError,
+    string
+  >({
+    mutationKey: ["deleteUser"],
+    mutationFn: async (userId) => await deleteRequest({ url: `/users/${userId}` }),
+    onSuccess: () => {
+      toast.success("Delete User", "User deleted successfully");
+      setSelectedUserId(null);
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+    onError: (error) => {
+      setSelectedUserId(null);
+      const err = error as ApiResponseError;
+      toast.error(
+        "Delete User",
+        err?.response?.data?.message ?? "Failed to delete user"
+      );
+    },
+  });
+
   // Send reminder invite mutation
   const { mutateAsync: sendReminderInvite, isPending: isSendingReminder } =
     useMutation<ApiResponse<any>, ApiResponseError, string>({
@@ -270,6 +296,16 @@ const UserManagementPage = () => {
     try {
       await updateUserStatus({ userId, status: "active" });
       setIsUnsuspendUserOpen(false);
+    } catch (error) {
+      // Error is already handled in onError callback
+    }
+  };
+
+  // Handle delete user
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      await deleteUser(userId);
+      setIsDeleteUserOpen(false);
     } catch (error) {
       // Error is already handled in onError callback
     }
@@ -485,6 +521,17 @@ const UserManagementPage = () => {
                       Activate User
                     </DropdownMenuItem>
                   ) : null}
+
+                  {/* Delete frees a resigned/inactive user's seat (QA #130). */}
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setSelectedUserId(row.original?.userId ?? "");
+                      setIsDeleteUserOpen(true);
+                    }}
+                    className="p-3 text-red-600 dark:text-red-400"
+                  >
+                    Delete User
+                  </DropdownMenuItem>
                 </>
               )}
             </DropdownMenuContent>
@@ -663,6 +710,15 @@ const UserManagementPage = () => {
         title="Unsuspend User"
         isLoading={isDeactivatingUser}
         onPrimaryAction={() => handleUnsuspendUser(selectedUserId ?? "")}
+      />
+
+      <ConfirmAlert
+        open={isDeleteUserOpen}
+        onClose={setIsDeleteUserOpen}
+        text="Are you sure you want to delete this user? This permanently removes their account and frees their seat. This action cannot be undone."
+        title="Delete User"
+        isLoading={isDeletingUser}
+        onPrimaryAction={() => handleDeleteUser(selectedUserId ?? "")}
       />
 
       {/* Send Reminder Dialog */}
