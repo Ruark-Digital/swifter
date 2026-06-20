@@ -828,7 +828,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
           <div className="flex flex-col justify-center gap-4">
             <div className="text-sm leading-7 text-[#6B6B6B] dark:text-slate-400">Holdback</div>
             <div className="text-base font-semibold leading-7 text-[#0F0F0F] dark:text-slate-100">
-              {holdbackValue}
+              {holdbackValue === "-" ? "-" : `${holdbackValue}%`}
             </div>
           </div>
 
