@@ -298,7 +298,7 @@ const mapStatusToLabel = (
   status: ContractApi["status"],
 ): ContractRow["status"] => {
   if (status === "active") return "Active";
-  if (status === "publish") return "Publish";
+  if (status === "publish") return "Published";
   if (status === "draft") return "Draft";
   if (status === "expired") return "Expired";
   if (status === "terminated") return "Terminated";
