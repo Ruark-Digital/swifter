@@ -17,6 +17,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import LinkedContractsHeader from "./LinkedContractsHeader";
 import {
   useProjectDetail,
+  useProjectContracts,
   useCompleteProject,
   useUpdateProject,
   type Project,
@@ -258,6 +259,12 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     isError: isProjectError,
     refetch: refetchProject,
   } = useProjectDetail(projectId);
+
+  // Linked contracts come from the dedicated endpoint, not the project-detail
+  // response (whose `contract` array is not populated) — QA #136.
+  const { data: contractsRes, isLoading: isContractsLoading } =
+    useProjectContracts(projectId);
+  const linkedContracts = contractsRes?.data?.data ?? [];
 
   const completeMutation = useCompleteProject(projectId);
   const updateMutation = useUpdateProject(projectId);
@@ -534,7 +541,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                   container:
                     "bg-white dark:bg-slate-950 rounded-xl px-3 border border-gray-300 dark:border-slate-600",
                 }}
-                data={(projectRes?.data?.data?.contract ?? [])
+                data={linkedContracts
                   .filter((c) =>
                     searchQuery
                       ? c.title
@@ -574,7 +581,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                 options={{
                   disableSelection: true,
                   disablePagination: true,
-                  isLoading: isProjectLoading,
+                  isLoading: isContractsLoading,
                 }}
                 emptyPlaceholder={
                   <GenericEmptyState
