@@ -67,11 +67,13 @@ describe("EditContract payload helpers", () => {
     ]);
   });
 
-  it("keeps draft status when contract status is draft", () => {
+  it("keeps drafts as draft and routes everything else through pending_approval", () => {
+    // Per commit dee2af6ff: edits to a non-draft contract re-enter the
+    // approval workflow ("pending_approval") rather than publishing directly.
     expect(resolveContractSaveStatus("draft")).toBe("draft");
-    expect(resolveContractSaveStatus("publish")).toBe("publish");
-    expect(resolveContractSaveStatus("active")).toBe("publish");
-    expect(resolveContractSaveStatus(null)).toBe("publish");
+    expect(resolveContractSaveStatus("publish")).toBe("pending_approval");
+    expect(resolveContractSaveStatus("active")).toBe("pending_approval");
+    expect(resolveContractSaveStatus(null)).toBe("pending_approval");
   });
 });
 
