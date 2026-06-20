@@ -164,6 +164,10 @@ export interface ContractDetail {
   currency:               string;
   contractValue:          number;
   contigency:             string;
+  /** API v2.3.0 corrected the spelling on the contract-detail response
+   *  (ContractServiceDetail.contingency). Accept either; `contigency`
+   *  is the legacy key. */
+  contingency?:           string;
   holdBack:               number;
   holdBackBank:           number;
   paymentTerms:           Company;
