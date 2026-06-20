@@ -231,9 +231,11 @@ const VendorView: React.FC<ViewProps> = ({
   showDurations = true,
 }) => (
   <>
-    <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-      {/* Column 1 */}
-      <div className="space-y-4">
+    {/* Single auto-flowing grid so fields distribute evenly across the three
+        columns — the old fixed 3-stack layout left the first column half-empty
+        (only 2 fields vs 4) on the Vendor/PM view, causing the left-side gap
+        (QA #161). */}
+    <div className="grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-3">
         <div className="flex flex-col gap-1">
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Name</span>
           <span className="text-slate-900 dark:text-slate-100 font-medium">
@@ -259,10 +261,6 @@ const VendorView: React.FC<ViewProps> = ({
             <span className="text-slate-900 dark:text-slate-100">{executionDuration}</span>
           </div>
         )}
-      </div>
-
-      {/* Column 2 */}
-      <div className="space-y-4">
         <div className="flex flex-col gap-1">
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract ID</span>
           <span className="text-slate-900 dark:text-slate-100">
@@ -301,10 +299,6 @@ const VendorView: React.FC<ViewProps> = ({
             <span className="text-slate-900 dark:text-slate-100">N/A</span>
           )}
         </div>
-      </div>
-
-      {/* Column 3 */}
-      <div className="space-y-4">
         <div className="flex flex-col gap-1">
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Relationship</span>
           <span className="text-slate-900 dark:text-slate-100">{relationshipLabel}</span>
@@ -331,7 +325,6 @@ const VendorView: React.FC<ViewProps> = ({
             {status.label}
           </Badge>
         </div>
-      </div>
     </div>
 
     <div className="space-y-2 pt-4">
