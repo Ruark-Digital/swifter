@@ -7,26 +7,12 @@ import { Toaster } from "./components/ui/toaster";
 import Loading from "@/components/ui/Spinner";
 import AIChatWidget from "./components/layouts/AIChatWidget";
 import { useAuthentication } from "@/hooks/useAuthentication";
-import { useUserRole } from "@/hooks/useUserRole";
 import { useToken, useUser } from "@/store/authSlice";
-import type { UserRole } from "@/types";
 
 const MCP_BASE_URL = "https://dev.swiftpro.tech";
 
-const CHAT_ENDPOINT: Partial<Record<UserRole, string>> = {
-  vendor: "/chat/vendor",
-  approver: "/chat/approver",
-  contract_manager: "/chat/manager",
-  procurement: "/chat/rfp",
-  project_manager: "/chat/manager",
-  company_admin: "/chat/manager",
-  super_admin: "/chat/manager",
-  evaluator: "/chat/user",
-  view_only: "/chat/user",
-};
-
-const getChatUrl = (role: UserRole) =>
-  `${MCP_BASE_URL}${CHAT_ENDPOINT[role] ?? "/chat/user"}`;
+// All users share a single chat endpoint.
+const CHAT_URL = `${MCP_BASE_URL}/chat/`;
 
 import * as Sentry from "@sentry/react";
 import { routes } from "./routes";
@@ -71,12 +57,11 @@ const queryClient = new QueryClient({
 
 function App() {
   const isAuthenticated = useAuthentication();
-  const { userRole } = useUserRole();
   const token = useToken();
   const user = useUser();
 
   const postChat = async (message: string, stream: boolean) => {
-    const response = await fetch(getChatUrl(userRole), {
+    const response = await fetch(CHAT_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
