@@ -276,6 +276,7 @@ const MsaUpdateSavingsDialog: React.FC<{
                       label: "Spend Under Management Savings.",
                       value: "Spend Under Management Savings.",
                     },
+                    { label: "Others", value: "Others" },
                   ]}
                 />
               </div>
