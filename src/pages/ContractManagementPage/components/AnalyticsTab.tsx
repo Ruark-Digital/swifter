@@ -833,7 +833,7 @@ const AnalyticsTab: React.FC<Props> = ({
       <div>
         <div className="flex items-center gap-2 mb-4">
           <FileCheck className="h-5 w-5 text-blue-600" />
-          <h3 className="font-semibold text-slate-800 dark:text-slate-100">Documents & Attachments</h3>
+          <h3 className="font-semibold text-slate-800 dark:text-slate-100">Amendments & Insurance</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="border border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
