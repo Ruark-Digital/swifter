@@ -118,7 +118,7 @@ const ActionLogTabContent: React.FC<Props> = () => {
         accessorKey: "module", 
         header: "Module",
         cell: ({ getValue }) => (
-            <span className="capitalize">{getValue<string>()}</span>
+            <span className="capitalize">{getValue<string>().replace(/([a-z])([A-Z])/g, "$1 $2")}</span>
         )
     },
     { accessorKey: "description", header: "Description" },
