@@ -59,7 +59,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
   const [activeView, setActiveView] = React.useState<"policy" | "security">(
     "policy",
   );
-  const { isVendor, isProjectManager, userRole } = useUserRole();
+  const { isVendor, isProjectManager, isManager } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
   const queryClient = useQueryClient();
   const toast = useToastHandler();
@@ -80,7 +80,11 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
     }
     return (details.files?.length ?? 0) > 0;
   }, [activeView, data?.details]);
-  const isContractManager = userRole === "contract_manager";
+  // Manager-type roles = contract_manager OR procurement. A Procurement Lead
+  // can own/create contracts, so they must be able to approve/reject when they
+  // are the owner — gating on contract_manager alone wrongly excluded them
+  // (QA #144/#140). The `owner` check below still restricts it to the owner.
+  const isContractManager = isManager;
 
   const getSubmissionStatus = (type: "policy" | "security") => {
     if (type === "policy") {
