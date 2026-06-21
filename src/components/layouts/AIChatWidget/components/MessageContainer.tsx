@@ -117,7 +117,7 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
     // Custom blockquote styling
     blockquote: ({ children, ...props }: any) => (
       <blockquote
-        className="shadow-[inset_3px_0_0_0_#3b82f6] pl-4 py-2 mb-4 bg-blue-50 dark:bg-blue-900/20 rounded-r-lg"
+        className="shadow-[inset_3px_0_0_0_#07004D] pl-4 py-2 mb-4 bg-[#07004D]/5 dark:bg-violet-900/20 rounded-r-lg"
         {...props}
       >
         <div className="text-gray-700 dark:text-gray-300 italic">
@@ -154,7 +154,7 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
     a: ({ children, href, ...props }: any) => (
       <a
         href={href}
-        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline transition-colors"
+        className="text-[#07004D] dark:text-violet-300 hover:text-[#0a0668] dark:hover:text-violet-200 underline transition-colors"
         target="_blank"
         rel="noopener noreferrer"
         {...props}
@@ -196,12 +196,12 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
           <div className="flex items-center gap-2 flex-1">
             <div className="flex items-center gap-1">
               {isReferencedUser ? (
-                <User className="h-3 w-3 text-green-600" />
+                <User className="h-3 w-3 text-slate-500" />
               ) : (
-                <Bot className="h-3 w-3 text-blue-600" />
+                <Bot className="h-3 w-3 text-[#07004D] dark:text-violet-300" />
               )}
               <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                {isReferencedUser ? "You" : "AI Assistant"}
+                {isReferencedUser ? "You" : "SwiftPro Assistant"}
               </span>
             </div>
             <span className="text-xs text-gray-500 dark:text-gray-500">
@@ -227,8 +227,8 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
       )}
     >
       {!isUser && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-          <Bot className="h-4 w-4 text-white" />
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-[#07004D] font-quicksand text-sm font-bold text-white">
+          S
         </div>
       )}
 
@@ -236,8 +236,8 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
         className={cn(
           "max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-sm",
           isUser
-            ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-br-md"
-            : "bg-white border border-gray-200 text-gray-900 rounded-bl-md dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+            ? "bg-[#07004D] text-white rounded-br-md"
+            : "bg-slate-50 border border-slate-200 text-slate-900 rounded-bl-md dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
         )}
       >
         {/* Referenced message */}
@@ -263,7 +263,7 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
         <div
           className={cn(
             "flex items-center justify-between mt-2 text-xs opacity-70",
-            isUser ? "text-blue-100" : "text-gray-500 dark:text-gray-400"
+            isUser ? "text-white/70" : "text-slate-500 dark:text-slate-400"
           )}
         >
           <span>{formatTime(timestamp)}</span>
@@ -272,8 +272,8 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
       </div>
 
       {isUser && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-          <User className="h-4 w-4 text-white" />
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-slate-200 dark:bg-slate-700">
+          <User className="h-4 w-4 text-slate-600 dark:text-slate-300" />
         </div>
       )}
     </div>

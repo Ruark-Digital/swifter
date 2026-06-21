@@ -26,7 +26,6 @@ import {
   File,
   Image,
   FileText,
-  MessageCircle,
   Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -61,6 +60,12 @@ interface AIChatWidgetProps {
   placeholder?: string;
   welcomeMessage?: string;
 }
+
+const SUGGESTED_PROMPTS = [
+  "Summarize my active contracts",
+  "Show my open solicitations",
+  "What's awaiting my evaluation?",
+];
 
 const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   onSendMessage,
@@ -111,7 +116,8 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   const [customMessages, setCustomMessages] = useState<Message[]>([
     {
       id: "1",
-      content: "Hello! I'm your AI assistant. How can I help you today?",
+      content:
+        "Hi — I'm the SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.",
       sender: "ai",
       timestamp: new Date(),
     },
@@ -131,7 +137,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
             {
               id: "1",
               content:
-                "Hello! I'm your AI assistant. How can I help you today?",
+                "Hi — I'm the SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.",
               sender: "ai",
               timestamp: new Date(),
             },
@@ -142,6 +148,8 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
         }
       }
     : hookClearMessages;
+
+  const hasUserMessage = messages.some((m) => m.sender === "user");
 
   // Position classes mapping
   const positionClasses = useMemo(() => {
@@ -291,12 +299,13 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
     [handleFileSelect]
   );
 
-  const handleSendMessage = async () => {
-    if ((!inputValue.trim() && attachedFiles.length === 0) || isLoading) return;
+  const handleSendMessage = async (overrideText?: string) => {
+    const baseText = overrideText ?? inputValue;
+    if ((!baseText.trim() && attachedFiles.length === 0) || isLoading) return;
 
-    const messageContent = inputValue.trim();
+    const messageContent = baseText.trim();
     // const filesToSend = [...attachedFiles];
-    setInputValue("");
+    if (overrideText === undefined) setInputValue("");
     setAttachedFiles([]);
 
     try {
@@ -506,19 +515,23 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
             <TooltipTrigger asChild>
               <button
                 onClick={toggleChat}
-                className="relative group shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-500/20"
-                aria-label="Open AI Chat"
+                className="group relative flex items-center justify-center rounded-2xl focus:outline-none focus-visible:ring-4 focus-visible:ring-[#07004D]/25"
+                aria-label="Open SwiftPro Assistant"
               >
-                <div className="relative w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-700 rounded-full flex items-center justify-center hover:from-blue-700 hover:to-purple-800 transition-all duration-300">
-                  <MessageCircle className="h-8 w-8 text-white" />
-                </div>
+                <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-[#07004D] font-quicksand text-2xl font-bold text-white shadow-lg shadow-[#07004D]/30 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-xl group-hover:shadow-[#07004D]/40">
+                  S
+                  <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-60"></span>
+                    <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-violet-500 ring-2 ring-white dark:ring-slate-900"></span>
+                  </span>
+                </span>
               </button>
             </TooltipTrigger>
             <TooltipContent
               side="left"
-              className="bg-gray-900 text-white border-gray-700"
+              className="border-[#07004D] bg-[#07004D] text-white"
             >
-              <p>Chat with AI Assistant</p>
+              <p>Ask the SwiftPro Assistant</p>
             </TooltipContent>
           </Tooltip>
         )}
@@ -541,27 +554,32 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
             onDrop={handleDrop}
           >
             {/* Chat Header */}
-            <CardHeader className="p-4 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-t-lg border-b border-slate-700">
+            <CardHeader className="p-4 bg-[#07004D] text-white rounded-t-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                    <Bot className="h-4 w-4 text-white" />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 font-quicksand text-lg font-bold ring-1 ring-white/15">
+                    S
                   </div>
                   <div>
-                    <CardTitle className="text-base font-semibold">
-                      AI Assistant
+                    <CardTitle className="font-quicksand text-base font-semibold tracking-tight">
+                      SwiftPro Assistant
                     </CardTitle>
                     {activeTools.length > 0 ? (
-                      <p className="text-xs text-slate-300 flex items-center gap-1">
-                        <span className="w-1 h-1 bg-blue-400 rounded-full animate-pulse"></span>
-                        Fetching: {activeTools.join(", ")}…
+                      <p className="flex items-center gap-1.5 text-xs text-violet-200">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400"></span>
+                        Consulting {activeTools.join(", ")}…
                       </p>
                     ) : isTyping ? (
-                      <p className="text-xs text-slate-300 flex items-center gap-1">
-                        <span className="w-1 h-1 bg-green-400 rounded-full animate-pulse"></span>
-                        Typing...
+                      <p className="flex items-center gap-1.5 text-xs text-violet-200">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400"></span>
+                        Typing…
                       </p>
-                    ) : null}
+                    ) : (
+                      <p className="flex items-center gap-1.5 text-xs text-white/60">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                        Online
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -667,20 +685,14 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                         .map(renderMessage)}
                       {isLoading && (
                         <div className="flex items-start gap-3 animate-in slide-in-from-bottom-2 duration-300">
-                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                            <Bot className="h-4 w-4 text-white" />
+                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-[#07004D] font-quicksand text-sm font-bold text-white">
+                            S
                           </div>
-                          <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-md px-4 py-3 text-sm shadow-sm dark:bg-gray-800 dark:border-gray-700 relative overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-50 to-transparent dark:via-blue-900/20 animate-pulse"></div>
-                            <div className="relative flex items-center gap-2">
-                              <div className="flex space-x-1">
-                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-                              </div>
-                              <span className="text-gray-500 text-xs font-medium">
-                                AI is thinking...
-                              </span>
+                          <div className="rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                            <div className="flex items-center gap-1.5">
+                              <span className="h-2 w-2 animate-bounce rounded-full bg-[#07004D]/50 [animation-delay:-0.3s] dark:bg-violet-400"></span>
+                              <span className="h-2 w-2 animate-bounce rounded-full bg-[#07004D]/50 [animation-delay:-0.15s] dark:bg-violet-400"></span>
+                              <span className="h-2 w-2 animate-bounce rounded-full bg-[#07004D]/50 dark:bg-violet-400"></span>
                             </div>
                           </div>
                         </div>
@@ -769,6 +781,27 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                   </div>
                 )}
 
+                {/* Suggested prompts (before the first question) */}
+                {!hasUserMessage && !isLoading && attachedFiles.length === 0 && (
+                  <div className="px-4 pb-1 pt-3">
+                    <p className="mb-2 px-1 text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                      Try asking
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {SUGGESTED_PROMPTS.map((prompt) => (
+                        <button
+                          key={prompt}
+                          type="button"
+                          onClick={() => handleSendMessage(prompt)}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-[#07004D] transition-colors hover:border-[#07004D]/30 hover:bg-[#07004D]/5 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                        >
+                          {prompt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Input Area */}
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
                   {isDragOver && (
@@ -792,7 +825,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                         placeholder={placeholder}
                         disabled={isLoading}
                         rows={1}
-                        className="w-full min-h-[44px] max-h-[120px] resize-none pr-12 py-3 px-4 border border-gray-300 focus:border-blue-500 rounded-xl bg-white dark:bg-gray-800 dark:border-gray-600 dark:focus:border-blue-400 text-sm placeholder:text-gray-500 dark:placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 overflow-y-auto transition-all duration-200"
+                        className="w-full min-h-[44px] max-h-[120px] resize-none pr-12 py-3 px-4 border border-slate-300 focus:border-[#07004D] rounded-xl bg-white dark:bg-slate-800 dark:border-slate-600 dark:focus:border-violet-400 text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#07004D]/20 dark:focus-visible:ring-violet-400/30 disabled:cursor-not-allowed disabled:opacity-50 overflow-y-auto transition-all duration-200"
                         style={{
                           height: "auto",
                           minHeight: "44px",
@@ -810,14 +843,14 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          onClick={handleSendMessage}
+                          onClick={() => handleSendMessage()}
                           disabled={
                             (!inputValue.trim() &&
                               attachedFiles.length === 0) ||
                             isLoading
                           }
                           size="icon"
-                          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 rounded-xl h-11 w-11 shadow-lg hover:shadow-xl transition-all duration-200 disabled:shadow-none"
+                          className="bg-[#07004D] hover:bg-[#0a0668] disabled:bg-slate-300 dark:disabled:bg-slate-700 rounded-xl h-11 w-11 shadow-md shadow-[#07004D]/20 hover:shadow-lg transition-all duration-200 disabled:shadow-none"
                         >
                           <Send className="h-5 w-5 text-white" />
                         </Button>
