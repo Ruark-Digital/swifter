@@ -241,12 +241,16 @@ const ContractDetailPage: React.FC = () => {
     user?.projectmanagerId &&
     contractData?.projectManager?.user?._id === user.projectmanagerId,
   );
-  const isContractProjectManagerPending =
-    contractData?.projectManager?.status === "pending";
+  // Keep the approve/reject actions available until the PM has approved.
+  // A prior rejection still lets the PM revisit the decision; only an
+  // "approved" status finalizes it and hides the buttons.
+  const isContractProjectManagerNotApproved =
+    contractData?.projectManager?.status === "pending" ||
+    contractData?.projectManager?.status === "rejected";
 
   const canProjectManagerApprove =
     isContractProjectManager &&
-    isContractProjectManagerPending &&
+    isContractProjectManagerNotApproved &&
     contractData?.status === "pending_approval";
 
   const approvalMutation = useMutation({
