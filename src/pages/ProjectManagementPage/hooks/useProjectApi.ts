@@ -49,13 +49,15 @@ type Contract = {
   _id: string;
   company: string;
   project: string;
-  vendor: string;
-  creator: string;
+  vendor: { _id?: string; name?: string } | null;
+  creator: { _id?: string; name?: string } | null;
   title: string;
+  contractId?: string;
   contractType: "hourly" | "fixed" | "milestone";
   currency?: string;
   ratePerHour?: number;
   totalAmount?: number;
+  contractValue?: number;
   startDate?: string;
   endDate?: string;
   status: "draft" | "pending_approval" | "active" | "completed" | "cancelled";

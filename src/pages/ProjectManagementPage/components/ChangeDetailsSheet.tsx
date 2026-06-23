@@ -164,15 +164,16 @@ const linkedColumns: ColumnDef<ContractRow>[] = [
     accessorKey: "title",
     header: "Contracts",
     cell: ({ row }) => (
-      <div className="flex flex-col">
+      <div className="flex flex-col max-w-[320px] min-w-0">
         <a
           href={`/dashboard/contract-management/${row.original.id}`}
           data-testid="project-name-link"
-          className="font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
+          title={row.original.title}
+          className="block truncate font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
         >
           {row.original.title}
         </a>
-        <span className="text-xs text-slate-500 dark:text-slate-400">
+        <span className="truncate text-xs text-slate-500 dark:text-slate-400">
           {row.original.code}
         </span>
       </div>
@@ -543,16 +544,16 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     id: c._id,
                     title: c.title,
                     code: "",
-                    vendor: c.vendor,
+                    vendor: c.vendor?.name ?? "-",
                     value:
-                      c.totalAmount != null
+                      c.contractValue != null
                         ? new Intl.NumberFormat(undefined, {
                             style: "currency",
                             currency: c.currency ?? "USD",
                             maximumFractionDigits: 0,
-                          }).format(c.totalAmount)
+                          }).format(c.contractValue)
                         : undefined,
-                    owner: c.creator,
+                    owner: c.creator?.name ?? "-",
                     published: c.startDate
                       ? formatDateTZ(c.startDate, "MMM d, yyyy")
                       : undefined,
