@@ -67,9 +67,15 @@ type Props = {
       performance?: string;
     }>;
   };
+  selectedRange?: string;
+  onRangeChange?: (value: string) => void;
 };
 
-export const VendorPerformanceSummaryCard: React.FC<Props> = ({ data }) => {
+export const VendorPerformanceSummaryCard: React.FC<Props> = ({
+  data,
+  selectedRange = "ytd",
+  onRangeChange,
+}) => {
   const rows: VendorRow[] =
     data?.rows && Array.isArray(data.rows) && data.rows.length > 0
       ? data.rows.map((r) => {
@@ -136,12 +142,16 @@ export const VendorPerformanceSummaryCard: React.FC<Props> = ({ data }) => {
         </div>
       </CardHeader>
       <CardContent className="pt-0 flex-1 min-h-0 overflow-y-auto">
-        <Tabs value="ytd" className="w-full mb-3">
+        <Tabs
+          value={selectedRange}
+          onValueChange={(value) => onRangeChange?.(value)}
+          className="w-full mb-3"
+        >
           {/* Horizontal scroll on overflow; `!flex-none shrink-0` defeats
               shadcn TabsTrigger's baked-in `flex-1` so pills don't stretch. */}
           <TabsList className="bg-transparent p-0 gap-2 flex overflow-x-auto h-auto w-full justify-start">
             <TabsTrigger
-              className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467] dark:bg-slate-800 dark:text-slate-100 data-[state=active]:bg-[#F0F0F0] data-[state=active]:dark:bg-slate-800"
+              className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-[#667085] dark:text-slate-400 data-[state=active]:bg-[#F0F0F0] data-[state=active]:text-[#2A4467] data-[state=active]:dark:bg-slate-800 data-[state=active]:dark:text-slate-100"
               value="ytd"
             >
               YTD
@@ -150,7 +160,7 @@ export const VendorPerformanceSummaryCard: React.FC<Props> = ({ data }) => {
               <TabsTrigger
                 key={t}
                 value={t.replace(/\s+/g, "")}
-                className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-[#667085] dark:text-slate-400"
+                className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-[#667085] dark:text-slate-400 data-[state=active]:bg-[#F0F0F0] data-[state=active]:text-[#2A4467] data-[state=active]:dark:bg-slate-800 data-[state=active]:dark:text-slate-100"
               >
                 {t}
               </TabsTrigger>

@@ -28,6 +28,10 @@ import { EmptyState as GenericEmptyState } from "@/components/ui/empty-state";
 import { ApiResponseError } from "@/types";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { formatDateTZ } from "@/lib/utils";
+import {
+  ContractStatusBadge,
+  type Status,
+} from "@/pages/ContractManagementPage/components/StatusBadge";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import CreateProjectDialog from "./CreateProjectDialog";
 
@@ -152,7 +156,7 @@ type ContractRow = {
   owner: string;
   published?: string;
   endDate?: string;
-  status: "Active" | "Draft" | "Expired" | "Terminated" | "Suspended";
+  status?: Status;
 };
 
 const linkedColumns: ColumnDef<ContractRow>[] = [
@@ -160,15 +164,16 @@ const linkedColumns: ColumnDef<ContractRow>[] = [
     accessorKey: "title",
     header: "Contracts",
     cell: ({ row }) => (
-      <div className="flex flex-col">
+      <div className="flex flex-col max-w-[320px] min-w-0">
         <a
           href={`/dashboard/contract-management/${row.original.id}`}
           data-testid="project-name-link"
-          className="font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
+          title={row.original.title}
+          className="block truncate font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
         >
           {row.original.title}
         </a>
-        <span className="text-xs text-slate-500 dark:text-slate-400">
+        <span className="truncate text-xs text-slate-500 dark:text-slate-400">
           {row.original.code}
         </span>
       </div>
@@ -203,23 +208,9 @@ const linkedColumns: ColumnDef<ContractRow>[] = [
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ getValue }) => {
-      const s = getValue<ContractRow["status"]>();
-      const tone =
-        s === "Active"
-          ? "bg-green-100 text-green-700"
-          : s === "Draft"
-          ? "bg-slate-100 text-slate-700"
-          : "bg-red-100 text-red-700";
-      return (
-        <span
-          data-testid="contract-status-badge"
-          className={`px-2 py-1 rounded-full text-xs font-medium ${tone}`}
-        >
-          {s}
-        </span>
-      );
-    },
+    cell: ({ getValue }) => (
+      <ContractStatusBadge status={getValue<ContractRow["status"]>()} />
+    ),
   },
   {
     id: "actions",
@@ -553,29 +544,23 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     id: c._id,
                     title: c.title,
                     code: "",
-                    vendor: c.vendor,
+                    vendor: c.vendor?.name ?? "-",
                     value:
-                      c.totalAmount != null
+                      c.contractValue != null
                         ? new Intl.NumberFormat(undefined, {
                             style: "currency",
                             currency: c.currency ?? "USD",
                             maximumFractionDigits: 0,
-                          }).format(c.totalAmount)
+                          }).format(c.contractValue)
                         : undefined,
-                    owner: c.creator,
+                    owner: c.creator?.name ?? "-",
                     published: c.startDate
                       ? formatDateTZ(c.startDate, "MMM d, yyyy")
                       : undefined,
                     endDate: c.endDate
                       ? formatDateTZ(c.endDate, "MMM d, yyyy")
                       : undefined,
-                    status: (c.status === "active"
-                      ? "Active"
-                      : c.status === "draft"
-                      ? "Draft"
-                      : c.status === "completed"
-                      ? "Expired"
-                      : "Suspended") as ContractRow["status"],
+                    status: c.status,
                   }))}
                 columns={linkedColumns}
                 options={{
