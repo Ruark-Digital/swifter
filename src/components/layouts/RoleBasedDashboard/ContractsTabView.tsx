@@ -243,23 +243,65 @@ export const ContractsTabView: React.FC<ContractsTabViewProps> = ({
                 onFilterChange("vendor-contract-value", value)
               }
             />
-            <ProjectValueCard rows={contractManagerProjectContractValue} />
+            <ProjectValueCard
+              rows={contractManagerProjectContractValue}
+              selectedRange={chartFilters["project-contract-value"] ?? "ytd"}
+              onRangeChange={(value) =>
+                onFilterChange("project-contract-value", value)
+              }
+            />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <RiskDistributionCard values={contractManagerRiskDistribution} />
-            <ChangeOrdersImpactCard data={contractManagerChangeOrderImpact} />
-            <CategoryValueCard rows={contractManagerCategoryValue} />
+            <RiskDistributionCard
+              values={contractManagerRiskDistribution}
+              selectedRange={chartFilters["risk-distribution"] ?? "ytd"}
+              onRangeChange={(value) =>
+                onFilterChange("risk-distribution", value)
+              }
+            />
+            <ChangeOrdersImpactCard
+              data={contractManagerChangeOrderImpact}
+              selectedRange={chartFilters["change-order-impact"] ?? "ytd"}
+              onRangeChange={(value) =>
+                onFilterChange("change-order-impact", value)
+              }
+            />
+            <CategoryValueCard
+              rows={contractManagerCategoryValue}
+              selectedRange={chartFilters["category-value"] ?? "ytd"}
+              onRangeChange={(value) => onFilterChange("category-value", value)}
+            />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <ComplianceStatusCard data={contractManagerComplianceStatus} />
-            <ClauseIntelligenceCard data={contractManagerClauseIntelligence} />
-            <ContractStatusCard data={contractManagerContractStatus} />
+            <ComplianceStatusCard
+              data={contractManagerComplianceStatus}
+              selectedRange={chartFilters["compliance-status"] ?? "ytd"}
+              onRangeChange={(value) =>
+                onFilterChange("compliance-status", value)
+              }
+            />
+            <ClauseIntelligenceCard
+              data={contractManagerClauseIntelligence}
+              selectedRange={chartFilters["clause-intelligence"] ?? "ytd"}
+              onRangeChange={(value) =>
+                onFilterChange("clause-intelligence", value)
+              }
+            />
+            <ContractStatusCard
+              data={contractManagerContractStatus}
+              selectedRange={chartFilters["contract-status"] ?? "ytd"}
+              onRangeChange={(value) => onFilterChange("contract-status", value)}
+            />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <VendorPerformanceSummaryCard data={contractManagerVendorSummary} />
+            <VendorPerformanceSummaryCard
+              data={contractManagerVendorSummary}
+              selectedRange={chartFilters["vendor-summary"] ?? "ytd"}
+              onRangeChange={(value) => onFilterChange("vendor-summary", value)}
+            />
             <RenewalsTimelineCard data={contractManagerRenewals} />
           </div>
           <AiInsightsAlerts

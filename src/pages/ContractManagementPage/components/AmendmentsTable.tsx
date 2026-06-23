@@ -250,7 +250,7 @@ const VendorRejectDialog: React.FC<{
       <DialogContent className="w-[700px] h-fit p-8 rounded-2xl border-0 flex flex-col gap-6">
         <div className="flex items-start justify-between">
           <div className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
-            Reject Review
+            Reject Amendment
           </div>
           <button type="button" onClick={onClose} className="text-[#E53935]">
             <X className="h-6 w-6" />
@@ -259,12 +259,12 @@ const VendorRejectDialog: React.FC<{
 
         <div className="space-y-3">
           <div className="text-sm font-medium text-[#3D3D3D] dark:text-slate-300">
-            Why are you rejecting this deliverable?
+            Why are you rejecting this amendment?
           </div>
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Duration"
+            placeholder="Reason for rejection"
             className="h-[120px] w-full resize-none rounded-lg border border-[#E5E7EB] p-4 text-sm text-[#0F0F0F] dark:text-slate-100 placeholder:text-[#6B7280] dark:text-slate-400/50"
           />
         </div>
@@ -283,7 +283,7 @@ const VendorRejectDialog: React.FC<{
             onClick={onConfirm}
             className="w-[306px] rounded-xl bg-[#E53935] h-11 text-base font-semibold text-white disabled:opacity-60"
           >
-            {isPending ? "Rejecting..." : "Reject Review"}
+            {isPending ? "Rejecting..." : "Reject Amendment"}
           </button>
         </div>
       </DialogContent>
@@ -1278,7 +1278,7 @@ const AmendmentsTable: React.FC<Props> = ({
                 ? "bg-[#FACC151A] text-[#FACC15]"
                 : "bg-[#E539351A] text-[#E53935]";
           return (
-            <div className="flex w-[120px] items-center justify-center py-2">
+            <div className="flex w-[120px] items-center justify-start py-2">
               <div className={`rounded-xl px-[18px] py-[6px] ${tone}`}>
                 <span className="text-xs font-semibold leading-[15px]">
                   {s}

@@ -375,7 +375,7 @@ const mapVendorContractsToRows = (
       code: c.contractId,
       company: mapCompanyLabel(c.company, c.vendor),
       contractRelationship: mapContractRelationshipLabel(c.contractRelationship),
-      value,
+      value: value != null ? `$${value}` : undefined,
       published: c.datePublished
         ? formatDate(c.datePublished, "dd MMM yyyy")
         : undefined,
