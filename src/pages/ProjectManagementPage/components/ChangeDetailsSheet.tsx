@@ -28,6 +28,10 @@ import { EmptyState as GenericEmptyState } from "@/components/ui/empty-state";
 import { ApiResponseError } from "@/types";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { formatDateTZ } from "@/lib/utils";
+import {
+  ContractStatusBadge,
+  type Status,
+} from "@/pages/ContractManagementPage/components/StatusBadge";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import CreateProjectDialog from "./CreateProjectDialog";
 
@@ -152,7 +156,7 @@ type ContractRow = {
   owner: string;
   published?: string;
   endDate?: string;
-  status: "Active" | "Draft" | "Expired" | "Terminated" | "Suspended";
+  status?: Status;
 };
 
 const linkedColumns: ColumnDef<ContractRow>[] = [
@@ -203,23 +207,9 @@ const linkedColumns: ColumnDef<ContractRow>[] = [
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ getValue }) => {
-      const s = getValue<ContractRow["status"]>();
-      const tone =
-        s === "Active"
-          ? "bg-green-100 text-green-700"
-          : s === "Draft"
-          ? "bg-slate-100 text-slate-700"
-          : "bg-red-100 text-red-700";
-      return (
-        <span
-          data-testid="contract-status-badge"
-          className={`px-2 py-1 rounded-full text-xs font-medium ${tone}`}
-        >
-          {s}
-        </span>
-      );
-    },
+    cell: ({ getValue }) => (
+      <ContractStatusBadge status={getValue<ContractRow["status"]>()} />
+    ),
   },
   {
     id: "actions",
@@ -569,13 +559,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     endDate: c.endDate
                       ? formatDateTZ(c.endDate, "MMM d, yyyy")
                       : undefined,
-                    status: (c.status === "active"
-                      ? "Active"
-                      : c.status === "draft"
-                      ? "Draft"
-                      : c.status === "completed"
-                      ? "Expired"
-                      : "Suspended") as ContractRow["status"],
+                    status: c.status,
                   }))}
                 columns={linkedColumns}
                 options={{

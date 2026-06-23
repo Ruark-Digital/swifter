@@ -67,9 +67,15 @@ type Props = {
       performance?: string;
     }>;
   };
+  selectedRange?: string;
+  onRangeChange?: (value: string) => void;
 };
 
-export const VendorPerformanceSummaryCard: React.FC<Props> = ({ data }) => {
+export const VendorPerformanceSummaryCard: React.FC<Props> = ({
+  data,
+  selectedRange = "ytd",
+  onRangeChange,
+}) => {
   const rows: VendorRow[] =
     data?.rows && Array.isArray(data.rows) && data.rows.length > 0
       ? data.rows.map((r) => {
@@ -136,7 +142,11 @@ export const VendorPerformanceSummaryCard: React.FC<Props> = ({ data }) => {
         </div>
       </CardHeader>
       <CardContent className="pt-0 flex-1 min-h-0 overflow-y-auto">
-        <Tabs value="ytd" className="w-full mb-3">
+        <Tabs
+          value={selectedRange}
+          onValueChange={(value) => onRangeChange?.(value)}
+          className="w-full mb-3"
+        >
           {/* Horizontal scroll on overflow; `!flex-none shrink-0` defeats
               shadcn TabsTrigger's baked-in `flex-1` so pills don't stretch. */}
           <TabsList className="bg-transparent p-0 gap-2 flex overflow-x-auto h-auto w-full justify-start">

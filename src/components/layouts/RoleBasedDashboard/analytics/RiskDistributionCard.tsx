@@ -5,9 +5,15 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 
 type Props = {
   values?: { low: number; medium: number; high: number };
+  selectedRange?: string;
+  onRangeChange?: (value: string) => void;
 };
 
-export const RiskDistributionCard: React.FC<Props> = ({ values }) => {
+export const RiskDistributionCard: React.FC<Props> = ({
+  values,
+  selectedRange = "ytd",
+  onRangeChange,
+}) => {
   const v = values || { low: 98, medium: 34, high: 12 };
   const data = [
     { name: "Low (< $1M)", value: v.low, color: "#10b981" },
@@ -20,7 +26,11 @@ export const RiskDistributionCard: React.FC<Props> = ({ values }) => {
         <CardTitle className="text-[16px] font-semibold text-[#030712] dark:text-slate-100">
           Risk Distribution
         </CardTitle>
-        <Tabs value="ytd" className="w-full">
+        <Tabs
+          value={selectedRange}
+          onValueChange={(value) => onRangeChange?.(value)}
+          className="w-full"
+        >
           {/* Horizontal scroll on overflow; `!flex-none shrink-0` defeats
               shadcn TabsTrigger's baked-in `flex-1` so pills don't stretch. */}
           <TabsList className="bg-transparent p-0 gap-2 flex overflow-x-auto h-auto w-full justify-start">

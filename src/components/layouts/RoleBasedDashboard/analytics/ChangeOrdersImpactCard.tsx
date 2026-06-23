@@ -20,9 +20,15 @@ type ApiData = {
 
 type Props = {
   data?: ApiData;
+  selectedRange?: string;
+  onRangeChange?: (value: string) => void;
 };
 
-export const ChangeOrdersImpactCard: React.FC<Props> = ({ data }) => {
+export const ChangeOrdersImpactCard: React.FC<Props> = ({
+  data,
+  selectedRange = "ytd",
+  onRangeChange,
+}) => {
   const chart = (
     data?.chartData && data.chartData.length > 0 ? data.chartData : []
   ).map((d) => ({
@@ -45,7 +51,11 @@ export const ChangeOrdersImpactCard: React.FC<Props> = ({ data }) => {
             <span className="inline-block w-3 h-3 rounded-sm bg-[#E5E7EB] dark:bg-slate-700" />
           </div>
         </div>
-        <Tabs value="ytd" className="w-full">
+        <Tabs
+          value={selectedRange}
+          onValueChange={(value) => onRangeChange?.(value)}
+          className="w-full"
+        >
           {/* Horizontal scroll on overflow; `!flex-none shrink-0` defeats
               shadcn TabsTrigger's baked-in `flex-1` so pills don't stretch. */}
           <TabsList className="bg-transparent p-0 gap-2 flex overflow-x-auto h-auto w-full justify-start">

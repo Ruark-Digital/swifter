@@ -15,9 +15,15 @@ type Props = {
     mostNegotiatedClauses?: Array<{ category: string; count: number }>;
     highRiskClauseTypes?: Array<{ category: string; contracts: number; severity: string }>;
   };
+  selectedRange?: string;
+  onRangeChange?: (value: string) => void;
 };
 
-export const ClauseIntelligenceCard: React.FC<Props> = ({ data }) => {
+export const ClauseIntelligenceCard: React.FC<Props> = ({
+  data,
+  selectedRange = "ytd",
+  onRangeChange,
+}) => {
   const mostNegotiated =
     data?.mostNegotiatedClauses &&
     Array.isArray(data.mostNegotiatedClauses) &&
@@ -63,7 +69,11 @@ export const ClauseIntelligenceCard: React.FC<Props> = ({ data }) => {
         <CardTitle className="text-[16px] font-semibold text-[#030712] dark:text-slate-100">
           Clause Intelligence (Portfolio Level)
         </CardTitle>
-        <Tabs value="ytd" className="w-full">
+        <Tabs
+          value={selectedRange}
+          onValueChange={(value) => onRangeChange?.(value)}
+          className="w-full"
+        >
           {/* Horizontal scroll on overflow; `!flex-none shrink-0` defeats
               shadcn TabsTrigger's baked-in `flex-1` so pills don't stretch. */}
           <TabsList className="bg-transparent p-0 gap-2 flex overflow-x-auto h-auto w-full justify-start">
