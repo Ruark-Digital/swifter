@@ -64,7 +64,7 @@ export const CycleTimeCard: React.FC<Props> = ({
               value="ytd"
               className={cn(
                 "!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold",
-                "bg-[#F0F0F0] text-[#2A4467] dark:bg-slate-800 dark:text-slate-100 data-[state=active]:bg-[#F0F0F0] data-[state=active]:dark:bg-slate-800"
+                "text-[#667085] dark:text-slate-400 data-[state=active]:bg-[#F0F0F0] data-[state=active]:text-[#2A4467] data-[state=active]:dark:bg-slate-800 data-[state=active]:dark:text-slate-100"
               )}
             >
               YTD
@@ -73,7 +73,7 @@ export const CycleTimeCard: React.FC<Props> = ({
               <TabsTrigger
                 key={t}
                 value={t.replace(/\s+/g, "")}
-                className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-[#667085] dark:text-slate-400"
+                className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-[#667085] dark:text-slate-400 data-[state=active]:bg-[#F0F0F0] data-[state=active]:text-[#2A4467] data-[state=active]:dark:bg-slate-800 data-[state=active]:dark:text-slate-100"
               >
                 {t}
               </TabsTrigger>
