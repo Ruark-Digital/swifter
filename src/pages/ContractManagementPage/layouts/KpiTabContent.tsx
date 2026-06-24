@@ -5,14 +5,20 @@ import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { format } from "date-fns";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
+import { useUserRole } from "@/hooks/useUserRole";
 
 type Props = {
   contractId: string;
   currency?: string;
   isActive?: boolean;
+  owner?: boolean;
 };
 
-const KpiTabContent: React.FC<Props> = ({ contractId, isActive }) => {
+const KpiTabContent: React.FC<Props> = ({ contractId, isActive, owner }) => {
+  const { isManager, isCompanyAdmin } = useUserRole();
+  // Only the contract's owner/manager may update KPI scores. A CM who isn't
+  // the owner can still view but not update (mirrors the Approvers tab gate).
+  const canUpdate = (isManager || isCompanyAdmin) && Boolean(owner);
   const { data, isLoading } = useQuery({
     queryKey: ["contract-kpis", contractId],
     queryFn: async () => {
@@ -67,7 +73,7 @@ const KpiTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       {isLoading ? (
         <div className="flex items-center justify-center h-20">Loading...</div>
       ) : (
-        <KpiTable rows={rows} contractId={contractId} />
+        <KpiTable rows={rows} contractId={contractId} canUpdate={canUpdate} />
       )}
     </TabsContent>
   );
