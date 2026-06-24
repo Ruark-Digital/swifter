@@ -111,6 +111,9 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
 
   const canManagerActOnActive = React.useMemo(() => {
     if (!isContractManager) return false;
+    // Bulk approve/reject is policy-only. Contract *security* uses per-item
+    // approve/reject inside the detail sheet (see ComplianceDetailsSheet).
+    if (activeView !== "policy") return false;
     // Only the contract owner/manager may approve/reject — a CM/PL who isn't
     // the owner must not see these buttons (QA #140/#144).
     if (!owner) return false;
@@ -333,6 +336,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
               basePath={basePath}
               currency={currency}
               actionsDisabled={!!actionsDisabled}
+              canApprove={isContractManager && !!owner}
               trigger={
                 <Button
                   variant="link"
@@ -346,7 +350,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         },
       },
     ],
-    [isContractVendorLike, contractId, basePath],
+    [contractId, basePath, currency, actionsDisabled, isContractManager, owner],
   );
 
   const policyRows: PolicyRow[] = useMemo(() => {
@@ -375,7 +379,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
       }
 
       return {
-        id: s._id || "",
+        id: s._id || s.securityTypeId || "",
         securityId: s.securityTypeId || s._id || "-",
         securityType: formatSecurityType(s.securityType),
         amount: formatMoneyNoSymbol(s.amount),
@@ -503,19 +507,37 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
               Security Type
             </p>
             <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
-              {data?.details?.securityType &&
-              Array.isArray(data.details.securityType)
-                ? data.details.securityType
-                    .map((t) => formatSecurityType(t.securityType))
-                    .filter((label) => label && label !== "-")
-                    .join(", ") || "-"
-                : data?.details?.securityType &&
-                    typeof data.details.securityType === "object"
-                  ? formatSecurityType(
-                      (data.details.securityType as { securityType?: string })
-                        .securityType,
-                    )
-                  : "-"}
+              {(() => {
+                // Prefer the names of the actual securities on the contract.
+                const itemNames = Array.from(
+                  new Set(
+                    (data?.security ?? [])
+                      .map((s) => formatSecurityType(s.securityType))
+                      .filter((label) => label && label !== "-"),
+                  ),
+                );
+                if (itemNames.length) return itemNames.join(", ");
+
+                // Fallback to the summary `details.securityType` shape.
+                if (Array.isArray(data?.details?.securityType)) {
+                  return (
+                    data.details.securityType
+                      .map((t) => formatSecurityType(t.securityType))
+                      .filter((label) => label && label !== "-")
+                      .join(", ") || "-"
+                  );
+                }
+                if (
+                  data?.details?.securityType &&
+                  typeof data.details.securityType === "object"
+                ) {
+                  return formatSecurityType(
+                    (data.details.securityType as { securityType?: string })
+                      .securityType,
+                  );
+                }
+                return "-";
+              })()}
             </p>
           </div>
         </div>
