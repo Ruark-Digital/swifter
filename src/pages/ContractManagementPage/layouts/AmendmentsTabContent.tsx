@@ -24,6 +24,7 @@ import {
 import { useUserRole } from "@/hooks/useUserRole";
 import { getRequest } from "@/lib/axiosInstance";
 import { formatFileSize, getSimpleFileExtension } from "@/lib/fileUtils";
+import { toAmendmentDateTimeValue } from "../utils/amendmentDate";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -250,10 +251,7 @@ export const CreateAmendmentDialog: React.FC<{
       if (data.timeImpactDays) {
         changes.push({
           field: "time",
-          value:
-            data.timeImpactDays instanceof Date
-              ? data.timeImpactDays.toISOString()
-              : String(data.timeImpactDays),
+          value: toAmendmentDateTimeValue(data.timeImpactDays),
         });
       }
     }
@@ -275,10 +273,7 @@ export const CreateAmendmentDialog: React.FC<{
       if (data.expiryEnabled && data.newExpiryDate) {
         changes.push({
           field: "time",
-          value:
-            data.newExpiryDate instanceof Date
-              ? data.newExpiryDate.toISOString()
-              : String(data.newExpiryDate),
+          value: toAmendmentDateTimeValue(data.newExpiryDate),
         });
       }
       if (data.costEnabled && data.otherCost) {
@@ -783,12 +778,12 @@ const AmendmentsTabContent: React.FC<Props> = ({
   return (
     <TabsContent value="amendments" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100 dark:text-slate-100">Amendments</h3>
+        <h3 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">Amendments</h3>
         <div className="flex items-center gap-4">
           <ExportReportSheet contractId={contractId} contractType="Contract">
             <Button
               variant="outline"
-              className="rounded-xl border-[#E5E7EB] dark:border-slate-700 px-4 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 dark:text-slate-100"
+              className="rounded-xl border-[#E5E7EB] dark:border-slate-700 px-4 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
             >
               <img
                 src="/assets/contract-management/amendments/share.svg"

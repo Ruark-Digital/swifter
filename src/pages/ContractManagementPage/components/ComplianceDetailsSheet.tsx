@@ -11,12 +11,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Eye, Download } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
-import { getRequest } from "@/lib/axiosInstance";
+import { getRequest, patchRequest } from "@/lib/axiosInstance";
 import { getFileIcon } from "@/lib/fileUtils";
 import { ContractComplianceDTO } from "../api/contractManagerApi";
 import Spinner from "@/components/ui/Spinner";
+import { Button } from "@/components/ui/button";
+import { useToastHandler } from "@/hooks/useToaster";
 import { formatSecurityType } from "@/lib/utils";
 
 type PolicyItem = NonNullable<ContractComplianceDTO["policy"]>[number];
@@ -31,6 +33,9 @@ interface ComplianceDetailsSheetProps {
   currency?: string;
   data?: PolicyItem | SecurityItem;
   actionsDisabled?: boolean;
+  /** When true (contract security only — manager + owner), renders a per-item
+   *  Approve/Reject bar wired to the documented per-item security endpoint. */
+  canApprove?: boolean;
 }
 
 const LabelValue = ({ label, value }: { label: string; value: string }) => (
@@ -97,9 +102,19 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
   basePath,
   currency,
   data,
+  actionsDisabled,
+  canApprove,
 }) => {
+  const detailQueryKey = useUserQueryKey([
+    "contract-compliance-detail",
+    contractId,
+    basePath,
+  ]);
+  const queryClient = useQueryClient();
+  const toast = useToastHandler();
+
   const { data: complianceRes, isLoading } = useQuery({
-    queryKey: useUserQueryKey(["contract-compliance-detail", contractId, basePath]),
+    queryKey: detailQueryKey,
     queryFn: async () => {
       const res = await getRequest({ url: basePath });
       return res.data as { data?: ContractComplianceDTO };
@@ -108,6 +123,29 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
   });
 
   const complianceData = complianceRes?.data;
+
+  const approveMutation = useMutation({
+    mutationFn: async (action: "approved" | "rejected") => {
+      const comment =
+        action === "approved"
+          ? "Security item approved"
+          : "Security item rejected";
+      return patchRequest({
+        url: `${basePath}/security/${id}/approve`,
+        payload: { action, comment },
+      });
+    },
+    onSuccess: (_res, action) => {
+      toast.success("Success", `Security item ${action}`);
+      queryClient.invalidateQueries({
+        queryKey: ["contract-compliance", contractId, basePath],
+      });
+      queryClient.invalidateQueries({ queryKey: detailQueryKey });
+    },
+    onError: (error: any) => {
+      toast.error("Error", error?.message || "Failed to update status");
+    },
+  });
 
   const formatMoney = (value: unknown) => {
     const num = Number(value);
@@ -320,6 +358,31 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
             </TabsContent>
           </Tabs>
 
+          {type === "security" &&
+            canApprove &&
+            hasFiles &&
+            !actionsDisabled &&
+            !["approved", "published"].includes(
+              String(detail?.status || "").toLowerCase(),
+            ) && (
+              <div className="flex gap-4 pt-6 sticky bottom-0 bg-white dark:bg-slate-950 pb-2 border-t border-slate-100 dark:border-slate-800 mt-auto">
+                <Button
+                  variant="outline"
+                  className="flex-1 rounded-xl border-slate-200 bg-slate-50 text-slate-900 font-bold text-sm hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                  onClick={() => approveMutation.mutate("rejected")}
+                  disabled={approveMutation.isPending}
+                >
+                  Reject
+                </Button>
+                <Button
+                  className="flex-1 rounded-xl bg-[#2A4467] text-white font-bold text-sm hover:bg-[#1f3552]"
+                  onClick={() => approveMutation.mutate("approved")}
+                  disabled={approveMutation.isPending}
+                >
+                  Approve
+                </Button>
+              </div>
+            )}
         </div>
       </SheetContent>
     </Sheet>

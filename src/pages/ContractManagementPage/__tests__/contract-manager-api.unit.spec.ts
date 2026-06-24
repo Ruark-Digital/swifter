@@ -34,12 +34,18 @@ test.describe("contractManagerApi (unit)", () => {
       payload?: unknown;
       config?: unknown;
     }>();
+    const patchSpy = createAsyncSpy<{
+      url: string;
+      payload: unknown;
+      config?: unknown;
+    }>();
 
     const api = createContractManagerApi({
       get: getSpy.fn,
       post: postSpy.fn,
       put: putSpy.fn,
       delete: deleteSpy.fn,
+      patch: patchSpy.fn,
     });
 
     let createContractFailed = false;
@@ -78,12 +84,18 @@ test.describe("contractManagerApi (unit)", () => {
       payload?: unknown;
       config?: unknown;
     }>();
+    const patchSpy = createAsyncSpy<{
+      url: string;
+      payload: unknown;
+      config?: unknown;
+    }>();
 
     const api = createContractManagerApi({
       get: getSpy.fn,
       post: postSpy.fn,
       put: putSpy.fn,
       delete: deleteSpy.fn,
+      patch: patchSpy.fn,
     });
 
     await api.listContracts();
@@ -370,6 +382,25 @@ test.describe("contractManagerApi (unit)", () => {
     expect(postSpy.calls.at(-1)).toEqual({
       url: "/contract/manager/contracts/c4/rfis/rfi1/comment/cm1/reply",
       payload: rfiReplyPayload,
+    });
+
+    const addApproverGroups = {
+      approvers: [{ user: ["u1"], groupName: "Finance", level: 1, amount: 5000 }],
+    };
+    await api.addContractApprovers("c10", addApproverGroups);
+    expect(postSpy.calls.at(-1)).toEqual({
+      url: "/contract/manager/contracts/c10/approvers/add",
+      payload: addApproverGroups,
+    });
+
+    const manageApproverPayload = {
+      status: "deleted" as const,
+      approverId: "u1",
+    };
+    await api.manageContractApprover("c10", "g1", manageApproverPayload);
+    expect(patchSpy.calls.at(-1)).toEqual({
+      url: "/contract/manager/contracts/c10/approvers/g1/manage",
+      payload: manageApproverPayload,
     });
 
     await api.getContractCompliance("c9");
