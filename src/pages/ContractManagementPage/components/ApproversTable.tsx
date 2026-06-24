@@ -1,8 +1,19 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Accordion,
   AccordionContent,
@@ -36,12 +47,78 @@ export type ApproverRow = {
   approvalLevel: string;
   assignedApprovals: string;
   status: "Completed" | "Pending";
+  groupId?: string;
+  approverStatus?: "active" | "deleted";
 };
 
 type Props = {
   rows: ApproverRow[];
   isLoading?: boolean;
   contractId: string;
+  canManage?: boolean;
+};
+
+const RemoveApproverButton: React.FC<{
+  contractId: string;
+  row: ApproverRow;
+}> = ({ contractId, row }) => {
+  const toastHandler = useToastHandler();
+  const queryClient = useQueryClient();
+  const approversQueryKey = useUserQueryKey(["contract-approvers", contractId]);
+
+  const { mutateAsync, isPending } = useMutation({
+    mutationKey: ["manage-contract-approver", contractId, row.id],
+    mutationFn: () =>
+      contractManagerApi.manageContractApprover(contractId, row.groupId ?? "", {
+        status: "deleted",
+        approverId: row.id,
+      }),
+    onSuccess: async () => {
+      toastHandler.success("Approvers", "Approver removed successfully");
+      await queryClient.invalidateQueries({ queryKey: approversQueryKey });
+    },
+    onError: (error: ApiResponseError) => {
+      toastHandler.error("Remove Approver Failed", error);
+    },
+  });
+
+  if (!row.groupId) return <span className="text-xs text-slate-400">-</span>;
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <button
+          type="button"
+          className="text-sm font-medium text-red-600 dark:text-red-400 hover:underline disabled:opacity-50"
+          disabled={isPending}
+        >
+          Remove
+        </button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove approver?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {row.name} will be removed from this contract's approvers. You can
+            add them again later.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-red-600 text-white hover:bg-red-700"
+            onClick={(event) => {
+              event.preventDefault();
+              void mutateAsync();
+            }}
+            disabled={isPending}
+          >
+            {isPending ? "Removing..." : "Remove"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 };
 
 type ApproverDetailsSheetProps = {
@@ -204,7 +281,7 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
                   <ArrowLeft className="h-4 w-4" />
                 </button>
                 <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
-                  Approval Scorecard
+                  Approval Status
                 </SheetTitle>
               </div>
               <SheetClose asChild>
@@ -365,8 +442,13 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
   );
 };
 
-const ApproversTable: React.FC<Props> = ({ rows, isLoading, contractId }) => {
-  
+const ApproversTable: React.FC<Props> = ({
+  rows,
+  isLoading,
+  contractId,
+  canManage,
+}) => {
+
   const columns = React.useMemo<ColumnDef<ApproverRow>[]>(
     () => [
       {
@@ -412,26 +494,31 @@ const ApproversTable: React.FC<Props> = ({ rows, isLoading, contractId }) => {
       //   },
       // },
       {
-        id: "view",
-        header: "Status",
+        id: "manage",
+        header: "Manage",
         cell: ({ row }) => (
-          <ApproverDetailsSheet
-            contractId={contractId}
-            approverId={row.original.id}
-            summary={row.original}
-            trigger={
-              <button
-                type="button"
-                className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline"
-              >
-                View
-              </button>
-            }
-          />
+          <div className="flex items-center gap-4">
+            <ApproverDetailsSheet
+              contractId={contractId}
+              approverId={row.original.id}
+              summary={row.original}
+              trigger={
+                <button
+                  type="button"
+                  className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline"
+                >
+                  View
+                </button>
+              }
+            />
+            {canManage && (
+              <RemoveApproverButton contractId={contractId} row={row.original} />
+            )}
+          </div>
         ),
       },
     ],
-    [contractId],
+    [contractId, canManage],
   );
 
   return (

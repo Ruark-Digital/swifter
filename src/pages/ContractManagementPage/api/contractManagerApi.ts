@@ -1,6 +1,7 @@
 import {
   deleteRequest,
   getRequest,
+  patchRequest,
   postRequest,
   putRequest,
 } from "@/lib/axiosInstance";
@@ -503,6 +504,23 @@ export type ContractApproverSummary = {
   approvalLevels?: number[];
   assignedApprovals?: string;
   status?: "Completed" | "Pending";
+  /** Approver group this user belongs to — needed to manage (remove) them. */
+  groupId?: string;
+  /** Lifecycle of the approver within the group. */
+  approverStatus?: "active" | "deleted";
+  hasAssignments?: boolean;
+};
+
+export type AddApproverGroupInput = {
+  user: string[];
+  groupName: string;
+  level: number;
+  amount: number;
+};
+
+export type ManageApproverInput = {
+  status: "active" | "deleted";
+  approverId: string;
 };
 
 export type ContractApproverAction = {
@@ -829,12 +847,18 @@ type HttpDelete = (args: {
   payload?: unknown;
   config?: AxiosRequestConfig;
 }) => Promise<{ data: unknown }>;
+type HttpPatch = (args: {
+  url: string;
+  payload: unknown;
+  config?: AxiosRequestConfig;
+}) => Promise<{ data: unknown }>;
 
 export type ContractManagerHttpClient = {
   get: HttpGet;
   post: HttpPost;
   put: HttpPut;
   delete: HttpDelete;
+  patch: HttpPatch;
 };
 
 const CONTRACT_API_PREFIX = "/contract";
@@ -845,6 +869,7 @@ const defaultContractManagerHttpClient: ContractManagerHttpClient = {
   post: ({ url, payload, config }) => postRequest({ url, payload, config }),
   put: ({ url, payload, config }) => putRequest({ url, payload, config }),
   delete: ({ url, payload, config }) => deleteRequest({ url, payload, config }),
+  patch: ({ url, payload, config }) => patchRequest({ url, payload, config }),
 };
 
 export const createContractManagerApi = (
@@ -896,6 +921,27 @@ export const createContractManagerApi = (
         url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/approvers/${approverId}`,
       });
       return res.data as { message?: string; data?: ContractApproverDetail };
+    },
+    addContractApprovers: async (
+      contractId: string,
+      payload: { approvers: AddApproverGroupInput[] },
+    ) => {
+      const res = await client.post({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/approvers/add`,
+        payload,
+      });
+      return res.data as { status?: boolean; message?: string };
+    },
+    manageContractApprover: async (
+      contractId: string,
+      groupId: string,
+      payload: ManageApproverInput,
+    ) => {
+      const res = await client.patch({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/approvers/${groupId}/manage`,
+        payload,
+      });
+      return res.data as { status?: boolean; message?: string };
     },
     listPaymentHoldbacks: async (contractId: string) => {
       const res = await client.get({

@@ -513,6 +513,7 @@ const ContractDetailPage: React.FC = () => {
           contractId={contract?._id ?? ""}
           currency={contract?.currency}
           isActive={activeTab === "approvers"}
+          owner={contract?.owner}
         />
 
         <InvoiceTabContent
