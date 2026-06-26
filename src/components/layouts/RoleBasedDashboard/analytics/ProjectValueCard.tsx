@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { BarChart3 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TopNFilter } from "./TopNFilter";
 
 type Row = {
   name: string;
@@ -13,6 +14,8 @@ type Props = {
   rows?: Row[];
   selectedRange?: string;
   onRangeChange?: (value: string) => void;
+  selectedTop?: number;
+  onTopChange?: (value: number) => void;
 };
 
 type ProjectRowProps = {
@@ -85,8 +88,10 @@ export const ProjectValueCard: React.FC<Props> = ({
   rows,
   selectedRange = "ytd",
   onRangeChange,
+  selectedTop = 10,
+  onTopChange,
 }) => {
-  const data = (rows ?? []).map((r) => ({
+  const data = (rows ?? []).slice(0, selectedTop).map((r) => ({
     name: r.name,
     valueM: r.value / 1_000_000,
     contractCount: r.contractCount ?? 0,
@@ -104,10 +109,7 @@ export const ProjectValueCard: React.FC<Props> = ({
           <CardTitle className="text-[16px] font-semibold text-[#030712] dark:text-slate-100">
             Contract Value by Project
           </CardTitle>
-          <div className="inline-flex items-center gap-2 border border-[#E5E7EB] dark:border-slate-700 rounded-lg px-3 py-2">
-            <span className="text-xs font-medium text-[#6B6B6B] dark:text-slate-400">Top 10</span>
-            <span className="inline-block w-3 h-3 rounded-sm bg-[#E5E7EB] dark:bg-slate-700" />
-          </div>
+          <TopNFilter value={selectedTop} onChange={onTopChange} />
         </div>
         <Tabs
           value={selectedRange}

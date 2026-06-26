@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
+import { TopNFilter } from "./TopNFilter";
 
 type VendorRow = {
   vendor: string;
@@ -69,14 +70,18 @@ type Props = {
   };
   selectedRange?: string;
   onRangeChange?: (value: string) => void;
+  selectedTop?: number;
+  onTopChange?: (value: number) => void;
 };
 
 export const VendorPerformanceSummaryCard: React.FC<Props> = ({
   data,
   selectedRange = "ytd",
   onRangeChange,
+  selectedTop = 10,
+  onTopChange,
 }) => {
-  const rows: VendorRow[] =
+  const allRows: VendorRow[] =
     data?.rows && Array.isArray(data.rows) && data.rows.length > 0
       ? data.rows.map((r) => {
           const performanceRaw = (r.performance ?? "").toLowerCase();
@@ -130,15 +135,13 @@ export const VendorPerformanceSummaryCard: React.FC<Props> = ({
             performance: "good",
           },
         ];
+  const rows = allRows.slice(0, selectedTop);
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col max-h-[32rem]">
       <CardHeader className="pb-3 shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle className="text-[16px] font-semibold text-[#030712] dark:text-slate-100">Vendor Performance Summary</CardTitle>
-          <div className="inline-flex items-center gap-2 border border-[#E5E7EB] dark:border-slate-700 rounded-lg px-3 py-2">
-            <span className="text-xs font-medium text-[#6B6B6B] dark:text-slate-400">Top 10</span>
-            <span className="inline-block w-3 h-3 rounded-sm bg-[#E5E7EB] dark:bg-slate-700" />
-          </div>
+          <TopNFilter value={selectedTop} onChange={onTopChange} />
         </div>
       </CardHeader>
       <CardContent className="pt-0 flex-1 min-h-0 overflow-y-auto">

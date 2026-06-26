@@ -242,12 +242,24 @@ export const ContractsTabView: React.FC<ContractsTabViewProps> = ({
               onRangeChange={(value) =>
                 onFilterChange("vendor-contract-value", value)
               }
+              selectedTop={
+                chartFilters["vendor-contract-value:top"] === "20" ? 20 : 10
+              }
+              onTopChange={(v) =>
+                onFilterChange("vendor-contract-value:top", String(v))
+              }
             />
             <ProjectValueCard
               rows={contractManagerProjectContractValue}
               selectedRange={chartFilters["project-contract-value"] ?? "ytd"}
               onRangeChange={(value) =>
                 onFilterChange("project-contract-value", value)
+              }
+              selectedTop={
+                chartFilters["project-contract-value:top"] === "20" ? 20 : 10
+              }
+              onTopChange={(v) =>
+                onFilterChange("project-contract-value:top", String(v))
               }
             />
           </div>
@@ -271,6 +283,12 @@ export const ContractsTabView: React.FC<ContractsTabViewProps> = ({
               rows={contractManagerCategoryValue}
               selectedRange={chartFilters["category-value"] ?? "ytd"}
               onRangeChange={(value) => onFilterChange("category-value", value)}
+              selectedTop={
+                chartFilters["category-value:top"] === "20" ? 20 : 10
+              }
+              onTopChange={(v) =>
+                onFilterChange("category-value:top", String(v))
+              }
             />
           </div>
 
@@ -301,6 +319,12 @@ export const ContractsTabView: React.FC<ContractsTabViewProps> = ({
               data={contractManagerVendorSummary}
               selectedRange={chartFilters["vendor-summary"] ?? "ytd"}
               onRangeChange={(value) => onFilterChange("vendor-summary", value)}
+              selectedTop={
+                chartFilters["vendor-summary:top"] === "20" ? 20 : 10
+              }
+              onTopChange={(v) =>
+                onFilterChange("vendor-summary:top", String(v))
+              }
             />
             <RenewalsTimelineCard data={contractManagerRenewals} />
           </div>
