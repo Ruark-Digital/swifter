@@ -44,7 +44,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { cn, formatSecurityType } from "@/lib/utils";
 
 type Props = {
   trigger?: React.ReactNode;
@@ -437,7 +437,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
           <SheetHeader>
             <div className="flex items-center justify-between">
               <SheetTitle>{isClaim ? "Claim Details" : "Change Details"}</SheetTitle>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="mr-8">
                 <Share2 className="mr-2 h-4 w-4" /> Export
               </Button>
             </div>
@@ -467,7 +467,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <LabelRow label={isClaim ? "Claim Title" : "Change Title"} value={title} />
-                  <LabelRow label={isClaim ? "Claim Type" : "Change Type"} value={changeType} />
+                  <LabelRow label={isClaim ? "Claim Type" : "Change Type"} value={formatSecurityType(changeType)} />
                   {isClaim && impact && (
                     <LabelRow label="Impact" value={impact.replace("_", " ")} highlight />
                   )}

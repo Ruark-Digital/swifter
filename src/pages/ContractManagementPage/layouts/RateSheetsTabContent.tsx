@@ -790,6 +790,8 @@ const RateSheetDetailsSheet: React.FC<{
               <div className="flex items-center gap-3">
                 <button
                   type="button"
+                  aria-label="Go back"
+                  onClick={() => setOpen(false)}
                   className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827] dark:text-slate-100"
                 >
                   <ArrowLeft className="h-4 w-4" />

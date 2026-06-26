@@ -102,7 +102,7 @@ const RequestClaimDialog: React.FC<Props> = ({
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-8 pt-8">
           <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
-            Request Claim
+            Create Claim
           </DialogTitle>
         </div>
         <div className="px-8 pb-8 pt-6">
@@ -263,7 +263,7 @@ const RequestClaimDialog: React.FC<Props> = ({
                 disabled={createMutation.isPending || !createPath}
                 className="h-12 flex-1 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
               >
-                {createMutation.isPending ? "Submitting..." : "Request Claim"}
+                {createMutation.isPending ? "Submitting..." : "Submit Claim"}
               </Button>
             </div>
           </Forge>

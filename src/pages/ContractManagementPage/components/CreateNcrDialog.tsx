@@ -55,7 +55,7 @@ const UploadElement = memo(() => {
           Drag &amp; Drop or Click to choose files
         </div>
         <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
-          Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
+          Supported formats: DOC, DOCX, PDF, XLS, XLSX, ZIP, PNG, JPEG
         </div>
       </div>
     </div>
@@ -96,6 +96,9 @@ const FilesListItem = memo(({ file }: { file: File }) => {
 const ACCEPTED_FILE_TYPES = {
   "application/pdf": [".pdf"],
   "application/msword": [".doc"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+    ".docx",
+  ],
   "application/vnd.ms-excel": [".xls"],
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
     ".xlsx",
@@ -202,7 +205,13 @@ const CreateNcrDialog: React.FC<Props> = ({
   const responderOptions = useMemo(() => {
     const a = Array.isArray(contract?.approvers) ? contract?.approvers : [];
     const i = Array.isArray(contract?.internalTeam) ? contract?.internalTeam : [];
-    // const m = Array.isArray(contract?.managers) ? contract?.managers : [];
+    // Vendor PMs (so they can respond to client-issued NCRs). The detail
+    // endpoint exposes these under `personnel` (v2.3.0) or `vendorPersonnel`.
+    const vendorPersonnel = Array.isArray(contract?.personnel)
+      ? contract?.personnel
+      : Array.isArray(contract?.vendorPersonnel)
+      ? contract?.vendorPersonnel
+      : [];
     const fromApprovers = a.map((u) => ({
       value: (u as any)?.id ?? (u as any)?._id ?? (u as any)?.email ?? "",
       label: (u as any)?.name ?? (u as any)?.email ?? "",
@@ -211,11 +220,11 @@ const CreateNcrDialog: React.FC<Props> = ({
       value: (u as any)?.id ?? (u as any)?._id ?? (u as any)?.email ?? "",
       label: (u as any)?.name ?? (u as any)?.email ?? "",
     }));
-    // const fromManagers = m.map((u) => ({
-    //   value: (u as any)?._id ?? (u as any)?.id ?? (u as any)?.user ?? (u as any)?.email ?? "",
-    //   label: (u as any)?.name ?? (u as any)?.email ?? "",
-    // }));
-    const merged = [...fromApprovers, ...fromInternal].filter(
+    const fromVendor = vendorPersonnel.map((u) => ({
+      value: (u as any)?._id ?? (u as any)?.id ?? (u as any)?.email ?? "",
+      label: (u as any)?.name ?? (u as any)?.email ?? "",
+    }));
+    const merged = [...fromApprovers, ...fromInternal, ...fromVendor].filter(
       (opt) =>
         typeof opt.value === "string" &&
         opt.value !== "" &&
