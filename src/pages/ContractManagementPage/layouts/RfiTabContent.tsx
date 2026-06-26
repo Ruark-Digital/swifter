@@ -129,7 +129,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
           ? `/contract/approver/contracts/${contractId}/personnel`
           : isContractVendorLike
           ? `/contract/vendor/contracts/${contractId}/personnel`
-          : "/contract/manager/personnel",
+          : `/contract/manager/personnel/contract/${contractId}`,
       }),
   });
 
