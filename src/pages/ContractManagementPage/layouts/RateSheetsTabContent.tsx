@@ -847,14 +847,6 @@ const RateSheetDetailsSheet: React.FC<{
                       label="Rate Sheet Title"
                       value={sheet?.title || row.title}
                     />
-                    <LabelRow
-                      label="Amount"
-                      value={
-                        sheet?.amount !== undefined
-                          ? `$${sheet.amount.toLocaleString()}`
-                          : row.amount
-                      }
-                    />
                   </div>
                   <div className="grid grid-cols-2 gap-6">
                     <LabelRow
@@ -1053,15 +1045,6 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
           <div className="max-w-[260px] text-sm text-slate-700 dark:text-slate-300">
             {getValue<string>()}
           </div>
-        ),
-      },
-      {
-        accessorKey: "amount",
-        header: "Amount",
-        cell: ({ getValue }) => (
-          <span className="font-medium text-slate-900 dark:text-slate-100">
-            {getValue<string>()}
-          </span>
         ),
       },
       // { accessorKey: "submissionDate", header: "Submission Date" },
