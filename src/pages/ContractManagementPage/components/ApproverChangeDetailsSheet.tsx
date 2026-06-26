@@ -408,9 +408,7 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
                   mutateAddComment(content);
                 }}
                 isLoading={isAddingComment}
-                replyToUser={{ name: "Zenith Solution" }}
-                currentUser={{ name: "You" }}
-                sendType="reply"
+                sendType={null}
                 isNewChat={false}
                 onSendTypeChange={() => {}}
               />
