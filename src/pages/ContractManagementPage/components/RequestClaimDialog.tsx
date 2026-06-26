@@ -1,4 +1,6 @@
-import React from "react";
+import React, { memo } from "react";
+import { UploadCloud, X } from "lucide-react";
+import { useFormContext, useWatch } from "react-hook-form";
 import {
   Dialog,
   DialogClose,
@@ -11,11 +13,13 @@ import { Forge, Forger, useForge } from "@/lib/forge";
 import {
   TextArea,
   TextCurrencyInput,
+  TextFileUploader,
   TextInput,
   TextSelect,
 } from "@/components/layouts/FormInputs";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { postRequest } from "@/lib/axiosInstance";
+import type { ApiResponse } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 
 type Props = {
@@ -31,7 +35,80 @@ type ClaimFormValues = {
   timeImpact: string;
   costImpact: string;
   description: string;
+  files: File[] | null;
 };
+
+const ACCEPTED_FILE_TYPES = {
+  "application/pdf": [".pdf"],
+  "application/msword": [".doc"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+    ".docx",
+  ],
+  "application/vnd.ms-excel": [".xls"],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+  "application/zip": [".zip"],
+  "image/png": [".png"],
+  "image/jpeg": [".jpeg", ".jpg"],
+} as const;
+
+const uploadClaimFiles = async (files: File[] | null) => {
+  if (!files || files.length === 0) return [];
+  const formData = new FormData();
+  files.forEach((file) => formData.append("file", file));
+  const res = (await postRequest({
+    url: "/upload",
+    payload: formData,
+    config: { headers: { "Content-Type": "multipart/form-data" } },
+  })) as ApiResponse<
+    Array<{ name: string; url: string; type: string; size: string }>
+  >;
+  return res?.data?.data ?? [];
+};
+
+const UploadElement = memo(() => (
+  <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-8 text-center">
+    <UploadCloud className="h-9 w-9 text-[#2A4467] dark:text-blue-300" />
+    <div className="space-y-1">
+      <div className="text-sm font-semibold text-[#2A4467] dark:text-blue-300">
+        Drag &amp; Drop or Click to choose files
+      </div>
+      <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+        Supported formats: DOC, DOCX, PDF, XLS, XLSX, ZIP, PNG, JPEG
+      </div>
+    </div>
+  </div>
+));
+
+const FilesListItem = memo(({ file }: { file: File }) => {
+  const { control, setValue } = useFormContext<ClaimFormValues>();
+  const value = useWatch({ control, name: "files" });
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
+          <UploadCloud className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
+            {file.name}
+          </div>
+          <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+            {Math.ceil(file.size / 1024)} KB
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() =>
+          setValue("files", (value ?? []).filter((f) => f.name !== file.name))
+        }
+        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] dark:text-slate-400"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+});
 
 const RequestClaimDialog: React.FC<Props> = ({
   trigger,
@@ -49,6 +126,7 @@ const RequestClaimDialog: React.FC<Props> = ({
       timeImpact: "",
       costImpact: "",
       description: "",
+      files: null,
     },
   });
 
@@ -57,8 +135,32 @@ const RequestClaimDialog: React.FC<Props> = ({
 
   const createMutation = useMutation({
     mutationKey: ["create-claim", createPath],
-    mutationFn: async (payload: any) => {
+    mutationFn: async (data: ClaimFormValues) => {
       if (!createPath) throw new Error("Create claim endpoint unavailable");
+      const uploaded = await uploadClaimFiles(data.files);
+      const payload = {
+        title: data.claimTitle,
+        type: data.claimType,
+        impact: data.impactType,
+        time:
+          data.impactType === "time" || data.impactType === "time_cost"
+            ? Number(data.timeImpact)
+            : undefined,
+        cost:
+          data.impactType === "cost" || data.impactType === "time_cost"
+            ? Number(data.costImpact)
+            : undefined,
+        description: data.description,
+        files:
+          uploaded.length > 0
+            ? uploaded.map((f) => ({
+                name: f.name,
+                url: f.url,
+                type: f.type,
+                size: f.size,
+              }))
+            : undefined,
+      };
       const res = await postRequest({
         url: createPath,
         payload,
@@ -79,21 +181,7 @@ const RequestClaimDialog: React.FC<Props> = ({
   });
 
   const handleClaimSubmit = (data: ClaimFormValues) => {
-    const payload = {
-      title: data.claimTitle,
-      type: data.claimType,
-      impact: data.impactType,
-      time:
-        data.impactType === "time" || data.impactType === "time_cost"
-          ? Number(data.timeImpact)
-          : undefined,
-      cost:
-        data.impactType === "cost" || data.impactType === "time_cost"
-          ? Number(data.costImpact)
-          : undefined,
-      description: data.description,
-    };
-    createMutation.mutate(payload);
+    createMutation.mutate(data);
   };
 
   return (
@@ -248,6 +336,20 @@ const RequestClaimDialog: React.FC<Props> = ({
               component={TextArea}
               rows={4}
             />
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-[#374151]">
+                Supporting Documents
+              </div>
+              <Forger
+                name="files"
+                component={TextFileUploader}
+                element={<UploadElement />}
+                List={FilesListItem as any}
+                containerClass="w-full"
+                accept={ACCEPTED_FILE_TYPES as any}
+                dropzoneOptions={{ multiple: true }}
+              />
+            </div>
             <div className="flex items-center gap-4 pt-2">
               <DialogClose asChild>
                 <Button
