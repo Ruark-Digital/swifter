@@ -189,7 +189,7 @@ const ReportDetailsSheet: React.FC<{
           <div className="space-y-6">
             <div className="flex items-start justify-between">
               <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
-                Additional structural reinforcement
+                {reportDetails?.title || "Report Details"}
               </div>
               <Button
                 variant="outline"
@@ -251,31 +251,12 @@ const ReportDetailsSheet: React.FC<{
                       <LabelRow
                         label="Submission Date"
                         value={
-                          reportDetails.submissionDate
+                          reportDetails.createdAt
                             ? format(
-                                new Date(reportDetails.submissionDate),
+                                new Date(reportDetails.createdAt),
                                 "dd MMM yyyy",
                               )
                             : "N/A"
-                        }
-                      />
-                      <LabelRow
-                        label="Response Deadline"
-                        value={
-                          reportDetails.responseDeadline
-                            ? format(
-                                new Date(reportDetails.responseDeadline),
-                                "dd MMM yyyy",
-                              )
-                            : "N/A"
-                        }
-                      />
-                      <LabelRow
-                        label="Status"
-                        value={
-                          <span className="inline-flex rounded-full bg-[#DCFCE7] px-3 py-1 text-xs font-semibold text-[#16A34A]">
-                            {reportDetails.status}
-                          </span>
                         }
                       />
                     </div>
@@ -302,7 +283,11 @@ const ReportDetailsSheet: React.FC<{
                               key={index}
                               name={file.name}
                               type={file.type}
-                              size={`${(file.size / 1024).toFixed(0)}KB`}
+                              size={
+                                typeof file.size === "number"
+                                  ? `${(file.size / 1024).toFixed(0)}KB`
+                                  : file.size
+                              }
                               url={file.url}
                               onPreview={() => handlePreview(file)}
                               onDownload={() => handleDownload(file)}
