@@ -97,7 +97,7 @@ const NcrLog: React.FC<Props> = ({ contractId, contract, isActive, actionsDisabl
         <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
           Non-Compliance Report
         </h3>
-        {(isApprover || isContractVendorLike) && (
+        {(isApprover || isContractVendorLike || isManager) && (
           <CreateNcrDialog
             contractId={contractId}
             contract={contract}
