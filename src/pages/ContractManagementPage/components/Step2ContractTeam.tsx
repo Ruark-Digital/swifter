@@ -69,13 +69,13 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
             id: p._id,
             label:
               p.firstName && p.lastName
-                ? `${p.firstName} (${p.lastName})`
+                ? `${p.firstName} ${p.lastName}`
                 : p.firstName
                 ? p.firstName
                 : (p.email ?? p._id),
             text:
               p.firstName && p.lastName
-                ? `${p.firstName} (${p.lastName})`
+                ? `${p.firstName} ${p.lastName}`
                 : p.firstName
                 ? p.firstName
                 : (p.email ?? p._id),

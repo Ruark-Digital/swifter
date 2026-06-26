@@ -6,6 +6,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetFooter,
+  SheetClose,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -320,10 +321,15 @@ const ChangeDetailsSheet: React.FC<Props> = ({
           <SheetHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <ArrowLeft
-                  className="h-4 w-4 text-slate-500"
-                  aria-hidden="true"
-                />
+                <SheetClose asChild>
+                  <button
+                    type="button"
+                    aria-label="Go back"
+                    className="flex items-center justify-center text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                </SheetClose>
                 <SheetTitle className="text-[#2A4467] dark:text-slate-100">
                   Project Details
                 </SheetTitle>
