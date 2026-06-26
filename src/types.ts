@@ -328,18 +328,19 @@ export interface ReportDetails {
   reportId: string;
   title: string;
   description: string;
-  status: string;
   submittedBy: {
     _id: string;
     name: string;
     email: string;
   };
-  submissionDate: string;
-  responseDeadline?: string;
+  createdAt: string;
+  updatedAt?: string;
   files: Array<{
     name: string;
     type: string;
-    size: number;
+    // BE returns a preformatted size string (e.g. "7.44 MB"); older
+    // payloads may send raw bytes as a number.
+    size: number | string;
     url: string;
   }>;
   comments?: Array<{

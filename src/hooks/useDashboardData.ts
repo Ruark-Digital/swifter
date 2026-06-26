@@ -369,6 +369,13 @@ export const useDashboardData = (
     return range === "ytd" ? "YTD" : range;
   };
 
+  // Top-N selector for ranking visuals (Pareto: Top 10 / Top 20). Stored in
+  // chartFilters under a `${chartId}:top` key, defaulting to 10. Sent as the
+  // `top` query param so the BE returns up to N rows (see BE flag in PR).
+  const getContractDashboardTop = (chartId: string): number => {
+    return chartFilters[`${chartId}:top`] === "20" ? 20 : 10;
+  };
+
   // SuperAdmin dashboard count
   const { data: dashboardCount, isLoading: isLoadingCount } = useQuery<
     ApiResponse<SuperAdminDashboardCount>,
@@ -958,6 +965,7 @@ export const useDashboardData = (
       "contract-manager-dashboard-vendor-contract-value",
       userRole,
       getContractDashboardRange("vendor-contract-value"),
+      getContractDashboardTop("vendor-contract-value"),
     ]),
     queryFn: async () => {
       const res = await getRequest({
@@ -968,6 +976,7 @@ export const useDashboardData = (
               getContractDashboardRange("vendor-contract-value"),
             ),
             type: "Contract",
+            top: getContractDashboardTop("vendor-contract-value"),
           },
         },
       });
@@ -990,6 +999,7 @@ export const useDashboardData = (
       "contract-manager-dashboard-project-contract-value",
       userRole,
       getContractDashboardRange("project-contract-value"),
+      getContractDashboardTop("project-contract-value"),
     ]),
     queryFn: async () => {
       const res = await getRequest({
@@ -1000,6 +1010,7 @@ export const useDashboardData = (
               getContractDashboardRange("project-contract-value"),
             ),
             type: "Contract",
+            top: getContractDashboardTop("project-contract-value"),
           },
         },
       });
@@ -1088,6 +1099,7 @@ export const useDashboardData = (
       "contract-manager-dashboard-category-value",
       userRole,
       getContractDashboardRange("category-value"),
+      getContractDashboardTop("category-value"),
     ]),
     queryFn: async () => {
       const res = await getRequest({
@@ -1098,6 +1110,7 @@ export const useDashboardData = (
               getContractDashboardRange("category-value"),
             ),
             type: "Contract",
+            top: getContractDashboardTop("category-value"),
           },
         },
       });
@@ -1223,11 +1236,20 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerVendorSummary>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-vendor-summary", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-vendor-summary",
+      userRole,
+      getContractDashboardTop("vendor-summary"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${contractDashboardBasePath}/vendor-summary`,
-        config: { params: { type: "Contract" } },
+        config: {
+          params: {
+            type: "Contract",
+            top: getContractDashboardTop("vendor-summary"),
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerVendorSummary>;
     },

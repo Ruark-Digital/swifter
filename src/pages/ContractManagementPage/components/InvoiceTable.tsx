@@ -11,6 +11,13 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import { ArrowLeft, Edit2, Search, X } from "lucide-react";
 import CreateInvoiceDialog from "./CreateInvoiceDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -73,6 +80,17 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [selectedDoc, setSelectedDoc] = React.useState<DocType | null>(null);
 
+  // Approve / reject opens a comment dialog first. `pendingAction` drives the
+  // dialog's title/CTA/color; `commentDraft` resets whenever the dialog closes.
+  const [pendingAction, setPendingAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [commentDraft, setCommentDraft] = React.useState("");
+
+  React.useEffect(() => {
+    if (pendingAction === null) setCommentDraft("");
+  }, [pendingAction]);
+
   const {
     data,
     isLoading,
@@ -130,20 +148,18 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   const approveInvoiceMutation = useMutation<
     void,
     ApiResponseError,
-    "approved" | "rejected"
+    { action: "approved" | "rejected"; comment: string }
   >({
     mutationKey: ["approveInvoice", contractId, invoiceId],
-    mutationFn: async (action) => {
-      const comment = action === "approved"
-        ? "Invoice approved via bulk action"
-        : "Invoice rejected via bulk action";
+    mutationFn: async ({ action, comment }) => {
       if (isManager) {
         await contractManagerApi.approveInvoice(contractId, invoiceId, { action, comment });
         return;
       }
       await approverApi.approveInvoice(contractId, invoiceId, { action, comment });
     },
-    onSuccess: async (_, action) => {
+    onSuccess: async (_, { action }) => {
+      setPendingAction(null);
       toastHandler.success(
         "Invoice updated",
         action === "approved"
@@ -156,7 +172,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
         queryKey: ["invoiceApproveStatus", contractId, invoiceId],
       });
     },
-    onError: (err, action) => {
+    onError: (err, { action }) => {
       toastHandler.error(
         action === "approved"
           ? "Failed to approve invoice"
@@ -358,45 +374,94 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
             )}
           </div>
 
-          {canManagerAct ? (
+          {canManagerAct || (isApprover && canApprove && !isApproveStatusLoading) ? (
             <div className="flex gap-3 pt-6">
               <Button
                 variant="outline"
                 className="h-11 flex-1 rounded-xl border-[#E5E7EB] dark:border-slate-700 text-sm font-semibold text-[#111827] dark:text-slate-100"
-                disabled={approveInvoiceMutation.isPending}
-                onClick={() => approveInvoiceMutation.mutate("rejected")}
+                onClick={() => setPendingAction("rejected")}
               >
-                {approveInvoiceMutation.isPending ? "Processing..." : "Reject"}
+                Reject
               </Button>
               <Button
                 className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
-                disabled={approveInvoiceMutation.isPending}
-                onClick={() => approveInvoiceMutation.mutate("approved")}
+                onClick={() => setPendingAction("approved")}
               >
-                {approveInvoiceMutation.isPending ? "Processing..." : "Approve"}
+                Approve
               </Button>
             </div>
           ) : null}
 
-          {isApprover && canApprove && !isApproveStatusLoading ? (
-            <div className="flex gap-3 pt-6">
-              <Button
-                variant="outline"
-                className="h-11 flex-1 rounded-xl border-[#E5E7EB] dark:border-slate-700 text-sm font-semibold text-[#111827] dark:text-slate-100"
-                disabled={approveInvoiceMutation.isPending}
-                onClick={() => approveInvoiceMutation.mutate("rejected")}
-              >
-                {approveInvoiceMutation.isPending ? "Processing..." : "Reject"}
-              </Button>
-              <Button
-                className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
-                disabled={approveInvoiceMutation.isPending}
-                onClick={() => approveInvoiceMutation.mutate("approved")}
-              >
-                {approveInvoiceMutation.isPending ? "Processing..." : "Approve"}
-              </Button>
-            </div>
-          ) : null}
+          <Dialog
+            open={pendingAction !== null}
+            onOpenChange={(next) => {
+              if (!next && !approveInvoiceMutation.isPending) {
+                setPendingAction(null);
+              }
+            }}
+          >
+            <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+              <DialogHeader className="px-6 pt-6 pb-2">
+                <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                  {pendingAction === "approved"
+                    ? "Approve Invoice"
+                    : "Reject Invoice"}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="px-6 pb-6 space-y-4">
+                <p className="text-sm text-[#6B7280] dark:text-slate-400">
+                  {pendingAction === "approved"
+                    ? "Add an optional comment before approving this invoice."
+                    : "Let the vendor know why this invoice is being rejected."}
+                </p>
+                <textarea
+                  value={commentDraft}
+                  onChange={(e) => setCommentDraft(e.target.value)}
+                  placeholder="Enter your comment"
+                  rows={5}
+                  className="w-full resize-none rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                  autoFocus
+                />
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
+                    disabled={approveInvoiceMutation.isPending}
+                    onClick={() => setPendingAction(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    className={cn(
+                      "h-11 flex-1 rounded-xl text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed",
+                      pendingAction === "approved"
+                        ? "bg-[#16A34A] hover:bg-[#15803D]"
+                        : "bg-[#E53935] hover:bg-[#C62828]",
+                    )}
+                    disabled={approveInvoiceMutation.isPending}
+                    aria-busy={approveInvoiceMutation.isPending}
+                    onClick={() => {
+                      if (pendingAction === null) return;
+                      approveInvoiceMutation.mutate({
+                        action: pendingAction,
+                        comment: commentDraft.trim(),
+                      });
+                    }}
+                  >
+                    {approveInvoiceMutation.isPending
+                      ? pendingAction === "approved"
+                        ? "Approving..."
+                        : "Rejecting..."
+                      : pendingAction === "approved"
+                        ? "Approve"
+                        : "Confirm Reject"}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
         
         {selectedDoc && (
