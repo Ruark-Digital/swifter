@@ -64,9 +64,9 @@ const AddApproverDialog: React.FC<{
   });
 
   const { data: personnelRes, isLoading: isLoadingPersonnel } = useQuery({
-    queryKey: ["contract-personnel"],
+    queryKey: ["contract-personnel", contractId],
     queryFn: async () =>
-      (await getRequest({ url: "/contract/manager/personnel" })) as ApiResponse<
+      (await getRequest({ url: `/contract/manager/personnel/contract/${contractId}` })) as ApiResponse<
         PersonnelItem[]
       >,
     enabled: open,
