@@ -383,8 +383,18 @@ const SubmitRateSheetDialog: React.FC<{
   );
 };
 
+type RateSheetApproverStatus =
+  | "pendingApproval"
+  | "approved"
+  | "N/A"
+  | "rejected"
+  | "pending";
+
+// Wire shape: the BE returns approverStatus as a sibling of `sheet`,
+// not as a field on the sheet itself.
 export interface RateSheetDetailResponse {
   sheet: RateSheetDetailResponseSheet;
+  approverStatus: RateSheetApproverStatus;
 }
 
 export interface RateSheetDetailResponseSheet {
@@ -402,15 +412,15 @@ export interface RateSheetDetailResponseSheet {
   files: File[];
   createdAt: Date;
   updatedAt: Date;
-  approverStatus:
-    | "pendingApproval"
-    | "approved"
-    | "N/A"
-    | "rejected"
-    | "pending";
   __v: number;
   summary: Summary[];
 }
+
+// View-model: the sheet with its sibling approverStatus grafted on, so the
+// approve/reject gate can read a single object.
+export type RateSheetDetail = RateSheetDetailResponseSheet & {
+  approverStatus: RateSheetApproverStatus;
+};
 
 export interface File {
   name: string;
@@ -735,8 +745,15 @@ const RateSheetDetailsSheet: React.FC<{
       const res = await getRequest({
         url: `${basePath}/${rateSheetId}`,
       });
-      const sheet = res?.data?.data?.sheet as RateSheetDetailResponseSheet;
-      return sheet ?? null;
+      const data = res?.data?.data as RateSheetDetailResponse | undefined;
+      const sheet = data?.sheet;
+      if (!sheet) return null;
+      // BE returns approverStatus as a sibling of `sheet`, not inside it.
+      // Graft it on so the approve/reject gate can read a single object.
+      return {
+        ...sheet,
+        approverStatus: data?.approverStatus,
+      } as RateSheetDetail;
     },
     enabled: open && !!contractId && !!rateSheetId && !!basePath,
   });
@@ -766,7 +783,7 @@ const RateSheetDetailsSheet: React.FC<{
     },
   });
 
-  const sheet = detailRes as RateSheetDetailResponseSheet | null;
+  const sheet = detailRes as RateSheetDetail | null;
   const files = sheet?.files ?? [];
   const summary = sheet?.summary ?? EMPTY_RATE_SHEET_SUMMARY;
 
