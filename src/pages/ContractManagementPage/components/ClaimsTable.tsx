@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { ContractClaimDTO } from "../api/contractManagerApi";
 import ChangeDetailsSheet from "./ChangeDetailsSheet";
+import { formatSecurityType } from "@/lib/utils";
 
 const formatImpact = (item: ContractClaimDTO) => {
   const hasTime = typeof item.time === "number" && Number.isFinite(item.time);
@@ -91,7 +92,7 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
   {
     accessorKey: "type",
     header: "Type",
-    cell: ({ getValue }) => getValue<string | undefined>() ?? "-",
+    cell: ({ getValue }) => formatSecurityType(getValue<string | undefined>()),
   },
   {
     id: "impact",

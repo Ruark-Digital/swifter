@@ -789,7 +789,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                       ? "Approving..."
                       : "Rejecting..."
                     : pendingAction === "approved"
-                      ? "Confirm Approve"
+                      ? "Approve"
                       : "Confirm Reject"}
                 </Button>
               </div>

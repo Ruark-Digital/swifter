@@ -203,6 +203,48 @@ const CATEGORY_METRICS: Record<string, MetricConfig[]> = {
   ],
 };
 
+// Prepopulated Target / Non-Compliance copy per KPI category, transcribed from
+// the figma design. Used as a fallback so the dialog shows the standard
+// description instead of "N/A" when the API doesn't carry these fields.
+const CATEGORY_DESCRIPTIONS: Record<
+  string,
+  { target: string; nonCompliance: string }
+> = {
+  "On‑Time Delivery/Schedule Compliance": {
+    target:
+      "≥ 95% of deliveries or milestones completed by the contractual due date.",
+    nonCompliance:
+      "Triggered when performance falls below 90% for two consecutive months.",
+  },
+  "Quality & Specification Compliance": {
+    target: "≥ 98% of goods/services meeting contractual specifications.",
+    nonCompliance: "More than 2 NCRs per quarter or quality score < 95%.",
+  },
+  Responsiveness: {
+    target:
+      "Vendor responds to inquiries, clarifications, RFI's or corrective actions within 48 hours.",
+    nonCompliance: "Average response time > 72 hours.",
+  },
+  "Contractual Compliance": {
+    target:
+      "100% compliance with contractual obligations (insurance, certifications, safety documents, KPIs).",
+    nonCompliance: "Any mandatory document lapses for more than 7 days.",
+  },
+  "Cost Variance": {
+    target: "≤ 5% variance between contracted rates and invoiced amounts.",
+    nonCompliance:
+      "More than 5% variance between contracted rates and invoiced amounts.",
+  },
+  "Invoice Accuracy": {
+    target: "≥ 98% of invoices submitted without discrepancies.",
+    nonCompliance: "More than 2% of invoices submitted with discrepancies.",
+  },
+  "Issue Resolution": {
+    target: "Corrective actions resolved within 5 business days.",
+    nonCompliance: "Average resolution time > 7 business days.",
+  },
+};
+
 const MetricScale: React.FC<{
   label: string;
   onChange: (v: number) => void;
@@ -268,6 +310,10 @@ const UpdateVendorPerformanceDialog: React.FC<{
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const metrics = CATEGORY_METRICS[category] ?? [];
+  const descriptions = CATEGORY_DESCRIPTIONS[category];
+  const resolvedTarget = target || descriptions?.target || "N/A";
+  const resolvedNonCompliance =
+    nonCompliance || descriptions?.nonCompliance || "N/A";
 
   const onSubmit = async (payload: any) => {
     if (isSubmitting) return;
@@ -322,15 +368,15 @@ const UpdateVendorPerformanceDialog: React.FC<{
 
         <div className="space-y-2">
           <p className="text-sm text-[#0F0F0F] dark:text-slate-100">Target</p>
-          <div className="h-12 rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-[#2A4467]/5 dark:bg-slate-800 px-4 flex items-center text-sm text-[#6B6B6B] dark:text-slate-300">
-            {target || "N/A"}
+          <div className="min-h-12 rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-[#2A4467]/5 dark:bg-slate-800 px-4 py-3 flex items-center text-sm text-[#6B6B6B] dark:text-slate-300">
+            {resolvedTarget}
           </div>
         </div>
 
         <div className="space-y-2">
           <p className="text-sm text-[#0F0F0F] dark:text-slate-100">Non-Compliance</p>
-          <div className="h-12 rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-[#2A4467]/5 dark:bg-slate-800 px-4 flex items-center text-sm text-[#6B6B6B] dark:text-slate-300">
-            {nonCompliance || "N/A"}
+          <div className="min-h-12 rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-[#2A4467]/5 dark:bg-slate-800 px-4 py-3 flex items-center text-sm text-[#6B6B6B] dark:text-slate-300">
+            {resolvedNonCompliance}
           </div>
         </div>
 

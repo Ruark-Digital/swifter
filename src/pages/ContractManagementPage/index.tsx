@@ -108,9 +108,9 @@ const mapContractRelationshipLabel = (
   relationship?: "standalone" | "project" | "msa_project" | "msa",
 ): string => {
   if (relationship === "standalone") return "Stand-Alone Project";
-  if (relationship === "project") return "Link to Project";
+  if (relationship === "project") return "Linked to Project";
   if (relationship === "msa_project" || relationship === "msa") {
-    return "Link to MSA";
+    return "Linked to MSA";
   }
   return "-";
 };

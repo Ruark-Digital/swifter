@@ -335,7 +335,7 @@ export function CreateVendorReportForm({
           disabled={submitting || disabled}
           className="h-12 flex-1 rounded-xl bg-[#2A4467] text-white"
         >
-          Create Report
+          Submit Report
         </Button>
       </div>
     </div>
