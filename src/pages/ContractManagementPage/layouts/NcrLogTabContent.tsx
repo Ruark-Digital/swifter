@@ -34,6 +34,14 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, act
 
   const basePath = getBasePath();
 
+  // Contract-scoped personnel endpoint for the responder dropdown (mirrors the
+  // RFI tab's 3-way role branch; manager path is the irregular one).
+  const personnelPath = isApprover
+    ? `/contract/approver/contracts/${contractId}/personnel`
+    : isContractVendorLike
+    ? `/contract/vendor/contracts/${contractId}/personnel`
+    : `/contract/manager/personnel/contract/${contractId}`;
+
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -92,6 +100,7 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, act
             contractId={contractId}
             contract={contract}
             basePath={basePath}
+            personnelPath={personnelPath}
             listInvalidateQueryKey={listQueryKey}
             statsInvalidateQueryKey={statsQueryKey}
             trigger={
