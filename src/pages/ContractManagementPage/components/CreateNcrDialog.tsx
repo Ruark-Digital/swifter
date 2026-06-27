@@ -15,11 +15,11 @@ import {
   TextSelect,
 } from "@/components/layouts/FormInputs";
 import { useFormContext, useWatch } from "react-hook-form";
-import { postRequest } from "@/lib/axiosInstance";
-import type { ApiResponse } from "@/types";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
+import type { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { cn } from "@/lib/utils";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ContractDetail } from "@/types";
 import { memo, useCallback, useMemo } from "react";
 
@@ -42,8 +42,21 @@ type Props = {
   trigger: React.ReactElement;
   contract?: ContractDetail;
   basePath: string;
+  /** Contract-scoped personnel endpoint (role-branched by the caller, same as
+   *  the RFI tab). Responder options are fetched from here; the `contract`
+   *  prop's approvers/internalTeam/personnel are only a fallback. */
+  personnelPath?: string;
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
+};
+
+type PersonnelEntry = {
+  _id?: string;
+  id?: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
 };
 
 const UploadElement = memo(() => {
@@ -114,12 +127,24 @@ const CreateNcrDialog: React.FC<Props> = ({
   trigger,
   contract,
   basePath,
+  personnelPath,
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
 }) => {
   const [open, setOpen] = React.useState(false);
   const toast = useToastHandler();
   const queryClient = useQueryClient();
+
+  // Responder list comes from the contract-scoped personnel endpoint (same
+  // source the RFI tab uses), fetched only while the dialog is open.
+  const { data: personnelRes } = useQuery<
+    ApiResponse<PersonnelEntry[]>,
+    ApiResponseError
+  >({
+    queryKey: ["ncr-responder-personnel", personnelPath],
+    queryFn: async () => await getRequest({ url: personnelPath as string }),
+    enabled: open && !!personnelPath,
+  });
 
   const { control, reset } = useForge<CreateNcrFormValues>({
     resolver: yupResolver(schema) as any,
@@ -203,28 +228,34 @@ const CreateNcrDialog: React.FC<Props> = ({
   );
 
   const responderOptions = useMemo(() => {
-    const a = Array.isArray(contract?.approvers) ? contract?.approvers : [];
-    const i = Array.isArray(contract?.internalTeam) ? contract?.internalTeam : [];
-    // Vendor PMs (so they can respond to client-issued NCRs). The detail
-    // endpoint exposes these under `personnel` (v2.3.0) or `vendorPersonnel`.
-    const vendorPersonnel = Array.isArray(contract?.personnel)
-      ? contract?.personnel
-      : Array.isArray(contract?.vendorPersonnel)
-      ? contract?.vendorPersonnel
+    const toOption = (u: PersonnelEntry) => {
+      const fullName = [u?.firstName, u?.lastName].filter(Boolean).join(" ").trim();
+      return {
+        value: u?._id ?? u?.id ?? u?.email ?? "",
+        label: u?.name ?? (fullName || u?.email) ?? "",
+      };
+    };
+
+    // Primary source: the contract-scoped personnel endpoint.
+    const personnel = Array.isArray(personnelRes?.data?.data)
+      ? personnelRes?.data?.data ?? []
       : [];
-    const fromApprovers = a.map((u) => ({
-      value: (u as any)?.id ?? (u as any)?._id ?? (u as any)?.email ?? "",
-      label: (u as any)?.name ?? (u as any)?.email ?? "",
-    }));
-    const fromInternal = i.map((u) => ({
-      value: (u as any)?.id ?? (u as any)?._id ?? (u as any)?.email ?? "",
-      label: (u as any)?.name ?? (u as any)?.email ?? "",
-    }));
-    const fromVendor = vendorPersonnel.map((u) => ({
-      value: (u as any)?._id ?? (u as any)?.id ?? (u as any)?.email ?? "",
-      label: (u as any)?.name ?? (u as any)?.email ?? "",
-    }));
-    const merged = [...fromApprovers, ...fromInternal, ...fromVendor].filter(
+    let options = personnel.map(toOption);
+
+    // Fallback: derive from the contract detail object when personnel hasn't
+    // loaded / returned nothing (e.g. endpoint unavailable for a role).
+    if (options.length === 0) {
+      const a = Array.isArray(contract?.approvers) ? contract?.approvers : [];
+      const i = Array.isArray(contract?.internalTeam) ? contract?.internalTeam : [];
+      const vendorPersonnel = Array.isArray(contract?.personnel)
+        ? contract?.personnel
+        : Array.isArray(contract?.vendorPersonnel)
+        ? contract?.vendorPersonnel
+        : [];
+      options = [...a, ...i, ...vendorPersonnel].map((u) => toOption(u as PersonnelEntry));
+    }
+
+    const valid = options.filter(
       (opt) =>
         typeof opt.value === "string" &&
         opt.value !== "" &&
@@ -232,12 +263,12 @@ const CreateNcrDialog: React.FC<Props> = ({
         opt.label !== "",
     );
     const seen = new Set<string>();
-    return merged.filter((opt) => {
+    return valid.filter((opt) => {
       if (seen.has(opt.value)) return false;
       seen.add(opt.value);
       return true;
     });
-  }, [contract]);
+  }, [personnelRes?.data?.data, contract]);
 
   return (
     <Dialog

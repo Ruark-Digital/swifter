@@ -45,6 +45,16 @@ const NcrLog: React.FC<Props> = ({ contractId, contract, isActive, actionsDisabl
     isViewOnly,
   ]);
 
+  // MSA-scoped personnel endpoint for the responder dropdown (mirrors the
+  // MSA RFI tab; all roles follow the regular msa-contracts path shape).
+  const personnelPath = React.useMemo(() => {
+    if (isApprover)
+      return `/contract/approver/msa-contracts/${contractId}/personnel`;
+    if (isContractVendorLike)
+      return `/contract/vendor/msa-contracts/${contractId}/personnel`;
+    return `/contract/manager/msa-contracts/${contractId}/personnel`;
+  }, [contractId, isApprover, isContractVendorLike]);
+
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -102,6 +112,7 @@ const NcrLog: React.FC<Props> = ({ contractId, contract, isActive, actionsDisabl
             contractId={contractId}
             contract={contract}
             basePath={basePath}
+            personnelPath={personnelPath}
             listInvalidateQueryKey={listQueryKey}
             statsInvalidateQueryKey={statsQueryKey}
             trigger={
