@@ -66,6 +66,11 @@ type AmendmentDetailsSheetProps = {
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
   approverPoolPath?: string;
+  renderManagerRejectedAction?: (args: {
+    detail: AmendmentDetail;
+    onSubmitted: () => void;
+    trigger: React.ReactElement;
+  }) => React.ReactNode;
 };
 
 const LabelRow = ({
@@ -92,8 +97,8 @@ const LabelRow = ({
 export interface AmendmentDetail {
   _id: string;
   contractRef: string;
-  approverStatus: "pending" | "approved";
-  vendorStatus: "pending" | "accepted";
+  approverStatus: "pending" | "approved" | "rejected";
+  vendorStatus: "pending" | "accepted" | "rejected";
   contractRefModel: string;
   assignApprover: boolean;
   amendmentId: string;
@@ -102,6 +107,9 @@ export interface AmendmentDetail {
   title: string;
   impact: string;
   description: string;
+  clause?: string;
+  others?: string;
+  comments?: string;
   changes: Change[];
   submittedBy: SubmittedBy;
   files: File[];
@@ -230,7 +238,7 @@ const VendorAcceptDialog: React.FC<{
 const VendorRejectDialog: React.FC<{
   trigger: React.ReactNode;
   isPending?: boolean;
-  onConfirm: () => void;
+  onConfirm: (reason: string) => void;
   onClose: () => void;
   open: boolean;
 }> = ({ trigger, onConfirm, onClose, open, isPending }) => {
@@ -280,7 +288,7 @@ const VendorRejectDialog: React.FC<{
           <button
             type="button"
             disabled={isPending}
-            onClick={onConfirm}
+            onClick={() => onConfirm(reason.trim())}
             className="w-[306px] rounded-xl bg-[#E53935] h-11 text-base font-semibold text-white disabled:opacity-60"
           >
             {isPending ? "Rejecting..." : "Reject Amendment"}
@@ -592,6 +600,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
   approverPoolPath,
+  renderManagerRejectedAction,
 }) => {
   const [open, setOpen] = React.useState(false);
   const [acceptOpen, setAcceptOpen] = React.useState(false);
@@ -650,6 +659,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   const vendorReason =
     // prefer explicit vendor reason fields if available, otherwise fallback
     (detail as any)?.vendorReason ||
+    detail?.comments ||
     (detail as any)?.rejectReason ||
     (detail as any)?.reason ||
     undefined;
@@ -669,7 +679,9 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
     ["time", "endDate", "newExpiryDate"].includes(c.field),
   );
   const costChange = detail?.changes?.find((c) => c.field === "cost");
-  const scopeChange = detail?.changes?.find((c) => c.field === "others");
+  const scopeChange = detail?.changes?.find((c) =>
+    ["scope", "others"].includes(c.field),
+  );
 
   const fmtDate = (val: string | Date | undefined | null): string => {
     if (!val) return "-";
@@ -697,13 +709,19 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   };
 
   const vendorStatusMutation = useMutation({
-    mutationFn: async (status: "accepted" | "rejected") => {
+    mutationFn: async ({
+      status,
+      comments,
+    }: {
+      status: "accepted" | "rejected";
+      comments?: string;
+    }) => {
       return await patchRequest({
         url: `${basePath}/${amendmentId}/status`,
-        payload: { status },
+        payload: { status, comments },
       });
     },
-    onSuccess: (_, status) => {
+    onSuccess: (_, { status }) => {
       toast.success(
         "Success",
         status === "accepted"
@@ -841,7 +859,6 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                   <div className="space-y-2">
                     <LabelRow label="Amendment Name" value={title || "-"} />
                     <LabelRow label="Impact Type" value="Time" />
-                    <LabelRow label="Time" value={fmtDate(timeChange?.newValue as any)} />
                     <LabelRow
                       label="New Expiry/Delivery/Completion Date"
                       value={fmtDate(timeChange?.newValue as any)}
@@ -1039,7 +1056,12 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                 open={rejectOpen}
                 onClose={() => setRejectOpen(false)}
                 isPending={vendorStatusMutation.isPending}
-                onConfirm={() => vendorStatusMutation.mutate("rejected")}
+                onConfirm={(comments) =>
+                  vendorStatusMutation.mutate({
+                    status: "rejected",
+                    comments,
+                  })
+                }
                 trigger={
                   <button
                     type="button"
@@ -1054,7 +1076,9 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                 open={acceptOpen}
                 onClose={() => setAcceptOpen(false)}
                 isPending={vendorStatusMutation.isPending}
-                onConfirm={() => vendorStatusMutation.mutate("accepted")}
+                onConfirm={() =>
+                  vendorStatusMutation.mutate({ status: "accepted" })
+                }
                 trigger={
                   <button
                     type="button"
@@ -1068,6 +1092,30 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
             </div>
           </div>
         )}
+
+        {isManager &&
+          detail &&
+          (vendorRejected || normalizedStatus === "rejected") &&
+          renderManagerRejectedAction && (
+            <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 p-6">
+              <div className="flex justify-end">
+                {renderManagerRejectedAction({
+                  detail,
+                  onSubmitted: () => {
+                    invalidateAll();
+                  },
+                  trigger: (
+                    <button
+                      type="button"
+                      className="h-11 rounded-xl bg-[#2A4467] px-6 text-sm font-semibold text-white"
+                    >
+                      Modify & Resubmit
+                    </button>
+                  ),
+                })}
+              </div>
+            </div>
+          )}
 
         {isApprover && detail?.approverStatus === "pending" && (
           <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 p-6">
@@ -1224,6 +1272,11 @@ type Props = {
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
   approverPoolPath?: string;
+  renderManagerRejectedAction?: (args: {
+    detail: AmendmentDetail;
+    onSubmitted: () => void;
+    trigger: React.ReactElement;
+  }) => React.ReactNode;
 };
 
 const AmendmentsTable: React.FC<Props> = ({
@@ -1234,6 +1287,7 @@ const AmendmentsTable: React.FC<Props> = ({
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
   approverPoolPath,
+  renderManagerRejectedAction,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -1306,6 +1360,7 @@ const AmendmentsTable: React.FC<Props> = ({
               listInvalidateQueryKey={listInvalidateQueryKey}
               statsInvalidateQueryKey={statsInvalidateQueryKey}
               approverPoolPath={approverPoolPath}
+              renderManagerRejectedAction={renderManagerRejectedAction}
               trigger={
                 <button
                   type="button"

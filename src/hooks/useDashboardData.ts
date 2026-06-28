@@ -1207,7 +1207,7 @@ export const useDashboardData = (
     refetchOnMount: false,
   });
 
-  // AI Insights & Alerts (manager-only endpoint; approver base path has no equivalent).
+  // AI Insights & Alerts shares the manager endpoint for contract managers and procurement.
   const {
     data: contractManagerAiInsights,
     isLoading: isLoadingContractManagerAiInsights,
@@ -1223,7 +1223,7 @@ export const useDashboardData = (
       });
       return res.data as ContractManagerDashboardResponse<ContractAiInsight[]>;
     },
-    enabled: userRole === "contract_manager",
+    enabled: userRole === "contract_manager" || userRole === "procurement",
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,

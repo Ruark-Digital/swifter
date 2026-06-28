@@ -29,12 +29,9 @@ export const Dashboard = () => {
 
     if (!isAllowed) {
       navigate("/dashboard/contract-management", { replace: true });
-      return;
     }
-
-    if (path === "/dashboard") {
-      navigate("/dashboard/contract-management", { replace: true });
-    }
+    // `/dashboard` itself is allowed: the PM now sees the (vendor-mirrored)
+    // dashboard there instead of being bounced to contract-management.
   }, [userRole, routerLocation.pathname, navigate]);
 
   return (

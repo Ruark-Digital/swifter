@@ -14,6 +14,7 @@ import { Check, CloudUpload, FileText, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import AmendmentsStatsCards from "../components/AmendmentsStatsCards";
 import AmendmentsTable, {
+  type AmendmentDetail,
   type AmendmentRow,
 } from "../components/AmendmentsTable";
 import { useQuery } from "@tanstack/react-query";
@@ -22,7 +23,7 @@ import {
   type ContractAmendmentStatsDTO,
 } from "../api/contractManagerApi";
 import { useUserRole } from "@/hooks/useUserRole";
-import { getRequest } from "@/lib/axiosInstance";
+import { getRequest, putRequest } from "@/lib/axiosInstance";
 import { formatFileSize, getSimpleFileExtension } from "@/lib/fileUtils";
 import { toAmendmentDateTimeValue } from "../utils/amendmentDate";
 
@@ -68,7 +69,7 @@ function FileListItem({ file }: { file: File }) {
   );
 }
 
-type CreateAmendmentFormValues = {
+export type CreateAmendmentFormValues = {
   amendmentTitle: string;
   impactType: "time" | "cost" | "time_cost" | "others";
   timeImpactDays: Date | string;
@@ -89,7 +90,7 @@ type CreateAmendmentFormValues = {
 
 type ContractAmendmentChange = { field: string; value: string | number };
 
-type ContractAmendmentFile = {
+export type ContractAmendmentFile = {
   name: string;
   url: string;
   type: string;
@@ -105,6 +106,33 @@ type CreateAmendmentPayload = {
   changes: ContractAmendmentChange[];
   files: ContractAmendmentFile[];
 };
+
+const CREATE_AMENDMENT_DEFAULT_VALUES: CreateAmendmentFormValues = {
+  amendmentTitle: "",
+  impactType: "time",
+  timeImpactDays: "",
+  costImpactAmount: "",
+  scopeEnabled: true,
+  expiryEnabled: true,
+  costEnabled: true,
+  clauseEnabled: true,
+  othersEnabled: true,
+  scope: "",
+  newExpiryDate: "",
+  otherCost: "",
+  clause: "",
+  otherDetails: "",
+  description: "",
+  files: null,
+};
+
+const getCreateAmendmentDefaultValues = (
+  initialValues?: Partial<CreateAmendmentFormValues>,
+): CreateAmendmentFormValues => ({
+  ...CREATE_AMENDMENT_DEFAULT_VALUES,
+  ...initialValues,
+  files: null,
+});
 
 const UploadElement = () => {
   return (
@@ -126,42 +154,54 @@ export const CreateAmendmentDialog: React.FC<{
   trigger: React.ReactElement;
   contractId: string;
   createPath?: string;
+  updatePath?: string;
+  amendmentId?: string;
+  mode?: "create" | "edit";
+  initialValues?: Partial<CreateAmendmentFormValues>;
+  existingFiles?: ContractAmendmentFile[];
   mutationScope?: string;
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
+  titleText?: string;
+  submitText?: string;
+  successText?: string;
+  onSubmitted?: () => void;
 }> = ({
   trigger,
   contractId,
   createPath,
+  updatePath,
+  amendmentId,
+  mode = "create",
+  initialValues,
+  existingFiles = [],
   mutationScope = "contract-amendments",
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
+  titleText,
+  submitText,
+  successText,
+  onSubmitted,
 }) => {
   const [open, setOpen] = React.useState(false);
   const [successOpen, setSuccessOpen] = React.useState(false);
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
+  const isEditMode = mode === "edit";
+  const formDefaults = React.useMemo(
+    () => getCreateAmendmentDefaultValues(initialValues),
+    [initialValues],
+  );
 
   const { control, reset, watch } = useForge<CreateAmendmentFormValues>({
-    defaultValues: {
-      amendmentTitle: "",
-      impactType: "time",
-      timeImpactDays: "",
-      costImpactAmount: "",
-      scopeEnabled: true,
-      expiryEnabled: true,
-      costEnabled: true,
-      clauseEnabled: true,
-      othersEnabled: true,
-      scope: "",
-      newExpiryDate: "",
-      otherCost: "",
-      clause: "",
-      otherDetails: "",
-      description: "",
-      files: null,
-    },
+    defaultValues: formDefaults,
   });
+
+  React.useEffect(() => {
+    if (open) {
+      reset(formDefaults);
+    }
+  }, [formDefaults, open, reset]);
   
   const impactType = watch("impactType");
   const scopeEnabled = watch("scopeEnabled");
@@ -193,8 +233,26 @@ export const CreateAmendmentDialog: React.FC<{
   });
 
   const createMutation = useMutation({
-    mutationKey: [mutationScope, "create", contractId],
+    mutationKey: [mutationScope, isEditMode ? "edit" : "create", contractId, amendmentId],
     mutationFn: async (payload: CreateAmendmentPayload) => {
+      if (isEditMode) {
+        const resolvedUpdatePath =
+          updatePath ||
+          (amendmentId
+            ? `/contract/manager/contracts/${contractId}/amendments/${amendmentId}`
+            : "");
+
+        if (!resolvedUpdatePath) {
+          throw new Error("Missing amendment update path");
+        }
+
+        const res = await putRequest({
+          url: resolvedUpdatePath,
+          payload,
+        });
+        return res.data;
+      }
+
       const res = await postRequest({
         url: createPath || `/contract/manager/contracts/${contractId}/amendments`,
         payload,
@@ -204,7 +262,7 @@ export const CreateAmendmentDialog: React.FC<{
     onSuccess: async () => {
       setOpen(false);
       setSuccessOpen(true);
-      reset();
+      reset(formDefaults);
       await queryClient.invalidateQueries({
         queryKey: listInvalidateQueryKey ?? [mutationScope, contractId],
       });
@@ -212,9 +270,13 @@ export const CreateAmendmentDialog: React.FC<{
         queryKey:
           statsInvalidateQueryKey ?? [`${mutationScope}-stats`, contractId],
       });
+      onSubmitted?.();
     },
     onError: (error: ApiResponseError) => {
-      toastHandler.error("Create Amendment Failed", error);
+      toastHandler.error(
+        isEditMode ? "Update Amendment Failed" : "Create Amendment Failed",
+        error,
+      );
     },
   });
 
@@ -291,7 +353,7 @@ export const CreateAmendmentDialog: React.FC<{
       clause: data.impactType === "others" && data.clauseEnabled ? data.clause : undefined,
       others: data.impactType === "others" && data.othersEnabled ? data.otherDetails : undefined,
       changes,
-      files: uploadedFiles,
+      files: [...existingFiles, ...uploadedFiles],
     };
 
     try {
@@ -302,6 +364,15 @@ export const CreateAmendmentDialog: React.FC<{
   };
 
   const isSubmitting = createMutation.isPending || isUploadingFiles;
+  const dialogTitle =
+    titleText ?? (isEditMode ? "Modify Amendment" : "Create Amendment");
+  const submitLabel =
+    submitText ?? (isEditMode ? "Resubmit Amendment" : "Create Amendment");
+  const successLabel =
+    successText ??
+    (isEditMode
+      ? "Amendment Resubmitted Successfully"
+      : "Amendment Created Successfully");
 
   return (
     <>
@@ -309,7 +380,7 @@ export const CreateAmendmentDialog: React.FC<{
         open={open}
         onOpenChange={(nextOpen) => {
           setOpen(nextOpen);
-          if (!nextOpen) reset();
+          if (!nextOpen) reset(formDefaults);
         }}
       >
         <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -324,7 +395,7 @@ export const CreateAmendmentDialog: React.FC<{
           >
             <div className="flex items-center justify-between px-8 pb-2 pt-8">
               <div className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
-                Create Amendment
+                {dialogTitle}
               </div>
               <button
                 type="button"
@@ -599,9 +670,39 @@ export const CreateAmendmentDialog: React.FC<{
                 rows={5}
               />
 
+              {existingFiles.length > 0 && (
+                <div className="space-y-4">
+                  <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                    Current Files
+                  </div>
+                  <div className="space-y-3">
+                    {existingFiles.map((file) => (
+                      <div
+                        key={file.url || file.name}
+                        className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded bg-blue-100 dark:bg-slate-700">
+                            <FileText className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                              {file.name}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-slate-400">
+                              {getSimpleFileExtension(file.name).toUpperCase()} | {file.size}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-4">
                 <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
-                  Upload Files
+                  {existingFiles.length > 0 ? "Upload Additional Files" : "Upload Files"}
                 </div>
                 <Forger
                   name="files"
@@ -641,7 +742,11 @@ export const CreateAmendmentDialog: React.FC<{
                 className="inline-flex h-11 flex-1 items-center justify-center rounded-xl bg-[#2A4467] px-6 text-base font-semibold text-white"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Creating..." : "Create Amendment"}
+                {isSubmitting
+                  ? isEditMode
+                    ? "Resubmitting..."
+                    : "Creating..."
+                  : submitLabel}
               </Button>
             </div>
           </Forge>
@@ -658,7 +763,7 @@ export const CreateAmendmentDialog: React.FC<{
               <Check className="h-8 w-8" />
             </div>
             <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
-              Amendment Created Successfully
+              {successLabel}
             </div>
             <Button
               type="button"
@@ -673,6 +778,64 @@ export const CreateAmendmentDialog: React.FC<{
     </>
   );
 };
+
+const toAmendmentFormDate = (
+  value: string | Date | undefined | null,
+): Date | string => {
+  if (!value) return "";
+  if (value instanceof Date) return value;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : parsed;
+};
+
+const buildEditAmendmentInitialValues = (
+  detail: AmendmentDetail,
+): Partial<CreateAmendmentFormValues> => {
+  const impactType =
+    detail.impact === "cost" ||
+    detail.impact === "time_cost" ||
+    detail.impact === "others"
+      ? detail.impact
+      : "time";
+
+  const timeChange = detail.changes?.find((change) =>
+    ["time", "endDate", "newExpiryDate"].includes(change.field),
+  );
+  const costChange = detail.changes?.find((change) => change.field === "cost");
+  const scopeChange = detail.changes?.find((change) =>
+    ["scope", "others"].includes(change.field),
+  );
+  const clauseValue = String((detail as any).clause ?? "");
+  const otherDetails = String((detail as any).others ?? "");
+
+  return {
+    amendmentTitle: detail.title ?? "",
+    impactType,
+    timeImpactDays: toAmendmentFormDate(timeChange?.newValue as any),
+    costImpactAmount: costChange?.newValue ? String(costChange.newValue) : "",
+    scopeEnabled: Boolean(scopeChange?.newValue),
+    expiryEnabled: Boolean(timeChange?.newValue),
+    costEnabled: Boolean(costChange?.newValue),
+    clauseEnabled: Boolean(clauseValue),
+    othersEnabled: Boolean(otherDetails),
+    scope: scopeChange?.newValue ? String(scopeChange.newValue) : "",
+    newExpiryDate: toAmendmentFormDate(timeChange?.newValue as any),
+    otherCost: costChange?.newValue ? String(costChange.newValue) : "",
+    clause: clauseValue,
+    otherDetails,
+    description: detail.description ?? "",
+  };
+};
+
+const buildExistingAmendmentFiles = (
+  detail: AmendmentDetail,
+): ContractAmendmentFile[] =>
+  (detail.files ?? []).map((file) => ({
+    name: file.name ?? "",
+    url: file.url ?? "",
+    type: file.type ?? "",
+    size: file.size ?? "",
+  }));
 
 type Props = {
   contractId: string;
@@ -825,6 +988,23 @@ const AmendmentsTabContent: React.FC<Props> = ({
         listInvalidateQueryKey={amendmentsQueryKey}
         statsInvalidateQueryKey={statsQueryKey}
         approverPoolPath={`/contract/manager/contracts/${contractId}/approvers`}
+        renderManagerRejectedAction={({ detail, onSubmitted, trigger }) => (
+          <CreateAmendmentDialog
+            mode="edit"
+            contractId={contractId}
+            amendmentId={detail._id}
+            updatePath={`/contract/manager/contracts/${contractId}/amendments/${detail._id}`}
+            initialValues={buildEditAmendmentInitialValues(detail)}
+            existingFiles={buildExistingAmendmentFiles(detail)}
+            listInvalidateQueryKey={amendmentsQueryKey}
+            statsInvalidateQueryKey={statsQueryKey}
+            titleText="Modify Amendment"
+            submitText="Resubmit Amendment"
+            successText="Amendment Resubmitted Successfully"
+            onSubmitted={onSubmitted}
+            trigger={trigger}
+          />
+        )}
       />
     </TabsContent>
   );

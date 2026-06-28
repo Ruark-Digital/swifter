@@ -2328,8 +2328,8 @@ export class DashboardDataTransformer {
       const linkClass = "underline underline-offset-4 text-blue-600";
 
       // Action-log shape (260528): { actionText, statusText, action, detailRef, detailType, ... }.
-      // actionText is the bold action label; statusText is the descriptive body. Wrap the body
-      // in the anchor so the whole sentence routes to the contract overview.
+      // Keep the action label plain to match General Updates, and wrap the
+      // descriptive body in the contract deep link.
       if (actionText) {
         const body = contractUrl && statusText
           ? `<a href="${contractUrl}" class="${linkClass}">${statusText}</a>`
@@ -2337,7 +2337,7 @@ export class DashboardDataTransformer {
         return {
           id: item?.id ?? `cm-${index}`,
           title: statusText || "Action",
-          text: body ? `<strong>${actionText}</strong> — ${body}` : `<strong>${actionText}</strong>`,
+          text: body ? `${actionText} — ${body}` : actionText,
           date: dateValue ? formatDateTZ(dateValue, "MMM d, yyyy h:mm a") : undefined,
           status: item?.status ?? undefined,
           type: item?.type ?? undefined,

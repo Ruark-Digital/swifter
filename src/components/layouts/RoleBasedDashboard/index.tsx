@@ -208,7 +208,18 @@ const buildContractTotalStats = (template: any[], cards: any) =>
 
 // Main Role-Based Dashboard Component
 export const RoleBasedDashboard: React.FC = () => {
-  const { dashboardConfig, userRole } = useUserRole();
+  const { dashboardConfig: actualDashboardConfig, userRole: actualRole } =
+    useUserRole();
+  // The PM portal mirrors the vendor dashboard exactly (PM is a vendor-side
+  // project manager). Alias the role for the entire dashboard subtree so every
+  // vendor branch — landing tabs, data fetching, config, and render — applies
+  // to the PM identically.
+  const userRole =
+    actualRole === "project_manager" ? "vendor" : actualRole;
+  const dashboardConfig =
+    actualRole === "project_manager"
+      ? dashboardConfigs.vendor
+      : actualDashboardConfig;
   const user = useUser();
   const modules = user?.module;
   // Individual chart filters instead of global filter
@@ -832,7 +843,6 @@ export const RoleBasedDashboard: React.FC = () => {
 
   const isContractAnalyticsRole =
     userRole === "contract_manager" || userRole === "approver";
-  // project_manager handled separately below
   const canShowMyActions = modules?.myActions === true;
   const canShowGeneralUpdates = modules?.generalUpdatesNotifications === true;
 
@@ -906,10 +916,8 @@ export const RoleBasedDashboard: React.FC = () => {
         )}
       </div>
 
-      {/* project_manager: Contracts view — only when contractManagement is on */}
-      {userRole === "project_manager" && activeLandingTab === "contracts" && (
-        <VendorContractsView enabled />
-      )}
+      {/* project_manager mirrors the vendor dashboard (aliased above), so the
+          vendor Contracts branch below handles the PM Contracts view too. */}
 
       {/* contract_manager / approver: full analytics tabs (unchanged) */}
       {isContractAnalyticsRole && (
@@ -1038,7 +1046,6 @@ export const RoleBasedDashboard: React.FC = () => {
 
       {/* Stats Cards — shown for all non-analytics roles on their primary tab */}
       {!isContractAnalyticsRole &&
-        userRole !== "project_manager" &&
         !(userRole === "company_admin" && activeLandingTab === "contracts") &&
         !(userRole === "procurement" && activeLandingTab === "contracts") &&
         !(userRole === "vendor" && activeLandingTab === "contracts") && (
@@ -1064,7 +1071,6 @@ export const RoleBasedDashboard: React.FC = () => {
 
       {/* Activities and Charts Section */}
       {!isContractAnalyticsRole &&
-        userRole !== "project_manager" &&
         !(userRole === "company_admin" && activeLandingTab === "contracts") &&
         !(userRole === "procurement" && activeLandingTab === "contracts") &&
         !(userRole === "vendor" && activeLandingTab === "contracts") &&
