@@ -49,6 +49,11 @@ import { Share2 } from "lucide-react";
 import { Status } from "./components/StatusBadge";
 import { useUser } from "@/store/authSlice";
 import type { ApiResponseError } from "@/types";
+import ContractLifecycleDialog from "@/pages/ContractManagementPage/components/ContractLifecycleDialog";
+import {
+  availableLifecycleActions,
+  type LifecycleAction,
+} from "@/pages/ContractManagementPage/components/contractLifecycle";
 
 type TabKey =
   | "overview"
@@ -216,6 +221,7 @@ export interface MSAContractDetail {
   vendor: Vendor;
   contractFormationStage: ContractFormationStage;
   _id: string;
+  owner?: boolean;
   company: Company;
   creator: Creator;
   internalTeam: Approver[];
@@ -364,6 +370,8 @@ const MsaDetailPage: React.FC = () => {
   const [approvalAction, setApprovalAction] = React.useState<
     "approved" | "rejected" | null
   >(null);
+  const [lifecycleAction, setLifecycleAction] =
+    React.useState<LifecycleAction | null>(null);
   const [comment, setComment] = React.useState("");
 
   const {
@@ -470,6 +478,19 @@ const MsaDetailPage: React.FC = () => {
   }, [formatMoney, linkedContractsResponse?.data]);
 
   const user = useUser();
+  const currentUserId = user?._id;
+  const isMsaOwner =
+    typeof msa?.owner === "boolean"
+      ? msa.owner
+      : Boolean(
+          currentUserId && msa?.creator?._id && currentUserId === msa.creator._id,
+        );
+  const lifecycleActions = availableLifecycleActions(msa?.status);
+  const canSuspendMsa =
+    isManager && isMsaOwner && lifecycleActions.includes("suspend");
+  const canTerminateMsa =
+    isManager && isMsaOwner && lifecycleActions.includes("terminate");
+  const showLifecycleActions = canSuspendMsa || canTerminateMsa;
   const isMsaProjectManager = Boolean(
     user?.projectmanagerId &&
     msa?.projectManager?.user?._id === user.projectmanagerId,
@@ -498,6 +519,10 @@ const MsaDetailPage: React.FC = () => {
   const hasApprovedOrRejected =
     approveStatusResponse?.data?.status === "approved" ||
     approveStatusResponse?.data?.status === "rejected";
+  const showApprovalActions =
+    !showLifecycleActions &&
+    ((isApprover && canApprove && !hasApprovedOrRejected) ||
+      canProjectManagerApprove);
 
   const approvalMutation = useMutation({
     mutationFn: async (action: "approved" | "rejected") => {
@@ -653,8 +678,29 @@ const MsaDetailPage: React.FC = () => {
         <Badge className={status?.className}>{status?.label}</Badge>
       </div>
 
-      {((isApprover && canApprove && !hasApprovedOrRejected) ||
-        canProjectManagerApprove) && (
+      {showLifecycleActions && (
+        <div className="flex items-center gap-4">
+          {canSuspendMsa && (
+            <Button
+              variant="outline"
+              className="bg-[#F3F4F6] border-[#E5E7EB]"
+              onClick={() => setLifecycleAction("suspend")}
+            >
+              Suspend MSA
+            </Button>
+          )}
+          {canTerminateMsa && (
+            <Button
+              variant="destructive"
+              onClick={() => setLifecycleAction("terminate")}
+            >
+              Terminate MSA
+            </Button>
+          )}
+        </div>
+      )}
+
+      {showApprovalActions && (
         <div className="flex items-center gap-4 ">
           <Button
             variant="default"
@@ -910,6 +956,17 @@ const MsaDetailPage: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ContractLifecycleDialog
+        kind="msa"
+        id={msa?._id ?? ""}
+        title={msa?.title}
+        action={lifecycleAction}
+        open={lifecycleAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setLifecycleAction(null);
+        }}
+      />
     </div>
   );
 };
