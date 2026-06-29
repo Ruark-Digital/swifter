@@ -52,10 +52,13 @@ export type ContractRow = {
   isOwner?: boolean;
 };
 
-const ContractActionsCell: React.FC<{ row: ContractRow }> = ({ row }) => {
+const ContractActionsCell: React.FC<{
+  row: ContractRow;
+  menuOpen: boolean;
+  onMenuOpenChange: (open: boolean) => void;
+}> = ({ row, menuOpen, onMenuOpenChange }) => {
   const { isManager } = useUserRole();
   const currentUserId = useUser()?._id;
-  const [menuOpen, setMenuOpen] = React.useState(false);
   const [editOpen, setEditOpen] = React.useState(false);
   const [lifecycle, setLifecycle] = React.useState<LifecycleAction | null>(null);
 
@@ -75,13 +78,13 @@ const ContractActionsCell: React.FC<{ row: ContractRow }> = ({ row }) => {
   // Close the menu before opening a controlled dialog so the dropdown doesn't
   // linger behind it or fight the dialog for focus.
   const openLifecycle = (a: LifecycleAction) => {
-    setMenuOpen(false);
+    onMenuOpenChange(false);
     setLifecycle(a);
   };
 
   return (
     <>
-      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+      <DropdownMenu open={menuOpen} onOpenChange={onMenuOpenChange}>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" data-testid="project-actions-dropdown">
             ⋮
@@ -112,7 +115,7 @@ const ContractActionsCell: React.FC<{ row: ContractRow }> = ({ row }) => {
               data-testid="edit-contract"
               onSelect={(e) => {
                 e.preventDefault();
-                setMenuOpen(false);
+                onMenuOpenChange(false);
                 setEditOpen(true);
               }}
             >
@@ -253,7 +256,7 @@ const columns: ColumnDef<ContractRow>[] = [
   {
     id: "actions",
     header: "Actions",
-    cell: ({ row }) => <ContractActionsCell row={row.original} />,
+    cell: () => null,
   },
 ];
 
@@ -297,6 +300,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
 }) => {
   const [search, setSearch] = React.useState("");
   const [dateFilter, setDateFilter] = React.useState("all");
+  const [openMenuRowId, setOpenMenuRowId] = React.useState<string | null>(null);
   const [localPagination, setLocalPagination] = React.useState<PaginationState>(
     {
       pageIndex: 0,
@@ -311,9 +315,29 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
   }, []);
 
   const tableColumns = React.useMemo(() => {
-    if (!isReadOnly && !disableActions) return columns;
-    return columns.filter((column) => column.id !== "actions");
-  }, [isReadOnly, disableActions]);
+    if (isReadOnly || disableActions) {
+      return columns.filter((column) => column.id !== "actions");
+    }
+
+    return columns.map((column) => {
+      if (column.id !== "actions") {
+        return column;
+      }
+
+      return {
+        ...column,
+        cell: ({ row }: { row: { original: ContractRow } }) => (
+          <ContractActionsCell
+            row={row.original}
+            menuOpen={openMenuRowId === row.original.id}
+            onMenuOpenChange={(open) => {
+              setOpenMenuRowId(open ? row.original.id : null);
+            }}
+          />
+        ),
+      };
+    });
+  }, [isReadOnly, disableActions, openMenuRowId]);
 
   const filteredRows = React.useMemo(() => {
     let result = rows;

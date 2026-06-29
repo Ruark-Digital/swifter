@@ -1270,26 +1270,42 @@ export const createContractManagerApi = (
       });
       return res.data as { message?: string; data?: unknown };
     },
-    getAmendmentDetail: async (amendmentId: string) => {
+    getAmendmentDetail: async (contractId: string, amendmentId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/amendments/${amendmentId}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/amendments/${amendmentId}`,
       });
       return res.data as { message?: string; data?: unknown };
     },
-    addAmendmentApprovers: async (amendmentId: string, payload: unknown) => {
+    addAmendmentApprovers: async (
+      contractId: string,
+      amendmentId: string,
+      payload: unknown,
+    ) => {
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/amendments/${amendmentId}/approvers`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/amendments/${amendmentId}/approvers`,
+        payload,
+      });
+      return res.data as { message?: string; data?: unknown };
+    },
+    updateAmendment: async (
+      contractId: string,
+      amendmentId: string,
+      payload: unknown,
+    ) => {
+      const res = await client.put({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/amendments/${amendmentId}`,
         payload,
       });
       return res.data as { message?: string; data?: unknown };
     },
     approveAmendment: async (
+      contractId: string,
       amendmentId: string,
       payload: ApprovalActionDTO,
     ) => {
       await assertValid(approvalActionSchema, payload);
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/amendments/${amendmentId}/approve`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/amendments/${amendmentId}/approve`,
         payload,
       });
       return res.data as { message?: string; data?: unknown };

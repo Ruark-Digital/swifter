@@ -1,7 +1,7 @@
 // TipTap editor hook bound to a Yjs doc + WebsocketProvider.
 //
 // Created for phase quick/260518-collab-tiptap-migration sub-phase 1.
-// Tracer-bullet wiring only — no redline marks, no comment marks, no AI
+// Tracer-bullet wiring only - no redline marks, no comment marks, no AI
 // extensions yet. Those land in sub-phases 2 & 3 against this hook.
 
 import { useEditor } from "@tiptap/react";
@@ -16,16 +16,14 @@ import { InsertionMark } from "./marks/insertionMark";
 import { DeletionMark } from "./marks/deletionMark";
 
 // NOTE on presence carets (in-editor cursors):
-// `@tiptap/extension-collaboration-cursor@2.x` is the only published
-// cursor extension at install time, and it crashes against TipTap v3's
-// `Collaboration` extension — they ship different `ySyncPluginKey`
-// instances (cursor v2 imports from `y-prosemirror`, Collaboration v3
-// from `@tiptap/y-tiptap`), so the cursor plugin's `ystate` lookup
-// returns undefined and reading `ystate.doc` throws. Until a v3 cursor
-// extension lands upstream, we ship without in-editor carets — the
-// PresenceBar at the top of the page (avatar stack from Yjs awareness)
-// still works. Re-introduce by wrapping `yCursorPlugin` from
-// `@tiptap/y-tiptap` directly in a custom Extension.
+// We intentionally ship without the TipTap cursor extension because the
+// published v2 package crashes against TipTap v3's `Collaboration`
+// extension - they ship different `ySyncPluginKey` instances, so the
+// cursor plugin's `ystate` lookup returns undefined and reading
+// `ystate.doc` throws. The PresenceBar at the top of the page (avatar
+// stack from Yjs awareness) still works. Re-introduce carets by wrapping
+// `yCursorPlugin` from `@tiptap/y-tiptap` directly in a custom
+// Extension once a compatible upstream path is available.
 
 export type UseTipTapEditorArgs = {
   doc: Y.Doc;
@@ -38,7 +36,7 @@ export function useTipTapEditor({
   provider,
   localUser,
 }: UseTipTapEditorArgs): Editor | null {
-  // Silence unused-arg warnings — `provider` and `localUser` are kept
+  // Silence unused-arg warnings - `provider` and `localUser` are kept
   // in the signature so the hook is ready to accept them once we wrap
   // `@tiptap/y-tiptap`'s yCursorPlugin in a custom v3-compatible
   // extension.
@@ -56,7 +54,7 @@ export function useTipTapEditor({
     DeletionMark,
   ];
 
-  // Key the editor on doc identity — when the room changes the parent
+  // Key the editor on doc identity - when the room changes the parent
   // creates a fresh Y.Doc; useEditor cleans up the previous instance.
   const editor = useEditor(
     {

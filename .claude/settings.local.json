@@ -9,7 +9,14 @@
       "Bash(pnpm playwright *)",
       "Bash(mkdir -p .qa/screenshots && cat \"/c/Users/HomePC/.trae/skills/browser-qa/scripts/qa-run.js\" | head -50)",
       "Bash(node /c/Users/HomePC/.trae/skills/browser-qa/scripts/qa-run.js --url http://localhost:5173 --feature ade-77-vendor-edit-invoice --out __CMDSUB_OUTPUT__/.qa/screenshots --action '{ *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
+      "mcp__Claude_in_Chrome__list_connected_browsers",
+      "mcp__Claude_in_Chrome__select_browser",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__browser_batch",
+      "mcp__Claude_in_Chrome__computer",
+      "mcp__Claude_in_Chrome__find"
     ]
   }
 }
