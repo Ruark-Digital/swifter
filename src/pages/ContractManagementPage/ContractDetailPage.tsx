@@ -43,6 +43,11 @@ import KpiTabContent from "./layouts/KpiTabContent";
 import OverviewTab from "./layouts/OverviewTab";
 import RfiTabContent from "./layouts/RfiTabContent";
 import VendorReportsTabContent from "./layouts/VendorReportsTabContent";
+import ContractLifecycleDialog from "./components/ContractLifecycleDialog";
+import {
+  availableLifecycleActions,
+  type LifecycleAction,
+} from "./components/contractLifecycle";
 import {
   Dialog,
   DialogContent,
@@ -197,6 +202,8 @@ const ContractDetailPage: React.FC = () => {
   const [approvalAction, setApprovalAction] = React.useState<
     "approved" | "rejected" | null
   >(null);
+  const [lifecycleAction, setLifecycleAction] =
+    React.useState<LifecycleAction | null>(null);
   const [comment, setComment] = React.useState("");
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = React.useState<TabKey>(() => {
@@ -236,6 +243,21 @@ const ContractDetailPage: React.FC = () => {
 
   const contractData = contractsResponse?.data?.data;
   const user = useUser();
+  const currentUserId = user?._id;
+  const isContractOwner =
+    typeof contractData?.owner === "boolean"
+      ? contractData.owner
+      : Boolean(
+          currentUserId &&
+            contractData?.creator?._id &&
+            currentUserId === contractData.creator._id,
+        );
+  const lifecycleActions = availableLifecycleActions(contractData?.status);
+  const canSuspendContract =
+    isManager && isContractOwner && lifecycleActions.includes("suspend");
+  const canTerminateContract =
+    isManager && isContractOwner && lifecycleActions.includes("terminate");
+  const showLifecycleActions = canSuspendContract || canTerminateContract;
 
   const isContractProjectManager = Boolean(
     user?.projectmanagerId &&
@@ -386,6 +408,11 @@ const ContractDetailPage: React.FC = () => {
     approveStatusResponse?.data?.data?.status === "rejected";
   const hasNoAuthorization =
     approveStatusResponse?.data?.data?.status === "N/A";
+  const showApprovalActions =
+    !showLifecycleActions &&
+    (((isApprover && canApprove && !hasAprovedorRejected) ||
+      canProjectManagerApprove) &&
+      !(hasNoAuthorization && !canProjectManagerApprove));
 
   const triggerClass =
     "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3 text-sm";
@@ -429,8 +456,29 @@ const ContractDetailPage: React.FC = () => {
         <Badge className={status?.className}>{status?.label}</Badge>
       </div>
 
-      {((isApprover && canApprove && !hasAprovedorRejected) ||
-        canProjectManagerApprove) && (
+      {showLifecycleActions && (
+        <div className="flex items-center gap-4">
+          {canSuspendContract && (
+            <Button
+              variant="outline"
+              className="bg-[#F3F4F6] border-[#E5E7EB]"
+              onClick={() => setLifecycleAction("suspend")}
+            >
+              Suspend Contract
+            </Button>
+          )}
+          {canTerminateContract && (
+            <Button
+              variant="destructive"
+              onClick={() => setLifecycleAction("terminate")}
+            >
+              Terminate Contract
+            </Button>
+          )}
+        </div>
+      )}
+
+      {showApprovalActions && (
         <div
           className={cn("flex items-center gap-4", {
             hidden: hasNoAuthorization && !canProjectManagerApprove,
@@ -644,6 +692,17 @@ const ContractDetailPage: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ContractLifecycleDialog
+        kind="contract"
+        id={contract?._id ?? ""}
+        title={contract?.title}
+        action={lifecycleAction}
+        open={lifecycleAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setLifecycleAction(null);
+        }}
+      />
     </div>
   );
 };

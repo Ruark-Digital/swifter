@@ -6,9 +6,14 @@ export type LifecycleAction = "terminate" | "suspend" | "complete" | "manage";
 const normStatus = (s?: string) =>
   (s ?? "").trim().toLowerCase().replace(/\s+/g, "_");
 
+const normalizeLifecycleStatus = (status?: string) => {
+  const normalized = normStatus(status);
+  return normalized === "published" ? "publish" : normalized;
+};
+
 /** Edit is only offered while the contract/MSA is still a draft. */
 export const isEditableStatus = (status?: string): boolean =>
-  normStatus(status) === "draft";
+  normalizeLifecycleStatus(status) === "draft";
 
 /**
  * Status → available lifecycle actions (excludes `manage`, which is owner-based
@@ -18,7 +23,7 @@ export const isEditableStatus = (status?: string): boolean =>
 export const availableLifecycleActions = (
   status?: string,
 ): LifecycleAction[] => {
-  const s = normStatus(status);
+  const s = normalizeLifecycleStatus(status);
   const actions: LifecycleAction[] = [];
   if (s === "pending_approval" || s === "active" || s === "publish") {
     actions.push("terminate", "suspend");
