@@ -59,6 +59,14 @@ type UploadedFilePayload = {
   size: string;
 };
 
+type DeliverablePersonnelOptionSource = {
+  _id?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  role?: Array<{ name?: string }> | { name?: string } | string;
+};
+
 type SubmitDeliverableFormValues = {
   description: string;
   files: File[] | null;
@@ -104,6 +112,48 @@ const safeFormatDate = (value: string | undefined | null, fmt: string) => {
   const parsed = new Date(value);
   return isValid(parsed) ? formatDate(parsed, fmt) : "-";
 };
+
+const excludedDeliverableResponderRoles = new Set(["vendor", "projectmanager", "pm"]);
+
+const normalizeDeliverableResponderRole = (role?: string) =>
+  (role ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+
+const getDeliverableResponderRoles = (
+  personnel: DeliverablePersonnelOptionSource,
+): string[] => {
+  if (Array.isArray(personnel.role)) {
+    return personnel.role.map((role) => role?.name ?? "");
+  }
+
+  if (typeof personnel.role === "string") {
+    return [personnel.role];
+  }
+
+  if (personnel.role?.name) {
+    return [personnel.role.name];
+  }
+
+  return [];
+};
+
+export const buildDeliverableResponderOptions = (
+  personnel: DeliverablePersonnelOptionSource[],
+): Option[] =>
+  personnel
+    .filter((person) =>
+      !getDeliverableResponderRoles(person).some((role) =>
+        excludedDeliverableResponderRoles.has(
+          normalizeDeliverableResponderRole(role),
+        ),
+      ),
+    )
+    .map((person) => ({
+      value: person._id,
+      label:
+        person.firstName && person.lastName
+          ? `${person.firstName} ${person.lastName}`
+          : person.firstName || person.email || person._id,
+    }));
 
 export type DeliverableRow = {
   id: string;
@@ -231,13 +281,7 @@ const SubmitDeliverableDialog: React.FC<{
   const personnelOptions = React.useMemo<Option[]>(() => {
     const data = personnelData?.data?.data;
     if (!Array.isArray(data)) return [];
-    return data.map((p: any) => ({
-      value: p._id,
-      label:
-        p.firstName && p.lastName
-          ? `${p.firstName} ${p.lastName}`
-          : p.firstName || p.email || p._id,
-    }));
+    return buildDeliverableResponderOptions(data);
   }, [personnelData]);
 
   const { control, reset } = useForge<SubmitDeliverableFormValues>({
