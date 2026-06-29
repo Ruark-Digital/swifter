@@ -6,12 +6,29 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { getSafeAsChild } from "@/components/ui/safeAsChild"
 
 const Sheet = SheetPrimitive.Root
 
-const SheetTrigger = SheetPrimitive.Trigger
+const SheetTrigger = React.forwardRef<
+  React.ElementRef<typeof SheetPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Trigger>
+>(({ children, asChild, ...props }, ref) => (
+  <SheetPrimitive.Trigger ref={ref} asChild={asChild} {...props}>
+    {asChild ? getSafeAsChild(children) : children}
+  </SheetPrimitive.Trigger>
+))
+SheetTrigger.displayName = SheetPrimitive.Trigger.displayName
 
-const SheetClose = SheetPrimitive.Close
+const SheetClose = React.forwardRef<
+  React.ElementRef<typeof SheetPrimitive.Close>,
+  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Close>
+>(({ children, asChild, ...props }, ref) => (
+  <SheetPrimitive.Close ref={ref} asChild={asChild} {...props}>
+    {asChild ? getSafeAsChild(children) : children}
+  </SheetPrimitive.Close>
+))
+SheetClose.displayName = SheetPrimitive.Close.displayName
 
 const SheetPortal = SheetPrimitive.Portal
 
