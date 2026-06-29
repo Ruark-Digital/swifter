@@ -4,7 +4,6 @@ import {
   DialogClose,
   DialogContent,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CloudUpload, X } from "lucide-react";
@@ -154,9 +153,32 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
     },
   });
 
+  const triggerElement = React.useMemo(() => {
+    if (React.isValidElement(trigger)) {
+      const existingOnClick = trigger.props.onClick as
+        | ((event: React.MouseEvent<HTMLElement>) => void)
+        | undefined;
+
+      return React.cloneElement(trigger, {
+        onClick: (event: React.MouseEvent<HTMLElement>) => {
+          existingOnClick?.(event);
+          if (!event.defaultPrevented) {
+            setOpen(true);
+          }
+        },
+      });
+    }
+
+    return (
+      <Button type="button" onClick={() => setOpen(true)}>
+        {trigger}
+      </Button>
+    );
+  }, [trigger]);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {triggerElement}
       <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-8 pt-8">
           <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
