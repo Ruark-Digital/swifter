@@ -123,7 +123,9 @@ const ContractLifecycleDialog: React.FC<Props> = ({
         predicate: (query) => {
           const key = query.queryKey?.[0];
           if (typeof key !== "string") return false;
-          return kind === "msa" ? key === "msa" : key.startsWith("contracts-");
+          return kind === "msa"
+            ? key.includes("msa")
+            : key.includes("contract") && !key.includes("msa");
         },
       });
     },

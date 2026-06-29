@@ -181,4 +181,28 @@ describe("ContractsTable actions menu", () => {
     fireEvent.click(triggers[1]);
     expect(screen.getAllByText("View Contract")).toHaveLength(1);
   });
+
+  test("shows suspend and terminate actions for published owner contracts", () => {
+    render(
+      <ContractsTable
+        rows={[
+          {
+            id: "c-1",
+            contractId: "COND1",
+            title: "Contract One",
+            code: "COND1",
+            vendor: "Vendor A",
+            owner: "Owner A",
+            status: "Published",
+            isOwner: true,
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("project-actions-dropdown"));
+
+    expect(screen.getByText("Suspend Contract")).toBeInTheDocument();
+    expect(screen.getByText("Terminate Contract")).toBeInTheDocument();
+  });
 });
