@@ -1,6 +1,6 @@
 "use strict";
 
-import { FieldValues, createFormControl, useForm } from "react-hook-form";
+import { FieldValues, useForm } from "react-hook-form";
 import { UseForgeProps, UseForgeResult } from "../types";
 
 /**
@@ -25,18 +25,12 @@ export const useForge = <
   contextAware,
   ...props
 }: UseForgeProps<TFieldProps, TFieldValues>): UseForgeResult<TFieldValues> => {
-  // Create form control using createFormControl instead of useForm
-  const { formControl } = createFormControl<TFieldValues>({
+  const methods = useForm<TFieldValues>({
     defaultValues,
     resolver,
     mode,
-    ...props,
-  });
-  
-  // Use useForm with the created formControl to maintain the same interface
-  const methods = useForm<TFieldValues>({
-    formControl,
     shouldUnregister: (props as any).shouldUnregister,
+    ...props,
   });
 
   const hasFields =
