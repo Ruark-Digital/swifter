@@ -1,5 +1,5 @@
 import React from "react";
-import { useWatch, Control } from "react-hook-form";
+import { useWatch } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { getRequest } from "@/lib/axiosInstance";
 import { useUser } from "@/store/authSlice";
 
-type Props = { control: Control<any> };
+type Props = { control: any };
 
 function extractList<T>(value: unknown): T[] {
   if (Array.isArray(value)) return value as T[];

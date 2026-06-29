@@ -1,9 +1,10 @@
-onlyBuiltDependencies:
-  - core-js
-  - esbuild
-  - pdf2html
-  - sharp
-
 minimumReleaseAge: 10080
 trustPolicy: no-downgrade
 blockExoticSubdeps: true
+
+overrides:
+  semver: 7.6.3
+
+allowBuilds:
+  esbuild: true
+  sharp: true

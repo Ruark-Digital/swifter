@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Upload as UploadIcon, X, CheckCircle, AlertCircle, FileIcon } from "lucide-react";
 import { TextFileUploader } from "@/components/layouts/FormInputs/TextFileInput";
-import { Control } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
@@ -35,7 +34,6 @@ interface FileUploadDialogProps {
   ) => void;
   maxFiles?: number;
   acceptedTypes?: string[];
-  control?: Control<any>;
   requiredDocumentId?: string;
   type: string
 }

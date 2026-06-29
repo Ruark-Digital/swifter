@@ -741,7 +741,6 @@ const ProposalForm = ({
         onFilesUploaded={(files) =>
           handleFilesUploaded(files, selectedDocumentId || "")
         }
-        control={forge.control}
         requiredDocumentId={selectedDocumentId || ""}
         maxFiles={5}
         type={type}

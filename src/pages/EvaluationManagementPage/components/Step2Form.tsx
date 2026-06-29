@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Trash2, Plus } from "lucide-react";
-import { useFieldArray, Control } from "react-hook-form";
+import { useFieldArray } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { Forger } from "@/lib/forge";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
@@ -17,7 +17,7 @@ type Evaluator = {
 };
 
 interface Step2FormProps {
-  control: Control<any>;
+  control: any;
   isEdit?: boolean;
 }
 

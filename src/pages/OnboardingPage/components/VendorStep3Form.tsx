@@ -1,13 +1,13 @@
 import React from "react";
 import { TextFileUploader } from "@/components/layouts/FormInputs";
-import { Forger, ForgeControl } from "@/lib/forge";
+import { Forger } from "@/lib/forge";
 import { Upload, FileText, X } from "lucide-react";
 import { useWatch, UseFormSetValue } from "react-hook-form";
 import { getSimpleFileExtension, formatFileSize } from "@/lib/fileUtils.tsx";
 import { useCallback } from "react";
 
 interface VendorStep3FormProps {
-  control: ForgeControl<any, unknown>;
+  control: any;
   setValue: UseFormSetValue<any>;
 }
 
@@ -17,7 +17,7 @@ function FileListItem({
   setValue,
 }: {
   file: File;
-  control: ForgeControl<any, unknown>;
+  control: any;
   setValue: UseFormSetValue<any>;
 }) {
   const value = useWatch({ control, name: "files" }) as File[] | undefined;

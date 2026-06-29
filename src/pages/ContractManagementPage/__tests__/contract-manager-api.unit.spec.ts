@@ -312,21 +312,28 @@ test.describe("contractManagerApi (unit)", () => {
       payload: amendmentPayload,
     });
 
-    await api.getAmendmentDetail("a1");
+    await api.getAmendmentDetail("c6", "a1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/amendments/a1",
+      url: "/contract/manager/contracts/c6/amendments/a1",
     });
 
     const addApproversPayload = { approvers: ["u1"] };
-    await api.addAmendmentApprovers("a1", addApproversPayload as never);
+    await api.addAmendmentApprovers("c6", "a1", addApproversPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/amendments/a1/approvers",
+      url: "/contract/manager/contracts/c6/amendments/a1/approvers",
       payload: addApproversPayload,
     });
 
-    await api.approveAmendment("a1", approvalPayload as never);
+    const updateAmendmentPayload = { title: "updated amendment" };
+    await api.updateAmendment("c6", "a1", updateAmendmentPayload as never);
+    expect(putSpy.calls.at(-1)).toEqual({
+      url: "/contract/manager/contracts/c6/amendments/a1",
+      payload: updateAmendmentPayload,
+    });
+
+    await api.approveAmendment("c6", "a1", approvalPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/amendments/a1/approve",
+      url: "/contract/manager/contracts/c6/amendments/a1/approve",
       payload: approvalPayload,
     });
 

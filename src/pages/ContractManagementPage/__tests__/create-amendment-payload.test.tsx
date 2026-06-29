@@ -5,6 +5,7 @@ import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const postRequestMock = vi.fn();
+const putRequestMock = vi.fn();
 
 vi.mock("@/lib/axiosInstance", async () => {
   const actual = await vi.importActual<typeof import("@/lib/axiosInstance")>(
@@ -13,6 +14,7 @@ vi.mock("@/lib/axiosInstance", async () => {
   return {
     ...actual,
     postRequest: (...args: unknown[]) => postRequestMock(...args),
+    putRequest: (...args: unknown[]) => putRequestMock(...args),
   };
 });
 
@@ -95,7 +97,7 @@ vi.mock("@/components/layouts/FormInputs", () => {
   };
 });
 
-const renderDialog = async () => {
+const renderDialog = async (props?: Record<string, unknown>) => {
   const { CreateAmendmentDialog } = await import(
     "../layouts/AmendmentsTabContent"
   );
@@ -108,6 +110,7 @@ const renderDialog = async () => {
       <CreateAmendmentDialog
         contractId="c1"
         trigger={<button type="button">Open</button>}
+        {...props}
       />
     </QueryClientProvider>,
   );
@@ -130,7 +133,9 @@ const setInputValue = (root: HTMLElement, name: string, value: string) => {
 describe("CreateAmendmentDialog payload", () => {
   beforeEach(() => {
     postRequestMock.mockReset();
+    putRequestMock.mockReset();
     postRequestMock.mockResolvedValue({ data: { message: "ok", data: {} } });
+    putRequestMock.mockResolvedValue({ data: { message: "ok", data: {} } });
   });
 
   it("sends a non-undefined `changes` array for time_cost impact", async () => {
@@ -246,5 +251,59 @@ describe("CreateAmendmentDialog payload", () => {
       { field: "time", value: "2026-05-20" },
       { field: "cost", value: 500 },
     ]);
+  });
+
+  it("updates and resubmits the same amendment record in edit mode", async () => {
+    const { getByRole } = await renderDialog({
+      mode: "edit",
+      amendmentId: "amendment-1",
+      updatePath: "/contract/manager/contracts/c1/amendments/amendment-1",
+      titleText: "Modify Amendment",
+      submitText: "Resubmit Amendment",
+      initialValues: {
+        amendmentTitle: "Existing Amendment",
+        impactType: "time",
+        timeImpactDays: "2026-08-13",
+        description: "Current description",
+      },
+      existingFiles: [
+        {
+          name: "existing-amendment.pdf",
+          url: "https://example.com/existing-amendment.pdf",
+          type: "application/pdf",
+          size: "1024",
+        },
+      ],
+    });
+    const root = document.body;
+
+    setInputValue(root, "description", "Updated description");
+
+    fireEvent.click(getByRole("button", { name: "Resubmit Amendment" }));
+
+    await waitFor(() => expect(putRequestMock).toHaveBeenCalled());
+
+    expect(postRequestMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "/contract/manager/contracts/c1/amendments/amendment-1",
+      }),
+    );
+
+    expect(putRequestMock).toHaveBeenCalledWith({
+      url: "/contract/manager/contracts/c1/amendments/amendment-1",
+      payload: expect.objectContaining({
+        title: "Existing Amendment",
+        description: "Updated description",
+        impact: "time",
+        files: [
+          {
+            name: "existing-amendment.pdf",
+            url: "https://example.com/existing-amendment.pdf",
+            type: "application/pdf",
+            size: "1024",
+          },
+        ],
+      }),
+    });
   });
 });
