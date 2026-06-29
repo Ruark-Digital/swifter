@@ -147,13 +147,15 @@ export const buildDeliverableResponderOptions = (
         ),
       ),
     )
-    .map((person) => ({
-      value: person._id,
-      label:
+    .flatMap((person) => {
+      const value = person._id;
+      const label =
         person.firstName && person.lastName
           ? `${person.firstName} ${person.lastName}`
-          : person.firstName || person.email || person._id,
-    }));
+          : person.firstName || person.email || person._id;
+
+      return value && label ? [{ value, label }] : [];
+    });
 
 export type DeliverableRow = {
   id: string;
