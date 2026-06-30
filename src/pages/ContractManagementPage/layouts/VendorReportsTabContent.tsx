@@ -165,12 +165,15 @@ const ReportDetailsSheet: React.FC<{
           <SheetHeader className="space-y-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] dark:border-slate-700 text-[#111827] dark:text-slate-100"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </button>
+                <SheetClose asChild>
+                  <button
+                    type="button"
+                    aria-label="Close report details"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] dark:border-slate-700 text-[#111827] dark:text-slate-100"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                </SheetClose>
                 <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Report Details
                 </SheetTitle>
