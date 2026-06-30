@@ -1,6 +1,6 @@
 import { TextInput } from "@/components/layouts/FormInputs";
 import { Button } from "@/components/ui/button";
-import { Forge, useForge, useForgeValues } from "@/lib/forge";
+import { Forge, useForge, useForgeValues } from "@adexdsamson/forge";
 
 function Example() {
   const { control } = useForge({

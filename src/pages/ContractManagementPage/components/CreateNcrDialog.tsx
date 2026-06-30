@@ -2,7 +2,7 @@ import React from "react";
 import { UploadCloud, X } from "lucide-react";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import {
   Dialog,
   DialogContent,

@@ -6,7 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Forger, ForgeControl, useForge } from "@/lib/forge";
+import { Forger, ForgeControl, useForge } from "@adexdsamson/forge";
 import {
   TextArea,
   TextInput,

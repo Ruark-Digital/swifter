@@ -16,10 +16,10 @@ import {
   Forger,
   useForge,
   Forge,
-} from "@/lib/forge";
+} from "@adexdsamson/forge";
 
 import { Plus, Trash2, CornerDownRight } from "lucide-react";
-import { usePersist } from "@/lib/forge/usePersist/usePersist";
+import { usePersist } from "@adexdsamson/forge";
 import { UseFormSetValue, UseFormGetValues } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getRequest, putRequest } from "@/lib/axiosInstance";

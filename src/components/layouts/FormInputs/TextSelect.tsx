@@ -7,7 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import MultipleSelector, { Option } from "@/components/ui/multiselect";
-import { ForgerSlotProps } from "@/lib/forge/types";
+import { ForgerSlotProps } from "@adexdsamson/forge";
 
 export type TextSelectProps = {
   name: string;

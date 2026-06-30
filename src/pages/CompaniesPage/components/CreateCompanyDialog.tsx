@@ -13,7 +13,7 @@ import {
 } from "@/components/layouts/FormInputs/TextInput";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 import { TextSelectWithSearch } from "@/components/layouts/FormInputs/TextSelectWithSearch";
-import { useForge, Forger, Forge } from "@/lib/forge";
+import { useForge, Forger, Forge } from "@adexdsamson/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { Plus } from "lucide-react";
 import { useState } from "react";

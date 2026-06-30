@@ -44,7 +44,7 @@ import {
 } from "@/components/layouts/FormInputs/TextInput";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 import { TextFileUploader } from "@/components/layouts/FormInputs/TextFileInput";
-import { useForge, Forge, Forger } from "@/lib/forge";
+import { useForge, Forge, Forger } from "@adexdsamson/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useWatch } from "react-hook-form";

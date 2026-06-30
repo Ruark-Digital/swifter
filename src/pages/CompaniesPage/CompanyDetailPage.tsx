@@ -3,7 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useForge, Forge, Forger, usePersist } from "@/lib/forge";
+import { useForge, Forge, Forger, usePersist } from "@adexdsamson/forge";
 import { ModuleToggle } from "@/components/layouts/FormInputs/ModuleToggle";
 import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef } from "@tanstack/react-table";

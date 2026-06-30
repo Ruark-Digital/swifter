@@ -1,7 +1,7 @@
 import React from "react";
 import { Upload, FileText, X } from "lucide-react";
 import { useFormContext } from "react-hook-form";
-import { Forger } from "@/lib/forge";
+import { Forger } from "@adexdsamson/forge";
 import { TextFileUploader } from "@/components/layouts/FormInputs";
 import { getSimpleFileExtension, formatFileSize } from "@/lib/fileUtils.tsx";
 import { CreateContractFormData } from "./CreateContractSheet";

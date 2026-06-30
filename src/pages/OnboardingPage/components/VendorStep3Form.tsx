@@ -1,6 +1,6 @@
 import React from "react";
 import { TextFileUploader } from "@/components/layouts/FormInputs";
-import { Forger } from "@/lib/forge";
+import { Forger } from "@adexdsamson/forge";
 import { Upload, FileText, X } from "lucide-react";
 import { useWatch, UseFormSetValue } from "react-hook-form";
 import { getSimpleFileExtension, formatFileSize } from "@/lib/fileUtils.tsx";

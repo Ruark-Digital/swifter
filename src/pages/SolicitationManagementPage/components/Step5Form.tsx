@@ -1,5 +1,5 @@
 import { TextArea, TextMultiSelect } from "@/components/layouts/FormInputs";
-import { Forger } from "@/lib/forge";
+import { Forger } from "@adexdsamson/forge";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";

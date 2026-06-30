@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Forger, useFieldArray } from "@/lib/forge";
+import { Forger, useFieldArray } from "@adexdsamson/forge";
 import { TextInput, TextDatePicker } from "@/components/layouts/FormInputs";
 import { Control } from "react-hook-form";
 import { CreateContractFormData } from "./CreateContractSheet";

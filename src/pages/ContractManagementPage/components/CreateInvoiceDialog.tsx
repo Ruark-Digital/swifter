@@ -11,7 +11,7 @@ import {
   useFieldArray,
   useForge,
   useForgeValues,
-} from "@/lib/forge";
+} from "@adexdsamson/forge";
 import {
   TextArea,
   TextFileUploader,

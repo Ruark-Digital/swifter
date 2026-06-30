@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 // import * as yup from "yup";
 // import { yupResolver } from "@hookform/resolvers/yup";
 import { postRequest } from "@/lib/axiosInstance";

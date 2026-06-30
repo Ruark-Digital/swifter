@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useFieldArray, ForgeControl, Forger } from "@/lib/forge";
+import { useFieldArray, ForgeControl, Forger } from "@adexdsamson/forge";
 import { TextInput } from "../../../components/layouts/FormInputs/TextInput";
 import { CornerDownRight, Plus, Trash2 } from "lucide-react";
 import ProposalItemRow from "./ProposalItemRow";

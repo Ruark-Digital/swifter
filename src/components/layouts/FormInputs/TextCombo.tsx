@@ -7,7 +7,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
-import { ForgerSlotProps } from "@/lib/forge/types";
+import { ForgerSlotProps } from "@adexdsamson/forge";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { truncate } from "lodash";

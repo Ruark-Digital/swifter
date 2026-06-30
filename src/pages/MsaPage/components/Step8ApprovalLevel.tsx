@@ -1,5 +1,5 @@
 import React from "react";
-import { Forger, useFieldArray } from "@/lib/forge";
+import { Forger, useFieldArray } from "@adexdsamson/forge";
 import {
   TextCurrencyInput,
   TextInput,

@@ -8,3 +8,4 @@ overrides:
 allowBuilds:
   esbuild: true
   sharp: true
+  "@adexdsamson/forge-validation": true

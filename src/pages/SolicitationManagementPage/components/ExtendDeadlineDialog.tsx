@@ -9,7 +9,7 @@ import {
 import { Calendar } from "lucide-react";
 import { TextDatePicker } from "@/components/layouts/FormInputs/TextInput";
 import { TextSelectWithSearch } from "@/components/layouts/FormInputs/TextSelectWithSearch";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useMutation, useQueryClient } from "@tanstack/react-query";

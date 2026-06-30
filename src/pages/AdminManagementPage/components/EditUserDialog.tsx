@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
-import { useForge, Forge, FormPropsRef } from "@/lib/forge";
+import { useForge, Forge, FormPropsRef } from "@adexdsamson/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { putRequest } from "@/lib/axiosInstance";

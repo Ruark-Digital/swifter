@@ -1,5 +1,5 @@
 import React from "react";
-import { Forger } from "@/lib/forge";
+import { Forger } from "@adexdsamson/forge";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 import { TextDatePicker } from "@/components/layouts/FormInputs/TextInput";
 import { TextSelectWithSearch } from "@/components/layouts/FormInputs/TextSelectWithSearch";
