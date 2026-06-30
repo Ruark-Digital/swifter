@@ -8,7 +8,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Forge, useForge } from "@/lib/forge";
+import { Forge, useForge } from "@adexdsamson/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

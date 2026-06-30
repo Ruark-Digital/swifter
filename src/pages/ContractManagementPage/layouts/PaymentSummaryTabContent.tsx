@@ -7,7 +7,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import ReleaseHoldbackDialog from "../components/ReleaseHoldbackDialog";
 import HoldbackDetailsSheet from "../components/HoldbackDetailsSheet";
 import SavingsDetailsSheet from "../components/SavingsDetailsSheet";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import {
   TextArea,
   TextCurrencyInput,

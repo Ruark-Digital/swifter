@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getRequest, putRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 import { Button } from "@/components/ui/button";

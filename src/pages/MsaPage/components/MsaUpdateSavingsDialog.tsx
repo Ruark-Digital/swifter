@@ -13,7 +13,7 @@ import {
   TextSelect,
 } from "@/components/layouts/FormInputs";
 import Spinner from "@/components/ui/Spinner";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import { formatFileSize, getSimpleFileExtension } from "@/lib/fileUtils";
 import { useToastHandler } from "@/hooks/useToaster";
 import { postRequest } from "@/lib/axiosInstance";

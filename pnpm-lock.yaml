@@ -11,6 +11,12 @@ importers:
 
   .:
     dependencies:
+      '@adexdsamson/forge':
+        specifier: ^1.1.0
+        version: 1.1.0(@hookform/devtools@4.4.0(@types/react@18.3.31)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dropzone@14.4.1(react@19.2.7))(react-hook-form@7.80.0(react@19.2.7))(react@19.2.7)
+      '@adexdsamson/forge-validation':
+        specifier: ^0.1.0
+        version: 0.1.0(@adexdsamson/forge@1.1.0(@hookform/devtools@4.4.0(@types/react@18.3.31)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dropzone@14.4.1(react@19.2.7))(react-hook-form@7.80.0(react@19.2.7))(react@19.2.7))(react-hook-form@7.80.0(react@19.2.7))(react@19.2.7)
       '@faker-js/faker':
         specifier: ^8.4.1
         version: 8.4.1
@@ -356,6 +362,28 @@ importers:
         version: 2.1.9(@types/node@20.14.10)(jsdom@29.1.1)(lightningcss@1.32.0)
 
 packages:
+
+  '@adexdsamson/forge-validation@0.1.0':
+    resolution: {integrity: sha512-8T1JgAv6TtYpIDEgQu9O+zHmgdAAlVYUnbpQXsQas6rraUglqV6CAYLWRjPyxYami6IPNVUywNYOnY5I8E1/Sg==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@adexdsamson/forge': '>=1.1.0'
+      react: '>=18'
+      react-hook-form: ^7.34.0
+
+  '@adexdsamson/forge@1.1.0':
+    resolution: {integrity: sha512-aqLB87+QaJqloRRfbFlkbm80zRB6GgLiNkSj3SfhoQq9TN4a12U3cW0BTyKoagEtpWCWAeYfNDysJhfybx3PTA==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@hookform/devtools': '*'
+      react: '>=18'
+      react-dropzone: '*'
+      react-hook-form: ^7.34.0
+    peerDependenciesMeta:
+      '@hookform/devtools':
+        optional: true
+      react-dropzone:
+        optional: true
 
   '@adobe/css-tools@4.5.0':
     resolution: {integrity: sha512-6OzddxPio9UiWTCemp4N8cYLV2ZN1ncRnV1cVGtve7dhPOtRkleRyx32GQCYSwDYgaHU3USMm84tNsvKzRCa1Q==}
@@ -6547,6 +6575,20 @@ packages:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
 snapshots:
+
+  '@adexdsamson/forge-validation@0.1.0(@adexdsamson/forge@1.1.0(@hookform/devtools@4.4.0(@types/react@18.3.31)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dropzone@14.4.1(react@19.2.7))(react-hook-form@7.80.0(react@19.2.7))(react@19.2.7))(react-hook-form@7.80.0(react@19.2.7))(react@19.2.7)':
+    dependencies:
+      '@adexdsamson/forge': 1.1.0(@hookform/devtools@4.4.0(@types/react@18.3.31)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dropzone@14.4.1(react@19.2.7))(react-hook-form@7.80.0(react@19.2.7))(react@19.2.7)
+      react: 19.2.7
+      react-hook-form: 7.80.0(react@19.2.7)
+
+  '@adexdsamson/forge@1.1.0(@hookform/devtools@4.4.0(@types/react@18.3.31)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dropzone@14.4.1(react@19.2.7))(react-hook-form@7.80.0(react@19.2.7))(react@19.2.7)':
+    dependencies:
+      react: 19.2.7
+      react-hook-form: 7.80.0(react@19.2.7)
+    optionalDependencies:
+      '@hookform/devtools': 4.4.0(@types/react@18.3.31)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      react-dropzone: 14.4.1(react@19.2.7)
 
   '@adobe/css-tools@4.5.0': {}
 

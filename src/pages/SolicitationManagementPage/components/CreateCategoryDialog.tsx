@@ -6,7 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Forge, useForge, Forger } from "@/lib/forge";
+import { Forge, useForge, Forger } from "@adexdsamson/forge";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";

@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
-import { Forge, useForge } from "@/lib/forge";
+import { Forge, useForge } from "@adexdsamson/forge";
 import * as yup from "yup";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { postRequest, getRequest, putRequest } from "@/lib/axiosInstance";

@@ -13,7 +13,7 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { useForge, Forge, Forger, FormPropsRef } from "@/lib/forge";
+import { useForge, Forge, Forger, FormPropsRef } from "@adexdsamson/forge";
 import * as yup from "yup";
 import { PageLoader } from "@/components/ui/PageLoader";
 

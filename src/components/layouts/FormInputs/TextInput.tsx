@@ -16,7 +16,7 @@ import {
   useEffect,
   InputHTMLAttributes,
 } from "react";
-import { ForgerSlotProps } from "@/lib/forge/types";
+import { ForgerSlotProps } from "@adexdsamson/forge";
 import { Tag, TagInput } from "emblor";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";

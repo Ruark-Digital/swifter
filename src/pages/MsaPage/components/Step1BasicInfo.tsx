@@ -1,5 +1,5 @@
 import React from "react";
-import { Forger } from "@/lib/forge";
+import { Forger } from "@adexdsamson/forge";
 import {
   TextInput,
   TextSelect,

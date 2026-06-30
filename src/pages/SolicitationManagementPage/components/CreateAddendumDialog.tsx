@@ -12,7 +12,7 @@ import { TextDatePicker } from "@/components/layouts/FormInputs/TextInput";
 import { TextArea } from "@/components/layouts/FormInputs/TextInput";
 import { TextFileUploader } from "@/components/layouts/FormInputs/TextFileInput";
 import { Progress } from "@/components/ui/progress";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

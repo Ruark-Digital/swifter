@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
-import { useForge } from "@/lib/forge";
+import { useForge } from "@adexdsamson/forge";
 import { useToastHandler } from "@/hooks/useToaster";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";

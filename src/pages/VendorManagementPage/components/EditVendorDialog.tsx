@@ -6,7 +6,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Forge, useForge, Forger } from "@/lib/forge";
+import { Forge, useForge, Forger } from "@adexdsamson/forge";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
 import { TextTagInput } from "@/components/layouts/FormInputs/TextInput";
 import { useMutation, useQueryClient } from "@tanstack/react-query";

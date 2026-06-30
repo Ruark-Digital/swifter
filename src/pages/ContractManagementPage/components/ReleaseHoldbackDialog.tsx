@@ -3,7 +3,7 @@ import { FileText, UploadCloud, X } from "lucide-react";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useFormContext, useWatch } from "react-hook-form";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { TextArea, TextCurrencyInput, TextFileUploader, TextSelect } from "@/components/layouts/FormInputs";
 import { useMutation, useQueryClient } from "@tanstack/react-query";

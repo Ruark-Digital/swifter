@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 // import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import { Button } from "@/components/ui/button";
-import { useForge, Forge, Forger } from "@/lib/forge";
+import { useForge, Forge, Forger } from "@adexdsamson/forge";
 import { TextFileUploader } from "@/components/layouts/FormInputs/TextFileInput";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
 import RichTextEditor from "@/components/layouts/FormInputs/RichTextEditor";

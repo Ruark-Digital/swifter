@@ -13,7 +13,7 @@ import {
 } from "@/components/layouts/FormInputs/TextInput";
 import { TextSelectWithSearch } from "@/components/layouts/FormInputs/TextSelectWithSearch";
 // import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
-import { useForge, Forger, Forge } from "@/lib/forge";
+import { useForge, Forger, Forge } from "@adexdsamson/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";

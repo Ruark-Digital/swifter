@@ -19,7 +19,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-import { ForgerSlotProps } from "@/lib/forge/types"
+import { ForgerSlotProps } from "@adexdsamson/forge"
 
 export type TextSelectWithSearchProps = {
   name: string;

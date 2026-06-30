@@ -1,4 +1,4 @@
-import { Forge, useForge } from "@/lib/forge";
+import { Forge, useForge } from "@adexdsamson/forge";
 import * as yup from "yup";
 import { useToastHandler } from "@/hooks/useToaster";
 import { ApiResponse, ApiResponseError } from "@/types";

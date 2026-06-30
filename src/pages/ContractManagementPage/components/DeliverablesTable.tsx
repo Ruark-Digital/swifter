@@ -35,7 +35,7 @@ import {
   getSimpleFileExtension,
 } from "@/lib/fileUtils";
 import { useToastHandler } from "@/hooks/useToaster";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import {
   TextArea,
   TextFileUploader,
