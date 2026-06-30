@@ -264,25 +264,14 @@ const CompanyDetailPage = () => {
     }
   }, [portalSettingsData, reset]);
 
-  // Auto-submit when any module toggle changes (without touching forge)
+  // Auto-submit when any module toggle changes. usePersist's new v1 signature
+  // gives us {isDirty, isValid} instead of the field name/type; all fields in
+  // this form ARE toggles, so isDirty is an equivalent gate, and the post-save
+  // reset() clears isDirty so we don't loop.
   usePersist<ModuleFormValues>({
     control,
-    handler: (_, { name, type }) => {
-      if (
-        type === "change" &&
-        [
-          "solicitationsManagement",
-          "evaluationsManagement",
-          "vendorManagement",
-          "reportsAnalytics",
-          "generalUpdatesNotifications",
-          "myActions",
-          "vendorsQA",
-          "addendumManagement",
-          "contractManagement",
-          "isAi",
-        ].includes(name ?? "")
-      ) {
+    handler: (_, { isDirty }) => {
+      if (isDirty) {
         handleSubmit(handleModuleSubmit)();
       }
     },

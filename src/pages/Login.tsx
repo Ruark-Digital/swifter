@@ -104,15 +104,17 @@ const Login = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Forge 
-            {...{ control, onSubmit, ref: formRef }} 
-            className="grid gap-4"
-            onKeyDown={(e) => {
+          <div
+            onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
               if (e.key === 'Enter' && !isPending) {
                 e.preventDefault();
-                formRef.current?.onSubmit()
+                formRef.current?.onSubmit();
               }
             }}
+          >
+          <Forge
+            {...{ control, onSubmit, ref: formRef }}
+            className="grid gap-4"
           >
             <Forger
               name="email"
@@ -147,6 +149,7 @@ const Login = () => {
               Log In
             </Button>
           </Forge>
+          </div>
         </CardContent>
       </Card>
 

@@ -255,7 +255,6 @@ const EditContract: React.FC<Props> = ({
     resolver: yupResolver(createSchema),
     defaultValues: createDefaults,
     mode: "onChange",
-    shouldUnregister: false,
   });
 
   const [step, setStep] = React.useState(1);

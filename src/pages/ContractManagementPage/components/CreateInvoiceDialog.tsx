@@ -11,6 +11,7 @@ import {
   useFieldArray,
   useForge,
   useForgeValues,
+  type ForgeControl,
 } from "@adexdsamson/forge";
 import {
   TextArea,
@@ -258,7 +259,13 @@ type CompleteInvoiceDialogProps = {
 const CompleteInvoiceDialog = React.memo(
   ({ open, onOpenChange, trigger, onCompleteInvoice }: CompleteInvoiceDialogProps) => {
     const { control, unregister } = useFormContext<FormValues>();
-    const { setValue } = useForgeValues<FormValues>({ control });
+    // The parent <Forge> wraps this dialog so `control` is in practice a
+    // ForgeControl (useForge mutates it via Object.assign); the RHF type from
+    // useFormContext is the narrower base. Cast for useForgeValues' stricter
+    // signature on the public package.
+    const { setValue } = useForgeValues<FormValues>({
+      control: control as ForgeControl<FormValues>,
+    });
 
     const [totalAmount, setTotalAmount] = React.useState(0);
 
