@@ -191,7 +191,7 @@ test.describe("ADE-77 Vendor update invoice flow", () => {
     await expect(page.getByRole("heading", { name: "Edit Invoice" })).toBeVisible();
     await expect(page.getByPlaceholder("Enter title")).toHaveValue("Rejected Invoice");
     await expect(page.getByRole("button", { name: "Update Invoice" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Create Invoice" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Submit Invoice" })).toHaveCount(0);
   });
 
   test("Edit trigger is hidden for non-rejected statuses (draft, active, pending, approved)", async ({

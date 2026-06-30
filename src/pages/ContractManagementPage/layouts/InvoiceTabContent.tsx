@@ -102,7 +102,7 @@ const InvoiceTabContent: React.FC<Props> = ({
             contractId={contractId}
             trigger={
               <Button className="rounded-xl bg-[#2A4467] px-4 font-semibold text-white hover:bg-[#2A4467]/90">
-                Create Invoice
+                Submit Invoice
               </Button>
             }
           />

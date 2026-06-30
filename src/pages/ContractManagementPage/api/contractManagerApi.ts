@@ -468,6 +468,14 @@ export type ContractInvoiceDTO = {
   approverStatus?: "pending" | "approved" | "rejected";
   manager?: { status?: string; comment?: string };
   approvers?: ContractChangeApprover[];
+  /** Line-item breakdown for manual invoices (rendered in InvoiceDetailsSheet). */
+  items?: Array<{
+    component?: string;
+    description?: string;
+    quantity?: number;
+    unitOfmeasurement?: string;
+    unitPrice?: number;
+  }>;
 };
 
 export type ContractInvoiceStatsDTO = {

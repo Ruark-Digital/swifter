@@ -27,7 +27,7 @@ export const ComplianceStatusCard: React.FC<Props> = ({
 }) => {
   const rows: Row[] = [
     {
-      label: "Insurance Active",
+      label: "Active Insurance",
       right: `${data?.insuranceActive?.current ?? 142} / ${data?.insuranceActive?.total ?? 145}`,
       valuePct: data?.insuranceActive?.percentage ?? 98,
       color: "#10b981",
