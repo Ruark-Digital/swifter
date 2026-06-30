@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@adexdsamson/forge": "^1.1.0",
-    "@adexdsamson/forge-validation": "github:adexdsamson/forge-validation",
+    "@adexdsamson/forge-validation": "^0.1.0",
     "@faker-js/faker": "^8.4.1",
     "@hookform/resolvers": "^3.9.0",
     "@hugeicons/core-free-icons": "^3.0.0",

@@ -1,4 +1,9 @@
 minimumReleaseAge: 10080
+# Exempt freshly-published Forge ecosystem releases from the 7-day age gate;
+# both packages are maintained by the same author we control as a vendor.
+minimumReleaseAgeExclude:
+  - "@adexdsamson/forge"
+  - "@adexdsamson/forge-validation"
 trustPolicy: no-downgrade
 blockExoticSubdeps: true
 
@@ -8,4 +13,3 @@ overrides:
 allowBuilds:
   esbuild: true
   sharp: true
-  "@adexdsamson/forge-validation": true
