@@ -75,9 +75,22 @@ const UploadElement = memo(() => {
   );
 });
 
-const FilesListItem = memo(({ file }: { file: File }) => {
-  const { control, setValue } = useFormContext<CreateNcrFormValues>();
-  const value = useWatch({ control, name: "files" });
+const FilesListItem = memo(({ file, index }: { file: File; index?: number }) => {
+  // TextFileUploader passes { file, control, index } to the List slot, so we
+  // pull the live value via useWatch and splice by index. Index is safer than
+  // name-based filter because dropzone allows duplicate filenames.
+  const { setValue } = useFormContext<CreateNcrFormValues>();
+  const value = useWatch({ name: "files" }) as File[] | null | undefined;
+
+  const handleRemove = () => {
+    if (typeof index !== "number") return;
+    const next = (value ?? []).filter((_, i) => i !== index);
+    setValue("files", next.length > 0 ? next : null, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
   return (
     <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
       <div className="flex items-center gap-3">
@@ -95,10 +108,8 @@ const FilesListItem = memo(({ file }: { file: File }) => {
       </div>
       <button
         type="button"
-        onClick={() =>
-          setValue("files", (value ?? []).filter((f) => f.name !== file.name))
-        }
-        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] dark:text-slate-400"
+        onClick={handleRemove}
+        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] dark:text-slate-400 hover:text-red-500 transition-colors"
       >
         <X className="h-4 w-4" />
       </button>

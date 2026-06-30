@@ -601,7 +601,7 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
                 className="h-12 rounded-xl bg-[#2A4467] px-5 text-base font-semibold text-white hover:bg-[#2A4467]/90"
                 disabled={!!actionsDisabled}
               >
-                Create Invoice
+                Submit Invoice
               </Button>
             }
           />
