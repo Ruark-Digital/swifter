@@ -230,6 +230,7 @@ export const RoleBasedDashboard: React.FC = () => {
   );
   const navigate = useNavigate();
 
+  const isProjectManager = actualRole === "project_manager";
   const landingTabs = useLandingTabs(userRole, modules);
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab") as LandingTabId | null;
@@ -295,9 +296,11 @@ export const RoleBasedDashboard: React.FC = () => {
     contractManagerAiInsights,
     isLoadingContractManagerAiInsights,
     isInitialLoading,
+    pmContractMyActions,
+    pmContractGeneralUpdates,
     // Individual chart data fetchers
     getChartData,
-  } = useDashboardData(userRole, chartFilters);
+  } = useDashboardData(userRole, chartFilters, isProjectManager);
 
   const cmYtdStats = useMemo(() => {
     const ytd = contractManagerYtdCards;
@@ -552,13 +555,22 @@ export const RoleBasedDashboard: React.FC = () => {
     }
 
     if (userRole === "vendor") {
-      // Transform Vendor data
-      const transformedVendorMyActions =
-        DashboardDataTransformer.transformVendorMyActions(vendorMyActions);
-      const transformedVendorGeneralUpdates =
-        DashboardDataTransformer.transformVendorGeneralUpdates(
-          vendorGeneralUpdates
-        );
+      // Transform Vendor data. PM is aliased to "vendor" for the rest of this
+      // dashboard, but its My Actions / General Updates are contract-scoped
+      // (fetched from the vendor-side CONTRACT dashboard, not solicitations),
+      // so they need the contract-manager activity transform instead.
+      const transformedVendorMyActions = isProjectManager
+        ? DashboardDataTransformer.transformContractManagerDashboardActivity(
+            pmContractMyActions
+          )
+        : DashboardDataTransformer.transformVendorMyActions(vendorMyActions);
+      const transformedVendorGeneralUpdates = isProjectManager
+        ? DashboardDataTransformer.transformContractManagerDashboardActivity(
+            pmContractGeneralUpdates
+          )
+        : DashboardDataTransformer.transformVendorGeneralUpdates(
+            vendorGeneralUpdates
+          );
 
       return {
         ...dashboardConfig,
@@ -798,6 +810,9 @@ export const RoleBasedDashboard: React.FC = () => {
     vendorDashboard,
     vendorMyActions,
     vendorGeneralUpdates,
+    isProjectManager,
+    pmContractMyActions,
+    pmContractGeneralUpdates,
     contractManagerTotalCards,
     contractManagerActionLogs,
     contractManagerGeneralUpdates,

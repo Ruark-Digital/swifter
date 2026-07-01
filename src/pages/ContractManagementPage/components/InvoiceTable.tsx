@@ -357,16 +357,22 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                 <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Breakdown
                 </div>
-                <div className="overflow-hidden rounded-lg border border-[#E5E7EB] dark:border-slate-700">
-                  <table className="w-full text-sm">
+                <div className="overflow-x-auto rounded-lg border border-[#E5E7EB] dark:border-slate-700">
+                  {/* min-w + table-layout:fixed keep Component/Description readable
+                      instead of the browser auto-shrinking them to fit the 560px
+                      sheet — the table scrolls horizontally on narrow viewports
+                      rather than wrapping every word onto its own line. */}
+                  <table className="w-full min-w-[640px] text-sm [table-layout:fixed]">
                     <thead className="bg-[#F9FAFB] dark:bg-slate-800 text-left text-xs font-medium text-[#6B7280] dark:text-slate-400">
                       <tr>
-                        <th className="px-3 py-2">Component</th>
-                        <th className="px-3 py-2">Description</th>
-                        <th className="px-3 py-2 text-right">Qty</th>
-                        <th className="px-3 py-2">Unit</th>
-                        <th className="px-3 py-2 text-right">Unit Price</th>
-                        <th className="px-3 py-2 text-right">Total</th>
+                        <th className="w-[18%] px-3 py-2">Component</th>
+                        <th className="w-[30%] px-3 py-2">Description</th>
+                        <th className="w-[10%] px-3 py-2 text-right">Qty</th>
+                        <th className="w-[12%] px-3 py-2">Unit</th>
+                        <th className="w-[15%] px-3 py-2 text-right">
+                          Unit Price
+                        </th>
+                        <th className="w-[15%] px-3 py-2 text-right">Total</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E5E7EB] dark:divide-slate-700 text-[#111827] dark:text-slate-200">
@@ -378,17 +384,19 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                         const total = qty * unitPrice;
                         return (
                           <tr key={idx}>
-                            <td className="px-3 py-2 font-medium">
+                            <td className="px-3 py-2 align-top font-medium break-words">
                               {it.component || "-"}
                             </td>
-                            <td className="px-3 py-2 text-[#374151] dark:text-slate-300">
+                            <td className="px-3 py-2 align-top text-[#374151] dark:text-slate-300 break-words">
                               {it.description || "-"}
                             </td>
-                            <td className="px-3 py-2 text-right">{qty || "-"}</td>
-                            <td className="px-3 py-2">
+                            <td className="px-3 py-2 align-top text-right">
+                              {qty || "-"}
+                            </td>
+                            <td className="px-3 py-2 align-top break-words">
                               {it.unitOfmeasurement || "-"}
                             </td>
-                            <td className="px-3 py-2 text-right">
+                            <td className="px-3 py-2 align-top text-right whitespace-nowrap">
                               {unitPrice
                                 ? new Intl.NumberFormat(undefined, {
                                     style: "currency",
@@ -396,7 +404,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                                   }).format(unitPrice)
                                 : "-"}
                             </td>
-                            <td className="px-3 py-2 text-right font-medium">
+                            <td className="px-3 py-2 align-top text-right font-medium whitespace-nowrap">
                               {total
                                 ? new Intl.NumberFormat(undefined, {
                                     style: "currency",
