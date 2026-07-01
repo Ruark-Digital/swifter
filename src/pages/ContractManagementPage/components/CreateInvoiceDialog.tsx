@@ -15,6 +15,7 @@ import {
 } from "@adexdsamson/forge";
 import {
   TextArea,
+  TextCurrencyInput,
   TextFileUploader,
   TextInput,
   TextSelect,
@@ -1065,7 +1066,7 @@ const CreateInvoiceDialog: React.FC<Props> = ({
                   name="invoiceAmount"
                   label="Invoice Amount"
                   placeholder="Enter invoice amount"
-                  component={TextInput}
+                  component={TextCurrencyInput}
                 />
               )}
               <InvoiceComponent
