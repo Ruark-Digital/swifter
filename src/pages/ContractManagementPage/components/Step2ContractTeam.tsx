@@ -19,10 +19,68 @@ type Props = {
   setValue?: UseFormSetValue<CreateContractFormData>
 };
 
+type SelectOption = { label: string; value: string; name?: string };
+
+// Module-scope (not an inline closure): Forger's memoization compares the
+// `component` prop via a deepEqual that treats any two plain functions as
+// equal (Object.keys() is empty on both), so an inline arrow here would
+// freeze at its first render and never react to `options` arriving from
+// the network. `options` must be passed as an explicit Forger prop instead
+// of captured via closure so the memo's array diff can see it change.
+const SingleSelectField = ({
+  value,
+  onChange,
+  options,
+  placeholder,
+  fallbackLabel,
+  onVendorSelect,
+  name,
+}: {
+  value?: string;
+  onChange?: (val: string) => void;
+  options: SelectOption[];
+  placeholder: string;
+  fallbackLabel?: string;
+  onVendorSelect?: (label: string) => void;
+  name?: string;
+}) => {
+  const normalizedValue = typeof value === "string" ? value.trim() : "";
+  const selectedOption = normalizedValue
+    ? options.find((option) => option.value === normalizedValue) ?? {
+        label: fallbackLabel || normalizedValue,
+        value: normalizedValue,
+      }
+    : undefined;
+
+  const selectedValues = selectedOption ? [selectedOption] : [];
+
+  return (
+    <TextMultiSelect
+      name={name ?? ""}
+      options={options}
+      placeholder={placeholder}
+      maxCount={1}
+      creatable={true}
+      value={selectedValues as any}
+      onChange={(selectedOptions) => {
+        const selected = selectedOptions?.[0];
+        const nextValue =
+          typeof selected?.value === "string" ? selected.value.trim() : "";
+        onChange?.(nextValue);
+        if (onVendorSelect) {
+          const nextLabel =
+            typeof selected?.label === "string" ? selected.label.trim() : nextValue;
+          onVendorSelect(nextLabel);
+        }
+      }}
+    />
+  );
+};
+
 const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
   const formContext = useFormContext<CreateContractFormData>();
   const applyValue = setValue ?? formContext.setValue;
-  const vendorId = useWatch({ control: formContext as any, name: "vendor" });
+  const vendorId = useWatch({ control: formContext.control, name: "vendor" });
 
   const { data: personnelData } = useQuery<
     ApiResponse<Personnel>,
@@ -168,86 +226,20 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
       <Forger
         name="vendor"
         label="Vendor / Contractor"
-        component={({
-          value,
-          onChange,
-        }: {
-          value?: string;
-          onChange?: (val: string) => void;
-        }) => {
-          const normalizedValue = typeof value === "string" ? value.trim() : "";
-          const selectedOption = normalizedValue
-            ? vendorOptions.find((option) => option.value === normalizedValue) ?? {
-                label: normalizedValue,
-                value: normalizedValue,
-              }
-            : undefined;
-
-          const selectedValues = selectedOption ? [selectedOption] : [];
-
-          return (
-            <TextMultiSelect
-              name="vendor"
-              options={vendorOptions}
-              placeholder="Select vendor or type email"
-              maxCount={1}
-              creatable={true}
-              value={selectedValues as any}
-              onChange={(selectedOptions) =>
-                {
-                  const selected = selectedOptions?.[0];
-                  const nextValue =
-                    typeof selected?.value === "string" ? selected.value.trim() : "";
-                  const nextLabel =
-                    typeof selected?.label === "string"
-                      ? selected.label.trim()
-                      : nextValue;
-                  onChange?.(nextValue);
-                  applyValue?.("vendorLabel" as never, nextLabel as never);
-                }
-              }
-            />
-          );
-        }}
+        component={SingleSelectField}
+        options={vendorOptions}
+        placeholder="Select vendor or type email"
+        onVendorSelect={(label: string) =>
+          applyValue?.("vendorLabel" as never, label as never)
+        }
       />
 
       <Forger
         name="projectManager"
         label="Vendor/Contractor's Primary Contact"
-        component={({
-          value,
-          onChange,
-        }: {
-          value?: string;
-          onChange?: (val: string) => void;
-        }) => {
-          const normalizedValue = typeof value === "string" ? value.trim() : "";
-          const selectedOption = normalizedValue
-            ? projectManagerOptions.find((option) => option.value === normalizedValue) ?? {
-                label: normalizedValue,
-                value: normalizedValue,
-              }
-            : undefined;
-
-          const selectedValues = selectedOption ? [selectedOption] : [];
-
-          return (
-            <TextMultiSelect
-              name="projectManager"
-              options={projectManagerOptions}
-              placeholder="Select Vendor/Contractor's Primary Contact or Type e-mail"
-              maxCount={1}
-              creatable={true}
-              value={selectedValues as any}
-              onChange={(selectedOptions) => {
-                const selected = selectedOptions?.[0];
-                const nextValue =
-                  typeof selected?.value === "string" ? selected.value.trim() : "";
-                onChange?.(nextValue);
-              }}
-            />
-          );
-        }}
+        component={SingleSelectField}
+        options={projectManagerOptions}
+        placeholder="Select Vendor/Contractor's Primary Contact or Type e-mail"
       />
       <Forger
         name="personnel"

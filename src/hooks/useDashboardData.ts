@@ -343,10 +343,16 @@ export type ContractManagerRenewals = {
  */
 export const useDashboardData = (
   userRole: UserRole,
-  chartFilters: Record<string, string> = {}
+  chartFilters: Record<string, string> = {},
+  isProjectManager: boolean = false
 ) => {
   const defaultFilter = "12months";
   const contractDashboardDefaultFilter = "ytd";
+  // PM's dashboard is otherwise fully aliased to the vendor role (see
+  // RoleBasedDashboard), but My Actions / General Updates must pull from the
+  // CONTRACT vendor-side dashboard, not the solicitation vendor endpoints a
+  // real vendor uses — PM's actions/updates are contract-scoped.
+  const pmContractDashboardBasePath = "/contract/vendor/contracts/dashboard";
 
   // Helper function to get filter for a specific chart
   const getFilterForChart = (chartId: string) => {
@@ -689,6 +695,48 @@ export const useDashboardData = (
       await getRequest({ url: "/vendor/solicitations/general-updates" }),
     enabled: userRole === "vendor",
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  // PM Dashboard (aliased to "vendor") - My Actions, contract-scoped
+  const { data: pmContractMyActions, isLoading: isLoadingPmContractMyActions } =
+    useQuery<
+      ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>,
+      ApiResponseError
+    >({
+      queryKey: useUserQueryKey(["pm-contract-dashboard-my-actions", userRole]),
+      queryFn: async () => {
+        const res = await getRequest({
+          url: `${pmContractDashboardBasePath}/action-logs`,
+          config: { params: { type: "Contract" } },
+        });
+        return res.data as ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>;
+      },
+      enabled: userRole === "vendor" && isProjectManager,
+      staleTime: 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+    });
+
+  // PM Dashboard (aliased to "vendor") - General Updates, contract-scoped
+  const {
+    data: pmContractGeneralUpdates,
+    isLoading: isLoadingPmContractGeneralUpdates,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["pm-contract-dashboard-general-updates", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${pmContractDashboardBasePath}/general-updates`,
+        config: { params: { type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>;
+    },
+    enabled: userRole === "vendor" && isProjectManager,
+    staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
@@ -1408,6 +1456,8 @@ export const useDashboardData = (
     isLoadingVendorGeneralUpdates ||
     isLoadingProcurementMyActions ||
     isLoadingProcurementGeneralUpdates ||
+    isLoadingPmContractMyActions ||
+    isLoadingPmContractGeneralUpdates ||
     // isLoadingProcurementSolicitationStatus ||
     // isLoadingProcurementBidIntent ||
     // isLoadingProcurementVendorsDistribution ||
@@ -1486,6 +1536,10 @@ export const useDashboardData = (
     vendorMyActions: vendorMyActions?.data?.data,
     vendorGeneralUpdates: vendorGeneralUpdates?.data?.data,
 
+    // PM data (aliased to "vendor"; contract-scoped My Actions/General Updates)
+    pmContractMyActions: pmContractMyActions?.data,
+    pmContractGeneralUpdates: pmContractGeneralUpdates?.data,
+
     contractManagerTotalCards: contractManagerTotalCards?.data,
     contractManagerYtdCards: contractManagerYtdCards?.data,
     contractManagerActionLogs: contractManagerActionLogs?.data,
@@ -1533,6 +1587,8 @@ export const useDashboardData = (
     isLoadingVendorGeneralUpdates,
     isLoadingProcurementMyActions,
     isLoadingProcurementGeneralUpdates,
+    isLoadingPmContractMyActions,
+    isLoadingPmContractGeneralUpdates,
     isLoadingContractManagerTotalCards,
     isLoadingContractManagerYtdCards,
     isLoadingContractManagerActionLogs,
