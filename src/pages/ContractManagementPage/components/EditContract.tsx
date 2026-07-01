@@ -1,7 +1,7 @@
 import React from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Forge, useForge } from "@/lib/forge";
+import { Forge, useForge } from "@adexdsamson/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { cn } from "@/lib/utils";
@@ -255,7 +255,6 @@ const EditContract: React.FC<Props> = ({
     resolver: yupResolver(createSchema),
     defaultValues: createDefaults,
     mode: "onChange",
-    shouldUnregister: false,
   });
 
   const [step, setStep] = React.useState(1);

@@ -1,4 +1,4 @@
-import { Forger } from "@/lib/forge";
+import { Forger } from "@adexdsamson/forge";
 import { TextCombo } from "@/components/layouts/FormInputs/TextCombo";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 import { TextDatePicker } from "@/components/layouts/FormInputs/TextInput";

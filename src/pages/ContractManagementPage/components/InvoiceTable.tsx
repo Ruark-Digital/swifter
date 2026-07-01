@@ -352,6 +352,75 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
               </div>
             </div>
 
+            {Array.isArray(invoice?.items) && invoice.items.length > 0 && (
+              <div className="space-y-3">
+                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                  Breakdown
+                </div>
+                <div className="overflow-x-auto rounded-lg border border-[#E5E7EB] dark:border-slate-700">
+                  {/* min-w + table-layout:fixed keep Component/Description readable
+                      instead of the browser auto-shrinking them to fit the 560px
+                      sheet — the table scrolls horizontally on narrow viewports
+                      rather than wrapping every word onto its own line. */}
+                  <table className="w-full min-w-[640px] text-sm [table-layout:fixed]">
+                    <thead className="bg-[#F9FAFB] dark:bg-slate-800 text-left text-xs font-medium text-[#6B7280] dark:text-slate-400">
+                      <tr>
+                        <th className="w-[18%] px-3 py-2">Component</th>
+                        <th className="w-[30%] px-3 py-2">Description</th>
+                        <th className="w-[10%] px-3 py-2 text-right">Qty</th>
+                        <th className="w-[12%] px-3 py-2">Unit</th>
+                        <th className="w-[15%] px-3 py-2 text-right">
+                          Unit Price
+                        </th>
+                        <th className="w-[15%] px-3 py-2 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E5E7EB] dark:divide-slate-700 text-[#111827] dark:text-slate-200">
+                      {invoice.items.map((it, idx) => {
+                        const qty =
+                          typeof it.quantity === "number" ? it.quantity : 0;
+                        const unitPrice =
+                          typeof it.unitPrice === "number" ? it.unitPrice : 0;
+                        const total = qty * unitPrice;
+                        return (
+                          <tr key={idx}>
+                            <td className="px-3 py-2 align-top font-medium break-words">
+                              {it.component || "-"}
+                            </td>
+                            <td className="px-3 py-2 align-top text-[#374151] dark:text-slate-300 break-words">
+                              {it.description || "-"}
+                            </td>
+                            <td className="px-3 py-2 align-top text-right">
+                              {qty || "-"}
+                            </td>
+                            <td className="px-3 py-2 align-top break-words">
+                              {it.unitOfmeasurement || "-"}
+                            </td>
+                            <td className="px-3 py-2 align-top text-right whitespace-nowrap">
+                              {unitPrice
+                                ? new Intl.NumberFormat(undefined, {
+                                    style: "currency",
+                                    currency: "USD",
+                                  }).format(unitPrice)
+                                : "-"}
+                            </td>
+                            <td className="px-3 py-2 align-top text-right font-medium whitespace-nowrap">
+                              {total
+                                ? new Intl.NumberFormat(undefined, {
+                                    style: "currency",
+                                    currency: "USD",
+                                  }).format(total)
+                                : "-"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {files.length > 0 && (
               <div className="space-y-3">
                 <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Forger } from "@/lib/forge";
+import { Forger } from "@adexdsamson/forge";
 import { TextCurrencyInput, TextInput } from "@/components/layouts/FormInputs/TextInput";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 import { TextArea } from "@/components/layouts/FormInputs/TextArea";

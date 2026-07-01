@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, CloudUpload, X } from "lucide-react";
-import { Forge, useForge, Forger } from "@/lib/forge";
+import { Forge, useForge, Forger } from "@adexdsamson/forge";
 import {
   TextInput,
   TextTagInput,

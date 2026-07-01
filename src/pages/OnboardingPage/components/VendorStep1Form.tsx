@@ -1,6 +1,6 @@
 import React from "react";
 import { TextInput, TextSelect } from "@/components/layouts/FormInputs";
-import { Forger } from "@/lib/forge";
+import { Forger } from "@adexdsamson/forge";
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";

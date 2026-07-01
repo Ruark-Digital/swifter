@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
-import { useForge, Forge, Forger, FormPropsRef } from "@/lib/forge";
+import { useForge, Forge, Forger, FormPropsRef } from "@adexdsamson/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useState, useRef } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";

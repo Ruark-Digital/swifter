@@ -7,7 +7,7 @@ import {
 import { useState, useEffect } from "react";
 import { Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Forge, useForge } from "@/lib/forge";
+import { Forge, useForge } from "@adexdsamson/forge";
 import * as yup from "yup";
 import { cn } from "@/lib/utils";
 import Step1Form from "./Step1Form";

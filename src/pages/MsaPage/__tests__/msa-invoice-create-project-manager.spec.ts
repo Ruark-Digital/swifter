@@ -117,7 +117,7 @@ test.describe("MSA Invoice Create (project manager)", () => {
   test.setTimeout(120_000);
   test.skip(({ browserName }) => browserName !== "chromium");
 
-  test("project manager sees Create Invoice button on MSA Invoice tab", async ({
+  test("project manager sees Submit Invoice button on MSA Invoice tab", async ({
     page,
   }) => {
     const msaId = "msa-1";
@@ -130,7 +130,7 @@ test.describe("MSA Invoice Create (project manager)", () => {
     });
 
     await page.getByRole("tab", { name: "Invoice", exact: true }).click();
-    await expect(page.getByRole("button", { name: "Create Invoice" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Submit Invoice" })).toBeVisible();
   });
 });
 

@@ -1,4 +1,4 @@
-import { useForgeValues } from "@/lib/forge";
+import { useForgeValues } from "@adexdsamson/forge";
 import {
   X,
   Upload,

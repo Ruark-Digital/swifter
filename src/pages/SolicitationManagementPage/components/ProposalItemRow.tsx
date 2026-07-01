@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { ForgeControl, Forger } from "@/lib/forge";
+import { ForgeControl, Forger } from "@adexdsamson/forge";
 import { TextInput } from "../../../components/layouts/FormInputs/TextInput";
 import { Plus, Trash2 } from "lucide-react";
 import { FormValues } from "./SubmitProposalPage";

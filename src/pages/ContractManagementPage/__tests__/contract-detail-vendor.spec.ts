@@ -279,13 +279,13 @@ test.describe("Vendor Contract Detail", () => {
     const invoiceTab = page.getByRole("tab", { name: "Invoice" });
     await expect(invoiceTab).toBeVisible();
     await invoiceTab.click();
-    await page.getByRole("button", { name: "Create Invoice" }).click();
+    await page.getByRole("button", { name: "Submit Invoice" }).click();
 
     await expect(page.getByPlaceholder("Enter description")).toBeVisible();
     await expect(page.getByPlaceholder("Duration")).toHaveCount(0);
   });
 
-  test("hides Create Invoice while contract is pending approval (vendor)", async ({
+  test("hides Submit Invoice while contract is pending approval (vendor)", async ({
     page,
   }) => {
     test.setTimeout(60000);
@@ -345,7 +345,7 @@ test.describe("Vendor Contract Detail", () => {
     await expect(invoiceTab).toBeVisible();
     await invoiceTab.click();
 
-    await expect(page.getByRole("button", { name: "Create Invoice" })).toBeHidden();
+    await expect(page.getByRole("button", { name: "Submit Invoice" })).toBeHidden();
   });
 
   test("deliverables default to Pending when status is missing and not submitted", async ({

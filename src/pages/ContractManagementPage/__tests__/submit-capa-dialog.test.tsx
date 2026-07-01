@@ -39,7 +39,7 @@ vi.mock("@/components/layouts/FormInputs", () => ({
   TextInput: () => null,
 }));
 
-vi.mock("@/lib/forge", () => ({
+vi.mock("@adexdsamson/forge", () => ({
   Forge: ({
     children,
     onSubmit,

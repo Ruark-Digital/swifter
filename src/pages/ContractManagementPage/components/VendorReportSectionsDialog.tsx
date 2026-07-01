@@ -17,7 +17,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Forger, ForgeControl } from "@/lib/forge";
+import { Forger, ForgeControl } from "@adexdsamson/forge";
 import { TextArea, TextInput } from "@/components/layouts/FormInputs";
 
 type Props = {

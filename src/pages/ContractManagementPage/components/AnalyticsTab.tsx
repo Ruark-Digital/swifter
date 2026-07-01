@@ -861,7 +861,7 @@ const AnalyticsTab: React.FC<Props> = ({
             </div>
             <p className="font-semibold text-slate-900 dark:text-slate-100">Insurance</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
-              {formatNumber(attachments?.policy)} Polices
+              {formatNumber(attachments?.policy)} Policies
             </p>
           </div>
         </div>

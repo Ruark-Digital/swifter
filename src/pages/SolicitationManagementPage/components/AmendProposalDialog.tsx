@@ -16,11 +16,10 @@ import {
   Forger,
   useForge,
   Forge,
-} from "@/lib/forge";
+} from "@adexdsamson/forge";
 
 import { Plus, Trash2, CornerDownRight } from "lucide-react";
-import { usePersist } from "@/lib/forge/usePersist/usePersist";
-import { UseFormSetValue, UseFormGetValues } from "react-hook-form";
+import { UseFormSetValue, UseFormGetValues, useWatch } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getRequest, putRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
@@ -188,29 +187,32 @@ const AmendProposalDialog: React.FC<AmendProposalDialogProps> = ({
     }
   }, [priceAction, reset]);
 
-  // Use persist to auto-calculate totals
-  usePersist({
-    control,
-    handler: (data, state) => {
-      if (data && data.priceAction && state.type === "change") {
-        // Recalculate main item subtotals
-        const updatedPriceAction = data.priceAction.map((item: any) => ({
-          ...item,
-          subtotal:
-            (parseFloat(item.quantity) || 0) *
-            (parseFloat(item.unitPrice) || 0),
-        }));
-
-        // Update form with recalculated subtotals
-        setValue("priceAction", updatedPriceAction);
-
-        // Calculate and set total
-        const total = calculateTotal({ priceAction: updatedPriceAction });
-        setTotalAmount(total.toFixed(2));
-        setValue("total", total);
-      }
-    },
-  });
+  // Auto-recalculate subtotals + total when priceAction changes. usePersist's
+  // v1 signature dropped {name, type} so we can't gate on `type === "change"`
+  // any more; using a scoped useWatch + setValue with a "did anything actually
+  // change" guard avoids the feedback loop that would otherwise happen when our
+  // own setValue fires a new tick.
+  const watchedPriceAction = useWatch({ control, name: "priceAction" }) as
+    | Array<{ quantity?: string | number; unitPrice?: string | number; subtotal?: number }>
+    | undefined;
+  useEffect(() => {
+    if (!Array.isArray(watchedPriceAction) || watchedPriceAction.length === 0) return;
+    const updatedPriceAction = watchedPriceAction.map((item: any) => ({
+      ...item,
+      subtotal:
+        (parseFloat(item.quantity) || 0) *
+        (parseFloat(item.unitPrice) || 0),
+    }));
+    const subtotalsChanged = updatedPriceAction.some(
+      (next, i) => next.subtotal !== watchedPriceAction[i]?.subtotal,
+    );
+    if (subtotalsChanged) {
+      setValue("priceAction", updatedPriceAction);
+    }
+    const total = calculateTotal({ priceAction: updatedPriceAction });
+    setTotalAmount(total.toFixed(2));
+    setValue("total", total);
+  }, [watchedPriceAction, setValue]);
 
   // Amendment mutation
   const { mutateAsync: amendProposal, isPending: isAmending } = useMutation<

@@ -11,7 +11,8 @@ import {
   useFieldArray,
   useForge,
   useForgeValues,
-} from "@/lib/forge";
+  type ForgeControl,
+} from "@adexdsamson/forge";
 import {
   TextArea,
   TextFileUploader,
@@ -258,7 +259,13 @@ type CompleteInvoiceDialogProps = {
 const CompleteInvoiceDialog = React.memo(
   ({ open, onOpenChange, trigger, onCompleteInvoice }: CompleteInvoiceDialogProps) => {
     const { control, unregister } = useFormContext<FormValues>();
-    const { setValue } = useForgeValues<FormValues>({ control });
+    // The parent <Forge> wraps this dialog so `control` is in practice a
+    // ForgeControl (useForge mutates it via Object.assign); the RHF type from
+    // useFormContext is the narrower base. Cast for useForgeValues' stricter
+    // signature on the public package.
+    const { setValue } = useForgeValues<FormValues>({
+      control: control as ForgeControl<FormValues>,
+    });
 
     const [totalAmount, setTotalAmount] = React.useState(0);
 
@@ -557,7 +564,7 @@ const InvoiceComponent = ({
     >
       <Plus className="h-4 w-4 text-[#2A4467] dark:text-blue-300" />
       <span className="text-[#2A4467] dark:text-blue-300 text-base font-semibold">
-        Create Invoice
+        Submit Invoice
       </span>
     </button>
   );
@@ -1013,7 +1020,7 @@ const CreateInvoiceDialog: React.FC<Props> = ({
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-4 pt-8">
           <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
-            {isEditMode ? "Edit Invoice" : "Create Invoice"}
+            {isEditMode ? "Edit Invoice" : "Submit Invoice"}
           </DialogTitle>
         </div>
 
@@ -1077,7 +1084,7 @@ const CreateInvoiceDialog: React.FC<Props> = ({
             <Footer
               onBack={handleBack}
               onPrimary={handlePrimary}
-              primaryLabel={isEditMode ? "Update Invoice" : "Create Invoice"}
+              primaryLabel={isEditMode ? "Update Invoice" : "Submit Invoice"}
               isSubmitting={isSubmitting}
             />
           </Forge>

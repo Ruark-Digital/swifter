@@ -8,7 +8,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
-import { Forge, FormPropsRef, useForge } from "@/lib/forge";
+import { Forge, FormPropsRef, useForge } from "@adexdsamson/forge";
 import CompleteProposalDialog from "./CompleteProposalDialog";
 import FileUploadDialog from "./FileUploadDialog";
 import { yupResolver } from "@hookform/resolvers/yup";

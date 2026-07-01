@@ -99,7 +99,7 @@ vi.mock("@/components/layouts/FormInputs", () => ({
   TextSelect: () => null,
 }));
 
-vi.mock("@/lib/forge", () => ({
+vi.mock("@adexdsamson/forge", () => ({
   Forge: ({ children }: { children: React.ReactNode }) => <form>{children}</form>,
   Forger: () => null,
   useForge: () => ({

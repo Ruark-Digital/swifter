@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import { TextFileUploader } from "@/components/layouts/FormInputs";
 import { CloudUpload, FileText, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";

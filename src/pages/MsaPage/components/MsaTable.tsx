@@ -52,10 +52,13 @@ export type MsaRow = {
   isOwner?: boolean;
 };
 
-const MsaActionsCell: React.FC<{ row: MsaRow }> = ({ row }) => {
+const MsaActionsCell: React.FC<{
+  row: MsaRow;
+  menuOpen: boolean;
+  onMenuOpenChange: (open: boolean) => void;
+}> = ({ row, menuOpen, onMenuOpenChange }) => {
   const { isManager } = useUserRole();
   const currentUserId = useUser()?._id;
-  const [menuOpen, setMenuOpen] = React.useState(false);
   const [editOpen, setEditOpen] = React.useState(false);
   const [lifecycle, setLifecycle] = React.useState<LifecycleAction | null>(null);
 
@@ -78,13 +81,13 @@ const MsaActionsCell: React.FC<{ row: MsaRow }> = ({ row }) => {
   // Close the menu before opening the controlled dialog so the dropdown doesn't
   // linger behind it or fight the dialog for focus.
   const openLifecycle = (a: LifecycleAction) => {
-    setMenuOpen(false);
+    onMenuOpenChange(false);
     setLifecycle(a);
   };
 
   return (
     <>
-      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+      <DropdownMenu open={menuOpen} onOpenChange={onMenuOpenChange}>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" data-testid="msa-actions-dropdown">
             ⋮
@@ -116,7 +119,7 @@ const MsaActionsCell: React.FC<{ row: MsaRow }> = ({ row }) => {
               data-testid="edit-msa"
               onSelect={(e) => {
                 e.preventDefault();
-                setMenuOpen(false);
+                onMenuOpenChange(false);
                 setEditOpen(true);
               }}
             >
@@ -267,7 +270,9 @@ const columns: ColumnDef<MsaRow>[] = [
   {
     id: "actions",
     header: "Actions",
-    cell: ({ row }) => <MsaActionsCell row={row.original} />,
+    // Actual cell renderer is injected by MsaTable so the row-level
+    // dropdown state can live at the table level (one menu open at a time).
+    cell: () => null,
   },
 ];
 
@@ -299,6 +304,7 @@ const MsaTable: React.FC<MsaTableProps> = ({
   onDateFilterChange,
 }) => {
   const [search, setSearch] = React.useState("");
+  const [openMenuRowId, setOpenMenuRowId] = React.useState<string | null>(null);
   const [localPagination, setLocalPagination] = React.useState<PaginationState>(
     {
       pageIndex: 0,
@@ -308,6 +314,28 @@ const MsaTable: React.FC<MsaTableProps> = ({
   const pagination = paginationProp ?? localPagination;
   const setPagination = setPaginationProp ?? setLocalPagination;
   const data = React.useMemo(() => rows ?? [], [rows]);
+
+  // Inject the lifted open-menu state into the actions column so only one
+  // row's 3-dot menu is open at a time.
+  const tableColumns = React.useMemo<ColumnDef<MsaRow>[]>(
+    () =>
+      columns.map((column) => {
+        if (column.id !== "actions") return column;
+        return {
+          ...column,
+          cell: ({ row }: { row: { original: MsaRow } }) => (
+            <MsaActionsCell
+              row={row.original}
+              menuOpen={openMenuRowId === row.original.id}
+              onMenuOpenChange={(open) => {
+                setOpenMenuRowId(open ? row.original.id : null);
+              }}
+            />
+          ),
+        } as ColumnDef<MsaRow>;
+      }),
+    [openMenuRowId],
+  );
 
   const normalizeStatus = React.useCallback((value?: string) => {
     return (value ?? "").trim().toLowerCase().replace(/\s+/g, "_");
@@ -477,7 +505,7 @@ const MsaTable: React.FC<MsaTableProps> = ({
 
       <DataTable<MsaRow>
         data={filteredRows}
-        columns={columns}
+        columns={tableColumns}
         options={{
           disableSelection: true,
           isLoading,
