@@ -83,16 +83,10 @@ type DeliverySummaryData = {
     total?: number;
     onTime?: number;
     rejected?: number;
-    lateMissed?: number;
+    /** Backend v2.3.0 field name — was previously typed as `lateMissed`,
+     *  which never matched the payload so the "Late" tile always rendered 0. */
+    late?: number;
   };
-  deliverables?: Array<{
-    kpi?: {
-      kpi?: number;
-      kpiDays?: number;
-      kpiText?: string;
-      kpiStatus?: string;
-    };
-  }>;
 };
 
 type AttachmentSummary = { amendment?: number; policy?: number };
@@ -421,7 +415,7 @@ const AnalyticsTab: React.FC<Props> = ({
     total: formatNumber(deliverySummary?.summary?.total),
     onTime: formatNumber(deliverySummary?.summary?.onTime),
     rejected: formatNumber(deliverySummary?.summary?.rejected),
-    lateMissed: formatNumber(deliverySummary?.summary?.lateMissed),
+    lateMissed: formatNumber(deliverySummary?.summary?.late),
   };
 
   const vendorScores = (vendorKpi ?? [])

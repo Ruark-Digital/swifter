@@ -44,10 +44,10 @@ export const Dashboard = () => {
       as={SidebarProvider}
     >
       <SideBar />
-      <main className="flex-1 flex flex-col min-w-0 bg-white dark:bg-gray-900">
+      <main className="flex-1 flex flex-col min-w-0 overflow-x-hidden bg-white dark:bg-gray-900">
         <Header />
         <ScrollArea>
-          <div className="flex-1 overflow-auto h-[calc(100vh-160px)] flex flex-col bg-white dark:bg-gray-900 px-8 transition-colors">
+          <div className="flex-1 overflow-auto h-[calc(100vh-160px)] flex flex-col min-w-0 bg-white dark:bg-gray-900 px-4 sm:px-8 transition-colors">
             <Outlet />
           </div>
         </ScrollArea>
