@@ -27,8 +27,8 @@ export function computeLandingTabs(
         : [{ id: "solicitations", label: "Solicitations" }];
     case "vendor":
       return contractsOn
-        ? [{ id: "invitations", label: "Invitations" }, CONTRACTS_TAB]
-        : [{ id: "invitations", label: "Invitations" }];
+        ? [{ id: "invitations", label: "Solicitation" }, CONTRACTS_TAB]
+        : [{ id: "invitations", label: "Solicitation" }];
     case "company_admin": {
       const base: LandingTab[] = [
         { id: "overview", label: "Dashboard" },

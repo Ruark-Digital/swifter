@@ -49,6 +49,8 @@ type InvoiceDetailsSheetProps = {
   actionsDisabled?: boolean;
   /** Only the contract owner/manager may approve/reject an invoice (QA #164). */
   owner?: boolean;
+  /** Contract-level currency; falls back to USD when the API omits it. */
+  currency?: string;
 };
 
 const LabelRow = ({
@@ -71,7 +73,9 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   invoiceId,
   actionsDisabled,
   owner,
+  currency,
 }) => {
+  const currencyCode = currency || "USD";
   const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
   const toastHandler = useToastHandler();
@@ -320,7 +324,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                   typeof invoice?.amount === "number"
                     ? new Intl.NumberFormat(undefined, {
                         style: "currency",
-                        currency: "USD",
+                        currency: currencyCode,
                       }).format(invoice.amount)
                     : "-"
                 }
@@ -352,11 +356,17 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
               </div>
             </div>
 
-            {Array.isArray(invoice?.items) && invoice.items.length > 0 && (
+            {!isLoading && (
               <div className="space-y-3">
                 <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Breakdown
                 </div>
+                {!Array.isArray(invoice?.items) || invoice.items.length === 0 ? (
+                  <div className="rounded-lg border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                    No itemized breakdown was submitted for this invoice — see
+                    the attached document below.
+                  </div>
+                ) : (
                 <div className="overflow-x-auto rounded-lg border border-[#E5E7EB] dark:border-slate-700">
                   {/* min-w + table-layout:fixed keep Component/Description readable
                       instead of the browser auto-shrinking them to fit the 560px
@@ -400,7 +410,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                               {unitPrice
                                 ? new Intl.NumberFormat(undefined, {
                                     style: "currency",
-                                    currency: "USD",
+                                    currency: currencyCode,
                                   }).format(unitPrice)
                                 : "-"}
                             </td>
@@ -408,7 +418,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                               {total
                                 ? new Intl.NumberFormat(undefined, {
                                     style: "currency",
-                                    currency: "USD",
+                                    currency: currencyCode,
                                   }).format(total)
                                 : "-"}
                             </td>
@@ -418,6 +428,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                     </tbody>
                   </table>
                 </div>
+                )}
               </div>
             )}
 
@@ -564,6 +575,8 @@ type InvoiceTableProps = {
   setInvoiceIdSearch: (next: string) => void;
   actionsDisabled?: boolean;
   owner?: boolean;
+  /** Contract-level currency; falls back to USD when the API omits it. */
+  currency?: string;
   /** Contract-level `remaining` from FinancialStatement (outstanding balance
    *  after all billed invoices). API has no per-invoice remaining — this is
    *  the only real "remaining" value in the spec. */
@@ -581,8 +594,10 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
   setInvoiceIdSearch,
   actionsDisabled,
   owner,
+  currency,
   contractRemaining,
 }) => {
+  const currencyCode = currency || "USD";
   const columns = React.useMemo<ColumnDef<InvoiceRow>[]>(() => {
     return [
       { accessorKey: "id", header: "Invoice ID" },
@@ -641,6 +656,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
               invoiceId={row.original.id}
               actionsDisabled={actionsDisabled}
               owner={owner}
+              currency={currencyCode}
               trigger={
                 <button
                   type="button"
@@ -655,12 +671,12 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
         ),
       },
     ];
-  }, [contractId, actionsDisabled, owner]);
+  }, [contractId, actionsDisabled, owner, currencyCode]);
 
   const invoiceRows: InvoiceRow[] = React.useMemo(() => {
     const currencyFormatter = new Intl.NumberFormat(undefined, {
       style: "currency",
-      currency: "USD",
+      currency: currencyCode,
     });
     const remainingLabel =
       typeof contractRemaining === "number"
@@ -699,7 +715,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
         status,
       };
     });
-  }, [rows, contractRemaining]);
+  }, [rows, contractRemaining, currencyCode]);
 
 
   return (

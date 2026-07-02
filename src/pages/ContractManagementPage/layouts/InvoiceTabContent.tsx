@@ -21,6 +21,7 @@ type Props = {
 
 const InvoiceTabContent: React.FC<Props> = ({
   contractId,
+  currency,
   isActive,
   actionsDisabled,
   owner,
@@ -156,6 +157,7 @@ const InvoiceTabContent: React.FC<Props> = ({
         setInvoiceIdSearch={setInvoiceIdSearch}
         actionsDisabled={actionsDisabled}
         owner={owner}
+        currency={currency}
         contractRemaining={contractRemaining}
       />
     </TabsContent>

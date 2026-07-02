@@ -6,6 +6,7 @@ import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import SubmitLemDialog from "../components/SubmitLemDialog";
+import { formatCurrency } from "@/lib/utils";
 
 type Props = {
   contractId: string;
@@ -13,7 +14,8 @@ type Props = {
   isActive?: boolean;
 };
 
-const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
+const LemTabContent: React.FC<Props> = ({ contractId, currency, isActive }) => {
+  const currencyCode = currency || "USD";
   const { isApprover, isManager, isVendor, isProjectManager, isAdmin, isViewOnly } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
@@ -40,7 +42,8 @@ const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       "lem-list",
       contractId,
       debounced,
-      basePath
+      basePath,
+      currencyCode,
     ],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -62,7 +65,7 @@ const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         title: it?.title || "",
         amount:
           typeof it?.amount === "number"
-            ? `$${it.amount.toLocaleString()}`
+            ? formatCurrency(it.amount, "en-US", currencyCode)
             : it?.amount || "",
         submissionDate: it?.createdAt || it?.submissionDate || "",
         status: it?.status 
@@ -99,6 +102,7 @@ const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         searchValue={search}
         onSearchChange={(v) => setSearch(v)}
         basePath={basePath}
+        currency={currencyCode}
       />
     </TabsContent>
   );

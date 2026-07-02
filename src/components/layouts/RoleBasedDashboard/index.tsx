@@ -300,7 +300,12 @@ export const RoleBasedDashboard: React.FC = () => {
     pmContractGeneralUpdates,
     // Individual chart data fetchers
     getChartData,
-  } = useDashboardData(userRole, chartFilters, isProjectManager);
+  } = useDashboardData(
+    userRole,
+    chartFilters,
+    isProjectManager,
+    userRole === "vendor" && activeLandingTab === "contracts"
+  );
 
   const cmYtdStats = useMemo(() => {
     const ytd = contractManagerYtdCards;
@@ -557,14 +562,16 @@ export const RoleBasedDashboard: React.FC = () => {
     if (userRole === "vendor") {
       // Transform Vendor data. PM is aliased to "vendor" for the rest of this
       // dashboard, but its My Actions / General Updates are contract-scoped
-      // (fetched from the vendor-side CONTRACT dashboard, not solicitations),
-      // so they need the contract-manager activity transform instead.
-      const transformedVendorMyActions = isProjectManager
+      // (fetched from the vendor-side CONTRACT dashboard, not solicitations).
+      // A real vendor gets the same contract-scoped data whenever the
+      // Contracts tab is active, and solicitation-scoped data otherwise.
+      const showContractActivity = isProjectManager || activeLandingTab === "contracts";
+      const transformedVendorMyActions = showContractActivity
         ? DashboardDataTransformer.transformContractManagerDashboardActivity(
             pmContractMyActions
           )
         : DashboardDataTransformer.transformVendorMyActions(vendorMyActions);
-      const transformedVendorGeneralUpdates = isProjectManager
+      const transformedVendorGeneralUpdates = showContractActivity
         ? DashboardDataTransformer.transformContractManagerDashboardActivity(
             pmContractGeneralUpdates
           )
@@ -811,6 +818,7 @@ export const RoleBasedDashboard: React.FC = () => {
     vendorMyActions,
     vendorGeneralUpdates,
     isProjectManager,
+    activeLandingTab,
     pmContractMyActions,
     pmContractGeneralUpdates,
     contractManagerTotalCards,
@@ -1084,12 +1092,20 @@ export const RoleBasedDashboard: React.FC = () => {
       )}
       
 
-      {/* Activities and Charts Section */}
+      {/* Activities and Charts Section. Vendor's Contracts tab keeps only the
+          My Actions / General Updates activity row here (its own stat cards
+          and charts are rendered by VendorContractsView above). */}
       {!isContractAnalyticsRole &&
         !(userRole === "company_admin" && activeLandingTab === "contracts") &&
         !(userRole === "procurement" && activeLandingTab === "contracts") &&
-        !(userRole === "vendor" && activeLandingTab === "contracts") &&
         enhancedDashboardConfig.rows?.map?.((item, rowIndex) => {
+        if (
+          userRole === "vendor" &&
+          activeLandingTab === "contracts" &&
+          item.type !== "activity"
+        ) {
+          return null;
+        }
         if (item.type === "activity") {
           const gatedActivities = item.properties.filter((activity) => {
             if (activity.id === "my-actions" && !canShowMyActions) {
