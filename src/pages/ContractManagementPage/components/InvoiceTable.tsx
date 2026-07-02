@@ -564,6 +564,10 @@ type InvoiceTableProps = {
   setInvoiceIdSearch: (next: string) => void;
   actionsDisabled?: boolean;
   owner?: boolean;
+  /** Contract-level `remaining` from FinancialStatement (outstanding balance
+   *  after all billed invoices). API has no per-invoice remaining — this is
+   *  the only real "remaining" value in the spec. */
+  contractRemaining?: number;
 };
 
 const InvoiceTable: React.FC<InvoiceTableProps> = ({
@@ -577,6 +581,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
   setInvoiceIdSearch,
   actionsDisabled,
   owner,
+  contractRemaining,
 }) => {
   const columns = React.useMemo<ColumnDef<InvoiceRow>[]>(() => {
     return [
@@ -657,6 +662,10 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
       style: "currency",
       currency: "USD",
     });
+    const remainingLabel =
+      typeof contractRemaining === "number"
+        ? currencyFormatter.format(contractRemaining)
+        : "-";
 
     return rows.map((inv) => {
       const id = inv.invoiceId ?? inv._id ?? "-";
@@ -678,15 +687,19 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
               ? "Draft"
               : "Pending";
 
+      // "Remaining" is contract-level (FinancialStatement.remaining) — the
+      // API has no per-invoice remaining. Only surface it for invoices that
+      // have actually reduced the outstanding balance (Approved); the rest
+      // haven't affected `remaining` yet, so a dash is honest there.
       return {
         id,
         type,
         billed,
-        remaining: "-",
+        remaining: status === "Approved" ? remainingLabel : "-",
         status,
       };
     });
-  }, [rows]);
+  }, [rows, contractRemaining]);
 
 
   return (
