@@ -76,6 +76,7 @@ const SubmitPolicyDialog: React.FC<SubmitPolicyDialogProps> = ({
   id,
   contractId,
   basePath,
+  title,
   onSuccess,
 }) => {
   const [open, setOpen] = React.useState(false);
@@ -114,7 +115,10 @@ const SubmitPolicyDialog: React.FC<SubmitPolicyDialogProps> = ({
 
   const submitMutation = useMutation({
     mutationFn: async (payload: any) => {
-      const url = id ? `${basePath}/${id}` : basePath;
+      // Security items have a documented per-item endpoint
+      // (`{basePath}/security/{securityItemId}`); policy items don't have
+      // one yet, so `id` is only ever passed for type="security" today.
+      const url = id ? `${basePath}/security/${id}` : basePath;
       return await patchRequest({
         url,
         payload,
@@ -192,7 +196,7 @@ const SubmitPolicyDialog: React.FC<SubmitPolicyDialogProps> = ({
       <DialogContent className=" h-[80vh] p-0 rounded-2xl overflow-auto py-4 border-none">
         <DialogHeader className="flex flex-row items-center justify-between p-4 bg-white dark:bg-slate-950">
           <DialogTitle className="text-base font-medium text-slate-900 dark:text-slate-100">
-            Submit {type === "policy" ? "Policy" : "Security"} Document
+            {title || `Submit ${type === "policy" ? "Policy" : "Security"} Document`}
           </DialogTitle>
         </DialogHeader>
 

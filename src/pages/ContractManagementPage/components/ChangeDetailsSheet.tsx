@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Share2 } from "lucide-react";
+import { Share2, Edit2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -19,6 +19,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import SendApprovalDialog from "./SendApprovalDialog";
+import CreateChangeDialog from "./CreateChangeDialog";
 import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
@@ -444,9 +445,36 @@ const ChangeDetailsSheet: React.FC<Props> = ({
           <SheetHeader>
             <div className="flex items-center justify-between">
               <SheetTitle>{isClaim ? "Claim Details" : "Change Details"}</SheetTitle>
-              <Button variant="outline" size="sm" className="mr-8">
-                <Share2 className="mr-2 h-4 w-4" /> Export
-              </Button>
+              <div className="flex items-center gap-2 mr-8">
+                {!isClaim &&
+                  isContractVendorLike &&
+                  status?.toLowerCase?.() === "rejected" && (
+                    <CreateChangeDialog
+                      contractId={contractId}
+                      isManager={false}
+                      mode="edit"
+                      changeId={changeId}
+                      initialChange={{
+                        title,
+                        type: changeType,
+                        description,
+                        files: files as any,
+                      }}
+                      trigger={
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          data-testid="edit-change-trigger"
+                        >
+                          <Edit2 className="mr-2 h-4 w-4" /> Edit
+                        </Button>
+                      }
+                    />
+                  )}
+                <Button variant="outline" size="sm">
+                  <Share2 className="mr-2 h-4 w-4" /> Export
+                </Button>
+              </div>
             </div>
           </SheetHeader>
 

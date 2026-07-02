@@ -16,7 +16,8 @@ import { UseFormSetValue, useFormContext, useWatch } from "react-hook-form";
 import { CreateContractFormData } from "./CreateContractSheet";
 
 type Props = {
-  setValue?: UseFormSetValue<CreateContractFormData>
+  setValue?: UseFormSetValue<CreateContractFormData>;
+  projectManagerFallbackLabel?: string;
 };
 
 type SelectOption = { label: string; value: string; name?: string };
@@ -77,7 +78,10 @@ const SingleSelectField = ({
   );
 };
 
-const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
+const Step2ContractTeam: React.FC<Props> = ({
+  setValue,
+  projectManagerFallbackLabel,
+}) => {
   const formContext = useFormContext<CreateContractFormData>();
   const applyValue = setValue ?? formContext.setValue;
   const vendorId = useWatch({ control: formContext.control, name: "vendor" });
@@ -240,6 +244,7 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
         component={SingleSelectField}
         options={projectManagerOptions}
         placeholder="Select Vendor/Contractor's Primary Contact or Type e-mail"
+        fallbackLabel={projectManagerFallbackLabel}
       />
       <Forger
         name="personnel"

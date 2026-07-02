@@ -90,6 +90,8 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
     userRole,
   } =
     useUserRole();
+  const isContractManager = userRole === "contract_manager";
+  const isVendorOrProjectManager = isVendor || isProjectManager;
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
@@ -301,31 +303,53 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
         id: "actions",
         header: "Action",
         cell: ({ row }) => {
+          const rowStatus = row.original.status?.toLowerCase();
+          const canSubmitRow =
+            isVendorOrProjectManager &&
+            !actionsDisabled &&
+            (rowStatus === "pending" || rowStatus === "rejected");
           return (
-            <ComplianceDetailsSheet
-              type="security"
-              id={row.original.id}
-              contractId={contractId}
-              basePath={basePath}
-              actionsDisabled={actionsDisabled}
-              trigger={
-                <Button
-                  variant="link"
-                  className="text-[#43A047] font-semibold p-0 h-auto"
-                >
-                  View
-                </Button>
-              }
-            />
+            <div className="flex items-center gap-4">
+              <ComplianceDetailsSheet
+                type="security"
+                id={row.original.id}
+                contractId={contractId}
+                basePath={basePath}
+                actionsDisabled={actionsDisabled}
+                trigger={
+                  <Button
+                    variant="link"
+                    className="text-[#43A047] font-semibold p-0 h-auto"
+                  >
+                    View
+                  </Button>
+                }
+              />
+              {canSubmitRow && (
+                <SubmitPolicyDialog
+                  type="security"
+                  id={row.original.id}
+                  contractId={contractId}
+                  basePath={basePath}
+                  title={`${rowStatus === "rejected" ? "Resubmit" : "Submit"} ${row.original.securityType}`}
+                  onSuccess={() => queryClient.invalidateQueries({ queryKey })}
+                  trigger={
+                    <Button
+                      variant="link"
+                      className="text-[#2A4467] font-semibold p-0 h-auto"
+                    >
+                      {rowStatus === "rejected" ? "Resubmit" : "Submit"}
+                    </Button>
+                  }
+                />
+              )}
+            </div>
           );
         },
       },
     ],
-    [basePath, contractId, actionsDisabled],
+    [basePath, contractId, actionsDisabled, isVendorOrProjectManager, queryClient, queryKey],
   );
-
-  const isContractManager = userRole === "contract_manager";
-  const isVendorOrProjectManager = isVendor || isProjectManager;
 
   const securityTypeLabel = React.useMemo(() => {
     const names = Array.from(
@@ -374,8 +398,13 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
   const insuranceStatus = String(getCategoryStatus("policy") || "pending");
   const securityStatus = String(getCategoryStatus("security") || "pending");
 
+  // Bulk submit is policy-only — Contract Security has a per-item endpoint
+  // now (see securityColumns' per-row Submit/Resubmit action above), so a
+  // tab-wide aggregate button would incorrectly hide once any one security
+  // type left "pending".
   const canSubmitActiveCategory = React.useMemo(() => {
     if (!isVendorOrProjectManager) return false;
+    if (activeTab !== "policy") return false;
     const status = String(getCategoryStatus(activeTab) || "").toLowerCase();
     if (!status) return !hasFiles;
     return status === "pending" || status === "rejected";

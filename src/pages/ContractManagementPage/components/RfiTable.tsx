@@ -908,8 +908,22 @@ const columns: ColumnDef<RfiRow>[] = [
     id: "actions",
     header: () => <div className="text-right">Actions</div>,
     cell: ({ row }) => (
-      <div className="text-right">
-        {row.original.type === "received" && row.original.status !== "closed" ? (
+      <div className="flex items-center justify-end gap-3">
+        <RfiDetailsSheet
+          rfiId={row.original.id}
+          contractId={row.original.contractId ?? ""}
+          rfi={row.original.rfi}
+          trigger={
+            <button
+              type="button"
+              data-testid="view-rfi-detail"
+              className="text-sm font-medium text-green-700 hover:underline"
+            >
+              View
+            </button>
+          }
+        />
+        {row.original.type === "received" && row.original.status !== "closed" && (
           <RespondToRfiDialog
             rfiId={row.original.id}
             rfi={row.original.rfi}
@@ -917,25 +931,10 @@ const columns: ColumnDef<RfiRow>[] = [
             trigger={
               <button
                 type="button"
-                data-testid="view-rfi-detail"
+                data-testid="respond-rfi"
                 className="text-sm font-medium text-green-700 hover:underline"
               >
                 Respond
-              </button>
-            }
-          />
-        ) : (
-          <RfiDetailsSheet
-            rfiId={row.original.id}
-            contractId={row.original.contractId ?? ""}
-            rfi={row.original.rfi}
-            trigger={
-              <button
-                type="button"
-                data-testid="view-rfi-detail"
-                className="text-sm font-medium text-green-700 hover:underline"
-              >
-                View
               </button>
             }
           />

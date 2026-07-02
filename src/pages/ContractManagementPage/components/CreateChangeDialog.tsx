@@ -39,6 +39,18 @@ type Props = {
   contractId: string;
   isManager?: boolean;
   documentType?: "Contract" | "MsaContract";
+  /** "edit" resubmits a rejected change request via PUT instead of creating
+   *  a new one (QA #150). Requires changeId; initialChange pre-fills the
+   *  form. Vendor-only — managers don't resubmit their own change requests. */
+  mode?: "create" | "edit";
+  changeId?: string;
+  initialChange?: {
+    title?: string;
+    type?: string;
+    urgency?: string;
+    description?: string;
+    files?: { name: string; url: string; type: string; size: string | number }[];
+  };
 };
 
 function FileListItem({ file, index }: { file: File; index?: number }) {
@@ -70,7 +82,11 @@ const CreateChangeDialog: React.FC<Props> = ({
   contractId,
   isManager = true,
   documentType = "Contract",
+  mode = "create",
+  changeId,
+  initialChange,
 }) => {
+  const isEdit = mode === "edit" && !!changeId;
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
   const toastHandler = useToastHandler();
@@ -82,11 +98,11 @@ const CreateChangeDialog: React.FC<Props> = ({
 
   const { control, reset } = useForge({
     defaultValues: {
-      changeName: "",
-      changeType: defaultChangeType,
+      changeName: initialChange?.title ?? "",
+      changeType: initialChange?.type ?? defaultChangeType,
       amount: "",
-      urgency: "",
-      description: "",
+      urgency: initialChange?.urgency ?? "",
+      description: initialChange?.description ?? "",
       files: null,
     },
   });
@@ -94,21 +110,26 @@ const CreateChangeDialog: React.FC<Props> = ({
   React.useEffect(() => {
     if (!open) return;
     reset({
-      changeName: "",
-      changeType: defaultChangeType,
+      changeName: initialChange?.title ?? "",
+      changeType: initialChange?.type ?? defaultChangeType,
       amount: "",
-      urgency: "",
-      description: "",
+      urgency: initialChange?.urgency ?? "",
+      description: initialChange?.description ?? "",
       files: null,
     });
-  }, [open, reset, defaultChangeType]);
+    // Only depend on `open` — re-syncing on every initialChange identity
+    // change would reset the form mid-edit if the parent re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, reset]);
 
   const files = useWatch({ control, name: "files" }) as File[] | null;
   const changeType = useWatch({ control, name: "changeType" }) as ContractChangeType | undefined;
-  const submitLabel = getCreateChangeSubmitLabel({
-    isManager,
-    changeType: changeType ?? defaultChangeType,
-  });
+  const submitLabel = isEdit
+    ? "Resubmit"
+    : getCreateChangeSubmitLabel({
+        isManager,
+        changeType: changeType ?? defaultChangeType,
+      });
 
   const { mutateAsync: uploadFile, isPending: isUploadingFiles } = useMutation<
     ApiResponse<UploadURLs[]>,
@@ -133,8 +154,17 @@ const CreateChangeDialog: React.FC<Props> = ({
   });
 
   const createMutation = useMutation({
-    mutationKey: [isManager ? "contractManager" : "vendor", "contractChanges", "create", contractId],
+    mutationKey: [
+      isManager ? "contractManager" : "vendor",
+      "contractChanges",
+      isEdit ? "update" : "create",
+      contractId,
+      isEdit ? changeId : "new",
+    ],
     mutationFn: async (payload: ContractChangeManagerDTO) => {
+      if (isEdit && changeId) {
+        return await vendorApi.updateChange(contractId, changeId, payload as any);
+      }
       if (isManager) {
         const res = await contractManagerApi.createChangeRequest(
           contractId,
@@ -150,12 +180,22 @@ const CreateChangeDialog: React.FC<Props> = ({
       return res;
     },
     onSuccess: async () => {
-      toastHandler.success("Change Request", "Change request submitted successfully");
+      toastHandler.success(
+        "Change Request",
+        isEdit
+          ? "Change request resubmitted successfully"
+          : "Change request submitted successfully",
+      );
       setOpen(false);
       reset();
       const listKey = documentType === "MsaContract" ? "msaChanges" : "contractChanges";
       await queryClient.invalidateQueries({ queryKey: [listKey] });
       await queryClient.invalidateQueries({ queryKey: [listKey, "stats"] });
+      if (isEdit && changeId) {
+        await queryClient.invalidateQueries({
+          queryKey: ["contract-change-detail"],
+        });
+      }
     },
     onError: (error: ApiResponseError) => {
       toastHandler.error("Change Request", error);
@@ -211,6 +251,11 @@ const CreateChangeDialog: React.FC<Props> = ({
       }
     }
 
+    // Editing without re-uploading shouldn't wipe the existing attachment.
+    if (isEdit && !payload.files?.length && initialChange?.files?.length) {
+      payload.files = initialChange.files as any;
+    }
+
     try {
       await createMutation.mutateAsync(payload);
     } catch {
@@ -227,7 +272,7 @@ const CreateChangeDialog: React.FC<Props> = ({
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-8 pt-8">
           <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
-            Create Change
+            {isEdit ? "Resubmit Change" : "Create Change"}
           </DialogTitle>
         </div>
         <div className="px-8 pb-8 pt-6">
@@ -333,7 +378,7 @@ const CreateChangeDialog: React.FC<Props> = ({
                 disabled={isSubmitting}
                 className="h-12 flex-1 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
               >
-                {isSubmitting ? "Sending..." : submitLabel}
+                {isSubmitting ? (isEdit ? "Resubmitting..." : "Sending...") : submitLabel}
               </Button>
             </div>
           </Forge>

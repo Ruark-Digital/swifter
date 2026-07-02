@@ -43,6 +43,12 @@ function RiskPill({
   );
 }
 
+// Mirrors ContractManagementPage/index.tsx's mapStatusToLabel for the one
+// label this tab renders — BE's "publish" status displays as "Published"
+// everywhere else in the app (QA #135), this tab was still showing it raw.
+const formatContractStatusLabel = (status?: string) =>
+  status === "publish" ? "Published" : status || "—";
+
 function RatesValuesBlock({ children }: { children: React.ReactNode }) {
   return (
     <div className="rounded shadow-[inset_3px_0_0_0_#22C55E] bg-[#F0FDF4] dark:bg-green-950/40 px-2 py-3">
@@ -478,7 +484,7 @@ const buildClauseLibraryPrintHtml = (
         <span class="meta-value">${escapeHtml(durationDisplay)}</span>
       </div>
     </div>
-    <span class="status-pill">${escapeHtml(contract.status || "—")}</span>
+    <span class="status-pill">${escapeHtml(formatContractStatusLabel(contract.status))}</span>
   </div>
 
   ${sectionsHtml || `<div class="section"><div class="section-header"><div class="section-title">No clauses found.</div></div></div>`}
@@ -644,7 +650,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive, vendorName }) => {
 
           <div className="inline-flex rounded-full bg-[#22C55E] px-3 py-1">
             <span className="text-sm font-semibold leading-5 text-white">
-              {contract?.status || "—"}
+              {formatContractStatusLabel(contract?.status)}
             </span>
           </div>
         </div>

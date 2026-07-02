@@ -147,6 +147,43 @@ const columns: ColumnDef<VendorContractRow>[] = [
   },
 ];
 
+// Actions cell with its dropdown open-state lifted to the table level —
+// an uncontrolled DropdownMenu per row keeps independent Radix state, so
+// a menu left open doesn't close when another row's menu is opened.
+const buildActionsColumn = (
+  openMenuRowId: string | null,
+  setOpenMenuRowId: (id: string | null) => void,
+): ColumnDef<VendorContractRow> => ({
+  id: "actions",
+  header: "Actions",
+  cell: ({ row }) => (
+    <DropdownMenu
+      open={openMenuRowId === row.original.id}
+      onOpenChange={(open) => setOpenMenuRowId(open ? row.original.id : null)}
+    >
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          data-testid="vendor-contract-actions-dropdown"
+        >
+          ⋮
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem asChild>
+          <Link
+            to={`/dashboard/contract-management/${row.original.id}`}
+            data-testid="vendor-view-contract-detail"
+          >
+            View Details
+          </Link>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ),
+});
+
 type VendorContractsTableProps = {
   rows?: VendorContractRow[];
   isLoading?: boolean;
@@ -169,6 +206,7 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
   onStatusFilterChange,
 }) => {
   const [search, setSearch] = React.useState("");
+  const [openMenuRowId, setOpenMenuRowId] = React.useState<string | null>(null);
   const [localPagination, setLocalPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -177,9 +215,13 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
   const setPagination = setPaginationProp ?? setLocalPagination;
 
   const tableColumns = React.useMemo(() => {
-    if (!isReadOnly) return columns;
-    return columns.filter((column) => column.id !== "actions");
-  }, [isReadOnly]);
+    if (isReadOnly) return columns.filter((column) => column.id !== "actions");
+    return columns.map((column) =>
+      column.id === "actions"
+        ? buildActionsColumn(openMenuRowId, setOpenMenuRowId)
+        : column,
+    );
+  }, [isReadOnly, openMenuRowId]);
 
   const filteredRows = React.useMemo(() => {
     let result = rows;

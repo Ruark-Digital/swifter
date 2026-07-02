@@ -53,13 +53,14 @@ const ProjectsTable: React.FC<Props> = ({
         header: "Projects Name",
         cell: ({ row }) => (
           <div className="flex flex-col">
-            <a
-              href={`/dashboard/project-management/${row.original.id ?? ""}`}
+            <button
+              type="button"
+              onClick={() => openDetails(row.original.id)}
               data-testid="project-name-link"
-              className="font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
+              className="text-left font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
             >
               {row.original.name ?? ""}
-            </a>
+            </button>
             {row.original.code && (
               <span className="text-xs text-slate-500 dark:text-slate-400">{row.original.code}</span>
             )}
@@ -124,11 +125,15 @@ const ProjectsTable: React.FC<Props> = ({
     [openDetails]
   );
 
-  const filtered = projects.filter((p) =>
-    searchQuery
-      ? p.name?.toLowerCase?.().includes(searchQuery.toLowerCase())
-      : true
-  );
+  const filtered = projects.filter((p) => {
+    if (searchQuery && !p.name?.toLowerCase?.().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+    if (statusFilter && p.status !== statusFilter) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-4" data-testid="projects-table">

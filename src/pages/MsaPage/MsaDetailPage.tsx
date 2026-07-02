@@ -816,6 +816,7 @@ const MsaDetailPage: React.FC = () => {
                 formationStages={formationStages}
                 status={status}
                 contractManager={contractManagerName}
+                vendorName={(msa?.vendor as any)?.name}
                 internalTeam={internalTeam}
                 vendorPersonnel={vendorPersonnel}
               />
