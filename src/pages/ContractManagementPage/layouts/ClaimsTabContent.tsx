@@ -21,6 +21,7 @@ type Props = {
 
 const ClaimsTabContent: React.FC<Props> = ({
   contractId,
+  currency,
   isActive,
   actionsDisabled,
 }) => {
@@ -124,6 +125,7 @@ const ClaimsTabContent: React.FC<Props> = ({
         totalCount={totalCount}
         pagination={pagination}
         setPagination={setPagination}
+        currency={currency}
       />
     </TabsContent>
   );

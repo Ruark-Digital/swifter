@@ -28,6 +28,7 @@ import { formatDate } from "date-fns";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { approverApi } from "../api/approverApi";
 import type { ApprovalActionDTO } from "../api/approverApi";
+import { formatCompactCurrency } from "@/lib/utils";
 
 type Props = {
   trigger: React.ReactNode;
@@ -38,6 +39,8 @@ type Props = {
    *  surface) URLs are built off it; otherwise we fall back to approverApi
    *  which targets the standalone-contract endpoints. */
   basePath?: string;
+  /** Contract-level currency; falls back to USD when the API omits it. */
+  currency?: string;
 };
 
 const LabelRow = ({
@@ -68,7 +71,9 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
   contractId,
   changeId,
   basePath,
+  currency,
 }) => {
+  const currencyCode = currency || "USD";
   const toast = useToastHandler();
   const qc = useQueryClient();
   const [open, setOpen] = React.useState(false);
@@ -226,7 +231,7 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
 
   const isPending = approverStatus === "pending";
   const formattedValue =
-    value != null ? `$${(Number(value) / 1000000).toFixed(2)}M` : null;
+    value != null ? formatCompactCurrency(Number(value), currencyCode) : null;
   const showTimeFields =
     impactType === "time" || impactType === "time & cost" || impactType === "time_and_cost";
   const showCostField =

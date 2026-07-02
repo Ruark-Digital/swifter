@@ -16,15 +16,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { ContractClaimDTO } from "../api/contractManagerApi";
 import ChangeDetailsSheet from "./ChangeDetailsSheet";
-import { formatSecurityType } from "@/lib/utils";
+import { formatCompactCurrency, formatSecurityType } from "@/lib/utils";
 
-const formatImpact = (item: ContractClaimDTO) => {
+const formatImpact = (item: ContractClaimDTO, currency: string) => {
   const hasTime = typeof item.time === "number" && Number.isFinite(item.time);
   const hasCost = typeof item.cost === "number" && Number.isFinite(item.cost);
   if (hasTime && hasCost)
-    return `$${(item.cost || 0) / 1000000}M + ${item.time} days`;
+    return `${formatCompactCurrency(item.cost || 0, currency)} + ${item.time} days`;
   if (hasTime) return `${item.time} days`;
-  if (hasCost) return `$${(item.cost || 0) / 1000000}M`;
+  if (hasCost) return formatCompactCurrency(item.cost || 0, currency);
   return "-";
 };
 
@@ -40,6 +40,7 @@ function ClaimActionsCell({
         listInvalidateQueryKey?: readonly unknown[];
         statsInvalidateQueryKey?: readonly unknown[];
         claimAssignUrlBuilder?: (claimId: string) => string;
+        currency?: string;
       }
     | undefined;
   const contractId = meta?.contractId ?? "";
@@ -54,6 +55,7 @@ function ClaimActionsCell({
         changeId={claimId}
         contractId={contractId}
         basePath={basePath}
+        currency={meta?.currency}
         listInvalidateQueryKey={meta?.listInvalidateQueryKey}
         statsInvalidateQueryKey={meta?.statsInvalidateQueryKey}
         claimAssignUrl={claimAssignUrl}
@@ -97,9 +99,14 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
   {
     id: "impact",
     header: "Impact",
-    cell: ({ row }) => (
-      <span className="font-semibold">{formatImpact(row.original)}</span>
-    ),
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as { currency?: string } | undefined;
+      return (
+        <span className="font-semibold">
+          {formatImpact(row.original, meta?.currency || "USD")}
+        </span>
+      );
+    },
   },
   {
     accessorKey: "createdAt",
@@ -159,6 +166,8 @@ type ClaimsTableProps = {
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
   claimAssignUrlBuilder?: (claimId: string) => string;
+  /** Contract-level currency; falls back to USD when the API omits it. */
+  currency?: string;
 };
 
 const ClaimsTable: React.FC<ClaimsTableProps> = ({
@@ -172,6 +181,7 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
   claimAssignUrlBuilder,
+  currency,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -233,6 +243,7 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
             listInvalidateQueryKey,
             statsInvalidateQueryKey,
             claimAssignUrlBuilder,
+            currency,
           },
         }}
       />

@@ -17,6 +17,7 @@ import ChangeDetailsSheet from "./ChangeDetailsSheet";
 import ApproverChangeDetailsSheet from "./ApproverChangeDetailsSheet";
 import type { ContractChangeDTO } from "../api/contractManagerApi";
 import { formatChangeTypeLabel } from "../lib/contractChanges";
+import { formatCompactCurrency } from "@/lib/utils";
 
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -34,11 +35,14 @@ type ChangeTableProps = {
   variant?: "manager" | "approver";
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
+  /** Contract-level currency; falls back to USD when the API omits it. */
+  currency?: string;
 };
 
 type ManagerActionsCellProps = CellContext<ContractChangeDTO, unknown> & {
   contractId: string;
   basePath?: string;
+  currency?: string;
 };
 
 function ManagerActionsCell({
@@ -46,6 +50,7 @@ function ManagerActionsCell({
   table,
   contractId,
   basePath,
+  currency,
 }: ManagerActionsCellProps) {
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const changeId = row.original.changeId || "";
@@ -61,6 +66,7 @@ function ManagerActionsCell({
         contractId={contractId}
         changeId={changeId}
         basePath={basePath}
+        currency={currency}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         listInvalidateQueryKey={meta?.listInvalidateQueryKey}
@@ -93,8 +99,10 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
   variant = "manager",
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
+  currency,
 }) => {
   const [search, setSearch] = React.useState("");
+  const currencyCode = currency || "USD";
 
   const approverColumns: ColumnDef<ContractChangeDTO>[] = React.useMemo(
     () => [
@@ -129,7 +137,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         header: "Value",
         cell: ({ getValue }) => {
           const val = getValue<number | undefined>();
-          return val ? `$${(val / 1000000).toFixed(2)}M` : "-";
+          return val ? formatCompactCurrency(val, currencyCode) : "-";
         },
       },
       {
@@ -174,6 +182,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
               contractId={contractId}
               changeId={changeId}
               basePath={basePath}
+              currency={currencyCode}
               trigger={
                 <Button
                   variant="link"
@@ -187,7 +196,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         },
       },
     ],
-    [contractId, basePath],
+    [contractId, basePath, currencyCode],
   );
 
   const managerColumns: ColumnDef<ContractChangeDTO>[] = React.useMemo(
@@ -253,11 +262,12 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
             {...ctx}
             contractId={contractId}
             basePath={basePath}
+            currency={currencyCode}
           />
         ),
       },
     ],
-    [contractId, basePath],
+    [contractId, basePath, currencyCode],
   );
 
   const filteredRows = React.useMemo(() => {
