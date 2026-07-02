@@ -37,7 +37,9 @@ import { formatDate } from "date-fns";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { getFileExtension } from "@/lib/fileUtils";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
+import SubmitLemDialog from "./SubmitLemDialog";
+import { Edit2 } from "lucide-react";
 
 const formatDateValue = (value: unknown) => {
   if (!value) return "—";
@@ -70,6 +72,8 @@ export interface LemDetailsSheetProps {
   contractId: string;
   lemId: string;
   basePath: string;
+  /** Contract-level currency; falls back to USD when the API omits it. */
+  currency?: string;
 }
 
 const LabelRow = ({
@@ -90,9 +94,12 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   contractId,
   lemId,
   basePath,
+  currency,
 }) => {
+  const currencyCode = currency || "USD";
   const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } =
     useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const { data: lemDetail, isLoading: detailLoading } = useQuery({
     queryKey: useUserQueryKey(["lem-detail", contractId, lemId, basePath]),
     queryFn: async () => {
@@ -183,12 +190,37 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
               <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 {detailLoading ? "Loading..." : lemDetail?.title || "—"}
               </div>
-              <Button
-                variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
-              >
-                <Share2 className="mr-2 h-4 w-4" /> Export
-              </Button>
+              <div className="flex items-center gap-2">
+                {isContractVendorLike &&
+                  lemDetail?.status?.toLowerCase?.() === "rejected" && (
+                    <SubmitLemDialog
+                      mode="edit"
+                      lemId={lemId}
+                      contractId={contractId}
+                      initialLem={{
+                        title: lemDetail?.title,
+                        amount: lemDetail?.amount,
+                        description: lemDetail?.description,
+                        files: lemDetail?.files,
+                      }}
+                      trigger={
+                        <Button
+                          variant="outline"
+                          data-testid="edit-lem-trigger"
+                          className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#2A4467] dark:text-slate-200"
+                        >
+                          <Edit2 className="mr-2 h-4 w-4" /> Edit
+                        </Button>
+                      }
+                    />
+                  )}
+                <Button
+                  variant="outline"
+                  className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
+                >
+                  <Share2 className="mr-2 h-4 w-4" /> Export
+                </Button>
+              </div>
             </div>
 
             <Tabs
@@ -225,7 +257,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                     value={
                       detailLoading || typeof lemDetail?.amount !== "number"
                         ? "—"
-                        : `$${lemDetail.amount.toLocaleString()}`
+                        : formatCurrency(lemDetail.amount, "en-US", currencyCode)
                     }
                   />
                   <LabelRow
@@ -358,6 +390,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
 const createColumns = (
   contractId: string,
   basePath: string,
+  currency?: string,
 ): ColumnDef<LemRow>[] => [
   { accessorKey: "id", header: "LEM ID" },
   {
@@ -412,6 +445,7 @@ const createColumns = (
             contractId={contractId}
             lemId={row.original.id}
             basePath={basePath}
+            currency={currency}
             trigger={
               <button
                 type="button"
@@ -434,6 +468,8 @@ const LemTable: React.FC<{
   searchValue?: string;
   onSearchChange?: (val: string) => void;
   basePath: string;
+  /** Contract-level currency; falls back to USD when the API omits it. */
+  currency?: string;
 }> = ({
   contractId,
   rows,
@@ -441,6 +477,7 @@ const LemTable: React.FC<{
   searchValue,
   onSearchChange,
   basePath,
+  currency,
 }) => {
   const filteredRows = React.useMemo(() => {
     const source = rows || [];
@@ -455,7 +492,7 @@ const LemTable: React.FC<{
     <div className="space-y-4" data-testid="lem-table">
       <DataTable<LemRow>
         data={filteredRows}
-        columns={createColumns(contractId, basePath)}
+        columns={createColumns(contractId, basePath, currency)}
         header={() => (
           <div className="flex items-center gap-3 border-b w-full border-[#E5E7EB] dark:border-slate-800 px-5 py-4">
             <span className="text-sm font-medium text-slate-900 dark:text-slate-100">LEM</span>

@@ -28,7 +28,7 @@ import {
   formatFileSize,
   getSimpleFileExtension,
 } from "@/lib/fileUtils";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import {
@@ -967,7 +967,7 @@ const RateSheetDetailsSheet: React.FC<{
                   mutateApproval("rejected");
                 }}
               >
-                Reject Change
+                Reject
               </Button>
               <Button
                 className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
@@ -993,7 +993,8 @@ const RateSheetDetailsSheet: React.FC<{
   );
 };
 
-const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
+const RateSheetsTabContent: React.FC<Props> = ({ contractId, currency, isActive }) => {
+  const currencyCode = currency || "USD";
   const [search, setSearch] = React.useState("");
   const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } =
     useUserRole();
@@ -1031,7 +1032,7 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         title: it?.title || "",
         amount:
           typeof it?.amount === "number"
-            ? `$${it.amount.toLocaleString()}`
+            ? formatCurrency(it.amount, "en-US", currencyCode)
             : it?.amount || "",
         submissionDate: it?.createdAt || "",
         status: it?.status

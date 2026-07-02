@@ -75,6 +75,7 @@ type Props = {
 
 const ChangeTabContent: React.FC<Props> = ({
   contractId,
+  currency,
   isActive,
   actionsDisabled,
 }) => {
@@ -261,6 +262,7 @@ const ChangeTabContent: React.FC<Props> = ({
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            currency={currency}
             {...tableInvalidationProps}
           />
         </TabsContent>
@@ -274,6 +276,7 @@ const ChangeTabContent: React.FC<Props> = ({
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            currency={currency}
             {...tableInvalidationProps}
           />
         </TabsContent>
@@ -286,6 +289,7 @@ const ChangeTabContent: React.FC<Props> = ({
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            currency={currency}
             {...tableInvalidationProps}
           />
         </TabsContent>
@@ -298,6 +302,7 @@ const ChangeTabContent: React.FC<Props> = ({
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            currency={currency}
             {...tableInvalidationProps}
           />
         </TabsContent>
@@ -311,6 +316,7 @@ const ChangeTabContent: React.FC<Props> = ({
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            currency={currency}
             {...tableInvalidationProps}
           />
         </TabsContent>

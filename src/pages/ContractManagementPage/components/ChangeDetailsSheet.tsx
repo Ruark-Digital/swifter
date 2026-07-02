@@ -44,7 +44,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn, formatSecurityType } from "@/lib/utils";
+import { cn, formatSecurityType, formatCurrency, formatCompactCurrency } from "@/lib/utils";
 
 type Props = {
   trigger?: React.ReactNode;
@@ -59,6 +59,8 @@ type Props = {
    *  POSTs to `${claimAssignUrl}` to assign approvers. Must include the
    *  claimId. Defaults to the Contract path. */
   claimAssignUrl?: string;
+  /** Contract-level currency; falls back to USD when the API omits it. */
+  currency?: string;
 };
 
 const LabelRow = ({
@@ -93,7 +95,9 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
   claimAssignUrl,
+  currency,
 }) => {
+  const currencyCode = currency || "USD";
   const toast = useToastHandler();
   const qc = useQueryClient();
   const { isManager, isApprover, isVendor, isProjectManager, isAdmin, isViewOnly } =
@@ -160,7 +164,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const submittedByName =
     detail?.submittedBy?.name ?? detail?.submittedBy?.email ?? "";
   const vendorEmail =
-    detail?.vendor?.email ?? detail?.vendor?.name ?? detail?.vendor ?? "";
+    detail?.vendor?.name ?? detail?.vendor?.email ?? detail?.vendor ?? "";
   const changeType = detail?.type ?? "";
   const submittedAt = detail?.submittedAt ?? detail?.createdAt ?? "";
   const status = detail?.status ?? "";
@@ -268,6 +272,9 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     "approved" | "rejected" | null
   >(null);
   const [commentDraft, setCommentDraft] = React.useState("");
+  const [activeTab, setActiveTab] = React.useState<"overview" | "comments">(
+    "overview",
+  );
 
   React.useEffect(() => {
     if (pendingAction === null) setCommentDraft("");
@@ -447,7 +454,11 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             {title}
           </h3>
 
-          <Tabs defaultValue="overview" className="space-y-4">
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => setActiveTab(v as "overview" | "comments")}
+            className="space-y-4"
+          >
             <TabsList className="h-auto rounded-none border-b w-full border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
               <TabsTrigger
                 value="overview"
@@ -502,7 +513,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                       {(impact === "cost" || impact === "time_cost") && (
                         <LabelRow
                           label="Cost Impact"
-                          value={cost != null ? `$${Number(cost).toLocaleString()}` : "—"}
+                          value={cost != null ? formatCurrency(Number(cost), "en-US", currencyCode) : "—"}
                           highlight
                         />
                       )}
@@ -514,7 +525,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                         isDetailLoading
                           ? ""
                           : value != null
-                            ? `$${(Number(value) / 1000000).toFixed(2)}M`
+                            ? formatCompactCurrency(Number(value), currencyCode)
                             : "-"
                       }
                       highlight
@@ -610,7 +621,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             </TabsContent>
           </Tabs>
 
-          {showDecisionActions && (
+          {showDecisionActions && activeTab === "overview" && (
             <SheetFooter>
               {/* Change flow (unchanged): manager gets Reject+Approve;
                   non-manager gets Reject (disabled) + Send for Approval. */}
