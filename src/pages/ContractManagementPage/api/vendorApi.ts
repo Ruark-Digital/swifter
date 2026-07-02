@@ -84,6 +84,24 @@ export const createVendorApi = (
     });
     return res as ApiResponse<any>;
   },
+  updateChange: async (
+    contractId: string,
+    changeId: string,
+    payload: {
+      title: string;
+      description: string;
+      type: "request" | "order" | "proposal";
+      proposalCategory?: string;
+      urgency?: "low" | "medium" | "high";
+      files?: { name: string; url: string; type: string; size: number }[];
+    },
+  ) => {
+    const res = await putRequest({
+      url: `/contract/vendor/contracts/${contractId}/changes/${changeId}`,
+      payload,
+    });
+    return res as ApiResponse<any>;
+  },
   createMsaChange: async (
     contractId: string,
     payload: {
@@ -183,6 +201,22 @@ export const createVendorApi = (
   ) => {
     const res = await postRequest({
       url: `/contract/vendor/contracts/${contractId}/lems`,
+      payload,
+    });
+    return res as ApiResponse<any>;
+  },
+  updateLem: async (
+    contractId: string,
+    lemId: string,
+    payload: {
+      title: string;
+      description: string;
+      amount: number;
+      files: { name: string; url: string; type: string; size: number }[];
+    },
+  ) => {
+    const res = await putRequest({
+      url: `/contract/vendor/contracts/${contractId}/lems/${lemId}`,
       payload,
     });
     return res as ApiResponse<any>;

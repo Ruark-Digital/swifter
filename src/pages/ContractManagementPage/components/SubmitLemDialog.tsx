@@ -41,6 +41,16 @@ type SubmitLemDialogProps = {
    *  refetches after submit. The Contract-side default keys are always
    *  invalidated regardless. */
   invalidateQueryKey?: readonly unknown[];
+  /** "edit" resubmits a rejected LEM via PUT instead of creating a new one
+   *  (QA #150). Requires lemId; initialLem pre-fills the form. */
+  mode?: "create" | "edit";
+  lemId?: string;
+  initialLem?: {
+    title?: string;
+    amount?: number;
+    description?: string;
+    files?: { name: string; url: string; type: string; size: number }[];
+  };
 };
 
 const UploadElement = () => {
@@ -91,7 +101,11 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
   contractId,
   createPath,
   invalidateQueryKey,
+  mode = "create",
+  lemId,
+  initialLem,
 }) => {
+  const isEdit = mode === "edit" && !!lemId;
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const toastHandler = useToastHandler();
@@ -100,9 +114,12 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
   const { control, reset } = useForge<SubmitLemFormValues>({
     resolver: yupResolver(schema) as any,
     defaultValues: {
-      title: "",
-      amount: "",
-      description: "",
+      title: initialLem?.title ?? "",
+      amount:
+        typeof initialLem?.amount === "number"
+          ? String(initialLem.amount)
+          : "",
+      description: initialLem?.description ?? "",
       files: null,
     },
   });
@@ -130,8 +147,11 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
   });
 
   const createMutation = useMutation({
-    mutationKey: ["createLem", contractId, createPath ?? "default"],
+    mutationKey: ["createLem", contractId, createPath ?? "default", isEdit ? lemId : "new"],
     mutationFn: async (data: any) => {
+      if (isEdit && lemId) {
+        return await vendorApi.updateLem(contractId, lemId, data);
+      }
       if (createPath) {
         const res = await postRequest({ url: createPath, payload: data });
         return res as ApiResponse<any>;
@@ -147,15 +167,24 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
       await queryClient.invalidateQueries({
         queryKey: ["lem-list", contractId],
       });
+      if (isEdit && lemId) {
+        await queryClient.invalidateQueries({
+          queryKey: ["lem-detail", contractId, lemId],
+        });
+      }
       if (invalidateQueryKey) {
         await queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
       }
-      toastHandler.success("Success", "LEM submitted successfully");
+      toastHandler.success(
+        "Success",
+        isEdit ? "LEM resubmitted successfully" : "LEM submitted successfully",
+      );
     },
     onError: (error: any) => {
       toastHandler.error(
         "Error",
-        error?.response?.data?.message || "Failed to submit LEM",
+        error?.response?.data?.message ||
+          (isEdit ? "Failed to resubmit LEM" : "Failed to submit LEM"),
       );
     },
   });
@@ -193,7 +222,11 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
         title: data.title,
         amount: Number(data.amount),
         description: data.description,
-        files: uploadedFiles,
+        // Editing without re-uploading shouldn't wipe the existing attachment.
+        files:
+          uploadedFiles.length > 0
+            ? uploadedFiles
+            : (initialLem?.files ?? []),
       };
 
       await createMutation.mutateAsync(payload);
@@ -219,7 +252,9 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
       <DialogContent className="h-[866px] max-h-[90vh] overflow-y-auto gap-0 border-0 p-0">
         <Forge control={control} onSubmit={onSubmit} className="flex flex-col h-full">
           <div className="flex items-center justify-between px-8 py-8">
-            <h2 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">Submit LEM</h2>
+            <h2 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
+              {isEdit ? "Resubmit LEM" : "Submit LEM"}
+            </h2>
           </div>
 
           <div className="flex flex-1 flex-col gap-6 px-8">
@@ -287,8 +322,10 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
               {isSubmitting ? (
                 <div className="flex items-center justify-center gap-2">
                   <Spinner className="h-5 w-5 text-white" />
-                  <span>Submitting...</span>
+                  <span>{isEdit ? "Resubmitting..." : "Submitting..."}</span>
                 </div>
+              ) : isEdit ? (
+                "Resubmit LEM"
               ) : (
                 "Submit LEM"
               )}
