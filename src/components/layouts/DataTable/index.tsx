@@ -260,25 +260,25 @@ export function DataTable<T = unknown>({
           ? renderLoadingTable
           : emptyPlaceholder}
       </div>
-      <div className="grid grid-cols-2 py-4 px-3">
+      <div className="flex flex-col gap-3 py-4 px-3 sm:grid sm:grid-cols-2 sm:gap-0">
         {!options?.disableSelection ? (
           <div className="flex-1 text-sm dark:text-gray-200 text-muted-foreground">
             {table.getFilteredSelectedRowModel().rows.length} of{" "}
             {table.getFilteredRowModel().rows.length} row(s) selected.
           </div>
         ) : (
-          <div></div>
+          <div className="hidden sm:block"></div>
         )}
 
         {!options?.disablePagination && (
           <Pagination
             className={cn(
-              "justify-end pt-10 md:pt-0 lg:pt-0",
+              "justify-center sm:justify-end",
               classNames?.pagination
             )}
           >
             <PaginationContent
-              className={cn("", classNames?.paginationContent)}
+              className={cn("flex-wrap justify-center", classNames?.paginationContent)}
             >
               <PaginationItem>
                 <PaginationPrevious
