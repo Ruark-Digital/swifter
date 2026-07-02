@@ -344,7 +344,8 @@ export type ContractManagerRenewals = {
 export const useDashboardData = (
   userRole: UserRole,
   chartFilters: Record<string, string> = {},
-  isProjectManager: boolean = false
+  isProjectManager: boolean = false,
+  isContractsTabActive: boolean = false
 ) => {
   const defaultFilter = "12months";
   const contractDashboardDefaultFilter = "ytd";
@@ -679,7 +680,7 @@ export const useDashboardData = (
       queryKey: useUserQueryKey(["vendor-my-actions", userRole]),
       queryFn: async () =>
         await getRequest({ url: "/vendor/solicitations/my-actions" }),
-      enabled: userRole === "vendor",
+      enabled: userRole === "vendor" && !isProjectManager && !isContractsTabActive,
       staleTime: 5 * 60 * 1000,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
@@ -693,7 +694,7 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["vendor-general-updates", userRole]),
     queryFn: async () =>
       await getRequest({ url: "/vendor/solicitations/general-updates" }),
-    enabled: userRole === "vendor",
+    enabled: userRole === "vendor" && !isProjectManager && !isContractsTabActive,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -713,7 +714,7 @@ export const useDashboardData = (
         });
         return res.data as ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>;
       },
-      enabled: userRole === "vendor" && isProjectManager,
+      enabled: userRole === "vendor" && (isProjectManager || isContractsTabActive),
       staleTime: 60 * 1000,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
@@ -735,7 +736,7 @@ export const useDashboardData = (
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>;
     },
-    enabled: userRole === "vendor" && isProjectManager,
+    enabled: userRole === "vendor" && (isProjectManager || isContractsTabActive),
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
