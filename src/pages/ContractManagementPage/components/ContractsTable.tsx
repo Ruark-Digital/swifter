@@ -379,9 +379,9 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
     <div data-testid="contracts-table">
       <DataTable<ContractRow>
         header={() => (
-          <div className="flex items-center w-full justify-between border-b border-[#E9E9EB] dark:border-slate-600 p-3 pt-0">
-            <div className="flex items-center gap-3 w-full">
-              <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center w-full justify-between gap-3 border-b border-[#E9E9EB] dark:border-slate-600 p-3 pt-0">
+            <div className="flex flex-wrap items-center gap-3 w-full">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
                   Contracts
                 </span>
@@ -393,15 +393,15 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
                   }}
                   data-testid="search-input"
-                  className="h-10 w-[260px]"
+                  className="h-10 w-full sm:w-[260px] min-w-0"
                   disabled={isReadOnly}
                 />
               </div>
               <div
                 className={
                   isReadOnly
-                    ? "ml-auto flex items-center gap-2 pointer-events-none opacity-60"
-                    : "ml-auto flex items-center gap-2"
+                    ? "sm:ml-auto flex flex-wrap items-center gap-2 pointer-events-none opacity-60"
+                    : "sm:ml-auto flex flex-wrap items-center gap-2"
                 }
                 aria-disabled={isReadOnly}
               >

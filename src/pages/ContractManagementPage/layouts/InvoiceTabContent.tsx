@@ -62,6 +62,40 @@ const InvoiceTabContent: React.FC<Props> = ({
     enabled: Boolean(contractId) && !!isActive,
   });
 
+  // Contract-level `remaining` (outstanding after billed-till-date) lives on
+  // FinancialStatement per the API spec — no per-invoice remaining exists.
+  // Only manager/approver have this endpoint; vendor doesn't, so we skip it.
+  const financialStatementBase = isApprover
+    ? `/contract/approver/contracts/${contractId}`
+    : isManager
+      ? `/contract/manager/contracts/${contractId}`
+      : null;
+
+  const { data: financialStatementRes } = useQuery({
+    queryKey: [
+      "contractInvoices",
+      "financial-statement",
+      contractId,
+      financialStatementBase,
+    ],
+    queryFn: async () => {
+      const response = await getRequest({
+        url: `${financialStatementBase}/dashboard/financial-statement`,
+        config: { params: { type: "Contract" } },
+      });
+      return response.data;
+    },
+    enabled:
+      Boolean(contractId) && !!isActive && Boolean(financialStatementBase),
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  const contractRemaining: number | undefined =
+    typeof financialStatementRes?.data?.remaining === "number"
+      ? financialStatementRes.data.remaining
+      : undefined;
+
   const { data: invoicesRes, isLoading: isInvoicesLoading } = useQuery({
     queryKey: [
       "contractInvoices",
@@ -124,6 +158,7 @@ const InvoiceTabContent: React.FC<Props> = ({
         actionsDisabled={actionsDisabled}
         owner={owner}
         currency={currency}
+        contractRemaining={contractRemaining}
       />
     </TabsContent>
   );
