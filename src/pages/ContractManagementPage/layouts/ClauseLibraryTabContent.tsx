@@ -399,9 +399,10 @@ const buildClauseLibraryPrintHtml = (
     `Clause Library - ${contract.contractName || contract.title || contract.contractId || "Contract"}`,
   );
 
-  const durationDisplay =
-    contract.duration ||
-    `${formatDateShort(contract.startDate)} to ${formatDateShort(contract.endDate)}`;
+  // Always derive from the contract's own start/end dates for a consistent
+  // format across contracts — `contract.duration` is AI-extracted from the
+  // document and its format varies per contract (QA #140/#81).
+  const durationDisplay = `${formatDateShort(contract.startDate)} to ${formatDateShort(contract.endDate)}`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -642,8 +643,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({ isActive, vendorName }) => {
             <div className="inline-flex flex-col pl-6">
               <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">Duration</div>
               <div className="text-base font-semibold leading-6 text-[#030712] dark:text-slate-100">
-                {contract?.duration ||
-                  `${formatDateShort(contract?.startDate)} to ${formatDateShort(contract?.endDate)}`}
+                {`${formatDateShort(contract?.startDate)} to ${formatDateShort(contract?.endDate)}`}
               </div>
             </div>
           </div>

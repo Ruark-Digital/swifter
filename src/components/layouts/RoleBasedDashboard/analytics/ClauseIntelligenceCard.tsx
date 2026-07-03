@@ -13,6 +13,15 @@ import {
 type Props = {
   data?: {
     mostNegotiatedClauses?: Array<{ category: string; count: number }>;
+    // BE field is `highRiskClauses` (title-keyed); kept `highRiskClauseTypes`
+    // accepted too in case an older role-path still sends the legacy shape.
+    highRiskClauses?: Array<{
+      title?: string;
+      category?: string;
+      contracts: number;
+      severity: string;
+      averageDeviation?: number;
+    }>;
     highRiskClauseTypes?: Array<{ category: string; contracts: number; severity: string }>;
   };
   selectedRange?: string;
@@ -43,16 +52,29 @@ export const ClauseIntelligenceCard: React.FC<Props> = ({
     value: Math.round(((m.count ?? 0) / max) * 100),
   }));
 
+  const highRiskSource =
+    data?.highRiskClauses && Array.isArray(data.highRiskClauses) && data.highRiskClauses.length > 0
+      ? data.highRiskClauses
+      : data?.highRiskClauseTypes;
+
   const highRisk =
-    data?.highRiskClauseTypes &&
-    Array.isArray(data.highRiskClauseTypes) &&
-    data.highRiskClauseTypes.length > 0
-      ? data.highRiskClauseTypes
-      : [
+    highRiskSource && Array.isArray(highRiskSource) && highRiskSource.length > 0
+      ? highRiskSource.map((h) => ({
+          category: h.category || (h as { title?: string }).title || "",
+          contracts: h.contracts,
+          severity: h.severity,
+          averageDeviation: (h as { averageDeviation?: number }).averageDeviation,
+        }))
+      : ([
           { category: "Liquidated Damages", contracts: 78, severity: "high" },
           { category: "Indemnities", contracts: 65, severity: "medium" },
           { category: "Termination Rights", contracts: 52, severity: "low" },
-        ];
+        ] as Array<{
+          category: string;
+          contracts: number;
+          severity: string;
+          averageDeviation?: number;
+        }>);
 
   // Tailwind classes (not inline styles) so dark variants can override
   // the light tint. Inline `style` wins over `dark:bg-*` due to CSS
@@ -133,6 +155,8 @@ export const ClauseIntelligenceCard: React.FC<Props> = ({
                 </div>
                 <p className="text-[12px] text-[#6B7280] dark:text-slate-400">
                   Severity: {h.severity}
+                  {typeof h.averageDeviation === "number" &&
+                    ` · ${h.averageDeviation}% deviation from standard`}
                 </p>
               </div>
             );

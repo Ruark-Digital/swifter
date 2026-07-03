@@ -947,7 +947,7 @@ const EditContract: React.FC<Props> = ({
             ? data.msaContractId || undefined
             : undefined,
         msaCategory:
-          data.relationship === "msa"
+          data.relationship === "msa" || data.relationship === "msa_project"
             ? data.msaCategory || undefined
             : undefined,
         solicitationId: data.awardedSolicitation || undefined,

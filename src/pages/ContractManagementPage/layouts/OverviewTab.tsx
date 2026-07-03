@@ -11,6 +11,7 @@ import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
 import { differenceInDays, parseISO } from "date-fns";
 import { LabelItem } from "../components/LabelItem";
 
@@ -790,6 +791,17 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
   const { isVendor, isProjectManager, isApprover, isViewOnly, isCompanyAdmin } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
+  const currentUser = useUser();
+  // Edit is a manager-owner-only action: the BE `owner` flag when present,
+  // otherwise fall back to matching the creator id.
+  const isContractOwner =
+    typeof contract?.owner === "boolean"
+      ? contract.owner
+      : Boolean(
+          currentUser?._id &&
+            contract?.creator?._id &&
+            currentUser._id === contract.creator._id,
+        );
 
   const projectName =
     typeof contract.project === "string"
@@ -899,14 +911,18 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
             </ExportReportSheet>
           ) : null}
 
-          {!isContractVendorLike && !isApprover && !isViewOnly && !isCompanyAdmin && (
-            <Button
-              onClick={() => setEditingContractId(contract?._id ?? null)}
-              disabled={contract?.status !== "draft"}
-            >
-              Edit Contract
-            </Button>
-          )}
+          {!isContractVendorLike &&
+            !isApprover &&
+            !isViewOnly &&
+            !isCompanyAdmin &&
+            isContractOwner && (
+              <Button
+                onClick={() => setEditingContractId(contract?._id ?? null)}
+                disabled={contract?.status !== "draft"}
+              >
+                Edit Contract
+              </Button>
+            )}
         </div>
       </div>
 

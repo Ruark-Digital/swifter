@@ -355,9 +355,19 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
     }
 
     if (statusFilter && statusFilter !== "all") {
-      result = result.filter(
-        (row) => normalizeStatus(row.status) === normalizeStatus(statusFilter),
-      );
+      const normalizedFilter = normalizeStatus(statusFilter);
+      result = result.filter((row) => {
+        const normalizedRowStatus = normalizeStatus(row.status);
+        // "Active" contracts are labelled "Published" once live — treat the
+        // "Active" filter as matching both so it returns real contracts.
+        if (normalizedFilter === "active") {
+          return (
+            normalizedRowStatus === "active" ||
+            normalizedRowStatus === "published"
+          );
+        }
+        return normalizedRowStatus === normalizedFilter;
+      });
     }
 
     result = applyDateFilter(result, dateFilter);
