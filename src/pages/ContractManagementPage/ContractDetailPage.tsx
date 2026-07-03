@@ -401,7 +401,15 @@ const ContractDetailPage: React.FC = () => {
   }
 
   const status = formatContractStatus(contract?.status);
-  const actionsDisabled = contract?.status === "pending_approval";
+  // Freeze mutating tab actions once the contract enters an end-state
+  // (terminated / suspended / expired) — page stays browsable for audit, but
+  // writes stop.
+  const isFrozenStatus =
+    contract?.status === "terminated" ||
+    contract?.status === "suspended" ||
+    contract?.status === "expired";
+  const actionsDisabled =
+    contract?.status === "pending_approval" || isFrozenStatus;
   // Rate Sheets, Vendor's Reports, NCR, and LEM are day-to-day operational
   // actions that should only be reachable once the contract is actually
   // published — unlike `actionsDisabled` above, draft is also gated here.
@@ -614,7 +622,7 @@ const ContractDetailPage: React.FC = () => {
           contractId={contract?._id ?? ""}
           effectiveDate={contract?.startDate}
           status={contract?.status}
-          actionsDisabled={contract?.status === "publish"}
+          actionsDisabled={contract?.status === "publish" || isFrozenStatus}
         />
 
         <AmendmentsTabContent
