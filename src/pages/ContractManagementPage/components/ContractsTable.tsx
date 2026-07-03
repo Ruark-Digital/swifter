@@ -76,10 +76,14 @@ const ContractActionsCell: React.FC<{
   const showComplete = isManager && isOwner && lifecycleActions.includes("complete");
 
   // Close the menu before opening a controlled dialog so the dropdown doesn't
-  // linger behind it or fight the dialog for focus.
+  // linger behind it or fight the dialog for focus. Deferring the dialog's
+  // open to the next frame avoids a Radix DismissableLayer race: if the
+  // dialog mounts in the same tick the dropdown is closing, the dropdown's
+  // own outside-pointer/close handling can be misattributed to the dialog,
+  // making it appear to open and instantly close with no console error.
   const openLifecycle = (a: LifecycleAction) => {
     onMenuOpenChange(false);
-    setLifecycle(a);
+    requestAnimationFrame(() => setLifecycle(a));
   };
 
   return (
@@ -116,7 +120,7 @@ const ContractActionsCell: React.FC<{
               onSelect={(e) => {
                 e.preventDefault();
                 onMenuOpenChange(false);
-                setEditOpen(true);
+                requestAnimationFrame(() => setEditOpen(true));
               }}
             >
               Edit Contract

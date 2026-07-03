@@ -1129,27 +1129,14 @@ const EditContract: React.FC<Props> = ({
   React.useEffect(() => {
     if (!open) return;
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "s" && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        const vals = getValues();
-        const status = resolveContractSaveStatus(
-          contractRes?.data?.data?.status,
-        );
-        void submit(vals as yup.InferType<typeof createSchema>, status);
-      } else if (e.key === "Escape") {
+      if (e.key === "Escape") {
         e.preventDefault();
         onOpenChange(false);
       }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [
-    open,
-    getValues,
-    submit,
-    onOpenChange,
-    contractRes?.data?.data?.status,
-  ]);
+  }, [open, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
