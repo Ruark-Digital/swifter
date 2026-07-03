@@ -35,6 +35,7 @@ import { FileUploaderItem } from "@/components/ui/file-upload";
 import { Check, CloudUpload, Search, Share2, X } from "lucide-react";
 import { useWatch } from "react-hook-form";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
@@ -123,6 +124,17 @@ const statusTone = (status?: string) => {
   if (normalized === "closed")
     return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
   return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+};
+
+// RFI `responder` is a single id (string) or a populated user object/ref —
+// see memory project_rfi_responder_singular. Only that specific user
+// should see Respond, not every approver on the team.
+const getResponderId = (raw: any): string | undefined => {
+  const r = raw?.responder;
+  if (!r) return undefined;
+  if (typeof r === "string") return r;
+  if (typeof r?.user === "string") return r.user;
+  return r?.user?._id ?? r?._id;
 };
 
 function IssueFileListItem({
@@ -1104,6 +1116,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
 const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   const { isManager, isApprover, isVendor, isProjectManager, isAdmin, isViewOnly } =
     useUserRole();
+  const currentUser = useUser();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ stats?: unknown; list?: unknown }>({});
@@ -1284,8 +1297,14 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
         header: () => <div className="text-right">Actions</div>,
         cell: ({ row }) => {
           const isReceived = row.original.type.toLowerCase() === "received";
+          const responderId = getResponderId(row.original.raw);
+          const isAssignedResponder =
+            Boolean(currentUser?._id) && responderId === currentUser?._id;
           const canRespond =
-            isReceived && !isViewOnly && row.original.status.toLowerCase() !== "closed";
+            isReceived &&
+            !isViewOnly &&
+            isAssignedResponder &&
+            row.original.status.toLowerCase() !== "closed";
           return (
             <div className="flex items-center justify-end gap-3">
               <RfiDetailsSheet
@@ -1323,7 +1342,7 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
         },
       },
     ],
-    [basePath, contractId, isViewOnly, listQueryKey],
+    [basePath, contractId, isViewOnly, listQueryKey, currentUser?._id],
   );
 
   const stats = (statsRes as any)?.data ?? {};
