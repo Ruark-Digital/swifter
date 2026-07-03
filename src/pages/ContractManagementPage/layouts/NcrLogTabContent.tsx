@@ -106,7 +106,7 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, act
             trigger={
               <button
                 type="button"
-                className="inline-flex h-10 items-center justify-center rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white"
+                className="inline-flex h-10 items-center justify-center rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white disabled:pointer-events-none disabled:opacity-50"
                 disabled={!!actionsDisabled}
               >
                 Create NCR

@@ -12,9 +12,10 @@ type Props = {
   contractId: string;
   currency?: string;
   isActive?: boolean;
+  actionsDisabled?: boolean;
 };
 
-const LemTabContent: React.FC<Props> = ({ contractId, currency, isActive }) => {
+const LemTabContent: React.FC<Props> = ({ contractId, currency, isActive, actionsDisabled }) => {
   const currencyCode = currency || "USD";
   const { isApprover, isManager, isVendor, isProjectManager, isAdmin, isViewOnly } =
     useUserRole();
@@ -87,7 +88,7 @@ const LemTabContent: React.FC<Props> = ({ contractId, currency, isActive }) => {
           <SubmitLemDialog
             contractId={contractId}
             trigger={
-              <Button className="h-10 rounded-xl px-4">
+              <Button className="h-10 rounded-xl px-4" disabled={!!actionsDisabled}>
                 Submit LEM
               </Button>
             }

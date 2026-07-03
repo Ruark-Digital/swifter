@@ -44,6 +44,8 @@ import Lem from "./layouts/Lem";
 import Approvers from "./layouts/Approvers";
 import Deliverables from "./layouts/Deliverables";
 import Reports from "./layouts/Reports";
+import ActionLogTabContent from "./layouts/ActionLogTabContent";
+import RateSheetsTabContent from "@/pages/ContractManagementPage/layouts/RateSheetsTabContent";
 import NcrLog from "./layouts/NcrLog";
 import { Share2 } from "lucide-react";
 import { Status } from "./components/StatusBadge";
@@ -72,7 +74,8 @@ type TabKey =
   | "rfi"
   | "ncr-log"
   | "approvers"
-  | "reports";
+  | "reports"
+  | "action-log";
 
 const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "overview", label: "Overview" },
@@ -92,6 +95,7 @@ const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "ncr-log", label: "NCR Log" },
   { key: "approvers", label: "Approvers" },
   { key: "reports", label: "Vendor’s Reports" },
+  { key: "action-log", label: "Action Log" },
 ];
 
 const ROLE_TAB_WHITELIST: Record<
@@ -128,6 +132,7 @@ const ROLE_TAB_WHITELIST: Record<
     // "approvers" intentionally omitted — vendors and project managers can't see the Approvers tab
     "reports",
     "payment-summary",
+    "rate-sheets",
   ],
   manager: [
     "overview",
@@ -146,6 +151,8 @@ const ROLE_TAB_WHITELIST: Record<
     "approvers",
     "reports",
     "payment-summary",
+    "action-log",
+    "rate-sheets",
   ],
   "view only": [
     "overview",
@@ -500,6 +507,11 @@ const MsaDetailPage: React.FC = () => {
     isMsaProjectManager &&
     isMsaProjectManagerPending &&
     msa?.status === "pending_approval";
+  // Rate Sheets, Vendor's Reports, NCR, and LEM are day-to-day operational
+  // actions that should only be reachable once the MSA is actually
+  // published — unlike the per-tab `pending_approval` gate below, draft is
+  // also gated here.
+  const publishGatedActionsDisabled = msa?.status !== "publish";
 
   const { data: approveStatusResponse } = useQuery({
     queryKey: [approveStatusQueryKey[0], msa?._id],
@@ -848,18 +860,21 @@ const MsaDetailPage: React.FC = () => {
 
             <ChangeManagement
               contractId={id ?? ""}
+              currency={msa?.currency}
               isActive={activeTab === "change"}
               actionsDisabled={msa?.status === "pending_approval"}
             />
 
             <Invoice
               contractId={id ?? ""}
+              currency={msa?.currency}
               isActive={activeTab === "invoice"}
               actionsDisabled={msa?.status === "pending_approval"}
             />
 
             <Claims
               contractId={id ?? ""}
+              currency={msa?.currency}
               isActive={activeTab === "claims"}
               actionsDisabled={msa?.status === "pending_approval"}
             />
@@ -874,6 +889,7 @@ const MsaDetailPage: React.FC = () => {
               contractId={id ?? ""}
               contract={msa as any}
               isActive={activeTab === "ncr-log"}
+              actionsDisabled={publishGatedActionsDisabled}
             />
 
             <Deliverables
@@ -881,14 +897,36 @@ const MsaDetailPage: React.FC = () => {
               isActive={activeTab === "deliverables"}
             />
 
-            <Lem contractId={id ?? ""} isActive={activeTab === "lem"} />
+            <Lem
+              contractId={id ?? ""}
+              currency={msa?.currency}
+              isActive={activeTab === "lem"}
+              actionsDisabled={publishGatedActionsDisabled}
+            />
 
             <Approvers
               contractId={id ?? ""}
               isActive={activeTab === "approvers"}
             />
 
-            <Reports contractId={id ?? ""} isActive={activeTab === "reports"} />
+            <Reports
+              contractId={id ?? ""}
+              isActive={activeTab === "reports"}
+              actionsDisabled={publishGatedActionsDisabled}
+            />
+
+            <ActionLogTabContent
+              contractId={id ?? ""}
+              isActive={activeTab === "action-log"}
+            />
+
+            <RateSheetsTabContent
+              contractId={id ?? ""}
+              currency={msa?.currency}
+              contractType="MsaContract"
+              isActive={activeTab === "rate-sheets"}
+              actionsDisabled={publishGatedActionsDisabled}
+            />
 
             <Kpi contractId={id ?? ""} isActive={activeTab === "kpi"} />
 

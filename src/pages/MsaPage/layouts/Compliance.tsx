@@ -456,19 +456,19 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
             <>
               <Button
                 variant="outline"
-                className="h-12 rounded-xl border-red-200 px-5 text-base font-semibold text-red-600 hover:bg-red-50 hover:text-red-700"
+                className="h-10 rounded-xl border-red-200 px-4 text-sm font-semibold text-red-600 hover:bg-red-50 hover:text-red-700"
                 onClick={handleReject}
                 disabled={approveMutation.isPending || !!actionsDisabled}
               >
-                <X className="mr-2 h-5 w-5" />
+                <X className="mr-2 h-4 w-4" />
                 Reject
               </Button>
               <Button
-                className="h-12 rounded-xl bg-green-600 px-5 text-base font-semibold text-white hover:bg-green-700"
+                className="h-10 rounded-xl bg-green-600 px-4 text-sm font-semibold text-white hover:bg-green-700"
                 onClick={handleApprove}
                 disabled={approveMutation.isPending || !!actionsDisabled}
               >
-                <Check className="mr-2 h-5 w-5" />
+                <Check className="mr-2 h-4 w-4" />
                 Approve
               </Button>
             </>
@@ -483,7 +483,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
               onSuccess={() => queryClient.invalidateQueries({ queryKey })}
               trigger={
                 <Button
-                  className="h-12 rounded-xl bg-[#2A4467] px-5 text-base font-semibold text-white hover:bg-[#1f3552]"
+                  className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white hover:bg-[#1f3552]"
                   disabled={!!actionsDisabled}
                 >
                   Submit {activeTab === "policy" ? "Policies" : "Security"}
@@ -495,9 +495,9 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
           <ExportReportSheet contractId={contractId} contractType="MsaContract">
             <Button
               variant="outline"
-              className="h-12 rounded-xl border-[#E5E7EB] dark:border-slate-700 px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100 dark:bg-transparent"
+              className="h-10 rounded-xl border-[#E5E7EB] dark:border-slate-700 px-4 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100 dark:bg-transparent"
             >
-              <Share2 className="mr-2 h-5 w-5" />
+              <Share2 className="mr-2 h-4 w-4" />
               Export Report
             </Button>
           </ExportReportSheet>

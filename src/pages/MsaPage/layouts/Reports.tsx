@@ -27,6 +27,7 @@ import { formatDateTZ } from "@/lib/utils";
 type Props = {
   contractId: string;
   isActive?: boolean;
+  actionsDisabled?: boolean;
 };
 
 type ReportRow = {
@@ -170,7 +171,7 @@ const ReportDetailsSheet = ({
   );
 };
 
-const Reports: React.FC<Props> = ({ contractId, isActive }) => {
+const Reports: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
   const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
     useUserRole();
   const toastHandler = useToastHandler();
@@ -319,7 +320,10 @@ const Reports: React.FC<Props> = ({ contractId, isActive }) => {
         {isVendorLike ? (
           <Dialog open={openCreate} onOpenChange={setOpenCreate}>
             <DialogTrigger asChild>
-              <Button className="h-10 rounded-xl bg-[#2A4467] text-white">
+              <Button
+                className="h-10 rounded-xl bg-[#2A4467] text-white"
+                disabled={!!actionsDisabled}
+              >
                 Create Report
               </Button>
             </DialogTrigger>

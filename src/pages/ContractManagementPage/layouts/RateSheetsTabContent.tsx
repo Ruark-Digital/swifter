@@ -53,6 +53,10 @@ type Props = {
   contractId: string;
   currency?: string;
   isActive?: boolean;
+  /** Selects the `contracts` vs `msa-contracts` API segment. Defaults to
+   *  "Contract" — MSA's Rate Sheets tab reuses this component as-is. */
+  contractType?: "Contract" | "MsaContract";
+  actionsDisabled?: boolean;
 };
 
 type RateSheetRow = {
@@ -169,8 +173,12 @@ const RateSheetFilesListItem = ({ file }: { file: File }) => {
 const SubmitRateSheetDialog: React.FC<{
   trigger: React.ReactElement;
   contractId: string;
-  queryKeyPath: string;
-}> = ({ trigger, contractId, queryKeyPath }) => {
+  /** Vendor-scoped rate sheets base path, e.g.
+   *  `/contract/vendor/contracts/{contractId}/ratesheets` or the
+   *  `msa-contracts` equivalent — used for both the submit POST and the
+   *  list-invalidation query key. */
+  basePath: string;
+}> = ({ trigger, contractId, basePath }) => {
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const toastHandler = useToastHandler();
@@ -216,7 +224,7 @@ const SubmitRateSheetDialog: React.FC<{
       files: { name: string; url: string; type: string; size: string }[];
     }) => {
       return await postRequest({
-        url: `/contract/vendor/contracts/${contractId}/ratesheets`,
+        url: basePath,
         payload,
       });
     },
@@ -224,7 +232,7 @@ const SubmitRateSheetDialog: React.FC<{
       setOpen(false);
       reset();
       await queryClient.invalidateQueries({
-        queryKey: ["rate-sheets", contractId, queryKeyPath],
+        queryKey: ["rate-sheets", contractId, basePath],
       });
       toastHandler.success(
         "Success",
@@ -993,24 +1001,32 @@ const RateSheetDetailsSheet: React.FC<{
   );
 };
 
-const RateSheetsTabContent: React.FC<Props> = ({ contractId, currency, isActive }) => {
+const RateSheetsTabContent: React.FC<Props> = ({
+  contractId,
+  currency,
+  isActive,
+  contractType = "Contract",
+  actionsDisabled,
+}) => {
   const currencyCode = currency || "USD";
   const [search, setSearch] = React.useState("");
   const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
+  const entitySegment = contractType === "MsaContract" ? "msa-contracts" : "contracts";
 
   const basePath = React.useMemo(() => {
-    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/ratesheets`;
+    if (isContractVendorLike) return `/contract/vendor/${entitySegment}/${contractId}/ratesheets`;
     if (isApprover)
-      return `/contract/approver/contracts/${contractId}/ratesheets`;
+      return `/contract/approver/${entitySegment}/${contractId}/ratesheets`;
     if (isManager)
-      return `/contract/manager/contracts/${contractId}/ratesheets`;
+      return `/contract/manager/${entitySegment}/${contractId}/ratesheets`;
     if (isAdmin || isViewOnly)
-      return `/contract/user/contracts/${contractId}/ratesheets`;
-    return `/contract/user/contracts/${contractId}/ratesheets`;
+      return `/contract/user/${entitySegment}/${contractId}/ratesheets`;
+    return `/contract/user/${entitySegment}/${contractId}/ratesheets`;
   }, [
     contractId,
+    entitySegment,
     isContractVendorLike,
     isApprover,
     isManager,
@@ -1119,7 +1135,7 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, currency, isActive 
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Rate Sheets</h3>
         <div className="flex items-center gap-3">
-          <ExportReportSheet contractId={contractId} contractType="Contract">
+          <ExportReportSheet contractId={contractId} contractType={contractType}>
             <Button variant="outline" className="h-10 rounded-xl px-4">
               Export Report
             </Button>
@@ -1127,9 +1143,12 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, currency, isActive 
           {isContractVendorLike && (
             <SubmitRateSheetDialog
               contractId={contractId}
-              queryKeyPath={basePath}
+              basePath={basePath}
               trigger={
-                <Button className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white hover:bg-[#2A4467]/90">
+                <Button
+                  className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white hover:bg-[#2A4467]/90"
+                  disabled={!!actionsDisabled}
+                >
                   Submit Rate Sheet
                 </Button>
               }
