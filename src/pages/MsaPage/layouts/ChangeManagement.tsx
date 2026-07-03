@@ -24,6 +24,7 @@ import type {
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
 };
@@ -35,6 +36,7 @@ type ChangesDataResponse = {
 
 const ChangeManagement: React.FC<Props> = ({
   contractId,
+  currency,
   isActive,
   actionsDisabled,
 }) => {
@@ -154,9 +156,9 @@ const ChangeManagement: React.FC<Props> = ({
           <ExportReportSheet contractId={contractId} contractType="MsaContract">
             <Button
               variant="outline"
-              className="h-12 rounded-xl border-[#E5E7EB] px-5 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
+              className="h-10 rounded-xl border-[#E5E7EB] px-4 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
             >
-              <Share2 className="mr-2 h-5 w-5" />
+              <Share2 className="mr-2 h-4 w-4" />
               Export Report
             </Button>
           </ExportReportSheet>
@@ -164,7 +166,7 @@ const ChangeManagement: React.FC<Props> = ({
             <CreateChangeDialog
               trigger={
                 <Button
-                  className="h-12 rounded-xl bg-[#F3F4F6] dark:bg-slate-800 px-5 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100 hover:bg-[#E5E7EB]"
+                  className="h-10 rounded-xl bg-[#F3F4F6] dark:bg-slate-800 px-4 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100 hover:bg-[#E5E7EB]"
                   disabled={!!actionsDisabled}
                 >
                   Create Change
@@ -228,6 +230,7 @@ const ChangeManagement: React.FC<Props> = ({
         <TabsContent value={activeTab}>
           <ChangeTable
             contractId={contractId}
+            currency={currency}
             basePath={listBasePath}
             rows={rows}
             isLoading={isChangesLoading}

@@ -19,11 +19,12 @@ import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
 };
 
-const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
+const Claims: React.FC<Props> = ({ contractId, currency, isActive, actionsDisabled }) => {
   const {
     isManager,
     isApprover,
@@ -172,9 +173,9 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
           <ExportReportSheet contractId={contractId} contractType="MsaContract">
             <Button
               variant="outline"
-              className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+              className="h-10 rounded-xl border-[#E5E7EB] px-4 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
             >
-              <Share2 className="mr-2 h-5 w-5" />
+              <Share2 className="mr-2 h-4 w-4" />
               Export Report
             </Button>
           </ExportReportSheet>
@@ -184,7 +185,7 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
               invalidateQueryKey={["msa-claims"]}
               trigger={
                 <Button
-                  className="h-12 rounded-xl bg-[#2A4467] px-5 text-base font-semibold text-white hover:bg-[#2A4467]/90"
+                  className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white hover:bg-[#2A4467]/90"
                   disabled={!!actionsDisabled}
                 >
                   Create Claim
@@ -199,6 +200,7 @@ const Claims: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
 
       <ClaimsTable
         contractId={contractId}
+        currency={currency}
         basePath={claimsPath}
         rows={rows}
         isLoading={isClaimsLoading}

@@ -9,13 +9,17 @@ import { useToastHandler } from "@/hooks/useToaster";
 import type { ApiResponseError } from "@/types";
 import LemTable, { type LemRow } from "@/pages/ContractManagementPage/components/LemTable";
 import SubmitLemDialog from "@/pages/ContractManagementPage/components/SubmitLemDialog";
+import { formatCurrency } from "@/lib/utils";
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
+  actionsDisabled?: boolean;
 };
 
-const Lem: React.FC<Props> = ({ contractId, isActive }) => {
+const Lem: React.FC<Props> = ({ contractId, currency, isActive, actionsDisabled }) => {
+  const currencyCode = currency || "USD";
   const { isApprover, isManager, isVendor, isProjectManager, isAdmin, isViewOnly } =
     useUserRole();
   const toastHandler = useToastHandler();
@@ -71,7 +75,7 @@ const Lem: React.FC<Props> = ({ contractId, isActive }) => {
         title: item?.title || "",
         amount:
           typeof item?.amount === "number"
-            ? `$${item.amount.toLocaleString()}`
+            ? formatCurrency(item.amount, "en-US", currencyCode)
             : item?.amount || "",
         submissionDate: item?.createdAt || item?.submissionDate || "",
         status: item?.status || "Pending",
@@ -104,7 +108,9 @@ const Lem: React.FC<Props> = ({ contractId, isActive }) => {
             createPath={`/contract/vendor/msa-contracts/${contractId}/lems`}
             invalidateQueryKey={lemQueryKey}
             trigger={
-              <Button className="h-10 rounded-xl px-4">Submit LEM</Button>
+              <Button className="h-10 rounded-xl px-4" disabled={!!actionsDisabled}>
+                Submit LEM
+              </Button>
             }
           />
         ) : null}
@@ -117,6 +123,7 @@ const Lem: React.FC<Props> = ({ contractId, isActive }) => {
         searchValue={search}
         onSearchChange={setSearch}
         basePath={basePath}
+        currency={currencyCode}
       />
     </TabsContent>
   );
