@@ -162,8 +162,15 @@ const ChangeDetailsSheet: React.FC<Props> = ({
 
   const title = detail?.title ?? "";
   const description = detail?.description ?? "";
+  // Changes carry the requester on `requestedBy` (added to ContractChangeDTO);
+  // Claims have no equivalent field yet. Keep the old `submittedBy` as a
+  // fallback in case a role's detail response still uses it.
   const submittedByName =
-    detail?.submittedBy?.name ?? detail?.submittedBy?.email ?? "";
+    detail?.requestedBy?.name ??
+    detail?.requestedBy?.email ??
+    detail?.submittedBy?.name ??
+    detail?.submittedBy?.email ??
+    "";
   const vendorEmail =
     detail?.vendor?.name ?? detail?.vendor?.email ?? detail?.vendor ?? "";
   const changeType = detail?.type ?? "";
@@ -172,6 +179,18 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const approverStatus = detail?.approverStatus ?? "";
   const value = detail?.value;
   const files = detail?.files;
+  // Auto-generated Change Orders (promoted from a Request/Proposal) carry a
+  // back-reference — surface it as "Reference - Change Request/Proposal number".
+  const changeDisplayId = detail?.changeId ?? "";
+  const originalChangeRef = detail?.originalChangeRef;
+  const originalChangeType = detail?.originalChangeType as
+    | "request"
+    | "proposal"
+    | undefined;
+  const originalChangeRefId =
+    typeof originalChangeRef === "string"
+      ? originalChangeRef
+      : originalChangeRef?.changeId ?? originalChangeRef?._id;
 
   // Claim specific fields
   const impact = detail?.impact;
@@ -506,7 +525,16 @@ const ChangeDetailsSheet: React.FC<Props> = ({
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <LabelRow label={isClaim ? "Claim Title" : "Change Title"} value={title} />
+                  {!isClaim && changeDisplayId && (
+                    <LabelRow label="Change ID" value={changeDisplayId} />
+                  )}
                   <LabelRow label={isClaim ? "Claim Type" : "Change Type"} value={formatSecurityType(changeType)} />
+                  {!isClaim && changeType === "order" && originalChangeRefId && (
+                    <LabelRow
+                      label={`Reference - Change ${originalChangeType === "proposal" ? "Proposal" : "Request"} Number`}
+                      value={originalChangeRefId}
+                    />
+                  )}
                   {isClaim && impact && (
                     <LabelRow label="Impact" value={impact.replace("_", " ")} highlight />
                   )}

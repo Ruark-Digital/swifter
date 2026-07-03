@@ -495,7 +495,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                 <p className="text-sm text-[#6B7280] dark:text-slate-400">
                   {pendingAction === "approved"
                     ? "Add an optional comment before approving this invoice."
-                    : "Let the vendor know why this invoice is being rejected."}
+                    : "Let the vendor know why this invoice is being rejected (optional)."}
                 </p>
                 <textarea
                   value={commentDraft}

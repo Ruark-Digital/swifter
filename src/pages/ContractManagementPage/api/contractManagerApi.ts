@@ -84,6 +84,18 @@ const approvalActionSchema: yup.ObjectSchema<ApprovalActionDTO> = yup
   })
   .required();
 
+// Invoice approve/reject comment is optional — unlike the other approval
+// flows above, which still require one.
+const invoiceApprovalActionSchema = yup
+  .object({
+    action: yup
+      .mixed<NonNullable<ApprovalActionDTO["action"]>>()
+      .oneOf(["approved", "rejected"] as const)
+      .required(),
+    comment: yup.string().optional(),
+  })
+  .required();
+
 const toValidationMessage = (err: unknown) => {
   if (err instanceof yup.ValidationError) {
     return err.errors.length ? err.errors.join(", ") : err.message;
@@ -345,6 +357,11 @@ export type ContractChangeDTO = {
   submittedAt?: string;
   approverStatus?: "N/A" | "pending" | "approved" | "rejected";
   status?: "pending" | "approved" | "rejected";
+  /** Requesting user — detail endpoints populate name/email. */
+  requestedBy?: string | { _id?: string; name?: string; email?: string };
+  /** Original request/proposal this change was promoted from, when `type` is "order". */
+  originalChangeRef?: string | { _id?: string; changeId?: string };
+  originalChangeType?: "request" | "proposal";
 };
 
 export type ContractChangeStatsDTO = {
@@ -364,7 +381,7 @@ export type ContractChangeStatsDTO = {
 
 export type ApprovalActionDTO = {
   action: "approved" | "rejected";
-  comment: string;
+  comment?: string;
 };
 
 export type ContractChangeCommentDTO = {
@@ -1207,7 +1224,7 @@ export const createContractManagerApi = (
       invoiceId: string,
       payload: ApprovalActionDTO,
     ) => {
-      await assertValid(approvalActionSchema, payload);
+      await assertValid(invoiceApprovalActionSchema, payload);
       const res = await client.post({
         url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/invoice/${invoiceId}/approve`,
         payload,
