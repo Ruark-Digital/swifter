@@ -292,10 +292,16 @@ export type ContractManagerComplianceStatus = {
 export type ContractManagerClauseIntelligence = {
   completionPercentage: number;
   mostNegotiatedClauses: Array<{ category: string; count: number }>;
-  highRiskClauseTypes: Array<{
-    category: string;
+  // BE field is `highRiskClauses` (not `highRiskClauseTypes` — the old name
+  // here never matched the live payload, so this card silently always fell
+  // back to its mock data; QA #97).
+  highRiskClauses: Array<{
+    title: string;
+    category?: string;
+    clauseNumber?: string;
     contracts: number;
     severity: string;
+    averageDeviation?: number;
   }>;
 };
 

@@ -12,6 +12,10 @@ export type ProjectApi = {
   startDate?: string;
   endDate?: string;
   budget?: number;
+  /** Sum of approved contract invoice amounts for all contracts linked to this project. */
+  totalSpend?: number;
+  /** Estimated At Completion — project budget plus sum of approved change order values. */
+  eac?: number;
   status: "active" | "completed" | "cancelled";
   allowMultiple: boolean;
   createdAt?: string;
