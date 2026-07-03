@@ -144,6 +144,7 @@ const ROLE_TAB_WHITELIST: Record<
     "lem",
     "deliverables",
     "ncr-log",
+    "reports",
   ],
   vendor: [
     "overview",

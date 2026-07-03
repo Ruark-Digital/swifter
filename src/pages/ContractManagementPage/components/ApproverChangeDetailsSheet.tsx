@@ -416,6 +416,7 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
                 sendType={null}
                 isNewChat={false}
                 onSendTypeChange={() => {}}
+                sendLabel="Send"
               />
             </TabsContent>
           </Tabs>

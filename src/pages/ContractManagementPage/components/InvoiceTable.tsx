@@ -175,6 +175,11 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
       await queryClient.invalidateQueries({
         queryKey: ["invoiceApproveStatus", contractId, invoiceId],
       });
+      // Approval recomputes contract financials + linked-project totals —
+      // refresh both so Remaining/totalSpend/EAC don't stay stale (QA #143/#156).
+      await queryClient.invalidateQueries({ queryKey: ["contract-manager-contracts", contractId] });
+      await queryClient.invalidateQueries({ queryKey: ["projects-list"] });
+      await queryClient.invalidateQueries({ queryKey: ["projects-stats"] });
     },
     onError: (err, { action }) => {
       toastHandler.error(

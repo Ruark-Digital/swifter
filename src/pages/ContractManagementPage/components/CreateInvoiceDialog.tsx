@@ -900,7 +900,9 @@ const CreateInvoiceDialog: React.FC<Props> = ({
               ? values.total
               : undefined
             : (() => {
-                const parsed = Number.parseFloat(values.invoiceAmount ?? "");
+                const parsed = Number.parseFloat(
+                  (values.invoiceAmount ?? "").replace(/[$,]/g, ""),
+                );
                 return Number.isFinite(parsed) ? parsed : undefined;
               })();
 

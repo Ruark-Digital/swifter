@@ -30,6 +30,10 @@ interface MessageComposerProps {
   isNewChat: boolean;
   onSendTypeChange: (type: "reply" | "addendum") => void;
   disabled?: boolean;
+  /** Overrides the "Send Question"/"Send Response" label for callers outside
+   * Solicitation Q&A (e.g. Change/Claims/RFI comments), where that copy
+   * doesn't apply. */
+  sendLabel?: string;
 }
 
 // Helper function to get initials from name
@@ -51,6 +55,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   sendType,
   isNewChat,
   disabled = false,
+  sendLabel,
 }) => {
   const { isProcurement } = useUserRole();
   const [content, setContent] = useState("");
@@ -162,6 +167,8 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 Sending...
               </div>
+            ) : sendLabel ? (
+              sendLabel
             ) : isProcurement ? (
               "Send Response"
             ) : (

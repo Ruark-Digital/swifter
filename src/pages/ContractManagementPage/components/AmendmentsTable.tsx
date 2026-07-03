@@ -1332,7 +1332,7 @@ const AmendmentsTable: React.FC<Props> = ({
                 ? "bg-[#FACC151A] text-[#FACC15]"
                 : "bg-[#E539351A] text-[#E53935]";
           return (
-            <div className="flex w-[120px] items-center justify-start py-2">
+            <div className="flex w-[120px] items-center justify-center py-2">
               <div className={`rounded-xl px-[18px] py-[6px] ${tone}`}>
                 <span className="text-xs font-semibold leading-[15px]">
                   {s}
