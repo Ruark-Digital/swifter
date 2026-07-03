@@ -415,9 +415,9 @@ const Approvers: React.FC<Props> = ({ contractId, isActive }) => {
         </h3>
         <Button
           variant="outline"
-          className="h-12 rounded-xl border-[#E5E7EB] dark:border-slate-800 px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+          className="h-10 rounded-xl border-[#E5E7EB] dark:border-slate-800 px-4 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
         >
-          <Share2 className="mr-2 h-5 w-5" />
+          <Share2 className="mr-2 h-4 w-4" />
           Export Report
         </Button>
       </div>

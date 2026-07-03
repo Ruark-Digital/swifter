@@ -37,6 +37,7 @@ type Props = {
   };
   status: { label?: Status; className?: string };
   contractManager?: string;
+  vendorName?: string;
   internalTeam: InternalMember[];
   vendorPersonnel: VendorPerson[];
 };
@@ -60,6 +61,7 @@ const Overview: React.FC<Props> = ({
   formationStages,
   status,
   contractManager,
+  vendorName,
   internalTeam,
   vendorPersonnel,
 }) => {
@@ -167,7 +169,19 @@ const Overview: React.FC<Props> = ({
             </div>
           </div>
           <div className="space-y-2">
-            <span className="text-slate-500 dark:text-slate-400 block">
+            <span className="text-slate-500 dark:text-slate-400 block">Vendor/Contractor</span>
+            {vendorName ? (
+              <EmployeeCardPopover
+                triggerLabel={vendorName}
+                name={vendorName}
+                email="N/A"
+                jobTitle="N/A"
+                phone="N/A"
+              />
+            ) : (
+              <span className="text-slate-900 dark:text-slate-100">N/A</span>
+            )}
+            <span className="text-slate-500 dark:text-slate-400 block mt-5">
               Vendor/Contractor Key Personnel
             </span>
             <div className="flex flex-col gap-1">

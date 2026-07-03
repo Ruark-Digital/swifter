@@ -401,6 +401,10 @@ const ContractDetailPage: React.FC = () => {
 
   const status = formatContractStatus(contract?.status);
   const actionsDisabled = contract?.status === "pending_approval";
+  // Rate Sheets, Vendor's Reports, NCR, and LEM are day-to-day operational
+  // actions that should only be reachable once the contract is actually
+  // published — unlike `actionsDisabled` above, draft is also gated here.
+  const publishGatedActionsDisabled = contract?.status !== "publish";
 
   const canApprove = approveStatusResponse?.data?.data?.status === "pending";
   const hasAprovedorRejected =
@@ -579,12 +583,14 @@ const ContractDetailPage: React.FC = () => {
           contractId={contract?._id ?? ""}
           currency={contract?.currency}
           isActive={activeTab === "rate-sheets"}
+          actionsDisabled={publishGatedActionsDisabled}
         />
 
         <LemTabContent
           contractId={contract?._id ?? ""}
           currency={contract?.currency}
           isActive={activeTab === "lem"}
+          actionsDisabled={publishGatedActionsDisabled}
         />
 
         <RfiTabContent
@@ -598,7 +604,7 @@ const ContractDetailPage: React.FC = () => {
           contractId={contract?._id ?? ""}
           contract={contract}
           isActive={activeTab === "ncr-log"}
-          actionsDisabled={actionsDisabled}
+          actionsDisabled={publishGatedActionsDisabled}
         />
 
         <DocumentsTabContent
@@ -633,7 +639,7 @@ const ContractDetailPage: React.FC = () => {
         <VendorReportsTabContent
           contractId={contract?._id ?? ""}
           isActive={activeTab === "reports"}
-          contractStatus={contract?.status}
+          actionsDisabled={publishGatedActionsDisabled}
         />
 
         <ActionLogTabContent isActive={activeTab === "action-log"} />
