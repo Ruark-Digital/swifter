@@ -464,7 +464,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
           <SheetHeader>
             <div className="flex items-center justify-between">
               <SheetTitle>{isClaim ? "Claim Details" : "Change Details"}</SheetTitle>
-              <div className="flex items-center gap-2 mr-8">
+              <div className="flex items-center gap-2 mr-10">
                 {!isClaim &&
                   isContractVendorLike &&
                   status?.toLowerCase?.() === "rejected" && (
@@ -673,6 +673,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                 sendType={null}
                 isNewChat={false}
                 onSendTypeChange={() => { }}
+                sendLabel="Send"
               />
             </TabsContent>
           </Tabs>

@@ -301,6 +301,15 @@ const Step1BasicInfo: React.FC<Props> = ({
               component={TextSelect}
               options={projectOptions}
             />
+            <div className="md:col-span-2">
+              <Forger
+                name="msaCategory"
+                label="Select MSA Category"
+                placeholder="Select Category"
+                component={TextSelect}
+                options={MSA_CATEGORY_OPTIONS}
+              />
+            </div>
           </div>
         </>
       )}

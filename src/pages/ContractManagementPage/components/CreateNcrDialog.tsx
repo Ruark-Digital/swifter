@@ -253,16 +253,21 @@ const CreateNcrDialog: React.FC<Props> = ({
       : [];
     let options = personnel.map(toOption);
 
+    // The personnel endpoint doesn't consistently include vendor-side
+    // personnel (e.g. Vendor PM) for every role, so always merge in the
+    // contract prop's vendor personnel too — dedup below handles overlap.
+    const vendorPersonnel = Array.isArray(contract?.personnel)
+      ? contract?.personnel
+      : Array.isArray(contract?.vendorPersonnel)
+      ? contract?.vendorPersonnel
+      : [];
+    options = [...options, ...vendorPersonnel.map((u) => toOption(u as PersonnelEntry))];
+
     // Fallback: derive from the contract detail object when personnel hasn't
     // loaded / returned nothing (e.g. endpoint unavailable for a role).
     if (options.length === 0) {
       const a = Array.isArray(contract?.approvers) ? contract?.approvers : [];
       const i = Array.isArray(contract?.internalTeam) ? contract?.internalTeam : [];
-      const vendorPersonnel = Array.isArray(contract?.personnel)
-        ? contract?.personnel
-        : Array.isArray(contract?.vendorPersonnel)
-        ? contract?.vendorPersonnel
-        : [];
       options = [...a, ...i, ...vendorPersonnel].map((u) => toOption(u as PersonnelEntry));
     }
 

@@ -510,8 +510,17 @@ const MsaDetailPage: React.FC = () => {
   // Rate Sheets, Vendor's Reports, NCR, and LEM are day-to-day operational
   // actions that should only be reachable once the MSA is actually
   // published — unlike the per-tab `pending_approval` gate below, draft is
-  // also gated here.
+  // also gated here. (Terminated/suspended fall through naturally.)
   const publishGatedActionsDisabled = msa?.status !== "publish";
+  // Freeze mutating tab actions once the MSA enters an end-state
+  // (terminated / suspended / expired) — page stays browsable for audit, but
+  // writes stop.
+  const isMsaFrozenStatus =
+    msa?.status === "terminated" ||
+    msa?.status === "suspended" ||
+    msa?.status === "expired";
+  const tabActionsDisabled =
+    msa?.status === "pending_approval" || isMsaFrozenStatus;
 
   const { data: approveStatusResponse } = useQuery({
     queryKey: [approveStatusQueryKey[0], msa?._id],
@@ -782,7 +791,7 @@ const MsaDetailPage: React.FC = () => {
                 >
                   <Share2 className="mr-2 h-4 w-4" /> Export Report
                 </Button>
-                {isManager && (
+                {isManager && isMsaOwner && (
                   <CreateMSADialog
                     trigger={
                       <Button
@@ -849,40 +858,40 @@ const MsaDetailPage: React.FC = () => {
             <Amendments
               contractId={id ?? ""}
               isActive={activeTab === "amendments"}
-              actionsDisabled={msa?.status === "pending_approval"}
+              actionsDisabled={tabActionsDisabled}
             />
 
             <Compliance
               contractId={id ?? ""}
               isActive={activeTab === "compliance"}
-              actionsDisabled={msa?.status === "pending_approval"}
+              actionsDisabled={tabActionsDisabled}
             />
 
             <ChangeManagement
               contractId={id ?? ""}
               currency={msa?.currency}
               isActive={activeTab === "change"}
-              actionsDisabled={msa?.status === "pending_approval"}
+              actionsDisabled={tabActionsDisabled}
             />
 
             <Invoice
               contractId={id ?? ""}
               currency={msa?.currency}
               isActive={activeTab === "invoice"}
-              actionsDisabled={msa?.status === "pending_approval"}
+              actionsDisabled={tabActionsDisabled}
             />
 
             <Claims
               contractId={id ?? ""}
               currency={msa?.currency}
               isActive={activeTab === "claims"}
-              actionsDisabled={msa?.status === "pending_approval"}
+              actionsDisabled={tabActionsDisabled}
             />
 
             <Rfi
               contractId={id ?? ""}
               isActive={activeTab === "rfi"}
-              actionsDisabled={msa?.status === "pending_approval"}
+              actionsDisabled={tabActionsDisabled}
             />
 
             <NcrLog

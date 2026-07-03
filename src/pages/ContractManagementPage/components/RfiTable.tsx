@@ -490,12 +490,11 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                     void handleSendComment(content);
                   }}
                   isLoading={addCommentMutation.isPending}
-                  replyToUser={{ name: "Zenith Solution" }}
-                  availableUsers={[
-                    { name: "Zenith Solution" },
-                    { name: "Procurement Team" },
-                    { name: "Contract Manager" },
-                  ]}
+                  replyToUser={
+                    rfiSubmittedBy && rfiSubmittedBy !== "-"
+                      ? { name: rfiSubmittedBy }
+                      : undefined
+                  }
                   currentUser={{ name: "You" }}
                   sendType="reply"
                   isNewChat={false}
