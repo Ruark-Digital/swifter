@@ -98,6 +98,7 @@ const Step6Form = ({
                 </p>
               </div>
               <Button
+                type="button"
                 variant="outline"
                 onClick={() => setStep(1)}
                 className="w-full mt-4 border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -159,6 +160,7 @@ const Step6Form = ({
                 </div>
               </div>
               <Button
+                type="button"
                 variant="outline"
                 onClick={() => setStep(2)}
                 className="w-full mt-4 border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -225,6 +227,7 @@ const Step6Form = ({
                 <p className="text-sm text-gray-500">No events added</p>
               )}
               <Button
+                type="button"
                 variant="outline"
                 onClick={() => setStep(3)}
                 className="w-full mt-4 border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -269,6 +272,7 @@ const Step6Form = ({
                 <p className="text-sm text-gray-500">No documents uploaded</p>
               )}
               <Button
+                type="button"
                 variant="outline"
                 onClick={() => setStep(4)}
                 className="w-full mt-4 border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -311,6 +315,7 @@ const Step6Form = ({
                 <p className="text-sm text-gray-500">No vendors invited</p>
               )}
               <Button
+                type="button"
                 variant="outline"
                 onClick={() => setStep(5)}
                 className="w-full mt-4 border-gray-300 text-gray-700 hover:bg-gray-50"

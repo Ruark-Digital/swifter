@@ -218,6 +218,7 @@ const Step8ApprovalLevel: React.FC<Props> = ({ control }) => {
       </div>
 
       <Button
+        type="button"
         onClick={() => append(defaultApprovalGroup as any)}
         className="w-fit  bg-[#2A4467] text-white text-xs font-semibold py-2 rounded-lg"
       >
