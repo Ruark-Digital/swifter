@@ -60,8 +60,20 @@ import { formatDateTZ } from "@/lib/utils";
 import { formatFileSize, getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
 import { postRequest } from "@/lib/axiosInstance";
 import { DocumentItem, type DocType } from "./DocumentItem";
+
+// RFI `responder` is a single id (string) or a populated user object/ref —
+// see memory project_rfi_responder_singular. Only that specific user
+// should see Respond, not every approver on the team.
+const getResponderId = (raw: any): string | undefined => {
+  const r = raw?.responder;
+  if (!r) return undefined;
+  if (typeof r === "string") return r;
+  if (typeof r?.user === "string") return r.user;
+  return r?.user?._id ?? r?._id;
+};
 
 export type RfiRow = {
   id: string;
@@ -115,6 +127,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   const [isOpen, setIsOpen] = React.useState(false);
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
+  const currentUser = useUser();
   const { isApprover, isVendor, isProjectManager } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
   const roleNs = isApprover
@@ -194,6 +207,9 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   });
 
   const rfiDetail = ((rfiDetailRes?.data as any)?.contractRfi ?? rfiDetailRes?.data ?? rfiDetailRes) as unknown as any;
+  const responderId = getResponderId(rfiDetail) ?? getResponderId(rfi);
+  const isAssignedResponder =
+    Boolean(currentUser?._id) && responderId === currentUser?._id;
   const rfiTitle = rfiDetail?.title ?? rfi?.title ?? "-";
   const rfiDescription = rfiDetail?.description ?? rfi?.description ?? "-";
   const rfiStatus = rfi?.status ?? "-";
@@ -489,7 +505,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
             </Tabs>
           </div>
 
-          {!((rfiDetailRes?.data as any)?.isResponse ?? false) && isApprover && (
+          {!((rfiDetailRes?.data as any)?.isResponse ?? false) && isApprover && isAssignedResponder && (
             <SheetFooter>
               <div className="flex w-full gap-3 pt-2">
                 <Button variant="outline" className="flex-1 h-12 rounded-xl">
@@ -907,42 +923,51 @@ const columns: ColumnDef<RfiRow>[] = [
   {
     id: "actions",
     header: () => <div className="text-right">Actions</div>,
-    cell: ({ row }) => (
-      <div className="flex items-center justify-end gap-3">
-        <RfiDetailsSheet
-          rfiId={row.original.id}
-          contractId={row.original.contractId ?? ""}
-          rfi={row.original.rfi}
+    cell: ({ row }) => <RfiRowActions row={row.original} />,
+  },
+];
+
+const RfiRowActions: React.FC<{ row: RfiRow }> = ({ row }) => {
+  const currentUser = useUser();
+  const responderId = getResponderId(row.rfi);
+  const isAssignedResponder =
+    Boolean(currentUser?._id) && responderId === currentUser?._id;
+
+  return (
+    <div className="flex items-center justify-end gap-3">
+      <RfiDetailsSheet
+        rfiId={row.id}
+        contractId={row.contractId ?? ""}
+        rfi={row.rfi}
+        trigger={
+          <button
+            type="button"
+            data-testid="view-rfi-detail"
+            className="text-sm font-medium text-green-700 hover:underline"
+          >
+            View
+          </button>
+        }
+      />
+      {row.type === "received" && row.status !== "closed" && isAssignedResponder && (
+        <RespondToRfiDialog
+          rfiId={row.id}
+          rfi={row.rfi}
+          contractId={row.contractId ?? ""}
           trigger={
             <button
               type="button"
-              data-testid="view-rfi-detail"
+              data-testid="respond-rfi"
               className="text-sm font-medium text-green-700 hover:underline"
             >
-              View
+              Respond
             </button>
           }
         />
-        {row.original.type === "received" && row.original.status !== "closed" && (
-          <RespondToRfiDialog
-            rfiId={row.original.id}
-            rfi={row.original.rfi}
-            contractId={row.original.contractId ?? ""}
-            trigger={
-              <button
-                type="button"
-                data-testid="respond-rfi"
-                className="text-sm font-medium text-green-700 hover:underline"
-              >
-                Respond
-              </button>
-            }
-          />
-        )}
-      </div>
-    ),
-  },
-];
+      )}
+    </div>
+  );
+};
 
 type Props = {
   rows?: ContractRfis[];
