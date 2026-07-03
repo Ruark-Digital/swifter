@@ -1284,28 +1284,10 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
         header: () => <div className="text-right">Actions</div>,
         cell: ({ row }) => {
           const isReceived = row.original.type.toLowerCase() === "received";
-          if (isReceived && !isViewOnly) {
-            return (
-              <div className="text-right">
-                <RespondToRfiDialog
-                  contractId={contractId}
-                  rfiId={row.original.id}
-                  responsePath={basePath}
-                  invalidateQueryKey={listQueryKey}
-                  trigger={
-                    <Button
-                      variant="link"
-                      className="h-auto p-0 font-semibold text-[#43A047] hover:no-underline"
-                    >
-                      Respond
-                    </Button>
-                  }
-                />
-              </div>
-            );
-          }
+          const canRespond =
+            isReceived && !isViewOnly && row.original.status.toLowerCase() !== "closed";
           return (
-            <div className="text-right">
+            <div className="flex items-center justify-end gap-3">
               <RfiDetailsSheet
                 contractId={contractId}
                 rfiId={row.original.id}
@@ -1320,6 +1302,22 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
                   </Button>
                 }
               />
+              {canRespond && (
+                <RespondToRfiDialog
+                  contractId={contractId}
+                  rfiId={row.original.id}
+                  responsePath={basePath}
+                  invalidateQueryKey={listQueryKey}
+                  trigger={
+                    <Button
+                      variant="link"
+                      className="h-auto p-0 font-semibold text-[#43A047] hover:no-underline"
+                    >
+                      Respond
+                    </Button>
+                  }
+                />
+              )}
             </div>
           );
         },
@@ -1349,9 +1347,9 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
           <ExportReportSheet contractId={contractId} contractType="MsaContract">
             <Button
               variant="outline"
-              className="h-12 rounded-xl border-[#E5E7EB] px-5 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+              className="h-10 rounded-xl border-[#E5E7EB] px-4 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
             >
-              <Share2 className="mr-2 h-5 w-5" />
+              <Share2 className="mr-2 h-4 w-4" />
               Export Report
             </Button>
           </ExportReportSheet>
@@ -1362,7 +1360,7 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
               invalidateQueryKey={listQueryKey}
               trigger={
                 <Button
-                  className="h-12 rounded-xl bg-[#2A4467] px-5 text-base font-semibold text-white hover:bg-[#2A4467]/90"
+                  className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white hover:bg-[#2A4467]/90"
                   disabled={!!actionsDisabled}
                 >
                   Issue RFI

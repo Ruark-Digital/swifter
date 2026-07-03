@@ -14,12 +14,18 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ArrowLeft, Search, X } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
-import { cn } from "@/lib/utils";
+import { cn, formatCompactCurrency } from "@/lib/utils";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import type { ApiResponseError } from "@/types";
 import type {
@@ -34,6 +40,7 @@ import CreateInvoiceDialog from "@/pages/ContractManagementPage/components/Creat
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
 };
@@ -54,6 +61,8 @@ type MsaInvoiceDetailsSheetProps = {
   basePath: string;
   statsQueryKey: readonly unknown[];
   invoicesQueryKey: readonly unknown[];
+  /** Contract-level currency; falls back to USD when the API omits it. */
+  currency?: string;
 };
 
 const LabelRow = ({
@@ -76,13 +85,26 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
   basePath,
   statsQueryKey,
   invoicesQueryKey,
+  currency,
 }) => {
+  const currencyCode = currency || "USD";
   const { isApprover, isManager } = useUserRole();
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [selectedDoc, setSelectedDoc] = React.useState<DocType | null>(null);
+
+  // Approve / reject opens a comment dialog first. `pendingAction` drives the
+  // dialog's title/CTA/color; `commentDraft` resets whenever the dialog closes.
+  const [pendingAction, setPendingAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [commentDraft, setCommentDraft] = React.useState("");
+
+  React.useEffect(() => {
+    if (pendingAction === null) setCommentDraft("");
+  }, [pendingAction]);
 
   const {
     data,
@@ -112,11 +134,14 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
   });
 
   const approveInvoiceMutation = useMutation({
-    mutationFn: async (status: NonNullable<ApprovalActionDTO["action"]>) => {
-      const comment = status === "approved"
-        ? "Invoice approved via bulk action"
-        : "Invoice rejected via bulk action";
-      const payload: ApprovalActionDTO = { action: status, comment };
+    mutationFn: async ({
+      action,
+      comment,
+    }: {
+      action: NonNullable<ApprovalActionDTO["action"]>;
+      comment: string;
+    }) => {
+      const payload: ApprovalActionDTO = { action, comment: comment || undefined };
       const approvePath = isManager
         ? `/contract/manager/msa-contracts/${contractId}/invoice/${invoiceId}/approve`
         : `${basePath}/${invoiceId}/approve`;
@@ -138,6 +163,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
           queryKey: ["msaInvoiceDetail", contractId, invoiceId, basePath],
         }),
       ]);
+      setPendingAction(null);
       setOpen(false);
     },
     onError: (mutationError) => {
@@ -268,6 +294,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
                     ? "Loading..."
                     : formatCurrency(
                         typeof invoice?.amount === "number" ? invoice.amount : undefined,
+                        currencyCode,
                       )
                 }
               />
@@ -329,17 +356,15 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
               <Button
                 variant="outline"
                 className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
-                disabled={approveInvoiceMutation.isPending}
-                onClick={() => approveInvoiceMutation.mutate("rejected")}
+                onClick={() => setPendingAction("rejected")}
               >
-                {approveInvoiceMutation.isPending ? "Processing..." : "Reject"}
+                Reject
               </Button>
               <Button
                 className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
-                disabled={approveInvoiceMutation.isPending}
-                onClick={() => approveInvoiceMutation.mutate("approved")}
+                onClick={() => setPendingAction("approved")}
               >
-                {approveInvoiceMutation.isPending ? "Processing..." : "Approve"}
+                Approve
               </Button>
             </div>
           ) : canManagerAct ? (
@@ -347,21 +372,88 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
               <Button
                 variant="outline"
                 className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
-                disabled={approveInvoiceMutation.isPending}
-                onClick={() => approveInvoiceMutation.mutate("rejected")}
+                onClick={() => setPendingAction("rejected")}
               >
-                {approveInvoiceMutation.isPending ? "Processing..." : "Reject"}
+                Reject
               </Button>
               <Button
                 className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
-                disabled={approveInvoiceMutation.isPending}
-                onClick={() => approveInvoiceMutation.mutate("approved")}
+                onClick={() => setPendingAction("approved")}
               >
-                {approveInvoiceMutation.isPending ? "Processing..." : "Approve"}
+                Approve
               </Button>
             </div>
           ) : null}
         </div>
+
+        <Dialog
+          open={pendingAction !== null}
+          onOpenChange={(next) => {
+            if (!next && !approveInvoiceMutation.isPending) {
+              setPendingAction(null);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-2">
+              <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                {pendingAction === "approved" ? "Approve Invoice" : "Reject Invoice"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="px-6 pb-6 space-y-4">
+              <p className="text-sm text-[#6B7280] dark:text-slate-400">
+                {pendingAction === "approved"
+                  ? "Add an optional comment before approving this invoice."
+                  : "Let the vendor know why this invoice is being rejected (optional)."}
+              </p>
+              <textarea
+                value={commentDraft}
+                onChange={(e) => setCommentDraft(e.target.value)}
+                placeholder="Enter your comment"
+                rows={5}
+                className="w-full resize-none rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                autoFocus
+              />
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
+                  disabled={approveInvoiceMutation.isPending}
+                  onClick={() => setPendingAction(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className={cn(
+                    "h-11 flex-1 rounded-xl text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed",
+                    pendingAction === "approved"
+                      ? "bg-[#16A34A] hover:bg-[#15803D]"
+                      : "bg-[#E53935] hover:bg-[#C62828]",
+                  )}
+                  disabled={approveInvoiceMutation.isPending}
+                  aria-busy={approveInvoiceMutation.isPending}
+                  onClick={() => {
+                    if (pendingAction === null) return;
+                    approveInvoiceMutation.mutate({
+                      action: pendingAction,
+                      comment: commentDraft.trim(),
+                    });
+                  }}
+                >
+                  {approveInvoiceMutation.isPending
+                    ? pendingAction === "approved"
+                      ? "Approving..."
+                      : "Rejecting..."
+                    : pendingAction === "approved"
+                      ? "Approve"
+                      : "Confirm Reject"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </SheetContent>
       {selectedDoc && (
         <DocumentViewer
@@ -389,13 +481,13 @@ const statusTone = (status?: string) => {
   return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 };
 
-const formatCurrency = (value?: number) => {
+const formatCurrency = (value?: number, currency?: string) => {
   if (typeof value !== "number" || !Number.isFinite(value)) return "-";
-  if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-  return `$${value.toLocaleString("en-US")}`;
+  return formatCompactCurrency(value, currency || "USD");
 };
 
-const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
+const Invoice: React.FC<Props> = ({ contractId, currency, isActive, actionsDisabled }) => {
+  const currencyCode = currency || "USD";
   const { isManager, isApprover, isVendor, isProjectManager, isAdmin, isViewOnly } =
     useUserRole();
   const toastHandler = useToastHandler();
@@ -491,8 +583,11 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
     () =>
       sourceRows.map((invoice) => {
         const raw = invoice as any;
-        const billed = formatCurrency(invoice.amount);
-        const remaining = formatCurrency(raw?.remaining ?? raw?.balance ?? raw?.remainingAmount);
+        const billed = formatCurrency(invoice.amount, currencyCode);
+        const remaining = formatCurrency(
+          raw?.remaining ?? raw?.balance ?? raw?.remainingAmount,
+          currencyCode,
+        );
         return {
           id: raw?._id || invoice.invoiceId || "-",
           invoiceId: invoice.invoiceId || raw?._id || "-",
@@ -507,7 +602,7 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
           status: invoice.status || "pending",
         };
       }),
-    [sourceRows],
+    [sourceRows, currencyCode],
   );
 
   const filteredRows = React.useMemo(() => {
@@ -569,6 +664,7 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
               basePath={basePath}
               statsQueryKey={statsQueryKey}
               invoicesQueryKey={invoicesQueryKey}
+              currency={currencyCode}
               trigger={
                 <Button
                   variant="link"
@@ -582,7 +678,7 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
         ),
       },
     ],
-    [basePath, contractId, invoicesQueryKey, statsQueryKey],
+    [basePath, contractId, invoicesQueryKey, statsQueryKey, currencyCode],
   );
 
   return (
@@ -598,7 +694,7 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
             invalidateQueryKey={invoicesQueryKey}
             trigger={
               <Button
-                className="h-12 rounded-xl bg-[#2A4467] px-5 text-base font-semibold text-white hover:bg-[#2A4467]/90"
+                className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white hover:bg-[#2A4467]/90"
                 disabled={!!actionsDisabled}
               >
                 Submit Invoice

@@ -30,7 +30,7 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { getFileIcon } from "@/lib/fileUtils";
 import { useDebounceValue } from "usehooks-ts";
 import { format } from "date-fns";
-import type { ContractDetail, VendorReportRow, ReportDetails } from "@/types";
+import type { VendorReportRow, ReportDetails } from "@/types";
 import { useUserRole } from "@/hooks/useUserRole";
 import {
   Dialog,
@@ -357,18 +357,17 @@ export interface ReportItem {
 function VendorReportsTabContent({
   contractId,
   isActive,
-  contractStatus,
+  actionsDisabled,
 }: {
   contractId: string;
   isActive?: boolean;
-  contractStatus?: ContractDetail["status"];
+  actionsDisabled?: boolean;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebounceValue(searchQuery, 300);
   const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
-  const isPendingApproval = contractStatus === "pending_approval";
   const [openCreate, setOpenCreate] = useState(false);
   const [openSuccess, setOpenSuccess] = useState(false);
 
@@ -462,31 +461,23 @@ function VendorReportsTabContent({
           Vendor’s Reports
         </h2>
         {isContractVendorLike && (
-          <>
-            {isPendingApproval ? (
+          <Dialog open={openCreate} onOpenChange={setOpenCreate}>
+            <DialogTrigger asChild>
               <Button
-                disabled
                 className="h-10 rounded-xl bg-[#2A4467] text-white"
+                disabled={!!actionsDisabled}
               >
                 Create Report
               </Button>
-            ) : (
-              <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-                <DialogTrigger asChild>
-                  <Button className="h-10 rounded-xl bg-[#2A4467] text-white">
-                    Create Report
-                  </Button>
-                </DialogTrigger>
-                <CreateVendorReportDialog
-                  contractId={contractId}
-                  onSuccess={() => {
-                    setOpenCreate(false);
-                    setOpenSuccess(true);
-                  }}
-                />
-              </Dialog>
-            )}
-          </>
+            </DialogTrigger>
+            <CreateVendorReportDialog
+              contractId={contractId}
+              onSuccess={() => {
+                setOpenCreate(false);
+                setOpenSuccess(true);
+              }}
+            />
+          </Dialog>
         )}
       </div>
 

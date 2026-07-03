@@ -101,8 +101,13 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
     return undefined;
   };
 
+  // Bulk submit is policy-only now — Contract Security has a documented
+  // per-item endpoint (see the security table's per-row Submit/Resubmit
+  // action below), so a tab-wide aggregate button would incorrectly hide
+  // once any single security type left "pending" (QA #91/#134).
   const canSubmitActive = React.useMemo(() => {
     if (!isContractVendorLike) return false;
+    if (activeView !== "policy") return false;
     const status = getSubmissionStatus(activeView);
     if (!status) return !hasFiles;
     const normalized = String(status).toLowerCase();
@@ -328,29 +333,61 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         id: "actions",
         header: "Action",
         cell: ({ row }) => {
+          const rowStatus = row.original.status?.toLowerCase();
+          const canSubmitRow =
+            isContractVendorLike &&
+            !actionsDisabled &&
+            (rowStatus === "pending" || rowStatus === "rejected");
           return (
-            <ComplianceDetailsSheet
-              type="security"
-              id={row.original.id}
-              contractId={contractId || ""}
-              basePath={basePath}
-              currency={currency}
-              actionsDisabled={!!actionsDisabled}
-              canApprove={isContractManager && !!owner}
-              trigger={
-                <Button
-                  variant="link"
-                  className="text-green-600 font-semibold p-0 h-auto"
-                >
-                  View
-                </Button>
-              }
-            />
+            <div className="flex items-center gap-4">
+              <ComplianceDetailsSheet
+                type="security"
+                id={row.original.id}
+                contractId={contractId || ""}
+                basePath={basePath}
+                currency={currency}
+                actionsDisabled={!!actionsDisabled}
+                canApprove={isContractManager && !!owner}
+                trigger={
+                  <Button
+                    variant="link"
+                    className="text-green-600 font-semibold p-0 h-auto"
+                  >
+                    View
+                  </Button>
+                }
+              />
+              {canSubmitRow && (
+                <SubmitPolicyDialog
+                  type="security"
+                  id={row.original.id}
+                  contractId={contractId || ""}
+                  basePath={basePath}
+                  title={`${rowStatus === "rejected" ? "Resubmit" : "Submit"} ${row.original.securityType}`}
+                  trigger={
+                    <Button
+                      variant="link"
+                      className="text-[#2A4467] font-semibold p-0 h-auto"
+                    >
+                      {rowStatus === "rejected" ? "Resubmit" : "Submit"}
+                    </Button>
+                  }
+                />
+              )}
+            </div>
           );
         },
       },
     ],
-    [contractId, basePath, currency, actionsDisabled, isContractManager, owner],
+    [
+      contractId,
+      basePath,
+      currency,
+      actionsDisabled,
+      isContractManager,
+      owner,
+      isContractVendorLike,
+    ],
   );
 
   const policyRows: PolicyRow[] = useMemo(() => {

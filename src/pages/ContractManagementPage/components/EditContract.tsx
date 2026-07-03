@@ -752,6 +752,9 @@ const EditContract: React.FC<Props> = ({
     onSuccess: (res) => {
       success("Contract updated successfully", res.message);
       qc.invalidateQueries({ queryKey: ["contract-manager-contracts"] });
+      qc.invalidateQueries({ queryKey: ["contracts-all"] });
+      qc.invalidateQueries({ queryKey: ["contracts-me"] });
+      qc.invalidateQueries({ queryKey: ["contracts-stats"] });
       onOpenChange(false);
       if (onUpdated && res?.data) onUpdated(res.data);
       setLastError(null);
@@ -1195,7 +1198,14 @@ const EditContract: React.FC<Props> = ({
                   msaOptions={msaOptions}
                 />
               )}
-              {step === 2 && <Step2ContractTeam />}
+              {step === 2 && (
+                <Step2ContractTeam
+                  projectManagerFallbackLabel={
+                    (contractRes?.data?.data as any)?.projectManager?.user
+                      ?.name
+                  }
+                />
+              )}
               {step === 5 && (
                 <Step3ValuePayments
                   control={control}

@@ -99,9 +99,9 @@ const Documents: React.FC<DocumentsProps> = ({
           <ExportReportSheet contractId={contractId} contractType="MsaContract">
             <Button
               variant="outline"
-              className="h-12 rounded-2xl border-[#E5E7EB] dark:border-slate-800 px-5 font-semibold text-[#0F0F0F] dark:text-slate-100"
+              className="h-10 rounded-xl border-[#E5E7EB] dark:border-slate-800 px-4 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
             >
-              <Share2 className="mr-2 h-5 w-5" /> Export Report
+              <Share2 className="mr-2 h-4 w-4" /> Export Report
             </Button>
           </ExportReportSheet>
           {isManager && (
@@ -111,7 +111,7 @@ const Documents: React.FC<DocumentsProps> = ({
               trigger={
                 <Button
                   variant="outline"
-                  className="h-12 rounded-2xl border-[#E5E7EB] dark:border-slate-800 px-5 font-semibold text-[#0F0F0F] dark:text-slate-100"
+                  className="h-10 rounded-xl border-[#E5E7EB] dark:border-slate-800 px-4 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
                 >
                   Edit Contract
                 </Button>

@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { buildDeliverableResponderOptions } from "../components/DeliverablesTable";
 
 describe("buildDeliverableResponderOptions", () => {
-  test("filters vendor and project manager roles out of deliverable responders", () => {
+  test("filters the vendor role out of deliverable responders, but keeps the Vendor PM (project manager)", () => {
     expect(
       buildDeliverableResponderOptions([
         {
@@ -37,6 +37,8 @@ describe("buildDeliverableResponderOptions", () => {
         },
       ]),
     ).toEqual([
+      { value: "pm-1", label: "Project Manager" },
+      { value: "pm-2", label: "Short PM" },
       { value: "lead-1", label: "Procurement Lead" },
       { value: "cm-1", label: "Contract Manager" },
     ]);

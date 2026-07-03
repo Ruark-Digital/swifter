@@ -113,7 +113,7 @@ const safeFormatDate = (value: string | undefined | null, fmt: string) => {
   return isValid(parsed) ? formatDate(parsed, fmt) : "-";
 };
 
-const excludedDeliverableResponderRoles = new Set(["vendor", "projectmanager", "pm"]);
+const excludedDeliverableResponderRoles = new Set(["vendor"]);
 
 const normalizeDeliverableResponderRole = (role?: string) =>
   (role ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");

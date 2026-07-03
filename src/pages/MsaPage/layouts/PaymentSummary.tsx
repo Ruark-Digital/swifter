@@ -326,9 +326,9 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
           <ExportReportSheet contractId={contractId} contractType="MsaContract">
             <button
               type="button"
-              className="inline-flex h-12 items-center gap-2 text-sm rounded-xl border border-[#E5E7EB] dark:border-slate-800 px-5 font-semibold text-[#0F0F0F] dark:text-slate-100"
+              className="inline-flex h-10 items-center gap-2 text-sm rounded-xl border border-[#E5E7EB] dark:border-slate-800 px-4 font-semibold text-[#0F0F0F] dark:text-slate-100"
             >
-              <Share2 className="h-5 w-5" />
+              <Share2 className="h-4 w-4" />
               Export Report
             </button>
           </ExportReportSheet>
@@ -339,7 +339,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
                 trigger={
                   <button
                     type="button"
-                    className="inline-flex h-12 items-center rounded-xl text-sm border border-[#E5E7EB] dark:border-slate-800 bg-[#F3F4F6] dark:bg-slate-800 px-5 font-semibold text-[#0F0F0F] dark:text-slate-100"
+                    className="inline-flex h-10 items-center rounded-xl text-sm border border-[#E5E7EB] dark:border-slate-800 bg-[#F3F4F6] dark:bg-slate-800 px-4 font-semibold text-[#0F0F0F] dark:text-slate-100"
                   >
                     Update Saving
                   </button>
@@ -350,7 +350,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
                 trigger={
                   <button
                     type="button"
-                    className="inline-flex h-12 items-center rounded-xl text-sm bg-[#2A4467] px-5 font-semibold text-white"
+                    className="inline-flex h-10 items-center rounded-xl text-sm bg-[#2A4467] px-4 font-semibold text-white"
                   >
                     Release Holdback
                   </button>
