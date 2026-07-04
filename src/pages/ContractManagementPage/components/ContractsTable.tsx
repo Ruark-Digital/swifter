@@ -22,6 +22,17 @@ import {
   availableLifecycleActions,
 } from "./contractLifecycle";
 
+// Shared "which row's action menu is open" state, read via context instead
+// of being threaded through the memoized column/cell definitions below.
+// Context reads don't participate in useMemo's dependency array, so this
+// still lets only one row's dropdown be open at a time — without forcing
+// every row's ContractActionsCell to remount (and lose its editOpen/
+// lifecycle dialog state) every time any menu opens or closes.
+const OpenRowMenuContext = React.createContext<{
+  openRowId: string | null;
+  setOpenRowId: (id: string | null) => void;
+}>({ openRowId: null, setOpenRowId: () => {} });
+
 export type ContractRow = {
   id: string;
   contractId: string;
@@ -57,12 +68,18 @@ const ContractActionsCell: React.FC<{
 }> = ({ row }) => {
   const { isManager } = useUserRole();
   const currentUserId = useUser()?._id;
-  // Owned locally (not lifted to the parent) so opening/closing this row's
-  // dropdown can't force every other row's action cell to remount — that
-  // remount was wiping the `editOpen`/`lifecycle` state below before the
-  // deferred dialog-open callback ran, making Edit/Manage/Terminate silently
-  // no-op (QA 260703 #162 investigation).
-  const [menuOpen, setMenuOpen] = React.useState(false);
+  // The "only one row's menu open at a time" behavior is read from context
+  // rather than threaded through the memoized column defs — that previously
+  // forced every row's ContractActionsCell to remount on every menu open/
+  // close, wiping the `editOpen`/`lifecycle` state below before the deferred
+  // dialog-open callback ran, making Edit/Manage/Terminate silently no-op
+  // (QA 260703 #162 investigation).
+  const { openRowId, setOpenRowId } = React.useContext(OpenRowMenuContext);
+  const menuOpen = openRowId === row.id;
+  const setMenuOpen = React.useCallback(
+    (open: boolean) => setOpenRowId(open ? row.id : null),
+    [row.id, setOpenRowId],
+  );
   const [editOpen, setEditOpen] = React.useState(false);
   const [lifecycle, setLifecycle] = React.useState<LifecycleAction | null>(null);
 
@@ -308,6 +325,11 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
 }) => {
   const [search, setSearch] = React.useState("");
   const [dateFilter, setDateFilter] = React.useState("all");
+  const [openRowId, setOpenRowId] = React.useState<string | null>(null);
+  const openRowMenuContextValue = React.useMemo(
+    () => ({ openRowId, setOpenRowId }),
+    [openRowId],
+  );
   const [localPagination, setLocalPagination] = React.useState<PaginationState>(
     {
       pageIndex: 0,
@@ -388,6 +410,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
 
   return (
     <div data-testid="contracts-table">
+      <OpenRowMenuContext.Provider value={openRowMenuContextValue}>
       <DataTable<ContractRow>
         header={() => (
           <div className="flex flex-wrap items-center w-full justify-between gap-3 border-b border-[#E9E9EB] dark:border-slate-600 p-3 pt-0">
@@ -466,6 +489,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
           setPagination,
         }}
       />
+      </OpenRowMenuContext.Provider>
     </div>
   );
 };
