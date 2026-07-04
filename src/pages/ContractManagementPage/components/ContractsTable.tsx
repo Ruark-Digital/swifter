@@ -54,11 +54,15 @@ export type ContractRow = {
 
 const ContractActionsCell: React.FC<{
   row: ContractRow;
-  menuOpen: boolean;
-  onMenuOpenChange: (open: boolean) => void;
-}> = ({ row, menuOpen, onMenuOpenChange }) => {
+}> = ({ row }) => {
   const { isManager } = useUserRole();
   const currentUserId = useUser()?._id;
+  // Owned locally (not lifted to the parent) so opening/closing this row's
+  // dropdown can't force every other row's action cell to remount — that
+  // remount was wiping the `editOpen`/`lifecycle` state below before the
+  // deferred dialog-open callback ran, making Edit/Manage/Terminate silently
+  // no-op (QA 260703 #162 investigation).
+  const [menuOpen, setMenuOpen] = React.useState(false);
   const [editOpen, setEditOpen] = React.useState(false);
   const [lifecycle, setLifecycle] = React.useState<LifecycleAction | null>(null);
 
@@ -82,13 +86,13 @@ const ContractActionsCell: React.FC<{
   // own outside-pointer/close handling can be misattributed to the dialog,
   // making it appear to open and instantly close with no console error.
   const openLifecycle = (a: LifecycleAction) => {
-    onMenuOpenChange(false);
+    setMenuOpen(false);
     requestAnimationFrame(() => setLifecycle(a));
   };
 
   return (
     <>
-      <DropdownMenu open={menuOpen} onOpenChange={onMenuOpenChange}>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" data-testid="project-actions-dropdown">
             ⋮
@@ -119,7 +123,7 @@ const ContractActionsCell: React.FC<{
               data-testid="edit-contract"
               onSelect={(e) => {
                 e.preventDefault();
-                onMenuOpenChange(false);
+                setMenuOpen(false);
                 requestAnimationFrame(() => setEditOpen(true));
               }}
             >
@@ -304,7 +308,6 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
 }) => {
   const [search, setSearch] = React.useState("");
   const [dateFilter, setDateFilter] = React.useState("all");
-  const [openMenuRowId, setOpenMenuRowId] = React.useState<string | null>(null);
   const [localPagination, setLocalPagination] = React.useState<PaginationState>(
     {
       pageIndex: 0,
@@ -331,17 +334,11 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
       return {
         ...column,
         cell: ({ row }: { row: { original: ContractRow } }) => (
-          <ContractActionsCell
-            row={row.original}
-            menuOpen={openMenuRowId === row.original.id}
-            onMenuOpenChange={(open) => {
-              setOpenMenuRowId(open ? row.original.id : null);
-            }}
-          />
+          <ContractActionsCell row={row.original} />
         ),
       };
     });
-  }, [isReadOnly, disableActions, openMenuRowId]);
+  }, [isReadOnly, disableActions]);
 
   const filteredRows = React.useMemo(() => {
     let result = rows;
