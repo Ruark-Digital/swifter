@@ -159,12 +159,17 @@ const useContractsStats = (enabled = true) => {
   });
 };
 
-const useAllContracts = (pagination: PaginationState, enabled = true) => {
-  const queryKey = useUserQueryKey([
-    "contracts-all",
-    pagination.pageIndex,
-    pagination.pageSize,
-  ]);
+// The Contracts table's search/status/date filters run client-side over
+// whatever rows are currently fetched. With server-side pagination that only
+// ever filtered the current page — e.g. filtering by "Draft" showed just
+// the drafts on page 1, hiding drafts sitting on page 2+. Fetch the full set
+// in one page instead and let ContractsTable paginate the filtered result
+// itself; the dataset here is small enough (dozens of contracts) that this
+// stays cheap.
+const CONTRACTS_FETCH_LIMIT = 500;
+
+const useAllContracts = (_pagination: PaginationState, enabled = true) => {
+  const queryKey = useUserQueryKey(["contracts-all"]);
   return useQuery<ContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
@@ -172,8 +177,8 @@ const useAllContracts = (pagination: PaginationState, enabled = true) => {
         url: "/contract/manager/contracts",
         config: {
           params: {
-            page: pagination.pageIndex + 1,
-            limit: pagination.pageSize,
+            page: 1,
+            limit: CONTRACTS_FETCH_LIMIT,
           },
         },
       });
@@ -184,12 +189,8 @@ const useAllContracts = (pagination: PaginationState, enabled = true) => {
   });
 };
 
-const useMyContracts = (pagination: PaginationState, enabled = true) => {
-  const queryKey = useUserQueryKey([
-    "contracts-me",
-    pagination.pageIndex,
-    pagination.pageSize,
-  ]);
+const useMyContracts = (_pagination: PaginationState, enabled = true) => {
+  const queryKey = useUserQueryKey(["contracts-me"]);
   return useQuery<ContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
@@ -197,8 +198,8 @@ const useMyContracts = (pagination: PaginationState, enabled = true) => {
         url: "/contract/manager/contracts/me",
         config: {
           params: {
-            page: pagination.pageIndex + 1,
-            limit: pagination.pageSize,
+            page: 1,
+            limit: CONTRACTS_FETCH_LIMIT,
           },
         },
       });

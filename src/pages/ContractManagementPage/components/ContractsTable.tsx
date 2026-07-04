@@ -315,7 +315,6 @@ const applyDateFilter = (rows: ContractRow[], dateFilter: string): ContractRow[]
 const ContractsTable: React.FC<ContractsTableProps> = ({
   rows = [],
   isLoading,
-  totalCount,
   isReadOnly,
   disableActions,
   pagination: paginationProp,
@@ -393,6 +392,18 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
 
     return result;
   }, [rows, search, statusFilter, dateFilter, normalizeStatus]);
+
+  // `rows` is the full (unpaginated) fetched set — see the fetch-limit note
+  // in index.tsx's useAllContracts/useMyContracts. Slice the filtered result
+  // ourselves for the current page, since the search/status/date filters
+  // above previously only ever saw whatever page the server had already
+  // returned (client-side filtering can't see rows the server never sent).
+  const pagedRows = React.useMemo(() => {
+    const pageIndex = pagination.pageIndex ?? 0;
+    const pageSize = pagination.pageSize ?? filteredRows.length;
+    const start = pageIndex * pageSize;
+    return filteredRows.slice(start, start + pageSize);
+  }, [filteredRows, pagination]);
 
   const selectedFilterValues: Record<string, string> = {
     Status: statusFilter ?? "all",
@@ -479,12 +490,12 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
           container:
             "bg-white dark:bg-slate-950 rounded-xl px-3 border border-gray-300 dark:border-slate-600",
         }}
-        data={filteredRows}
+        data={pagedRows}
         columns={tableColumns}
         options={{
           disableSelection: true,
           isLoading,
-          totalCounts: totalCount ?? filteredRows.length,
+          totalCounts: filteredRows.length,
           pagination,
           setPagination,
         }}
