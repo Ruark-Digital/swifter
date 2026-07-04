@@ -465,9 +465,27 @@ export const SolicitationDetailPage = () => {
   const proposalStatusCounts =
     solicitationData?.data?.data?.proposalStatusCounts;
 
-  // Group-level data for evaluators (use API groups directly)
+  // Group-level data for evaluators. The API's group objects don't actually
+  // include `completedEvaluators`/`groupCompletionRate` (confirmed against a
+  // live response) — those render as `undefined` (React drops it silently),
+  // producing a misleading "N evaluators • completed" label with no count
+  // and no completion %. Derive both client-side from each evaluator's
+  // progress, using the same "progress === 100 = Completed" convention
+  // already used for the per-evaluator "Submitted" column below.
   const evaluatorGroups = useMemo(() => {
-    return evaluatorsData?.data?.data?.groups || [];
+    const groups = evaluatorsData?.data?.data?.groups || [];
+    return groups.map((group) => {
+      const evaluators = group.evaluators || [];
+      const completedEvaluators = evaluators.filter(
+        (e) => e.progress === 100,
+      ).length;
+      const totalEvaluators = group.totalEvaluators ?? evaluators.length;
+      const groupCompletionRate =
+        totalEvaluators > 0
+          ? (completedEvaluators / totalEvaluators) * 100
+          : 0;
+      return { ...group, completedEvaluators, groupCompletionRate };
+    });
   }, [evaluatorsData]);
 
   // Filter vendor proposals based on search query
