@@ -291,6 +291,37 @@ test.describe("MSA Page (stats)", () => {
     ).toContainText("5");
   });
 
+  test("project manager My MSA tab uses the vendor MSA /me endpoint", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    await seedAuth(page, "project_manager");
+
+    const requests: string[] = [];
+    page.on("request", (req) => {
+      requests.push(req.url());
+    });
+
+    await page.goto("/dashboard/msa", { waitUntil: "domcontentloaded" });
+    await expect(page.locator('[data-testid="msa-stats-all"]')).toContainText(
+      "7",
+      { timeout: 30000 },
+    );
+
+    // My MSA is now wired to the vendor PM /me endpoint...
+    expect(
+      requests.some((u) =>
+        u.includes("/contract/vendor/msa-contracts/me"),
+      ),
+    ).toBe(true);
+    // ...and NOT the manager /me endpoint (which is manager-only).
+    expect(
+      requests.some((u) =>
+        u.includes("/contract/manager/msa-contracts/me"),
+      ),
+    ).toBe(false);
+  });
+
   test("company admin calls manager MSA stats endpoint (not user endpoint)", async ({
     page,
   }) => {
