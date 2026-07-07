@@ -102,6 +102,7 @@ type VendorContractApi = {
   datePublished?: string;
   company?: string | { name?: string };
   vendor?: { name?: string };
+  owner?: boolean;
 };
 
 const mapContractRelationshipLabel = (
@@ -381,6 +382,7 @@ const mapVendorContractsToRows = (
         : undefined,
       endDate: c.endDate ? formatDate(c.endDate, "dd MMM yyyy") : undefined,
       status: mapVendorStatusToLabel(c.status),
+      isOwner: c.owner,
     };
   });
 };
