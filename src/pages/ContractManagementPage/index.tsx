@@ -412,6 +412,11 @@ const ContractManagementPage: React.FC = () => {
       pageIndex: 0,
       pageSize: 10,
     });
+  const [pmAllPagination, setPmAllPagination] =
+    React.useState<PaginationState>({
+      pageIndex: 0,
+      pageSize: 10,
+    });
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
 
   const { data: statsData } = useContractsStats(managerQueriesEnabled);
@@ -432,6 +437,8 @@ const ContractManagementPage: React.FC = () => {
       isContractVendorLike,
       isProjectManager,
     );
+  const { data: pmAllContractsData, isLoading: isPmAllContractsLoading } =
+    useVendorContracts(pmAllPagination, isProjectManager, false);
 
   const stats = isApprover ? approverStatsData?.data : statsData?.data;
   const statsCounts = stats
@@ -453,6 +460,9 @@ const ContractManagementPage: React.FC = () => {
   );
   const vendorContractsRows = mapVendorContractsToRows(
     vendorContractsData?.data.contracts,
+  );
+  const pmAllContractsRows = mapVendorContractsToRows(
+    pmAllContractsData?.data?.contracts,
   );
 
   return (
