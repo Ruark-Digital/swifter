@@ -32,7 +32,10 @@ const statusTone = (s: LinkedContractRow["status"]) => {
     .replace(/\s+/g, "_");
 
   if (normalized === "active") return "bg-[#43A0471A] text-[#43A047]";
+  if (normalized === "published") return "bg-[#43A0471A] text-[#43A047]";
   if (normalized === "terminated") return "bg-[#E539351A] text-[#E53935]";
+  if (normalized === "expired") return "bg-[#F59E0B1A] text-[#F59E0B]";
+  if (normalized === "draft") return "bg-[#6B72801A] text-[#6B7280] dark:text-slate-400";
   if (normalized === "closed") return "bg-[#6B72801A] text-[#6B7280] dark:text-slate-400";
   if (normalized === "suspended") return "bg-[#F59E0B1A] text-[#F59E0B]";
   if (normalized === "pending_approval") return "bg-[#F59E0B1A] text-[#F59E0B]";
@@ -125,7 +128,7 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
       },
       {
         accessorKey: "company",
-        header: "Company",
+        header: "Vendor",
         cell: ({ getValue }) => (
           <span className="text-sm text-slate-900 dark:text-slate-100">{getValue<string>()}</span>
         ),
