@@ -818,11 +818,11 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
     contract.contractRelationship === "standalone"
       ? "Stand-Alone Project"
       : contract.contractRelationship === "project"
-        ? "Link to Project"
+        ? "Linked to Project"
         : contract.contractRelationship === "msa_project"
-          ? "Link to MSA"
+          ? "Linked to MSA"
           : (contract as any).contractRelationship === "msa"
-            ? "Link to MSA"
+            ? "Linked to MSA"
             : "N/A";
   const effectiveDate = formatDateTZ(
     contract.startDate,
