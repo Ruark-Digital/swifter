@@ -532,11 +532,15 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
     (isApprover || isContractManager) &&
     approverStatus === "pending" &&
     !isSubmitted;
+  // QA #432 (Deliverables): once the vendor's first submission is rejected,
+  // they need the Submit button back so they can upload a corrected version.
+  // POST .../deliverables/{id}/submit is not documented as one-shot in the BE
+  // spec, so re-calling it with a fresh payload should work.
+  const isDeliverableRejected = approverStatus === "rejected";
   const canShowSubmitButton =
     isVendor &&
-    !isSubmitted &&
-    !hasBeenSubmitted &&
-    approverStatus !== "N/A";
+    approverStatus !== "N/A" &&
+    (isDeliverableRejected || (!isSubmitted && !hasBeenSubmitted));
 
   // Approve / reject opens a comment dialog first. `pendingAction` drives
   // both the dialog visibility and which variant (Approve vs Reject) we
@@ -909,7 +913,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                 personnelPath={personnelPath}
                 trigger={
                   <Button className="h-11 w-64 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
-                    Submit
+                    {isDeliverableRejected ? "Resubmit" : "Submit"}
                   </Button>
                 }
               />
