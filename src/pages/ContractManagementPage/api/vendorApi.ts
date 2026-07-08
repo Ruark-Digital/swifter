@@ -298,6 +298,14 @@ export const createVendorApi = (
     });
     return res as ApiResponse<any>;
   },
+  requestContractTakeOver: async (contractId: string, projectManagerId: string) => {
+    const post = client.post ?? ((params: PostParams) => postRequest(params));
+    const res = await post({
+      url: `/contract/vendor/contracts/${contractId}/project-managers/${projectManagerId}/assign`,
+      payload: undefined,
+    });
+    return res as ApiResponse<any>;
+  },
 });
 
 export const vendorApi = createVendorApi();
