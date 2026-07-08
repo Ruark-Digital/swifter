@@ -13,7 +13,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
-import { getRequest, postRequest } from "@/lib/axiosInstance";
+import { getRequest, patchRequest, postRequest } from "@/lib/axiosInstance";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import {
   TextArea,
@@ -45,7 +45,21 @@ type IssueRfiDialogProps = {
   trigger: React.ReactNode;
   contractId: string;
   basePath: string;
+  /** "edit" flips the dialog to PATCH-mode for an existing RFI. */
+  mode?: "create" | "edit";
+  rfiId?: string;
+  editPath?: string;
+  initialRfi?: {
+    title?: string;
+    description?: string;
+    deadline?: string | Date;
+    responder?: string;
+    files?: Array<{ name: string; url: string; type: string; size: string }>;
+  };
+  detailInvalidateQueryKey?: readonly unknown[];
 };
+
+export type { IssueRfiDialogProps };
 
 function FileListItem({ file, index }: { file: File; index?: number }) {
   const extension = getSimpleFileExtension(file.name).toUpperCase();
@@ -91,22 +105,45 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
   trigger,
   contractId,
   basePath,
+  mode = "create",
+  editPath,
+  initialRfi,
+  detailInvalidateQueryKey,
 }) => {
+  const isEdit = mode === "edit" && !!editPath;
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
   const { isViewOnly, isVendor, isProjectManager, isApprover } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
+  const [open, setOpen] = React.useState(false);
+  const initialDeadline = React.useMemo(() => {
+    if (!initialRfi?.deadline) return undefined;
+    const d = new Date(initialRfi.deadline as any);
+    return Number.isFinite(d.getTime()) ? d : undefined;
+  }, [initialRfi?.deadline]);
   const { control, reset } = useForge({
     resolver: yupResolver(issueRfiSchema) as any,
     defaultValues: {
-      rfiTitle: "",
-      responseDeadline: undefined,
-      question: "",
+      rfiTitle: initialRfi?.title ?? "",
+      responseDeadline: initialDeadline,
+      question: initialRfi?.description ?? "",
       files: null,
-      responder: "",
+      responder: initialRfi?.responder ?? "",
     },
   });
   const [isSuccess, setIsSuccess] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) return;
+    reset({
+      rfiTitle: initialRfi?.title ?? "",
+      responseDeadline: initialDeadline,
+      question: initialRfi?.description ?? "",
+      files: null,
+      responder: initialRfi?.responder ?? "",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const files = useWatch({ control, name: "files" }) as File[] | null;
 
@@ -199,6 +236,35 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
     },
   });
 
+  const editMutation = useMutation({
+    mutationKey: ["contractRfis", "edit", editPath],
+    mutationFn: async (payload: ContractRfiDTO) => {
+      if (!editPath) throw new Error("Edit RFI endpoint unavailable");
+      const res = await patchRequest({
+        url: editPath,
+        payload,
+      });
+      return res.data;
+    },
+    onSuccess: async () => {
+      toastHandler.success("RFI", "RFI updated successfully");
+      await queryClient.invalidateQueries({
+        queryKey: ["contractRfis"],
+      });
+      if (detailInvalidateQueryKey) {
+        await queryClient.invalidateQueries({
+          queryKey: detailInvalidateQueryKey,
+        });
+      }
+      setOpen(false);
+    },
+    onError: (error: ApiResponseError) => {
+      toastHandler.error("RFI", error);
+    },
+  });
+
+  const activeMutation = isEdit ? editMutation : createMutation;
+
   const handleSubmit = async (data: IssueRfiFormValues) => {
     const payload: ContractRfiDTO = {
       title: data.rfiTitle,
@@ -244,20 +310,29 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
       }
     }
 
+    // Preserve existing attachments on edit when the user didn't upload new
+    // ones — otherwise a PATCH with an omitted files array can be treated
+    // by BE as "clear the list."
+    if (isEdit && !payload.files?.length && initialRfi?.files?.length) {
+      payload.files = initialRfi.files;
+    }
+
     try {
-      await createMutation.mutateAsync(payload);
+      await activeMutation.mutateAsync(payload);
     } catch {
       return;
     }
   };
 
-  const isSubmitting = createMutation.isPending || isUploadingFiles;
+  const isSubmitting = activeMutation.isPending || isUploadingFiles;
   const fileCount = files?.length ?? 0;
 
   return (
     <Dialog
-      onOpenChange={(open) => {
-        if (!open) {
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) {
           setIsSuccess(false);
           reset();
         }
@@ -296,7 +371,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
           <>
             <div className="flex items-center justify-between px-8 pt-8">
               <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
-                Issue RFI
+                {isEdit ? "Edit RFI" : "Issue RFI"}
               </DialogTitle>
             </div>
             <div className="px-8 pb-8 pt-6">
@@ -392,7 +467,13 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                     className="h-12 flex-1 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? "Issuing..." : "Issue RFI"}
+                    {isSubmitting
+                      ? isEdit
+                        ? "Saving..."
+                        : "Issuing..."
+                      : isEdit
+                        ? "Save Changes"
+                        : "Issue RFI"}
                   </Button>
                 </div>
               </Forge>
@@ -579,3 +660,4 @@ const RfiTabContent: React.FC<Props> = ({
 };
 
 export default RfiTabContent;
+export { IssueRfiDialog };

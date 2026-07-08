@@ -41,6 +41,7 @@ import {
   Check,
   CloudUpload,
   Download,
+  Edit2,
   Search,
   X,
 } from "lucide-react";
@@ -63,6 +64,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
 import { postRequest } from "@/lib/axiosInstance";
 import { DocumentItem, type DocType } from "./DocumentItem";
+import { IssueRfiDialog } from "../layouts/RfiTabContent";
 
 // RFI `responder` is a single id (string) or a populated user object/ref —
 // see memory project_rfi_responder_singular. Only that specific user
@@ -305,12 +307,66 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
               <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 {rfiTitle}
               </div>
-              <Button
-                variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
-              >
-                <Download className="mr-2 h-4 w-4" /> Export
-              </Button>
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const issuerId =
+                    typeof submittedByRaw === "object"
+                      ? submittedByRaw?._id
+                      : undefined;
+                  const isIssuer =
+                    Boolean(currentUser?._id) &&
+                    Boolean(issuerId) &&
+                    issuerId === currentUser?._id;
+                  if (!isIssuer) return null;
+                  // Manager uses /rfis (plural); vendor/approver use /rfi
+                  // (singular). Match RfiTabContent.getBasePath().
+                  const editBase = isApprover
+                    ? `/contract/approver/contracts/${contractId}/rfi`
+                    : isContractVendorLike
+                      ? `/contract/vendor/contracts/${contractId}/rfi`
+                      : `/contract/manager/contracts/${contractId}/rfis`;
+                  const editPath = `${editBase}/${rfiId}`;
+                  const responderInitial =
+                    typeof rfiDetail?.responder === "string"
+                      ? rfiDetail.responder
+                      : (rfiDetail?.responder?.user?._id ??
+                          rfiDetail?.responder?._id ??
+                          undefined);
+                  return (
+                    <IssueRfiDialog
+                      contractId={contractId}
+                      basePath={editBase}
+                      mode="edit"
+                      rfiId={rfiId}
+                      editPath={editPath}
+                      detailInvalidateQueryKey={queryKey}
+                      initialRfi={{
+                        title: rfiTitle,
+                        description: rfiDescription,
+                        deadline:
+                          rfiDetail?.deadline ?? rfi?.deadline ?? undefined,
+                        responder: responderInitial,
+                        files: (files as any) ?? [],
+                      }}
+                      trigger={
+                        <Button
+                          variant="outline"
+                          className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
+                          data-testid="edit-rfi-trigger"
+                        >
+                          <Edit2 className="mr-2 h-4 w-4" /> Edit
+                        </Button>
+                      }
+                    />
+                  );
+                })()}
+                <Button
+                  variant="outline"
+                  className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
+                >
+                  <Download className="mr-2 h-4 w-4" /> Export
+                </Button>
+              </div>
             </div>
 
             <Tabs defaultValue="overview" className="space-y-6">
