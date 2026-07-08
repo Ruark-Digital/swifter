@@ -2,7 +2,6 @@ import React from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { SEOWrapper } from "@/components/SEO";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -48,7 +47,7 @@ import ActionLogTabContent from "./layouts/ActionLogTabContent";
 import RateSheetsTabContent from "@/pages/ContractManagementPage/layouts/RateSheetsTabContent";
 import NcrLog from "./layouts/NcrLog";
 import { Share2 } from "lucide-react";
-import { Status } from "./components/StatusBadge";
+import { Status, StatusBadge } from "./components/StatusBadge";
 import { useUser } from "@/store/authSlice";
 import type { ApiResponseError } from "@/types";
 import ContractLifecycleDialog from "@/pages/ContractManagementPage/components/ContractLifecycleDialog";
@@ -469,18 +468,38 @@ const MsaDetailPage: React.FC = () => {
     const raw = (linkedContractsResponse?.data as any)?.data;
     if (!raw) return [];
 
+    const relationshipLabel = (rel?: string) => {
+      if (rel === "msa_project") return "MSA + Project";
+      if (rel === "msa") return "MSA";
+      if (rel === "project") return "Project";
+      if (rel === "standalone") return "Stand-Alone";
+      return "-";
+    };
+
+    const statusLabel = (raw?: string) => {
+      if (raw === "publish") return "Published";
+      if (raw === "active") return "Active";
+      if (raw === "draft") return "Draft";
+      if (raw === "expired") return "Expired";
+      if (raw === "terminated") return "Terminated";
+      if (raw === "suspended") return "Suspended";
+      if (raw === "pending_approval") return "Pending Approval";
+      return raw ? raw : "-";
+    };
+
     const items = Array.isArray(raw) ? raw : [raw];
     return items.filter(Boolean).map((it: any) => ({
       title: String(it?.title ?? "-"),
       code: String(it?.contractId ?? "-"),
       id: String(it?._id ?? ""),
-      company: String(it?.company?.name ?? "-"),
-      relationship: String(it?.contractRelationship ?? "-"),
+      company:
+        String(it?.vendor?.name ?? it?.company?.name ?? "-"),
+      relationship: relationshipLabel(it?.contractRelationship),
       value: formatMoney(it?.contractValue, it?.currency),
       published: it?.datePublished ? formatDate(it.datePublished) : undefined,
       endDate: it?.endDate ? formatDate(it.endDate) : undefined,
       createdAtRaw: it?.createdAt ?? it?.datePublished,
-      status: String(it?.status ?? "-"),
+      status: statusLabel(it?.status),
     }));
   }, [formatMoney, linkedContractsResponse?.data]);
 
@@ -696,7 +715,7 @@ const MsaDetailPage: React.FC = () => {
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">{msa?.msaContractId}</p>
         </div>
-        <Badge className={status?.className}>{status?.label}</Badge>
+        <StatusBadge status={status?.label} />
       </div>
 
       {showLifecycleActions && (
