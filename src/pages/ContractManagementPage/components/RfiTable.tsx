@@ -499,6 +499,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                   sendType="reply"
                   isNewChat={false}
                   onSendTypeChange={() => {}}
+                  sendLabel="Send"
                 />
               </TabsContent>
             </Tabs>
