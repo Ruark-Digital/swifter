@@ -149,4 +149,79 @@ test.describe("QA #78 Increment 2 - PM request take-over", () => {
 
     await expect.poll(() => assignHit).toBe(true);
   });
+
+  test("take-over is hidden on a non-owned but non-active (expired) contract", async ({
+    page,
+  }) => {
+    await seedAuth(page, "project_manager");
+
+    await page.route("**/contract/vendor/contracts/stats**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          message: "ok",
+          data: {
+            all: 1,
+            active: 0,
+            completed: 0,
+            cancelled: 0,
+            suspended: 0,
+            expired: 1,
+          },
+        }),
+      }),
+    );
+
+    await page.route("**/contract/vendor/contracts?*", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          message: "ok",
+          data: {
+            contracts: [
+              {
+                id: "c-exp",
+                contractId: "CT-EXP",
+                title: "Expired Other PM Contract",
+                status: "expired",
+                owner: false,
+              },
+            ],
+            totalContracts: 1,
+          },
+        }),
+      }),
+    );
+
+    await page.route("**/contract/vendor/contracts/me?*", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          message: "ok",
+          data: { contracts: [], totalContracts: 0 },
+        }),
+      }),
+    );
+
+    await page.goto("/dashboard/contract-management", { waitUntil: "commit" });
+
+    await expect(page.getByText("Expired Other PM Contract")).toBeVisible({
+      timeout: 30000,
+    });
+
+    await page.getByTestId("vendor-contract-actions-dropdown").first().click();
+    // View Details is always present; take-over must NOT be offered on an
+    // expired contract (backend 403s the assign — see live spike 2026-07-08).
+    await expect(
+      page.getByRole("menuitem", { name: /view details/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("menuitem", { name: /request take-?over/i }),
+    ).toHaveCount(0);
+  });
 });

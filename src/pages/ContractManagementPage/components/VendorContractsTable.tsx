@@ -183,14 +183,17 @@ const buildActionsColumn = (
             View Details
           </Link>
         </DropdownMenuItem>
-        {enableTakeOver && row.original.isOwner === false && (
-          <DropdownMenuItem
-            data-testid="vendor-request-takeover"
-            onClick={() => onOpenTakeOver(row.original.id)}
-          >
-            Request take-over
-          </DropdownMenuItem>
-        )}
+        {enableTakeOver &&
+          row.original.isOwner === false &&
+          (row.original.status === "Active" ||
+            row.original.status === "Published") && (
+            <DropdownMenuItem
+              data-testid="vendor-request-takeover"
+              onClick={() => onOpenTakeOver(row.original.id)}
+            >
+              Request take-over
+            </DropdownMenuItem>
+          )}
       </DropdownMenuContent>
     </DropdownMenu>
   ),
