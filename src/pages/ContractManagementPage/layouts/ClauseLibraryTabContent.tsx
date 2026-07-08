@@ -190,7 +190,14 @@ function ClauseCard({
   );
 }
 
-type Props = { isActive?: boolean; currency?: string; vendorName?: string };
+type Props = {
+  isActive?: boolean;
+  currency?: string;
+  vendorName?: string;
+  /** "Contract" hits /contract/manager/contracts/:id/clauses (default),
+   *  "MsaContract" hits /contract/manager/msa-contracts/:id/clauses. */
+  contractType?: "Contract" | "MsaContract";
+};
 
 type ClauseLibraryResponse = {
   status?: number;
@@ -506,15 +513,21 @@ const buildClauseLibraryPrintHtml = (
 </html>`;
 };
 
-const ClauseLibraryTabContent: React.FC<Props> = ({ isActive, vendorName }) => {
+const ClauseLibraryTabContent: React.FC<Props> = ({
+  isActive,
+  vendorName,
+  contractType = "Contract",
+}) => {
   const { id = "" } = useParams<{ id: string }>();
   const [search, setSearch] = React.useState("");
+  const resourceSegment =
+    contractType === "MsaContract" ? "msa-contracts" : "contracts";
 
   const { data, isLoading } = useQuery<ClauseLibraryResponse>({
-    queryKey: ["contract-clause-library", id],
+    queryKey: ["contract-clause-library", contractType, id],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/contracts/${id}/clauses`,
+        url: `/contract/manager/${resourceSegment}/${id}/clauses`,
       });
       return res.data as ClauseLibraryResponse;
     },
