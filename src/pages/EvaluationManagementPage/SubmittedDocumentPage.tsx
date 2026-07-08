@@ -1147,26 +1147,32 @@ const SubmittedDocumentPage: React.FC = () => {
                 {/* <Button variant="outline" className="px-4" onClick={handleBack}>
                 Reset All
               </Button> */}
-                <Button
-                  className="text-white px-4"
-                  onClick={() => setShowSubmitDialog(true)}
-                >
-                  Submit Evaluation
-                </Button>
+                {!submitEvaluationMutation.isSuccess && (
+                  <>
+                    <Button
+                      className="text-white px-4"
+                      onClick={() => setShowSubmitDialog(true)}
+                      disabled={submitEvaluationMutation.isPending}
+                    >
+                      Submit Evaluation
+                    </Button>
 
-                <ConfirmAlert
-                  open={showSubmitDialog}
-                  onClose={(open) => setShowSubmitDialog(open)}
-                  title="Submit Evaluation"
-                  text="Are you sure you want to submit this evaluation? This action cannot be undone."
-                  type="info"
-                  primaryButtonText="Submit"
-                  secondaryButtonText="Cancel"
-                  onPrimaryAction={() => {
-                    submitEvaluationMutation.mutate();
-                  }}
-                  onSecondaryAction={() => setShowSubmitDialog(false)}
-                />
+                    <ConfirmAlert
+                      open={showSubmitDialog}
+                      onClose={(open) => setShowSubmitDialog(open)}
+                      title="Submit Evaluation"
+                      text="Are you sure you want to submit this evaluation? This action cannot be undone."
+                      type="info"
+                      primaryButtonText="Submit"
+                      secondaryButtonText="Cancel"
+                      primaryButtonLoading={submitEvaluationMutation.isPending}
+                      onPrimaryAction={() => {
+                        submitEvaluationMutation.mutate();
+                      }}
+                      onSecondaryAction={() => setShowSubmitDialog(false)}
+                    />
+                  </>
+                )}
               </div>
             )}
           </div>

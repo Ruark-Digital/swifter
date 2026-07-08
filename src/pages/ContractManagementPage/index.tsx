@@ -102,6 +102,7 @@ type VendorContractApi = {
   datePublished?: string;
   company?: string | { name?: string };
   vendor?: { name?: string };
+  owner?: boolean;
 };
 
 const mapContractRelationshipLabel = (
@@ -381,6 +382,7 @@ const mapVendorContractsToRows = (
         : undefined,
       endDate: c.endDate ? formatDate(c.endDate, "dd MMM yyyy") : undefined,
       status: mapVendorStatusToLabel(c.status),
+      isOwner: c.owner,
     };
   });
 };
@@ -410,6 +412,11 @@ const ContractManagementPage: React.FC = () => {
       pageIndex: 0,
       pageSize: 10,
     });
+  const [pmAllPagination, setPmAllPagination] =
+    React.useState<PaginationState>({
+      pageIndex: 0,
+      pageSize: 10,
+    });
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
 
   const { data: statsData } = useContractsStats(managerQueriesEnabled);
@@ -430,6 +437,8 @@ const ContractManagementPage: React.FC = () => {
       isContractVendorLike,
       isProjectManager,
     );
+  const { data: pmAllContractsData, isLoading: isPmAllContractsLoading } =
+    useVendorContracts(pmAllPagination, isProjectManager, false);
 
   const stats = isApprover ? approverStatsData?.data : statsData?.data;
   const statsCounts = stats
@@ -451,6 +460,9 @@ const ContractManagementPage: React.FC = () => {
   );
   const vendorContractsRows = mapVendorContractsToRows(
     vendorContractsData?.data.contracts,
+  );
+  const pmAllContractsRows = mapVendorContractsToRows(
+    pmAllContractsData?.data.contracts,
   );
 
   return (
@@ -495,16 +507,64 @@ const ContractManagementPage: React.FC = () => {
             }
           />
 
-          <VendorContractsTable
-            rows={vendorContractsRows}
-            isLoading={isVendorContractsLoading}
-            totalCount={vendorContractsData?.data.totalContracts}
-            isReadOnly={isViewOnly}
-            pagination={vendorPagination}
-            setPagination={setVendorPagination}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-          />
+          {isProjectManager ? (
+            <Tabs
+              defaultValue="all"
+              className="w-full bg-transparent space-y-4"
+              onValueChange={() => setStatusFilter("all")}
+            >
+              <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
+                <TabsTrigger
+                  value="all"
+                  className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                >
+                  All Contracts
+                </TabsTrigger>
+                <TabsTrigger
+                  value="mine"
+                  className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                >
+                  My Contracts
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="all">
+                <VendorContractsTable
+                  rows={pmAllContractsRows}
+                  isLoading={isPmAllContractsLoading}
+                  totalCount={pmAllContractsData?.data.totalContracts}
+                  isReadOnly={isViewOnly}
+                  pagination={pmAllPagination}
+                  setPagination={setPmAllPagination}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
+                />
+              </TabsContent>
+              <TabsContent value="mine">
+                <VendorContractsTable
+                  rows={vendorContractsRows}
+                  isLoading={isVendorContractsLoading}
+                  totalCount={vendorContractsData?.data.totalContracts}
+                  isReadOnly={isViewOnly}
+                  pagination={vendorPagination}
+                  setPagination={setVendorPagination}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
+                />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <VendorContractsTable
+              rows={vendorContractsRows}
+              isLoading={isVendorContractsLoading}
+              totalCount={vendorContractsData?.data.totalContracts}
+              isReadOnly={isViewOnly}
+              pagination={vendorPagination}
+              setPagination={setVendorPagination}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+            />
+          )}
         </>
       ) : (
         <>

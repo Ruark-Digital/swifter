@@ -53,6 +53,22 @@ test.describe("contractChanges helpers (unit)", () => {
       description: "Desc",
       type: "directive",
     });
+
+    expect(
+      toManagerCreateChangePayload({
+        changeName: "Title",
+        changeType: "directive",
+        urgency: "high",
+        description: "Desc",
+        amount: "$1,500.50",
+      })
+    ).toEqual({
+      title: "Title",
+      description: "Desc",
+      type: "directive",
+      urgency: "high",
+      amount: 1500.5,
+    });
   });
 
   test("builds vendor create-change payload from dialog values", async () => {

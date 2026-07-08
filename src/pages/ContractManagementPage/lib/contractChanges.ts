@@ -107,6 +107,15 @@ export type ManagerCreateChangeDialogValues = {
   changeType: string;
   urgency: string;
   description: string;
+  amount?: string;
+};
+
+const parseAmountToNumber = (raw?: string): number | undefined => {
+  if (raw == null) return undefined;
+  const cleaned = String(raw).replace(/[$,\s]/g, "");
+  if (!cleaned) return undefined;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : undefined;
 };
 
 export type UploadURLs = {
@@ -136,6 +145,7 @@ export const toManagerCreateChangePayload = (
   description?: string;
   type?: "directive" | "order";
   urgency?: "low" | "medium" | "high";
+  amount?: number;
   files?: Array<{ name: string; url: string; type: string; size: string }>;
 } => {
   const payload: {
@@ -143,6 +153,7 @@ export const toManagerCreateChangePayload = (
     description?: string;
     type?: "directive" | "order";
     urgency?: "low" | "medium" | "high";
+    amount?: number;
     files?: Array<{ name: string; url: string; type: string; size: string }>;
   } = {
     title: values.changeName,
@@ -160,6 +171,11 @@ export const toManagerCreateChangePayload = (
     payload.urgency = values.urgency;
   }
 
+  const amount = parseAmountToNumber(values.amount);
+  if (amount !== undefined) {
+    payload.amount = amount;
+  }
+
   return payload;
 };
 
@@ -171,6 +187,7 @@ export const toVendorCreateChangePayload = (
   type: "request" | "order" | "proposal";
   proposalCategory?: string;
   urgency?: "low" | "medium" | "high";
+  amount?: number;
   files?: Array<{ name: string; url: string; type: string; size: string }>;
 } => {
   const type =
@@ -186,6 +203,7 @@ export const toVendorCreateChangePayload = (
     type: "request" | "order" | "proposal";
     proposalCategory?: string;
     urgency?: "low" | "medium" | "high";
+    amount?: number;
     files?: Array<{ name: string; url: string; type: string; size: string }>;
   } = {
     title: values.changeName,
@@ -199,6 +217,11 @@ export const toVendorCreateChangePayload = (
 
   if (values.urgency === "low" || values.urgency === "medium" || values.urgency === "high") {
     payload.urgency = values.urgency;
+  }
+
+  const amount = parseAmountToNumber(values.amount);
+  if (amount !== undefined) {
+    payload.amount = amount;
   }
 
   return payload;

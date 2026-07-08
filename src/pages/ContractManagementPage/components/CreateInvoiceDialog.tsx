@@ -214,9 +214,7 @@ const InvoiceInputRow = ({
       />
       <Forger
         name={`items.${index}.unitPrice`}
-        component="input"
-        type="text"
-        className="h-10 rounded-lg border border-[#E5E7EB] dark:border-slate-700 px-3 text-sm dark:bg-slate-800 dark:text-slate-100"
+        component={TextCurrencyInput}
         placeholder="Enter Value"
       />
       <Forger

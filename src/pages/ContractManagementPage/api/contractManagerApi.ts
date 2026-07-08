@@ -330,6 +330,7 @@ export type ContractChangeManagerDTO = {
   description?: string;
   proposalCategory?: string;
   urgency?: "low" | "medium" | "high";
+  amount?: number;
   files?: Array<{
     name?: string;
     url?: string;

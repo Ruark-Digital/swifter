@@ -35,6 +35,7 @@ export type VendorContractRow = {
     | "Published"
     | "Draft"
     | "Pending Approval";
+  isOwner?: boolean;
 };
 
 const columns: ColumnDef<VendorContractRow>[] = [
