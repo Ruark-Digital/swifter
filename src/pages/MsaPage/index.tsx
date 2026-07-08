@@ -100,7 +100,11 @@ const MsaPage: React.FC = () => {
         ? "/contract/vendor/msa-contracts"
         : "/contract/user/msa-contracts";
 
-  const myListUrl = isManager ? "/contract/manager/msa-contracts/me" : undefined;
+  const myListUrl = isManager
+    ? "/contract/manager/msa-contracts/me"
+    : isProjectManager
+      ? "/contract/vendor/msa-contracts/me"
+      : undefined;
 
   const statsUrl = isManagerLike
     ? "/contract/manager/msa-contracts/stats"

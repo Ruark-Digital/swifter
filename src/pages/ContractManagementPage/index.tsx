@@ -1,5 +1,5 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
 import { SEOWrapper } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,9 @@ import { getRequest } from "@/lib/axiosInstance";
 import type { ApiResponseError } from "@/types";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
+import { useToastHandler } from "@/hooks/useToaster";
+import { vendorApi } from "./api/vendorApi";
 import VendorStatsCards from "./components/VendorStatsCards";
 import VendorContractsTable, {
   VendorContractRow,
@@ -465,6 +468,32 @@ const ContractManagementPage: React.FC = () => {
     pmAllContractsData?.data.contracts,
   );
 
+  const user = useUser();
+  const toastHandler = useToastHandler();
+  const queryClient = useQueryClient();
+
+  const takeOverMutation = useMutation({
+    mutationFn: (contractId: string) =>
+      vendorApi.requestContractTakeOver(
+        contractId,
+        user?.projectmanagerId ?? "",
+      ),
+    onSuccess: () => {
+      toastHandler.success(
+        "Request sent",
+        "Take-over request sent for approval",
+      );
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "pm-contracts" ||
+          query.queryKey[0] === "vendor-contracts",
+      });
+    },
+    onError: (err: ApiResponseError) => {
+      toastHandler.error("Failed to request take-over", err);
+    },
+  });
+
   return (
     <div className="space-y-8 pt-10 min-w-0 w-full">
       <SEOWrapper
@@ -538,6 +567,9 @@ const ContractManagementPage: React.FC = () => {
                   setPagination={setPmAllPagination}
                   statusFilter={statusFilter}
                   onStatusFilterChange={setStatusFilter}
+                  enableTakeOver
+                  onRequestTakeOver={(id) => takeOverMutation.mutate(id)}
+                  isRequestingTakeOver={takeOverMutation.isPending}
                 />
               </TabsContent>
               <TabsContent value="mine">

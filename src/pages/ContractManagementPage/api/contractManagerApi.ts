@@ -922,6 +922,16 @@ export const createContractManagerApi = (
       });
       return res as ApiResponse<ContractDetail>;
     },
+    approveProjectManagerAssignment: async (
+      contractId: string,
+      payload: { action: "approved" | "rejected"; reason?: string },
+    ) => {
+      const res = await client.post({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/project-manager/approval`,
+        payload,
+      });
+      return res as ApiResponse<any>;
+    },
     /**
      * Fetches the contract in edit-form shape — swagger 2.3.0 added
      * `GET /manager/contracts/{contractId}/edit` which returns a fully

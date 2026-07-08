@@ -206,6 +206,11 @@ const ContractDetailPage: React.FC = () => {
   const [lifecycleAction, setLifecycleAction] =
     React.useState<LifecycleAction | null>(null);
   const [comment, setComment] = React.useState("");
+  const [takeOverDialogOpen, setTakeOverDialogOpen] = React.useState(false);
+  const [takeOverAction, setTakeOverAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [takeOverComment, setTakeOverComment] = React.useState("");
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = React.useState<TabKey>(() => {
     const tab = searchParams.get("tab");
@@ -276,6 +281,17 @@ const ContractDetailPage: React.FC = () => {
     isContractProjectManagerNotApproved &&
     contractData?.status === "pending_approval";
 
+  // Take-over approval is distinct from the PM-accepts-contract flow: it applies
+  // to a pending projectManager assignment on an already-live contract (not a
+  // freshly created pending_approval one), and only a CM/PL approves it.
+  const takeOverPending =
+    contractData?.projectManager?.status === "pending" &&
+    contractData?.status !== "pending_approval";
+  const canApproveTakeOver = isManager && isContractOwner && takeOverPending;
+  const takeOverRequesterName =
+    (contractData?.projectManager?.user as { user?: { name?: string } })
+      ?.user?.name ?? contractData?.projectManager?.user?.name;
+
   const approvalMutation = useMutation({
     mutationFn: async (action: "approved" | "rejected") => {
       if (canProjectManagerApprove) {
@@ -315,6 +331,52 @@ const ContractDetailPage: React.FC = () => {
   const submitApproval = () => {
     if (approvalAction) {
       approvalMutation.mutate(approvalAction);
+    }
+  };
+
+  const takeOverApprovalMutation = useMutation({
+    mutationFn: async ({
+      action,
+      reason,
+    }: {
+      action: "approved" | "rejected";
+      reason?: string;
+    }) =>
+      contractManagerApi.approveProjectManagerAssignment(id ?? "", {
+        action,
+        reason,
+      }),
+    onSuccess: (res, { action }) => {
+      toastHandler.success(
+        `Take-over request ${action === "approved" ? "approved" : "rejected"} successfully`,
+        res.data.message,
+      );
+      queryClient.invalidateQueries({ queryKey });
+      setTakeOverDialogOpen(false);
+      setTakeOverAction(null);
+      setTakeOverComment("");
+    },
+    onError: (err: ApiResponseError) => {
+      toastHandler.error("Failed to update take-over request", err);
+    },
+  });
+
+  const handleTakeOverAction = (action: "approved" | "rejected") => {
+    if (action === "approved") {
+      takeOverApprovalMutation.mutate({ action: "approved" });
+      return;
+    }
+    setTakeOverAction(action);
+    setTakeOverDialogOpen(true);
+  };
+
+  const submitTakeOverApproval = () => {
+    if (takeOverAction === "rejected" && !takeOverComment.trim()) return;
+    if (takeOverAction) {
+      takeOverApprovalMutation.mutate({
+        action: takeOverAction,
+        reason: takeOverComment.trim() || undefined,
+      });
     }
   };
 
@@ -514,6 +576,32 @@ const ContractDetailPage: React.FC = () => {
         </div>
       )}
 
+      {canApproveTakeOver && (
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+            {`Take-over request from ${takeOverRequesterName ?? "a project manager"}`}
+          </p>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="default"
+              className="bg-[#2A4467] hover:bg-[#2A4467]/90"
+              disabled={takeOverApprovalMutation.isPending}
+              onClick={() => handleTakeOverAction("approved")}
+            >
+              Approve
+            </Button>
+            <Button
+              variant="outline"
+              className="bg-[#F3F4F6] border-[#E5E7EB]"
+              disabled={takeOverApprovalMutation.isPending}
+              onClick={() => handleTakeOverAction("rejected")}
+            >
+              Reject
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Tabs
         value={activeTab}
         onValueChange={(v) => setActiveTab(v as TabKey)}
@@ -703,6 +791,47 @@ const ContractDetailPage: React.FC = () => {
                 : approvalAction === "approved"
                   ? "Approve"
                   : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={takeOverDialogOpen} onOpenChange={setTakeOverDialogOpen}>
+        <DialogContent className="dark:bg-slate-900 dark:border-slate-800">
+          <DialogHeader>
+            <DialogTitle className="text-slate-900 dark:text-slate-50">
+              Reject Take-over Request
+            </DialogTitle>
+            <DialogDescription className="text-slate-500 dark:text-slate-400">
+              Please provide a reason for rejecting this take-over request.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <Textarea
+              placeholder="Reason for rejection"
+              value={takeOverComment}
+              onChange={(e) => setTakeOverComment(e.target.value)}
+              className="resize-none dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100 dark:placeholder:text-slate-500"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setTakeOverDialogOpen(false)}
+              className="dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-slate-50"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={submitTakeOverApproval}
+              disabled={
+                takeOverApprovalMutation.isPending || !takeOverComment.trim()
+              }
+              variant="destructive"
+            >
+              {takeOverApprovalMutation.isPending ? "Processing..." : "Reject"}
             </Button>
           </DialogFooter>
         </DialogContent>

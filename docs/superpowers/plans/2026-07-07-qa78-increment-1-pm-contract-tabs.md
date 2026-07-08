@@ -176,10 +176,10 @@ git commit -m "feat(qa78): add PM all-contracts query + pagination"
           )}
 ```
 
-- [ ] **Step 2: Confirm `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` are imported** (they are — line 10). Typecheck:
+- [ ] **Step 2: Confirm `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` are imported** (they are — line 10). Build + lint (this task consumes the `pmAll*` identifiers Task 2 introduced, so the branch becomes green here):
 
-Run: `npx tsc --noEmit -p tsconfig.json`
-Expected: no new errors.
+Run: `npx tsc -b` then `npm run lint`
+Expected: both clean. NOTE: `npx tsc --noEmit -p tsconfig.json` is a **no-op** on this repo (root tsconfig is references-only) — always use `tsc -b` / `npm run lint` as the real gate. The project uses `noUnusedLocals` + eslint `no-unused-vars` with `--max-warnings 0`.
 
 - [ ] **Step 3: Commit.**
 
