@@ -2,7 +2,9 @@ import React, { useMemo, useState } from "react";
 import { TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Download, Search } from "lucide-react";
+import * as XLSX from "xlsx";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { PaginationState } from "@tanstack/react-table";
@@ -104,6 +106,28 @@ const ActionLogTabContent: React.FC<Props> = () => {
 
   const totalCount = logsData?.data?.total ?? rows.length;
 
+  const handleExport = React.useCallback(() => {
+    if (!rows.length) return;
+    const exportRows = rows.map((r) => ({
+      "Action ID": r.actionId,
+      Module: (r.module || "").replace(/([a-z])([A-Z])/g, "$1 $2"),
+      Description: r.description,
+      User: r.actorName,
+      Role: r.actorRole ?? "",
+      Reference: r.reference,
+      Date: r.dateLine1,
+      Time: r.dateLine2,
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Action Log");
+    const filename = `action-log-${contractId ?? "contract"}-${format(
+      new Date(),
+      "yyyy-MM-dd",
+    )}.xlsx`;
+    XLSX.writeFile(workbook, filename);
+  }, [contractId, rows]);
+
   const columns: ColumnDef<ActionLogRow>[] = [
     {
       accessorKey: "actionId",
@@ -193,6 +217,20 @@ const ActionLogTabContent: React.FC<Props> = () => {
                 setPagination((prev) => ({ ...prev, pageIndex: 0 }));
               }}
             />
+          </div>
+
+          <div className="ml-auto">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={!rows.length}
+              data-testid="action-log-export"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
           </div>
         </div>
 
