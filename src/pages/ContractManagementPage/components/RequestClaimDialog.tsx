@@ -18,7 +18,7 @@ import {
   TextSelect,
 } from "@/components/layouts/FormInputs";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { postRequest } from "@/lib/axiosInstance";
+import { postRequest, putRequest } from "@/lib/axiosInstance";
 import type { ApiResponse } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 
@@ -26,6 +26,21 @@ type Props = {
   trigger: React.ReactNode;
   createPath?: string;
   invalidateQueryKey?: readonly unknown[];
+  /** "edit" resubmits a rejected claim via PUT. Requires editPath and
+   *  initialClaim to prefill. Mirrors the CreateChangeDialog edit-mode
+   *  contract. */
+  mode?: "create" | "edit";
+  editPath?: string;
+  initialClaim?: {
+    title?: string;
+    type?: string;
+    impact?: "time" | "cost" | "time_cost";
+    time?: number | string;
+    cost?: number | string;
+    description?: string;
+    files?: Array<{ name: string; url: string; type: string; size: string }>;
+  };
+  detailInvalidateQueryKey?: readonly unknown[];
 };
 
 type ClaimFormValues = {
@@ -114,74 +129,133 @@ const RequestClaimDialog: React.FC<Props> = ({
   trigger,
   createPath,
   invalidateQueryKey,
+  mode = "create",
+  editPath,
+  initialClaim,
+  detailInvalidateQueryKey,
 }) => {
+  const isEdit = mode === "edit" && !!editPath;
   const [open, setOpen] = React.useState(false);
   const qc = useQueryClient();
   const toast = useToastHandler();
-  const { control, setValue, watch } = useForge<ClaimFormValues>({
+
+  const stripCurrency = (raw: unknown): string => {
+    if (raw == null) return "";
+    return String(raw).replace(/[$,\s]/g, "");
+  };
+
+  const { control, setValue, watch, reset } = useForge<ClaimFormValues>({
     defaultValues: {
-      claimTitle: "",
-      claimType: "",
-      impactType: "time",
-      timeImpact: "",
-      costImpact: "",
-      description: "",
+      claimTitle: initialClaim?.title ?? "",
+      claimType: initialClaim?.type ?? "",
+      impactType: initialClaim?.impact ?? "time",
+      timeImpact:
+        initialClaim?.time != null ? String(initialClaim.time) : "",
+      costImpact:
+        initialClaim?.cost != null ? String(initialClaim.cost) : "",
+      description: initialClaim?.description ?? "",
       files: null,
     },
   });
 
+  React.useEffect(() => {
+    if (!open) return;
+    reset({
+      claimTitle: initialClaim?.title ?? "",
+      claimType: initialClaim?.type ?? "",
+      impactType: initialClaim?.impact ?? "time",
+      timeImpact:
+        initialClaim?.time != null ? String(initialClaim.time) : "",
+      costImpact:
+        initialClaim?.cost != null ? String(initialClaim.cost) : "",
+      description: initialClaim?.description ?? "",
+      files: null,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   const impactType = watch("impactType");
-  console.log({ createPath });
+
+  const buildPayload = async (data: ClaimFormValues) => {
+    const uploaded = await uploadClaimFiles(data.files);
+    const uploadedFiles = uploaded.map((f) => ({
+      name: f.name,
+      url: f.url,
+      type: f.type,
+      size: f.size,
+    }));
+    const files =
+      uploadedFiles.length > 0
+        ? uploadedFiles
+        : isEdit && initialClaim?.files?.length
+          ? initialClaim.files
+          : undefined;
+    return {
+      title: data.claimTitle,
+      type: data.claimType,
+      impact: data.impactType,
+      time:
+        data.impactType === "time" || data.impactType === "time_cost"
+          ? Number(stripCurrency(data.timeImpact))
+          : undefined,
+      cost:
+        data.impactType === "cost" || data.impactType === "time_cost"
+          ? Number(stripCurrency(data.costImpact))
+          : undefined,
+      description: data.description,
+      files,
+    };
+  };
+
+  const invalidateAll = async () => {
+    if (invalidateQueryKey) {
+      await qc.invalidateQueries({ queryKey: invalidateQueryKey });
+    }
+    if (detailInvalidateQueryKey) {
+      await qc.invalidateQueries({ queryKey: detailInvalidateQueryKey });
+    }
+  };
 
   const createMutation = useMutation({
     mutationKey: ["create-claim", createPath],
     mutationFn: async (data: ClaimFormValues) => {
       if (!createPath) throw new Error("Create claim endpoint unavailable");
-      const uploaded = await uploadClaimFiles(data.files);
-      const payload = {
-        title: data.claimTitle,
-        type: data.claimType,
-        impact: data.impactType,
-        time:
-          data.impactType === "time" || data.impactType === "time_cost"
-            ? Number(data.timeImpact)
-            : undefined,
-        cost:
-          data.impactType === "cost" || data.impactType === "time_cost"
-            ? Number(data.costImpact)
-            : undefined,
-        description: data.description,
-        files:
-          uploaded.length > 0
-            ? uploaded.map((f) => ({
-                name: f.name,
-                url: f.url,
-                type: f.type,
-                size: f.size,
-              }))
-            : undefined,
-      };
-      const res = await postRequest({
-        url: createPath,
-        payload,
-      });
+      const payload = await buildPayload(data);
+      const res = await postRequest({ url: createPath, payload });
       return res.data;
     },
     onSuccess: async () => {
       toast.success("Claim", "Claim submitted successfully");
-      if (invalidateQueryKey) {
-        await qc.invalidateQueries({ queryKey: invalidateQueryKey });
-      }
+      await invalidateAll();
       setOpen(false);
     },
     onError: (error) => {
-      console.log({ error });
       toast.error("Claim", error as any);
     },
   });
 
+  const editMutation = useMutation({
+    mutationKey: ["edit-claim", editPath],
+    mutationFn: async (data: ClaimFormValues) => {
+      if (!editPath) throw new Error("Edit claim endpoint unavailable");
+      const payload = await buildPayload(data);
+      const res = await putRequest({ url: editPath, payload });
+      return res.data;
+    },
+    onSuccess: async () => {
+      toast.success("Claim", "Claim resubmitted successfully");
+      await invalidateAll();
+      setOpen(false);
+    },
+    onError: (error) => {
+      toast.error("Claim", error as any);
+    },
+  });
+
+  const activeMutation = isEdit ? editMutation : createMutation;
+
   const handleClaimSubmit = (data: ClaimFormValues) => {
-    createMutation.mutate(data);
+    activeMutation.mutate(data);
   };
 
   return (
@@ -190,7 +264,7 @@ const RequestClaimDialog: React.FC<Props> = ({
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-8 pt-8">
           <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
-            Create Claim
+            {isEdit ? "Resubmit Claim" : "Create Claim"}
           </DialogTitle>
         </div>
         <div className="px-8 pb-8 pt-6">
@@ -362,10 +436,19 @@ const RequestClaimDialog: React.FC<Props> = ({
               </DialogClose>
               <Button
                 type="submit"
-                disabled={createMutation.isPending || !createPath}
+                disabled={
+                  activeMutation.isPending ||
+                  (isEdit ? !editPath : !createPath)
+                }
                 className="h-12 flex-1 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
               >
-                {createMutation.isPending ? "Submitting..." : "Submit Claim"}
+                {activeMutation.isPending
+                  ? isEdit
+                    ? "Resubmitting..."
+                    : "Submitting..."
+                  : isEdit
+                    ? "Resubmit Claim"
+                    : "Submit Claim"}
               </Button>
             </div>
           </Forge>

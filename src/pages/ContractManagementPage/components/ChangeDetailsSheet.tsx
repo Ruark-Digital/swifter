@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import SendApprovalDialog from "./SendApprovalDialog";
 import CreateChangeDialog from "./CreateChangeDialog";
+import RequestClaimDialog from "./RequestClaimDialog";
 import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
@@ -484,6 +485,42 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                           variant="outline"
                           size="sm"
                           data-testid="edit-change-trigger"
+                        >
+                          <Edit2 className="mr-2 h-4 w-4" /> Edit
+                        </Button>
+                      }
+                    />
+                  )}
+                {isClaim &&
+                  isContractVendorLike &&
+                  status?.toLowerCase?.() === "rejected" && (
+                    <RequestClaimDialog
+                      mode="edit"
+                      editPath={
+                        usesListBasePath
+                          ? `${roleBasePath}/${changeId}`
+                          : `${roleBasePath}/${contractId}/claims/${changeId}`
+                      }
+                      detailInvalidateQueryKey={changeDetailQueryKey}
+                      initialClaim={{
+                        title,
+                        type: changeType,
+                        impact:
+                          impact === "time" ||
+                          impact === "cost" ||
+                          impact === "time_cost"
+                            ? impact
+                            : undefined,
+                        time,
+                        cost,
+                        description,
+                        files: files as any,
+                      }}
+                      trigger={
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          data-testid="edit-claim-trigger"
                         >
                           <Edit2 className="mr-2 h-4 w-4" /> Edit
                         </Button>
