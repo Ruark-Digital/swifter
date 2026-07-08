@@ -210,20 +210,20 @@ const CreateChangeDialog: React.FC<Props> = ({
     description: string;
     files: File[] | null;
   }) => {
-    void data.amount;
-
     const payload: ContractChangeManagerDTO = isManager
       ? toManagerCreateChangePayload({
           changeName: data.changeName,
           changeType: data.changeType,
           urgency: data.urgency,
           description: data.description,
+          amount: data.amount,
         })
       : (toVendorCreateChangePayload({
           changeName: data.changeName,
           changeType: data.changeType,
           urgency: data.urgency,
           description: data.description,
+          amount: data.amount,
         }) as unknown as ContractChangeManagerDTO);
 
     if (data.files?.length) {

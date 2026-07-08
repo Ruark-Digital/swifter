@@ -324,7 +324,7 @@ const Reports: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
                 className="h-10 rounded-xl bg-[#2A4467] text-white"
                 disabled={!!actionsDisabled}
               >
-                Create Report
+                Submit Report
               </Button>
             </DialogTrigger>
             <CreateVendorReportDialog
