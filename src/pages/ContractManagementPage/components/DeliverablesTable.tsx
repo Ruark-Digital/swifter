@@ -28,7 +28,13 @@ import {
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import { useUser } from "@/store/authSlice";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
+import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
+import type {
+  ContractChangeCommentDTO,
+  ContractCommentDTO,
+} from "../api/contractManagerApi";
 import {
   formatFileSize,
   getFileIcon,
@@ -593,6 +599,90 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
     },
   });
 
+  // Comments — the docs.json spec exposes GET/POST
+  // .../deliverables/{id}/comments across all roles; the basePath prop already
+  // encodes the role prefix so we just append.
+  const user = useUser();
+  const commentsQueryKey = useUserQueryKey([
+    "deliverable-comments",
+    contractId,
+    deliverableId,
+    basePath,
+  ]);
+  const { data: commentsRes, isLoading: isCommentsLoading } = useQuery<{
+    message?: string;
+    data?: { data?: ContractCommentDTO[]; page?: number; limit?: number };
+  }>({
+    queryKey: commentsQueryKey,
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${basePath}/${deliverableId}/comments`,
+      });
+      return (res as { data?: unknown })?.data as {
+        message?: string;
+        data?: {
+          data?: ContractCommentDTO[];
+          page?: number;
+          limit?: number;
+        };
+      };
+    },
+    enabled: open && !!contractId && !!deliverableId,
+    staleTime: 60000,
+  });
+
+  const addCommentMutation = useMutation<
+    { message?: string; data?: ContractCommentDTO },
+    unknown,
+    ContractChangeCommentDTO
+  >({
+    mutationKey: [
+      "deliverable-comments-add",
+      contractId,
+      deliverableId,
+      basePath,
+    ],
+    mutationFn: async (payload) => {
+      const res = await postRequest({
+        url: `${basePath}/${deliverableId}/comments`,
+        payload,
+      });
+      return (res as { data?: unknown })?.data as {
+        message?: string;
+        data?: ContractCommentDTO;
+      };
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: commentsQueryKey });
+    },
+    onError: (error: any) => {
+      toast.error(
+        "Deliverable Comment",
+        error?.response?.data?.message || "Failed to add comment",
+      );
+    },
+  });
+
+  const comments = (commentsRes?.data?.data ?? []) as Array<
+    ContractCommentDTO & { createdBy?: { name?: string; email?: string } }
+  >;
+
+  const getCommentAuthor = (c: ContractCommentDTO) =>
+    c.user?.name ??
+    (c as { createdBy?: { name?: string } }).createdBy?.name ??
+    c.replyTo?.name ??
+    "Unknown";
+
+  const handleSendComment = async (content: string) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    try {
+      await addCommentMutation.mutateAsync({ content: trimmed });
+    } catch {
+      // handled in onError
+    }
+  };
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
@@ -737,6 +827,58 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
               fileName={selectedDoc.name}
             />
           )}
+
+          <div className="space-y-4">
+            <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+              Comments
+            </div>
+            {isCommentsLoading ? (
+              <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                Loading comments...
+              </div>
+            ) : comments.length ? (
+              <div className="space-y-3">
+                {comments.map((comment, index) => (
+                  <div
+                    key={comment._id ?? `${index}`}
+                    className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+                        {getCommentAuthor(comment)}
+                      </div>
+                      <div className="text-xs text-[#6B7280] dark:text-slate-400">
+                        {comment.createdAt
+                          ? safeFormatDate(comment.createdAt, "dd MMM yyyy, HH:mm")
+                          : ""}
+                      </div>
+                    </div>
+                    <div className="mt-2 text-sm text-[#374151] dark:text-slate-200 whitespace-pre-wrap">
+                      {comment.content ?? ""}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                No comments yet.
+              </div>
+            )}
+
+            <MessageComposer
+              onSend={(content) => {
+                void handleSendComment(content);
+              }}
+              isLoading={addCommentMutation.isPending}
+              currentUser={
+                user ? { name: user.name } : { name: "You" }
+              }
+              sendType="reply"
+              isNewChat={false}
+              onSendTypeChange={() => {}}
+              sendLabel="Send"
+            />
+          </div>
 
           <div className="flex gap-3 pt-6 justify-end">
             {(isApprover || isContractManager) && canShowApproveButtons ? (
