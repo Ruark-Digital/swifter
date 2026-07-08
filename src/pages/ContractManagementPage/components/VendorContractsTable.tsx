@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import VendorEmptyState from "./VendorEmptyState";
 import { Link } from "react-router-dom";
+import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 
 export type VendorContractRow = {
   id: string;
@@ -154,6 +155,8 @@ const columns: ColumnDef<VendorContractRow>[] = [
 const buildActionsColumn = (
   openMenuRowId: string | null,
   setOpenMenuRowId: (id: string | null) => void,
+  enableTakeOver: boolean,
+  onOpenTakeOver: (id: string) => void,
 ): ColumnDef<VendorContractRow> => ({
   id: "actions",
   header: "Actions",
@@ -180,6 +183,14 @@ const buildActionsColumn = (
             View Details
           </Link>
         </DropdownMenuItem>
+        {enableTakeOver && row.original.isOwner === false && (
+          <DropdownMenuItem
+            data-testid="vendor-request-takeover"
+            onClick={() => onOpenTakeOver(row.original.id)}
+          >
+            Request take-over
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   ),
@@ -194,6 +205,9 @@ type VendorContractsTableProps = {
   setPagination?: React.Dispatch<React.SetStateAction<PaginationState>>;
   statusFilter?: string;
   onStatusFilterChange?: (status: string) => void;
+  enableTakeOver?: boolean;
+  onRequestTakeOver?: (contractId: string) => void;
+  isRequestingTakeOver?: boolean;
 };
 
 const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
@@ -205,9 +219,13 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
   setPagination: setPaginationProp,
   statusFilter,
   onStatusFilterChange,
+  enableTakeOver,
+  onRequestTakeOver,
+  isRequestingTakeOver,
 }) => {
   const [search, setSearch] = React.useState("");
   const [openMenuRowId, setOpenMenuRowId] = React.useState<string | null>(null);
+  const [takeOverId, setTakeOverId] = React.useState<string | null>(null);
   const [localPagination, setLocalPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -215,14 +233,29 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
   const pagination = paginationProp ?? localPagination;
   const setPagination = setPaginationProp ?? setLocalPagination;
 
+  // Close the take-over dialog once the parent's mutation settles (loading
+  // flips back to false) instead of holding dialog-open state in the parent.
+  const wasRequestingTakeOverRef = React.useRef(false);
+  React.useEffect(() => {
+    if (wasRequestingTakeOverRef.current && !isRequestingTakeOver) {
+      setTakeOverId(null);
+    }
+    wasRequestingTakeOverRef.current = Boolean(isRequestingTakeOver);
+  }, [isRequestingTakeOver]);
+
   const tableColumns = React.useMemo(() => {
     if (isReadOnly) return columns.filter((column) => column.id !== "actions");
     return columns.map((column) =>
       column.id === "actions"
-        ? buildActionsColumn(openMenuRowId, setOpenMenuRowId)
+        ? buildActionsColumn(
+            openMenuRowId,
+            setOpenMenuRowId,
+            Boolean(enableTakeOver),
+            setTakeOverId,
+          )
         : column,
     );
-  }, [isReadOnly, openMenuRowId]);
+  }, [isReadOnly, openMenuRowId, enableTakeOver]);
 
   const filteredRows = React.useMemo(() => {
     let result = rows;
@@ -347,6 +380,20 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
           pagination,
           setPagination,
         }}
+      />
+      <ConfirmAlert
+        open={Boolean(takeOverId)}
+        onClose={(o) => !o && setTakeOverId(null)}
+        type="info"
+        title="Request take-over"
+        text="Request to take over this contract? A Contract Manager or Procurement Lead must approve before it becomes yours."
+        primaryButtonText="Request"
+        secondaryButtonText="Cancel"
+        primaryButtonLoading={isRequestingTakeOver}
+        onPrimaryAction={() => {
+          if (takeOverId) onRequestTakeOver?.(takeOverId);
+        }}
+        onSecondaryAction={() => setTakeOverId(null)}
       />
     </div>
   );
