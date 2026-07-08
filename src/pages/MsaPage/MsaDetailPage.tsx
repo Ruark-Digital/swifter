@@ -45,6 +45,7 @@ import Deliverables from "./layouts/Deliverables";
 import Reports from "./layouts/Reports";
 import ActionLogTabContent from "./layouts/ActionLogTabContent";
 import RateSheetsTabContent from "@/pages/ContractManagementPage/layouts/RateSheetsTabContent";
+import ClauseLibraryTabContent from "@/pages/ContractManagementPage/layouts/ClauseLibraryTabContent";
 import NcrLog from "./layouts/NcrLog";
 import { Share2 } from "lucide-react";
 import { Status, StatusBadge } from "./components/StatusBadge";
@@ -74,7 +75,8 @@ type TabKey =
   | "ncr-log"
   | "approvers"
   | "reports"
-  | "action-log";
+  | "action-log"
+  | "clause-library";
 
 const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "overview", label: "Overview" },
@@ -94,6 +96,7 @@ const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "ncr-log", label: "NCR Log" },
   { key: "approvers", label: "Approvers" },
   { key: "reports", label: "Vendor’s Reports" },
+  { key: "clause-library", label: "Clause Library" },
   { key: "action-log", label: "Action Log" },
 ];
 
@@ -152,6 +155,7 @@ const ROLE_TAB_WHITELIST: Record<
     "payment-summary",
     "action-log",
     "rate-sheets",
+    "clause-library",
   ],
   "view only": [
     "overview",
@@ -954,6 +958,13 @@ const MsaDetailPage: React.FC = () => {
               contractType="MsaContract"
               isActive={activeTab === "rate-sheets"}
               actionsDisabled={publishGatedActionsDisabled}
+            />
+
+            <ClauseLibraryTabContent
+              contractType="MsaContract"
+              isActive={activeTab === "clause-library"}
+              currency={msa?.currency}
+              vendorName={(msa?.vendor as any)?.name}
             />
 
             <Kpi contractId={id ?? ""} isActive={activeTab === "kpi"} />
