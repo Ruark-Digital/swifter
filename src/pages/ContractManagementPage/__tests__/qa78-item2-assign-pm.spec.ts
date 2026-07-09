@@ -112,10 +112,19 @@ test.describe("QA #78 Item 2 Inc 1 - assign PM by email", () => {
 
   test("vendor does not see the Assign PM button", async ({ page }) => {
     await seedAuth(page, "vendor");
+    await page.route(`**/contract/vendor/contracts/${CONTRACT_ID}`, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(contractDetailPayload()),
+      }),
+    );
     await page.goto(`/dashboard/contract-management/${CONTRACT_ID}`, {
       waitUntil: "commit",
     });
-    await expect(page.getByText(/Assign PM Contract/i)).toBeVisible({
+    await expect(
+      page.getByRole("heading", { name: /Assign PM Contract/i }),
+    ).toBeVisible({
       timeout: 30000,
     });
     await expect(
