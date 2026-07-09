@@ -44,6 +44,7 @@ import OverviewTab from "./layouts/OverviewTab";
 import RfiTabContent from "./layouts/RfiTabContent";
 import VendorReportsTabContent from "./layouts/VendorReportsTabContent";
 import ContractLifecycleDialog from "./components/ContractLifecycleDialog";
+import AssignProjectManagerDialog from "./components/AssignProjectManagerDialog";
 import {
   availableLifecycleActions,
   type LifecycleAction,
@@ -291,6 +292,14 @@ const ContractDetailPage: React.FC = () => {
   const takeOverRequesterName =
     (contractData?.projectManager?.user as { user?: { name?: string } })
       ?.user?.name ?? contractData?.projectManager?.user?.name;
+
+  const isLiveContract =
+    contractData?.status === "active" || contractData?.status === "publish";
+  const canAssignPm =
+    ((isManager && isContractOwner) || isCompanyAdmin) &&
+    isLiveContract &&
+    !takeOverPending;
+  const hasAssignedPm = Boolean(contractData?.projectManager?.user?._id);
 
   const approvalMutation = useMutation({
     mutationFn: async (action: "approved" | "rejected") => {
@@ -599,6 +608,24 @@ const ContractDetailPage: React.FC = () => {
               Reject
             </Button>
           </div>
+        </div>
+      )}
+
+      {canAssignPm && (
+        <div className="flex items-center justify-end">
+          <AssignProjectManagerDialog
+            contractId={id ?? ""}
+            hasExistingPm={hasAssignedPm}
+            invalidateQueryKey={[...queryKey]}
+            trigger={
+              <Button
+                variant="default"
+                className="bg-[#2A4467] hover:bg-[#2A4467]/90"
+              >
+                {hasAssignedPm ? "Change PM" : "Assign PM"}
+              </Button>
+            }
+          />
         </div>
       )}
 
