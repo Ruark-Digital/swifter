@@ -390,7 +390,7 @@ const SubmittedDocumentPage: React.FC = () => {
   >({
     mutationFn: async () => {
       const response = await postRequest({
-        url: `/evaluator/${id}/submit-evaluation/vendor/${vendorId}`,
+        url: `/evaluator/${id}/submit-evaluation/evaluation-group/${groupId}/vendor/${vendorId}`,
         payload: {},
       });
       return response;
@@ -602,7 +602,12 @@ const SubmittedDocumentPage: React.FC = () => {
   };
 
   const flattenedPricingItems = flattenPricingItems(pricingBreakdown);
-  const isEvaluationSubmitted = criteriaData?.data?.data?.submissionStatus === "Submitted";
+  // Include mutation.isSuccess so the whole card (Submit button, Edit Score,
+  // radios) locks instantly on submit — closes the refetch race between
+  // POST and the criteria GET refetch that flips submissionStatus.
+  const isEvaluationSubmitted =
+    criteriaData?.data?.data?.submissionStatus === "Submitted" ||
+    submitEvaluationMutation.isSuccess;
   const evaluationStatus = (evaluationInfo?.status || criteriaEvaluationInfo?.status || "").toString();
   const isEvaluationCompleted = evaluationStatus.toLowerCase() === "completed";
 
@@ -1139,40 +1144,33 @@ const SubmittedDocumentPage: React.FC = () => {
               )}
             </Accordion>
 
-            {criteriaData?.data.data.submissionStatus === "In Progress" && (
+            {!isEvaluationSubmitted && (
               <div className="mt-8 flex justify-end gap-2">
                 <Button variant="outline" className="px-4" onClick={handleBack}>
                   Back to Evaluation
                 </Button>
-                {/* <Button variant="outline" className="px-4" onClick={handleBack}>
-                Reset All
-              </Button> */}
-                {!submitEvaluationMutation.isSuccess && (
-                  <>
-                    <Button
-                      className="text-white px-4"
-                      onClick={() => setShowSubmitDialog(true)}
-                      disabled={submitEvaluationMutation.isPending}
-                    >
-                      Submit Evaluation
-                    </Button>
+                <Button
+                  className="text-white px-4"
+                  onClick={() => setShowSubmitDialog(true)}
+                  disabled={submitEvaluationMutation.isPending}
+                >
+                  Submit Evaluation
+                </Button>
 
-                    <ConfirmAlert
-                      open={showSubmitDialog}
-                      onClose={(open) => setShowSubmitDialog(open)}
-                      title="Submit Evaluation"
-                      text="Are you sure you want to submit this evaluation? This action cannot be undone."
-                      type="info"
-                      primaryButtonText="Submit"
-                      secondaryButtonText="Cancel"
-                      primaryButtonLoading={submitEvaluationMutation.isPending}
-                      onPrimaryAction={() => {
-                        submitEvaluationMutation.mutate();
-                      }}
-                      onSecondaryAction={() => setShowSubmitDialog(false)}
-                    />
-                  </>
-                )}
+                <ConfirmAlert
+                  open={showSubmitDialog}
+                  onClose={(open) => setShowSubmitDialog(open)}
+                  title="Submit Evaluation"
+                  text="Are you sure you want to submit this evaluation? This action cannot be undone."
+                  type="info"
+                  primaryButtonText="Submit"
+                  secondaryButtonText="Cancel"
+                  primaryButtonLoading={submitEvaluationMutation.isPending}
+                  onPrimaryAction={() => {
+                    submitEvaluationMutation.mutate();
+                  }}
+                  onSecondaryAction={() => setShowSubmitDialog(false)}
+                />
               </div>
             )}
           </div>
