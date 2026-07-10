@@ -8,10 +8,8 @@ type HeaderProps = {
   setSearchQuery: (value: string) => void;
   dateFilter: string;
   statusFilter: string;
-  categoryFilter: string;
   onDateFilterChange: (value: string) => void;
   onStatusFilterChange: (value: string) => void;
-  onCategoryFilterChange: (value: string) => void;
 };
 
 const ProjectsHeader: React.FC<HeaderProps> = ({
@@ -20,10 +18,8 @@ const ProjectsHeader: React.FC<HeaderProps> = ({
   setSearchQuery,
   dateFilter,
   statusFilter,
-  categoryFilter,
   onDateFilterChange,
   onStatusFilterChange,
-  onCategoryFilterChange,
 }) => {
   return (
     <div className="flex items-center w-full justify-between border-b border-[#E9E9EB] dark:border-slate-600 p-3 pt-0">
@@ -70,28 +66,17 @@ const ProjectsHeader: React.FC<HeaderProps> = ({
                 { label: "Cancelled", value: "cancelled" },
               ],
             },
-            {
-              title: "Category",
-              showIcon: true,
-              options: [
-                { label: "Software", value: "software" },
-                { label: "Construction", value: "construction" },
-              ],
-            },
           ]}
           onFilterChange={(filterTitle, value) => {
             if (filterTitle === "Date") {
               onDateFilterChange(value);
             } else if (filterTitle === "Status") {
               onStatusFilterChange(value);
-            } else if (filterTitle === "Category") {
-              onCategoryFilterChange(value);
             }
           }}
           selectedValues={{
             Date: dateFilter,
             Status: statusFilter,
-            Category: categoryFilter,
           }}
         />
       </div>

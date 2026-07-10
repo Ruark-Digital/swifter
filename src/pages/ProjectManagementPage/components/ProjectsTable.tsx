@@ -36,7 +36,6 @@ const ProjectsTable: React.FC<Props> = ({
   const [searchQuery, setSearchQuery] = React.useState("");
   const [dateFilter, setDateFilter] = React.useState("all");
   const [statusFilter, setStatusFilter] = React.useState("");
-  const [categoryFilter, setCategoryFilter] = React.useState("");
 
   const openDetails = React.useCallback(
     (projectId: string) => {
@@ -145,10 +144,8 @@ const ProjectsTable: React.FC<Props> = ({
             setSearchQuery={setSearchQuery}
             dateFilter={dateFilter}
             statusFilter={statusFilter}
-            categoryFilter={categoryFilter}
             onDateFilterChange={setDateFilter}
             onStatusFilterChange={setStatusFilter}
-            onCategoryFilterChange={setCategoryFilter}
           />
         )}
         classNames={{

@@ -662,6 +662,32 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
     toastErrorRef.current("Payment Savings", savingsError as any);
   }, [savingsError]);
 
+  // QA #157: pull Billed Till Date + Current Contract Value (Original +
+  // change orders) from the manager/approver dashboard. Vendor/PM/view-only
+  // have no financial-statement endpoint per Phase 2 docs.
+  const canFetchFinancialStatement = isManager || isApprover;
+  const financialStatementRoleSegment = isApprover ? "approver" : "manager";
+  const { data: financialStatement } = useQuery({
+    queryKey: [
+      `contract-${financialStatementRoleSegment}-dashboard`,
+      "financial-statement",
+      contractId,
+    ],
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `/contract/${financialStatementRoleSegment}/contracts/${contractId}/dashboard/financial-statement`,
+        config: { params: { type: "Contract" } },
+      });
+      return res.data?.data as
+        | { billedTillDate?: number; currentContractValue?: number }
+        | undefined;
+    },
+    enabled:
+      Boolean(contractId) && !!isActive && canFetchFinancialStatement,
+    staleTime: 60000,
+    retry: false,
+  });
+
   const currency = contract?.currency || "USD";
   const formatMoney = React.useCallback(
     (value?: number) => {
@@ -874,7 +900,27 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
               {paymentTerm}
             </div>
           </div>
-          <div />
+          {/* QA #157: Billed Till Date + Current Balance for manager/approver. */}
+          {canFetchFinancialStatement && (
+            <>
+              <div className="flex flex-col justify-center gap-4">
+                <div className="text-sm leading-7 text-[#6B6B6B] dark:text-slate-400">
+                  Billed Till Date
+                </div>
+                <div className="text-base font-semibold leading-7 text-[#0F0F0F] dark:text-slate-100">
+                  {formatMoney(financialStatement?.billedTillDate)}
+                </div>
+              </div>
+              <div className="flex flex-col justify-center gap-4">
+                <div className="text-sm leading-7 text-[#6B6B6B] dark:text-slate-400">
+                  Current Balance
+                </div>
+                <div className="text-base font-semibold leading-7 text-[#0F0F0F] dark:text-slate-100">
+                  {formatMoney(financialStatement?.currentContractValue)}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
