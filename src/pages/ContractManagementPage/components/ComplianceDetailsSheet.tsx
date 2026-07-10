@@ -182,6 +182,13 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
   const detail = (fetchedDetail || data) as any;
 
   const files = React.useMemo(() => {
+    // BE moved per-security-item files under a nested `submission` object
+    // (see contract compliance response 260710). Prefer that; fall back to
+    // the legacy top-level `files` for old rows / policy shape.
+    const nested = (
+      detail as { submission?: { files?: any[] } } | undefined
+    )?.submission?.files;
+    if (nested && nested.length > 0) return nested;
     const itemFiles = (detail as { files?: any[] } | undefined)?.files;
     if (itemFiles && itemFiles.length > 0) return itemFiles;
 
@@ -323,13 +330,13 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
                 })()}
               </div>
 
-              {detail?.description && (
+              {(detail?.submission?.description || detail?.description) && (
                 <div className="space-y-1">
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                     Description
                   </p>
                   <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed font-medium">
-                    {detail.description}
+                    {detail.submission?.description || detail.description}
                   </p>
                 </div>
               )}
