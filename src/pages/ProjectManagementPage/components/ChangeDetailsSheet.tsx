@@ -416,14 +416,23 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                       <LabelRow
                         label="Created by"
                         value={
-                          <a
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline font-normal"
-                            href={`mailto:${projectRes?.data?.data?.creator?.email}`}
-                          >
-                            {projectRes?.data?.data?.creator?.email ?? ""}
-                          </a>
+                          <div className="flex flex-col gap-1">
+                            <span>
+                              {projectRes?.data?.data?.creator?.name ??
+                                projectRes?.data?.data?.creator?.email ??
+                                "-"}
+                            </span>
+                            {projectRes?.data?.data?.creator?.email ? (
+                              <a
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline font-normal"
+                                href={`mailto:${projectRes?.data?.data?.creator?.email}`}
+                              >
+                                {projectRes?.data?.data?.creator?.email}
+                              </a>
+                            ) : null}
+                          </div>
                         }
                       />
                     </>
