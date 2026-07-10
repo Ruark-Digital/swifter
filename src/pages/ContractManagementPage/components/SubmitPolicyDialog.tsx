@@ -33,7 +33,17 @@ interface SubmitPolicyDialogProps {
 
 const schema = yup.object().shape({
   description: yup.string().required("Description is required"),
-  files: yup.mixed().required("File is required"),
+  // At-least-one file. `required()` alone doesn't catch []/null returned
+  // by TextFileUploader after all files are removed; the .test explicitly
+  // rejects empty arrays.
+  files: yup
+    .mixed<File[]>()
+    .test(
+      "at-least-one",
+      "Please upload at least one file",
+      (value) => Array.isArray(value) && value.length > 0,
+    )
+    .required("Please upload at least one file"),
 });
 
 function FileListItem({ file }: { file: File }) {
