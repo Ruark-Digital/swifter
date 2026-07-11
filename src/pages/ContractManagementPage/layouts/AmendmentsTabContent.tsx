@@ -846,6 +846,7 @@ type Props = {
 
 const AmendmentsTabContent: React.FC<Props> = ({
   contractId,
+  currency,
   isActive,
   actionsDisabled,
 }) => {
