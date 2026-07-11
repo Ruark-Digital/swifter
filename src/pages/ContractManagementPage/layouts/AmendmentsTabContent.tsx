@@ -846,6 +846,7 @@ type Props = {
 
 const AmendmentsTabContent: React.FC<Props> = ({
   contractId,
+  currency,
   isActive,
   actionsDisabled,
 }) => {
@@ -984,6 +985,7 @@ const AmendmentsTabContent: React.FC<Props> = ({
         rows={amendmentsRows}
         isLoading={isAmendmentsLoading}
         contractId={contractId}
+        currency={currency}
         basePath={basePath}
         listInvalidateQueryKey={amendmentsQueryKey}
         statsInvalidateQueryKey={statsQueryKey}

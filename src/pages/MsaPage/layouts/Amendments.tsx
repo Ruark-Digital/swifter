@@ -20,6 +20,7 @@ import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
 };
@@ -40,7 +41,12 @@ const normalizeStatus = (value?: string): AmendmentRow["status"] => {
   return "Pending";
 };
 
-const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
+const Amendments: React.FC<Props> = ({
+  contractId,
+  currency,
+  isActive,
+  actionsDisabled,
+}) => {
   const { isApprover, isVendor, isProjectManager, isManager, isViewOnly, isAdmin } =
     useUserRole();
   const toastHandler = useToastHandler();
@@ -224,6 +230,7 @@ const Amendments: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
         rows={amendmentsRows}
         isLoading={isAmendmentsLoading}
         contractId={contractId}
+        currency={currency}
         basePath={basePath}
         listInvalidateQueryKey={amendmentsQueryKey}
         statsInvalidateQueryKey={statsQueryKey}

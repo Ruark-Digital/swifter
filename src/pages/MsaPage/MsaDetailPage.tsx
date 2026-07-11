@@ -880,6 +880,7 @@ const MsaDetailPage: React.FC = () => {
 
             <Amendments
               contractId={id ?? ""}
+              currency={msa?.currency}
               isActive={activeTab === "amendments"}
               actionsDisabled={tabActionsDisabled}
             />
