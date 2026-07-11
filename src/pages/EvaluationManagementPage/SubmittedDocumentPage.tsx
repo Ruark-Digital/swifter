@@ -30,6 +30,10 @@ import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import * as yup from "yup";
 import { useUser } from "@/store/authSlice";
+import {
+  canSubmitEvaluationCriteria,
+  getIncompleteEvaluationCriteriaCount,
+} from "./utils/evaluationSubmission";
 
 // API Types based on documentation
 type VendorDocument = {
@@ -610,6 +614,39 @@ const SubmittedDocumentPage: React.FC = () => {
     submitEvaluationMutation.isSuccess;
   const evaluationStatus = (evaluationInfo?.status || criteriaEvaluationInfo?.status || "").toString();
   const isEvaluationCompleted = evaluationStatus.toLowerCase() === "completed";
+  const incompleteCriteriaCount = useMemo(
+    () => getIncompleteEvaluationCriteriaCount(criteria),
+    [criteria],
+  );
+  const isEvaluationReadyForSubmission = useMemo(
+    () => canSubmitEvaluationCriteria(criteria),
+    [criteria],
+  );
+  const incompleteEvaluationMessage =
+    incompleteCriteriaCount === 1
+      ? "Complete the remaining score and comment before submitting."
+      : incompleteCriteriaCount > 1
+        ? `Complete the remaining ${incompleteCriteriaCount} scores and comments before submitting.`
+        : "Score and comment every criterion before submitting.";
+
+  const handleOpenSubmitDialog = () => {
+    if (!isEvaluationReadyForSubmission) {
+      toast.error("Incomplete evaluation", incompleteEvaluationMessage);
+      return;
+    }
+
+    setShowSubmitDialog(true);
+  };
+
+  const handleConfirmSubmitEvaluation = () => {
+    if (!isEvaluationReadyForSubmission) {
+      setShowSubmitDialog(false);
+      toast.error("Incomplete evaluation", incompleteEvaluationMessage);
+      return;
+    }
+
+    submitEvaluationMutation.mutate();
+  };
 
   
 
@@ -1149,13 +1186,27 @@ const SubmittedDocumentPage: React.FC = () => {
                 <Button variant="outline" className="px-4" onClick={handleBack}>
                   Back to Evaluation
                 </Button>
-                <Button
-                  className="text-white px-4"
-                  onClick={() => setShowSubmitDialog(true)}
-                  disabled={submitEvaluationMutation.isPending}
-                >
-                  Submit Evaluation
-                </Button>
+                <div className="flex flex-col items-end gap-2">
+                  <Button
+                    className="text-white px-4"
+                    onClick={handleOpenSubmitDialog}
+                    disabled={
+                      submitEvaluationMutation.isPending ||
+                      !isEvaluationReadyForSubmission
+                    }
+                  >
+                    Submit Evaluation
+                  </Button>
+                  {!isEvaluationReadyForSubmission ? (
+                    <p className="text-xs text-red-600 dark:text-red-400">
+                      {incompleteCriteriaCount === 1
+                        ? "Complete 1 remaining score and comment before submitting."
+                        : incompleteCriteriaCount > 1
+                          ? `Complete ${incompleteCriteriaCount} remaining scores and comments before submitting.`
+                          : "Score and comment every criterion before submitting."}
+                    </p>
+                  ) : null}
+                </div>
 
                 <ConfirmAlert
                   open={showSubmitDialog}
@@ -1166,9 +1217,7 @@ const SubmittedDocumentPage: React.FC = () => {
                   primaryButtonText="Submit"
                   secondaryButtonText="Cancel"
                   primaryButtonLoading={submitEvaluationMutation.isPending}
-                  onPrimaryAction={() => {
-                    submitEvaluationMutation.mutate();
-                  }}
+                  onPrimaryAction={handleConfirmSubmitEvaluation}
                   onSecondaryAction={() => setShowSubmitDialog(false)}
                 />
               </div>

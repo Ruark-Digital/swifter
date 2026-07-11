@@ -18,6 +18,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft,
   FileText,
@@ -722,106 +723,179 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
             </div>
           </SheetHeader>
 
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
-                {detail?.name ?? "Deliverable Details"}
-              </div>
-              <Button
-                variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
+          <Tabs defaultValue="overview" className="space-y-6">
+            <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
+              <TabsTrigger
+                value="overview"
+                className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
               >
-                <Share2 className="mr-2 h-4 w-4" /> Export
-              </Button>
-            </div>
+                Overview
+              </TabsTrigger>
+              <TabsTrigger
+                value="comments"
+                className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+              >
+                Comments
+              </TabsTrigger>
+            </TabsList>
 
-            {isLoading ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="space-y-2">
-                    <div className="h-3 w-24 rounded bg-slate-200" />
-                    <div className="h-4 w-40 rounded bg-slate-200" />
+            <TabsContent value="overview" className="space-y-8">
+              <div className="space-y-8">
+                <div className="flex items-center justify-between">
+                  <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                    {detail?.name ?? "Deliverable Details"}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid gap-6 sm:grid-cols-2 mt-5">
-                <LabelRow
-                  label="Deliverable Title"
-                  value={detail?.name ?? "-"}
-                />
-                <LabelRow
-                  label="Due Date"
-                  value={safeFormatDate(detail?.dueDate, "dd MMM yyyy")}
-                />
-                <LabelRow
-                  label="Submission Date"
-                  value={safeFormatDate(detail?.submissionDate, "dd MMM yyyy")}
-                />
-              </div>
-            )}
+                  <Button
+                    variant="outline"
+                    className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
+                  >
+                    <Share2 className="mr-2 h-4 w-4" /> Export
+                  </Button>
+                </div>
 
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">Status</div>
-              <div
-                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusTone(detail?.status)}`}
-              >
-                {detail?.status
-                  ? detail.status
-                      .replace(/_/g, " ")
-                      .replace(/\b\w/g, (c: string) => c.toUpperCase())
-                  : ""}
-              </div>
-            </div>
+                {isLoading ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {[...Array(6)].map((_, i) => (
+                      <div key={i} className="space-y-2">
+                        <div className="h-3 w-24 rounded bg-slate-200" />
+                        <div className="h-4 w-40 rounded bg-slate-200" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid gap-6 sm:grid-cols-2 mt-5">
+                    <LabelRow
+                      label="Deliverable Title"
+                      value={detail?.name ?? "-"}
+                    />
+                    <LabelRow
+                      label="Due Date"
+                      value={safeFormatDate(detail?.dueDate, "dd MMM yyyy")}
+                    />
+                    <LabelRow
+                      label="Submission Date"
+                      value={safeFormatDate(detail?.submissionDate, "dd MMM yyyy")}
+                    />
+                  </div>
+                )}
 
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
-                Description
-              </div>
-              <div className="text-sm text-[#374151] dark:text-slate-300">
-                {detail?.description ?? "-"}
-              </div>
-            </div>
-          </div>
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+                    Status
+                  </div>
+                  <div
+                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusTone(detail?.status)}`}
+                  >
+                    {detail?.status
+                      ? detail.status
+                          .replace(/_/g, " ")
+                          .replace(/\b\w/g, (c: string) => c.toUpperCase())
+                      : ""}
+                  </div>
+                </div>
 
-          <div className="space-y-3">
-            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
-              Attached Documents
-            </div>
-            <div className="grid gap-3 sm:grid-cols-1">
-              {(detail?.files ?? []).map((f: any, idx: number) => (
-                <DocumentItem
-                  key={idx}
-                  d={{
-                    id: `${f?.name ?? "file"}-${idx}`,
-                    name: f?.name ?? "File",
-                    type: f?.type ?? "DOC",
-                    size:
-                      typeof f?.size === "string"
-                        ? f.size
-                        : String(f?.size ?? ""),
-                    url: f?.url,
-                    icon: getFileIcon(f?.type ?? "DOC"),
-                  }}
-                  handlePreview={(doc) => {
-                    if (doc.url) {
-                      setSelectedDoc({ url: doc.url, name: doc.name });
-                      setViewerOpen(true);
-                    }
-                  }}
-                  handleDownload={(doc) => {
-                    if (!doc.url) return;
-                    const a = window.document.createElement("a");
-                    a.href = doc.url;
-                    a.download = doc.name;
-                    window.document.body.appendChild(a);
-                    a.click();
-                    window.document.body.removeChild(a);
-                  }}
-                />
-              ))}
-            </div>
-          </div>
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+                    Description
+                  </div>
+                  <div className="text-sm text-[#374151] dark:text-slate-300">
+                    {detail?.description ?? "-"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                  Attached Documents
+                </div>
+                <div className="grid gap-3 sm:grid-cols-1">
+                  {(detail?.files ?? []).map((f: any, idx: number) => (
+                    <DocumentItem
+                      key={idx}
+                      d={{
+                        id: `${f?.name ?? "file"}-${idx}`,
+                        name: f?.name ?? "File",
+                        type: f?.type ?? "DOC",
+                        size:
+                          typeof f?.size === "string"
+                            ? f.size
+                            : String(f?.size ?? ""),
+                        url: f?.url,
+                        icon: getFileIcon(f?.type ?? "DOC"),
+                      }}
+                      handlePreview={(doc) => {
+                        if (doc.url) {
+                          setSelectedDoc({ url: doc.url, name: doc.name });
+                          setViewerOpen(true);
+                        }
+                      }}
+                      handleDownload={(doc) => {
+                        if (!doc.url) return;
+                        const a = window.document.createElement("a");
+                        a.href = doc.url;
+                        a.download = doc.name;
+                        window.document.body.appendChild(a);
+                        a.click();
+                        window.document.body.removeChild(a);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="comments" className="space-y-4">
+              <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+                Comments
+              </div>
+              {isCommentsLoading ? (
+                <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                  Loading comments...
+                </div>
+              ) : comments.length ? (
+                <div className="space-y-3">
+                  {comments.map((comment, index) => (
+                    <div
+                      key={comment._id ?? `${index}`}
+                      className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+                          {getCommentAuthor(comment)}
+                        </div>
+                        <div className="text-xs text-[#6B7280] dark:text-slate-400">
+                          {comment.createdAt
+                            ? safeFormatDate(comment.createdAt, "dd MMM yyyy, HH:mm")
+                            : ""}
+                        </div>
+                      </div>
+                      <div className="mt-2 text-sm text-[#374151] dark:text-slate-200 whitespace-pre-wrap">
+                        {comment.content ?? ""}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                  No comments yet.
+                </div>
+              )}
+
+              <MessageComposer
+                onSend={(content) => {
+                  void handleSendComment(content);
+                }}
+                isLoading={addCommentMutation.isPending}
+                currentUser={
+                  user ? { name: user.name } : { name: "You" }
+                }
+                sendType="reply"
+                isNewChat={false}
+                onSendTypeChange={() => {}}
+                sendLabel="Send"
+              />
+            </TabsContent>
+          </Tabs>
 
           {selectedDoc && (
             <DocumentViewer
@@ -831,58 +905,6 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
               fileName={selectedDoc.name}
             />
           )}
-
-          <div className="space-y-4">
-            <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
-              Comments
-            </div>
-            {isCommentsLoading ? (
-              <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
-                Loading comments...
-              </div>
-            ) : comments.length ? (
-              <div className="space-y-3">
-                {comments.map((comment, index) => (
-                  <div
-                    key={comment._id ?? `${index}`}
-                    className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
-                        {getCommentAuthor(comment)}
-                      </div>
-                      <div className="text-xs text-[#6B7280] dark:text-slate-400">
-                        {comment.createdAt
-                          ? safeFormatDate(comment.createdAt, "dd MMM yyyy, HH:mm")
-                          : ""}
-                      </div>
-                    </div>
-                    <div className="mt-2 text-sm text-[#374151] dark:text-slate-200 whitespace-pre-wrap">
-                      {comment.content ?? ""}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
-                No comments yet.
-              </div>
-            )}
-
-            <MessageComposer
-              onSend={(content) => {
-                void handleSendComment(content);
-              }}
-              isLoading={addCommentMutation.isPending}
-              currentUser={
-                user ? { name: user.name } : { name: "You" }
-              }
-              sendType="reply"
-              isNewChat={false}
-              onSendTypeChange={() => {}}
-              sendLabel="Send"
-            />
-          </div>
 
           <div className="flex gap-3 pt-6 justify-end">
             {(isApprover || isContractManager) && canShowApproveButtons ? (
