@@ -37,25 +37,45 @@ type User = {
   department?: string;
 };
 
+type RoleOptionSource = {
+  _id?: string;
+  id?: string;
+  name?: string;
+};
+
 interface EditUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userId: string;
 }
 
-const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => {
+const EditUserDialog = ({
+  open,
+  onOpenChange,
+  userId,
+}: EditUserDialogProps) => {
   const formRef = useRef<FormPropsRef | null>(null);
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
   // Fetch user data
-  const { data: userData, isLoading } = useQuery<ApiResponse<{ user: User }>, ApiResponseError>({
+  const { data: userData, isLoading } = useQuery<
+    ApiResponse<{ user: User }>,
+    ApiResponseError
+  >({
     queryKey: ["user", userId],
     queryFn: async () => await getRequest({ url: `/users/${userId}` }),
     enabled: open && !!userId,
   });
 
+  // Fetch roles
+  const { data: rolesData, isLoading: rolesLoading } = useQuery({
+    queryKey: ["roles"],
+    queryFn: async () => await getRequest({ url: "/onboarding/roles" }),
+  });
+
   const user = userData?.data?.data?.user;
+  const roles: RoleOptionSource[] = rolesData?.data?.data || [];
 
   // Form setup
   const { control, reset } = useForge<EditUserFormValues>({
@@ -69,19 +89,38 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
     },
   });
 
-  // Update form values when user data is loaded
+  // Company Admins cannot assign Super Admin or Project Manager roles (QA #129).
+  // Super Admin is platform-level and Project Manager is a vendor-side role
+  // assigned through the vendor flow, so neither belongs in this dropdown.
+  const RESTRICTED_ROLE_NAMES = ["super_admin", "project_manager"];
+  const roleOptions = roles
+    .filter(
+      (role) =>
+        role.name &&
+        !RESTRICTED_ROLE_NAMES.includes(role.name.toLowerCase()),
+    )
+    .map((role) => ({
+      value: role.name ?? "",
+      label: role.name?.replace?.("_", " ")?.toUpperCase(),
+    }));
+
+  // Keep the edit form aligned with the current user payload.
   useEffect(() => {
-    console.log({ user })
-    if (user) {
-      reset({
-        name: user.name || "",
-        phone: user.phone || "",
-        department: user.department || "",
-        role: user.role?._id || "",
-        email: user.email || "",
-      });
-    }
-  }, [user, reset]);
+    if (!user) return;
+
+    const selectedRoleValue =
+      roleOptions.find((role) => role.value === user.role?.name)?.value ??
+      user.role?.name ??
+      "";
+
+    reset({
+      name: user.name || "",
+      phone: user.phone || "",
+      department: user.department || "",
+      role: selectedRoleValue,
+      email: user.email || "",
+    });
+  }, [user, roleOptions, reset]);
 
   const { mutateAsync: updateUser, isPending } = useMutation<
     ApiResponse<User>,
@@ -98,11 +137,10 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
       handleCancel();
     },
     onError: (error) => {
-      console.log(error);
       const err = error as ApiResponseError;
       toast.error(
         "Error",
-        err?.response?.data?.message ?? "Failed to update user"
+        err?.response?.data?.message ?? "Failed to update user",
       );
     },
   });
@@ -120,28 +158,6 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
     reset();
   };
 
-  // Fetch roles
-  const { data: rolesData, isLoading: rolesLoading } = useQuery({
-    queryKey: ["roles"],
-    queryFn: async () => await getRequest({ url: "/onboarding/roles" }),
-  });
-
-  const roles = rolesData?.data?.data || [];
-
-  // Company Admins cannot assign Super Admin or Project Manager roles (QA #129).
-  // Super Admin is platform-level and Project Manager is a vendor-side role
-  // assigned through the vendor flow — neither belongs in this dropdown.
-  const RESTRICTED_ROLE_NAMES = ["super_admin", "project_manager"];
-  const roleOptions = roles
-    .filter(
-      (role: { _id: string; name: string }) =>
-        !RESTRICTED_ROLE_NAMES.includes(role.name?.toLowerCase?.()),
-    )
-    .map((role: { _id: string; name: string }) => ({
-      value: role._id,
-      label: role.name?.replace?.('_', " ")?.toUpperCase(),
-    }));
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg p-0 sm:max-w-lg">
@@ -151,7 +167,7 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
 
         <div className="p-6 space-y-4">
           {isLoading || rolesLoading ? (
-            <PageLoader 
+            <PageLoader
               showHeader={false}
               message="Loading user data..."
               className="py-8"
@@ -196,7 +212,6 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
                 containerClass="space-y-1"
               />
 
-              {/* Display email as read-only */}
               <Forger
                 name="email"
                 component={TextInput}
@@ -204,7 +219,6 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
                 disabled
                 containerClass="space-y-1"
               />
-              
             </Forge>
           )}
         </div>
