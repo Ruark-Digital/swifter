@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import {
   Sheet,
   SheetClose,
@@ -57,6 +57,7 @@ export type AmendmentRow = {
 type AmendmentDetailsSheetProps = {
   trigger: React.ReactNode;
   contractId: string;
+  currency?: string;
   basePath: string;
   amendmentId: string;
   summary: Pick<
@@ -594,6 +595,7 @@ const AssignApprovalDialog: React.FC<{
 const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   trigger,
   contractId,
+  currency,
   basePath,
   amendmentId,
   summary,
@@ -644,13 +646,13 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   const displayId = detail?.amendmentId || summary.amendmentId;
   const normalizedImpact = (detail?.impact ?? "").toString().toLowerCase();
   const hasApprovals = Boolean(detail?.approvers?.length);
-  const hasTimeImpact = normalizedImpact.includes("time");
   const isTimeImpact = normalizedImpact === "time";
   const isCostImpact = normalizedImpact === "cost";
   const isTimeCostImpact =
     normalizedImpact === "time_cost" || normalizedImpact === "time & cost";
   const isOtherCombination =
     normalizedImpact === "others" || normalizedImpact === "other combination";
+  const requiresManagerApprovalRouting = isTimeImpact || isOtherCombination;
   const vendorRejected =
     (detail?.vendorStatus ?? "").toString().toLowerCase() === "rejected";
   const vendorAccepted =
@@ -690,6 +692,18 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
     } catch {
       return String(val);
     }
+  };
+
+  const formatValueAmount = (value: unknown): string => {
+    if (value === null || value === undefined || value === "") return "-";
+    const numericValue =
+      typeof value === "number"
+        ? value
+        : typeof value === "string"
+          ? Number(value)
+          : Number.NaN;
+    if (!Number.isFinite(numericValue)) return String(value);
+    return formatCurrency(numericValue, "en-US", currency || "USD");
   };
 
   const invalidateAll = () => {
@@ -920,7 +934,11 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                       />
                     </div>
                     <div className="space-y-2">
-                      <LabelRow label="Value" value={costChange?.newValue ? String(costChange.newValue) : "-"} highlight />
+                      <LabelRow
+                        label="Value"
+                        value={formatValueAmount(costChange?.newValue)}
+                        highlight
+                      />
                       <LabelRow label="Vendor" value={vendorLabel || "-"} />
                       <LabelRow
                         label="Status"
@@ -958,7 +976,11 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <LabelRow label="Value" value={costChange?.newValue ? String(costChange.newValue) : "-"} highlight />
+                    <LabelRow
+                      label="Value"
+                      value={formatValueAmount(costChange?.newValue)}
+                      highlight
+                    />
                     <LabelRow label="Vendor" value={vendorLabel || "-"} />
                     <LabelRow
                       label="Status"
@@ -1020,7 +1042,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
 
               {isManager &&
                 !isStatusFinalized &&
-                hasTimeImpact &&
+                requiresManagerApprovalRouting &&
                 vendorAccepted &&
                 !hasApprovals && (
                   <div className="flex items-start gap-3 rounded-2xl border border-[#2A44671A] bg-[#F8F8F8] p-4 dark:border-slate-700 dark:bg-slate-800">
@@ -1033,8 +1055,8 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                         Action needed
                       </div>
                       <div className="text-sm text-[#626262] dark:text-slate-400">
-                        This amendment includes a time impact, but no approver
-                        has been assigned to review time-related impacts.
+                        This amendment requires approval routing, but no approver
+                        has been assigned yet.
                       </div>
                     </div>
                   </div>
@@ -1211,10 +1233,8 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
           </DialogContent>
         </Dialog>
 
-        {/* Manager Assign Approval visibility — time-impact only.
-            For cost / time_cost / others, the manager decides directly
-            elsewhere; Assign Approval is the time-impact routing step
-            and only appears once the vendor has accepted. Hidden once
+        {/* Manager Assign Approval visibility — time impact and other combinations.
+            This routing step appears once the vendor has accepted. Hidden once
             approvers are assigned — BE signals this with
             `assignApprover: true` even when the `approvers[]` array
             isn't populated in the response, so check both. */}
@@ -1222,7 +1242,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
           !isStatusFinalized &&
           !detail?.assignApprover &&
           !hasApprovals &&
-          isTimeImpact &&
+          requiresManagerApprovalRouting &&
           vendorAccepted && (
           <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 p-6">
             <div className="flex justify-end">
@@ -1268,6 +1288,7 @@ type Props = {
   rows?: AmendmentRow[];
   isLoading?: boolean;
   contractId: string;
+  currency?: string;
   basePath: string;
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
@@ -1283,6 +1304,7 @@ const AmendmentsTable: React.FC<Props> = ({
   rows = [],
   isLoading,
   contractId,
+  currency,
   basePath,
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
@@ -1349,6 +1371,7 @@ const AmendmentsTable: React.FC<Props> = ({
           <div className="w-[80px] py-2 text-center">
             <AmendmentDetailsSheet
               contractId={contractId}
+              currency={currency}
               basePath={basePath}
               amendmentId={row.original.id}
               summary={{
@@ -1376,10 +1399,12 @@ const AmendmentsTable: React.FC<Props> = ({
     ],
     [
       contractId,
+      currency,
       basePath,
       listInvalidateQueryKey,
       statsInvalidateQueryKey,
       approverPoolPath,
+      renderManagerRejectedAction,
     ],
   );
 
