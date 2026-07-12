@@ -32,7 +32,7 @@ type User = {
   _id: string;
   name: string;
   email: string;
-  role: { _id: string; name: string };
+  role: string | { _id: string; name: string };
   phone?: string;
   department?: string;
 };
@@ -45,6 +45,7 @@ interface EditUserDialogProps {
 
 const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => {
   const formRef = useRef<FormPropsRef | null>(null);
+  const hydratedUserIdRef = useRef<string | null>(null);
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
@@ -69,19 +70,47 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
     },
   });
 
-  // Update form values when user data is loaded
+  // Fetch roles
+  const { data: rolesData, isLoading: rolesLoading } = useQuery({
+    queryKey: ["roles"],
+    queryFn: async () => await getRequest({ url: "/onboarding/roles" }),
+  });
+
+  const roles = rolesData?.data?.data || [];
+
+  // Guard the form hydration so opening the dialog does not repeatedly reset it.
   useEffect(() => {
-    console.log({ user })
-    if (user) {
-      reset({
-        name: user.name || "",
-        phone: user.phone || "",
-        department: user.department || "",
-        role: user.role?._id || "",
-        email: user.email || "",
-      });
+    if (!open) {
+      hydratedUserIdRef.current = null;
+      return;
     }
-  }, [user, reset]);
+
+    if (!user || hydratedUserIdRef.current === user._id) {
+      return;
+    }
+
+    if (typeof user.role === "string" && rolesLoading) {
+      return;
+    }
+
+    const resolvedRoleId =
+      typeof user.role === "string"
+        ? roles.find(
+            (role: { _id: string; name: string }) =>
+              role.name?.toLowerCase?.() === user.role?.toLowerCase?.(),
+          )?._id || ""
+        : user.role?._id || "";
+
+    reset({
+      name: user.name || "",
+      phone: user.phone || "",
+      department: user.department || "",
+      role: resolvedRoleId,
+      email: user.email || "",
+    });
+
+    hydratedUserIdRef.current = user._id;
+  }, [open, user, roles, rolesLoading, reset]);
 
   const { mutateAsync: updateUser, isPending } = useMutation<
     ApiResponse<User>,
@@ -116,17 +145,10 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
   };
 
   const handleCancel = () => {
+    hydratedUserIdRef.current = null;
     onOpenChange(false);
     reset();
   };
-
-  // Fetch roles
-  const { data: rolesData, isLoading: rolesLoading } = useQuery({
-    queryKey: ["roles"],
-    queryFn: async () => await getRequest({ url: "/onboarding/roles" }),
-  });
-
-  const roles = rolesData?.data?.data || [];
 
   // Company Admins cannot assign Super Admin or Project Manager roles (QA #129).
   // Super Admin is platform-level and Project Manager is a vendor-side role
