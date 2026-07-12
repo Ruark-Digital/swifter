@@ -32,7 +32,7 @@ type User = {
   _id: string;
   name: string;
   email: string;
-  role: { _id: string; name: string };
+  role: string | { _id: string; name: string };
   phone?: string;
   department?: string;
 };
@@ -55,6 +55,7 @@ const EditUserDialog = ({
   userId,
 }: EditUserDialogProps) => {
   const formRef = useRef<FormPropsRef | null>(null);
+  const hydratedUserIdRef = useRef<string | null>(null);
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
@@ -100,27 +101,48 @@ const EditUserDialog = ({
         !RESTRICTED_ROLE_NAMES.includes(role.name.toLowerCase()),
     )
     .map((role) => ({
-      value: role.name ?? "",
+      value: role._id ?? role.id ?? "",
       label: role.name?.replace?.("_", " ")?.toUpperCase(),
     }));
 
-  // Keep the edit form aligned with the current user payload.
+  // Guard the form hydration so opening the dialog does not repeatedly reset it.
   useEffect(() => {
-    if (!user) return;
+    if (!open) {
+      hydratedUserIdRef.current = null;
+      return;
+    }
 
-    const selectedRoleValue =
-      roleOptions.find((role) => role.value === user.role?.name)?.value ??
-      user.role?.name ??
-      "";
+    if (!user || hydratedUserIdRef.current === user._id) {
+      return;
+    }
+
+    if (typeof user.role === "string" && rolesLoading) {
+      return;
+    }
+
+    const userRoleName =
+      typeof user.role === "string" ? user.role.toLowerCase() : null;
+
+    const resolvedRoleId =
+      userRoleName
+        ? roles.find((role) => role.name?.toLowerCase?.() === userRoleName)
+            ?._id ??
+          roles.find((role) => role.name?.toLowerCase?.() === userRoleName)?.id ??
+          ""
+        : typeof user.role === "string"
+          ? ""
+          : user.role?._id || "";
 
     reset({
       name: user.name || "",
       phone: user.phone || "",
       department: user.department || "",
-      role: selectedRoleValue,
+      role: resolvedRoleId,
       email: user.email || "",
     });
-  }, [user, roleOptions, reset]);
+
+    hydratedUserIdRef.current = user._id;
+  }, [open, user, roles, rolesLoading, reset]);
 
   const { mutateAsync: updateUser, isPending } = useMutation<
     ApiResponse<User>,
@@ -154,6 +176,7 @@ const EditUserDialog = ({
   };
 
   const handleCancel = () => {
+    hydratedUserIdRef.current = null;
     onOpenChange(false);
     reset();
   };
