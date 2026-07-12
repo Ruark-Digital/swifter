@@ -653,6 +653,7 @@ const UserManagementPage = () => {
         onOpenChange={setIsUserDetailsOpen}
         userId={selectedUserId || undefined}
         onEdit={(userId) => {
+          setIsUserDetailsOpen(false);
           setEditUserId(userId ?? "");
           setIsEditUserOpen(true);
         }}
