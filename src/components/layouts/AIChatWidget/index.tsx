@@ -67,6 +67,13 @@ const SUGGESTED_PROMPTS = [
   "What's awaiting my evaluation?",
 ];
 
+const createWelcomeMessage = (content: string): Message => ({
+  id: "welcome-message",
+  content,
+  sender: "ai",
+  timestamp: new Date(),
+});
+
 const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   onSendMessage,
   onStreamMessage,
@@ -124,6 +131,15 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   ]);
   const [customIsLoading, setCustomIsLoading] = useState(false);
 
+  useEffect(() => {
+    setCustomMessages((prev) => {
+      const hasOnlyAiMessage =
+        prev.length === 1 && prev[0]?.sender === "ai";
+
+      return hasOnlyAiMessage ? [createWelcomeMessage(welcomeMessage)] : prev;
+    });
+  }, [welcomeMessage]);
+
   // Use custom state when streaming or custom handler is provided, otherwise use hook state
   const useCustom = Boolean(onSendMessage || onStreamMessage);
   const messages = useCustom ? customMessages : hookMessages;
@@ -142,6 +158,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
               timestamp: new Date(),
             },
           ]);
+          setCustomMessages([createWelcomeMessage(welcomeMessage)]);
           setActiveTools([]);
         } catch (error) {
           console.error("AI Chat reset failed:", error);

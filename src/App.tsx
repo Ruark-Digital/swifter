@@ -59,6 +59,9 @@ function App() {
   const isAuthenticated = useAuthentication();
   const token = useToken();
   const user = useUser();
+  const chatWelcomeMessage = user?.name
+    ? `Hi ${user.name}, I'm the SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.`
+    : "Hi, I'm the SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.";
 
   const postChat = async (message: string, stream: boolean) => {
     const response = await fetch(CHAT_URL, {
@@ -184,6 +187,7 @@ function App() {
                 onSendMessage={handleAIChatMessage}
                 onStreamMessage={handleAIChatMessageStream}
                 onReset={handleAIChatReset}
+                welcomeMessage={chatWelcomeMessage}
               />
             )}
           </QueryClientProvider>
