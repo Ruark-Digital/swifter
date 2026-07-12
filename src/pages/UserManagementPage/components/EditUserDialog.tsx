@@ -120,18 +120,18 @@ const EditUserDialog = ({
       return;
     }
 
+    const userRoleName =
+      typeof user.role === "string" ? user.role.toLowerCase() : null;
+
     const resolvedRoleId =
-      typeof user.role === "string"
-        ? roles.find(
-            (role) =>
-              role.name?.toLowerCase?.() === user.role?.toLowerCase?.(),
-          )?._id ??
-          roles.find(
-            (role) =>
-              role.name?.toLowerCase?.() === user.role?.toLowerCase?.(),
-          )?.id ??
+      userRoleName
+        ? roles.find((role) => role.name?.toLowerCase?.() === userRoleName)
+            ?._id ??
+          roles.find((role) => role.name?.toLowerCase?.() === userRoleName)?.id ??
           ""
-        : user.role?._id || "";
+        : typeof user.role === "string"
+          ? ""
+          : user.role?._id || "";
 
     reset({
       name: user.name || "",
