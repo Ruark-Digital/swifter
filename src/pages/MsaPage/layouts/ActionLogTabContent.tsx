@@ -2,19 +2,21 @@ import React from "react";
 import { TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Download, Search } from "lucide-react";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import * as XLSX from "xlsx";
 
 type Props = { contractId: string; isActive?: boolean };
 
@@ -160,6 +162,27 @@ const ActionLogTabContent: React.FC<Props> = ({ contractId, isActive }) => {
 
   const totalCount = logsData?.data?.total ?? rows.length;
 
+  const handleExport = React.useCallback(() => {
+    if (!rows.length) return;
+    const exportRows = rows.map((row) => ({
+      "Action ID": row.actionId,
+      Module: row.module.replace(/([a-z])([A-Z])/g, "$1 $2"),
+      Description: row.description,
+      User: row.actorName,
+      Role: row.actorRole ?? "",
+      Reference: row.reference,
+      Date: row.dateLine1,
+      Time: row.dateLine2,
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Action Log");
+    XLSX.writeFile(
+      workbook,
+      `msa-action-log-${contractId}-${format(new Date(), "yyyy-MM-dd")}.xlsx`,
+    );
+  }, [contractId, rows]);
+
   const columns: ColumnDef<ActionLogRow>[] = [
     {
       accessorKey: "actionId",
@@ -255,6 +278,19 @@ const ActionLogTabContent: React.FC<Props> = ({ contractId, isActive }) => {
                 setPagination((prev) => ({ ...prev, pageIndex: 0 }));
               }}
             />
+          </div>
+          <div className="ml-auto">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={!rows.length}
+              data-testid="msa-action-log-export"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
           </div>
         </div>
 
