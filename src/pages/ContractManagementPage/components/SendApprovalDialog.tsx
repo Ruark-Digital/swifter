@@ -40,6 +40,7 @@ type Props = {
   contractId: string;
   /** "claim" | "change" — drives toast copy. Default "claim". */
   entityLabel?: "claim" | "change";
+  approverPoolPath?: string;
   /** POST endpoint for assignment. If omitted, the submit is a no-op
    *  (preserves the placeholder behavior on call sites that aren't wired).
    *  The caller is responsible for embedding the entity id in the path. */
@@ -52,6 +53,7 @@ const SendApprovalDialog: React.FC<Props> = ({
   trigger,
   contractId,
   entityLabel = "claim",
+  approverPoolPath,
   assignUrl,
   onSent,
 }) => {
@@ -60,6 +62,8 @@ const SendApprovalDialog: React.FC<Props> = ({
   const [open, setOpen] = React.useState(false);
   const [selectedGroup, setSelectedGroup] = React.useState<string>("");
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const resolvedApproverPoolPath =
+    approverPoolPath ?? `/contract/manager/contracts/${contractId}/approvers`;
 
   // Reset everything when the dialog closes so a re-open starts fresh.
   React.useEffect(() => {
@@ -70,10 +74,10 @@ const SendApprovalDialog: React.FC<Props> = ({
   }, [open]);
 
   const { data: poolRes, isLoading } = useQuery<PoolResponse>({
-    queryKey: ["contract-approvers-pool", contractId],
+    queryKey: ["contract-approvers-pool", contractId, resolvedApproverPoolPath],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/msa-contracts/${contractId}/approvers`,
+        url: resolvedApproverPoolPath,
       });
       return res.data as PoolResponse;
     },
@@ -157,7 +161,11 @@ const SendApprovalDialog: React.FC<Props> = ({
         `Approvers assigned to this ${entityLabel} successfully`,
       );
       queryClient.invalidateQueries({
-        queryKey: ["contract-approvers-pool", contractId],
+        queryKey: [
+          "contract-approvers-pool",
+          contractId,
+          resolvedApproverPoolPath,
+        ],
       });
       onSent?.();
       setOpen(false);

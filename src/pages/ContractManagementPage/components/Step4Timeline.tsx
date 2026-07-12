@@ -85,7 +85,7 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
 
       <div className="md:col-span-2 space-y-4">
         <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-          Duration of Contract Formation Stage
+          Contract Formation Duration
         </p>
         <div className="space-y-6">
           <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/40 p-4 space-y-4">
