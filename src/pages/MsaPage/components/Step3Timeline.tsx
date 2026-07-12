@@ -110,7 +110,7 @@ const Step3Timeline: React.FC<Props> = ({
 
       <div className="space-y-4 rounded-2xl bg-[#F9FAFB] dark:bg-slate-800/60 p-4">
         <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
-          Duration of Contract Formation  Stage
+          Contract Formation Duration
         </p>
 
         <div className="space-y-3">

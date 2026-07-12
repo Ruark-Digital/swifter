@@ -13,6 +13,7 @@ import { postRequest } from "@/lib/axiosInstance";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import {
   TextArea,
+  TextCurrencyInput,
   TextFileUploader,
   TextInput,
   TextSelect,
@@ -294,8 +295,8 @@ const CreateChangeDialog: React.FC<Props> = ({
               <Forger
                 name="amount"
                 label="Amount"
-                placeholder="Change Proposal"
-                component={TextInput}
+                placeholder="Enter Amount"
+                component={TextCurrencyInput}
               />
               <Forger
                 name="urgency"
