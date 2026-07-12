@@ -1278,7 +1278,10 @@ export const useDashboardData = (
       });
       return res.data as ContractManagerDashboardResponse<ContractAiInsight[]>;
     },
-    enabled: userRole === "contract_manager" || userRole === "procurement",
+    enabled:
+      userRole === "contract_manager" ||
+      userRole === "procurement" ||
+      userRole === "approver",
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
