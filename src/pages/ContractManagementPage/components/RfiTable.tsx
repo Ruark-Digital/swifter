@@ -77,6 +77,27 @@ const getResponderId = (raw: any): string | undefined => {
   return r?.user?._id ?? r?._id;
 };
 
+const getResponderName = (raw: any): string => {
+  const responder = raw?.responder;
+  if (!responder) return "-";
+  if (typeof responder?.name === "string" && responder.name.trim()) {
+    return responder.name;
+  }
+  if (typeof responder?.user?.name === "string" && responder.user.name.trim()) {
+    return responder.user.name;
+  }
+  if (typeof responder?.email === "string" && responder.email.trim()) {
+    return responder.email;
+  }
+  if (
+    typeof responder?.user?.email === "string" &&
+    responder.user.email.trim()
+  ) {
+    return responder.user.email;
+  }
+  return "-";
+};
+
 export type RfiRow = {
   id: string;
   title: string;
@@ -226,6 +247,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
       ? submittedByRaw
       : (submittedByRaw?.name ?? submittedByRaw?.email ?? "-");
   const rfiIdentifier = rfi?.rfiId ?? rfi?._id ?? "-";
+  const responderName = getResponderName(rfiDetail) || getResponderName(rfi);
 
   const formatDate = (value?: string | Date) =>
     formatDateTZ(value, "dd MMM yyyy");
@@ -416,6 +438,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                     label="Response Deadline"
                     value={responseDeadline}
                   />
+                  <LabelRow label="Responder" value={responderName} />
                   <LabelRow
                     label="Status"
                     value={
