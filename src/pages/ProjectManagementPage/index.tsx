@@ -17,6 +17,9 @@ import { formatDateTZ } from "@/lib/utils";
 const ProjectManagementPage: React.FC = () => {
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [dateFilter, setDateFilter] = React.useState("all");
+  const [statusFilter, setStatusFilter] = React.useState("");
   const [lastCreatedProjectId, setLastCreatedProjectId] = React.useState<
     string | null
   >(null);
@@ -27,6 +30,13 @@ const ProjectManagementPage: React.FC = () => {
   const { data: listRes, isLoading: isListLoading } = useProjectsList({
     page: 1,
     limit: 10,
+    name: searchQuery || undefined,
+    status:
+      statusFilter === "active" ||
+      statusFilter === "completed" ||
+      statusFilter === "cancelled"
+        ? statusFilter
+        : undefined,
   });
   const { data: statsRes } = useProjectsStats();
   const createProject = useCreateProject();
@@ -96,6 +106,12 @@ const ProjectManagementPage: React.FC = () => {
       ) : rows.length > 0 ? (
         <ProjectsTable
           projects={rows}
+          searchQuery={searchQuery}
+          dateFilter={dateFilter}
+          statusFilter={statusFilter}
+          onSearchQueryChange={setSearchQuery}
+          onDateFilterChange={setDateFilter}
+          onStatusFilterChange={setStatusFilter}
           detailsProjectId={detailsProjectId}
           detailsOpen={isDetailsOpen}
           onDetailsProjectIdChange={setDetailsProjectId}
