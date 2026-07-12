@@ -42,16 +42,15 @@ type Props = {
   vendorPersonnel: VendorPerson[];
 };
 
+// QA #151: MSA stage durations render as a plain "N days" string to match
+// the current Contract detail page. The date range is intentionally dropped
+// even when it's available from `formationStages`.
 const formatStageValue = (
   duration: string | undefined,
-  range: StageRange | undefined,
+  _range: StageRange | undefined,
 ) => {
   const dur = duration && duration !== "N/A" ? duration : "";
-  const hasRange = range?.start || range?.end;
-  if (!dur && !hasRange) return "N/A";
-  if (!hasRange) return dur;
-  const span = `${range?.start ?? "N/A"} – ${range?.end ?? "N/A"}`;
-  return dur ? `${dur} · ${span}` : span;
+  return dur || "N/A";
 };
 
 const Overview: React.FC<Props> = ({

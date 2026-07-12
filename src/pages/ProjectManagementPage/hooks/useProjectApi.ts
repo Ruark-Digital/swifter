@@ -15,6 +15,7 @@ type Project = {
   company: string;
   creator: {
     _id: string;
+    name?: string;
     email: string;
   };
   name: string;

@@ -5,7 +5,13 @@ import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 export type ProjectApi = {
   _id: string;
   company: string;
-  creator: string;
+  creator?:
+    | string
+    | {
+        _id?: string;
+        name?: string;
+        email?: string;
+      };
   name: string;
   category: string;
   description?: string;

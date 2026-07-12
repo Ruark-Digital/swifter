@@ -53,4 +53,23 @@ describe("useDashboardData", () => {
       );
     });
   });
+
+  test("requests AI insights for approver from the approver dashboard endpoint", async () => {
+    renderHook(() => useDashboardData("approver"), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(mockedGetRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: "/contract/approver/contracts/dashboard/ai-insights",
+          config: expect.objectContaining({
+            params: expect.objectContaining({
+              type: "Contract",
+            }),
+          }),
+        }),
+      );
+    });
+  });
 });

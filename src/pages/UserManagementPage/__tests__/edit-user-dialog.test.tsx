@@ -74,10 +74,11 @@ describe("EditUserDialog", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Edit User")).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue("Adediran Adeola Approver"),
+      ).toBeInTheDocument();
     });
 
-    expect(screen.getByDisplayValue("Adediran Adeola Approver")).toBeInTheDocument();
     expect(screen.getByDisplayValue("adediran@example.com")).toBeInTheDocument();
   });
 });
