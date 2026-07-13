@@ -475,6 +475,9 @@ export type ContractInvoiceDTO = {
   fileType?: "manual" | "file";
   inputType?: "manual" | "file";
   amount?: number;
+  remaining?: number;
+  balance?: number;
+  remainingAmount?: number;
   status?: "pending" | "approved" | "rejected" | "draft" | "active";
   lem?: unknown;
   files?: Array<{
