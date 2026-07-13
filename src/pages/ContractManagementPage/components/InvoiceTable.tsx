@@ -582,9 +582,8 @@ type InvoiceTableProps = {
   owner?: boolean;
   /** Contract-level currency; falls back to USD when the API omits it. */
   currency?: string;
-  /** Contract-level `remaining` from FinancialStatement (outstanding balance
-   *  after all billed invoices). API has no per-invoice remaining — this is
-   *  the only real "remaining" value in the spec. */
+  /** Fallback contract-level `remaining` from FinancialStatement. Invoice
+   *  payload `remaining` values are preferred when the API provides them. */
   contractRemaining?: number;
 };
 
@@ -708,15 +707,27 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
               ? "Draft"
               : "Pending";
 
-      // "Remaining" is contract-level (FinancialStatement.remaining) — the
-      // API has no per-invoice remaining. Only surface it for invoices that
-      // have actually reduced the outstanding balance (Approved); the rest
-      // haven't affected `remaining` yet, so a dash is honest there.
+      // Prefer invoice-level remaining values when present; older payloads
+      // still fall back to the approved-only contract remaining value.
+      const invoiceRemaining =
+        typeof inv.remaining === "number"
+          ? inv.remaining
+          : typeof inv.balance === "number"
+            ? inv.balance
+            : typeof inv.remainingAmount === "number"
+              ? inv.remainingAmount
+              : undefined;
+
       return {
         id,
         type,
         billed,
-        remaining: status === "Approved" ? remainingLabel : "-",
+        remaining:
+          typeof invoiceRemaining === "number"
+            ? currencyFormatter.format(invoiceRemaining)
+            : status === "Approved"
+              ? remainingLabel
+              : "-",
         status,
       };
     });
