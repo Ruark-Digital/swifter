@@ -132,6 +132,22 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
     retry: false,
   });
 
+  const { data: paymentTermsResponse } = useQuery({
+    queryKey: ["msa-payment-terms"],
+    queryFn: async () => {
+      const res = await getRequest({ url: "/contract/manager/payment-terms" });
+      return res.data as {
+        data?: Array<{ _id?: string; name?: string }>;
+      };
+    },
+    enabled:
+      !!isActive &&
+      !!(typeof msa?.paymentTerms === "string" || typeof msa?.paymentTerm === "string") &&
+      isManager,
+    staleTime: 60_000,
+    retry: false,
+  });
+
   const {
     data: savingsResponse,
     error: savingsError,
@@ -299,9 +315,14 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
 
   const paymentTermValue = React.useMemo(() => {
     const paymentTerm = msa?.paymentTerms ?? msa?.paymentTerm;
-    if (typeof paymentTerm === "string") return paymentTerm;
+    if (typeof paymentTerm === "string") {
+      const matchedTerm = paymentTermsResponse?.data?.find(
+        (term) => term?._id === paymentTerm || term?.name === paymentTerm,
+      );
+      return matchedTerm?.name || paymentTerm;
+    }
     return paymentTerm?.name || "-";
-  }, [msa?.paymentTerm, msa?.paymentTerms]);
+  }, [msa?.paymentTerm, msa?.paymentTerms, paymentTermsResponse?.data]);
 
   const contigencyValue = React.useMemo(() => {
     const value = msa?.contigency ?? msa?.contingency;

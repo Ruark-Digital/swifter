@@ -10,6 +10,26 @@ type Props = {
   onRangeChange?: (value: string) => void;
 };
 
+const formatSpendValue = (amount: number, currency: string) => {
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+  if (Math.abs(safeAmount) < 1000) {
+    return formatCompactCurrency(safeAmount, currency as any);
+  }
+
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      notation: "compact",
+      compactDisplay: "short",
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }).format(safeAmount);
+  } catch {
+    return formatCompactCurrency(safeAmount, currency as any);
+  }
+};
+
 export const SpendCard: React.FC<Props> = ({
   committed = 0,
   actual = 0,
@@ -23,9 +43,9 @@ export const SpendCard: React.FC<Props> = ({
   const utilizationPct =
     safeCommitted > 0 ? Math.round((safeActual / safeCommitted) * 100) : 0;
 
-  const committedLabel = formatCompactCurrency(safeCommitted, currency as any);
-  const actualLabel = formatCompactCurrency(safeActual, currency as any);
-  const remainingLabel = formatCompactCurrency(remaining, currency as any);
+  const committedLabel = formatSpendValue(safeCommitted, currency);
+  const actualLabel = formatSpendValue(safeActual, currency);
+  const remainingLabel = formatSpendValue(remaining, currency);
 
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col max-h-[32rem]">

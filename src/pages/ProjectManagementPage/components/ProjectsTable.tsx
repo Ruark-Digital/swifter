@@ -20,6 +20,12 @@ export type Project = {
 
 type Props = {
   projects: Project[];
+  searchQuery: string;
+  dateFilter: string;
+  statusFilter: string;
+  onSearchQueryChange: (value: string) => void;
+  onDateFilterChange: (value: string) => void;
+  onStatusFilterChange: (value: string) => void;
   detailsProjectId: string | null;
   detailsOpen: boolean;
   onDetailsProjectIdChange: (projectId: string | null) => void;
@@ -28,15 +34,17 @@ type Props = {
 
 const ProjectsTable: React.FC<Props> = ({
   projects,
+  searchQuery,
+  dateFilter,
+  statusFilter,
+  onSearchQueryChange,
+  onDateFilterChange,
+  onStatusFilterChange,
   detailsProjectId,
   detailsOpen,
   onDetailsOpenChange,
   onDetailsProjectIdChange,
 }) => {
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [dateFilter, setDateFilter] = React.useState("all");
-  const [statusFilter, setStatusFilter] = React.useState("");
-
   const openDetails = React.useCallback(
     (projectId: string) => {
       onDetailsProjectIdChange(projectId);
@@ -141,11 +149,11 @@ const ProjectsTable: React.FC<Props> = ({
           <ProjectsHeader
             title="Projects"
             searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
+            setSearchQuery={onSearchQueryChange}
             dateFilter={dateFilter}
             statusFilter={statusFilter}
-            onDateFilterChange={setDateFilter}
-            onStatusFilterChange={setStatusFilter}
+            onDateFilterChange={onDateFilterChange}
+            onStatusFilterChange={onStatusFilterChange}
           />
         )}
         classNames={{

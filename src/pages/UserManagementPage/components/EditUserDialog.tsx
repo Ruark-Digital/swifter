@@ -32,9 +32,15 @@ type User = {
   _id: string;
   name: string;
   email: string;
-  role: { _id: string; name: string };
+  role: string | { _id: string; name: string };
   phone?: string;
   department?: string;
+};
+
+type RoleOptionSource = {
+  _id?: string;
+  id?: string;
+  name?: string;
 };
 
 interface EditUserDialogProps {
@@ -43,19 +49,34 @@ interface EditUserDialogProps {
   userId: string;
 }
 
-const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => {
+const EditUserDialog = ({
+  open,
+  onOpenChange,
+  userId,
+}: EditUserDialogProps) => {
   const formRef = useRef<FormPropsRef | null>(null);
+  const hydratedUserIdRef = useRef<string | null>(null);
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
   // Fetch user data
-  const { data: userData, isLoading } = useQuery<ApiResponse<{ user: User }>, ApiResponseError>({
+  const { data: userData, isLoading } = useQuery<
+    ApiResponse<{ user: User }>,
+    ApiResponseError
+  >({
     queryKey: ["user", userId],
     queryFn: async () => await getRequest({ url: `/users/${userId}` }),
     enabled: open && !!userId,
   });
 
+  // Fetch roles
+  const { data: rolesData, isLoading: rolesLoading } = useQuery({
+    queryKey: ["roles"],
+    queryFn: async () => await getRequest({ url: "/onboarding/roles" }),
+  });
+
   const user = userData?.data?.data?.user;
+  const roles: RoleOptionSource[] = rolesData?.data?.data || [];
 
   // Form setup
   const { control, reset } = useForge<EditUserFormValues>({
@@ -69,19 +90,59 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
     },
   });
 
-  // Update form values when user data is loaded
+  // Company Admins cannot assign Super Admin or Project Manager roles (QA #129).
+  // Super Admin is platform-level and Project Manager is a vendor-side role
+  // assigned through the vendor flow, so neither belongs in this dropdown.
+  const RESTRICTED_ROLE_NAMES = ["super_admin", "project_manager"];
+  const roleOptions = roles
+    .filter(
+      (role) =>
+        role.name &&
+        !RESTRICTED_ROLE_NAMES.includes(role.name.toLowerCase()),
+    )
+    .map((role) => ({
+      value: role._id ?? role.id ?? "",
+      label: role.name?.replace?.("_", " ")?.toUpperCase(),
+    }));
+
+  // Guard the form hydration so opening the dialog does not repeatedly reset it.
   useEffect(() => {
-    console.log({ user })
-    if (user) {
-      reset({
-        name: user.name || "",
-        phone: user.phone || "",
-        department: user.department || "",
-        role: user.role?._id || "",
-        email: user.email || "",
-      });
+    if (!open) {
+      hydratedUserIdRef.current = null;
+      return;
     }
-  }, [user, reset]);
+
+    if (!user || hydratedUserIdRef.current === user._id) {
+      return;
+    }
+
+    if (typeof user.role === "string" && rolesLoading) {
+      return;
+    }
+
+    const userRoleName =
+      typeof user.role === "string" ? user.role.toLowerCase() : null;
+
+    const resolvedRoleId =
+      userRoleName
+        ? roles.find((role) => role.name?.toLowerCase?.() === userRoleName)
+            ?._id ??
+          roles.find((role) => role.name?.toLowerCase?.() === userRoleName)?.id ??
+          ""
+        : typeof user.role === "string"
+          ? ""
+          : user.role?._id || "";
+
+    reset({
+      name: user.name || "",
+      phone: user.phone || "",
+      department: user.department || "",
+      role: resolvedRoleId,
+      email: user.email || "",
+    });
+
+    hydratedUserIdRef.current = user._id;
+  }, [open, user, roles, rolesLoading, reset]);
 
   const { mutateAsync: updateUser, isPending } = useMutation<
     ApiResponse<User>,
@@ -98,11 +159,10 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
       handleCancel();
     },
     onError: (error) => {
-      console.log(error);
       const err = error as ApiResponseError;
       toast.error(
         "Error",
-        err?.response?.data?.message ?? "Failed to update user"
+        err?.response?.data?.message ?? "Failed to update user",
       );
     },
   });
@@ -116,31 +176,10 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
   };
 
   const handleCancel = () => {
+    hydratedUserIdRef.current = null;
     onOpenChange(false);
     reset();
   };
-
-  // Fetch roles
-  const { data: rolesData, isLoading: rolesLoading } = useQuery({
-    queryKey: ["roles"],
-    queryFn: async () => await getRequest({ url: "/onboarding/roles" }),
-  });
-
-  const roles = rolesData?.data?.data || [];
-
-  // Company Admins cannot assign Super Admin or Project Manager roles (QA #129).
-  // Super Admin is platform-level and Project Manager is a vendor-side role
-  // assigned through the vendor flow — neither belongs in this dropdown.
-  const RESTRICTED_ROLE_NAMES = ["super_admin", "project_manager"];
-  const roleOptions = roles
-    .filter(
-      (role: { _id: string; name: string }) =>
-        !RESTRICTED_ROLE_NAMES.includes(role.name?.toLowerCase?.()),
-    )
-    .map((role: { _id: string; name: string }) => ({
-      value: role._id,
-      label: role.name?.replace?.('_', " ")?.toUpperCase(),
-    }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -151,7 +190,7 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
 
         <div className="p-6 space-y-4">
           {isLoading || rolesLoading ? (
-            <PageLoader 
+            <PageLoader
               showHeader={false}
               message="Loading user data..."
               className="py-8"
@@ -196,7 +235,6 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
                 containerClass="space-y-1"
               />
 
-              {/* Display email as read-only */}
               <Forger
                 name="email"
                 component={TextInput}
@@ -204,7 +242,6 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
                 disabled
                 containerClass="space-y-1"
               />
-              
             </Forge>
           )}
         </div>

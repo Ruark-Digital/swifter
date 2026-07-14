@@ -137,6 +137,27 @@ const getResponderId = (raw: any): string | undefined => {
   return r?.user?._id ?? r?._id;
 };
 
+const getResponderName = (raw: any): string => {
+  const responder = raw?.responder;
+  if (!responder) return "-";
+  if (typeof responder?.name === "string" && responder.name.trim()) {
+    return responder.name;
+  }
+  if (typeof responder?.user?.name === "string" && responder.user.name.trim()) {
+    return responder.user.name;
+  }
+  if (typeof responder?.email === "string" && responder.email.trim()) {
+    return responder.email;
+  }
+  if (
+    typeof responder?.user?.email === "string" &&
+    responder.user.email.trim()
+  ) {
+    return responder.user.email;
+  }
+  return "-";
+};
+
 function IssueFileListItem({
   file,
   index,
@@ -514,6 +535,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
 
   const detail = (data?.data as any)?.contractRfi ?? (data?.data as any) ?? fallback;
   const isResponse = (data?.data as any)?.isResponse ?? false;
+  const responderName = getResponderName(detail) || getResponderName(fallback);
 
   const commentsQueryKey = useUserQueryKey([
     "msa-rfi-comments",
@@ -662,6 +684,10 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                   <LabelRow
                     label="Response Deadline"
                     value={isLoading ? "Loading..." : formatDate(detail?.deadline)}
+                  />
+                  <LabelRow
+                    label="Responder"
+                    value={isLoading ? "Loading..." : responderName}
                   />
                 </div>
                 <div className="space-y-2">

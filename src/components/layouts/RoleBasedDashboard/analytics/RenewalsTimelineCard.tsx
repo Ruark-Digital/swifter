@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/utils";
+import { formatCompactCurrency } from "@/lib/utils";
 
 type Item = {
   title: string;
@@ -70,7 +70,7 @@ export const RenewalsTimelineCard: React.FC<Props> = ({ data }) => {
       title: t.contractTitle,
       org: t.vendor,
       code: t.contractCode,
-      amount: formatCurrency(t.value ?? 0, "en-US", "USD"),
+      amount: formatCompactCurrency(t.value ?? 0, "USD"),
       note: t.label || `${t.daysToExpiry} days`,
       color,
     };
@@ -86,7 +86,7 @@ export const RenewalsTimelineCard: React.FC<Props> = ({ data }) => {
         {items.map((item, idx) => (
           <div
             key={idx}
-            className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] dark:border-slate-800 px-3 py-3"
+            className="flex items-stretch gap-3 rounded-xl border border-[#E5E7EB] dark:border-slate-800 px-3 py-3"
           >
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <span
@@ -108,7 +108,17 @@ export const RenewalsTimelineCard: React.FC<Props> = ({ data }) => {
               </p>
               <p className="text-xs text-[#6B6B6B] dark:text-slate-400">{item.note}</p>
             </div>
-            <span className="inline-block w-3 h-3 rounded-sm bg-[#E5E7EB] dark:bg-slate-700 shrink-0" />
+            <div
+              aria-hidden="true"
+              className="flex shrink-0 items-stretch justify-center self-stretch px-1"
+            >
+              <div className="flex w-3 justify-center">
+                <div
+                  data-testid="renewal-timeline-line"
+                  className="w-[2px] rounded-full bg-[#E5E7EB] dark:bg-slate-700"
+                />
+              </div>
+            </div>
           </div>
         ))}
       </CardContent>
