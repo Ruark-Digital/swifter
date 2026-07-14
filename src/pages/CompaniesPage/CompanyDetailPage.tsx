@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,6 +14,7 @@ import { getRequest, putRequest, deleteRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
+import { useUserRole } from "@/hooks/useUserRole";
 import EditCompanyDialog from "./components/EditCompanyDialog";
 import React, { useState } from "react";
 import { PageLoader } from "@/components/ui/PageLoader";
@@ -120,6 +121,7 @@ const CompanyDetailPage = () => {
   const navigate = useNavigate();
   const toast = useToastHandler();
   const queryClient = useQueryClient();
+  const { isSuperAdmin } = useUserRole();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   // Admin management handlers
@@ -192,6 +194,47 @@ const CompanyDetailPage = () => {
         );
       },
     });
+
+  // Export company data (super admin only). BE returns a protected single-sheet
+  // XLSX workbook as a binary blob, so we request a blob and trigger a download.
+  const { mutate: exportCompanyData, isPending: isExporting } = useMutation<
+    Blob,
+    ApiResponseError
+  >({
+    mutationFn: async () => {
+      const response = await getRequest({
+        url: `/admins/companies/${id}/export`,
+        config: { responseType: "blob" },
+      });
+      return response.data as Blob;
+    },
+    onSuccess: (data) => {
+      const url = window.URL.createObjectURL(
+        new Blob([data], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        })
+      );
+      const safeName =
+        (companyData?.name || "company")
+          .replace(/[^a-z0-9]+/gi, "-")
+          .replace(/^-+|-+$/g, "")
+          .toLowerCase() || "company";
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `${safeName}-data-export.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success("Export Complete", "Company data exported successfully");
+    },
+    onError: (error) => {
+      toast.error(
+        "Export Failed",
+        error.response?.data?.message || "Failed to export company data"
+      );
+    },
+  });
 
   // Fetch portal settings from API
   const { data: portalSettingsResponse, isLoading: isLoadingPortalSettings } =
@@ -545,6 +588,19 @@ const CompanyDetailPage = () => {
           />
         </div>
         <div className="flex items-center gap-3">
+          {isSuperAdmin && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => exportCompanyData()}
+              isLoading={isExporting}
+              disabled={isExporting}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export Data
+            </Button>
+          )}
           <Badge
             className={`${getStatusColor(
               companyData.status
