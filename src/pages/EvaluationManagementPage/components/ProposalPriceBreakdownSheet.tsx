@@ -223,7 +223,14 @@ export const ProposalPriceBreakdownSheet = ({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div className="flex items-center gap-3">
-            <ChevronLeft className="h-5 w-5 text-gray-600 dark:text-slate-200" />
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              aria-label="Go back"
+              className="text-gray-600 dark:text-slate-200 hover:text-gray-900 dark:hover:text-white"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
             <h2 className="text-lg font-medium text-gray-900 dark:text-slate-200">
               Price Breakdown
             </h2>
@@ -232,19 +239,11 @@ export const ProposalPriceBreakdownSheet = ({
 
         {/* Content */}
         <div className="p-6">
-          {/* Title and Export */}
-          <div className="flex items-center justify-between mb-6">
+          {/* Title */}
+          <div className="mb-6">
             <h1 className="text-xl font-semibold text-gray-900 dark:text-slate-200">
               {vendorName || "Zenith Solutions"} Price Breakdown
             </h1>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 flex items-center gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
           </div>
 
           {/* Company and Submission Info */}
