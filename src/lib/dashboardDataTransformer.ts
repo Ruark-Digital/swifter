@@ -2375,14 +2375,15 @@ export class DashboardDataTransformer {
         contractRef && contractTitle
           ? `<a href="${detailBase}/${contractRef}" class="underline underline-offset-4 text-blue-600">${contractTitle}</a>`
           : contractTitle;
-      const strongTitle = title ? `<strong>${title}</strong>` : "<strong>Update</strong>";
+      // Plain text (no bold) to match the General Updates styling — QA #225.
+      const plainTitle = title || "Update";
       const suffixParts = [description, linkedContractTitle, requestedBy].filter(Boolean);
       const suffix = suffixParts.length > 0 ? ` — ${suffixParts.join(" • ")}` : "";
 
       return {
         id: item?.id ?? `cm-${index}`,
         title: contractTitle || title || "Contract",
-        text: `${strongTitle}${suffix}`,
+        text: `${plainTitle}${suffix}`,
         date: dateValue ? formatDateTZ(dateValue, "MMM d, yyyy h:mm a") : undefined,
         status: item?.status ?? undefined,
         type: item?.type ?? undefined,

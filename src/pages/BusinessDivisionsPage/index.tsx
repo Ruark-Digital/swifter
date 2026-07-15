@@ -135,7 +135,6 @@ const BusinessDivisionsPageContent = () => {
             <p className="text-sm font-semibold text-[#374151] dark:text-slate-200">
               {row.original?.name ?? ""}
             </p>
-            <p className="text-xs text-[#6B6B6B] dark:text-slate-400">{row.original?._id ?? ""}</p>
           </div>
         ),
       },

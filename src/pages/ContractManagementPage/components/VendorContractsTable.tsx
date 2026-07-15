@@ -61,7 +61,7 @@ const columns: ColumnDef<VendorContractRow>[] = [
   { accessorKey: "contractRelationship", header: "Contract Relationship" },
   {
     accessorKey: "value",
-    header: "Value",
+    header: "Original Value",
     cell: ({ getValue }) => {
       const v = getValue<string | undefined>();
       return (

@@ -749,6 +749,9 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       qc.invalidateQueries({ queryKey: ["contracts-all"] });
       qc.invalidateQueries({ queryKey: ["contracts-me"] });
       qc.invalidateQueries({ queryKey: ["contracts-stats"] });
+      // Refresh the contract detail so a freshly published contract's
+      // status/publish date update immediately, not only after reload (QA #244).
+      qc.invalidateQueries({ queryKey: ["contract-manager-contracts"] });
       reset(defaultValues);
       setStep(1);
       clearSession();

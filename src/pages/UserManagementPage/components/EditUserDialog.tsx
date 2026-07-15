@@ -93,7 +93,14 @@ const EditUserDialog = ({
   // Company Admins cannot assign Super Admin or Project Manager roles (QA #129).
   // Super Admin is platform-level and Project Manager is a vendor-side role
   // assigned through the vendor flow, so neither belongs in this dropdown.
-  const RESTRICTED_ROLE_NAMES = ["super_admin", "project_manager"];
+  // Also hide "Vendor" (assigned through the vendor flow) and the legacy
+  // "Approval" role which duplicates "Approver" (QA #523/#526).
+  const RESTRICTED_ROLE_NAMES = [
+    "super_admin",
+    "project_manager",
+    "vendor",
+    "approval",
+  ];
   const roleOptions = roles
     .filter(
       (role) =>
