@@ -112,7 +112,11 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
       return <div className="p-4 text-center">No details available.</div>;
 
     const anyData = detailData;
-    const moduleLabel = action?.module || "-";
+    // Match the table/export formatting (ActionLogTabContent) — insert a space
+    // between camelCase words so e.g. "ContractSavings" reads "Contract Savings".
+    const moduleLabel = action?.module
+      ? action.module.replace(/([a-z])([A-Z])/g, "$1 $2")
+      : "-";
 
     const submittedByRaw = anyData.user?.name || anyData.user || "Unknown";
     const submittedBy = typeof submittedByRaw === "string" ? submittedByRaw : "Unknown";

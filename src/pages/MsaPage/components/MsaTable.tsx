@@ -199,7 +199,7 @@ const columns: ColumnDef<MsaRow>[] = [
   { accessorKey: "vendor", header: "Vendor" },
   {
     accessorKey: "value",
-    header: "Value",
+    header: "Original Value",
     cell: ({ getValue }) => {
       const v = getValue<string | undefined>();
       return <span className="font-semibold text-slate-900 dark:text-slate-100">{v ?? "-"}</span>;

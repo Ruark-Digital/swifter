@@ -407,8 +407,13 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
       const dueDate = s.dueDate
         ? format(new Date(s.dueDate), "dd MMM yyyy")
         : "-";
+      // Once a security is submitted/approved it can't be "Overdue" — the due
+      // countdown only applies while it's still outstanding (QA #259/#260).
+      const settled = ["submitted", "approved"].includes(
+        (s.status || "").toLowerCase(),
+      );
       let dueIn = "-";
-      if (s.dueDate) {
+      if (s.dueDate && !settled) {
         const days = differenceInDays(new Date(s.dueDate), new Date());
         if (days > 0) dueIn = `${days} days`;
         else if (days === 0) dueIn = "Today";

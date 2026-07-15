@@ -89,6 +89,7 @@ type VendorContractApi = {
   contractId: string;
   contractRelationship?: "standalone" | "project" | "msa_project" | "msa";
   contractValue?: number;
+  currency?: string;
   status:
     | "active"
     | "completed"
@@ -318,7 +319,11 @@ const mapContractsToRows = (contracts?: ContractApi[]): ContractRow[] => {
   return contracts.map((c) => {
     const value =
       typeof c.contractValue === "number"
-        ? `${c.contractValue.toLocaleString()}`
+        ? new Intl.NumberFormat(undefined, {
+            style: "currency",
+            currency: c.currency ?? "USD",
+            maximumFractionDigits: 0,
+          }).format(c.contractValue)
         : undefined;
 
     return {
@@ -327,7 +332,7 @@ const mapContractsToRows = (contracts?: ContractApi[]): ContractRow[] => {
       title: c.title,
       code: c._id,
       vendor: c.vendor?.name ?? c.projectManager?.name ?? "-",
-      value: `$${value}`,
+      value,
       owner: c.creator?.name ?? "-",
       ownerId: c.creator?._id,
       isOwner: c.owner,
@@ -369,7 +374,11 @@ const mapVendorContractsToRows = (
   return contracts.map((c) => {
     const value =
       typeof c.contractValue === "number"
-        ? c.contractValue.toLocaleString()
+        ? new Intl.NumberFormat(undefined, {
+            style: "currency",
+            currency: c.currency ?? "USD",
+            maximumFractionDigits: 0,
+          }).format(c.contractValue)
         : undefined;
 
     return {
@@ -379,7 +388,7 @@ const mapVendorContractsToRows = (
       code: c.contractId,
       company: mapCompanyLabel(c.company, c.vendor),
       contractRelationship: mapContractRelationshipLabel(c.contractRelationship),
-      value: value != null ? `$${value}` : undefined,
+      value,
       published: c.datePublished
         ? formatDate(c.datePublished, "dd MMM yyyy")
         : undefined,

@@ -728,7 +728,8 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
   rfi,
   contractId,
 }) => {
-  const { isApprover } = useUserRole();
+  const { isApprover, isVendor, isProjectManager } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
 
@@ -791,11 +792,15 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
               }))
             : undefined,
       };
-      return await approverApi.createRfiResponse(
-        contractId,
-        rfiId,
-        payload as any,
-      );
+      return isApprover
+        ? await approverApi.createRfiResponse(contractId, rfiId, payload as any)
+        : isContractVendorLike
+          ? await vendorApi.createRfiResponse(contractId, rfiId, payload as any)
+          : await contractManagerApi.createRfiResponse(
+              contractId,
+              rfiId,
+              payload as any,
+            );
     },
     onSuccess: async () => {
       setIsSuccess(true);
@@ -817,13 +822,6 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
     responseDescription: string;
     files: File[] | null;
   }) => {
-    if (!isApprover) {
-      toastHandler.error("RFI Response", {
-        message: "Only approvers can respond to RFIs.",
-      } as ApiResponseError);
-      return;
-    }
-
     try {
       await respondMutation.mutateAsync({
         responseDescription: data.responseDescription,
