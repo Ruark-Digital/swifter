@@ -361,9 +361,9 @@ test.describe("contractManagerApi (unit)", () => {
     });
 
     const rfiRespPayload = { response: "ok" };
-    await api.createRfiResponse("rfi1", rfiRespPayload as never);
+    await api.createRfiResponse("c7", "rfi1", rfiRespPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/rfis/rfi1/response",
+      url: "/contract/manager/contracts/c7/rfis/rfi1/response",
       payload: rfiRespPayload,
     });
 
