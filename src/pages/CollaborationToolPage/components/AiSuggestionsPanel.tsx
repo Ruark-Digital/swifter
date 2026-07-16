@@ -35,6 +35,10 @@ interface AiSuggestionsPanelProps {
   /** When "inline", renders without the fixed-overlay chrome so the
    *  panel can live inside a sidebar tab. */
   variant?: "overlay" | "inline";
+  /** Turn-based negotiation gate. When false, the Apply/Dismiss controls are
+   *  disabled (not hidden) with a tooltip — the viewer must wait for their
+   *  turn. Defaults to true so callers without turn state are unaffected. */
+  isMyTurn?: boolean;
 }
 
 const KindPill: React.FC<{ kind: RedlineSpan["kind"] }> = ({ kind }) => (
@@ -105,6 +109,7 @@ type SuggestionCardProps = {
   onApprove: (item: Item, tier: AlternativeTier) => void;
   onDismiss: (item: Item) => void;
   onFocus?: (item: Item) => void;
+  isMyTurn: boolean;
 };
 
 const SuggestionCard: React.FC<SuggestionCardProps> = ({
@@ -112,6 +117,7 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
   onApprove,
   onDismiss,
   onFocus,
+  isMyTurn,
 }) => {
   const { suggestion } = item;
   const isPending = item.state === "pending";
@@ -311,29 +317,38 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
             <div className="mt-3 flex justify-end gap-2">
               <button
                 type="button"
+                disabled={!isMyTurn}
                 onClick={(e) => {
                   e.stopPropagation();
                   onDismiss(item);
                 }}
-                className="rounded-md border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                title={isMyTurn ? undefined : "Waiting for your turn"}
+                className={cn(
+                  "rounded-md border px-3 py-1 text-xs font-semibold",
+                  isMyTurn
+                    ? "border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                    : "cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-800 dark:text-slate-500",
+                )}
               >
                 Dismiss
               </button>
               <button
                 type="button"
-                disabled={!hasReplacement}
+                disabled={!hasReplacement || !isMyTurn}
                 onClick={(e) => {
                   e.stopPropagation();
                   onApprove(item, tier);
                 }}
                 title={
-                  hasReplacement
-                    ? `Apply ${TIER_LABEL[tier].toLowerCase()} replacement`
-                    : "No alternative text available"
+                  !isMyTurn
+                    ? "Waiting for your turn"
+                    : hasReplacement
+                      ? `Apply ${TIER_LABEL[tier].toLowerCase()} replacement`
+                      : "No alternative text available"
                 }
                 className={cn(
                   "inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-semibold text-white",
-                  hasReplacement
+                  hasReplacement && isMyTurn
                     ? "bg-indigo-600 hover:bg-indigo-700"
                     : "cursor-not-allowed bg-slate-300 dark:bg-slate-700",
                 )}
@@ -363,6 +378,7 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
   onFocus,
   onRetry,
   variant = "overlay",
+  isMyTurn = true,
 }) => {
   if (!open) return null;
 
@@ -500,6 +516,7 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
               onApprove={onApprove}
               onDismiss={onDismiss}
               onFocus={onFocus}
+              isMyTurn={isMyTurn}
             />
           ))}
       </div>
