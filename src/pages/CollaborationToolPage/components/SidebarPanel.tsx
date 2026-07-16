@@ -62,6 +62,11 @@ interface SidebarPanelProps {
   onAiDismiss: (item: AiItem) => void;
   onAiFocus?: (item: AiItem) => void;
   onAiRetry: () => void;
+  /** Turn-based negotiation gate — disables Apply/Dismiss when false. */
+  isMyTurn?: boolean;
+  /** Rendered above the suggestions on the Redline tab (turn status + Send /
+   *  Finalize). Built by the page with `useRedlineTurn` data. */
+  redlineTurnBanner?: React.ReactNode;
 }
 
 const fallbackComments: Feed[] = [
@@ -105,6 +110,8 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   onAiDismiss,
   onAiFocus,
   onAiRetry,
+  isMyTurn = true,
+  redlineTurnBanner,
 }) => {
   const avatarPublic = "/assets/collaboration/avatar-user.png";
   const commentsFeed: CommentsFeedItem[] = useFallbackFeed ? fallbackComments : comments;
@@ -181,19 +188,25 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
           </Suspense>
         )}
         {activeTab === "redline" && (
-          <Suspense fallback={fallbackNode}>
-            <AiSuggestionsPanel
-              open={true}
-              variant="inline"
-              status={aiStatus}
-              errorMessage={aiErrorMessage}
-              items={aiItems}
-              onApprove={onAiApprove}
-              onDismiss={onAiDismiss}
-              onFocus={onAiFocus}
-              onRetry={onAiRetry}
-            />
-          </Suspense>
+          <div className="flex h-full flex-col">
+            {redlineTurnBanner ? (
+              <div className="px-5 pt-4">{redlineTurnBanner}</div>
+            ) : null}
+            <Suspense fallback={fallbackNode}>
+              <AiSuggestionsPanel
+                open={true}
+                variant="inline"
+                status={aiStatus}
+                errorMessage={aiErrorMessage}
+                items={aiItems}
+                onApprove={onAiApprove}
+                onDismiss={onAiDismiss}
+                onFocus={onAiFocus}
+                onRetry={onAiRetry}
+                isMyTurn={isMyTurn}
+              />
+            </Suspense>
+          </div>
         )}
         {activeTab === "versions" && (
           <Suspense fallback={fallbackNode}>

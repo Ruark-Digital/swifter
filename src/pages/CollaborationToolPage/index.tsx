@@ -32,6 +32,9 @@ import {
   useAiRedlineSuggestions,
   type AiRedlineSuggestion,
 } from "./collab/useAiRedlineSuggestions";
+import { useRedlineTurn } from "./collab/useRedlineTurn";
+import TurnBanner from "./components/TurnBanner";
+import type { ApiResponseError } from "@/types";
 import type { Version } from "./components/VersionHistoryModal";
 
 type AiItem = {
@@ -146,9 +149,13 @@ const CollaborationToolPage: React.FC = () => {
   const [collabYDoc, setCollabYDoc] = useState<
     EditorAdapter["doc"] | undefined
   >(undefined);
+  // Re-render signal so effects that drive the (ref-held) adapter re-run once
+  // the editor is actually mounted — e.g. pushing the initial redline-turn mode.
+  const [editorReady, setEditorReady] = useState(false);
   const handleEditorReady = useCallback((adapter: EditorAdapter | null) => {
     editorAdapterRef.current = adapter;
     setCollabYDoc(adapter?.doc);
+    setEditorReady(Boolean(adapter));
   }, []);
 
   // Version history backed by Yjs so every client in the same room
@@ -163,6 +170,11 @@ const CollaborationToolPage: React.FC = () => {
   const contractIdParam = searchParams.get("contractId") || undefined;
   const msaContractIdParam = searchParams.get("msaContractId") || undefined;
   const aiMutation = useAiRedlineSuggestions({
+    documentId: msaContractIdParam || contractIdParam,
+    isMsa: Boolean(msaContractIdParam),
+  });
+  // Turn-based redline negotiation (company side ⇄ vendor side).
+  const redlineTurn = useRedlineTurn({
     documentId: msaContractIdParam || contractIdParam,
     isMsa: Boolean(msaContractIdParam),
   });
@@ -512,10 +524,33 @@ const CollaborationToolPage: React.FC = () => {
     void runAiSuggestions();
   }, [activeTab, aiHasRun, runAiSuggestions]);
 
+  // Push the current turn's edit permission into the SuperDoc iframe. The init
+  // payload sets "editing" once; here we correct it — "suggesting" on your turn,
+  // "viewing" while you wait. Runs after the editor mounts and on every flip.
+  // Only participants with authoritative turn state drive this; non-participants
+  // keep the editor's default mode (pre-existing behavior).
+  useEffect(() => {
+    const adapter = editorAdapterRef.current;
+    if (!adapter?.setMode) return;
+    if (!redlineTurn.turnGateReady) return;
+    adapter.setMode(redlineTurn.isMyTurn ? "suggesting" : "viewing");
+  }, [editorReady, redlineTurn.turnGateReady, redlineTurn.isMyTurn]);
+
   const handleApproveAi = useCallback(
     (item: AiItem, tier: "low" | "medium" | "high" = "medium") => {
       const adapter = editorAdapterRef.current;
       if (!adapter || !item.suggestion) return;
+      // Turn gate: only the current holder may mutate redlines (buttons are
+      // already disabled; this is defense-in-depth).
+      if (redlineTurn.isLocked) {
+        toastHandler.error(
+          "Redline",
+          redlineTurn.isParticipant
+            ? "It's not your turn — wait for the other side to hand the document back."
+            : "Only the contract manager and vendor can modify redlines.",
+        );
+        return;
+      }
       // Pick the user's chosen alternative-language tier (or fall back
       // through the others, then to the legacy `replacementText` field
       // for older BE deployments).
@@ -530,6 +565,12 @@ const CollaborationToolPage: React.FC = () => {
         adapter.replaceRedline(item.redline.redlineId, replacement);
         // Auto-snapshot so the user can revert the AI-applied change.
         saveVersionSnapshot(`Applied AI suggestion (${tier})`, "ai-apply");
+        // Audit-only; does not mutate the doc. Fire-and-forget.
+        redlineTurn.resolve.mutate({
+          redlineId: item.redline.redlineId,
+          action: "modified",
+          tier,
+        });
       } else if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console
         console.warn(
@@ -545,18 +586,27 @@ const CollaborationToolPage: React.FC = () => {
         ),
       );
     },
-    [saveVersionSnapshot],
+    [saveVersionSnapshot, redlineTurn, toastHandler],
   );
 
-  const handleDismissAi = useCallback((item: AiItem) => {
-    setAiItems((prev) =>
-      prev.map((p) =>
-        p.redline.redlineId === item.redline.redlineId
-          ? { ...p, state: "dismissed" }
-          : p,
-      ),
-    );
-  }, []);
+  const handleDismissAi = useCallback(
+    (item: AiItem) => {
+      if (redlineTurn.isLocked) return;
+      setAiItems((prev) =>
+        prev.map((p) =>
+          p.redline.redlineId === item.redline.redlineId
+            ? { ...p, state: "dismissed" }
+            : p,
+        ),
+      );
+      // Audit-only. Fire-and-forget.
+      redlineTurn.resolve.mutate({
+        redlineId: item.redline.redlineId,
+        action: "rejected",
+      });
+    },
+    [redlineTurn],
+  );
 
   // Clicking a suggestion card scrolls the editor to that redline.
   // IframeEditorPane listens for `ct-focus-redline` and forwards it to the
@@ -780,6 +830,42 @@ const CollaborationToolPage: React.FC = () => {
           onAiDismiss={handleDismissAi}
           onAiFocus={handleFocusAi}
           onAiRetry={runAiSuggestions}
+          isMyTurn={redlineTurn.canAct}
+          redlineTurnBanner={
+            <TurnBanner
+              mySide={redlineTurn.mySide}
+              turn={redlineTurn.turn}
+              isMyTurn={redlineTurn.isMyTurn}
+              isFinalized={redlineTurn.isFinalized}
+              pendingCount={
+                aiItems.filter((i) => i.state === "pending").length
+              }
+              onSend={() =>
+                redlineTurn.sendTurn.mutate(undefined, {
+                  onSuccess: () =>
+                    toastHandler.success(
+                      "Redline",
+                      "Document sent to the other side.",
+                    ),
+                  onError: (e) =>
+                    toastHandler.error("Send redline turn", e as ApiResponseError),
+                })
+              }
+              onFinalize={() =>
+                redlineTurn.finalize.mutate(undefined, {
+                  onSuccess: () =>
+                    toastHandler.success(
+                      "Redline",
+                      "Redline negotiation finalized.",
+                    ),
+                  onError: (e) =>
+                    toastHandler.error("Finalize redline", e as ApiResponseError),
+                })
+              }
+              isSending={redlineTurn.sendTurn.isPending}
+              isFinalizing={redlineTurn.finalize.isPending}
+            />
+          }
         />
         </div>
       </div>

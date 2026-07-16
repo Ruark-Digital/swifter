@@ -8,6 +8,7 @@
 
 import type * as Y from "yjs";
 import type { RedlineSpan } from "./redlineScan";
+import type { DocumentMode } from "./superdocBridge";
 
 export type EditorKind = "yoopta" | "tiptap" | "superdoc";
 
@@ -33,4 +34,8 @@ export type EditorAdapter = {
    *  saves the comment unanchored). Only the SuperDoc iframe adapter
    *  implements this. */
   anchorComment?: (text: string) => Promise<string | null>;
+  /** Switch the editor's live edit permission after load — used by the
+   *  turn-based redline negotiation to make the non-turn-holder read-only.
+   *  Only the SuperDoc iframe adapter implements this. */
+  setMode?: (mode: DocumentMode) => void;
 };

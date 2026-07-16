@@ -1,7 +1,7 @@
 # Redline Turn-Based Negotiation — Design
 
 **Date:** 2026-07-01
-**Status:** Approved for planning
+**Status:** Implemented (FE) 2026-07-16 — BE shipped the matching endpoints (`redline-turn` GET/send/finalize + `ai/redline-suggestions/{id}/resolve`, contracts + msa-contracts, manager + vendor). See `2026-07-16-redline-be-fe-model-mismatch.md` for the interim BE/FE divergence that was resolved.
 **Supersedes:** the 2026-06-14 design session's CM+PM synchronized "both must approve" gate for AI Polish redlines. That session never produced a written spec file (design/spec-only work, deferred pending a backend API that never arrived) — its intent is fully replaced by this document.
 
 ## Background

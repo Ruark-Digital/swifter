@@ -15,6 +15,7 @@ import {
   buildFocusRedline,
   buildAddComment,
   buildFocusComment,
+  buildSetMode,
   type PresenceUser,
 } from "../collab/superdocBridge";
 
@@ -115,6 +116,7 @@ const IframeEditorPane: React.FC<Props> = ({
     extractRedlines: () => redlinesRef.current,
     replaceRedline: (redlineId, replacement) =>
       postCommand(buildApplyRedline(redlineId, replacement)),
+    setMode: (mode) => postCommand(buildSetMode(mode)),
     anchorComment: (text) =>
       new Promise<string | null>((resolve) => {
         const requestId = crypto.randomUUID();

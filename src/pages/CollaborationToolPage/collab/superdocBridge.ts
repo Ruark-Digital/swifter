@@ -179,7 +179,8 @@ export type SuperdocCommand =
   | { type: "superdoc:apply-redline"; payload: { redlineId: string; replacement: string } }
   | { type: "superdoc:focus-redline"; payload: { redlineId: string } }
   | { type: "superdoc:add-comment"; payload: { requestId: string; text: string } }
-  | { type: "superdoc:focus-comment"; payload: { commentId: string } };
+  | { type: "superdoc:focus-comment"; payload: { commentId: string } }
+  | { type: "superdoc:set-mode"; payload: { documentMode: DocumentMode } };
 
 export function buildApplyRedline(redlineId: string, replacement: string): SuperdocCommand {
   return { type: "superdoc:apply-redline", payload: { redlineId, replacement } };
@@ -197,4 +198,12 @@ export function buildAddComment(requestId: string, text: string): SuperdocComman
 
 export function buildFocusComment(commentId: string): SuperdocCommand {
   return { type: "superdoc:focus-comment", payload: { commentId } };
+}
+
+/** Switch the editor's live edit permission after load (turn-based redline
+ *  negotiation). `documentMode` is otherwise only set once, in the init
+ *  payload. The SuperDoc app (separate repo) must handle this to toggle its
+ *  own permissions without a reload — cross-repo dependency. */
+export function buildSetMode(documentMode: DocumentMode): SuperdocCommand {
+  return { type: "superdoc:set-mode", payload: { documentMode } };
 }
