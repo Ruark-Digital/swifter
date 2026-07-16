@@ -465,7 +465,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
           <SheetHeader>
             <div className="flex items-center justify-between">
               <SheetTitle>{isClaim ? "Claim Details" : "Change Details"}</SheetTitle>
-              <div className="flex items-center gap-2 mr-14">
+              <div className="flex items-center gap-2 mr-20">
                 {!isClaim &&
                   isContractVendorLike &&
                   status?.toLowerCase?.() === "rejected" && (
