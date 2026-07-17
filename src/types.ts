@@ -195,6 +195,13 @@ export interface ContractDetail {
   __v:                    number;
   holdBackReleased:       number;
   savingAmount:           number;
+  /** Payment-summary figures from the contract-detail response (v2.3.0).
+   *  `billedAmount` drives Billed Till Date; `currentBalance` drives the
+   *  Payment Summary's Current Balance (previously sourced from the
+   *  financial-statement dashboard endpoint). */
+  billedAmount?:          number;
+  billPayment?:           number;
+  currentBalance?:        number;
 }
 
 export interface ContractDeliverable {
