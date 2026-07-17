@@ -869,9 +869,12 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                             : ""}
                         </div>
                       </div>
-                      <div className="mt-2 text-sm text-[#374151] dark:text-slate-200 whitespace-pre-wrap">
-                        {comment.content ?? ""}
-                      </div>
+                      <div
+                        className="mt-2 text-sm text-[#374151] dark:text-slate-200 prose prose-sm dark:prose-invert max-w-none"
+                        dangerouslySetInnerHTML={{
+                          __html: comment.content ?? "",
+                        }}
+                      />
                     </div>
                   ))}
                 </div>
