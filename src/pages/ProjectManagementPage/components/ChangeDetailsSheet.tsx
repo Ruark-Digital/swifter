@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Share2, Eye, Download } from "lucide-react";
+import { ArrowLeft, Share2, Eye, Download, Pencil } from "lucide-react";
 import { formatFileSize, getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -35,6 +35,7 @@ import {
 } from "@/pages/ContractManagementPage/components/StatusBadge";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import CreateProjectDialog from "./CreateProjectDialog";
+import UpdateEacDialog from "./UpdateEacDialog";
 
 type Props = {
   trigger?: React.ReactNode;
@@ -244,6 +245,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   );
   const [completeConfirmOpen, setCompleteConfirmOpen] = React.useState(false);
   const [editProjectOpen, setEditProjectOpen] = React.useState(false);
+  const [eacDialogOpen, setEacDialogOpen] = React.useState(false);
 
   const {
     data: projectRes,
@@ -454,16 +456,42 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                       />
                       <LabelRow
                         label="EAC"
-                        value={
-                          projectRes?.data?.data?.budget != null
-                            ? new Intl.NumberFormat(undefined, {
-                                style: "currency",
-                                currency: "USD",
-                                maximumFractionDigits: 0,
-                              }).format(projectRes.data.data.budget)
-                            : ""
-                        }
                         highlight
+                        value={
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <span>
+                                {project?.eac != null
+                                  ? new Intl.NumberFormat(undefined, {
+                                      style: "currency",
+                                      currency: "USD",
+                                      maximumFractionDigits: 0,
+                                    }).format(project.eac)
+                                  : "Not set"}
+                              </span>
+                              {!isCompleted && projectId ? (
+                                <button
+                                  type="button"
+                                  aria-label="Update EAC"
+                                  data-testid="update-eac-button"
+                                  onClick={() => setEacDialogOpen(true)}
+                                  className="inline-flex items-center justify-center text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                              ) : null}
+                            </div>
+                            {project?.lastEacUpdate ? (
+                              <span className="text-xs font-normal text-slate-400 dark:text-slate-500">
+                                Last updated{" "}
+                                {formatDateTZ(
+                                  project.lastEacUpdate,
+                                  "MMM d, yyyy"
+                                )}
+                              </span>
+                            ) : null}
+                          </div>
+                        }
                       />
                       <LabelRow
                         label="End Date"
@@ -661,6 +689,13 @@ const ChangeDetailsSheet: React.FC<Props> = ({
               />
             </div>
           </SheetFooter>
+
+          <UpdateEacDialog
+            open={eacDialogOpen}
+            onOpenChange={setEacDialogOpen}
+            projectId={projectId}
+            currentEac={project?.eac}
+          />
 
           <CreateProjectDialog
             open={editProjectOpen}
