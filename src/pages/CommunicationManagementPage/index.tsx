@@ -15,7 +15,7 @@ import { ApiResponse, ApiResponseError, User } from "@/types";
 import { FileListItem } from "./components/FileListITem";
 import { useWatch } from "react-hook-form";
 import { Upload } from "lucide-react";
-import { TextMultiSelect } from "@/components/layouts/FormInputs";
+import { TextMultiSelect, TextSelect } from "@/components/layouts/FormInputs";
 import { Company } from "../CompaniesPage";
 
 export interface AppCampaignPayload {
@@ -211,17 +211,12 @@ export default function Communication() {
                 <div className="space-y-5">
                   <div className="flex items-center gap-3">
                     <p>Send to:</p>
-                    <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg w-40">
+                    <div className="w-56">
                       <Forger
                         name="recipientType"
-                        component="select"
-                        className="w-full dark:bg-gray-700 dark:text-white"
-
-                        children={userTypeOptions.map((item) => (
-                          <option key={item.value} value={item.value}>
-                            {item.label}
-                          </option>
-                        ))}
+                        component={TextSelect}
+                        options={userTypeOptions}
+                        placeholder="Select recipient"
                       />
                     </div>
                   </div>
@@ -285,16 +280,12 @@ export default function Communication() {
                 <div className="space-y-5">
                   <div className="flex items-center gap-3">
                     <p>Send to:</p>
-                    <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg w-40">
+                    <div className="w-56">
                       <Forger
                         name="recipientType"
-                        component="select"
-                        className="w-full"
-                        children={userTypeOptions.map((item) => (
-                          <option key={item.value} value={item.value}>
-                            {item.label}
-                          </option>
-                        ))}
+                        component={TextSelect}
+                        options={userTypeOptions}
+                        placeholder="Select recipient"
                       />
                     </div>
                   </div>
@@ -349,16 +340,12 @@ export default function Communication() {
                 <div className="space-y-5">
                   <div className="flex items-center gap-3">
                     <p>Send to:</p>
-                    <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg w-40">
+                    <div className="w-56">
                       <Forger
                         name="recipientType"
-                        component="select"
-                        className="w-full dark:bg-gray-700 dark:text-white"
-                        children={userTypeOptions.map((item) => (
-                          <option key={item.value} value={item.value}>
-                            {item.label}
-                          </option>
-                        ))}
+                        component={TextSelect}
+                        options={userTypeOptions}
+                        placeholder="Select recipient"
                       />
                     </div>
                   </div>
@@ -454,11 +441,6 @@ const ForgerUser = () => {
           component={TextMultiSelect}
           className="w-full focus:outline-none capitalize"
           options={userOptions}
-          children={userOptions.map((item) => (
-            <option key={item.value} className="capitalize" value={item.value}>
-              {item.label}
-            </option>
-          ))}
         />
       </div>
     </div>
