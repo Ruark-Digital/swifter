@@ -5,7 +5,7 @@ import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
-import { getRequest, postRequest } from "@/lib/axiosInstance";
+import { getRequest, postRequest, putRequest } from "@/lib/axiosInstance";
 import {
   Search,
   ArrowLeft,
@@ -170,6 +170,13 @@ const RateSheetFilesListItem = ({ file }: { file: File }) => {
   );
 };
 
+type ExistingRateSheetFile = {
+  name: string;
+  url: string;
+  type: string;
+  size: string | number;
+};
+
 const SubmitRateSheetDialog: React.FC<{
   trigger: React.ReactElement;
   contractId: string;
@@ -178,7 +185,24 @@ const SubmitRateSheetDialog: React.FC<{
    *  `msa-contracts` equivalent — used for both the submit POST and the
    *  list-invalidation query key. */
   basePath: string;
-}> = ({ trigger, contractId, basePath }) => {
+  /** "edit" resubmits a rejected rate sheet via PUT to
+   *  `{basePath}/{rateSheetId}` instead of POSTing a new one. Vendor/PM only. */
+  mode?: "create" | "edit";
+  rateSheetId?: string;
+  initialValues?: { title?: string; description?: string; amount?: number | string };
+  /** Existing uploaded files, retained on resubmit so they aren't wiped when
+   *  the vendor doesn't re-upload. Newly chosen files are appended. */
+  initialFiles?: ExistingRateSheetFile[];
+}> = ({
+  trigger,
+  contractId,
+  basePath,
+  mode = "create",
+  rateSheetId,
+  initialValues,
+  initialFiles = [],
+}) => {
+  const isEdit = mode === "edit" && !!rateSheetId;
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const toastHandler = useToastHandler();
@@ -187,12 +211,28 @@ const SubmitRateSheetDialog: React.FC<{
   const { control, reset } = useForge<SubmitRateSheetFormValues>({
     resolver: yupResolver(submitRateSheetSchema) as any,
     defaultValues: {
-      title: "",
-      amount: "",
-      description: "",
+      title: initialValues?.title ?? "",
+      amount:
+        initialValues?.amount != null ? String(initialValues.amount) : "",
+      description: initialValues?.description ?? "",
       files: null,
     },
   });
+
+  // useForge builds the form once, so re-seed edit values whenever the dialog
+  // opens for a (possibly changed) rate sheet.
+  React.useEffect(() => {
+    if (open && isEdit) {
+      reset({
+        title: initialValues?.title ?? "",
+        amount:
+          initialValues?.amount != null ? String(initialValues.amount) : "",
+        description: initialValues?.description ?? "",
+        files: null,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isEdit, initialValues?.title, initialValues?.description, initialValues?.amount]);
 
   const { mutateAsync: uploadFile, isPending } = useMutation<
     ApiResponse<UploadURLs[]>,
@@ -216,13 +256,19 @@ const SubmitRateSheetDialog: React.FC<{
   });
 
   const submitMutation = useMutation({
-    mutationKey: ["submitRateSheet", contractId],
+    mutationKey: ["submitRateSheet", contractId, isEdit ? rateSheetId : "new"],
     mutationFn: async (payload: {
       title: string;
       description: string;
       amount: number;
       files: { name: string; url: string; type: string; size: string }[];
     }) => {
+      if (isEdit) {
+        return await putRequest({
+          url: `${basePath}/${rateSheetId}`,
+          payload,
+        });
+      }
       return await postRequest({
         url: basePath,
         payload,
@@ -234,15 +280,26 @@ const SubmitRateSheetDialog: React.FC<{
       await queryClient.invalidateQueries({
         queryKey: ["rate-sheets", contractId, basePath],
       });
+      if (isEdit) {
+        await queryClient.invalidateQueries({
+          queryKey: ["rate-sheet-detail", basePath, contractId, rateSheetId],
+        });
+      }
       toastHandler.success(
         "Success",
-        res?.data?.message || "Rate sheet submitted successfully",
+        res?.data?.message ||
+          (isEdit
+            ? "Rate sheet resubmitted successfully"
+            : "Rate sheet submitted successfully"),
       );
     },
     onError: (error: any) => {
       toastHandler.error(
         "Error",
-        error?.response?.data?.message || "Failed to submit rate sheet",
+        error?.response?.data?.message ||
+          (isEdit
+            ? "Failed to resubmit rate sheet"
+            : "Failed to submit rate sheet"),
       );
     },
   });
@@ -283,17 +340,28 @@ const SubmitRateSheetDialog: React.FC<{
           }[];
         }
 
+        // On resubmit, retain the sheet's existing files (they aren't
+        // re-selected via the uploader) and append any newly chosen ones.
+        const retainedFiles = isEdit
+          ? initialFiles.map((f) => ({
+              name: f.name,
+              url: f.url,
+              type: f.type,
+              size: f.size?.toString?.() ?? "0",
+            }))
+          : [];
+
         await submitMutation.mutateAsync({
           title: data.title,
           amount: data.amount ? Number(data.amount) : 0,
           description: data.description,
-          files: uploadedFiles,
+          files: [...retainedFiles, ...uploadedFiles],
         });
       } finally {
         setIsSubmitting(false);
       }
     },
-    [submitMutation, uploadFile],
+    [submitMutation, uploadFile, isEdit, initialFiles],
   );
 
   return (
@@ -311,7 +379,7 @@ const SubmitRateSheetDialog: React.FC<{
         <Forge control={control} onSubmit={onSubmit} className="flex flex-col">
           <div className="flex items-center justify-between px-8 py-8">
             <h2 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
-              Submit Rate Sheet
+              {isEdit ? "Resubmit Rate Sheet" : "Submit Rate Sheet"}
             </h2>
           </div>
 
@@ -377,9 +445,15 @@ const SubmitRateSheetDialog: React.FC<{
                 <div className="flex items-center justify-center gap-2">
                   <Spinner className="h-5 w-5 text-white" />
                   <span>
-                    {isPending ? "Uploading files…" : "Submitting…"}
+                    {isPending
+                      ? "Uploading files…"
+                      : isEdit
+                        ? "Resubmitting…"
+                        : "Submitting…"}
                   </span>
                 </div>
+              ) : isEdit ? (
+                "Resubmit Rate Sheet"
               ) : (
                 "Submit Rate Sheet"
               )}
@@ -744,7 +818,8 @@ const RateSheetDetailsSheet: React.FC<{
   const [open, setOpen] = React.useState(false);
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
-  const { isManager } = useUserRole();
+  const { isManager, isVendor, isProjectManager } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const rateSheetId = row.sheetId || row.id;
 
   const { data: detailRes, isLoading: detailLoading } = useQuery({
@@ -796,6 +871,11 @@ const RateSheetDetailsSheet: React.FC<{
   const summary = sheet?.summary ?? EMPTY_RATE_SHEET_SUMMARY;
 
   const canApprove = isManager && sheet?.approverStatus === "pending";
+  // Vendor/PM can edit & resubmit a rejected rate sheet (BE: PUT
+  // {basePath}/{rateSheetId}). Gated on the rejected status.
+  const isRejected =
+    (sheet?.status || row.status || "").toLowerCase() === "rejected";
+  const canResubmit = isContractVendorLike && isRejected;
 
   const [activeTab, setActiveTab] = React.useState("overview");
   
@@ -993,6 +1073,36 @@ const RateSheetDetailsSheet: React.FC<{
               >
                 Approve
               </Button>
+            </div>
+          )}
+
+          {canResubmit && (
+            <div className="flex gap-3 pt-6">
+              <SubmitRateSheetDialog
+                contractId={contractId}
+                basePath={basePath}
+                mode="edit"
+                rateSheetId={rateSheetId}
+                initialValues={{
+                  title: sheet?.title ?? row.title,
+                  description: sheet?.description ?? "",
+                  amount: sheet?.amount,
+                }}
+                initialFiles={(sheet?.files ?? []).map((f) => ({
+                  name: f.name,
+                  url: f.url,
+                  type: f.type,
+                  size: f.size,
+                }))}
+                trigger={
+                  <Button
+                    className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
+                    data-testid="resubmit-rate-sheet-trigger"
+                  >
+                    Resubmit
+                  </Button>
+                }
+              />
             </div>
           )}
         </div>
