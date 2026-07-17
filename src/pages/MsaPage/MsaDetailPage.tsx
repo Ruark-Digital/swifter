@@ -264,6 +264,7 @@ export interface MSAContractDetail {
   timezone: string;
   isDeleted: boolean;
   vendorPersonnel: any[];
+  personnel?: VendorPersonnel[];
   milestone: any[];
   createdAt: Date;
   updatedAt: Date;
@@ -326,8 +327,18 @@ export interface Signatory {
   _id: string;
 }
 
+export interface VendorPersonnel {
+  _id?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+}
+
 export interface Vendor {
-  status: string;
+  _id?: string;
+  name?: string;
+  status?: string;
 }
 
 const formatDate = (iso?: string) => {
@@ -683,9 +694,10 @@ const MsaDetailPage: React.FC = () => {
   const internalTeam = Array.isArray(msa?.internalTeam)
     ? msa!.internalTeam
     : [];
-  const vendorPersonnel = Array.isArray(msa?.vendorPersonnel)
-    ? msa!.vendorPersonnel!
-    : [];
+  // Vendor key personnel come from the top-level `personnel` array on the MSA
+  // detail response — not `vendorPersonnel` (which never existed, so this
+  // always rendered "N/A"). Mirrors the Contract detail behaviour.
+  const vendorPersonnel = Array.isArray(msa?.personnel) ? msa!.personnel! : [];
 
   return (
     <div className="space-y-8 pt-5">
