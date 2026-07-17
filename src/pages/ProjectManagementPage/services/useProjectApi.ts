@@ -20,8 +20,10 @@ export type ProjectApi = {
   budget?: number;
   /** Sum of approved contract invoice amounts for all contracts linked to this project. */
   totalSpend?: number;
-  /** Estimated At Completion — project budget plus sum of approved change order values. */
-  eac?: number;
+  /** Manually entered Estimated At Completion value; `null`/absent until first entered via the EAC endpoint. */
+  eac?: number | null;
+  /** ISO date-time the EAC value was last manually updated. */
+  lastEacUpdate?: string;
   status: "active" | "completed" | "cancelled";
   allowMultiple: boolean;
   createdAt?: string;
