@@ -13,7 +13,6 @@ type ModuleType = {
   id: string;
   title: string;
   description: string;
-  moduleId: string;
   connected: boolean;
 };
 
@@ -57,56 +56,48 @@ const ModulesManagement: React.FC = () => {
       id: 'solicitation-management',
       title: 'Solicitations Management',
       description: 'Manage solicitation creation and vendor invites',
-      moduleId: 'ighmmpiobklfepjocnamgkkbiglidom',
       connected: true,
     },
     {
       id: 'evaluations-management',
       title: 'Evaluations Management',
       description: 'Setup evaluations and assign reviewers/evaluators',
-      moduleId: 'ighmmpiobklfepjocnamgkkbiglidom',
       connected: true,
     },
     {
       id: 'vendor-management',
       title: 'Vendor Management',
       description: 'Onboard, track, and assign vendors',
-      moduleId: 'ighmmpiobklfepjocnamgkkbiglidom',
       connected: true,
     },
     {
       id: 'reports-analytics',
       title: 'Reports & Analytics',
       description: 'View dashboards and generate performance reports',
-      moduleId: 'ighmmpiobklfepjocnamgkkbiglidom',
       connected: true,
     },
     {
       id: 'vendors-qa',
       title: 'Vendors Q & A',
       description: 'Allow vendor clarification and updates',
-      moduleId: 'ighmmpiobklfepjocnamgkkbiglidom',
       connected: true,
     },
     {
       id: 'general-updates',
       title: 'General Updates/Notifications',
       description: 'Trigger alerts via email and in-app',
-      moduleId: 'ighmmpiobklfepjocnamgkkbiglidom',
       connected: true,
     },
     {
       id: 'addendum-management',
       title: 'Addendum Management',
       description: 'Manage Vendor Q & A, updates solicitations',
-      moduleId: 'ighmmpiobklfepjocnamgkkbiglidom',
       connected: true,
     },
     {
       id: 'my-actions',
       title: 'My Actions',
       description: 'Updates about pending actions/tasks',
-      moduleId: 'ighmmpiobklfepjocnamgkkbiglidom',
       connected: true,
     },
   ];
@@ -298,9 +289,6 @@ const ModulesManagement: React.FC = () => {
                     <p className="text-sm text-gray-400 dark:text-gray-700 mb-3">
                       {module.description}
                     </p>
-                    <div className="text-xs text-gray-500 dark:text-gray-500 mb-4">
-                      <span className="font-medium">ID:</span> {module.moduleId}
-                    </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
