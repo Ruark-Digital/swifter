@@ -28,10 +28,14 @@ export const getNavigationForRole = (
   currentPath: string,
   modules?: Modules
 ): NavigationItem[] => {
+  // Truthy checks (not `=== true`) to match the module gating used for every
+  // other nav item below — the auth `module` payload can carry these flags as
+  // truthy non-boolean values, and strict `=== true` was hiding the Dashboard
+  // menu item for users whose other module-gated items showed fine.
   const showDashboard =
     role === "project_manager"
-      ? modules?.contractManagement === true
-      : modules?.reportsAnalytics === true && role !== "view_only";
+      ? Boolean(modules?.contractManagement)
+      : Boolean(modules?.reportsAnalytics) && role !== "view_only";
 
   const baseNavigation: (NavigationItem | undefined)[] = [
     showDashboard
