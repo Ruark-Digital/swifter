@@ -945,8 +945,11 @@ export const RoleBasedDashboard: React.FC = () => {
 
   const isContractAnalyticsRole =
     userRole === "contract_manager" || userRole === "approver";
-  const canShowMyActions = modules?.myActions === true;
-  const canShowGeneralUpdates = modules?.generalUpdatesNotifications === true;
+  // Truthy checks (not `=== true`) — the auth `module` payload can deliver
+  // these flags as truthy non-boolean values, so strict equality hid the
+  // My Actions / General Updates panels across every role's dashboard.
+  const canShowMyActions = Boolean(modules?.myActions);
+  const canShowGeneralUpdates = Boolean(modules?.generalUpdatesNotifications);
 
   // Procurement's Contracts tab reuses the solicitation config's activity row
   // shells (My Actions / General Updates) but must render CONTRACT activity data
