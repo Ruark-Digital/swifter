@@ -42,6 +42,9 @@ type Props = {
   createPath?: string;
   invalidateQueryKey?: readonly unknown[];
   mode?: "create" | "edit";
+  /** In edit mode, distinguishes a rejected-item resubmit (labels "Resubmit")
+   *  from a pending-item edit (labels "Edit"). Both hit the same PUT. */
+  isResubmit?: boolean;
   invoiceId?: string;
   initialInvoice?: ContractInvoiceDTO & {
     items?: Array<{
@@ -607,6 +610,7 @@ const CreateInvoiceDialog: React.FC<Props> = ({
   createPath,
   invalidateQueryKey,
   mode = "create",
+  isResubmit = false,
   invoiceId,
   initialInvoice,
 }) => {
@@ -1022,7 +1026,11 @@ const CreateInvoiceDialog: React.FC<Props> = ({
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-4 pt-8">
           <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
-            {isEditMode ? "Edit Invoice" : "Submit Invoice"}
+            {isEditMode
+              ? isResubmit
+                ? "Resubmit Invoice"
+                : "Edit Invoice"
+              : "Submit Invoice"}
           </DialogTitle>
         </div>
 
@@ -1086,7 +1094,13 @@ const CreateInvoiceDialog: React.FC<Props> = ({
             <Footer
               onBack={handleBack}
               onPrimary={handlePrimary}
-              primaryLabel={isEditMode ? "Update Invoice" : "Submit Invoice"}
+              primaryLabel={
+                isEditMode
+                  ? isResubmit
+                    ? "Resubmit Invoice"
+                    : "Update Invoice"
+                  : "Submit Invoice"
+              }
               isSubmitting={isSubmitting}
             />
           </Forge>

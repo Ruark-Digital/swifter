@@ -188,6 +188,9 @@ const SubmitRateSheetDialog: React.FC<{
   /** "edit" resubmits a rejected rate sheet via PUT to
    *  `{basePath}/{rateSheetId}` instead of POSTing a new one. Vendor/PM only. */
   mode?: "create" | "edit";
+  /** In edit mode, distinguishes a rejected-item resubmit ("Resubmit") from a
+   *  pending-item edit ("Edit"). Both hit the same PUT. */
+  isResubmit?: boolean;
   rateSheetId?: string;
   initialValues?: { title?: string; description?: string; amount?: number | string };
   /** Existing uploaded files, retained on resubmit so they aren't wiped when
@@ -198,6 +201,7 @@ const SubmitRateSheetDialog: React.FC<{
   contractId,
   basePath,
   mode = "create",
+  isResubmit = false,
   rateSheetId,
   initialValues,
   initialFiles = [],
@@ -289,7 +293,9 @@ const SubmitRateSheetDialog: React.FC<{
         "Success",
         res?.data?.message ||
           (isEdit
-            ? "Rate sheet resubmitted successfully"
+            ? isResubmit
+              ? "Rate sheet resubmitted successfully"
+              : "Rate sheet updated successfully"
             : "Rate sheet submitted successfully"),
       );
     },
@@ -298,7 +304,9 @@ const SubmitRateSheetDialog: React.FC<{
         "Error",
         error?.response?.data?.message ||
           (isEdit
-            ? "Failed to resubmit rate sheet"
+            ? isResubmit
+              ? "Failed to resubmit rate sheet"
+              : "Failed to update rate sheet"
             : "Failed to submit rate sheet"),
       );
     },
@@ -379,7 +387,11 @@ const SubmitRateSheetDialog: React.FC<{
         <Forge control={control} onSubmit={onSubmit} className="flex flex-col">
           <div className="flex items-center justify-between px-8 py-8">
             <h2 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
-              {isEdit ? "Resubmit Rate Sheet" : "Submit Rate Sheet"}
+              {isEdit
+                ? isResubmit
+                  ? "Resubmit Rate Sheet"
+                  : "Edit Rate Sheet"
+                : "Submit Rate Sheet"}
             </h2>
           </div>
 
@@ -448,12 +460,18 @@ const SubmitRateSheetDialog: React.FC<{
                     {isPending
                       ? "Uploading files…"
                       : isEdit
-                        ? "Resubmitting…"
+                        ? isResubmit
+                          ? "Resubmitting…"
+                          : "Saving…"
                         : "Submitting…"}
                   </span>
                 </div>
               ) : isEdit ? (
-                "Resubmit Rate Sheet"
+                isResubmit ? (
+                  "Resubmit Rate Sheet"
+                ) : (
+                  "Edit Rate Sheet"
+                )
               ) : (
                 "Submit Rate Sheet"
               )}
@@ -871,11 +889,12 @@ const RateSheetDetailsSheet: React.FC<{
   const summary = sheet?.summary ?? EMPTY_RATE_SHEET_SUMMARY;
 
   const canApprove = isManager && sheet?.approverStatus === "pending";
-  // Vendor/PM can edit & resubmit a rejected rate sheet (BE: PUT
-  // {basePath}/{rateSheetId}). Gated on the rejected status.
-  const isRejected =
-    (sheet?.status || row.status || "").toLowerCase() === "rejected";
-  const canResubmit = isContractVendorLike && isRejected;
+  // Vendor/PM edits a rate sheet via PUT {basePath}/{rateSheetId} — labelled
+  // "Edit" while pending approval and "Resubmit" once rejected (same endpoint).
+  const rsStatus = (sheet?.status || row.status || "").toLowerCase();
+  const isRejected = rsStatus === "rejected";
+  const canEditOrResubmit =
+    isContractVendorLike && (rsStatus === "pending" || isRejected);
 
   const [activeTab, setActiveTab] = React.useState("overview");
   
@@ -1076,12 +1095,13 @@ const RateSheetDetailsSheet: React.FC<{
             </div>
           )}
 
-          {canResubmit && (
-            <div className="flex gap-3 pt-6">
+          {canEditOrResubmit && (
+            <div className="flex gap-3 pt-6 justify-end">
               <SubmitRateSheetDialog
                 contractId={contractId}
                 basePath={basePath}
                 mode="edit"
+                isResubmit={isRejected}
                 rateSheetId={rateSheetId}
                 initialValues={{
                   title: sheet?.title ?? row.title,
@@ -1096,10 +1116,10 @@ const RateSheetDetailsSheet: React.FC<{
                 }))}
                 trigger={
                   <Button
-                    className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
+                    className="h-11 w-64 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
                     data-testid="resubmit-rate-sheet-trigger"
                   >
-                    Resubmit
+                    {isRejected ? "Resubmit" : "Edit"}
                   </Button>
                 }
               />

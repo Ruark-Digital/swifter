@@ -30,6 +30,9 @@ type Props = {
    *  initialClaim to prefill. Mirrors the CreateChangeDialog edit-mode
    *  contract. */
   mode?: "create" | "edit";
+  /** In edit mode, distinguishes a rejected-item resubmit ("Resubmit") from a
+   *  pending-item edit ("Edit"). Both hit the same PUT. */
+  isResubmit?: boolean;
   editPath?: string;
   initialClaim?: {
     title?: string;
@@ -130,6 +133,7 @@ const RequestClaimDialog: React.FC<Props> = ({
   createPath,
   invalidateQueryKey,
   mode = "create",
+  isResubmit = false,
   editPath,
   initialClaim,
   detailInvalidateQueryKey,
@@ -243,7 +247,10 @@ const RequestClaimDialog: React.FC<Props> = ({
       return res.data;
     },
     onSuccess: async () => {
-      toast.success("Claim", "Claim resubmitted successfully");
+      toast.success(
+        "Claim",
+        isResubmit ? "Claim resubmitted successfully" : "Claim updated successfully",
+      );
       await invalidateAll();
       setOpen(false);
     },
@@ -264,7 +271,11 @@ const RequestClaimDialog: React.FC<Props> = ({
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-8 pt-8">
           <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
-            {isEdit ? "Resubmit Claim" : "Create Claim"}
+            {isEdit
+              ? isResubmit
+                ? "Resubmit Claim"
+                : "Edit Claim"
+              : "Create Claim"}
           </DialogTitle>
         </div>
         <div className="px-8 pb-8 pt-6">
@@ -444,10 +455,14 @@ const RequestClaimDialog: React.FC<Props> = ({
               >
                 {activeMutation.isPending
                   ? isEdit
-                    ? "Resubmitting..."
+                    ? isResubmit
+                      ? "Resubmitting..."
+                      : "Saving..."
                     : "Submitting..."
                   : isEdit
-                    ? "Resubmit Claim"
+                    ? isResubmit
+                      ? "Resubmit Claim"
+                      : "Edit Claim"
                     : "Submit Claim"}
               </Button>
             </div>

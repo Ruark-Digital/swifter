@@ -44,6 +44,9 @@ type SubmitLemDialogProps = {
   /** "edit" resubmits a rejected LEM via PUT instead of creating a new one
    *  (QA #150). Requires lemId; initialLem pre-fills the form. */
   mode?: "create" | "edit";
+  /** In edit mode, distinguishes a rejected-item resubmit ("Resubmit") from a
+   *  pending-item edit ("Edit"). Both hit the same PUT. */
+  isResubmit?: boolean;
   lemId?: string;
   initialLem?: {
     title?: string;
@@ -102,6 +105,7 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
   createPath,
   invalidateQueryKey,
   mode = "create",
+  isResubmit = false,
   lemId,
   initialLem,
 }) => {
@@ -177,14 +181,22 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
       }
       toastHandler.success(
         "Success",
-        isEdit ? "LEM resubmitted successfully" : "LEM submitted successfully",
+        isEdit
+          ? isResubmit
+            ? "LEM resubmitted successfully"
+            : "LEM updated successfully"
+          : "LEM submitted successfully",
       );
     },
     onError: (error: any) => {
       toastHandler.error(
         "Error",
         error?.response?.data?.message ||
-          (isEdit ? "Failed to resubmit LEM" : "Failed to submit LEM"),
+          (isEdit
+            ? isResubmit
+              ? "Failed to resubmit LEM"
+              : "Failed to update LEM"
+            : "Failed to submit LEM"),
       );
     },
   });
@@ -253,7 +265,7 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
         <Forge control={control} onSubmit={onSubmit} className="flex flex-col h-full">
           <div className="flex items-center justify-between px-8 py-8">
             <h2 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
-              {isEdit ? "Resubmit LEM" : "Submit LEM"}
+              {isEdit ? (isResubmit ? "Resubmit LEM" : "Edit LEM") : "Submit LEM"}
             </h2>
           </div>
 
@@ -322,10 +334,20 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
               {isSubmitting ? (
                 <div className="flex items-center justify-center gap-2">
                   <Spinner className="h-5 w-5 text-white" />
-                  <span>{isEdit ? "Resubmitting..." : "Submitting..."}</span>
+                  <span>
+                    {isEdit
+                      ? isResubmit
+                        ? "Resubmitting..."
+                        : "Saving..."
+                      : "Submitting..."}
+                  </span>
                 </div>
               ) : isEdit ? (
-                "Resubmit LEM"
+                isResubmit ? (
+                  "Resubmit LEM"
+                ) : (
+                  "Edit LEM"
+                )
               ) : (
                 "Submit LEM"
               )}
