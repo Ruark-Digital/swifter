@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Edit2, Search, X } from "lucide-react";
+import { ArrowLeft, Search, X } from "lucide-react";
 import CreateInvoiceDialog from "./CreateInvoiceDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
@@ -297,27 +297,6 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                   {invoice?.title ?? "-"}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                {isContractVendorLike &&
-                  !actionsDisabled &&
-                  invoice?.status === "rejected" && (
-                    <CreateInvoiceDialog
-                      contractId={contractId}
-                      mode="edit"
-                      invoiceId={invoiceId}
-                      initialInvoice={invoice as any}
-                      trigger={
-                        <Button
-                          variant="outline"
-                          data-testid="edit-invoice-trigger"
-                          className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#2A4467] dark:text-slate-200"
-                        >
-                          <Edit2 className="mr-2 h-4 w-4" /> Edit
-                        </Button>
-                      }
-                    />
-                  )}
-              </div>
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2">
@@ -479,6 +458,31 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
               </Button>
             </div>
           ) : null}
+
+          {/* Vendor/PM edit (pending) or resubmit (rejected) — bottom footer,
+              matching the Deliverables detail layout. */}
+          {isContractVendorLike &&
+            !actionsDisabled &&
+            (invoice?.status === "pending" ||
+              invoice?.status === "rejected") && (
+              <div className="flex gap-3 pt-6 justify-end">
+                <CreateInvoiceDialog
+                  contractId={contractId}
+                  mode="edit"
+                  isResubmit={invoice?.status === "rejected"}
+                  invoiceId={invoiceId}
+                  initialInvoice={invoice as any}
+                  trigger={
+                    <Button
+                      data-testid="edit-invoice-trigger"
+                      className="h-11 w-64 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
+                    >
+                      {invoice?.status === "rejected" ? "Resubmit" : "Edit"}
+                    </Button>
+                  }
+                />
+              </div>
+            )}
 
           <Dialog
             open={pendingAction !== null}
