@@ -96,6 +96,41 @@ const STAT_ROUTE_MAPPINGS: Record<
   },
 };
 
+// QA #187 — when the super-admin disables a company's Solicitation / Evaluation
+// modules, the dashboard must stop surfacing that content. These sets identify
+// solicitation/evaluation stat cards (by title) and charts (by id) so they can
+// be stripped from the config-driven dashboard for the roles whose primary view
+// is solicitation-oriented (procurement, company_admin, vendor).
+const SOLICITATION_STAT_TITLES = new Set([
+  "All Solicitations",
+  "Active Solicitations",
+  "Published Solicitations",
+  "Under Evaluations",
+  "Closed Solicitations",
+  "Awarded",
+  "Total Solicitations",
+  "All Invitations",
+  "Confirmed Invitations",
+  "Declined Invitations",
+  "Pending Invitations",
+]);
+const EVALUATION_STAT_TITLES = new Set([
+  "All Evaluations",
+  "Active Evaluations",
+  "Pending Evaluations",
+  "Completed Evaluations",
+]);
+const SOLICITATION_CHART_IDS = new Set([
+  "solicitation-status",
+  "solicitation-activities",
+  "proposal-submission",
+  "vendors-bid-intent-status",
+  "vendors-intent-status",
+  "bid-intent",
+  "vendors-distribution",
+]);
+const EVALUATION_CHART_IDS = new Set(["total-evaluation"]);
+
 const CM_YTD_STATS = [
   {
     title: "All Contracts",
@@ -826,6 +861,50 @@ export const RoleBasedDashboard: React.FC = () => {
     contractManagerGeneralUpdates,
   ]);
 
+  // QA #187 — strip solicitation/evaluation stat cards and charts when the
+  // company's module is disabled. Only applies to roles whose primary dashboard
+  // is solicitation-oriented; contract/super-admin views are untouched. A module
+  // is considered "off" only when explicitly `false` (absent/loading => keep).
+  const moduleFilteredConfig: DashboardConfig = useMemo(() => {
+    const solicitationOff = modules?.solicitationManagement === false;
+    const evaluationOff = modules?.evaluationsManagement === false;
+    const roleInScope =
+      userRole === "procurement" ||
+      userRole === "company_admin" ||
+      userRole === "vendor";
+    if ((!solicitationOff && !evaluationOff) || !roleInScope) {
+      return enhancedDashboardConfig;
+    }
+
+    const keepStat = (title?: string) => {
+      if (solicitationOff && title && SOLICITATION_STAT_TITLES.has(title))
+        return false;
+      if (evaluationOff && title && EVALUATION_STAT_TITLES.has(title))
+        return false;
+      return true;
+    };
+    const keepChart = (id?: string) => {
+      if (solicitationOff && id && SOLICITATION_CHART_IDS.has(id)) return false;
+      if (evaluationOff && id && EVALUATION_CHART_IDS.has(id)) return false;
+      return true;
+    };
+
+    return {
+      ...enhancedDashboardConfig,
+      stats: enhancedDashboardConfig.stats.filter((s) => keepStat(s.title)),
+      rows: enhancedDashboardConfig.rows
+        .map((row) => ({
+          ...row,
+          // Activity components (My Actions / General Updates) carry `items`
+          // and are kept as-is; only chart properties are filtered by id.
+          properties: row.properties.filter((p) =>
+            p.items ? true : keepChart(p.id),
+          ),
+        }))
+        .filter((row) => row.properties.length > 0),
+    };
+  }, [enhancedDashboardConfig, modules, userRole]);
+
   // Handle individual chart filter changes
   const handleFilterChange = useCallback((chartId?: string, filter?: string) => {
     if (!chartId || !filter) return;
@@ -1074,14 +1153,14 @@ export const RoleBasedDashboard: React.FC = () => {
         !(userRole === "vendor" && activeLandingTab === "contracts") && (
         <div
           className={cn(`grid grid-cols-1 md:grid-cols-2 gap-6`, {
-            "lg:grid-cols-2": enhancedDashboardConfig.stats.length === 8,
-            "lg:grid-cols-3": enhancedDashboardConfig.stats.length === 6,
+            "lg:grid-cols-2": moduleFilteredConfig.stats.length === 8,
+            "lg:grid-cols-3": moduleFilteredConfig.stats.length === 6,
             "lg:grid-cols-4":
-              enhancedDashboardConfig.stats.length === 4 ||
-              enhancedDashboardConfig.stats.length > 8,
+              moduleFilteredConfig.stats.length === 4 ||
+              moduleFilteredConfig.stats.length > 8,
           })}
         >
-          {enhancedDashboardConfig.stats?.map?.((stat, index) => (
+          {moduleFilteredConfig.stats?.map?.((stat, index) => (
             <CardStats
               key={`${stat.title}-${index}`}
               {...stat}
@@ -1098,7 +1177,7 @@ export const RoleBasedDashboard: React.FC = () => {
       {!isContractAnalyticsRole &&
         !(userRole === "company_admin" && activeLandingTab === "contracts") &&
         !(userRole === "procurement" && activeLandingTab === "contracts") &&
-        enhancedDashboardConfig.rows?.map?.((item, rowIndex) => {
+        moduleFilteredConfig.rows?.map?.((item, rowIndex) => {
         if (
           userRole === "vendor" &&
           activeLandingTab === "contracts" &&

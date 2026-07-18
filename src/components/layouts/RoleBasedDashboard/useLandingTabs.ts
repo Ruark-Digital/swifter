@@ -19,16 +19,26 @@ export function computeLandingTabs(
   modules: Modules | undefined,
 ): LandingTab[] {
   const contractsOn = modules?.contractManagement === true;
+  // Solicitation is treated as on unless the super-admin explicitly disabled it
+  // for the company — so the tab keeps showing while `modules` is still loading
+  // or when the flag is absent, but hides once it's toggled off (QA #187).
+  const solicitationOn = modules?.solicitationManagement !== false;
 
   switch (role) {
-    case "procurement":
-      return contractsOn
-        ? [{ id: "solicitations", label: "Solicitations" }, CONTRACTS_TAB]
-        : [{ id: "solicitations", label: "Solicitations" }];
-    case "vendor":
-      return contractsOn
-        ? [{ id: "invitations", label: "Solicitation" }, CONTRACTS_TAB]
-        : [{ id: "invitations", label: "Solicitation" }];
+    case "procurement": {
+      const tabs: LandingTab[] = [];
+      if (solicitationOn)
+        tabs.push({ id: "solicitations", label: "Solicitations" });
+      if (contractsOn) tabs.push(CONTRACTS_TAB);
+      return tabs;
+    }
+    case "vendor": {
+      const tabs: LandingTab[] = [];
+      if (solicitationOn)
+        tabs.push({ id: "invitations", label: "Solicitation" });
+      if (contractsOn) tabs.push(CONTRACTS_TAB);
+      return tabs;
+    }
     case "company_admin": {
       const base: LandingTab[] = [
         { id: "overview", label: "Dashboard" },
