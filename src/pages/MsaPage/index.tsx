@@ -160,10 +160,13 @@ const MsaPage: React.FC = () => {
       id: String((it as any)?.id ?? it?._id ?? ""),
       title: String(it?.title ?? "-"),
       code: String(it?.msaContractId ?? "-"),
+      // Vendor column shows the vendor company — not the project manager
+      // (QA #195). Accept either the populated `{ name }` object or a bare
+      // string id/name; fall back to "-" for rows without a vendor yet.
       vendor:
-        typeof it?.projectManager === "string"
-          ? String(it.projectManager || "-")
-          : String(it?.projectManager?.name ?? "-"),
+        typeof it?.vendor === "string"
+          ? String(it.vendor || "-")
+          : String((it?.vendor as { name?: string })?.name ?? "-"),
       value: Number.isFinite(it?.contractValue)
         ? `$${it.contractValue.toLocaleString()}`
         : undefined,
