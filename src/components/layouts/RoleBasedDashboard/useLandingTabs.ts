@@ -18,7 +18,12 @@ export function computeLandingTabs(
   role: UserRole,
   modules: Modules | undefined,
 ): LandingTab[] {
-  const contractsOn = modules?.contractManagement === true;
+  // Truthy check (not `=== true`) to stay consistent with the sidebar nav
+  // (src/lib/navigation.ts gates Contract Management on `modules?.contractManagement`).
+  // The auth `module` payload can carry these flags as truthy non-boolean values,
+  // so strict `=== true` hid the Contracts landing tab (and the Solicitations/
+  // Contracts toggle) for users whose sidebar still showed Contract Management.
+  const contractsOn = Boolean(modules?.contractManagement);
   // Solicitation is treated as on unless the super-admin explicitly disabled it
   // for the company — so the tab keeps showing while `modules` is still loading
   // or when the flag is absent, but hides once it's toggled off (QA #187).
