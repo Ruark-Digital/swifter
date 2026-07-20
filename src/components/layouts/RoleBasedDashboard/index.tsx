@@ -11,6 +11,7 @@ import { ActivityComponent } from "./components/ActivityCard";
 import { CardStats } from "./components/StatsCard";
 import { cn } from "@/lib/utils";
 import { DashboardConfig, dashboardConfigs } from "@/config/dashboardConfig";
+import { isModuleDisabled, isModuleEnabled } from "@/lib/moduleFlags";
 import { DashboardSkeleton } from "./components/DashboardSkeleton";
 import { ContractsTabView } from "./ContractsTabView";
 import { VendorContractsView } from "./VendorContractsView";
@@ -866,8 +867,8 @@ export const RoleBasedDashboard: React.FC = () => {
   // is solicitation-oriented; contract/super-admin views are untouched. A module
   // is considered "off" only when explicitly `false` (absent/loading => keep).
   const moduleFilteredConfig: DashboardConfig = useMemo(() => {
-    const solicitationOff = modules?.solicitationManagement === false;
-    const evaluationOff = modules?.evaluationsManagement === false;
+    const solicitationOff = isModuleDisabled(modules?.solicitationManagement);
+    const evaluationOff = isModuleDisabled(modules?.evaluationsManagement);
     const roleInScope =
       userRole === "procurement" ||
       userRole === "company_admin" ||
@@ -945,8 +946,10 @@ export const RoleBasedDashboard: React.FC = () => {
 
   const isContractAnalyticsRole =
     userRole === "contract_manager" || userRole === "approver";
-  const canShowMyActions = modules?.myActions === true;
-  const canShowGeneralUpdates = modules?.generalUpdatesNotifications === true;
+  const canShowMyActions = isModuleEnabled(modules?.myActions);
+  const canShowGeneralUpdates = isModuleEnabled(
+    modules?.generalUpdatesNotifications
+  );
 
   // Procurement's Contracts tab reuses the solicitation config's activity row
   // shells (My Actions / General Updates) but must render CONTRACT activity data
