@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { Modules, UserRole } from "@/types";
+import { isModuleDisabled, isModuleEnabled } from "@/lib/moduleFlags";
 
 export type LandingTabId =
   | "solicitations"
@@ -18,16 +19,13 @@ export function computeLandingTabs(
   role: UserRole,
   modules: Modules | undefined,
 ): LandingTab[] {
-  // Truthy check (not `=== true`) to stay consistent with the sidebar nav
-  // (src/lib/navigation.ts gates Contract Management on `modules?.contractManagement`).
-  // The auth `module` payload can carry these flags as truthy non-boolean values,
-  // so strict `=== true` hid the Contracts landing tab (and the Solicitations/
-  // Contracts toggle) for users whose sidebar still showed Contract Management.
-  const contractsOn = Boolean(modules?.contractManagement);
+  // Module flags can be booleans (legacy/persisted) or `{ enabled: boolean }`
+  // objects (current BE payload) — the helpers handle both.
+  const contractsOn = isModuleEnabled(modules?.contractManagement);
   // Solicitation is treated as on unless the super-admin explicitly disabled it
   // for the company — so the tab keeps showing while `modules` is still loading
   // or when the flag is absent, but hides once it's toggled off (QA #187).
-  const solicitationOn = modules?.solicitationManagement !== false;
+  const solicitationOn = !isModuleDisabled(modules?.solicitationManagement);
 
   switch (role) {
     case "procurement": {

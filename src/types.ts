@@ -17,18 +17,25 @@ export type Role = {
   __v: number;
 };
 
+// BE ships module flags as `{ enabled: boolean }`; legacy payloads (and
+// persisted auth state) carry plain booleans. Read via isModuleEnabled /
+// isModuleDisabled from src/lib/moduleFlags.ts.
+export type ModuleFlagValue = boolean | { enabled: boolean };
+
 export interface Modules {
-  contractManagement: boolean;
+  contractManagement: ModuleFlagValue;
   _id: string;
   companyId: string;
-  solicitationManagement: boolean;
-  evaluationsManagement: boolean;
-  vendorManagement: boolean;
-  reportsAnalytics: boolean;
-  vendorsQA: boolean;
-  generalUpdatesNotifications: boolean;
-  addendumManagement: boolean;
-  myActions: boolean;
+  solicitationManagement: ModuleFlagValue;
+  evaluationsManagement: ModuleFlagValue;
+  vendorManagement: ModuleFlagValue;
+  reportsAnalytics: ModuleFlagValue;
+  vendorsQA: ModuleFlagValue;
+  generalUpdatesNotifications: ModuleFlagValue;
+  addendumManagement: ModuleFlagValue;
+  myActions: ModuleFlagValue;
+  MSAmanagement?: ModuleFlagValue;
+  projectmanagement?: ModuleFlagValue;
   createdAt: Date;
   updatedAt: Date;
   __v: number;

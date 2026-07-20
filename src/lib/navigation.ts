@@ -13,6 +13,7 @@ import {
   Folder,
 } from "lucide-react";
 import { UserRole, Modules } from "@/types";
+import { isModuleEnabled } from "@/lib/moduleFlags";
 
 export type NavigationItem = {
   icon: any;
@@ -28,14 +29,12 @@ export const getNavigationForRole = (
   currentPath: string,
   modules?: Modules
 ): NavigationItem[] => {
-  // Truthy checks (not `=== true`) to match the module gating used for every
-  // other nav item below — the auth `module` payload can carry these flags as
-  // truthy non-boolean values, and strict `=== true` was hiding the Dashboard
-  // menu item for users whose other module-gated items showed fine.
+  // Module flags can be booleans (legacy) or `{ enabled: boolean }` objects
+  // (current BE payload) — isModuleEnabled handles both.
   const showDashboard =
     role === "project_manager"
-      ? Boolean(modules?.contractManagement)
-      : Boolean(modules?.reportsAnalytics) && role !== "view_only";
+      ? isModuleEnabled(modules?.contractManagement)
+      : isModuleEnabled(modules?.reportsAnalytics) && role !== "view_only";
 
   const baseNavigation: (NavigationItem | undefined)[] = [
     showDashboard
@@ -53,7 +52,7 @@ export const getNavigationForRole = (
     (NavigationItem | undefined)[]
   > = {
     procurement: [
-      modules?.solicitationManagement
+      isModuleEnabled(modules?.solicitationManagement)
         ? {
             icon: FileText,
             title: "Solicitation Management",
@@ -61,7 +60,7 @@ export const getNavigationForRole = (
             active: currentPath.startsWith("/dashboard/solicitation"),
           }
         : undefined,
-      modules?.evaluationsManagement
+      isModuleEnabled(modules?.evaluationsManagement)
         ? {
             icon: ClipboardList,
             title: "Evaluation Management",
@@ -69,7 +68,7 @@ export const getNavigationForRole = (
             active: currentPath.startsWith("/dashboard/evaluation"),
           }
         : undefined,
-      modules?.contractManagement
+      isModuleEnabled(modules?.contractManagement)
         ? {
             icon: Folder,
             title: "Projects",
@@ -77,7 +76,7 @@ export const getNavigationForRole = (
             active: currentPath.startsWith("/dashboard/project-management"),
           }
         : undefined,
-      modules?.contractManagement
+      isModuleEnabled(modules?.contractManagement)
         ? {
             icon: FileText,
             title: "Contract Management",
@@ -101,7 +100,7 @@ export const getNavigationForRole = (
             ],
           }
         : undefined,
-      modules?.vendorManagement
+      isModuleEnabled(modules?.vendorManagement)
         ? {
             icon: Users,
             title: "Vendor Management",
@@ -117,7 +116,7 @@ export const getNavigationForRole = (
       },
     ],
     contract_manager: [
-      modules?.contractManagement
+      isModuleEnabled(modules?.contractManagement)
         ? {
             icon: Folder,
             title: "Projects",
@@ -125,7 +124,7 @@ export const getNavigationForRole = (
             active: currentPath.startsWith("/dashboard/project-management"),
           }
         : undefined,
-      modules?.contractManagement
+      isModuleEnabled(modules?.contractManagement)
         ? {
             icon: FileText,
             title: "Contract Management",
@@ -157,7 +156,7 @@ export const getNavigationForRole = (
       },
     ],
     evaluator: [
-      modules?.evaluationsManagement
+      isModuleEnabled(modules?.evaluationsManagement)
         ? {
             icon: ClipboardList,
             title: "My Evaluation",
@@ -179,7 +178,7 @@ export const getNavigationForRole = (
         to: "/dashboard/invitations",
         active: currentPath.startsWith("/dashboard/invitations"),
       },
-      modules?.solicitationManagement
+      isModuleEnabled(modules?.solicitationManagement)
         ? {
             icon: FileText,
             title: "Solicitation Management",
@@ -187,7 +186,7 @@ export const getNavigationForRole = (
             active: currentPath.startsWith("/dashboard/solicitation"),
           }
         : undefined,
-      modules?.contractManagement
+      isModuleEnabled(modules?.contractManagement)
         ? {
             icon: FileText,
             title: "Contract Management",
@@ -219,7 +218,7 @@ export const getNavigationForRole = (
       },
     ],
     project_manager: [
-      modules?.contractManagement
+      isModuleEnabled(modules?.contractManagement)
         ? {
             icon: FileText,
             title: "Contract Management",
@@ -249,7 +248,7 @@ export const getNavigationForRole = (
       },
     ],
     approver: [
-      modules?.contractManagement
+      isModuleEnabled(modules?.contractManagement)
         ? {
             icon: FileText,
             title: "Contract Management",
@@ -281,7 +280,7 @@ export const getNavigationForRole = (
       },
     ],
     view_only: [
-      modules?.contractManagement
+      isModuleEnabled(modules?.contractManagement)
         ? {
             icon: FileText,
             title: "Contract Management",
@@ -313,7 +312,7 @@ export const getNavigationForRole = (
       },
     ],
     company_admin: [
-      modules?.solicitationManagement
+      isModuleEnabled(modules?.solicitationManagement)
         ? {
             icon: FileText,
             title: "Solicitation Management",
@@ -321,7 +320,7 @@ export const getNavigationForRole = (
             active: currentPath.startsWith("/dashboard/solicitation"),
           }
         : undefined,
-      modules?.contractManagement
+      isModuleEnabled(modules?.contractManagement)
         ? {
             icon: FileText,
             title: "Contract Management",
@@ -357,7 +356,7 @@ export const getNavigationForRole = (
         to: "/dashboard/user-management",
         active: currentPath.startsWith("/dashboard/user-management"),
       },
-      modules?.vendorManagement
+      isModuleEnabled(modules?.vendorManagement)
         ? {
             icon: Users,
             title: "Vendor Management",
@@ -365,7 +364,7 @@ export const getNavigationForRole = (
             active: currentPath.startsWith("/dashboard/vendor"),
           }
         : undefined,
-      modules?.evaluationsManagement
+      isModuleEnabled(modules?.evaluationsManagement)
         ? {
             icon: ClipboardList,
             title: "Evaluation",
