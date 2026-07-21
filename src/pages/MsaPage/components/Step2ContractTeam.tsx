@@ -44,11 +44,19 @@ const SingleSelectField = ({
   name?: string;
 }) => {
   const normalizedValue = typeof value === "string" ? value.trim() : "";
+  // See contract Step2ContractTeam (QA #81): don't flash the raw Mongo ObjectId
+  // while the PM/vendor option list is still loading — show the placeholder
+  // until `options.find` resolves the id to a name; typed emails/names still show.
+  const isUnresolvedObjectId =
+    /^[a-f\d]{24}$/i.test(normalizedValue) && !fallbackLabel;
   const selectedOption = normalizedValue
-    ? options.find((option) => option.value === normalizedValue) ?? {
-        label: fallbackLabel || normalizedValue,
-        value: normalizedValue,
-      }
+    ? options.find((option) => option.value === normalizedValue) ??
+      (isUnresolvedObjectId
+        ? undefined
+        : {
+            label: fallbackLabel || normalizedValue,
+            value: normalizedValue,
+          })
     : undefined;
 
   const selectedValues = selectedOption ? [selectedOption] : [];

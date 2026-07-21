@@ -92,9 +92,9 @@ const FilesListItem = memo(({ file, index }: { file: File; index?: number }) => 
   };
 
   return (
-    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
+    <div className="flex w-full min-w-0 items-center justify-between gap-3 rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
           <UploadCloud className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
         </div>
         <div className="min-w-0">
@@ -109,7 +109,7 @@ const FilesListItem = memo(({ file, index }: { file: File; index?: number }) => 
       <button
         type="button"
         onClick={handleRemove}
-        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] dark:text-slate-400 hover:text-red-500 transition-colors"
+        className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[#9CA3AF] dark:text-slate-400 hover:text-red-500 transition-colors"
       >
         <X className="h-4 w-4" />
       </button>
@@ -313,7 +313,7 @@ const CreateNcrDialog: React.FC<Props> = ({
             </button>
           </div>
 
-          <div className="flex-1 space-y-6 overflow-y-auto px-6 pb-6">
+          <div className="flex-1 space-y-6 overflow-y-auto px-6 pb-6 min-w-0">
             <Forger
               name="title"
               component={TextInput}

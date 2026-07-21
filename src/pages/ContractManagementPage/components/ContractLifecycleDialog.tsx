@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { postRequest, patchRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
 import type { ApiResponseError } from "@/types";
-import { Ban, AlertTriangle, FolderPlus, BadgeCheck } from "lucide-react";
+import { Ban, AlertTriangle, FolderPlus, BadgeCheck, PlayCircle } from "lucide-react";
 import type { LifecycleAction } from "./contractLifecycle";
 
 type Kind = "contract" | "msa";
@@ -29,11 +29,16 @@ type Props = {
 // so non-destructive CTAs are styled explicitly here.
 const NAVY = "#2A4467";
 
-// terminate/suspend/complete map to a single PATCH /status endpoint; the action
-// verb maps to the contract lifecycle status value the BE expects.
-const STATUS_FOR_ACTION: Record<"terminate" | "suspend" | "complete", string> = {
+// terminate/suspend/unsuspend/complete map to a single PATCH /status endpoint;
+// the action verb maps to the contract lifecycle status value the BE expects.
+// (The BE accepts the literal "unsuspend" to reactivate a suspended contract.)
+const STATUS_FOR_ACTION: Record<
+  "terminate" | "suspend" | "unsuspend" | "complete",
+  string
+> = {
   terminate: "terminated",
   suspend: "suspended",
+  unsuspend: "unsuspend",
   complete: "completed",
 };
 
@@ -65,6 +70,15 @@ const CONFIG: Record<LifecycleAction, ActionConfig> = {
     confirmLabel: "Suspend",
     destructive: true,
     successTitle: (n) => `${n} Suspended Successfully`,
+  },
+  unsuspend: {
+    Icon: PlayCircle,
+    iconClass: "text-green-500",
+    title: (n) => `Reactivate ${n}`,
+    desc: (n) => `This action will lift the suspension and restore operations on this ${n}.`,
+    confirmLabel: "Reactivate",
+    destructive: false,
+    successTitle: (n) => `${n} Reactivated Successfully`,
   },
   complete: {
     Icon: BadgeCheck,

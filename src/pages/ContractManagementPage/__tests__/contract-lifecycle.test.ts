@@ -13,4 +13,13 @@ describe("availableLifecycleActions", () => {
       expect.arrayContaining(["suspend", "terminate", "complete"]),
     );
   });
+
+  test("offers un-suspend for a suspended contract (QA #237)", () => {
+    expect(availableLifecycleActions("suspended")).toEqual(["unsuspend"]);
+  });
+
+  test("does not offer un-suspend for active/publish contracts", () => {
+    expect(availableLifecycleActions("active")).not.toContain("unsuspend");
+    expect(availableLifecycleActions("publish")).not.toContain("unsuspend");
+  });
 });

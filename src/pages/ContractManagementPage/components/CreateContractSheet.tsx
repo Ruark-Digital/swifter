@@ -719,6 +719,10 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
             value: a._id,
             vendorEmail: a.vendor.email,
             vendorId: a.vendor._id,
+            // Carried so Step 1 can auto-populate the contract name & vendor
+            // when an awarded solicitation is selected (QA #242/#243).
+            solicitationName: a.name,
+            vendorName: a.vendor.name,
           }))
         : [],
     [awardedQuery.data?.data],
@@ -1201,6 +1205,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
                   projectOptions={projectOptions}
                   awardedOptions={awardedOptions}
                   msaOptions={msaOptions}
+                  enableAwardedPrefill
                 />
               )}
 
