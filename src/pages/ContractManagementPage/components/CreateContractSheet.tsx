@@ -259,6 +259,12 @@ type ContractTerm = { _id: string; name: string; description?: string };
 type AwardedVendorItem = {
   _id: string;
   name: string;
+  // BE (docs.json) documents this as `categoryName` ("Name of the first
+  // category assigned to the solicitation"). The live payload has historically
+  // used shorter keys than the spec (e.g. `name` vs documented `solicitationName`),
+  // so we read `category` as a fallback.
+  categoryName?: string;
+  category?: string;
   vendor: { _id: string; name: string; email: string };
 };
 
@@ -719,10 +725,11 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
             value: a._id,
             vendorEmail: a.vendor.email,
             vendorId: a.vendor._id,
-            // Carried so Step 1 can auto-populate the contract name & vendor
-            // when an awarded solicitation is selected (QA #242/#243).
+            // Carried so Step 1 can auto-populate the contract name, vendor and
+            // category when an awarded solicitation is selected (QA #222/#242/#243).
             solicitationName: a.name,
             vendorName: a.vendor.name,
+            categoryName: a.categoryName ?? a.category,
           }))
         : [],
     [awardedQuery.data?.data],
