@@ -84,6 +84,29 @@ export const formatSecurityType = (raw: unknown): string => {
     .join(" ");
 };
 
+const MODULE_ACRONYMS = new Set(["RFI", "NCR", "LEM", "CAPA", "MSA", "KPI"]);
+
+/**
+ * Format an action-log module/entity string for display.
+ * Splits camelCase into words, upper-cases known acronyms (RFI, NCR, ...),
+ * and title-cases everything else. e.g. "rfi" -> "RFI", "ContractSavings" -> "Contract Savings".
+ */
+export const formatModuleLabel = (raw: unknown): string => {
+  if (typeof raw !== "string") return "-";
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed === "-") return trimmed || "-";
+  return trimmed
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .split(/[\s_]+/)
+    .filter(Boolean)
+    .map((w) =>
+      MODULE_ACRONYMS.has(w.toUpperCase())
+        ? w.toUpperCase()
+        : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+    )
+    .join(" ");
+};
+
 export const createFormData = (body: Record<string, any>) => {
   const formData = new FormData();
 
