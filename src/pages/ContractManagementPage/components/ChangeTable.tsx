@@ -17,7 +17,7 @@ import ChangeDetailsSheet from "./ChangeDetailsSheet";
 import ApproverChangeDetailsSheet from "./ApproverChangeDetailsSheet";
 import type { ContractChangeDTO } from "../api/contractManagerApi";
 import { formatChangeTypeLabel } from "../lib/contractChanges";
-import { formatCompactCurrency } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -135,9 +135,10 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
       {
         accessorKey: "value",
         header: "Value",
+        // Full value, no K/M abbreviation (QA #246).
         cell: ({ getValue }) => {
           const val = getValue<number | undefined>();
-          return val ? formatCompactCurrency(val, currencyCode) : "-";
+          return val ? formatCurrency(val, undefined, currencyCode) : "-";
         },
       },
       {
@@ -199,27 +200,28 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
     [contractId, basePath, currencyCode],
   );
 
+  // CM/PL adopt the approver's column layout — Value / Submitted / Status
+  // (QA #246) — but keep the manager's own actions cell (3-dot → detail sheet)
+  // rather than the approver's read-only "View".
   const managerColumns: ColumnDef<ContractChangeDTO>[] = React.useMemo(
     () => [
       {
         accessorKey: "changeId",
         header: "Change ID",
-        cell: ({ getValue }) => {
-          const title = getValue<string | undefined>();
-          return (
-            <span className="font-medium text-slate-900 dark:text-slate-100">{title ?? "-"}</span>
-          );
-        },
+        cell: ({ getValue }) => (
+          <span className="font-medium text-slate-900 dark:text-slate-100">
+            {getValue<string>() ?? "-"}
+          </span>
+        ),
       },
       {
         accessorKey: "title",
         header: "Change Title",
-        cell: ({ getValue }) => {
-          const title = getValue<string | undefined>();
-          return (
-            <span className="font-medium text-slate-900 dark:text-slate-100">{title ?? "-"}</span>
-          );
-        },
+        cell: ({ getValue }) => (
+          <span className="font-medium text-slate-900 dark:text-slate-100">
+            {getValue<string>() ?? "-"}
+          </span>
+        ),
       },
       {
         accessorKey: "type",
@@ -230,28 +232,44 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         },
       },
       {
-        accessorKey: "urgency",
-        header: "Urgency",
+        accessorKey: "value",
+        header: "Value",
+        // Full value, no K/M abbreviation (QA #246).
         cell: ({ getValue }) => {
-          const urgency = getValue<ContractChangeDTO["urgency"] | undefined>();
-          if (!urgency) return "-";
-          return urgency.charAt(0).toUpperCase() + urgency.slice(1);
+          const val = getValue<number | undefined>();
+          return val ? formatCurrency(val, undefined, currencyCode) : "-";
         },
       },
       {
-        accessorKey: "proposalCategory",
-        header: "Proposal Category",
+        accessorKey: "submittedAt",
+        header: "Submitted",
         cell: ({ getValue }) => {
-          const category = getValue<string | undefined>();
-          return category ?? "-";
+          const date = getValue<string | undefined>();
+          return date ? format(new Date(date), "dd MMM yyyy") : "-";
         },
       },
       {
-        id: "files",
-        header: "Files",
-        cell: ({ row }) => {
-          const count = row.original.files?.length ?? 0;
-          return <span className="font-semibold text-slate-900 dark:text-slate-100">{count}</span>;
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ getValue }) => {
+          const status = getValue<string | undefined>();
+          let className =
+            "bg-slate-100 text-slate-800 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300";
+          if (status === "approved")
+            className =
+              "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-300";
+          if (status === "pending")
+            className =
+              "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300";
+          if (status === "rejected")
+            className =
+              "bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300";
+
+          return (
+            <Badge className={`rounded-full px-3 py-1 font-normal ${className}`}>
+              {status ? status.charAt(0).toUpperCase() + status.slice(1) : "-"}
+            </Badge>
+          );
         },
       },
       {

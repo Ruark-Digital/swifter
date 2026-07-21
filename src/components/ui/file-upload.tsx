@@ -229,7 +229,7 @@ export const FileUploader = forwardRef<
           tabIndex={0}
           onKeyDownCapture={handleKeyDown}
           className={cn(
-            "grid w-full focus:outline-none overflow-hidden ",
+            "grid grid-cols-1 w-full focus:outline-none overflow-hidden ",
             className,
             {
               "gap-2": value && value.length > 0,
@@ -264,7 +264,7 @@ export const FileUploaderContent = forwardRef<
         {...props}
         ref={ref}
         className={cn(
-          "flex rounded-xl gap-1",
+          "flex min-w-0 rounded-xl gap-1",
           orientation === "horizontal" ? "flex-raw flex-wrap" : "flex-col",
           className,
         )}

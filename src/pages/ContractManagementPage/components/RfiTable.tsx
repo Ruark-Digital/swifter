@@ -697,9 +697,9 @@ function RespondFileListItem({ file }: { file: File }) {
     );
   };
   return (
-    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-3">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB]">
+    <div className="flex w-full min-w-0 items-center justify-between gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-[#EAF1FB]">
           <CloudUpload className="h-5 w-5 text-[#2A4467]" />
         </div>
         <div className="min-w-0">
@@ -714,7 +714,7 @@ function RespondFileListItem({ file }: { file: File }) {
       <button
         type="button"
         onClick={handleRemove}
-        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF]"
+        className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[#9CA3AF]"
       >
         <X className="h-4 w-4" />
       </button>

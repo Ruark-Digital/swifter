@@ -10,6 +10,7 @@ export type Status =
   | "cancelled"
   | "expired"
   | "terminated"
+  | "suspended"
   | "pending_approval";
 
 const getStatus = (status?: Status) => {
@@ -32,6 +33,8 @@ const getStatus = (status?: Status) => {
     return { label: "Expired", className: "bg-orange-100 text-orange-700" };
   if (status === "terminated")
     return { label: "Terminated", className: "bg-red-100 text-red-700" };
+  if (status === "suspended")
+    return { label: "Suspended", className: "bg-orange-100 text-orange-700" };
   if (status === "pending")
     return { label: "Pending", className: "bg-yellow-100 text-yellow-700" };
   return { label: "Unknown", className: "bg-slate-100 text-slate-700" };

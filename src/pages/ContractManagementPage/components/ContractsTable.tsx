@@ -94,6 +94,7 @@ const ContractActionsCell: React.FC<{
   const canManage = isManager && !isOwner;
   const showTerminate = isManager && isOwner && lifecycleActions.includes("terminate");
   const showSuspend = isManager && isOwner && lifecycleActions.includes("suspend");
+  const showUnsuspend = isManager && isOwner && lifecycleActions.includes("unsuspend");
   const showComplete = isManager && isOwner && lifecycleActions.includes("complete");
 
   // Close the menu before opening a controlled dialog so the dropdown doesn't
@@ -167,6 +168,17 @@ const ContractActionsCell: React.FC<{
               }}
             >
               Suspend Contract
+            </DropdownMenuItem>
+          )}
+          {showUnsuspend && (
+            <DropdownMenuItem
+              data-testid="unsuspend-contract"
+              onSelect={(e) => {
+                e.preventDefault();
+                openLifecycle("unsuspend");
+              }}
+            >
+              Reactivate Contract
             </DropdownMenuItem>
           )}
           {showTerminate && (

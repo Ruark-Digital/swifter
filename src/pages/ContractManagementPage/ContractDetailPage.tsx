@@ -264,9 +264,12 @@ const ContractDetailPage: React.FC = () => {
   const lifecycleActions = availableLifecycleActions(contractData?.status);
   const canSuspendContract =
     isManager && isContractOwner && lifecycleActions.includes("suspend");
+  const canUnsuspendContract =
+    isManager && isContractOwner && lifecycleActions.includes("unsuspend");
   const canTerminateContract =
     isManager && isContractOwner && lifecycleActions.includes("terminate");
-  const showLifecycleActions = canSuspendContract || canTerminateContract;
+  const showLifecycleActions =
+    canSuspendContract || canUnsuspendContract || canTerminateContract;
 
   const isContractProjectManager = Boolean(
     user?.projectmanagerId &&
@@ -551,6 +554,15 @@ const ContractDetailPage: React.FC = () => {
               onClick={() => setLifecycleAction("suspend")}
             >
               Suspend Contract
+            </Button>
+          )}
+          {canUnsuspendContract && (
+            <Button
+              variant="outline"
+              className="bg-[#F3F4F6] border-[#E5E7EB]"
+              onClick={() => setLifecycleAction("unsuspend")}
+            >
+              Reactivate Contract
             </Button>
           )}
           {canTerminateContract && (
