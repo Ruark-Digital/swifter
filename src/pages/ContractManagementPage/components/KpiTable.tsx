@@ -20,7 +20,14 @@ import { postRequest } from "@/lib/axiosInstance";
 import { DropdownFilters } from "@/components/layouts/SolicitationFilters";
 import { Button } from "@/components/ui/button";
 import { useToastHandler } from "@/hooks/useToaster";
+import { format } from "date-fns";
 import type { ApiResponseError } from "@/types";
+
+const formatSubmissionDate = (value?: string) => {
+  if (!value) return "N/A";
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : format(parsed, "dd MMM yyyy");
+};
 
 export type KpiRow = {
   kpiId: string;
@@ -107,7 +114,7 @@ const KpiDetailSheet: React.FC<{
               <div className="space-y-1">
                 <span className="text-slate-500 dark:text-slate-400">Submission Date</span>
                 <span className="block font-semibold text-[#0F0F0F] dark:text-slate-100">
-                  {(data.submissionDate as string) || "N/A"}
+                  {formatSubmissionDate(data.submissionDate as string)}
                 </span>
               </div>
               <div className="space-y-1">
