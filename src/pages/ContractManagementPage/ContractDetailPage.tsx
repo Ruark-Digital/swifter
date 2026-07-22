@@ -287,19 +287,19 @@ const ContractDetailPage: React.FC = () => {
     isContractProjectManagerNotApproved &&
     contractData?.status === "pending_approval";
 
+  const isLiveContract =
+    contractData?.status === "active" || contractData?.status === "publish";
+
   // Take-over approval is distinct from the PM-accepts-contract flow: it applies
-  // to a pending projectManager assignment on an already-live contract (not a
-  // freshly created pending_approval one), and only a CM/PL approves it.
+  // to a pending projectManager assignment on an already-live (publish/active)
+  // contract, not a freshly created one, and only a CM/PL approves it.
   const takeOverPending =
-    contractData?.projectManager?.status === "pending" &&
-    contractData?.status !== "pending_approval";
+    contractData?.projectManager?.status === "pending" && isLiveContract;
   const canApproveTakeOver = isManager && isContractOwner && takeOverPending;
   const takeOverRequesterName =
     (contractData?.projectManager?.user as { user?: { name?: string } })
       ?.user?.name ?? contractData?.projectManager?.user?.name;
 
-  const isLiveContract =
-    contractData?.status === "active" || contractData?.status === "publish";
   const canAssignPm =
     ((isManager && isContractOwner) || isCompanyAdmin) &&
     isLiveContract &&
