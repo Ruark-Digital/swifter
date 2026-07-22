@@ -38,7 +38,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
-import { getRequest, postRequest } from "@/lib/axiosInstance";
+import { getRequest, patchRequest, postRequest } from "@/lib/axiosInstance";
 import {
   formatFileSize,
   getFileExtension,
@@ -86,6 +86,17 @@ type IssueRfiDialogProps = {
   contractId: string;
   createPath: string;
   invalidateQueryKey: readonly unknown[];
+  /** "edit" flips the dialog to PATCH-mode for an existing RFI. */
+  mode?: "create" | "edit";
+  editPath?: string;
+  initialRfi?: {
+    title?: string;
+    description?: string;
+    deadline?: string | Date;
+    responder?: string;
+    files?: Array<{ name: string; url: string; type: string; size: string }>;
+  };
+  detailInvalidateQueryKey?: readonly unknown[];
 };
 
 type RfiDetailsSheetProps = {
@@ -193,7 +204,12 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
   contractId,
   createPath,
   invalidateQueryKey,
+  mode = "create",
+  editPath,
+  initialRfi,
+  detailInvalidateQueryKey,
 }) => {
+  const isEdit = mode === "edit" && !!editPath;
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
   const {
@@ -204,16 +220,35 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
     isAdmin,
     isViewOnly,
   } = useUserRole();
+  const [open, setOpen] = React.useState(false);
+  const initialDeadline = React.useMemo(() => {
+    if (!initialRfi?.deadline) return undefined;
+    const d = new Date(initialRfi.deadline as any);
+    return Number.isFinite(d.getTime()) ? d : undefined;
+  }, [initialRfi?.deadline]);
   const { control, reset } = useForge({
     defaultValues: {
-      rfiTitle: "",
-      responseDeadline: undefined,
-      question: "",
+      rfiTitle: initialRfi?.title ?? "",
+      responseDeadline: initialDeadline,
+      question: initialRfi?.description ?? "",
       files: null,
-      responder: "",
+      responder: initialRfi?.responder ?? "",
     },
   });
   const [isSuccess, setIsSuccess] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) return;
+    reset({
+      rfiTitle: initialRfi?.title ?? "",
+      responseDeadline: initialDeadline,
+      question: initialRfi?.description ?? "",
+      files: null,
+      responder: initialRfi?.responder ?? "",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   const files = useWatch({ control, name: "files" }) as File[] | null;
 
   // Personnel endpoint is role-scoped. MSA has its own per-role personnel
@@ -312,7 +347,28 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
     },
   });
 
-  const isSubmitting = createMutation.isPending || isUploadingFiles;
+  const editMutation = useMutation({
+    mutationKey: ["msaRfi", "edit", editPath],
+    mutationFn: async (payload: ContractRfiDTO) => {
+      if (!editPath) throw new Error("Edit RFI endpoint unavailable");
+      const res = await patchRequest({ url: editPath, payload });
+      return res.data;
+    },
+    onSuccess: async () => {
+      toastHandler.success("RFI", "RFI updated successfully");
+      await queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
+      if (detailInvalidateQueryKey) {
+        await queryClient.invalidateQueries({ queryKey: detailInvalidateQueryKey });
+      }
+      setOpen(false);
+    },
+    onError: (error) => {
+      toastHandler.error("RFI", error as ApiResponseError);
+    },
+  });
+
+  const activeMutation = isEdit ? editMutation : createMutation;
+  const isSubmitting = activeMutation.isPending || isUploadingFiles;
   const fileCount = files?.length ?? 0;
 
   const handleSubmit = async (data: {
@@ -361,8 +417,14 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
       }
     }
 
+    // On edit, if no new files were uploaded, preserve the existing ones —
+    // a PATCH with an omitted files array can be treated by BE as "clear".
+    if (isEdit && !payload.files?.length && initialRfi?.files?.length) {
+      payload.files = initialRfi.files;
+    }
+
     try {
-      await createMutation.mutateAsync(payload);
+      await activeMutation.mutateAsync(payload);
     } catch {
       return;
     }
@@ -370,8 +432,10 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
 
   return (
     <Dialog
-      onOpenChange={(open) => {
-        if (!open) {
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) {
           setIsSuccess(false);
           reset();
         }
@@ -410,7 +474,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
           <>
             <div className="flex items-center justify-between px-8 pt-8">
               <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
-                Issue RFI
+                {isEdit ? "Edit RFI" : "Issue RFI"}
               </DialogTitle>
             </div>
             <div className="px-8 pb-8 pt-6">
@@ -501,7 +565,13 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                     className="h-12 flex-1 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? "Issuing..." : "Issue RFI"}
+                    {isSubmitting
+                      ? isEdit
+                        ? "Saving..."
+                        : "Issuing..."
+                      : isEdit
+                        ? "Save Changes"
+                        : "Issue RFI"}
                   </Button>
                 </div>
               </Forge>
@@ -682,6 +752,37 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                 >
                   {detail?.status || "-"}
                 </span>
+                {isIssuer && !isClosed && (
+                  <IssueRfiDialog
+                    contractId={contractId}
+                    createPath={basePath}
+                    invalidateQueryKey={invalidateQueryKey ?? detailQueryKey}
+                    mode="edit"
+                    editPath={`${basePath}/${rfiId}`}
+                    detailInvalidateQueryKey={detailQueryKey}
+                    initialRfi={{
+                      title: detail?.title,
+                      description: detail?.description,
+                      deadline: detail?.deadline,
+                      responder:
+                        typeof detail?.responder === "string"
+                          ? detail.responder
+                          : (detail?.responder?.user?._id ??
+                              detail?.responder?._id ??
+                              undefined),
+                      files: (detail?.files as any) ?? [],
+                    }}
+                    trigger={
+                      <Button
+                        variant="outline"
+                        className="h-8 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F] dark:border-slate-700 dark:text-slate-100"
+                        data-testid="edit-rfi-trigger"
+                      >
+                        Edit
+                      </Button>
+                    }
+                  />
+                )}
                 {isIssuer && !isClosed && (
                   <Button
                     variant="outline"
