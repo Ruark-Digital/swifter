@@ -274,11 +274,14 @@ export type ContractManagerRiskDistribution = {
   high: number;
 };
 
+// BE ships two field-name variants for the same values; accept either.
 export type ContractManagerChangeOrderImpact = {
-  totalCOs: number;
-  valueIncrease: number;
-  percentageIncrease: number;
-  chartData: Array<{ date: string; original: number; revised: number }>;
+  totalChangeOrders?: number;
+  totalCOs?: number;
+  valueIncrease?: number;
+  valueIncreasePercentage?: number;
+  percentageIncrease?: number;
+  chartData?: Array<{ date: string; original: number; revised: number }>;
 };
 
 export type ContractManagerComplianceStatus = {
