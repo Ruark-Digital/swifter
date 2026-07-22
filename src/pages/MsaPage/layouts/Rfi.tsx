@@ -62,6 +62,7 @@ import {
 } from "@/pages/ContractManagementPage/components/DocumentItem";
 import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
+import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 
 type Props = {
   contractId: string;
@@ -93,6 +94,7 @@ type RfiDetailsSheetProps = {
   rfiId: string;
   basePath: string;
   fallback?: ContractRfis;
+  invalidateQueryKey?: readonly unknown[];
 };
 
 type RespondToRfiDialogProps = {
@@ -517,13 +519,16 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   rfiId,
   basePath,
   fallback,
+  invalidateQueryKey,
 }) => {
   const [open, setOpen] = React.useState(false);
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
+  const currentUser = useUser();
 
+  const detailQueryKey = ["msaRfiDetail", contractId, rfiId, basePath];
   const { data, isLoading } = useQuery({
-    queryKey: ["msaRfiDetail", contractId, rfiId, basePath],
+    queryKey: detailQueryKey,
     queryFn: async () => {
       const response = await getRequest({
         url: `${basePath}/${rfiId}`,
@@ -536,6 +541,38 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   const detail = (data?.data as any)?.contractRfi ?? (data?.data as any) ?? fallback;
   const isResponse = (data?.data as any)?.isResponse ?? false;
   const responderName = getResponderName(detail) || getResponderName(fallback);
+
+  // Only the RFI issuer may close it, and only while it is still open.
+  const submittedByRaw = detail?.submittedBy;
+  const issuerId =
+    typeof submittedByRaw === "object" ? submittedByRaw?._id : undefined;
+  const isIssuer =
+    Boolean(currentUser?._id) &&
+    Boolean(issuerId) &&
+    issuerId === currentUser?._id;
+  const isClosed = String(detail?.status ?? "").toLowerCase() === "closed";
+  const [closeOpen, setCloseOpen] = React.useState(false);
+  const closeRfiMutation = useMutation<{ message?: string }, ApiResponseError, void>({
+    mutationKey: ["msa-rfi-close", contractId, rfiId, basePath],
+    mutationFn: async () => {
+      const res = await postRequest({
+        url: `${basePath}/${rfiId}/close`,
+        payload: {},
+      });
+      return res.data as { message?: string };
+    },
+    onSuccess: async (res) => {
+      toastHandler.success("RFI", res?.message ?? "RFI closed");
+      setCloseOpen(false);
+      await queryClient.invalidateQueries({ queryKey: detailQueryKey });
+      if (invalidateQueryKey) {
+        await queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
+      }
+    },
+    onError: (error) => {
+      toastHandler.error("Close RFI", error);
+    },
+  });
 
   const commentsQueryKey = useUserQueryKey([
     "msa-rfi-comments",
@@ -636,14 +673,26 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                   {isLoading ? "Loading..." : detail?.rfiId || detail?._id || rfiId}
                 </div>
               </div>
-              <span
-                className={cn(
-                  "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
-                  statusTone(detail?.status),
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
+                    statusTone(detail?.status),
+                  )}
+                >
+                  {detail?.status || "-"}
+                </span>
+                {isIssuer && !isClosed && (
+                  <Button
+                    variant="outline"
+                    className="h-8 rounded-lg border-red-200 px-3 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-900/30"
+                    data-testid="close-rfi-trigger"
+                    onClick={() => setCloseOpen(true)}
+                  >
+                    Close RFI
+                  </Button>
                 )}
-              >
-                {detail?.status || "-"}
-              </span>
+              </div>
             </div>
 
             <Tabs defaultValue="overview" className="space-y-6">
@@ -814,6 +863,18 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
             </Tabs>
           </div>
         </div>
+        <ConfirmAlert
+          open={closeOpen}
+          onClose={(o) => !o && setCloseOpen(false)}
+          type="warning"
+          title="Close RFI"
+          text="Close this RFI? Once closed it can no longer receive a response."
+          primaryButtonText="Close RFI"
+          secondaryButtonText="Cancel"
+          primaryButtonLoading={closeRfiMutation.isPending}
+          onPrimaryAction={() => closeRfiMutation.mutate()}
+          onSecondaryAction={() => setCloseOpen(false)}
+        />
       </SheetContent>
     </Sheet>
   );
@@ -1331,6 +1392,7 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
                 rfiId={row.original.id}
                 basePath={basePath}
                 fallback={row.original.raw}
+                invalidateQueryKey={listQueryKey}
                 trigger={
                   <Button
                     variant="link"
