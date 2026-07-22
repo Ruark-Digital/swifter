@@ -1,224 +1,234 @@
-<!-- refreshed: 2026-05-17 -->
+<!-- refreshed: 2026-07-22 -->
 # Architecture
 
-**Analysis Date:** 2026-05-17
+**Analysis Date:** 2026-07-22
 
 ## System Overview
 
-Swifter is a React 18 + TypeScript + Vite single-page app for procurement, contract, and MSA management. It is multi-tenant and heavily role-aware: every domain page renders different controls and consumes different API modules depending on the authenticated user's role (vendor, approver, contract_manager, procurement, project_manager, company_admin, super_admin, evaluator, view_only).
-
 ```text
-┌──────────────────────────────────────────────────────────────────────────┐
-│  App Shell  `src/App.tsx`                                                │
-│  HelmetProvider → ThemeProvider → Sentry.ErrorBoundary →                 │
-│  QueryClientProvider → Suspense → RouterProvider → Toaster               │
-│  (conditional) AIChatWidget when user.isAi && isAuthenticated            │
-└────────────────────────┬─────────────────────────────────────────────────┘
-                         │
-                         ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│  Router  `src/routes/index.tsx` (createBrowserRouter)                    │
-│  ┌──────────────────────────┐   ┌──────────────────────────────────┐    │
-│  │ PublicRoute              │   │ ProtectedRoute (PrivateRoute)    │    │
-│  │ `src/routes/PublicRoute` │   │ `src/routes/PrivateRoute.tsx`    │    │
-│  │   → AuthLayout           │   │   → Dashboard layout              │    │
-│  │   `src/layouts/AuthLayout│   │   `src/layouts/Dashboard.tsx`    │    │
-│  └──────────────────────────┘   └────────────────┬─────────────────┘    │
-│                                                  │                       │
-│                                                  ▼                       │
-│                              Domain pages under `src/pages/*`            │
-└─────────────────────────┬───────────────────────┬────────────────────────┘
-                          │                       │
-                          ▼                       ▼
-┌──────────────────────────────────┐   ┌──────────────────────────────────┐
-│  Server state                    │   │  Client state                    │
-│  @tanstack/react-query           │   │  Zustand (persisted)             │
-│  - axios via `src/lib/axios`     │   │  - `src/store/authSlice.ts`      │
-│  - role-prefix endpoints         │   │  - `src/store/solicitationFile…` │
-│    (manager/vendor/approver/user)│   │                                  │
-└──────────────────┬───────────────┘   └──────────────────────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│  Backend API (dev.swiftpro.tech / api.swiftpro.tech)                     │
-│  Phase-2 route map: `docs/API_DOCUMENTATION_PHASE_2.md`                  │
-│  Same domain entity ⇒ four parallel prefixes:                            │
-│    /contract/manager/*   (contract_manager, procurement)                 │
-│    /contract/vendor/*    (vendor, project_manager)                       │
-│    /contract/approver/*  (approver)                                      │
-│    /contract/user/*      (evaluator, view_only)                          │
-└──────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Routing / Shell Layer                        │
+│  `src/routes/index.tsx` (route table)                                │
+│  `src/routes/PrivateRoute.tsx` / `PublicRoute.tsx` (guards)          │
+│  `src/layouts/AuthLayout.tsx` / `Dashboard.tsx` / `Header.tsx` /     │
+│  `Sidebar.tsx` (chrome for public vs authenticated shells)           │
+└───────────────────────────────┬───────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                          Page Feature Modules                        │
+│  `src/pages/<Feature>ManagementPage/`                                 │
+│  Each page owns: index.tsx (list), *DetailPage.tsx (detail),          │
+│  `components/`, `api/`, `lib/`, `utils/`, `__tests__/`                │
+│  Examples: ContractManagementPage, MsaPage, SolicitationManagementPage,│
+│  VendorManagementPage, EvaluationManagementPage, ProjectManagementPage│
+└───────────────────────────────┬───────────────────────────────────────┘
+                                 │
+                 ┌───────────────┼───────────────────┐
+                 ▼               ▼                   ▼
+┌───────────────────────┐ ┌───────────────────┐ ┌────────────────────────┐
+│  Shared UI Components │ │  Shared Hooks      │ │  Role-Based Dashboard  │
+│ `src/components/ui`   │ │ `src/hooks/*`      │ │ `src/components/layouts│
+│ `src/components/      │ │ (useUserRole,      │ │ /RoleBasedDashboard`   │
+│  layouts/*` (DataTable│ │  useAuthentication,│ │ (analytics cards,      │
+│  ConfirmAlert, Forms) │ │  useDashboardData) │ │  tab views per role)   │
+└───────────┬────────────┘ └─────────┬──────────┘ └───────────┬────────────┘
+            │                        │                        │
+            └────────────┬───────────┴────────────────────────┘
+                          ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Data Access Layer (per-feature `api/`)             │
+│  `src/pages/<Feature>/api/*Api.ts` — role-scoped API modules          │
+│  (e.g. `contractManagerApi.ts`, `vendorApi.ts`, `approverApi.ts`,     │
+│  `companyAdminApi.ts`, `viewOnlyApi.ts`) — one module per role branch  │
+│  Wired to React Query for caching/invalidation                        │
+└───────────────────────────────┬───────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    HTTP Client / Auth / Global State                  │
+│  `src/lib/axiosInstance.ts` (singleton axios + interceptors)          │
+│  `src/store/authSlice.ts` (zustand: user, token, authorities)         │
+│  `src/store/solicitationFileSlice.ts` (shared Zustand slice for       │
+│   in-progress solicitation file state)                                │
+│  `src/config/index.ts` (base URL / env config)                       │
+└───────────────────────────────┬───────────────────────────────────────┘
+                                 │
+                                 ▼
+                     ┌───────────────────────┐
+                     │   Backend REST API    │
+                     │ (SwiftPro API service, │
+                     │  base path /api/v1/dev)│
+                     └───────────────────────┘
 ```
 
 ## Component Responsibilities
 
 | Component | Responsibility | File |
 |-----------|----------------|------|
-| App shell | Wires providers, router, Sentry, AI widget, toast | `src/App.tsx` |
-| Router config | Declarative route tree (currently eager imports, no `React.lazy`) | `src/routes/index.tsx` |
-| Auth gate | Redirects unauthenticated users; reads token from Zustand | `src/routes/PrivateRoute.tsx` |
-| Public gate | Inverse of PrivateRoute — redirects authed users away from login | `src/routes/PublicRoute.tsx` |
-| Auth state | Zustand store persisted under `localStorage["auth"]` | `src/store/authSlice.ts` |
-| Role hook | Derives `userRole` + boolean flags + dashboard config | `src/hooks/useUserRole.ts` |
-| Theme | Light/dark/system theme via context + tailwind classes | `src/contexts/ThemeContext.tsx` |
-| Dashboard shell | Header + Sidebar + `<Outlet/>` for authenticated routes | `src/layouts/Dashboard.tsx`, `src/layouts/Sidebar.tsx`, `src/layouts/Header.tsx` |
-| SEO wrapper | Per-page title/meta via react-helmet-async | `src/components/SEO/SEOWrapper.tsx`, `src/hooks/useSEO.ts` |
-| Axios instance | Base URL, auth header injection, 401 handling | `src/lib/axiosInstance.ts` |
-| AI chat | Floating widget streaming via MCP server SSE | `src/components/layouts/AIChatWidget/index.tsx`, integration in `src/App.tsx` |
+| Router table | Maps URL paths to page components, wraps them in guards | `src/routes/index.tsx` |
+| `ProtectedRoute` | Wraps authenticated routes in `AuthorityGuard` | `src/routes/PrivateRoute.tsx` |
+| `AuthorityGuard` | Central place role/authentication access checks happen before rendering a route | `src/components/layouts/AuthorityGuard/index.tsx` |
+| `AuthLayout` | Chrome for public/unauthenticated pages (login, reset password, onboarding) | `src/layouts/AuthLayout.tsx` |
+| `Dashboard` (layout) | Chrome for authenticated app shell (sidebar + header + outlet) | `src/layouts/Dashboard.tsx` |
+| Feature page (e.g. `ContractManagementPage`) | Owns list view, detail view, feature-scoped API calls, and feature-local components | `src/pages/ContractManagementPage/index.tsx`, `ContractDetailPage.tsx` |
+| Feature API modules | Role-branched HTTP calls for one feature domain | `src/pages/ContractManagementPage/api/*.ts` |
+| `axiosInstance` | Single HTTP client instance with auth header injection and 401 handling | `src/lib/axiosInstance.ts` |
+| `authSlice` (zustand) | Global auth/user/token state, persisted to localStorage | `src/store/authSlice.ts` |
+| `useUserRole` | Derives current role and role-based dashboard config; provides `hasRole`/`hasAnyRole` | `src/hooks/useUserRole.ts` |
+| `RoleBasedDashboard` | Renders different analytics/tab layouts depending on user role | `src/components/layouts/RoleBasedDashboard/index.tsx` |
+| `useDashboardData` | Aggregates and transforms dashboard analytics data for cards | `src/hooks/useDashboardData.ts` |
+| DataTable | Shared table primitive used across feature list pages | `src/components/layouts/DataTable` |
+| shadcn/radix UI primitives | Low-level styled components (button, dialog, sheet, etc.) | `src/components/ui/*` |
 
 ## Pattern Overview
 
-**Overall:** Feature-folder SPA. Each domain (Contract, MSA, Solicitation, Collaboration, …) is a self-contained subtree under `src/pages/<Domain>Page/` with `index.tsx` (list view), `*DetailPage.tsx`, `layouts/<TabName>.tsx` for tabs, and `components/` for dialogs/tables/stat cards. Cross-cutting primitives live under `src/components/`.
+**Overall:** Feature-folder (vertical slice) SPA built on React Router + React Query + Zustand, with role-branched API/data access baked into the presentation layer rather than a separate backend-for-frontend.
 
 **Key Characteristics:**
-- Server state via react-query; mutations colocated with their consuming page or under `src/pages/<Domain>/api/`.
-- Client state minimal — only auth + an occasional file slice; everything else is server-derived.
-- Role determines both UI and the API module called; the role hook is the single source of truth (`src/hooks/useUserRole.ts`).
-- shadcn/ui primitives under `src/components/ui/` are unmodified Radix wrappers; domain composition lives in `src/components/layouts/`.
-- Tailwind for styling, with explicit dark-mode variants. Theme respected via `dark:` class variants.
+- Each business domain (Contract, MSA, Vendor, Evaluation, Solicitation, Project, Company, Admin, Subscription, User, Communication) is a self-contained folder under `src/pages/` with its own `api/`, `components/`, `lib/`, `utils/`, and `__tests__/`.
+- Role is a first-class architectural concern: many features branch on role at the API-module level (`contractManagerApi.ts` vs `vendorApi.ts` vs `approverApi.ts` vs `companyAdminApi.ts` vs `viewOnlyApi.ts`), not just at the UI level — see `src/pages/ContractManagementPage/api/`.
+- Global state is intentionally minimal: `zustand` stores only auth/session (`authSlice.ts`) and one shared in-progress-form slice (`solicitationFileSlice.ts`). All server data is owned by React Query, not the global store.
+- No Redux, no server-rendering framework — pure client-side SPA (Vite + React Router `createBrowserRouter`), single `QueryClient` created once in `App.tsx`.
+- Heavy component-library reliance on Radix primitives wrapped in `src/components/ui/*` (shadcn-style), reused across all feature folders.
+- Document/editor-heavy tooling (Yoopta, TipTap, Yjs, Slate) is isolated to `src/pages/CollaborationToolPage` and does not leak into other features.
 
 ## Layers
 
-**Routing / Shell layer:**
-- Location: `src/App.tsx`, `src/routes/`, `src/layouts/`
-- Owns global providers, route guards, and authenticated chrome (sidebar, header).
+**Routing/Shell layer:**
+- Purpose: Decide which page renders for a URL and whether the user is allowed to see it.
+- Location: `src/routes/`, `src/layouts/`
+- Contains: Route table, guard components, top-level layout chrome (sidebar, header).
+- Depends on: `src/store/authSlice.ts` (auth state), `AuthorityGuard`.
+- Used by: `src/App.tsx` (creates the router and renders `RouterProvider`).
 
-**Page layer:**
-- Location: `src/pages/<Domain>Page/`
-- Each domain owns: `index.tsx` (list + filters), one or more `*DetailPage.tsx`, `layouts/<TabName>.tsx` per detail tab, `components/` (dialogs, tables, stat cards), optional `api/` (role-prefixed clients), optional `hooks/`, `__tests__/`.
+**Page/Feature layer:**
+- Purpose: Implements one business domain end-to-end (list, detail, dialogs, tabs).
+- Location: `src/pages/<Feature>Page/`
+- Contains: `index.tsx` (list page), `<Feature>DetailPage.tsx`, `components/*.tsx` (feature-local UI), `api/*.ts` (feature-local HTTP), `lib/`, `utils/`, `__tests__/`.
+- Depends on: shared UI (`src/components/ui`, `src/components/layouts`), shared hooks (`src/hooks`), `src/lib/axiosInstance.ts`.
+- Used by: `src/routes/index.tsx` (mounted at a URL).
 
-**Cross-cutting components:**
-- `src/components/ui/`: shadcn/Radix primitives (Button, Dialog, Table, Tabs, Sheet, Popover, …).
-- `src/components/layouts/`: domain-aware reusable layouts — `DataTable`, `FormInputs`, `RoleBasedDashboard`, `AuthorityGuard`, `ConfirmAlert`, `Container`, `ExportReportSheet`, `RoleSwitcher`, `AIChatWidget`, `SolicitationFilters`, `SearchInput`, `Footer`, `Error`.
+**Shared UI layer:**
+- Purpose: Reusable, feature-agnostic building blocks.
+- Location: `src/components/ui/` (43 primitives: button, dialog, sheet, table, etc.), `src/components/layouts/` (composite widgets: `DataTable`, `ConfirmAlert`, `ExportReportSheet`, `FormInputs`, `RoleBasedDashboard`, `AIChatWidget`, `AuthorityGuard`).
+- Depends on: Radix UI, `class-variance-authority`, `tailwind-merge`.
+- Used by: every page feature folder.
 
-**State / data layer:**
-- `src/store/authSlice.ts` — Zustand + persist middleware; selector hooks via `auto-zustand-selectors-hook`.
-- `src/store/solicitationFileSlice.ts` — transient solicitation upload state.
-- react-query `QueryClient` configured in `App.tsx` with `staleTime: 30000`.
+**Data access layer:**
+- Purpose: Talk to the backend REST API, one module per role/feature.
+- Location: `src/pages/<Feature>Page/api/*.ts`
+- Contains: Functions wrapping `getRequest`/`postRequest`/`patchRequest`/`putRequest`/`deleteRequest` from `src/lib/axiosInstance.ts`, typically consumed via React Query hooks defined alongside or inline in components.
+- Depends on: `src/lib/axiosInstance.ts`, `src/config/index.ts`.
+- Used by: page components and feature hooks.
 
-**Lib / utilities:**
-- `src/lib/axiosInstance.ts` — single configured axios; all API modules import from here.
-- `src/lib/dashboardDataTransformer.ts`, `src/lib/chartColorUtils.ts`, `src/lib/solicitationStatusUtils.ts`, `src/lib/currencyUtils.ts` — pure transforms for chart/dashboard adapters.
-- `src/lib/fileToMarkdown.ts`, `src/lib/fileToYoopta.ts`, `src/lib/markdownToYoopta.ts` — collaboration tool conversions.
+**HTTP/Auth/Global-state layer:**
+- Purpose: Single source of truth for the axios client, auth/session, and base config.
+- Location: `src/lib/axiosInstance.ts`, `src/store/authSlice.ts`, `src/store/solicitationFileSlice.ts`, `src/config/index.ts`.
+- Depends on: `axios`, `zustand`.
+- Used by: every API module (axios instance), `AuthorityGuard`/`useUserRole` (auth state).
 
 ## Data Flow
 
-### Primary request path (any domain list)
+### Primary Request Path
 
-1. User navigates → `RouterProvider` resolves a route in `src/routes/index.tsx`.
-2. `ProtectedRoute` reads token from `useToken()` (`src/store/authSlice.ts`) and gates render.
-3. `Dashboard` layout renders sidebar/header + `<Outlet/>`.
-4. Page mounts (e.g. `src/pages/ContractManagementPage/index.tsx`) and calls `useUserRole()` to pick the correct API module from `src/pages/ContractManagementPage/api/`.
-5. react-query `useQuery` issues the call through `src/lib/axiosInstance.ts`; axios adds the bearer token from the auth store.
-6. Server returns role-shaped payload; page renders shadcn tables/cards via `src/components/layouts/DataTable`.
+1. User navigates to a `/dashboard/*` route → `src/routes/index.tsx` matches the route and renders the target page wrapped in `ProtectedRoute` (`src/routes/PrivateRoute.tsx:8`).
+2. `AuthorityGuard` checks auth/role state pulled from `authSlice` before rendering children (`src/components/layouts/AuthorityGuard/index.tsx`).
+3. Page component mounts, calls a React Query hook that invokes a feature API function (e.g. `src/pages/ContractManagementPage/api/contractManagerApi.ts`).
+4. API function calls `getRequest`/`postRequest`/etc. from `src/lib/axiosInstance.ts:48-99`, which injects the `Authorization` header from `authSlice` state via an axios request interceptor (`src/lib/axiosInstance.ts:16-27`).
+5. On `401` response, the response interceptor calls `setReset()` on `authSlice`, effectively logging the user out (`src/lib/axiosInstance.ts:30-42`).
+6. Data returned is cached by React Query (`QueryClient` created once in `src/App.tsx`) and rendered via feature components / shared `DataTable`.
 
-### Role-prefixed API convention
+### Role-Based Dashboard Flow
 
-Same logical endpoint, four prefixes (see `docs/API_DOCUMENTATION_PHASE_2.md`):
+1. `useUserRole` (`src/hooks/useUserRole.ts`) derives the current role from `authSlice`'s user object, falling back to a persisted `localStorage["auth"]` value if the store hasn't hydrated yet.
+2. `getDashboardConfig(userRole)` (`src/config/dashboardConfig.ts`) returns a role-keyed config describing which dashboard modules/tabs/cards are visible.
+3. `RoleBasedDashboard` (`src/components/layouts/RoleBasedDashboard/index.tsx`) reads this config and conditionally renders tab views (`ContractsTabView.tsx`, `VendorContractsView.tsx`) and analytics cards (`src/components/layouts/RoleBasedDashboard/analytics/*.tsx`).
+4. `useDashboardData` (`src/hooks/useDashboardData.ts`) fetches and transforms analytics data (via `src/lib/dashboardDataTransformer.ts`) feeding the cards.
 
-```
-/contract/manager/<resource>     ← contract_manager, procurement, company_admin, super_admin
-/contract/vendor/<resource>      ← vendor, project_manager
-/contract/approver/<resource>    ← approver
-/contract/user/<resource>        ← evaluator, view_only
-```
-
-Page-level API modules (e.g. `src/pages/ContractManagementPage/api/{contractManagerApi,vendorApi,approverApi,viewOnlyApi,companyAdminApi}.ts`) each implement one prefix; the page picks the right module based on `useUserRole()` flags. Note: `project_manager` is treated as a vendor-like role — see memory `project_contract_role_guards`.
-
-### Auth flow
-
-1. `Login` (`src/pages/Login.tsx`) posts credentials; on success calls `useSetUser`, `useSetToken`, `useSetRefreshToken`, `useSetAuthorities`.
-2. Zustand persists `{ user, token, refresh, authorities }` to `localStorage["auth"]`.
-3. `useAuthentication` (`src/hooks/useAuthentication/`) derives boolean auth state from token presence.
-4. `useInactivityLogout` (`src/hooks/useInactivityLogout.ts`) calls `useSetReset()` after idle timeout.
-5. Axios interceptors in `src/lib/axiosInstance.ts` attach the bearer header and clear state on 401.
-
-### Collaboration (Yoopta + y-websocket)
-
-`src/pages/CollaborationToolPage/` runs a Yoopta editor backed by `y-websocket` for real-time presence. The editor instance is published upward via `onEditorReady` from `EditorPanel.tsx`; the sidebar (`SidebarPanel.tsx`) renders Comments / Redline / Versions tabs. Comment persistence uses `/contract/file-comment/{fileId}` (see `useFileComments.ts`).
-
-### AI chat (MCP integration)
-
-`src/App.tsx` injects `AIChatWidget` for users with `user.isAi`. It POSTs to `https://dev.swiftpro.tech/chat/<role>` (role-mapped) with SSE streaming. The stream uses named events `content`, `tool_start`, `tool_cached`, `tool_result`, `tool_error`. Reset hits `/chat/reset` with `{ userToken }`. See memory `project_mcp_chat_integration`.
+**State Management:**
+- Server/remote data: owned by React Query per-hook, not centralized.
+- Auth/session: `zustand` store (`authSlice.ts`), persisted via `zustand/middleware persist` to localStorage, read directly in non-React code (axios interceptors) via `storeFunctions.getState()`.
+- One cross-page ephemeral form slice: `solicitationFileSlice.ts` (shared Zustand store for in-progress solicitation file uploads across multi-step flows).
+- Everything else: local component state (`useState`) or React Hook Form (`react-hook-form` + `yup`/`@adexdsamson/forge-validation`).
 
 ## Key Abstractions
 
-**`useUserRole()` (`src/hooks/useUserRole.ts`):**
-- Returns `{ userRole, dashboardConfig, hasRole, hasAnyRole, hasAllRoles, isEvaluator, isVendor, isProjectManager, isApprover, isViewOnly, isCompanyAdmin, isSuperAdmin, isProcurement, isManager, isAdmin, canManageUsers, canManageCompanies, canEvaluate, canSubmitProposals, canManageSolicitations }`.
-- `isManager` is `contract_manager OR procurement`. There is no `isContractManager` boolean; combine with `isProcurement` if needed.
-- Falls back to `localStorage["auth"]` on cold render so role is stable before user is rehydrated.
+**Forge form wrapper:**
+- Purpose: Wraps `react-hook-form`'s `FormProvider` to standardize form field registration/validation across the app.
+- Examples: used throughout `src/pages/*/components/*Dialog.tsx` and multi-step wizards (Create Contract, Create MSA).
+- Pattern: `@adexdsamson/forge` + `@adexdsamson/forge-validation`; see memory notes on Forge traps (formContext vs control, leaf-inject, memo-frozen closures).
 
-**`DataTable` (`src/components/layouts/DataTable/index.tsx`):**
-- Generic table with pagination, sub-rows, classNames slot for dark-mode tuning (see memory `project_contract_dark_mode_patterns`).
+**Role-scoped API module:**
+- Purpose: Encodes "what can this role do against this resource" directly in the data-access layer instead of a generic client.
+- Examples: `src/pages/ContractManagementPage/api/{approverApi,companyAdminApi,contractManagerApi,vendorApi,viewOnlyApi}.ts`
+- Pattern: Same resource (contracts), 5 different API modules selected by the caller based on `useUserRole()`.
 
-**`RoleBasedDashboard` (`src/components/layouts/RoleBasedDashboard/`):**
-- Composes analytics cards by role; cards under `analytics/` consume `useDashboardData()` transformed via `src/lib/dashboardDataTransformer.ts`.
+**AuthorityGuard:**
+- Purpose: Single choke point enforcing "is this user allowed to see this route" before any page-level code runs.
+- Examples: `src/components/layouts/AuthorityGuard/index.tsx`, used by every route via `ProtectedRoute`.
+- Pattern: HOC/wrapper component, not middleware — runs client-side only.
 
-**`AuthorityGuard` (`src/components/layouts/AuthorityGuard/`):**
-- Conditional render based on `authorities` array from auth slice.
-
-**`SEOWrapper` (`src/components/SEO/SEOWrapper.tsx`):**
-- Wraps a page with `<Helmet>` title/description; pages call it directly or via `useSEO`.
+**DataTable:**
+- Purpose: Shared tabular list rendering (sorting, pagination) built on `@tanstack/react-table`.
+- Examples: `src/components/layouts/DataTable`, consumed by nearly every `*ManagementPage/index.tsx`.
 
 ## Entry Points
 
-**`src/main.tsx`:**
-- Renders `<App/>` into `#root`.
+**Application bootstrap:**
+- Location: `src/main.tsx`
+- Triggers: Vite's `index.html` root script tag.
+- Responsibilities: Mounts `<App />` into `#root` inside `React.StrictMode`.
 
-**`src/App.tsx`:**
-- Initializes Sentry, builds the QueryClient (staleTime 30s), constructs `createBrowserRouter(routes)`, mounts AI widget conditionally.
+**App shell:**
+- Location: `src/App.tsx`
+- Triggers: Rendered by `main.tsx`.
+- Responsibilities: Initializes Sentry, creates the single `QueryClient` and `createBrowserRouter(routes)`, wraps the tree in `HelmetProvider`/`ThemeProvider`/`QueryClientProvider`, mounts the global `AIChatWidget` and `Toaster`.
 
-**`src/routes/index.tsx`:**
-- Declarative route tree. Two top-level branches: public (`AuthLayout` + login/forgot/reset/onboarding/legal) and protected (`Dashboard` + every domain page).
+**Route table:**
+- Location: `src/routes/index.tsx`
+- Triggers: Consumed by `createBrowserRouter` in `App.tsx`.
+- Responsibilities: Declarative map of every URL to its page component and guard (`PublicRoute` vs `ProtectedRoute`).
 
 ## Architectural Constraints
 
-- **No code-splitting yet:** Routes import pages eagerly. Adding `React.lazy` + `Suspense` boundaries is a known future optimization (the App shell already has a `Suspense` wrapping `RouterProvider`).
-- **Single axios instance:** All HTTP must go through `src/lib/axiosInstance.ts` so auth header + base URL stay consistent.
-- **Auth persisted under `localStorage["auth"]`:** Reading or mutating this key outside `authSlice.ts` is forbidden — `useUserRole` is the only sanctioned reader.
-- **Role prefix discipline:** Never call a role's endpoint from another role's UI branch. Always pick the API module via `useUserRole()` flags.
-- **PM ≡ Vendor in contract domain:** Any contract-side guard that checks `isVendor` must also include `isProjectManager` (helper `isContractVendorLike`). See memory `project_contract_role_guards`.
-- **MSA list keys on `id`, not `_id`:** `/contract/msa-contracts` returns `id`; row mapping must `id ?? _id ?? ""`. Memory `project_msa_list_id_shape`.
-- **File size from upload must be the server-returned string:** Use `res.data.data[0].size`, not `file.size`. Memory `feedback_file_size_string`.
+- **Threading:** Single-threaded browser SPA; no web workers observed except the Yjs/collaboration stack (`y-websocket`, `y-indexeddb`) inside `CollaborationToolPage`.
+- **Global state:** Two zustand stores are true global singletons: `src/store/authSlice.ts` (session) and `src/store/solicitationFileSlice.ts` (in-progress solicitation file data, described in memory as a shared store consumed across multiple wizard steps). The axios interceptor layer reads `authSlice` outside React via `storeFunctions.getState()` — be careful mutating this shape since it's a non-React consumer.
+- **Circular imports:** None flagged during exploration; feature folders are largely self-contained and import from `src/lib`, `src/components`, `src/hooks` (one direction), not from each other.
+- **Role-branch duplication:** Because API access is role-branched at the module level (see Key Abstractions), features that need "always check both PM and vendor" logic must explicitly pair role checks — the memory log documents this as a recurring bug source (binary dispatch hiding a role, e.g. `feedback_role_branched_api_dispatch.md`).
 
 ## Anti-Patterns
 
-### Standalone `isVendor` check on contract pages
+### Role logic re-derived per-component instead of centralized
 
-**What happens:** Code branches on `isVendor` only, hiding the feature from project managers.
-**Why it's wrong:** PMs share the vendor API surface and UI affordances in the contract domain.
-**Do this instead:** Use `isContractVendorLike = isVendor || isProjectManager` (see the helper used across `src/pages/ContractManagementPage/`).
+**What happens:** Several page components independently branch on `user.role.name` inline rather than consistently calling `useUserRole()`/`hasRole()`.
+**Why it's wrong:** Leads to drift where PM-equivalent-to-vendor semantics get missed in one component but not another (documented repeatedly in project memory, e.g. `feedback_vendor_role_means_pm_in_transcripts.md`, `project_contract_role_guards.md`).
+**Do this instead:** Always resolve role via `src/hooks/useUserRole.ts` and prefer `hasAnyRole([...])` over manual string comparisons; when adding a vendor-only check, pair it with the equivalent PM check (per `feedback_role_guards.md`).
 
-### Reading the auth store outside `authSlice` selectors
+### Truthiness checks on module/feature flags
 
-**What happens:** Components call `JSON.parse(localStorage.getItem("auth"))` ad hoc.
-**Why it's wrong:** Bypasses Zustand reactivity and breaks role refresh.
-**Do this instead:** Use the exported hooks `useUser`, `useToken`, `useAuthorities` from `src/store/authSlice.ts`. The single exception is `useUserRole`, which does a guarded fallback read for cold-render stability.
-
-### Calling endpoints without the correct role prefix
-
-**What happens:** Hardcoding `/contract/manager/...` from a vendor-side page.
-**Why it's wrong:** Server rejects with 403 in production but may pass locally with elevated tokens, masking the bug.
-**Do this instead:** Pick the right API module under `src/pages/<Domain>/api/` via `useUserRole()`.
+**What happens:** Some code gates dashboard modules with `flag === true` instead of a general truthy check.
+**Why it's wrong:** Backend sometimes returns non-boolean truthy values for flags; strict equality silently disables a module (`feedback_module_flags_truthy_not_strict_equality.md`).
+**Do this instead:** Gate on truthiness (`if (flag)`), not strict equality, when consuming BE-provided module/feature flags — see `src/config/dashboardConfig.ts` consumers.
 
 ## Error Handling
 
-**Strategy:** Top-level Sentry `ErrorBoundary` (`src/App.tsx`) renders `ErrorFallback` (`src/components/layouts/Error`). Route-level errors fall through to `NotFound` (`src/layouts/NotFound.tsx`) via `errorElement` on the root route. Mutations surface failures via the toast system (`src/components/ui/toaster.tsx`, hook in `src/hooks/useToaster/`).
+**Strategy:** Combination of route-level error boundaries (`errorElement` on router branches), a global Sentry integration, and per-request axios interceptor handling for auth failures.
 
 **Patterns:**
-- Try/catch around fetch in `App.tsx` for AI chat streaming.
-- react-query `onError` callbacks push to toaster.
-- 401 responses clear auth via `useSetReset` and redirect through `ProtectedRoute`.
+- Route-level: `errorElement: <NotFound />` (public branch) and `errorElement: <RouteErrorFallback />` (dashboard branch) in `src/routes/index.tsx`.
+- Component-level: `ErrorFallback` from `src/components/layouts/Error` wraps the whole app tree conceptually (imported in `App.tsx`).
+- HTTP-level: 401 responses trigger `setReset()` (logout) via the axios response interceptor (`src/lib/axiosInstance.ts:30-42`); other errors are generally surfaced via `sonner` toasts at the call site (React Query `onError` callbacks in individual hooks/components).
+- Observability: Sentry initialized in `App.tsx` with browser tracing + session replay integrations.
 
 ## Cross-Cutting Concerns
 
-**Logging:** Dev-only `console.log` inside the Zustand logger middleware (`src/store/authSlice.ts`). Production uses Sentry breadcrumbs/replay.
-**Validation:** Yup schemas colocated with each step component (e.g. `Step1BasicInfo.tsx`, `Step3ValuePayments.tsx`); react-hook-form with `@hookform/resolvers/yup`.
-**Authentication:** Bearer token in axios; persisted via Zustand `persist`; inactivity timeout via `useInactivityLogout`.
-**Theming:** `ThemeProvider` (`src/contexts/ThemeContext.tsx`) with `defaultTheme="system"` and `storageKey="swiftpro-theme"`. Dark-mode classes follow the slate-900/800 palette documented in memory `project_contract_dark_mode_patterns`.
-**SEO:** `react-helmet-async` via `HelmetProvider` in `App.tsx`; pages wrap with `SEOWrapper` or call `useSEO`.
-**Telemetry:** Sentry browser tracing + session replay (10% session, 100% on error); DSN via `VITE_SENTRY_DSN`.
+**Logging:** Sentry (`@sentry/react`) for error/performance/session-replay telemetry; ad hoc `console.log` in zustand `logger` middleware only in dev mode (`src/store/authSlice.ts`).
+
+**Validation:** `yup` schemas combined with `@hookform/resolvers` and `@adexdsamson/forge-validation`, wired through Forge-wrapped `react-hook-form` forms.
+
+**Authentication:** Token/user/authorities held in `authSlice` (zustand, persisted to localStorage), injected into every request by the axios interceptor, and checked per-route by `AuthorityGuard`.
 
 ---
 
-*Architecture analysis: 2026-05-17*
+*Architecture analysis: 2026-07-22*
