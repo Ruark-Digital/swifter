@@ -11,11 +11,16 @@ import {
   Tooltip,
 } from "recharts";
 
+// The BE has shipped two field-name variants for the same values
+// (`totalChangeOrders`/`valueIncreasePercentage` vs `totalCOs`/`percentageIncrease`).
+// Accept either so the card renders whichever the API returns.
 type ApiData = {
-  totalCOs: number;
-  valueIncrease: number;
-  percentageIncrease: number;
-  chartData: Array<{ date: string; original: number; revised: number }>;
+  totalChangeOrders?: number;
+  totalCOs?: number;
+  valueIncrease?: number;
+  valueIncreasePercentage?: number;
+  percentageIncrease?: number;
+  chartData?: Array<{ date: string; original: number; revised: number }>;
 };
 
 type Props = {
@@ -31,14 +36,28 @@ export const ChangeOrdersImpactCard: React.FC<Props> = ({
 }) => {
   const chart = (
     data?.chartData && data.chartData.length > 0 ? data.chartData : []
-  ).map((d) => ({
-    month: d.date,
-    Original: d.original / 1_000_000,
-    Revised: d.revised / 1_000_000,
-  }));
+  ).map((d) => {
+    const parsed = new Date(d.date);
+    const label = Number.isNaN(parsed.getTime())
+      ? d.date
+      : new Intl.DateTimeFormat(undefined, { month: "short" }).format(parsed);
+    return {
+      month: label,
+      Original: d.original / 1_000_000,
+      Revised: d.revised / 1_000_000,
+    };
+  });
 
   const max = Math.max(0, ...chart.map((d) => Math.max(d.Original, d.Revised)));
   const domainMax = max > 0 ? Math.ceil(max / 10) * 10 : 100;
+  // A single data point draws no line segment, so surface it as a dot;
+  // with a full series keep smooth dot-less lines like the design.
+  const showDots = chart.length <= 1;
+
+  const totalChangeOrders = data?.totalChangeOrders ?? data?.totalCOs ?? 0;
+  const valueIncreaseM = (data?.valueIncrease ?? 0) / 1_000_000;
+  const valueIncreasePercentage =
+    data?.valueIncreasePercentage ?? data?.percentageIncrease ?? 0;
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col max-h-[32rem]">
       <CardHeader className="pb-3 shrink-0">
@@ -100,14 +119,14 @@ export const ChangeOrdersImpactCard: React.FC<Props> = ({
                 dataKey="Original"
                 stroke="#10b981"
                 strokeWidth={2}
-                dot={false}
+                dot={showDots}
               />
               <Line
                 type="monotone"
                 dataKey="Revised"
                 stroke="#1e3a8a"
                 strokeWidth={2}
-                dot={false}
+                dot={showDots}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -117,20 +136,17 @@ export const ChangeOrdersImpactCard: React.FC<Props> = ({
           <div className="rounded-xl bg-[#F9FAFB] dark:bg-slate-800 p-3 text-center">
             <p className="text-[12px] text-[#6B6B6B] dark:text-slate-400">Total COs</p>
             <p className="text-[18px] font-semibold text-[#030712] dark:text-slate-100">
-              {data?.totalCOs ?? 142}
+              {totalChangeOrders}
             </p>
           </div>
           <div className="rounded-xl bg-[#FEE2E2] dark:bg-red-900/30 p-3 text-center">
             <p className="text-[12px] text-[#6B6B6B] dark:text-slate-300">Value Increase</p>
             <p className="text-[18px] font-semibold text-[#B91C1C] dark:text-red-300">
-              $
-              {(
-                ((data?.valueIncrease ?? 100_000_000) as number) / 1_000_000
-              ).toFixed(1)}
+              ${valueIncreaseM.toFixed(1)}
               M{" "}
               <span className="text-[12px] text-[#B91C1C] dark:text-red-300">
-                ({(data?.percentageIncrease ?? 15.8) >= 0 ? "+" : ""}
-                {data?.percentageIncrease ?? 15.8}%)
+                ({valueIncreasePercentage >= 0 ? "+" : ""}
+                {valueIncreasePercentage}%)
               </span>
             </p>
           </div>

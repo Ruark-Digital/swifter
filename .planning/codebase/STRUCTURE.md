@@ -1,421 +1,272 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-05-17
+**Analysis Date:** 2026-07-22
 
 ## Directory Layout
 
 ```
 swifter/
-├── .planning/                 # GSD planning artifacts (this folder)
-│   ├── codebase/              # Codebase maps (ARCHITECTURE.md, STRUCTURE.md, …)
-│   └── quick/                 # Ad-hoc / one-off planning notes
-├── .claude/                   # Claude Code settings + skills
-├── .qa/                       # QA scripts and bug captures
-├── .vscode/                   # Editor settings
-├── docs/                      # Product + API docs
-│   ├── API_DOCUMENTATION_PHASE_2.md  # Phase-2 route map (4 role prefixes)
-│   ├── AI_CHAT_INTEGRATION.md
-│   ├── DARK_MODE_GUIDE.md
-│   ├── DATATABLE_SUBROWS_EXAMPLE.md
-│   ├── DEVELOPER_ONBOARDING.md
-│   ├── PROJECT_HANDOVER.md
-│   ├── SEO_IMPLEMENTATION.md
-│   ├── plans/                 # Multi-phase implementation plans
-│   ├── bug report/
-│   └── superpowers/
-├── public/                    # Vite static assets
-├── src/                       # Application source (see below)
-├── reports/                   # Playwright / vitest report dumps
-├── playwright-report/         # Latest e2e report
-├── test-results/              # Playwright artifacts
-├── dist/                      # Vite build output (gitignored conceptually)
-├── node_modules/
-├── AGENTS.md                  # Agent behavior notes (mirrors CLAUDE.md)
-├── CLAUDE.md                  # Project-wide LLM rules
-├── CODE_WIKI.md
-├── README.md
-├── amplify.yml                # AWS Amplify build config
-├── components.json            # shadcn/ui config
-├── index.html                 # Vite entry
-├── package.json
-├── playwright.config.ts
-├── pnpm-lock.yaml
-├── pnpm-workspace.yaml        # Carries `onlyBuiltDependencies` for pnpm 10
-├── postcss.config.js
-├── swagger.json               # Phase-2 OpenAPI snapshot
-├── tailwind.config.js
-├── tsconfig*.json
-├── vite.config.ts
-├── vitest.config.ts
-└── vitest.setup.ts
-```
-
-**Note:** There is no top-level `mcp-server/` package in this repo. The MCP chat backend is a separate deployment at `https://dev.swiftpro.tech` (see `docs/AI_CHAT_INTEGRATION.md` and `src/App.tsx`).
-
-## `src/` Layout
-
-```
-src/
-├── main.tsx                   # Vite entry: renders <App/>
-├── App.tsx                    # Provider stack + router + AI widget
-├── providers.tsx              # (helper providers, if any)
-├── index.css                  # Tailwind base
-├── types.ts                   # Global types (UserRole union, User, etc.)
-├── vite-env.d.ts
-│
-├── assets/                    # Static images / svgs imported by code
-├── components/
-│   ├── SEO/
-│   │   ├── SEOWrapper.tsx     # <Helmet> wrapper
-│   │   └── index.ts
-│   ├── ui/                    # shadcn/Radix primitives (DO NOT modify)
-│   │   ├── button.tsx  card.tsx  dialog.tsx  table.tsx  tabs.tsx
-│   │   ├── sheet.tsx  popover.tsx  sidebar.tsx  toast.tsx  toaster.tsx
-│   │   ├── theme-toggle.tsx  empty-state.tsx  file-upload.tsx  chart.tsx
-│   │   ├── DocumentViewer.tsx  PageLoader.tsx  Spinner.tsx
-│   │   └── … (one file per primitive)
-│   └── layouts/               # Domain-aware reusable composites
-│       ├── AIChatWidget/      # Floating chat button + panel
-│       ├── AuthorityGuard/    # Conditional render by authorities[]
-│       ├── ConfirmAlert/
-│       ├── Container/
-│       ├── DataTable/         # Generic table with pagination + sub-rows
-│       ├── Error/             # ErrorFallback for Sentry boundary
-│       ├── ExportReportSheet/
-│       ├── FormInputs/        # TextInput, CurrencyInput, etc.
-│       ├── RoleBasedDashboard/
-│       │   ├── analytics/     # Per-card components (Spend, Cycle, …)
-│       │   ├── components/    # ChartCard, etc.
-│       │   └── index.tsx
-│       ├── RoleSwitcher/
-│       ├── Footer.tsx
-│       ├── SearchInput.tsx
-│       └── SolicitationFilters.tsx
-│
-├── config/
-│   ├── dashboardConfig.ts     # Role → dashboard card list mapping
-│   └── index.ts
-├── contexts/
-│   └── ThemeContext.tsx       # light/dark/system theme provider
-├── demo/                      # Sandbox / scratch components
-├── hooks/
-│   ├── __tests__/
-│   ├── use-file-upload.ts
-│   ├── use-mobile.tsx
-│   ├── useAIChat.ts
-│   ├── useAuthentication/     # Auth boolean + login helpers
-│   ├── useDashboardData.ts
-│   ├── useInactivityLogout.ts
-│   ├── useLazyQuery/          # react-query lazy wrapper
-│   ├── useProviders/
-│   ├── useSEO.ts
-│   ├── useToaster/
-│   ├── useUserQueryKey.ts
-│   └── useUserRole.ts         # ★ Single source of truth for role
-├── layouts/                   # App-shell layouts (not page tab layouts)
-│   ├── AuthLayout.tsx         # Public-route shell
-│   ├── Dashboard.tsx          # Protected-route shell (sidebar+header+outlet)
-│   ├── Header.tsx
-│   ├── Sidebar.tsx
-│   └── NotFound.tsx
-├── lib/
-│   ├── __tests__/
-│   ├── axiosInstance.ts       # ★ The only axios instance
-│   ├── chartColorUtils.ts
-│   ├── chartTransformerUsage.md
-│   ├── contractFormValues.ts
-│   ├── currencyUtils.ts
-│   ├── dashboardDataTransformer.ts
-│   ├── evaluationStatusUtils.ts
-│   ├── fileToMarkdown.ts
-│   ├── fileToYoopta.ts
-│   ├── markdownToYoopta.ts
-│   ├── fileUtils.tsx
-│   ├── forge/                 # Form schema helpers
-│   ├── navigation.ts
-│   ├── pruneEmptyValuesDeep.ts
-│   ├── solicitationStatusUtils.ts
-│   └── utils.ts               # cn() and misc helpers
-├── routes/
-│   ├── index.tsx              # createBrowserRouter route tree
-│   ├── PrivateRoute.tsx       # Token gate
-│   └── PublicRoute.tsx        # Inverse gate
-├── store/
-│   ├── authSlice.ts           # Zustand + persist; selector hooks
-│   └── solicitationFileSlice.ts
-├── utils/                     # Misc utilities not yet promoted to lib/
-│
-└── pages/                     # Feature folders (see below)
-```
-
-## `src/pages/` — Domain Folders
-
-Every domain follows the same shape: `index.tsx` (list), one or more `*DetailPage.tsx`, `layouts/<TabName>.tsx` per detail-page tab, `components/` for dialogs/tables/stat cards, optional `api/`, optional `hooks/`, `__tests__/`.
-
-```
-pages/
-├── __tests__/                          # Cross-page tests
-├── DashboardPage.tsx                   # Top-level dashboard (uses RoleBasedDashboard)
-├── Login.tsx
-├── Example.tsx                         # Scratch (not routed)
-│
-├── ContractManagementPage/             # ★ Largest domain
-│   ├── index.tsx                       # List + filters + tabs
-│   ├── ContractDetailPage.tsx          # Tabbed detail shell
-│   ├── api/
-│   │   ├── contractManagerApi.ts       # /contract/manager/*
-│   │   ├── vendorApi.ts                # /contract/vendor/*  (also PM)
-│   │   ├── approverApi.ts              # /contract/approver/*
-│   │   ├── viewOnlyApi.ts              # /contract/user/*
-│   │   └── companyAdminApi.ts          # Admin overlays
-│   ├── layouts/                        # One file per detail tab
-│   │   ├── OverviewTab.tsx
-│   │   ├── AmendmentsTabContent.tsx
-│   │   ├── ChangeTabContent.tsx
-│   │   ├── ClaimsTabContent.tsx
-│   │   ├── ClauseLibraryTabContent.tsx
-│   │   ├── ComplianceTabContent.tsx
-│   │   ├── DeliverablesTabContent.tsx
-│   │   ├── DocumentsTabContent.tsx
-│   │   ├── InvoiceTabContent.tsx
-│   │   ├── KpiTabContent.tsx
-│   │   ├── LemTabContent.tsx
-│   │   ├── NcrLogTabContent.tsx
-│   │   ├── PaymentSummaryTabContent.tsx
-│   │   ├── RateSheetsTabContent.tsx
-│   │   ├── RfiTabContent.tsx
-│   │   ├── ApproversTabContent.tsx
-│   │   ├── ActionLogTabContent.tsx
-│   │   ├── VendorReportsTabContent.tsx
-│   │   └── AnalyticsTabContent.tsx
-│   ├── components/                     # Dialogs, tables, stat cards, wizard steps
-│   │   ├── CreateContractSheet.tsx
-│   │   ├── EditContract.tsx
-│   │   ├── ContractsTable.tsx
-│   │   ├── ApproversTable.tsx
-│   │   ├── Step1BasicInfo.tsx … Step4Timeline.tsx   # Create-contract wizard
-│   │   ├── *StatsCards.tsx             # Per-tab stat row
-│   │   ├── *Table.tsx                  # Per-tab DataTable wrappers
-│   │   ├── *DetailsSheet.tsx           # Slide-over per row
-│   │   ├── Create*Dialog.tsx           # Mutation dialogs
-│   │   ├── LabelItem.tsx               # ★ Universal field-row primitive
-│   │   ├── DocumentItem.tsx, DocumentsList.tsx
-│   │   └── EmptyState.tsx, StatusBadge.tsx
-│   ├── lib/                            # Domain-local helpers
-│   └── __tests__/
-│
-├── MsaPage/                            # Reuses many ContractManagement components
-│   ├── index.tsx
-│   ├── MsaDetailPage.tsx
-│   ├── layouts/
-│   │   ├── Overview.tsx                # Renders every field via LabelItem
-│   │   ├── Amendments.tsx, Approvers.tsx, ChangeManagement.tsx
-│   │   ├── Claims.tsx, Compliance.tsx, Deliverables.tsx
-│   │   ├── Documents.tsx, Invoice.tsx, Kpi.tsx, Lem.tsx
-│   │   ├── LinkedContracts.tsx, NcrLog.tsx, PaymentSummary.tsx
-│   │   ├── Reports.tsx, Rfi.tsx
-│   │   └── CreateMSADialog.tsx         # 9-step wizard (also used for edit)
+├── src/
+│   ├── main.tsx              # React root bootstrap
+│   ├── App.tsx                # App shell: Sentry init, QueryClient, router, providers
+│   ├── App.test.tsx
+│   ├── types.ts               # Shared app-wide TypeScript types (User, etc.)
+│   ├── routes/                # Route table + guards
+│   │   ├── index.tsx
+│   │   ├── PrivateRoute.tsx
+│   │   └── PublicRoute.tsx
+│   ├── layouts/                # Top-level page chrome (not feature-specific)
+│   │   ├── AuthLayout.tsx
+│   │   ├── Dashboard.tsx
+│   │   ├── Header.tsx
+│   │   ├── Sidebar.tsx
+│   │   └── NotFound.tsx
+│   ├── pages/                  # Feature-folder modules, one per business domain
+│   │   ├── <Feature>Page/
+│   │   │   ├── index.tsx              # List/landing view
+│   │   │   ├── <Feature>DetailPage.tsx
+│   │   │   ├── api/                   # Feature-scoped HTTP calls (often role-branched)
+│   │   │   ├── components/            # Feature-local UI (dialogs, sheets, tables, cards)
+│   │   │   ├── lib/                   # Feature-local helpers/transformers
+│   │   │   ├── utils/                 # Feature-local pure utils
+│   │   │   └── __tests__/             # Playwright e2e specs + vitest unit specs
+│   │   ├── ContractManagementPage/
+│   │   ├── MsaPage/
+│   │   ├── SolicitationManagementPage/
+│   │   ├── VendorManagementPage/
+│   │   ├── EvaluationManagementPage/
+│   │   ├── ProjectManagementPage/
+│   │   ├── CompaniesPage/
+│   │   ├── AdminManagementPage/
+│   │   ├── UserManagementPage/
+│   │   ├── SubscriptionsPage/
+│   │   ├── SystemLogPage/
+│   │   ├── PortalSettingsPage/
+│   │   ├── CommunicationManagementPage/
+│   │   ├── CollaborationToolPage/     # TipTap/Yjs/Yoopta document editor
+│   │   ├── OnboardingPage/
+│   │   ├── InvitationsPage/
+│   │   ├── BusinessDivisionsPage/
+│   │   ├── ProfilePage/
+│   │   ├── SettingsPage/
+│   │   ├── Login.tsx / ForgotPasswordPage / ResetPasswordPage
+│   │   ├── DashboardPage.tsx          # Role-based landing dashboard
+│   │   ├── PrivacyPolicyPage / TermsConditionsPage / DisclaimerPage / ContactUsPage
+│   │   └── __tests__/                 # Cross-page/dashboard-level specs
 │   ├── components/
-│   │   ├── Step1BasicInfo.tsx … Step9ReviewPublish.tsx
-│   │   ├── MsaTable.tsx, StatsCards.tsx, StatusBadge.tsx
-│   │   ├── MSAClaimDetailsSheet.tsx, MsaReleaseHoldbackDialog.tsx
-│   │   ├── MsaUpdateSavingsDialog.tsx
-│   │   ├── LabelItem.tsx               # ★ MSA-local copy (Overview leverage)
-│   │   └── EmptyState.tsx
-│   └── __tests__/
-│
-├── SolicitationManagementPage/
-│   ├── index.tsx                       # List
-│   ├── SolicitationDetailPage.tsx
-│   ├── ProposalDetailsPage.tsx
-│   ├── components/
-│   │   ├── CreateSolicitationDialog.tsx, EditSolicitationDialog.tsx
-│   │   ├── AddendumsTab.tsx, AddendumDetailsSheet.tsx, CreateAddendumDialog.tsx
-│   │   ├── DocumentsTab.tsx, FileUploadDialog.tsx
-│   │   ├── EvaluationScorecard.tsx, EvaluatorsGroupSubTable.tsx
-│   │   ├── ExtendDeadlineDialog.tsx
-│   │   ├── AmendProposalDialog.tsx, AmendSubmissionDialog.tsx
-│   │   ├── CompleteProposalDialog.tsx, CreateCategoryDialog.tsx
-│   │   ├── SubmitProposalPage.tsx, EditProposalPage.tsx
-│   │   └── ProponentSubmission/
-│   └── hooks/
-│
-├── CollaborationToolPage/              # Yoopta + y-websocket editor
-│   ├── index.tsx
-│   ├── collaboration.css
-│   ├── collab/                         # Editor plumbing
-│   │   ├── CommentMark.tsx
-│   │   ├── RedlineMarks.tsx
-│   │   ├── redlineScan.ts
-│   │   ├── useAiRedlineSuggestions.ts
-│   │   ├── useContractMentionables.ts
-│   │   ├── useFileComments.ts          # /contract/file-comment/{fileId}
-│   │   └── useYooptaYjs.ts             # y-websocket binding
-│   ├── components/
-│   │   ├── EditorPanel.tsx             # Publishes editor via onEditorReady
-│   │   ├── SidebarPanel.tsx            # Comments / Redline / Versions tabs
-│   │   ├── CommentsTab.tsx, FeedItem.tsx, VirtualizedFeedList.tsx, WriteComment.tsx
-│   │   ├── AiSuggestionsPanel.tsx      # overlay/inline variants
-│   │   ├── VersionsTab.tsx, VersionHistoryModal.tsx
-│   │   └── DocumentViewer.tsx
-│   ├── store/
-│   └── __tests__/
-│
-├── AdminManagementPage/
-├── BusinessDivisionsPage/
-├── CompaniesPage/                  (+ CompanyDetailPage)
-├── CommunicationManagementPage/
-├── ContactUsPage/
-├── DisclaimerPage/
-├── EvaluationManagementPage/       (+ EvaluationDetailPage, AssignedEvaluationDetailPage, SubmittedDocumentPage)
-├── ForgotPasswordPage/
-├── InvitationsPage/
-├── OnboardingPage/                 (+ VendorOnboardingPage, PmOnboardingPage)
-├── PortalSettingsPage/
-├── PrivacyPolicyPage/
-├── ProfilePage/
-├── ProjectManagementPage/
-├── ReportsPage/
-├── ResetPasswordPage/
-├── SettingsPage/
-├── SubscriptionsPage/              (+ SubscriptionDetailPage)
-├── SystemLogPage/
-├── TermsConditionsPage/
-├── UserManagementPage/
-└── VendorManagementPage/           (+ VendorDetailPage)
+│   │   ├── ui/                        # Radix/shadcn-style primitives (button, dialog, sheet, table...)
+│   │   ├── layouts/                    # Composite shared widgets
+│   │   │   ├── DataTable/
+│   │   │   ├── ConfirmAlert/
+│   │   │   ├── ExportReportSheet/
+│   │   │   ├── FormInputs/
+│   │   │   ├── AuthorityGuard/         # Route access-control wrapper
+│   │   │   ├── AIChatWidget/
+│   │   │   ├── RoleSwitcher/
+│   │   │   ├── Error/
+│   │   │   ├── Container/
+│   │   │   ├── Footer.tsx
+│   │   │   ├── SearchInput.tsx
+│   │   │   ├── SolicitationFilters.tsx
+│   │   │   └── RoleBasedDashboard/     # Role-conditional dashboard shell + analytics cards
+│   │   └── SEO/
+│   ├── hooks/                          # Shared cross-feature hooks
+│   │   ├── useAuthentication          (dir)
+│   │   ├── useUserRole.ts
+│   │   ├── useDashboardData.ts
+│   │   ├── useVendorContractStats.ts
+│   │   ├── useAIChat.ts
+│   │   ├── useGoBack.ts
+│   │   ├── useInactivityLogout.ts
+│   │   ├── useLazyQuery            (dir)
+│   │   ├── useProviders            (dir)
+│   │   ├── useToaster              (dir)
+│   │   ├── use-file-upload.ts
+│   │   ├── use-mobile.tsx
+│   │   ├── useUserQueryKey.ts
+│   │   └── __tests__/
+│   ├── lib/                            # Shared framework-agnostic utilities
+│   │   ├── axiosInstance.ts            # Singleton axios client + interceptors
+│   │   ├── utils.ts                    # cn() / generic helpers
+│   │   ├── currencyUtils.ts
+│   │   ├── chartColorUtils.ts
+│   │   ├── dashboardDataTransformer.ts
+│   │   ├── contractFormValues.ts
+│   │   ├── evaluationStatusUtils.ts
+│   │   ├── solicitationStatusUtils.ts
+│   │   ├── fileToMarkdown.ts / markdownToYoopta.ts / fileToYoopta.ts / fileUtils.tsx
+│   │   ├── moduleFlags.ts
+│   │   ├── navigation.ts
+│   │   ├── pruneEmptyValuesDeep.ts
+│   │   ├── lazyWithRetry.ts
+│   │   └── __tests__/
+│   ├── store/                          # Global Zustand slices (session + one shared form slice)
+│   │   ├── authSlice.ts
+│   │   └── solicitationFileSlice.ts
+│   ├── config/
+│   │   ├── index.ts                    # Base URL / env config
+│   │   └── dashboardConfig.ts          # Role-keyed dashboard module config
+│   ├── contexts/
+│   │   └── ThemeContext.tsx
+│   ├── demo/                           # Demo/sample data for Create Contract flow, etc.
+│   └── assets/
+├── public/                             # Static assets served as-is
+├── docs/                               # Product docs, bug reports, plans
+├── .planning/                          # GSD planning artifacts (codebase maps, phase plans)
+├── .qa/                                 # QA harness: driver.mjs (Playwright), worklists, reports
+├── memory/                              # Auto-memory notes (persisted context)
+├── swagger.json                        # Backend API spec (source of truth for endpoints)
+├── vite.config.ts                       # Vite build config (`@` alias → `src/`)
+├── vitest.config.ts / vitest.setup.ts   # Unit test runner config
+├── playwright.config.ts                 # E2E test runner config
+├── tsconfig.json / tsconfig.app.json / tsconfig.node.json
+├── tailwind.config.js / postcss.config.js
+├── components.json                      # shadcn/ui component generator config
+└── amplify.yml                          # AWS Amplify build/deploy config
 ```
 
 ## Directory Purposes
 
+**`src/pages/<Feature>Page/`:**
+- Purpose: Self-contained vertical slice for one business domain.
+- Contains: List page (`index.tsx`), detail page(s), `api/`, `components/`, `lib/`, `utils/`, `__tests__/`.
+- Key files: `api/*Api.ts` (role-branched HTTP), `<Feature>DetailPage.tsx` (tabbed detail view).
+
 **`src/components/ui/`:**
-- Purpose: Unmodified shadcn/Radix primitives. Edit only via the shadcn CLI.
-- Key files: `button.tsx`, `dialog.tsx`, `sheet.tsx`, `table.tsx`, `tabs.tsx`, `sidebar.tsx`, `toaster.tsx`, `theme-toggle.tsx`.
+- Purpose: Low-level, styling-only, feature-agnostic UI primitives (shadcn/Radix wrappers).
+- Contains: `button.tsx`, `dialog.tsx`, `sheet.tsx`, `table.tsx`, `input.tsx`, etc. (43 files).
+- Key files: none feature-specific — treat as a design-system layer.
 
 **`src/components/layouts/`:**
-- Purpose: Domain-aware composites built on shadcn primitives.
-- Key files: `DataTable/index.tsx`, `RoleBasedDashboard/index.tsx`, `AIChatWidget/index.tsx`, `AuthorityGuard/`, `FormInputs/`.
-
-**`src/layouts/`:**
-- Purpose: App-shell scaffolding (vs. tab layouts which live inside each page folder).
-- Key files: `AuthLayout.tsx`, `Dashboard.tsx`, `Sidebar.tsx`, `Header.tsx`, `NotFound.tsx`.
-
-**`src/pages/<Domain>Page/layouts/`:**
-- Purpose: Per-tab body content for the domain's detail page.
-- Note: distinct from `src/layouts/` (which is app-shell).
-
-**`src/pages/<Domain>Page/components/`:**
-- Purpose: Dialogs, tables, stat cards, wizard steps, slide-over sheets.
-
-**`src/pages/<Domain>Page/api/`:**
-- Purpose: One file per role-prefix (`contractManagerApi.ts`, `vendorApi.ts`, `approverApi.ts`, `viewOnlyApi.ts`, optional `companyAdminApi.ts`). Only `ContractManagementPage` currently has this; other domains keep API calls inline or in `hooks/`.
+- Purpose: Composite, reusable widgets that combine multiple `ui/` primitives with app logic.
+- Contains: `DataTable/`, `ConfirmAlert/`, `ExportReportSheet/`, `FormInputs/`, `RoleBasedDashboard/`, `AuthorityGuard/`, `AIChatWidget/`, `RoleSwitcher/`, `Error/`.
+- Key files: `AuthorityGuard/index.tsx` (route gating), `RoleBasedDashboard/index.tsx` (dashboard shell).
 
 **`src/hooks/`:**
-- Purpose: Cross-cutting hooks. Each non-trivial hook gets its own subfolder with index + tests.
+- Purpose: Cross-feature reusable React hooks.
+- Contains: auth/role hooks, dashboard-data hooks, misc utility hooks (mobile detection, toaster, lazy query).
+- Key files: `useUserRole.ts`, `useAuthentication/`, `useDashboardData.ts`.
 
 **`src/lib/`:**
-- Purpose: Pure utilities and the singleton axios instance. No JSX except in `fileUtils.tsx`.
+- Purpose: Framework-agnostic helper functions and the HTTP client singleton.
+- Contains: axios wrapper, currency/date/chart utilities, file-format converters (docx/markdown/Yoopta), module-flag helpers.
+- Key files: `axiosInstance.ts` (all HTTP traffic goes through this).
 
 **`src/store/`:**
-- Purpose: Zustand stores. Only auth is currently persisted.
+- Purpose: Global Zustand state — kept intentionally minimal.
+- Contains: `authSlice.ts` (session/user/token/authorities, persisted), `solicitationFileSlice.ts` (shared multi-step form state for solicitation file uploads).
 
 **`src/config/`:**
-- Purpose: Static lookup tables (role → dashboard config).
+- Purpose: App-wide configuration values and role-based feature config.
+- Contains: `index.ts` (base URL/env), `dashboardConfig.ts` (per-role dashboard module visibility).
 
-**`src/types.ts`:**
-- Purpose: Global `User`, `UserRole` union, and shared types.
+**`src/routes/` and `src/layouts/`:**
+- Purpose: URL-to-component mapping and top-level page chrome.
+- Contains: route table, guard wrappers, auth/dashboard shell layouts (sidebar, header).
+
+**`.qa/`:**
+- Purpose: Manual/automated QA tooling used during bug-fix cycles.
+- Contains: `driver.mjs` (Playwright-based browser driver for live probing since the in-app browser can't screenshot SwiftPro), worklists (`BE-worklist-*.md`), `probe-run.mjs`, `reports/`, `screenshots/`, `snapshots/`.
+- Not part of the shipped app; do not import from `src/`.
+
+**`.planning/`:**
+- Purpose: GSD command artifacts — codebase maps (this directory), phase plans, quick-task notes.
 
 ## Key File Locations
 
 **Entry Points:**
-- `src/main.tsx`: ReactDOM root.
-- `src/App.tsx`: Providers + router + AI widget.
-- `index.html`: Vite HTML shell.
+- `src/main.tsx`: React DOM root render.
+- `src/App.tsx`: App shell — Sentry init, QueryClient, router creation, global providers/widgets.
+- `src/routes/index.tsx`: Full route table.
 
 **Configuration:**
-- `vite.config.ts`, `tsconfig*.json`, `tailwind.config.js`, `postcss.config.js`
-- `components.json` (shadcn), `playwright.config.ts`, `vitest.config.ts`, `vitest.setup.ts`
-- `amplify.yml`, `pnpm-workspace.yaml` (carries `onlyBuiltDependencies` for pnpm 10 — see memory `fix_pnpm10_amplify_build`).
+- `vite.config.ts`: Build config, defines `@` → `src/` path alias.
+- `src/config/index.ts`: Runtime config (API base URL from env).
+- `src/config/dashboardConfig.ts`: Role-keyed dashboard module/tab config.
+- `.env.local` / `.env.example`: Environment variables (never read contents — see forbidden files policy).
+- `components.json`: shadcn/ui generator config (defines where new `ui/` components get scaffolded).
+- `tailwind.config.js`, `postcss.config.js`: Styling pipeline config.
 
 **Core Logic:**
-- `src/routes/index.tsx`: Route tree.
-- `src/hooks/useUserRole.ts`: Role + dashboard config.
-- `src/store/authSlice.ts`: Auth state.
-- `src/lib/axiosInstance.ts`: HTTP client.
+- `src/lib/axiosInstance.ts`: Singleton HTTP client, auth header injection, 401 → logout.
+- `src/store/authSlice.ts`: Session state (zustand, persisted).
+- `src/hooks/useUserRole.ts`: Role derivation + role-check helpers.
+- `src/components/layouts/AuthorityGuard/index.tsx`: Route-level authorization gate.
+- `src/pages/<Feature>Page/api/*.ts`: Per-feature, per-role HTTP call modules.
 
 **Testing:**
-- Unit/component tests: `src/**/__tests__/*.{test,spec}.ts(x)` (vitest).
-- E2E: `playwright.config.ts` + tests under `tests/` (see playwright config).
+- `src/pages/<Feature>Page/__tests__/`: Feature-scoped Playwright e2e specs (`*.spec.ts`) and vitest unit specs (`*.test.ts(x)`, `*.unit.spec.ts`).
+- `src/pages/__tests__/`: Cross-page/dashboard-level specs (e.g. `dashboard-contract-manager.spec.ts`).
+- `src/hooks/__tests__/`, `src/lib/__tests__/`: Unit tests for shared hooks/utilities.
+- `playwright.config.ts`: E2E runner config; `vitest.config.ts` + `vitest.setup.ts`: unit runner config.
 
 ## Naming Conventions
 
 **Files:**
-- Components: `PascalCase.tsx` (e.g. `ContractsTable.tsx`, `CreateContractSheet.tsx`).
-- Hooks: `useXxx.ts` (or `useXxx/` folder with `index.ts` for non-trivial).
-- Utilities: `camelCase.ts` (e.g. `axiosInstance.ts`, `currencyUtils.ts`).
-- Tests: `*.test.ts(x)` or `*.spec.ts(x)` inside a `__tests__/` folder.
+- React components: `PascalCase.tsx` (e.g. `ContractDetailPage.tsx`, `AmendmentsTable.tsx`).
+- Hooks: `camelCase.ts` prefixed with `use` (e.g. `useUserRole.ts`, `useDashboardData.ts`).
+- API modules: `camelCase` + `Api.ts` suffix, prefixed by role/scope (e.g. `contractManagerApi.ts`, `vendorApi.ts`, `viewOnlyApi.ts`).
+- Utility/lib files: `camelCase.ts` (e.g. `currencyUtils.ts`, `dashboardDataTransformer.ts`).
+- Tests: `<subject>.spec.ts` for Playwright e2e, `<subject>.test.ts(x)` or `<subject>.unit.spec.ts` for vitest unit tests. QA-ticket-tagged tests use a `qaNN-` or `adeNN-` prefix tied to a tracked issue number (e.g. `ade85-manager-approve-change-url.unit.spec.ts`, `qa78-item2-assign-pm.spec.ts`).
 
 **Directories:**
-- Domain pages: `<Domain>Page/` (singular feature noun + `Page`).
-- Tab content: `<TabName>TabContent.tsx` for ContractManagement; bare `<TabName>.tsx` for MSA.
-- Wizard steps: `Step<N><Name>.tsx`.
+- Feature pages: `<Feature>ManagementPage` or `<Feature>Page` (PascalCase), always under `src/pages/`.
+- Shared UI: `ui/` (primitives, lowercase files) vs `layouts/` (composite widgets, PascalCase dirs) under `src/components/`.
+- Test directories: always `__tests__/` co-located inside the feature/module they test, never a separate top-level test tree.
 
 ## Where to Add New Code
 
-**New page tab (existing domain):**
-- Body: `src/pages/<Domain>Page/layouts/<NewTab>TabContent.tsx` (or `<NewTab>.tsx` for MSA).
-- Supporting table/dialog/stat cards: `src/pages/<Domain>Page/components/`.
-- Wire the tab into the detail page's `<Tabs>` in `<Domain>DetailPage.tsx`.
+**New Feature/Business Domain:**
+- Create `src/pages/<Feature>Page/` with `index.tsx`, `<Feature>DetailPage.tsx` (if needed), `api/`, `components/`, `__tests__/`.
+- Register routes in `src/routes/index.tsx` under the `/dashboard` branch, wrapped in `ProtectedRoute`.
+- If the feature needs role-branched access, follow the pattern in `src/pages/ContractManagementPage/api/` (separate module per role) rather than branching inside a single API function.
 
-**New domain page:**
-- Create `src/pages/<NewDomain>Page/` with `index.tsx`, optional `<Name>DetailPage.tsx`, `layouts/`, `components/`, `api/`, `__tests__/`.
-- Register the route in `src/routes/index.tsx` under the protected branch.
-- Add sidebar entry in `src/layouts/Sidebar.tsx`.
-- If role-gated, add an `AuthorityGuard` or branch on `useUserRole()` flags.
+**New Shared UI Component:**
+- Pure styling primitive with no app logic → `src/components/ui/` (use `components.json`/shadcn generator conventions).
+- Composite widget combining logic + primitives, reused across ≥2 features → `src/components/layouts/`.
+- Component used by only one feature → keep it in that feature's `components/` folder, not in shared layers.
 
-**New API client:**
-- If the endpoint follows the four-prefix convention, add one file per role under `src/pages/<Domain>Page/api/<role>Api.ts` and pick via `useUserRole()`.
-- Always import the shared axios from `src/lib/axiosInstance.ts`.
+**New Shared Hook:**
+- `src/hooks/` if reused across ≥2 features; otherwise keep it feature-local (e.g. `src/pages/<Feature>Page/hooks/` if such a folder exists, or inline in the feature's components).
 
-**New reusable component:**
-- Pure shadcn primitive → `src/components/ui/` (only if generated via shadcn CLI).
-- Domain-aware composite (uses role, query, etc.) → `src/components/layouts/<Name>/index.tsx`.
+**New Utility Function:**
+- Framework-agnostic, reusable helper → `src/lib/`.
+- Feature-specific transform/helper → `src/pages/<Feature>Page/lib/` or `utils/`.
 
-**New hook:**
-- Trivial single-file → `src/hooks/useX.ts`.
-- Non-trivial (multiple files, tests) → `src/hooks/useX/index.ts` + `__tests__/`.
+**New Global State:**
+- Avoid adding to `zustand` unless the state is truly cross-cutting (session-like or spans multiple wizard steps/pages) — the codebase deliberately keeps only two global slices (`authSlice`, `solicitationFileSlice`). Prefer React Query for server state and local `useState`/React Hook Form for form state.
 
-**New pure utility:**
-- `src/lib/<name>.ts`. No JSX (use `.tsx` only when JSX is unavoidable, like `fileUtils.tsx`).
-
-**New global type:**
-- Append to `src/types.ts` if it's truly shared; otherwise colocate next to the consumer.
-
-**New zustand store:**
-- `src/store/<name>Slice.ts`. Use `persist` only if state must survive reload (currently only auth).
+**New Test:**
+- Co-locate in the nearest `__tests__/` directory to the code under test.
+- Tag QA-ticket-driven tests with the issue number prefix (`qaNN-` / `adeNN-`) to keep traceability to the QA worklist.
 
 ## Special Directories
 
+**`.qa/`:**
+- Purpose: Manual QA tooling (Playwright driver script, worklists, screenshots/snapshots from live probing sessions).
+- Generated: Partially (screenshots/reports are generated; worklists/driver are authored).
+- Committed: Yes (tracked in git per current `git status`).
+
+**`dist/`, `playwright-report/`, `test-results/`:**
+- Purpose: Build output and test-run artifacts.
+- Generated: Yes.
+- Committed: No (build/test output, should be gitignored).
+
 **`.planning/`:**
-- Purpose: GSD planning artifacts; codebase maps live in `.planning/codebase/`.
-- Generated: Partially (this file is one).
+- Purpose: GSD orchestration artifacts (codebase maps, phase plans).
+- Generated: Yes (by GSD commands), but committed to track planning history.
+- Committed: Yes.
+
+**`memory/`:**
+- Purpose: Claude auto-memory notes capturing prior QA findings, architectural decisions, and traps discovered during past sessions.
+- Generated: Yes (by Claude memory system).
 - Committed: Yes.
 
 **`docs/`:**
-- Purpose: Long-form product, API, and onboarding docs. `docs/API_DOCUMENTATION_PHASE_2.md` is the authoritative route map for the four role prefixes.
+- Purpose: Product documentation, bug reports, and plan documents (including `.docx` transcripts).
+- Generated: No (authored/uploaded).
 - Committed: Yes.
-
-**`dist/`, `node_modules/`, `playwright-report/`, `test-results/`, `reports/`:**
-- Purpose: Build / test outputs.
-- Generated: Yes.
-- Committed: No.
-
-**`public/`:**
-- Purpose: Vite static assets served at site root.
-- Committed: Yes.
-
-**`mcp-server/`:**
-- Not present in this repo. The MCP chat backend is deployed separately at `https://dev.swiftpro.tech`; only the client glue lives here (`src/App.tsx` and `src/components/layouts/AIChatWidget/`).
 
 ---
 
-*Structure analysis: 2026-05-17*
+*Structure analysis: 2026-07-22*

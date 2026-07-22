@@ -1,5 +1,6 @@
 import React from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useGoBack } from "@/hooks/useGoBack";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -267,9 +268,7 @@ const ProposalDetailsPage: React.FC = () => {
       commentSummary: "View details for comments", // Placeholder as API doesn't provide comment summary
     })) || [];
 
-  const handleBack = () => {
-    navigate(-1);
-  };
+  const handleBack = useGoBack(`/dashboard/solicitation/${id}`);
 
   const handleExport = async (type: "pdf" | "docx" = "pdf") => {
     if (!proposal) return;

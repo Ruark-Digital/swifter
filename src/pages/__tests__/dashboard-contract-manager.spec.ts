@@ -266,9 +266,9 @@ async function mockContractManagerDashboardEndpoints(
       body: JSON.stringify({
         message: "ok",
         data: {
-          totalCOs: 6,
+          totalChangeOrders: 6,
           valueIncrease: 350000,
-          percentageIncrease: 8.5,
+          valueIncreasePercentage: 8.5,
           chartData: [
             { date: "2025-01", original: 200000, revised: 240000 },
             { date: "2025-02", original: 200000, revised: 260000 },

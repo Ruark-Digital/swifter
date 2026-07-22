@@ -41,6 +41,7 @@ import Invoice from "./layouts/Invoice";
 import Rfi from "./layouts/Rfi";
 import Lem from "./layouts/Lem";
 import Approvers from "./layouts/Approvers";
+import VendorPersonnelTabContent from "@/pages/ContractManagementPage/layouts/VendorPersonnelTabContent";
 import Deliverables from "./layouts/Deliverables";
 import Reports from "./layouts/Reports";
 import ActionLogTabContent from "./layouts/ActionLogTabContent";
@@ -74,6 +75,7 @@ type TabKey =
   | "rfi"
   | "ncr-log"
   | "approvers"
+  | "vendor-personnel"
   | "reports"
   | "action-log"
   | "clause-library";
@@ -95,6 +97,7 @@ const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "rfi", label: "RFI" },
   { key: "ncr-log", label: "NCR Log" },
   { key: "approvers", label: "Approvers" },
+  { key: "vendor-personnel", label: "Vendor Personnel" },
   { key: "reports", label: "Vendor’s Reports" },
   { key: "clause-library", label: "Clause Library" },
   { key: "action-log", label: "Action Log" },
@@ -151,6 +154,7 @@ const ROLE_TAB_WHITELIST: Record<
     "deliverables",
     "ncr-log",
     "approvers",
+    "vendor-personnel",
     "reports",
     "payment-summary",
     "action-log",
@@ -901,6 +905,7 @@ const MsaDetailPage: React.FC = () => {
               contractId={id ?? ""}
               isActive={activeTab === "compliance"}
               actionsDisabled={tabActionsDisabled}
+              owner={isMsaOwner}
             />
 
             <ChangeManagement
@@ -952,6 +957,13 @@ const MsaDetailPage: React.FC = () => {
             <Approvers
               contractId={id ?? ""}
               isActive={activeTab === "approvers"}
+            />
+
+            <VendorPersonnelTabContent
+              contractId={id ?? ""}
+              isActive={activeTab === "vendor-personnel"}
+              owner={isMsaOwner}
+              contractType="MsaContract"
             />
 
             <Reports

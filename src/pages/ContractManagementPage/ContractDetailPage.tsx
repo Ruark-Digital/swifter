@@ -26,6 +26,7 @@ import { viewOnlyApi } from "./api/viewOnlyApi";
 import { companyAdminApi } from "./api/companyAdminApi";
 import AnalyticsTabContent from "./layouts/AnalyticsTabContent";
 import ApproversTabContent from "./layouts/ApproversTabContent";
+import VendorPersonnelTabContent from "./layouts/VendorPersonnelTabContent";
 import ActionLogTabContent from "./layouts/ActionLogTabContent";
 import ChangeTabContent from "./layouts/ChangeTabContent";
 import ClaimsTabContent from "./layouts/ClaimsTabContent";
@@ -102,6 +103,7 @@ type TabKey =
   | "rfi"
   | "ncr-log"
   | "approvers"
+  | "vendor-personnel"
   | "reports"
   | "clause-library"
   | "action-log";
@@ -123,6 +125,7 @@ const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "rfi", label: "RFI" },
   { key: "ncr-log", label: "NCR Log" },
   { key: "approvers", label: "Approvers" },
+  { key: "vendor-personnel", label: "Vendor Personnel" },
   { key: "reports", label: "Vendor’s Reports" },
   { key: "clause-library", label: "Clause Library" },
   { key: "action-log", label: "Action Log" },
@@ -287,19 +290,19 @@ const ContractDetailPage: React.FC = () => {
     isContractProjectManagerNotApproved &&
     contractData?.status === "pending_approval";
 
+  const isLiveContract =
+    contractData?.status === "active" || contractData?.status === "publish";
+
   // Take-over approval is distinct from the PM-accepts-contract flow: it applies
-  // to a pending projectManager assignment on an already-live contract (not a
-  // freshly created pending_approval one), and only a CM/PL approves it.
+  // to a pending projectManager assignment on an already-live (publish/active)
+  // contract, not a freshly created one, and only a CM/PL approves it.
   const takeOverPending =
-    contractData?.projectManager?.status === "pending" &&
-    contractData?.status !== "pending_approval";
+    contractData?.projectManager?.status === "pending" && isLiveContract;
   const canApproveTakeOver = isManager && isContractOwner && takeOverPending;
   const takeOverRequesterName =
     (contractData?.projectManager?.user as { user?: { name?: string } })
       ?.user?.name ?? contractData?.projectManager?.user?.name;
 
-  const isLiveContract =
-    contractData?.status === "active" || contractData?.status === "publish";
   const canAssignPm =
     ((isManager && isContractOwner) || isCompanyAdmin) &&
     isLiveContract &&
@@ -705,6 +708,13 @@ const ContractDetailPage: React.FC = () => {
           currency={contract?.currency}
           isActive={activeTab === "approvers"}
           owner={contract?.owner}
+        />
+
+        <VendorPersonnelTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "vendor-personnel"}
+          owner={contract?.owner}
+          contractType="Contract"
         />
 
         <InvoiceTabContent
