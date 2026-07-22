@@ -901,6 +901,7 @@ const MsaDetailPage: React.FC = () => {
               contractId={id ?? ""}
               isActive={activeTab === "compliance"}
               actionsDisabled={tabActionsDisabled}
+              owner={isMsaOwner}
             />
 
             <ChangeManagement

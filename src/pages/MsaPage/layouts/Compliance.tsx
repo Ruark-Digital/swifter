@@ -26,6 +26,7 @@ type Props = {
   isActive?: boolean;
   contract?: ContractComplianceDTO;
   actionsDisabled?: boolean;
+  owner?: boolean;
 };
 
 type PolicyRow = {
@@ -79,7 +80,7 @@ const getStatusTone = (status?: string) => {
   return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 };
 
-const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
+const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled, owner }) => {
   const {
     isVendor,
     isProjectManager,
@@ -316,6 +317,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
                 contractId={contractId}
                 basePath={basePath}
                 actionsDisabled={actionsDisabled}
+                canApprove={isContractManager && !!owner}
                 trigger={
                   <Button
                     variant="link"
@@ -348,7 +350,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
         },
       },
     ],
-    [basePath, contractId, actionsDisabled, isVendorOrProjectManager, queryClient, queryKey],
+    [basePath, contractId, actionsDisabled, isVendorOrProjectManager, queryClient, queryKey, isContractManager, owner],
   );
 
   const securityTypeLabel = React.useMemo(() => {
@@ -412,6 +414,9 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
 
   const canManagerActOnActive = React.useMemo(() => {
     if (!isContractManager) return false;
+    // Security is approved per-item now (see securityColumns' canApprove sheet),
+    // so the tab-wide bulk Approve/Reject bar must not compete for it.
+    if (activeTab === "security") return false;
     if (!hasFiles) return false;
     const status = String(getCategoryStatus(activeTab) || "").toLowerCase();
     if (!status) return false;
