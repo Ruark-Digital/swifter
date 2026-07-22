@@ -739,9 +739,16 @@ const EditContract: React.FC<Props> = ({
   const mutation = useMutation({
     mutationKey: ["contractManager", "contracts", "update", contractId],
     mutationFn: async (payload: any) => {
+      // Vendor personnel has a dedicated GET/PUT endpoint now; persist it
+      // separately so edits aren't lost inside the monolithic contract PUT.
+      const { personnel: personnelPayload, ...rest } = payload;
       const res = await putRequest({
         url: `/contract/manager/contracts/${contractId}`,
-        payload,
+        payload: rest,
+      });
+      await putRequest({
+        url: `/contract/manager/contracts/${contractId}/vendor-personnel`,
+        payload: { personnel: personnelPayload ?? [] },
       });
       return res.data as {
         status: number;
@@ -916,14 +923,16 @@ const EditContract: React.FC<Props> = ({
         awardedMatch?.vendor?.email ||
         undefined;
 
+      // Use the live `personnel` field (what the user actually edited in
+      // Step 2). The old code preferred `personnelMeta`, a shadow copy
+      // hydrated once at load and never updated on edit, so personnel edits
+      // were silently discarded on save. Personnel is persisted through the
+      // dedicated vendor-personnel endpoint (see the mutation below), not this
+      // monolithic payload.
       const personnel =
-        (data.personnelMeta && data.personnelMeta.length > 0
-          ? (data.personnelMeta ?? [])
-              .map((p: any) => toPersonnelOrUndefined(p))
-              .filter(Boolean)
-          : (data.personnel ?? [])
-              .map((t: any) => toPersonnelOrUndefined(t))
-              .filter(Boolean)) ?? undefined;
+        (data.personnel ?? [])
+          .map((t: any) => toPersonnelOrUndefined(t))
+          .filter(Boolean) ?? undefined;
 
       const payload = {
         title: data.name,

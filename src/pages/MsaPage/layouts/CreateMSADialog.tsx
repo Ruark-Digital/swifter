@@ -976,9 +976,17 @@ const CreateMSADialog: React.FC<Props> = ({
     mutationKey: ["create-msa", editingMsaId ?? "new"],
     mutationFn: async (payload: any) => {
       if (isEditing && editingMsaId) {
+        // Vendor personnel has a dedicated GET/PUT endpoint; on edit, persist
+        // it separately from the monolithic MSA PUT. (Create still sends
+        // personnel inline — there is no MSA id to scope the endpoint yet.)
+        const { personnel: personnelPayload, ...rest } = payload;
         const res = await putRequest({
           url: `/contract/manager/msa-contracts/${editingMsaId}`,
-          payload,
+          payload: rest,
+        });
+        await putRequest({
+          url: `/contract/manager/msa-contracts/${editingMsaId}/vendor-personnel`,
+          payload: { personnel: personnelPayload ?? [] },
         });
         return res.data;
       }
