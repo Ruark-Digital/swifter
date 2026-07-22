@@ -26,6 +26,7 @@ import {
   Share2,
 } from "lucide-react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getRequest, putRequest, deleteRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
@@ -515,9 +516,7 @@ export const SolicitationDetailPage = () => {
     });
   }, [evaluatorGroups, evaluatorSearchQuery]);
 
-  const handleBack = () => {
-    navigate(-1);
-  };
+  const handleBack = useGoBack("/dashboard/solicitation");
 
   // Show loading state
   if (isLoading) {
