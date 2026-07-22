@@ -584,7 +584,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
             </Tabs>
           </div>
 
-          {!((rfiDetailRes?.data as any)?.isResponse ?? false) && isApprover && isAssignedResponder && (
+          {!((rfiDetailRes?.data as any)?.isResponse ?? false) && isAssignedResponder && (
             <SheetFooter>
               <div className="flex w-full gap-3 pt-2">
                 <Button variant="outline" className="flex-1 h-12 rounded-xl">
