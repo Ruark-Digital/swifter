@@ -3,7 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Search, ArrowLeft, Share2, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/layouts/DataTable";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Dialog,
   DialogContent,
@@ -68,7 +68,15 @@ const KpiDetailSheet: React.FC<{
       <div className="rounded-t-xl bg-[#F9FAFB] dark:bg-slate-800 px-6 py-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <ArrowLeft className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
+            <SheetClose asChild>
+              <button
+                type="button"
+                aria-label="Back"
+                className="text-[#2A4467] dark:text-blue-300"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+            </SheetClose>
             <span className="text-xl font-semibold text-[#2A4467] dark:text-blue-300">
               KPI Details
             </span>
