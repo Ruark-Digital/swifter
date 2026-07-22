@@ -4,6 +4,17 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
+## 0. Workflow: GSD
+
+This project uses the **GSD** skill suite as its default workflow. Prefer GSD commands over ad-hoc execution:
+
+- **Quick, scoped fixes** (the common case here — QA batches, single-file fixes): `/gsd-quick`, or `/gsd-fast` for trivial one-liners.
+- **Multi-step feature work:** `/gsd-plan-phase` → `/gsd-execute-phase`.
+- **Debugging:** `/gsd-debug`. **Review before merge:** `/gsd-code-review` → `/gsd-ship`.
+- **"What's next" / status:** `/gsd-progress`.
+
+Planning artifacts live in `.planning/` (`codebase/` = codebase intel, `quick/` = per-task plans/summaries). Refresh codebase intel with `/gsd-map-codebase` when the stack or structure drifts. The guidelines below (§1–4) still apply within every GSD phase.
+
 ## 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**
