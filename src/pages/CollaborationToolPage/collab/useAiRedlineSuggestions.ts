@@ -111,27 +111,21 @@ const buildEndpoint = ({
   documentId,
   isMsa,
   isManager,
-  isApprover,
   isVendor,
   isProjectManager,
-  isViewOnly,
 }: {
   documentId: string;
   isMsa: boolean;
   isManager: boolean;
-  isApprover: boolean;
   isVendor: boolean;
   isProjectManager: boolean;
-  isViewOnly: boolean;
 }): string | null => {
   const resource = isMsa ? "msa-contracts" : "contracts";
   // axios baseURL is /api/v1/dev — swagger paths live under /contract.
   const prefix = "/contract";
   if (isManager) return `${prefix}/manager/${resource}/${documentId}/ai/redline-suggestions`;
-  if (isApprover) return `${prefix}/approver/${resource}/${documentId}/ai/redline-suggestions`;
   if (isVendor || isProjectManager)
     return `${prefix}/vendor/${resource}/${documentId}/ai/redline-suggestions`;
-  if (isViewOnly) return `${prefix}/user/${resource}/${documentId}/ai/redline-suggestions`;
   return null;
 };
 
@@ -224,8 +218,12 @@ const mergeAnalyses = (parts: AiRedlineAnalysis[]): AiRedlineAnalysis => {
  * every redline overloads the LLM proxy on large documents.
  *
  * Swagger endpoints (all share the same request/response shape):
- *   POST /manager|approver|vendor|user/contracts/{contractId}/ai/redline-suggestions
- *   POST /manager|approver|vendor|user/msa-contracts/{contractId}/ai/redline-suggestions
+ *   POST /manager|vendor/contracts/{contractId}/ai/redline-suggestions
+ *   POST /manager|vendor/msa-contracts/{contractId}/ai/redline-suggestions
+ *
+ * Approver and view-only (user) roles have no live endpoint — buildEndpoint
+ * resolves url=null for them, which the mutationFn null-url guard below
+ * turns into a benign no-op result.
  *
  * Body:     { redlines: RedlineSpan[] }  (≤ BATCH_SIZE spans per request)
  * 200 data: { summary, riskLevel, overallSuggestion, redlineAnalysis: [...] }
@@ -237,10 +235,8 @@ export function useAiRedlineSuggestions({ documentId, isMsa }: AiRedlineScope) {
         documentId,
         isMsa: Boolean(isMsa),
         isManager: role.isManager,
-        isApprover: role.isApprover,
         isVendor: role.isVendor,
         isProjectManager: role.isProjectManager,
-        isViewOnly: role.isViewOnly,
       })
     : null;
 
