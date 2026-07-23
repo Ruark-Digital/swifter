@@ -489,6 +489,14 @@ const ContractDetailPage: React.FC = () => {
     contract?.status === "expired";
   const actionsDisabled =
     contract?.status === "pending_approval" || isFrozenStatus;
+  // QA #112: a company admin may amend an EXPIRED contract (Amendments tab only)
+  // to extend its duration — mirrors the solicitation admin-override of
+  // closed/awarded solicitations. Every other tab stays frozen. Gated to
+  // company_admin (not the broader isAdmin) because super_admin is not in the
+  // BE amendment roles. NOTE: the contract amendments endpoint still needs
+  // company_admin added server-side (MSA already allows it) — see BE handoff.
+  const amendmentActionsDisabled =
+    actionsDisabled && !(isCompanyAdmin && contract?.status === "expired");
   // Rate Sheets, Vendor's Reports, NCR, and LEM are day-to-day operational
   // actions that should only be reachable once the contract is actually
   // published — unlike `actionsDisabled` above, draft is also gated here.
@@ -769,7 +777,7 @@ const ContractDetailPage: React.FC = () => {
           contractId={contract?._id ?? ""}
           currency={contract?.currency}
           isActive={activeTab === "amendments"}
-          actionsDisabled={actionsDisabled}
+          actionsDisabled={amendmentActionsDisabled}
         />
 
         <PaymentSummaryTabContent

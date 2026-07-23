@@ -559,6 +559,10 @@ const MsaDetailPage: React.FC = () => {
     msa?.status === "expired";
   const tabActionsDisabled =
     msa?.status === "pending_approval" || isMsaFrozenStatus;
+  // QA #112: company admin may amend an EXPIRED MSA (Amendments tab only) to
+  // extend its duration. MSA amendments already allow company_admin server-side.
+  const msaAmendmentActionsDisabled =
+    tabActionsDisabled && !(isCompanyAdmin && msa?.status === "expired");
 
   const { data: approveStatusResponse } = useQuery({
     queryKey: [approveStatusQueryKey[0], msa?._id],
@@ -898,7 +902,7 @@ const MsaDetailPage: React.FC = () => {
               contractId={id ?? ""}
               currency={msa?.currency}
               isActive={activeTab === "amendments"}
-              actionsDisabled={tabActionsDisabled}
+              actionsDisabled={msaAmendmentActionsDisabled}
             />
 
             <Compliance
