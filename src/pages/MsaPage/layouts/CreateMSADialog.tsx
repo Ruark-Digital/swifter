@@ -950,7 +950,7 @@ const CreateMSADialog: React.FC<Props> = ({
         termType: data.termType || undefined,
         deliverables,
         milestone,
-        personnel: isEditing ? undefined : personnel,
+        personnel,
         internalTeam,
         visibility: data.visibility,
         insurance: insurancePayload,
@@ -1127,12 +1127,7 @@ const CreateMSADialog: React.FC<Props> = ({
               isLoadingTypes={typesQuery.isLoading}
             />
           )}
-          {step === 2 && (
-            <Step2ContractTeam
-              defaultPmLabel={defaultPmLabel}
-              personnelReadOnly={isEditing}
-            />
-          )}
+          {step === 2 && <Step2ContractTeam defaultPmLabel={defaultPmLabel} />}
           {step === 3 && (
             <Step3Timeline
               termTypeOptions={termTypeOptions}

@@ -38,6 +38,7 @@ import {
   toApproverUserKeyOrUndefined,
   toFileMetaOrUndefined,
   toIdStringOrUndefined,
+  toPersonnelOrUndefined,
 } from "@/lib/contractFormValues";
 
 type Props = {
@@ -915,6 +916,15 @@ const EditContract: React.FC<Props> = ({
         awardedMatch?.vendor?.email ||
         undefined;
 
+      const personnel =
+        (data.personnelMeta && data.personnelMeta.length > 0
+          ? (data.personnelMeta ?? [])
+              .map((p: any) => toPersonnelOrUndefined(p))
+              .filter(Boolean)
+          : (data.personnel ?? [])
+              .map((t: any) => toPersonnelOrUndefined(t))
+              .filter(Boolean)) ?? undefined;
+
       const payload = {
         title: data.name,
         description: data.description,
@@ -971,6 +981,7 @@ const EditContract: React.FC<Props> = ({
         currency: data.currency || undefined,
         vendor,
         projectManager: data.projectManager || undefined,
+        personnel,
         internalTeam:
           (data.internalTeamMeta && data.internalTeamMeta.length > 0
             ? (data.internalTeamMeta ?? [])
@@ -1180,7 +1191,6 @@ const EditContract: React.FC<Props> = ({
                     (contractRes?.data?.data as any)?.projectManager?.user
                       ?.name
                   }
-                  personnelReadOnly
                 />
               )}
               {step === 5 && (
