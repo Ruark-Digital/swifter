@@ -714,6 +714,7 @@ const ContractDetailPage: React.FC = () => {
           contractId={contract?._id ?? ""}
           isActive={activeTab === "vendor-personnel"}
           owner={contract?.owner}
+          status={contract?.status}
           contractType="Contract"
         />
 

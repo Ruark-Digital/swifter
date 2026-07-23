@@ -31,6 +31,8 @@ type Props = {
   contractId: string;
   isActive?: boolean;
   owner?: boolean;
+  /** Contract/MSA lifecycle status — actions are only allowed once active/publish. */
+  status?: string;
   /** Picks the manager base path segment: contracts vs msa-contracts. */
   contractType?: "Contract" | "MsaContract";
 };
@@ -41,10 +43,15 @@ const VendorPersonnelTabContent: React.FC<Props> = ({
   contractId,
   isActive,
   owner,
+  status,
   contractType = "Contract",
 }) => {
   const { isManager, isCompanyAdmin } = useUserRole();
-  const canManage = (isManager || isCompanyAdmin) && Boolean(owner);
+  // Tab is visible to the owning CM/PL, but add/edit/remove is only allowed
+  // once the contract is active/published (per product rule).
+  const isActionableStatus = status === "active" || status === "publish";
+  const canManage =
+    (isManager || isCompanyAdmin) && Boolean(owner) && isActionableStatus;
   const toastHandler = useToastHandler();
   const qc = useQueryClient();
 
@@ -216,6 +223,15 @@ const VendorPersonnelTabContent: React.FC<Props> = ({
             People the vendor has assigned to this{" "}
             {contractType === "MsaContract" ? "MSA" : "contract"}.
           </p>
+          {(isManager || isCompanyAdmin) &&
+            Boolean(owner) &&
+            !isActionableStatus && (
+              <p className="mt-1 text-xs text-[#9CA3AF] dark:text-slate-500">
+                Personnel can be added or edited once the{" "}
+                {contractType === "MsaContract" ? "MSA" : "contract"} is
+                active/published.
+              </p>
+            )}
         </div>
         {canManage && (
           <Button onClick={openAdd} className="gap-2">

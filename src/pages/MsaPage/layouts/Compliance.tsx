@@ -100,6 +100,11 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled, ow
   const [activeTab, setActiveTab] = React.useState<"policy" | "security">("policy");
   const queryClient = useQueryClient();
 
+  // NOTE: all MSA compliance endpoints use `/msa-contracts/`. docs.json v2.3.0
+  // lists the manager per-item security approve as bare `/manager/msa/.../approve`
+  // — that is a docs typo (3 new manager paths slipped `/msa/`; the 291 other MSA
+  // paths, incl. the vendor security twin and the working bulk approve, use
+  // `/msa-contracts/`). Do NOT "fix" this to `/msa/` to match the spec.
   const basePath = React.useMemo(() => {
     if (isVendor || isProjectManager)
       return `/contract/vendor/msa-contracts/${contractId}/compliance`;

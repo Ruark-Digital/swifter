@@ -259,11 +259,14 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     Boolean(currentUser?._id) &&
     Boolean(rfiIssuerId) &&
     rfiIssuerId === currentUser?._id;
+  // RFI close is singular `/rfi/{id}/close` for ALL roles per docs.json —
+  // including manager (which uniquely uses `/rfis` plural for EDIT but `/rfi`
+  // for close). Do not reuse the edit base here.
   const rfiRoleBase = isApprover
     ? `/contract/approver/contracts/${contractId}/rfi`
     : isContractVendorLike
       ? `/contract/vendor/contracts/${contractId}/rfi`
-      : `/contract/manager/contracts/${contractId}/rfis`;
+      : `/contract/manager/contracts/${contractId}/rfi`;
   const [closeRfiOpen, setCloseRfiOpen] = React.useState(false);
   const closeRfiMutation = useMutation<{ message?: string }, ApiResponseError, void>({
     mutationKey: [roleNs, "contractRfis", "close", contractId, rfiId],

@@ -963,6 +963,7 @@ const MsaDetailPage: React.FC = () => {
               contractId={id ?? ""}
               isActive={activeTab === "vendor-personnel"}
               owner={isMsaOwner}
+              status={msa?.status}
               contractType="MsaContract"
             />
 
