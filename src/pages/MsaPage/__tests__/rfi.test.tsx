@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import Rfi from "../layouts/Rfi";
-import { getRequest } from "@/lib/axiosInstance";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
 
 const mockedUserRole = vi.hoisted(() => ({
   isManager: true,
@@ -20,6 +20,17 @@ vi.mock("@/hooks/useUserRole", () => ({
 
 vi.mock("@/hooks/useUserQueryKey", () => ({
   useUserQueryKey: (key: unknown[]) => [...key, "user-1"],
+}));
+
+// Mutable "current user" — Rfi.tsx's issuer/responder identity checks read
+// useUser() directly from the store. Default to no user so the existing
+// pagination test's behavior (no issuer/responder gates exercised) is
+// unaffected unless a test explicitly opts in.
+const mockedCurrentUser = vi.hoisted(() => ({ value: { _id: undefined as string | undefined } }));
+
+vi.mock("@/store/authSlice", () => ({
+  useUser: () => mockedCurrentUser.value,
+  useSetReset: () => vi.fn(),
 }));
 
 vi.mock("@/hooks/useToaster", () => ({
@@ -45,6 +56,8 @@ vi.mock("@/components/ui/dialog", () => ({
   Dialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogClose: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
   DialogTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
@@ -59,7 +72,7 @@ vi.mock("@/components/ui/sheet", () => ({
 }));
 
 vi.mock("@/components/layouts/DataTable", () => ({
-  DataTable: ({ data, options, header }: any) => (
+  DataTable: ({ data, columns, options, header }: any) => (
     <div
       data-testid="rfi-table"
       data-manual-pagination={String(options?.manualPagination)}
@@ -68,6 +81,22 @@ vi.mock("@/components/layouts/DataTable", () => ({
     >
       {header?.()}
       <div data-testid="rfi-row-count">{data.length}</div>
+      {data.map((row: any, index: number) => (
+        <div key={row.id ?? index} data-testid="rfi-row">
+          {(columns ?? []).map((col: any, colIndex: number) => {
+            const value = col.accessorKey ? row[col.accessorKey] : undefined;
+            const content =
+              typeof col.cell === "function"
+                ? col.cell({ row: { original: row, index }, getValue: () => value })
+                : (value ?? null);
+            return (
+              <React.Fragment key={col.id ?? col.accessorKey ?? colIndex}>
+                {content}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      ))}
       <button
         type="button"
         onClick={() =>
@@ -125,6 +154,12 @@ vi.mock("@/pages/SolicitationManagementPage/components/MessageComposer", () => (
 }));
 
 const mockedGetRequest = vi.mocked(getRequest);
+const mockedPostRequest = vi.mocked(postRequest);
+
+// Controls what the RFI list query resolves to, per test — the actions
+// column (and thus RfiDetailsSheet's close/edit gating) is driven purely off
+// these row fields (fallback = row.original.raw), no detail query needed.
+const mockRfiRows = vi.hoisted(() => ({ list: [] as any[] }));
 
 const renderRfi = () => {
   const queryClient = new QueryClient({
@@ -147,6 +182,8 @@ const renderRfi = () => {
 describe("MSA RFI", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRfiRows.list = [];
+    mockedCurrentUser.value = { _id: undefined };
     Object.assign(mockedUserRole, {
       isManager: true,
       isApprover: false,
@@ -167,12 +204,13 @@ describe("MSA RFI", () => {
       return {
         data: {
           data: {
-            contractRfis: [],
-            total: 25,
+            contractRfis: mockRfiRows.list,
+            total: mockRfiRows.list.length || 25,
           },
         },
       };
     });
+    mockedPostRequest.mockResolvedValue({ data: { message: "RFI closed" } } as any);
   });
 
   test("uses server pagination for the MSA RFI list", async () => {
@@ -202,5 +240,103 @@ describe("MSA RFI", () => {
         }),
       );
     });
+  });
+
+  test("issuer, status open: close button posts to the singular MSA /rfi/{id}/close", async () => {
+    const ISSUER_ID = "issuer-1";
+    mockRfiRows.list = [
+      {
+        _id: "rfi-1",
+        rfiId: "RFI-100",
+        title: "Test RFI",
+        type: "issue",
+        status: "open",
+        submittedBy: { _id: ISSUER_ID, name: "Issuer" },
+      },
+    ];
+    mockedCurrentUser.value = { _id: ISSUER_ID };
+
+    renderRfi();
+
+    const trigger = await screen.findByTestId("close-rfi-trigger");
+    const confirmButtons = screen
+      .getAllByRole("button", { name: "Close RFI" })
+      .filter((el) => el !== trigger);
+    expect(confirmButtons.length).toBeGreaterThan(0);
+    fireEvent.click(confirmButtons[0]);
+
+    await waitFor(() => {
+      expect(mockedPostRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: "/contract/manager/msa-contracts/msa-rfi-123/rfi/rfi-1/close",
+        }),
+      );
+    });
+
+    const calledUrl = mockedPostRequest.mock.calls[0][0].url as string;
+    expect(calledUrl).not.toMatch(/\/rfis\//);
+  });
+
+  test("non-issuer: close button is absent", async () => {
+    mockRfiRows.list = [
+      {
+        _id: "rfi-1",
+        rfiId: "RFI-100",
+        title: "Test RFI",
+        type: "issue",
+        status: "open",
+        submittedBy: { _id: "issuer-1", name: "Issuer" },
+      },
+    ];
+    mockedCurrentUser.value = { _id: "someone-else" };
+
+    renderRfi();
+
+    await screen.findByTestId("rfi-row-count");
+    expect(screen.queryByTestId("close-rfi-trigger")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("edit-rfi-trigger")).not.toBeInTheDocument();
+  });
+
+  test("issuer, status closed: both close and edit triggers are absent (MSA has no separate closed-gate for edit)", async () => {
+    const ISSUER_ID = "issuer-1";
+    mockRfiRows.list = [
+      {
+        _id: "rfi-1",
+        rfiId: "RFI-100",
+        title: "Test RFI",
+        type: "issue",
+        status: "closed",
+        submittedBy: { _id: ISSUER_ID, name: "Issuer" },
+      },
+    ];
+    mockedCurrentUser.value = { _id: ISSUER_ID };
+
+    renderRfi();
+
+    await screen.findByTestId("rfi-row-count");
+    expect(screen.queryByTestId("close-rfi-trigger")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("edit-rfi-trigger")).not.toBeInTheDocument();
+  });
+
+  test("issuer, status open: edit trigger renders the Edit RFI dialog, no plural base anywhere", async () => {
+    const ISSUER_ID = "issuer-1";
+    mockRfiRows.list = [
+      {
+        _id: "rfi-1",
+        rfiId: "RFI-100",
+        title: "Test RFI",
+        type: "issue",
+        status: "open",
+        submittedBy: { _id: ISSUER_ID, name: "Issuer" },
+      },
+    ];
+    mockedCurrentUser.value = { _id: ISSUER_ID };
+
+    renderRfi();
+
+    const editTrigger = await screen.findByTestId("edit-rfi-trigger");
+    fireEvent.click(editTrigger);
+
+    expect(await screen.findByText("Edit RFI")).toBeInTheDocument();
   });
 });
