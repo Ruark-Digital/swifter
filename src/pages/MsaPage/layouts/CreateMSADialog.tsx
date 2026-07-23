@@ -950,7 +950,7 @@ const CreateMSADialog: React.FC<Props> = ({
         termType: data.termType || undefined,
         deliverables,
         milestone,
-        personnel,
+        personnel: isEditing ? undefined : personnel,
         internalTeam,
         visibility: data.visibility,
         insurance: insurancePayload,
