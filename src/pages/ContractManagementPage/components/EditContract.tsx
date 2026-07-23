@@ -1180,6 +1180,7 @@ const EditContract: React.FC<Props> = ({
                     (contractRes?.data?.data as any)?.projectManager?.user
                       ?.name
                   }
+                  personnelReadOnly
                 />
               )}
               {step === 5 && (

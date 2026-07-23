@@ -18,6 +18,7 @@ import { CreateContractFormData } from "./CreateContractSheet";
 type Props = {
   setValue?: UseFormSetValue<CreateContractFormData>;
   projectManagerFallbackLabel?: string;
+  personnelReadOnly?: boolean;
 };
 
 type SelectOption = { label: string; value: string; name?: string };
@@ -92,10 +93,17 @@ const SingleSelectField = ({
 const Step2ContractTeam: React.FC<Props> = ({
   setValue,
   projectManagerFallbackLabel,
+  personnelReadOnly = false,
 }) => {
   const formContext = useFormContext<CreateContractFormData>();
   const applyValue = setValue ?? formContext.setValue;
   const vendorId = useWatch({ control: formContext.control, name: "vendor" });
+  const personnelValue = useWatch({
+    control: formContext.control,
+    name: "personnel",
+  }) as
+    | Array<{ id?: string; text?: string; meta?: { email?: string } }>
+    | undefined;
 
   const { data: personnelData } = useQuery<
     ApiResponse<Personnel>,
@@ -257,13 +265,38 @@ const Step2ContractTeam: React.FC<Props> = ({
         placeholder="Select Vendor/Contractor's Primary Contact or Type e-mail"
         fallbackLabel={projectManagerFallbackLabel}
       />
-      <Forger
-        name="personnel"
-        label="Vendor/Contractor Key Personnel. (Multi-Select)"
-        component={TextTagInput}
-        enableDetailsPopover
-        helperText="Add vendor’s/contractor’s key personnel with email address, name"
-      />
+      {personnelReadOnly ? (
+        <div className="space-y-1">
+          <p className="text-sm font-medium">
+            Vendor/Contractor Key Personnel. (Multi-Select)
+          </p>
+          {Array.isArray(personnelValue) && personnelValue.length > 0 ? (
+            <ul className="text-sm list-disc pl-5">
+              {personnelValue.map((person, index) => (
+                <li key={person.id ?? index}>
+                  {person.text}
+                  {person.meta?.email ? ` (${person.meta.email})` : ""}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No personnel on record.
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Manage vendor personnel from the Vendor Personnel tab.
+          </p>
+        </div>
+      ) : (
+        <Forger
+          name="personnel"
+          label="Vendor/Contractor Key Personnel. (Multi-Select)"
+          component={TextTagInput}
+          enableDetailsPopover
+          helperText="Add vendor’s/contractor’s key personnel with email address, name"
+        />
+      )}
       <Forger
         name="internalTeam"
         label="Internal Team/Stakeholders (Multi-Select)"

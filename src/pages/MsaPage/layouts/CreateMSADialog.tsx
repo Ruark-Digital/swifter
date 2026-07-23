@@ -1127,7 +1127,12 @@ const CreateMSADialog: React.FC<Props> = ({
               isLoadingTypes={typesQuery.isLoading}
             />
           )}
-          {step === 2 && <Step2ContractTeam defaultPmLabel={defaultPmLabel} />}
+          {step === 2 && (
+            <Step2ContractTeam
+              defaultPmLabel={defaultPmLabel}
+              personnelReadOnly={isEditing}
+            />
+          )}
           {step === 3 && (
             <Step3Timeline
               termTypeOptions={termTypeOptions}
