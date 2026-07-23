@@ -2,7 +2,7 @@
 
 **Milestone:** v1.0 — Phase-2 QA + BE-Gap Remediation
 **Current phase:** Phase 3 (FE Cleanup & Hardening) — Phases 1 & 2 largely shipped incrementally
-Last activity: 2026-07-23 - Completed quick task 260723-9dx: make Step 2 personnel read-only on edit forms (point to Vendor Personnel tab)
+Last activity: 2026-07-23 - REVERTED the vendor-personnel redesign (ef058ecd3): BE PUT accepts personnel (CreateContractInput), so form-based edit was correct; redesign regressed drafts. Personnel editing restored to Step 2.
 
 ## Status
 
@@ -17,7 +17,7 @@ Brownfield app under incremental remediation. Much of Phase 1 (BE-unblocked FE g
 ## Blockers/Concerns
 
 - QA78 "pick existing PM by id" is BE-blocked (endpoint not in docs.json v2.3.0).
-- ~~Step 2 personnel chips editable-but-discarded on edit~~ RESOLVED 260723-9dx: Step 2 personnel is now read-only on edit forms (static list + pointer to the Vendor Personnel tab); create stays editable.
+- Vendor-personnel redesign (tab + strip-from-edit + read-only) was REVERTED (ef058ecd3) — it was built on a triage assumption, not the BE spec. `PUT /manager/contracts/{id}` accepts personnel (CreateContractInput), so form-based edit is correct and restored. Any future vendor-personnel tab must be an ADDITIONAL, active-contract-only surface — never a replacement for form editing (drafts need the form). Verify docs.json before redesigning a flow.
 
 ## Quick Tasks Completed
 
