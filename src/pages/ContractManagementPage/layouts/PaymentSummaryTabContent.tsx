@@ -662,10 +662,16 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
     toastErrorRef.current("Payment Savings", savingsError as any);
   }, [savingsError]);
 
-  // QA #157: Billed Till Date + Current Balance now come straight from the
-  // contract-detail response (`billedAmount` / `currentBalance`) instead of the
-  // financial-statement dashboard endpoint. Still shown to manager/approver only.
-  const showBilledAndBalance = isManager || isApprover;
+  // QA #157: Billed Till Date + Current Balance come straight from the
+  // contract-detail response (`billedAmount` / `currentBalance`).
+  // QA #239: the reviewer asked for these on the Vendor PM "and other profiles"
+  // too, not just CM/PL — show them to every payment-summary viewer. The values
+  // read from the shared `contract` object (which every role's detail fetch
+  // populates) and `formatMoney` degrades gracefully if a role's payload omits
+  // them. (Reviewer also flagged the Current Balance VALUE needs a BE fix —
+  // that is server-side, tracked separately.)
+  const showBilledAndBalance =
+    isManager || isApprover || isContractVendorLike || isViewOnly;
 
   const currency = contract?.currency || "USD";
   const formatMoney = React.useCallback(
