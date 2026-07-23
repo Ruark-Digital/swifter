@@ -2,7 +2,7 @@
 
 **Milestone:** v1.0 — Phase-2 QA + BE-Gap Remediation
 **Current phase:** Phase 3 (FE Cleanup & Hardening) — Phases 1 & 2 largely shipped incrementally
-Last activity: 2026-07-23 - Completed quick task 260723-0y0: prune dead approver/user redline-suggestion branches
+Last activity: 2026-07-23 - Completed quick task 260723-91v: make Vendor Personnel tab sole owner (stop EditContract/CreateMSADialog edit-PUT from sending personnel)
 
 ## Status
 
@@ -17,10 +17,11 @@ Brownfield app under incremental remediation. Much of Phase 1 (BE-unblocked FE g
 ## Blockers/Concerns
 
 - QA78 "pick existing PM by id" is BE-blocked (endpoint not in docs.json v2.3.0).
-- EditContract Step 2 still sends personnel on edit — Vendor Personnel tab is not yet sole owner (v2 requirement).
+- Step 2 personnel chips in EditContract.tsx and CreateMSADialog.tsx (edit mode) still render and are editable, but changes made there are now silently discarded on save (payload no longer sends personnel on edit, as of 260723-91v). A follow-up task should make these chips read-only/hidden during edit and redirect to the Vendor Personnel tab.
 
 ## Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260723-0y0 | Prune dead approver/user redline-suggestion branches | 2026-07-23 | 4129d0daf | [260723-0y0-prune-dead-approver-user-redline-suggest](./quick/260723-0y0-prune-dead-approver-user-redline-suggest/) |
+| 260723-91v | Make Vendor Personnel tab sole owner (stop EditContract/CreateMSADialog edit-PUT sending personnel) | 2026-07-23 | e79037cfd, d23fcfcf9 | [260723-91v-make-vendor-personnel-tab-sole-owner-sto](./quick/260723-91v-make-vendor-personnel-tab-sole-owner-sto/) |
