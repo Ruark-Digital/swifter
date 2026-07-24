@@ -29,6 +29,9 @@ interface AiSuggestionsPanelProps {
    *  replacement text to write into the document. */
   onApprove: (item: Item, tier: AlternativeTier) => void;
   onDismiss: (item: Item) => void;
+  /** Revert a previously-resolved (approved/dismissed) suggestion back to
+   *  pending. When omitted, no Undo control is rendered. */
+  onUndo?: (item: Item) => void;
   /** Click a card body to scroll/select the redline in the editor. */
   onFocus?: (item: Item) => void;
   onRetry: () => void;
@@ -108,6 +111,7 @@ type SuggestionCardProps = {
   item: Item;
   onApprove: (item: Item, tier: AlternativeTier) => void;
   onDismiss: (item: Item) => void;
+  onUndo?: (item: Item) => void;
   onFocus?: (item: Item) => void;
   isMyTurn: boolean;
 };
@@ -116,6 +120,7 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
   item,
   onApprove,
   onDismiss,
+  onUndo,
   onFocus,
   isMyTurn,
 }) => {
@@ -172,16 +177,37 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
           </span>
         )}
         {!isPending && (
-          <span
-            className={cn(
-              "ml-auto text-xs font-semibold",
-              item.state === "approved"
-                ? "text-green-600 dark:text-green-400"
-                : "text-slate-500 dark:text-slate-400",
+          <div className="ml-auto flex items-center gap-2">
+            <span
+              className={cn(
+                "text-xs font-semibold",
+                item.state === "approved"
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-slate-500 dark:text-slate-400",
+              )}
+            >
+              {item.state === "approved" ? "Replaced" : "Dismissed"}
+            </span>
+            {onUndo && (
+              <button
+                type="button"
+                disabled={!isMyTurn}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUndo(item);
+                }}
+                title={isMyTurn ? undefined : "Waiting for your turn"}
+                className={cn(
+                  "rounded-md border px-2 py-0.5 text-[11px] font-semibold",
+                  isMyTurn
+                    ? "border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                    : "cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-800 dark:text-slate-500",
+                )}
+              >
+                Undo
+              </button>
             )}
-          >
-            {item.state === "approved" ? "Replaced" : "Dismissed"}
-          </span>
+          </div>
         )}
       </div>
 
@@ -375,6 +401,7 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
   items,
   onApprove,
   onDismiss,
+  onUndo,
   onFocus,
   onRetry,
   variant = "overlay",
@@ -515,6 +542,7 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
               item={item}
               onApprove={onApprove}
               onDismiss={onDismiss}
+              onUndo={onUndo}
               onFocus={onFocus}
               isMyTurn={isMyTurn}
             />
