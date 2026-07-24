@@ -11,36 +11,44 @@ import { putRequest, getRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
-import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useForge, Forge, Forger, FormPropsRef } from "@adexdsamson/forge";
 import * as yup from "yup";
 import { PageLoader } from "@/components/ui/PageLoader";
+import { Option } from "@/components/ui/multiselect";
+import { RoleComboField } from "@/components/layouts/RoleComboField";
+import { buildRoleOptions, optionsFromUserRoles } from "@/lib/roleCombos";
 
 // Validation schema for editing user
 const editUserSchema = yup.object().shape({
   name: yup.string().required("Name is required"),
   phone: yup.string(),
   department: yup.string(),
-  role: yup.string().required("Role is required"),
+  roles: yup
+    .array()
+    .min(1, "Select at least one role")
+    .max(2, "You can select up to two roles"),
   email: yup.string().email("Invalid email").required("Email is required"),
 });
 
 type EditUserFormValues = yup.InferType<typeof editUserSchema>;
+
+type EditUserPayload = {
+  name: string;
+  phone?: string;
+  department?: string;
+  email: string;
+  roles: string[];
+};
 
 type User = {
   _id: string;
   name: string;
   email: string;
   role: string | { _id: string; name: string };
+  roles?: (string | { _id?: string; id?: string; name?: string })[];
   phone?: string;
   department?: string;
-};
-
-type RoleOptionSource = {
-  _id?: string;
-  id?: string;
-  name?: string;
 };
 
 interface EditUserDialogProps {
@@ -76,7 +84,7 @@ const EditUserDialog = ({
   });
 
   const user = userData?.data?.data?.user;
-  const roles: RoleOptionSource[] = rolesData?.data?.data || [];
+  const roles = rolesData?.data?.data || [];
 
   // Form setup
   const { control, reset } = useForge<EditUserFormValues>({
@@ -85,32 +93,14 @@ const EditUserDialog = ({
       name: "",
       phone: "",
       department: "",
-      role: "",
+      roles: [],
       email: "",
     },
   });
 
-  // Company Admins cannot assign Super Admin or Project Manager roles (QA #129).
-  // Super Admin is platform-level and Project Manager is a vendor-side role
-  // assigned through the vendor flow, so neither belongs in this dropdown.
-  // Also hide "Vendor" (assigned through the vendor flow) and the legacy
-  // "Approval" role which duplicates "Approver" (QA #523/#526).
-  const RESTRICTED_ROLE_NAMES = [
-    "super_admin",
-    "project_manager",
-    "vendor",
-    "approval",
-  ];
-  const roleOptions = roles
-    .filter(
-      (role) =>
-        role.name &&
-        !RESTRICTED_ROLE_NAMES.includes(role.name.toLowerCase()),
-    )
-    .map((role) => ({
-      value: role._id ?? role.id ?? "",
-      label: role.name?.replace?.("_", " ")?.toUpperCase(),
-    }));
+  // Assignable roles from the catalog, minus platform/vendor-assigned roles
+  // (super_admin, project_manager, vendor, legacy "approval") — see roleCombos.
+  const roleOptions = buildRoleOptions(roles);
 
   // Guard the form hydration so opening the dialog does not repeatedly reset it.
   useEffect(() => {
@@ -123,38 +113,26 @@ const EditUserDialog = ({
       return;
     }
 
-    if (typeof user.role === "string" && rolesLoading) {
+    // Need the catalog to resolve role ids/names into multi-select options.
+    if (rolesLoading) {
       return;
     }
-
-    const userRoleName =
-      typeof user.role === "string" ? user.role.toLowerCase() : null;
-
-    const resolvedRoleId =
-      userRoleName
-        ? roles.find((role) => role.name?.toLowerCase?.() === userRoleName)
-            ?._id ??
-          roles.find((role) => role.name?.toLowerCase?.() === userRoleName)?.id ??
-          ""
-        : typeof user.role === "string"
-          ? ""
-          : user.role?._id || "";
 
     reset({
       name: user.name || "",
       phone: user.phone || "",
       department: user.department || "",
-      role: resolvedRoleId,
+      roles: optionsFromUserRoles(user.roles, user.role, roleOptions),
       email: user.email || "",
     });
 
     hydratedUserIdRef.current = user._id;
-  }, [open, user, roles, rolesLoading, reset]);
+  }, [open, user, roleOptions, rolesLoading, reset]);
 
   const { mutateAsync: updateUser, isPending } = useMutation<
     ApiResponse<User>,
     ApiResponseError,
-    EditUserFormValues
+    EditUserPayload
   >({
     mutationKey: ["updateUser", userId],
     mutationFn: async (userData) =>
@@ -176,7 +154,14 @@ const EditUserDialog = ({
 
   const handleSubmit = async (data: EditUserFormValues) => {
     try {
-      await updateUser(data);
+      const selectedRoles = (data.roles ?? []) as Option[];
+      await updateUser({
+        name: data.name,
+        phone: data.phone,
+        department: data.department,
+        email: data.email,
+        roles: selectedRoles.map((option) => option.value),
+      });
     } catch (error) {
       // Error is handled by onError
     }
@@ -233,14 +218,7 @@ const EditUserDialog = ({
                 containerClass="space-y-1"
               />
 
-              <Forger
-                name="role"
-                component={TextSelect}
-                label="Role *"
-                placeholder="Select role"
-                options={roleOptions}
-                containerClass="space-y-1"
-              />
+              <RoleComboField control={control} options={roleOptions} />
 
               <Forger
                 name="email"
