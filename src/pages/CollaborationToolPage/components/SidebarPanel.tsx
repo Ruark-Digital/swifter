@@ -60,6 +60,7 @@ interface SidebarPanelProps {
   aiErrorMessage?: string;
   onAiApprove: (item: AiItem) => void;
   onAiDismiss: (item: AiItem) => void;
+  onAiUndo?: (item: AiItem) => void;
   onAiFocus?: (item: AiItem) => void;
   onAiRetry: () => void;
   /** Turn-based negotiation gate — disables Apply/Dismiss when false. */
@@ -108,6 +109,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   aiErrorMessage,
   onAiApprove,
   onAiDismiss,
+  onAiUndo,
   onAiFocus,
   onAiRetry,
   isMyTurn = true,
@@ -201,6 +203,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
                 items={aiItems}
                 onApprove={onAiApprove}
                 onDismiss={onAiDismiss}
+                onUndo={onAiUndo}
                 onFocus={onAiFocus}
                 onRetry={onAiRetry}
                 isMyTurn={isMyTurn}
