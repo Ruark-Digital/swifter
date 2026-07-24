@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAIChat, Message } from "@/hooks/useAIChat";
+import { useUserRole } from "@/hooks/useUserRole";
 import MessageContainer from "./components/MessageContainer";
 
 interface FileAttachment {
@@ -67,6 +68,12 @@ const SUGGESTED_PROMPTS = [
   "What's awaiting my evaluation?",
 ];
 
+const COMPANY_ADMIN_SUGGESTED_PROMPTS = [
+  "Show subscription distribution across plans",
+  "How many active vendors are on the platform?",
+  "What's the current company-wide role distribution?",
+];
+
 const createWelcomeMessage = (content: string): Message => ({
   id: "welcome-message",
   content,
@@ -89,6 +96,10 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   placeholder = "Type your message...",
   welcomeMessage = "Hello! How can I help you today?",
 }) => {
+  const { userRole } = useUserRole();
+  const suggestedPrompts =
+    userRole === "company_admin" ? COMPANY_ADMIN_SUGGESTED_PROMPTS : SUGGESTED_PROMPTS;
+
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -805,7 +816,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                       Try asking
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {SUGGESTED_PROMPTS.map((prompt) => (
+                      {suggestedPrompts.map((prompt) => (
                         <button
                           key={prompt}
                           type="button"

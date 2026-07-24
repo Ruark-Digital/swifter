@@ -320,28 +320,12 @@ export const getNavigationForRole = (
             active: currentPath.startsWith("/dashboard/solicitation"),
           }
         : undefined,
-      isModuleEnabled(modules?.contractManagement)
+      isModuleEnabled(modules?.evaluationsManagement)
         ? {
-            icon: FileText,
-            title: "Contract Management",
-            to: "/dashboard/contract-management",
-            active:
-              currentPath.startsWith("/dashboard/contract-management") ||
-              currentPath.startsWith("/dashboard/msa"),
-            children: [
-              {
-                title: "Contracts",
-                to: "/dashboard/contract-management",
-                active: currentPath.startsWith(
-                  "/dashboard/contract-management"
-                ),
-              },
-              {
-                title: "Master Service Agreements (MSA)",
-                to: "/dashboard/msa",
-                active: currentPath.startsWith("/dashboard/msa"),
-              },
-            ],
+            icon: ClipboardList,
+            title: "Evaluation Management",
+            to: "/dashboard/evaluation",
+            active: currentPath.startsWith("/dashboard/evaluation"),
           }
         : undefined,
       {
@@ -362,14 +346,6 @@ export const getNavigationForRole = (
             title: "Vendor Management",
             to: "/dashboard/vendor",
             active: currentPath.startsWith("/dashboard/vendor"),
-          }
-        : undefined,
-      isModuleEnabled(modules?.evaluationsManagement)
-        ? {
-            icon: ClipboardList,
-            title: "Evaluation",
-            to: "/dashboard/evaluation",
-            active: currentPath.startsWith("/dashboard/evaluation"),
           }
         : undefined,
       {
