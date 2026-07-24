@@ -8,8 +8,10 @@ import Loading from "@/components/ui/Spinner";
 import AIChatWidget from "./components/layouts/AIChatWidget";
 import { useAuthentication } from "@/hooks/useAuthentication";
 import { useToken, useUser } from "@/store/authSlice";
+import { config } from "@/config";
 
-const MCP_BASE_URL = "https://dev.swiftpro.tech";
+// Chat (MCP) origin tracks the active API environment (bug/staging/prod).
+const MCP_BASE_URL = config.chatBaseUrl;
 
 // All users share a single chat endpoint.
 const CHAT_URL = `${MCP_BASE_URL}/chat/`;
