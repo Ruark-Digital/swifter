@@ -981,15 +981,21 @@ export class DashboardDataTransformer {
       data.distribution.length === 0
     ) {
       return applyConsistentColors([
-        { name: "Basic", value: 0 },
-        { name: "Pro", value: 0 },
-        { name: "Enterprise", value: 0 },
+        { name: "Basic", value: 0, percentage: 0 },
+        { name: "Pro", value: 0, percentage: 0 },
+        { name: "Enterprise", value: 0, percentage: 0 },
       ]);
     }
+
+    const total = data.distribution.reduce(
+      (sum, item) => sum + (item.count || 0),
+      0,
+    );
 
     const chartData = data.distribution.map((item) => ({
       name: item.plan,
       value: item.count,
+      percentage: total > 0 ? Math.round((item.count / total) * 100) : 0,
     }));
 
     return applyConsistentColors(chartData);
