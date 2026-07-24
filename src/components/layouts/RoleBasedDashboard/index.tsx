@@ -984,6 +984,35 @@ export const RoleBasedDashboard: React.FC = () => {
     contractManagerGeneralUpdates,
   ]);
 
+  // Company Admin's Contracts tab must render CONTRACT activity data, not the
+  // solicitation data companyAdminConfig carries. Company Admin's own base
+  // config has no "activity"-type row to reuse, so build the contract-shaped
+  // activity rows from the canonical contract_manager row template instead.
+  const companyAdminContractsRows = useMemo(() => {
+    const contractMyActions =
+      DashboardDataTransformer.transformContractManagerDashboardActivity(
+        contractManagerActionLogs
+      );
+    const contractGeneralUpdates =
+      DashboardDataTransformer.transformContractManagerDashboardActivity(
+        contractManagerGeneralUpdates
+      );
+    return dashboardConfigs.contract_manager.rows
+      .filter((row) => row.type === "activity")
+      .map((row) => ({
+        ...row,
+        properties: row.properties.map((activity) => {
+          if (activity.id === "my-actions") {
+            return { ...activity, items: contractMyActions };
+          }
+          if (activity.id === "general-updates") {
+            return { ...activity, items: contractGeneralUpdates };
+          }
+          return activity;
+        }),
+      }));
+  }, [contractManagerActionLogs, contractManagerGeneralUpdates]);
+
   if (isInitialLoading && LOADING_ROLES.has(userRole)) {
     return <DashboardSkeleton />;
   }
@@ -1116,8 +1145,8 @@ export const RoleBasedDashboard: React.FC = () => {
           setTopTab={setCmTopTab}
           subTab={cmSubTab}
           setSubTab={setCmSubTab}
-          stats={enhancedDashboardConfig.stats}
-          rows={enhancedDashboardConfig.rows}
+          stats={cmTotalStats}
+          rows={companyAdminContractsRows}
           cmYtdStats={cmYtdStats}
           cmCycleTimeValues={cmCycleTimeValues}
           chartFilters={chartFilters}

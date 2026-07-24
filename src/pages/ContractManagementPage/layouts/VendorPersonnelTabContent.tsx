@@ -35,6 +35,8 @@ type Props = {
   status?: string;
   /** Picks the manager base path segment: contracts vs msa-contracts. */
   contractType?: "Contract" | "MsaContract";
+  /** Optional query key to also invalidate on save (e.g. the parent contract/MSA detail query). */
+  invalidateQueryKey?: unknown[];
 };
 
 const emptyDraft: VendorPersonnel = { name: "", email: "", phone: "", role: "" };
@@ -45,6 +47,7 @@ const VendorPersonnelTabContent: React.FC<Props> = ({
   owner,
   status,
   contractType = "Contract",
+  invalidateQueryKey,
 }) => {
   const { isManager, isCompanyAdmin } = useUserRole();
   // Tab is visible to the owning CM/PL, but add/edit/remove is only allowed
@@ -100,6 +103,9 @@ const VendorPersonnelTabContent: React.FC<Props> = ({
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey });
+      if (invalidateQueryKey) {
+        await qc.invalidateQueries({ queryKey: invalidateQueryKey });
+      }
     },
     onError: (err) => toastHandler.error("Vendor Personnel", err),
   });

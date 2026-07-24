@@ -724,6 +724,7 @@ const ContractDetailPage: React.FC = () => {
           owner={contract?.owner}
           status={contract?.status}
           contractType="Contract"
+          invalidateQueryKey={[...queryKey]}
         />
 
         <InvoiceTabContent

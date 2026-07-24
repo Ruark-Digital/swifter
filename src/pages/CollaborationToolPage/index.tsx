@@ -517,12 +517,14 @@ const CollaborationToolPage: React.FC = () => {
     );
   }, [aiMutation]);
 
-  // Auto-run the first time the user opens the Redline tab.
+  // Auto-run the first time the user opens the Redline tab. Only auto-run on
+  // the current user's negotiation turn — never on the opposing side's turn.
   useEffect(() => {
     if (activeTab !== "redline") return;
     if (aiHasRun) return;
+    if (!redlineTurn.canAct) return;
     void runAiSuggestions();
-  }, [activeTab, aiHasRun, runAiSuggestions]);
+  }, [activeTab, aiHasRun, runAiSuggestions, redlineTurn.canAct]);
 
   // Push the current turn's edit permission into the SuperDoc iframe. The init
   // payload sets "editing" once; here we correct it — "suggesting" on your turn,
