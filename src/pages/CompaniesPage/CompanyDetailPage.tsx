@@ -195,24 +195,45 @@ const CompanyDetailPage = () => {
       },
     });
 
-  // Export company data (super admin only). BE returns a protected single-sheet
-  // XLSX workbook as a binary blob, so we request a blob and trigger a download.
+  // Export company data (super admin only). BE runs this asynchronously:
+  //   1. GET .../export        starts the job and returns { jobId, ... }.
+  //   2. GET .../export/{jobId} returns 202 while generating, then 200 with the
+  //      ZIP (protected multi-sheet XLSX + all files linked to the company).
+  // We start the job, poll the jobId endpoint until it yields the ZIP, then
+  // trigger a download.
   const { mutate: exportCompanyData, isPending: isExporting } = useMutation<
     Blob,
     ApiResponseError
   >({
     mutationFn: async () => {
-      const response = await getRequest({
+      // 1. Start the export job.
+      const startRes = await getRequest({
         url: `/admins/companies/${id}/export`,
-        config: { responseType: "blob" },
       });
-      return response.data as Blob;
+      const startBody = startRes.data?.data ?? startRes.data;
+      const jobId: string | undefined = startBody?.jobId;
+      if (!jobId) {
+        throw new Error("Export did not return a job id");
+      }
+
+      // 2. Poll until the ZIP is ready (202 = still generating, 200 = done).
+      const POLL_INTERVAL_MS = 2500;
+      const MAX_ATTEMPTS = 48; // ~2 minutes
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        const pollRes = await getRequest({
+          url: `/admins/companies/${id}/export/${jobId}`,
+          config: { responseType: "blob" },
+        });
+        if (pollRes.status === 200) {
+          return pollRes.data as Blob;
+        }
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      }
+      throw new Error("Export timed out. Please try again.");
     },
     onSuccess: (data) => {
       const url = window.URL.createObjectURL(
-        new Blob([data], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        })
+        new Blob([data], { type: "application/zip" })
       );
       const safeName =
         (companyData?.name || "company")
@@ -221,7 +242,7 @@ const CompanyDetailPage = () => {
           .toLowerCase() || "company";
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `${safeName}-data-export.xlsx`);
+      link.setAttribute("download", `${safeName}-data-export.zip`);
       document.body.appendChild(link);
       link.click();
       link.remove();
