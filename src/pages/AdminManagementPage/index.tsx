@@ -296,7 +296,7 @@ const AdminManagementPage = () => {
   >({
     mutationKey: ["deleteAdmin"],
     mutationFn: async (adminId) =>
-      await deleteRequest({ url: `/admins/${adminId}` }),
+      await deleteRequest({ url: `/delete/${adminId}` }),
     onSuccess: () => {
       toast.success("Success", "Admin deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["admins"] });
