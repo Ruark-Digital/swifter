@@ -32,7 +32,17 @@
 2. RFI close/edit and vendor-personnel flows have automated tests
 3. FE dual-read guards remain where the BE spec is ambiguous
 
+### Phase 4: Multi-Role Access (QA #177)
+**Goal:** Let one user hold up to two roles (BE shipped `User.roles` in the identity service) and operate as one active role at a time, switchable from the header — without rearchitecting the single-role-to-the-bone FE.
+**Requirements:** ROLE-01, ROLE-02, ROLE-03
+**Success Criteria:**
+1. `useUserRole` resolves an active role from `user.roles`; single-role users and all existing guards behave exactly as before
+2. A header switcher appears only for multi-role users and re-scopes role-keyed data on switch
+3. Create/Edit user dialogs assign 1–2 roles, enforce the allowed pairs (approver/evaluator, contract_manager/procurement), and round-trip `roles: string[]`
+4. Role name↔id mapping is verified against a real `/users/me` payload before the resolver is finalized
+
 ## Traceability
 - Phase 1 → GAP-01..05, PAR-01
 - Phase 2 → QA-01, QA-02, PAR-01
 - Phase 3 → HARD-01..03
+- Phase 4 → ROLE-01..03

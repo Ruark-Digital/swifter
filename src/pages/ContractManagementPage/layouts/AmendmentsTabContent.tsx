@@ -850,7 +850,7 @@ const AmendmentsTabContent: React.FC<Props> = ({
   isActive,
   actionsDisabled,
 }) => {
-  const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
+  const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isCompanyAdmin, isViewOnly } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
 
@@ -958,7 +958,7 @@ const AmendmentsTabContent: React.FC<Props> = ({
             </Button>
           </ExportReportSheet>
 
-          {isManager && (
+          {(isManager || isCompanyAdmin) && (
             <CreateAmendmentDialog
               contractId={contractId}
               trigger={

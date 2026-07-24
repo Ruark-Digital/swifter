@@ -23,6 +23,11 @@ Milestone scope: incremental remediation of the SwiftPro frontend — closing QA
 - [ ] **HARD-02**: New lifecycle flows (RFI close/edit, vendor personnel) have automated test coverage
 - [ ] **HARD-03**: FE tolerates BE field-name drift via dual-read where the spec is ambiguous
 
+### Multi-Role Access (ROLE)
+- [ ] **ROLE-01**: A user can hold up to two roles; `useUserRole` resolves a single *active* role from the set so every existing single-role guard/dashboard/API-dispatch keeps working unchanged
+- [ ] **ROLE-02**: Users with more than one role can switch their active role from the header; switching re-scopes role-keyed data (dashboard + role-scoped queries)
+- [ ] **ROLE-03**: Create/Edit user dialogs (User + Admin management) assign 1–2 roles enforcing the BE-fixed allowed pairs (approver/evaluator, contract_manager/procurement) and submit `roles: string[]`
+
 ## v2 Requirements (deferred)
 - [ ] Vendor Personnel tab becomes sole owner of personnel (strip from EditContract edit payload)
 - [ ] Pick-existing-PM-by-id UI once the BE endpoint exists
@@ -41,3 +46,4 @@ Filled by ROADMAP.md.
 | QA-01, QA-02 | Phase 2 |
 | PAR-01 | Phase 1, Phase 2 |
 | HARD-01..03 | Phase 3 |
+| ROLE-01..03 | Phase 4 |

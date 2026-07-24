@@ -17,6 +17,7 @@ import {
   buildFocusComment,
   buildSetMode,
   type PresenceUser,
+  type DocumentMode,
 } from "../collab/superdocBridge";
 
 type EditorImportMeta = { sourceUrl: string; fileName: string; fileType: string };
@@ -32,6 +33,12 @@ type Props = {
   importMeta: EditorImportMeta;
   collabMeta: EditorCollabMeta;
   onEditorReady: (adapter: EditorAdapter | null) => void;
+  /** SuperDoc document mode. Defaults to "editing" (the collab editor).
+   *  Pass "viewing" for a read-only preview. */
+  documentMode?: DocumentMode;
+  /** Called when the iframe fails to load / the document can't be fetched,
+   *  so a host can fall back to another renderer. */
+  onError?: () => void;
 };
 
 // Handshake phases, surfaced in the overlay so a stuck load is self-diagnosing:
@@ -56,6 +63,8 @@ const IframeEditorPane: React.FC<Props> = ({
   importMeta,
   collabMeta,
   onEditorReady,
+  documentMode = "editing",
+  onError,
 }) => {
   const user = useUser();
   const toastHandler = useToastHandler();
@@ -130,9 +139,15 @@ const IframeEditorPane: React.FC<Props> = ({
   }), [postCommand, settleAnchor]);
   const buildAdapterRef = useRef(buildAdapter);
 
+  // Keep the latest onError reachable from the stable `fail` callback without
+  // adding it to fail's deps (which would churn failRef / effect identities).
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+
   const fail = useCallback((message: string) => {
     setErrorMsg(message);
     setPhase("error");
+    onErrorRef.current?.();
   }, []);
 
   const sendInit = useCallback(
@@ -165,7 +180,7 @@ const IframeEditorPane: React.FC<Props> = ({
           docBytes,
           fileName: importMeta.fileName,
           fileType: importMeta.fileType,
-          documentMode: "editing",
+          documentMode,
           user: { name: user?.name || "Unknown User", email: user?.email || "" },
           roomId: collabMeta.roomId,
           wsUrl: collabMeta.wsUrl,
@@ -190,6 +205,7 @@ const IframeEditorPane: React.FC<Props> = ({
       collabMeta.roomId,
       collabMeta.token,
       collabMeta.wsUrl,
+      documentMode,
       fail,
       importMeta.fileName,
       importMeta.fileType,

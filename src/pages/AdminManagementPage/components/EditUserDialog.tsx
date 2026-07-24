@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,24 +8,35 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
-import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
-import { useForge, Forge, FormPropsRef } from "@adexdsamson/forge";
+import { useForge, Forge, Forger, FormPropsRef } from "@adexdsamson/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { putRequest } from "@/lib/axiosInstance";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { putRequest, getRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
+import { Option } from "@/components/ui/multiselect";
+import { RoleComboField } from "@/components/layouts/RoleComboField";
+import { buildRoleOptions, optionsFromUserRoles } from "@/lib/roleCombos";
 import * as yup from "yup";
 
 const schema = yup.object().shape({
   firstName: yup.string().required("First name is required"),
   lastName: yup.string().required("Last name is required"),
   middleName: yup.string(),
-  role: yup.string().required("Role is required"),
+  roles: yup
+    .array()
+    .min(1, "Select at least one role")
+    .max(2, "You can select up to two roles"),
   email: yup.string().email("Invalid email").required("Email is required"),
 });
 
 type FormValues = yup.InferType<typeof schema>;
+
+type AdminUpdatePayload = {
+  name: string;
+  email: string;
+  roles: string[];
+};
 
 interface EditUserDialogProps {
   admin: {
@@ -34,6 +45,7 @@ interface EditUserDialogProps {
     name: string;
     email: string;
     role: { _id: string; name: string };
+    roles?: (string | { _id?: string; id?: string; name?: string })[];
     companyId?: string;
     company?: string;
     lastLoginAt?: string;
@@ -66,64 +78,47 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
   const firstName = nameParts[0] || "";
   const lastName = nameParts.slice(1).join(" ") || "";
 
-  const { control } = useForge<FormValues>({
+  const { control, reset } = useForge<FormValues>({
     resolver: yupResolver(schema),
     defaultValues: {
       firstName,
       lastName,
-
-      role: admin?.role.name || "",
+      roles: [],
       email: admin?.email || "",
     },
-    fields: [
-      {
-        name: "firstName",
-        component: TextInput,
-        label: "First Name",
-        placeholder: "Enter Admin Name",
-      },
-      {
-        name: "lastName",
-        component: TextInput,
-        label: "Last Name",
-        placeholder: "Enter Admin Name",
-      },
-      {
-        name: "role",
-        component: TextSelect,
-        label: "Role",
-        placeholder: "Procurement Lead/Evaluators",
-        options: [
-          { label: "Company Admin", value: "company_admin" },
-          { label: "Super Admin", value: "super_admin" },
-          { label: "Procurement Lead", value: "procurement_lead" },
-          { label: "Evaluator", value: "evaluator" },
-        ],
-      },
-      {
-        name: "email",
-        component: TextInput,
-        label: "Email Address",
-        placeholder: "Enter Vendor Name",
-        type: "email",
-        disabled: true,
-      },
-    ],
   });
+
+  // Roles catalog for the multi-select (label = name, value = document id).
+  const { data: rolesData } = useQuery({
+    queryKey: ["roles"],
+    queryFn: async () => await getRequest({ url: "/onboarding/roles" }),
+    enabled: open,
+  });
+  const roleOptions = buildRoleOptions(rolesData?.data?.data || []);
+
+  // Hydrate the multi-select from the admin's existing role(s) once the catalog
+  // is available (needed to resolve ids/names into options).
+  useEffect(() => {
+    if (!open || !admin || roleOptions.length === 0) return;
+    reset({
+      firstName,
+      lastName,
+      roles: optionsFromUserRoles(admin.roles, admin.role, roleOptions),
+      email: admin.email || "",
+    });
+    // roleOptions identity changes each render; gate on its length + admin id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, admin?._id, rolesData]);
 
   const updateMutation = useMutation<
     ApiResponse<any>,
     ApiResponseError,
-    FormValues
+    AdminUpdatePayload
   >({
-    mutationFn: (userData: FormValues) =>
+    mutationFn: (payload: AdminUpdatePayload) =>
       putRequest({
         url: `/users/${admin?._id || admin?.id}`,
-        payload: {
-          name: `${userData.firstName} ${userData.lastName}`.trim(),
-          email: userData.email,
-          role: userData.role,
-        },
+        payload,
       }),
     onSuccess: (result, variables) => {
       toast.success(
@@ -132,9 +127,9 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
       );
       if (onUserUpdate && admin) {
         onUserUpdate(admin._id || admin.id!, {
-          name: `${variables.firstName} ${variables.lastName}`.trim(),
+          name: variables.name,
           email: variables.email,
-          role: variables.role,
+          roles: variables.roles,
         });
       }
       // Invalidate dashboard count query to refresh statistics
@@ -150,7 +145,12 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
 
   const handleSubmit = async (data: FormValues) => {
     try {
-      await updateMutation.mutateAsync(data);
+      const selectedRoles = (data.roles ?? []) as Option[];
+      await updateMutation.mutateAsync({
+        name: `${data.firstName} ${data.lastName}`.trim(),
+        email: data.email,
+        roles: selectedRoles.map((option) => option.value),
+      });
     } catch (error) {
       console.log(error);
     }
@@ -174,13 +174,36 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
 
         <div className="px-6 py-6">
           <Forge
-            {...{
-              control,
-              onSubmit: handleSubmit,
-              ref: formRef,
-              className: "space-y-6",
-            }}
-          />
+            control={control}
+            onSubmit={handleSubmit}
+            ref={formRef}
+            className="space-y-6"
+          >
+            <Forger
+              name="firstName"
+              component={TextInput}
+              label="First Name"
+              placeholder="Enter Admin Name"
+              containerClass="space-y-1"
+            />
+            <Forger
+              name="lastName"
+              component={TextInput}
+              label="Last Name"
+              placeholder="Enter Admin Name"
+              containerClass="space-y-1"
+            />
+            <RoleComboField control={control} options={roleOptions} />
+            <Forger
+              name="email"
+              component={TextInput}
+              label="Email Address"
+              placeholder="Enter email address"
+              type="email"
+              disabled
+              containerClass="space-y-1"
+            />
+          </Forge>
         </div>
 
         <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">

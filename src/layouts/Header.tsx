@@ -17,6 +17,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import avatarImage from "@/assets/avatar-user.png";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { RoleSwitcher } from "@/components/layouts/RoleSwitcher";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export const Header = () => {
   const location = useLocation();
@@ -71,6 +73,7 @@ export const Header = () => {
       </div>
 
       <div className="flex items-center gap-3">
+        <RoleSwitcher />
         <ThemeToggle />
         <UserMenu />
       </div>
@@ -80,6 +83,7 @@ export const Header = () => {
 
 function UserMenu() {
   const user = useUser();
+  const { userRole } = useUserRole();
   const onResetState = useSetReset();
   const toastHandler = useToastHandler();
   const navigate = useNavigate();
@@ -110,7 +114,7 @@ function UserMenu() {
               {user?.name}
             </span>
             <span className="text-sm text-gray-500 dark:text-gray-400 font-quicksand capitalize truncate">
-              {user?.role?.name?.replace('_', ' ')}
+              {userRole?.replace('_', ' ')}
             </span>
           </div>
           <ChevronDown className="h-5 w-5 sm:h-6 sm:w-6 text-[#2A4467] dark:text-gray-300 stroke-[1.5] shrink-0" />

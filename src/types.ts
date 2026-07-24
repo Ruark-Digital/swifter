@@ -48,6 +48,9 @@ export type User = {
   email: string;
   name: string;
   role: Role;
+  // Multi-role (QA #177). BE ships up to 2 roles; items may be populated Role
+  // objects, name slugs, or bare document ids. Resolved via useUserRole.
+  roles?: (Role | string)[];
   currency?: string;
   status: string;
   module: Modules;

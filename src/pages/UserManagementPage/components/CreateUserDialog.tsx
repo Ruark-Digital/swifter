@@ -10,12 +10,15 @@ import {
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, CloudUpload } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { postRequest } from "@/lib/axiosInstance";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { postRequest, getRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
+import { Option } from "@/components/ui/multiselect";
+import { RoleComboField } from "@/components/layouts/RoleComboField";
+import { buildRoleOptions } from "@/lib/roleCombos";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useForge, Forge, Forger, FormPropsRef } from "@adexdsamson/forge";
 import * as yup from "yup";
@@ -24,9 +27,13 @@ import { useUser } from "@/store/authSlice";
 // Validation schemas
 const singleUserSchema = yup.object().shape({
   firstName: yup.string().required("First name is required"),
+  middleName: yup.string(),
   lastName: yup.string().required("Last name is required"),
   email: yup.string().email("Invalid email").required("Email is required"),
-  role: yup.string().required("Role is required"),
+  roles: yup
+    .array()
+    .min(1, "Select at least one role")
+    .max(2, "You can select up to two roles"),
 });
 
 const multipleUserSchema = yup.object().shape({
@@ -35,6 +42,15 @@ const multipleUserSchema = yup.object().shape({
 
 type SingleUserFormValues = yup.InferType<typeof singleUserSchema>;
 type MultipleUserFormValues = yup.InferType<typeof multipleUserSchema>;
+
+type CreateUserPayload = {
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  email: string;
+  roles: string[];
+  companyId: string;
+};
 
 const CreateUserDialog = () => {
   const user = useUser()
@@ -48,15 +64,23 @@ const CreateUserDialog = () => {
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
+  // Roles catalog for the multi-select (label = name, value = document id).
+  const { data: rolesData } = useQuery({
+    queryKey: ["roles"],
+    queryFn: async () => await getRequest({ url: "/onboarding/roles" }),
+  });
+  const roleOptions = buildRoleOptions(rolesData?.data?.data || []);
+
   // Single user form setup
   const { control: singleUserControl, reset: resetSingleUserForm } =
     useForge<SingleUserFormValues>({
       resolver: yupResolver(singleUserSchema),
       defaultValues: {
         firstName: "",
+        middleName: "",
         lastName: "",
         email: "",
-        role: "",
+        roles: [],
       },
     });
 
@@ -72,7 +96,7 @@ const CreateUserDialog = () => {
   const { mutateAsync: createUser, isPending } = useMutation<
     ApiResponse<any>,
     ApiResponseError,
-    SingleUserFormValues & { companyId: string }
+    CreateUserPayload
   >({
     mutationKey: ["createUser"],
     mutationFn: async (userData) =>
@@ -94,7 +118,15 @@ const CreateUserDialog = () => {
 
   const handleSingleUserSubmit = async (data: SingleUserFormValues) => {
     try {
-      await createUser({...data, companyId: user?.companyId as any  ?? "" });
+      const selectedRoles = (data.roles ?? []) as Option[];
+      await createUser({
+        firstName: data.firstName,
+        middleName: data.middleName,
+        lastName: data.lastName,
+        email: data.email,
+        roles: selectedRoles.map((option) => option.value),
+        companyId: (user?.companyId as unknown as string) ?? "",
+      });
     } catch (error) {
       // Error is handled by onError
     }
@@ -154,15 +186,6 @@ const CreateUserDialog = () => {
     setFile(null);
     setActiveTab("multiple");
   };
-
-  const roleOptions = [
-    { value: "company_admin", label: "Company Admin" },
-    { value: "procurement", label: "Procurement Lead" },
-    { value: "evaluator", label: "Evaluator" },
-    { value: "contract_manager", label: "Contract Manager" },
-    { value: "view_only", label: "View Only" },
-    { value: "approver", label: "Approver" },
-  ];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -233,13 +256,9 @@ const CreateUserDialog = () => {
                 containerClass="space-y-1"
               />
 
-              <Forger
-                name="role"
-                component={TextSelect}
-                label="Role *"
-                placeholder="Select role"
+              <RoleComboField
+                control={singleUserControl}
                 options={roleOptions}
-                containerClass="space-y-1"
               />
 
               <Forger
