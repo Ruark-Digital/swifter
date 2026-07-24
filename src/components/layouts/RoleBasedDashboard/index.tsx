@@ -989,29 +989,28 @@ export const RoleBasedDashboard: React.FC = () => {
   // config has no "activity"-type row to reuse, so build the contract-shaped
   // activity rows from the canonical contract_manager row template instead.
   const companyAdminContractsRows = useMemo(() => {
-    const contractMyActions =
-      DashboardDataTransformer.transformContractManagerDashboardActivity(
-        contractManagerActionLogs
-      );
     const contractGeneralUpdates =
       DashboardDataTransformer.transformContractManagerDashboardActivity(
         contractManagerGeneralUpdates
       );
+    // Company Admin never performs contract "my actions" (approvals/personal
+    // actions are CM/PM/approver-only), so that card is permanently empty for
+    // this role — drop it and let General Updates take the full row width.
     return dashboardConfigs.contract_manager.rows
       .filter((row) => row.type === "activity")
       .map((row) => ({
         ...row,
-        properties: row.properties.map((activity) => {
-          if (activity.id === "my-actions") {
-            return { ...activity, items: contractMyActions };
-          }
-          if (activity.id === "general-updates") {
-            return { ...activity, items: contractGeneralUpdates };
-          }
-          return activity;
-        }),
+        className: "lg:grid-cols-1",
+        properties: row.properties
+          .filter((activity) => activity.id !== "my-actions")
+          .map((activity) => {
+            if (activity.id === "general-updates") {
+              return { ...activity, items: contractGeneralUpdates };
+            }
+            return activity;
+          }),
       }));
-  }, [contractManagerActionLogs, contractManagerGeneralUpdates]);
+  }, [contractManagerGeneralUpdates]);
 
   if (isInitialLoading && LOADING_ROLES.has(userRole)) {
     return <DashboardSkeleton />;
