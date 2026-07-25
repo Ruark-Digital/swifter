@@ -179,10 +179,20 @@ const ProfileInformation: React.FC = () => {
       const _user = userData?.data?.data?.user;
       const _vendor = userData?.data?.data?.vendor;
       
+      // `/users/me` returns `role` as a populated object for some accounts and
+      // a bare slug string for others (e.g. view_only → "view_only"), so
+      // reading `.name` unconditionally left the Role field blank. Fall back to
+      // the role useUserRole already resolved.
+      const rawRole = _user?.role as unknown;
+      const resolvedRole =
+        typeof rawRole === "string"
+          ? rawRole
+          : (rawRole as { name?: string } | undefined)?.name;
+
       const payload = {
         firstName: _user?.name,
         email: _user?.email,
-        role: _user?.role.name,
+        role: resolvedRole ?? userRole,
         phone: _user?.phone,
         department: _user?.department,
         companyName: _vendor?.companyName || _user?.companyId?.name,
@@ -198,10 +208,16 @@ const ProfileInformation: React.FC = () => {
       })
     }
 
-  }, [isSuccess])
+  }, [isSuccess, userRole])
 
   const handleSubmit = async (data: any) => {
     try {
+      // Role and email are rendered disabled — they exist to inform, not to
+      // edit. Now that the Role field carries a real value for slug-shaped
+      // roles, drop both from the update so saving a profile can never submit
+      // a role change.
+      const { role: _omitRole, email: _omitEmail, ...editable } = data ?? {};
+      data = editable;
       // Validate website URL if provided
       // if (data.website && data.website.trim() && !data.website.startsWith('https://')) {
       //   toast.error("Error", "Website URL must start with https://");

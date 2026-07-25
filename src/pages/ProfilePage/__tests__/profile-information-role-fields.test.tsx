@@ -37,22 +37,26 @@ const renderFor = (role: UserRole) => {
   );
 };
 
-describe("ProfileInformation role field visibility (QA #280)", () => {
-  beforeEach(() => {
-    getRequestMock.mockResolvedValue({
+const mockUser = (role: unknown) => {
+  getRequestMock.mockResolvedValue({
+    data: {
       data: {
-        data: {
-          user: {
-            _id: "u1",
-            name: "Finch Monica",
-            email: "cm1@example.com",
-            role: { name: "contract_manager" },
-            phone: "0803000000",
-            department: "Procurement",
-          },
+        user: {
+          _id: "u1",
+          name: "Finch Monica",
+          email: "cm1@example.com",
+          role,
+          phone: "0803000000",
+          department: "Procurement",
         },
       },
-    });
+    },
+  });
+};
+
+describe("ProfileInformation role field visibility (QA #280)", () => {
+  beforeEach(() => {
+    mockUser({ name: "contract_manager" });
   });
 
   afterEach(() => {
@@ -107,6 +111,35 @@ describe("ProfileInformation role field visibility (QA #280)", () => {
     expect(screen.getByText("Location")).toBeInTheDocument();
     expect(screen.getByText("Category")).toBeInTheDocument();
     expect(screen.queryByText("Department")).toBeNull();
+  });
+
+  // `/users/me` returns `role` as an object for some accounts and a bare slug
+  // string for others — reading `.name` unconditionally blanked the field.
+  test("populates Role when the API returns a bare slug string", async () => {
+    mockUser("view_only");
+    renderFor("view_only");
+
+    await waitFor(() =>
+      expect(screen.getByDisplayValue("view_only")).toBeInTheDocument(),
+    );
+  });
+
+  test("populates Role when the API returns a populated object", async () => {
+    mockUser({ name: "contract_manager" });
+    renderFor("contract_manager");
+
+    await waitFor(() =>
+      expect(screen.getByDisplayValue("contract_manager")).toBeInTheDocument(),
+    );
+  });
+
+  test("falls back to the resolved active role when the API omits role", async () => {
+    mockUser(undefined);
+    renderFor("approver");
+
+    await waitFor(() =>
+      expect(screen.getByDisplayValue("approver")).toBeInTheDocument(),
+    );
   });
 
   test("no role renders an empty profile form", async () => {
