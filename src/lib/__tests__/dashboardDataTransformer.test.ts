@@ -37,6 +37,21 @@ describe("DashboardDataTransformer", () => {
       ]);
     });
 
+    it("apportions percentages that total exactly 100 for equal shares", () => {
+      const result = DashboardDataTransformer.transformSubDistribution({
+        totalActive: 3,
+        distribution: [
+          { plan: "Basic", count: 1 },
+          { plan: "Pro", count: 1 },
+          { plan: "Enterprise", count: 1 },
+        ],
+      });
+
+      // Rounding each third independently gave 33+33+33 = 99 (QA #260).
+      expect(result.reduce((sum, slice) => sum + slice.percentage, 0)).toBe(100);
+      expect(result.map((slice) => slice.percentage)).toEqual([34, 33, 33]);
+    });
+
     it("returns the 3-entry zeroed fallback with percentage: 0 when data is undefined", () => {
       const result = DashboardDataTransformer.transformSubDistribution(undefined);
 
