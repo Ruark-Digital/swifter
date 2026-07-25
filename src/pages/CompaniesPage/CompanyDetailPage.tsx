@@ -97,18 +97,17 @@ type CompanyStatusUpdate = {
 };
 
 // Module settings update payload
-type ModuleFlag = { enabled: boolean };
 type ModuleSettings = {
-  solicitationManagement: ModuleFlag;
-  evaluationsManagement: ModuleFlag;
-  vendorManagement: ModuleFlag;
-  reportsAnalytics: ModuleFlag;
-  contractManagement: ModuleFlag;
-  generalUpdatesNotifications: ModuleFlag;
-  myActions: ModuleFlag;
-  vendorsQA: ModuleFlag;
-  addendumManagement: ModuleFlag;
-  isAi: ModuleFlag;
+  solicitationManagement: boolean;
+  evaluationsManagement: boolean;
+  vendorManagement: boolean;
+  reportsAnalytics: boolean;
+  contractManagement: boolean;
+  generalUpdatesNotifications: boolean;
+  myActions: boolean;
+  vendorsQA: boolean;
+  addendumManagement: boolean;
+  isAi: boolean;
 };
 
 // Portal Settings type based on API documentation
@@ -404,18 +403,16 @@ const CompanyDetailPage = () => {
   const handleModuleSubmit = async (data: ModuleFormValues) => {
     try {
       await updatePortalSettings({
-        solicitationManagement: { enabled: data.solicitationsManagement || false },
-        evaluationsManagement: { enabled: data.evaluationsManagement || false },
-        contractManagement: { enabled: data.contractManagement || false },
-        vendorManagement: { enabled: data.vendorManagement || false },
-        reportsAnalytics: { enabled: data.reportsAnalytics || false },
-        generalUpdatesNotifications: {
-          enabled: data.generalUpdatesNotifications || false,
-        },
-        myActions: { enabled: data.myActions || false },
-        vendorsQA: { enabled: data.vendorsQA || false },
-        addendumManagement: { enabled: data.addendumManagement || false },
-        isAi: { enabled: data.isAi || false },
+        solicitationManagement: data.solicitationsManagement || false,
+        evaluationsManagement: data.evaluationsManagement || false,
+        contractManagement: data.contractManagement || false,
+        vendorManagement: data.vendorManagement || false,
+        reportsAnalytics: data.reportsAnalytics || false,
+        generalUpdatesNotifications: data.generalUpdatesNotifications || false,
+        myActions: data.myActions || false,
+        vendorsQA: data.vendorsQA || false,
+        addendumManagement: data.addendumManagement || false,
+        isAi: data.isAi || false,
       });
     } catch (error) {
       // Error is handled in the mutation
