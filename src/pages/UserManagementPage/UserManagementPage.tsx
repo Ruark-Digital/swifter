@@ -140,7 +140,7 @@ const UserManagementPage = () => {
 
     if (
       roleParam &&
-      ["admin", "procurement_lead", "evaluator"].includes(roleParam)
+      ["admin", "procurement", "evaluator"].includes(roleParam)
     ) {
       setRoleFilter(roleParam);
     }
@@ -543,7 +543,7 @@ const UserManagementPage = () => {
 
   const roles = [
     { label: "Admin", value: "admin" },
-    { label: "Procurement", value: "procurement_lead" },
+    { label: "Procurement Lead", value: "procurement" },
     { label: "Evaluator", value: "evaluator" },
     { value: "contract_manager", label: "Contract Manager" },
     { value: "view_only", label: "View Only" },
