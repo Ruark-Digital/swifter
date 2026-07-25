@@ -30,6 +30,22 @@ interface Vendor {
   category: string;
 }
 
+// Listed exhaustively (and type-checked against UserRole) so adding a role to
+// the union surfaces here as a decision instead of silently hiding every
+// profile field for it — the QA #280 failure mode.
+const EVERY_INTERNAL_ROLE: UserRole[] = [
+  "super_admin",
+  "company_admin",
+  "procurement",
+  "contract_manager",
+  "evaluator",
+  "approver",
+  "project_manager",
+  "view_only",
+];
+
+const EVERY_ROLE: UserRole[] = [...EVERY_INTERNAL_ROLE, "vendor"];
+
 type FormValues = {
   firstName: string;
   lastName: string;
@@ -127,49 +143,24 @@ const ProfileInformation: React.FC = () => {
   // slug so it matches what useUserRole resolves — the previous
   // space-separated labels ("company admin") silently matched nothing once the
   // slug form was used.
+  //
+  // A role absent from a list gets that field hidden, so a role missing from
+  // ALL of them renders an empty form (QA #280 — this happened to
+  // contract_manager, project_manager, approver and view_only). Everyone must
+  // be able to edit their own personal details, so the personal fields below
+  // are keyed off EVERY_ROLE / EVERY_INTERNAL_ROLE rather than hand-listed;
+  // only genuinely role-specific fields carry a short explicit list.
   const fieldVisibility: Record<string, UserRole[]> = {
     // firstName: [],
     // lastName: [],
     // middleName: [],
-    email: [
-      "super_admin",
-      "vendor",
-      "evaluator",
-      "procurement",
-      "company_admin",
-      "contract_manager",
-    ],
-    role: [
-      "super_admin",
-      "company_admin",
-      "evaluator",
-      "procurement",
-      "vendor",
-      "contract_manager",
-    ],
-    phoneNumber: [
-      "super_admin",
-      "company_admin",
-      "vendor",
-      "procurement",
-      "evaluator",
-      "contract_manager",
-    ],
-    department: [
-      "super_admin",
-      "evaluator",
-      "procurement",
-      "contract_manager",
-    ],
+    email: EVERY_ROLE,
+    role: EVERY_ROLE,
+    phoneNumber: EVERY_ROLE,
+    name: EVERY_ROLE,
+    // Vendors have no internal department; company admins never had this field.
+    department: EVERY_INTERNAL_ROLE.filter((r) => r !== "company_admin"),
     companyName: ["company_admin"],
-    name: [
-      "company_admin",
-      "procurement",
-      "super_admin",
-      "evaluator",
-      "vendor",
-      "contract_manager",
-    ],
     website: ["company_admin", "vendor"],
     businessType: ["vendor"],
     location: ["vendor"],

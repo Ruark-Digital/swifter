@@ -60,8 +60,16 @@ describe("ProfileInformation role field visibility (QA #280)", () => {
     userRoleMock.mockReset();
   });
 
-  test("contract_manager sees the standard editable profile fields", async () => {
-    renderFor("contract_manager");
+  // QA #280 hit contract_manager first, but project_manager, approver and
+  // view_only were missing from every list too — none of them may render an
+  // empty form again.
+  test.each<UserRole>([
+    "contract_manager",
+    "project_manager",
+    "approver",
+    "view_only",
+  ])("%s sees the standard editable profile fields", async (role) => {
+    renderFor(role);
 
     await waitFor(() => expect(screen.getByText("Name")).toBeInTheDocument());
     expect(screen.getByText("Email Address")).toBeInTheDocument();
@@ -99,5 +107,28 @@ describe("ProfileInformation role field visibility (QA #280)", () => {
     expect(screen.getByText("Location")).toBeInTheDocument();
     expect(screen.getByText("Category")).toBeInTheDocument();
     expect(screen.queryByText("Department")).toBeNull();
+  });
+
+  test("no role renders an empty profile form", async () => {
+    const roles: UserRole[] = [
+      "super_admin",
+      "company_admin",
+      "procurement",
+      "contract_manager",
+      "evaluator",
+      "approver",
+      "project_manager",
+      "view_only",
+      "vendor",
+    ];
+
+    for (const role of roles) {
+      const { unmount } = renderFor(role);
+      await waitFor(() =>
+        expect(screen.getByText("Email Address")).toBeInTheDocument(),
+      );
+      expect(screen.getByText("Name")).toBeInTheDocument();
+      unmount();
+    }
   });
 });
