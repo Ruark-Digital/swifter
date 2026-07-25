@@ -10,12 +10,21 @@ type Props = {
   /** When provided, the error state shows a "Try again" button that calls this
    *  to re-attempt the editor handshake. */
   onRetry?: () => void;
+  /** False for a read-only preview, where no collaboration session is opened.
+   *  Keeps the status line from promising live collaboration on a plain
+   *  on-screen view (QA #286). */
+  collaborative?: boolean;
 };
 
-const STEPS: { key: EditorLoadPhase; label: string }[] = [
+const steps = (collaborative: boolean): { key: EditorLoadPhase; label: string }[] => [
   { key: "connecting", label: "Connecting to the editor" },
   { key: "fetching", label: "Downloading the document" },
-  { key: "rendering", label: "Preparing the document and live collaboration" },
+  {
+    key: "rendering",
+    label: collaborative
+      ? "Preparing the document and live collaboration"
+      : "Preparing the document",
+  },
 ];
 
 const ORDER: Record<EditorLoadPhase, number> = {
@@ -33,7 +42,12 @@ const SkeletonLine: React.FC<{ w: string }> = ({ w }) => (
   />
 );
 
-const EditorLoadingSkeleton: React.FC<Props> = ({ phase, errorMsg, onRetry }) => {
+const EditorLoadingSkeleton: React.FC<Props> = ({
+  phase,
+  errorMsg,
+  onRetry,
+  collaborative = true,
+}) => {
   if (phase === "error") {
     // Opaque canvas (matches the loading state) so a failed/blank iframe never
     // bleeds through behind the card.
@@ -97,6 +111,7 @@ const EditorLoadingSkeleton: React.FC<Props> = ({ phase, errorMsg, onRetry }) =>
   }
 
   const active = ORDER[phase];
+  const STEPS = steps(collaborative);
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-start overflow-hidden bg-slate-100 px-4 pt-10 dark:bg-slate-900">
       {/* Page-sheet skeleton — previews the real white document surface. */}

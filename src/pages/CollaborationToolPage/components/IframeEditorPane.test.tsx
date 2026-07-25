@@ -225,6 +225,115 @@ describe("IframeEditorPane", () => {
     }
   });
 
+  it("fails out of the rendering phase when the editor never reports ready (QA #286)", async () => {
+    vi.useFakeTimers();
+    try {
+      const onError = vi.fn();
+      render(
+        <IframeEditorPane
+          importMeta={importMeta}
+          collabMeta={collabMeta}
+          onEditorReady={vi.fn()}
+          onError={onError}
+        />,
+      );
+      const iframe = screen.getByTitle("SuperDoc editor") as HTMLIFrameElement;
+      const postMessage = vi.fn();
+      Object.defineProperty(iframe, "contentWindow", {
+        configurable: true,
+        value: { postMessage },
+      });
+
+      await act(async () => {
+        window.dispatchEvent(readyEvent());
+      });
+      // Bytes posted — we are now in the (previously unbounded) rendering phase.
+      expect(postMessage).toHaveBeenCalledTimes(1);
+      expect(onError).not.toHaveBeenCalled();
+
+      await act(async () => {
+        vi.advanceTimersByTime(46000);
+      });
+
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(
+        screen.getByText(/the editor never finished opening it/i),
+      ).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not fire the render watchdog once the editor reports ready", async () => {
+    vi.useFakeTimers();
+    try {
+      const onError = vi.fn();
+      render(
+        <IframeEditorPane
+          importMeta={importMeta}
+          collabMeta={collabMeta}
+          onEditorReady={vi.fn()}
+          onError={onError}
+        />,
+      );
+      const iframe = screen.getByTitle("SuperDoc editor") as HTMLIFrameElement;
+      Object.defineProperty(iframe, "contentWindow", {
+        configurable: true,
+        value: { postMessage: vi.fn() },
+      });
+
+      await act(async () => {
+        window.dispatchEvent(readyEvent());
+      });
+      await act(async () => {
+        window.dispatchEvent(
+          new MessageEvent("message", {
+            data: { type: "superdoc:editor-ready", payload: {} },
+            origin: superdocOrigin(),
+          }),
+        );
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(60000);
+      });
+
+      expect(onError).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("drops the live-collaboration wording when collaboration is disabled (QA #286)", async () => {
+    const { rerender } = render(
+      <IframeEditorPane
+        importMeta={importMeta}
+        collabMeta={{ ...collabMeta, disable: true }}
+        onEditorReady={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText(/live collaboration/i)).toBeNull();
+
+    rerender(
+      <IframeEditorPane
+        importMeta={importMeta}
+        collabMeta={{ ...collabMeta, disable: false }}
+        onEditorReady={vi.fn()}
+      />,
+    );
+    // Collaborative sessions keep the original wording.
+    const iframe = screen.getByTitle("SuperDoc editor") as HTMLIFrameElement;
+    Object.defineProperty(iframe, "contentWindow", {
+      configurable: true,
+      value: { postMessage: vi.fn() },
+    });
+    await act(async () => {
+      window.dispatchEvent(readyEvent());
+    });
+    await waitFor(() =>
+      expect(screen.getByText(/live collaboration/i)).toBeTruthy(),
+    );
+  });
+
   it("relays superdoc:selection as a ct-selection-change window event", async () => {
     render(
       <IframeEditorPane importMeta={importMeta} collabMeta={collabMeta} onEditorReady={vi.fn()} />,
