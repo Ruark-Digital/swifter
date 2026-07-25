@@ -320,6 +320,14 @@ export const getNavigationForRole = (
             active: currentPath.startsWith("/dashboard/solicitation"),
           }
         : undefined,
+      isModuleEnabled(modules?.evaluationsManagement)
+        ? {
+            icon: ClipboardList,
+            title: "Evaluation Management",
+            to: "/dashboard/evaluation",
+            active: currentPath.startsWith("/dashboard/evaluation"),
+          }
+        : undefined,
       isModuleEnabled(modules?.contractManagement)
         ? {
             icon: FileText,
@@ -342,14 +350,6 @@ export const getNavigationForRole = (
                 active: currentPath.startsWith("/dashboard/msa"),
               },
             ],
-          }
-        : undefined,
-      isModuleEnabled(modules?.evaluationsManagement)
-        ? {
-            icon: ClipboardList,
-            title: "Evaluation Management",
-            to: "/dashboard/evaluation",
-            active: currentPath.startsWith("/dashboard/evaluation"),
           }
         : undefined,
       {
