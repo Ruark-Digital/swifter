@@ -20,6 +20,18 @@ import React, { useState } from "react";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { formatDateTZ } from "@/lib/utils";
 
+// Normalizes ambiguous truthy/falsy shapes (e.g. a stray `{ enabled: "true" }`
+// or the string "true") coming from portalSettingsData into a real boolean,
+// so the moduleSchema's yup.boolean() fields never receive a non-boolean value.
+const toBool = (value: unknown, fallback = false): boolean => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return value === "true";
+  if (value && typeof value === "object" && "enabled" in value) {
+    return toBool((value as { enabled: unknown }).enabled, fallback);
+  }
+  return fallback;
+};
+
 // Schema for module form validation
 const moduleSchema = yup.object().shape({
   solicitationsManagement: yup.boolean(),
@@ -294,17 +306,27 @@ const CompanyDetailPage = () => {
   const { control, reset, handleSubmit } = useForge<ModuleFormValues>({
     resolver: yupResolver(moduleSchema),
     defaultValues: {
-      solicitationsManagement:
-        portalSettingsData?.solicitationManagement ?? true,
-      evaluationsManagement: portalSettingsData?.evaluationsManagement ?? true,
-      contractManagement: portalSettingsData?.contractManagement ?? true,
-      reportsAnalytics: portalSettingsData?.reportsAnalytics ?? true,
-      generalUpdatesNotifications:
-        portalSettingsData?.generalUpdatesNotifications ?? true,
-      myActions: portalSettingsData?.myActions ?? true,
-      vendorsQA: portalSettingsData?.vendorsQA ?? true,
-      addendumManagement: portalSettingsData?.addendumManagement ?? false,
-      isAi: portalSettingsData?.isAi ?? false,
+      solicitationsManagement: toBool(
+        portalSettingsData?.solicitationManagement,
+        true
+      ),
+      evaluationsManagement: toBool(
+        portalSettingsData?.evaluationsManagement,
+        true
+      ),
+      contractManagement: toBool(portalSettingsData?.contractManagement, true),
+      reportsAnalytics: toBool(portalSettingsData?.reportsAnalytics, true),
+      generalUpdatesNotifications: toBool(
+        portalSettingsData?.generalUpdatesNotifications,
+        true
+      ),
+      myActions: toBool(portalSettingsData?.myActions, true),
+      vendorsQA: toBool(portalSettingsData?.vendorsQA, true),
+      addendumManagement: toBool(
+        portalSettingsData?.addendumManagement,
+        false
+      ),
+      isAi: toBool(portalSettingsData?.isAi, false),
     },
   });
 
@@ -313,17 +335,22 @@ const CompanyDetailPage = () => {
   React.useEffect(() => {
     if (portalSettingsData) {
       reset({
-        solicitationsManagement: portalSettingsData.solicitationManagement,
-        evaluationsManagement: portalSettingsData.evaluationsManagement,
-        vendorManagement: portalSettingsData.vendorManagement,
-        reportsAnalytics: portalSettingsData.reportsAnalytics,
-        generalUpdatesNotifications:
-          portalSettingsData.generalUpdatesNotifications,
-        contractManagement: portalSettingsData.contractManagement,
-        myActions: portalSettingsData.myActions,
-        vendorsQA: portalSettingsData.vendorsQA,
-        addendumManagement: portalSettingsData.addendumManagement,
-        isAi: portalSettingsData.isAi ?? false,
+        solicitationsManagement: toBool(
+          portalSettingsData.solicitationManagement
+        ),
+        evaluationsManagement: toBool(
+          portalSettingsData.evaluationsManagement
+        ),
+        vendorManagement: toBool(portalSettingsData.vendorManagement),
+        reportsAnalytics: toBool(portalSettingsData.reportsAnalytics),
+        generalUpdatesNotifications: toBool(
+          portalSettingsData.generalUpdatesNotifications
+        ),
+        contractManagement: toBool(portalSettingsData.contractManagement),
+        myActions: toBool(portalSettingsData.myActions),
+        vendorsQA: toBool(portalSettingsData.vendorsQA),
+        addendumManagement: toBool(portalSettingsData.addendumManagement),
+        isAi: toBool(portalSettingsData.isAi, false),
       });
     }
   }, [portalSettingsData, reset]);
