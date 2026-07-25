@@ -12,8 +12,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { deleteRequest, getRequest, putRequest } from "@/lib/axiosInstance";
-import { ApiResponse, ApiResponseError } from "@/types";
+import { ApiResponse, ApiResponseError, Role } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
+import { useRoleCatalog } from "@/hooks/useRoleCatalog";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { formatDateTZ } from "@/lib/utils";
 
@@ -23,7 +24,8 @@ interface UserDetails {
   companyId: string;
   name: string;
   email: string;
-  role: string;
+  // Populated Role object in practice; may also arrive as a name slug or a bare id.
+  role: Role | string;
   lastLoginAt?: string;
   phone?: string;
   website?: string;
@@ -78,6 +80,7 @@ const UserDetailsSheet: React.FC<UserDetailsSheetProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const toast = useToastHandler();
+  const { idToName } = useRoleCatalog();
   const [showSuspendAlert, setShowSuspendAlert] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
@@ -212,8 +215,14 @@ const UserDetailsSheet: React.FC<UserDetailsSheetProps> = ({
     return null;
   }
 
-  const getRoleDisplayName = (role: string) => {
-    switch (role) {
+  const getRoleDisplayName = (role: Role | string) => {
+    // `role` is a populated { _id, name } object on this endpoint, so switching
+    // on it directly always fell through to the default. Resolve to a name
+    // first — object -> .name, bare id -> catalog, name slug -> itself.
+    const name =
+      typeof role === "string" ? (idToName.get(role) ?? role) : role?.name;
+
+    switch (name) {
       case "company_admin":
         return "Company Admin";
       case "procurement":
@@ -222,6 +231,10 @@ const UserDetailsSheet: React.FC<UserDetailsSheetProps> = ({
         return "Evaluator";
       case "contract_manager":
         return "Contract Manager";
+      case "project_manager":
+        return "Project Manager";
+      case "vendor":
+        return "Vendor";
       case "view_only":
         return "View Only";
       case "approver":
