@@ -1,7 +1,9 @@
+import { ReceiptText } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartConfig } from "@/components/ui/chart";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { AnalyticsEmptyState } from "./AnalyticsEmptyState";
 
 type Props = {
   approved?: number;
@@ -12,9 +14,9 @@ type Props = {
 };
 
 export const InvoiceStatusCard: React.FC<Props> = ({
-  approved = 98,
-  pending = 34,
-  rejected = 12,
+  approved = 0,
+  pending = 0,
+  rejected = 0,
   selectedRange = "ytd",
   onRangeChange,
 }) => {
@@ -23,6 +25,8 @@ export const InvoiceStatusCard: React.FC<Props> = ({
     { name: "Pending", value: pending, color: "#f59e0b" },
     { name: "Rejected", value: rejected, color: "#ef4444" },
   ];
+  // An all-zero breakdown draws no donut slices — show the empty state instead.
+  const hasData = data.some((d) => d.value > 0);
 
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col">
@@ -57,6 +61,14 @@ export const InvoiceStatusCard: React.FC<Props> = ({
         </Tabs>
       </CardHeader>
       <CardContent className="pt-0 px-4 pb-4 space-y-4 flex-1 flex flex-col min-h-0">
+        {!hasData ? (
+          <AnalyticsEmptyState
+            icon={ReceiptText}
+            title="No invoice data yet"
+            description="Approved, pending and rejected invoices will appear here once invoices are raised."
+          />
+        ) : (
+          <>
         {/* Cap the chart so the legend below it never spills outside the
             card. `flex-1 min-h-0` lets ResponsiveContainer measure a real
             height; radii are relative percentages so the donut auto-fits. */}
@@ -94,6 +106,8 @@ export const InvoiceStatusCard: React.FC<Props> = ({
             </div>
           ))}
         </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

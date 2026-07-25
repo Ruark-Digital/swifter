@@ -1,7 +1,9 @@
+import { ShieldAlert } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartConfig } from "@/components/ui/chart";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { AnalyticsEmptyState } from "./AnalyticsEmptyState";
 
 type Props = {
   values?: { low: number; medium: number; high: number };
@@ -14,12 +16,14 @@ export const RiskDistributionCard: React.FC<Props> = ({
   selectedRange = "ytd",
   onRangeChange,
 }) => {
-  const v = values || { low: 98, medium: 34, high: 12 };
+  const v = values || { low: 0, medium: 0, high: 0 };
   const data = [
     { name: "Low (< $1M)", value: v.low, color: "#10b981" },
     { name: "Medium ($1M – $5M)", value: v.medium, color: "#f59e0b" },
     { name: "High (> $5M)", value: v.high, color: "#ef4444" },
   ];
+  // An all-zero distribution draws no pie slices — show the empty state instead.
+  const hasData = data.some((d) => d.value > 0);
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col max-h-[32rem]">
       <CardHeader className="pb-3 shrink-0">
@@ -53,6 +57,14 @@ export const RiskDistributionCard: React.FC<Props> = ({
         </Tabs>
       </CardHeader>
       <CardContent className="pt-0 space-y-4 flex-1 flex flex-col min-h-0">
+        {!hasData ? (
+          <AnalyticsEmptyState
+            icon={ShieldAlert}
+            title="No risk data yet"
+            description="Contract risk distribution will appear here once contracts are valued."
+          />
+        ) : (
+          <>
         <ChartContainer className="flex-1 min-h-0" config={{} as ChartConfig}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -86,6 +98,8 @@ export const RiskDistributionCard: React.FC<Props> = ({
             </div>
           ))}
         </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

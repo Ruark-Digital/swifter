@@ -1,5 +1,7 @@
+import { ShieldCheck } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AnalyticsEmptyState } from "./AnalyticsEmptyState";
 
 type Row = {
   label: string;
@@ -25,35 +27,38 @@ export const ComplianceStatusCard: React.FC<Props> = ({
   selectedRange = "ytd",
   onRangeChange,
 }) => {
+  // No compliance payload at all → nothing to report. Only the presence of the
+  // object means the API answered; individual absent fields read as 0.
+  const hasData = !!data;
   const rows: Row[] = [
     {
       label: "Active Insurance",
-      right: `${data?.insuranceActive?.current ?? 142} / ${data?.insuranceActive?.total ?? 145}`,
-      valuePct: data?.insuranceActive?.percentage ?? 98,
+      right: `${data?.insuranceActive?.current ?? 0} / ${data?.insuranceActive?.total ?? 0}`,
+      valuePct: data?.insuranceActive?.percentage ?? 0,
       color: "#10b981",
     },
     {
       label: "Contract Security Submission",
-      right: `${data?.securitySubmission?.current ?? 138} / ${data?.securitySubmission?.total ?? 145}`,
-      valuePct: data?.securitySubmission?.percentage ?? 95,
+      right: `${data?.securitySubmission?.current ?? 0} / ${data?.securitySubmission?.total ?? 0}`,
+      valuePct: data?.securitySubmission?.percentage ?? 0,
       color: "#10b981",
     },
     {
       label: "Missed Approvals",
-      right: `${data?.missedApprovals ?? 8}`,
-      valuePct: data?.missedApprovals ?? 8,
+      right: `${data?.missedApprovals ?? 0}`,
+      valuePct: data?.missedApprovals ?? 0,
       color: "#ef4444",
     },
     {
       label: "NCRs",
-      right: `${data?.ncrs ?? 23}`,
-      valuePct: data?.ncrs ?? 23,
+      right: `${data?.ncrs ?? 0}`,
+      valuePct: data?.ncrs ?? 0,
       color: "#f59e0b",
     },
     {
       label: "Audit Trail Completeness",
-      right: `${data?.auditTrailCompleteness ?? 89}%`,
-      valuePct: data?.auditTrailCompleteness ?? 89,
+      right: `${data?.auditTrailCompleteness ?? 0}%`,
+      valuePct: data?.auditTrailCompleteness ?? 0,
       color: "#f59e0b",
     },
   ];
@@ -90,7 +95,14 @@ export const ComplianceStatusCard: React.FC<Props> = ({
         </Tabs>
       </CardHeader>
       <CardContent className="space-y-4 pt-0 flex-1 min-h-0 overflow-y-auto">
-        {rows.map((row, idx) => (
+        {!hasData ? (
+          <AnalyticsEmptyState
+            icon={ShieldCheck}
+            title="No compliance data yet"
+            description="Insurance, security and audit compliance will appear here once contracts are active."
+          />
+        ) : (
+          rows.map((row, idx) => (
           <div key={idx} className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-[#030712] dark:text-slate-100">{row.label}</p>
@@ -106,7 +118,8 @@ export const ComplianceStatusCard: React.FC<Props> = ({
               />
             </div>
           </div>
-        ))}
+          ))
+        )}
       </CardContent>
     </Card>
   );
