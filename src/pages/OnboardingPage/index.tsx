@@ -51,6 +51,36 @@ const schema = yup.object({
 // Memoize timezone options to prevent recreation on every render
 const timeZoneOptions = [{ label: "Select Timezone", value: "" }, ...timezones];
 
+// Module-scope component (stable reference) so Forge's memoized Forger
+// correctly detects prop changes (showPassword/onToggle) and re-renders.
+const PasswordFieldInput = ({
+  showPassword,
+  onToggle,
+  label,
+  placeholder,
+  ...props
+}: any) => (
+  <TextInput
+    {...props}
+    label={label}
+    placeholder={placeholder}
+    type={showPassword ? "text" : "password"}
+    endAdornment={
+      <button
+        type="button"
+        onClick={onToggle}
+        className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+      >
+        {showPassword ? (
+          <EyeOff className="h-5 w-5" />
+        ) : (
+          <Eye className="h-5 w-5" />
+        )}
+      </button>
+    }
+  />
+);
+
 const OnboardingPage = () => {
   const setUser = useSetUser();
   const setToken = useSetToken();
@@ -211,57 +241,6 @@ const OnboardingPage = () => {
     setShowConfirmPassword((prev) => !prev);
   }, []);
 
-  // Memoize password input components to prevent inline component creation
-  const PasswordInput = useCallback(
-    (props: any) => (
-      <TextInput
-        {...props}
-        label="Password"
-        placeholder="Enter Password"
-        type={showPassword ? "text" : "password"}
-        endAdornment={
-          <button
-            type="button"
-            onClick={togglePasswordVisibility}
-            className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-          >
-            {showPassword ? (
-              <EyeOff className="h-5 w-5" />
-            ) : (
-              <Eye className="h-5 w-5" />
-            )}
-          </button>
-        }
-      />
-    ),
-    [showPassword, togglePasswordVisibility]
-  );
-
-  const ConfirmPasswordInput = useCallback(
-    (props: any) => (
-      <TextInput
-        {...props}
-        label="Confirm Password"
-        placeholder="Enter Password"
-        type={showConfirmPassword ? "text" : "password"}
-        endAdornment={
-          <button
-            type="button"
-            onClick={toggleConfirmPasswordVisibility}
-            className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-          >
-            {showConfirmPassword ? (
-              <EyeOff className="h-5 w-5" />
-            ) : (
-              <Eye className="h-5 w-5" />
-            )}
-          </button>
-        }
-      />
-    ),
-    [showConfirmPassword, toggleConfirmPasswordVisibility]
-  );
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950  py-12 px-4 sm:px-6 lg:px-8 transition-colors">
       <div className="w-full space-y-8">
@@ -327,11 +306,22 @@ const OnboardingPage = () => {
                   options={timeZoneOptions}
                 />
 
-                <Forger name="password" component={PasswordInput} />
+                <Forger
+                  name="password"
+                  component={PasswordFieldInput}
+                  label="Password"
+                  placeholder="Enter Password"
+                  showPassword={showPassword}
+                  onToggle={togglePasswordVisibility}
+                />
 
                 <Forger
                   name="confirmPassword"
-                  component={ConfirmPasswordInput}
+                  component={PasswordFieldInput}
+                  label="Confirm Password"
+                  placeholder="Enter Password"
+                  showPassword={showConfirmPassword}
+                  onToggle={toggleConfirmPasswordVisibility}
                 />
 
                 <Button
