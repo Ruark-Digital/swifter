@@ -56,7 +56,7 @@ type Company = {
   industry?: string;
   sizeCategory: string;
   status: "active" | "inactive" | "suspended";
-  maxUsers: number;
+  maxUsers?: number;
   admins: Admin[];
   domain?: string;
   planName?: string;

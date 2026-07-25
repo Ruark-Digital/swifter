@@ -714,6 +714,7 @@ export const VendorDetailPage = () => {
                     name: vendor.name,
                     website: vendor.website,
                     location: vendor.location,
+                    email: vendor.user?.email,
                     phone: vendor.phone,
                     businessType: vendor.businessType,
                     secondaryEmails: vendor.secondaryEmails,

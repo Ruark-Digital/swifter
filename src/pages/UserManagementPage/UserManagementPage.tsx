@@ -40,7 +40,11 @@ type User = {
 
 // API response types
 export type UsersListResponse = {
-  data: Omit<User, "name"> & { firstName: string }[];
+  data: Omit<User, "name"> & {
+    firstName: string;
+    middleName?: string;
+    lastName?: string;
+  }[];
   total: number;
   page: number;
   limit: number;
@@ -384,14 +388,26 @@ const UserManagementPage = () => {
   const filteredData = users;
 
   // Define table columns
-  const columns: ColumnDef<Omit<User, "name"> & { firstName: string }>[] = [
+  const columns: ColumnDef<
+    Omit<User, "name"> & {
+      firstName: string;
+      middleName?: string;
+      lastName?: string;
+    }
+  >[] = [
     {
       accessorKey: "name",
       header: "User",
       cell: ({ row }) => (
         <div className="flex flex-col">
           <span className="font-medium text-gray-900 dark:text-gray-100">
-            {row.original.firstName}
+            {[
+              row.original.firstName,
+              row.original.middleName,
+              row.original.lastName,
+            ]
+              .filter(Boolean)
+              .join(" ")}
           </span>
           <span className="text-sm text-blue-500 dark:text-blue-400 underline underline-offset-2">
             {row.original.email}

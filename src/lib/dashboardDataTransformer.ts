@@ -992,13 +992,43 @@ export class DashboardDataTransformer {
       0,
     );
 
-    const chartData = data.distribution.map((item) => ({
+    const percentages = this.apportionPercentages(
+      data.distribution.map((item) => item.count || 0),
+      total,
+    );
+
+    const chartData = data.distribution.map((item, index) => ({
       name: item.plan,
       value: item.count,
-      percentage: total > 0 ? Math.round((item.count / total) * 100) : 0,
+      percentage: percentages[index],
     }));
 
     return applyConsistentColors(chartData);
+  }
+
+  /**
+   * Split 100% across the given counts using largest-remainder apportionment.
+   * Rounding each share independently lets the slices drift off 100 (three equal
+   * thirds render as 33+33+33=99); this always sums to exactly 100.
+   */
+  private static apportionPercentages(counts: number[], total: number) {
+    if (total <= 0) return counts.map(() => 0);
+
+    const exact = counts.map((count) => (count / total) * 100);
+    const percentages = exact.map(Math.floor);
+    let remaining = 100 - percentages.reduce((sum, value) => sum + value, 0);
+
+    const byLargestRemainder = exact
+      .map((value, index) => ({ index, remainder: value - Math.floor(value) }))
+      .sort((a, b) => b.remainder - a.remainder);
+
+    for (const { index } of byLargestRemainder) {
+      if (remaining <= 0) break;
+      percentages[index] += 1;
+      remaining -= 1;
+    }
+
+    return percentages;
   }
 
   /**

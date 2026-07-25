@@ -15,6 +15,7 @@ vi.mock("@/config/dashboardConfig", () => {
 });
 
 import { useUserRole } from "../useUserRole";
+import { __resetActiveRoleStoreForTests } from "../useActiveRole";
 
 const Probe = () => {
   const { userRole } = useUserRole();
@@ -58,6 +59,7 @@ describe("useUserRole", () => {
       value: createLocalStorageMock(),
       configurable: true,
     });
+    __resetActiveRoleStoreForTests();
   });
 
   it("defaults to view_only when no user and no persisted role exist", () => {
