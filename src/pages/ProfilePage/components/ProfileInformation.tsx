@@ -1,7 +1,8 @@
 import React, { useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getRequest, putRequest, postRequest } from "@/lib/axiosInstance";
-import { ApiResponse, ApiResponseError, User } from "@/types";
+import { ApiResponse, ApiResponseError, User, UserRole } from "@/types";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
 import { Button } from "@/components/ui/button";
@@ -49,7 +50,11 @@ const ProfileInformation: React.FC = () => {
   const user = useUser();
   const setUser = useSetUser();
   const toast = useToastHandler();
-  const userRole = user?.role?.name?.toLowerCase()?.replace("_", " ");
+  // Resolve via useUserRole rather than reading `user.role.name` directly: the
+  // raw value may be a populated object, a name slug or a bare id, and
+  // multi-role users carry `roles[]` with no legacy `role` at all — in those
+  // cases the direct read yields undefined and every field below is hidden.
+  const { userRole } = useUserRole();
   const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
 
   // Query to fetch user data
@@ -118,33 +123,62 @@ const ProfileInformation: React.FC = () => {
     },
   });
 
-  // Field visibility configuration based on roles
-  const fieldVisibility = {
+  // Field visibility configuration based on roles. Keyed by the `UserRole`
+  // slug so it matches what useUserRole resolves — the previous
+  // space-separated labels ("company admin") silently matched nothing once the
+  // slug form was used.
+  const fieldVisibility: Record<string, UserRole[]> = {
     // firstName: [],
     // lastName: [],
     // middleName: [],
     email: [
-      "super admin",
+      "super_admin",
       "vendor",
       "evaluator",
       "procurement",
-      "company admin",
+      "company_admin",
+      "contract_manager",
     ],
-    role: ["super admin", "company admin", "evaluator", "procurement", "vendor"],
-    phoneNumber: ["super admin", "company admin", "vendor", "procurement", 
-      "evaluator",],
-    department: ["super admin", "evaluator", "procurement"],
-    companyName: ["company admin"],
-    name: ["company admin", "procurement", "super admin", "evaluator", "vendor"],
-    website: ["company admin", "vendor"],
+    role: [
+      "super_admin",
+      "company_admin",
+      "evaluator",
+      "procurement",
+      "vendor",
+      "contract_manager",
+    ],
+    phoneNumber: [
+      "super_admin",
+      "company_admin",
+      "vendor",
+      "procurement",
+      "evaluator",
+      "contract_manager",
+    ],
+    department: [
+      "super_admin",
+      "evaluator",
+      "procurement",
+      "contract_manager",
+    ],
+    companyName: ["company_admin"],
+    name: [
+      "company_admin",
+      "procurement",
+      "super_admin",
+      "evaluator",
+      "vendor",
+      "contract_manager",
+    ],
+    website: ["company_admin", "vendor"],
     businessType: ["vendor"],
     location: ["vendor"],
-    category: ["company admin", "vendor"],
+    category: ["company_admin", "vendor"],
   };
 
   // Helper function to check if field should be visible
   const isFieldVisible = (fieldName: keyof typeof fieldVisibility) => {
-    return fieldVisibility[fieldName].includes(userRole || "");
+    return fieldVisibility[fieldName].includes(userRole);
   };
 
   const { control, setValue } = useForge<FormValues>({});
