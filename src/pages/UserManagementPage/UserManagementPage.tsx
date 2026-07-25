@@ -133,14 +133,14 @@ const UserManagementPage = () => {
 
     if (
       statusParam &&
-      ["active", "inactive", "pending", "suspended"].includes(statusParam)
+      ["accepted", "inactive", "pending", "suspended"].includes(statusParam)
     ) {
       setStatusFilter(statusParam);
     }
 
     if (
       roleParam &&
-      ["admin", "procurement_lead", "evaluator", "vendor"].includes(roleParam)
+      ["admin", "procurement_lead", "evaluator"].includes(roleParam)
     ) {
       setRoleFilter(roleParam);
     }
@@ -543,9 +543,8 @@ const UserManagementPage = () => {
 
   const roles = [
     { label: "Admin", value: "admin" },
-    { label: "Procurement Lead", value: "procurement_lead" },
+    { label: "Procurement", value: "procurement_lead" },
     { label: "Evaluator", value: "evaluator" },
-    { label: "Vendor", value: "vendor" },
     { value: "contract_manager", label: "Contract Manager" },
     { value: "view_only", label: "View Only" },
     { value: "approver", label: "Approver" },
@@ -603,8 +602,8 @@ const UserManagementPage = () => {
                       showIcon: true,
                       options: [
                         {
-                          label: "Active",
-                          value: "active",
+                          label: "Accepted",
+                          value: "accepted",
                         },
                         {
                           label: "Inactive",

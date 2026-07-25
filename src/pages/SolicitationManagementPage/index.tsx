@@ -1417,7 +1417,7 @@ export const SolicitationManagementPage = () => {
         )}
         {!isProcurement && (
           <StatCard
-            title="Draft Proposal"
+            title="Draft Solicitation"
             value={dashboardStats.draft}
             icon={IconMap["folder-open"] as any}
             iconColor="text-gray-600"
