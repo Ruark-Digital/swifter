@@ -2,7 +2,7 @@
 
 **Milestone:** v1.0 — Phase-2 QA + BE-Gap Remediation
 **Current phase:** Phase 3 (FE Cleanup & Hardening) — Phases 1 & 2 largely shipped incrementally
-Last activity: 2026-07-24 - Hid My Actions from Company Admin's Contracts tab (permanently empty for that role); General Updates now spans full width.
+Last activity: 2026-07-25 - Completed quick task 260725-d4e: Fix Create New Company dialog (height cap + scroll, Subscription Duration select value persistence)
 
 ## Status
 
@@ -30,3 +30,4 @@ Brownfield app under incremental remediation. Much of Phase 1 (BE-unblocked FE g
 | 260724-onj | Wire redline resolve/undo BE spec update: docName/baseVersionId + 409 handling on resolve, new undo endpoint + turn-gated UI | 2026-07-24 | a4c2c482b, e2f654272 | [260724-onj-wire-redline-resolve-undo-be-spec-update](./quick/260724-onj-wire-redline-resolve-undo-be-spec-update/) |
 | 260724-t75 | Fix 9 QA bugs (#253 vendor-personnel refetch, #256 redline turn-gate, #258 admin delete endpoint, #259/260+#261+#264 dashboard chart/legend bugs, #262/263 Company Admin contract data wiring, #265/266 nav reorder, #269 role-aware AI chat prompts) | 2026-07-24 | 2607d33f8, cb7ee3e96, 6e6a25655, c4e7f1b19, c521d31f3 | [260724-t75-fix-9-confirmed-qa-bugs-vendor-personnel](./quick/260724-t75-fix-9-confirmed-qa-bugs-vendor-personnel/) |
 | 260724-fast | Hide My Actions on Company Admin Contracts tab (permanently empty for this role), expand General Updates to full width | 2026-07-24 | ee4d69628 | (gsd-fast, no quick-task directory) |
+| 260725-d4e | Fix Create New Company dialog: cap height with internal scroll, fix Subscription Duration select not persisting its value | 2026-07-25 | 918ff66e7, 04e5e59ae | [260725-d4e-create-company-dialog-fix](./quick/260725-d4e-create-company-dialog-fix/) |
