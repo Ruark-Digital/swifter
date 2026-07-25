@@ -32,7 +32,7 @@ import {
   useAiRedlineSuggestions,
   type AiRedlineSuggestion,
 } from "./collab/useAiRedlineSuggestions";
-import { useRedlineTurn } from "./collab/useRedlineTurn";
+import { useRedlineTurn, isVersionConflict } from "./collab/useRedlineTurn";
 import TurnBanner from "./components/TurnBanner";
 import type { ApiResponseError } from "@/types";
 import type { Version } from "./components/VersionHistoryModal";
@@ -517,12 +517,14 @@ const CollaborationToolPage: React.FC = () => {
     );
   }, [aiMutation]);
 
-  // Auto-run the first time the user opens the Redline tab.
+  // Auto-run the first time the user opens the Redline tab. Only auto-run on
+  // the current user's negotiation turn — never on the opposing side's turn.
   useEffect(() => {
     if (activeTab !== "redline") return;
     if (aiHasRun) return;
+    if (!redlineTurn.canAct) return;
     void runAiSuggestions();
-  }, [activeTab, aiHasRun, runAiSuggestions]);
+  }, [activeTab, aiHasRun, runAiSuggestions, redlineTurn.canAct]);
 
   // Push the current turn's edit permission into the SuperDoc iframe. The init
   // payload sets "editing" once; here we correct it — "suggesting" on your turn,
@@ -565,12 +567,27 @@ const CollaborationToolPage: React.FC = () => {
         adapter.replaceRedline(item.redline.redlineId, replacement);
         // Auto-snapshot so the user can revert the AI-applied change.
         saveVersionSnapshot(`Applied AI suggestion (${tier})`, "ai-apply");
-        // Audit-only; does not mutate the doc. Fire-and-forget.
-        redlineTurn.resolve.mutate({
-          redlineId: item.redline.redlineId,
-          action: "modified",
-          tier,
-        });
+        // Audit-only; does not mutate the doc. Fire-and-forget (errors are
+        // handled below — a 409 surfaces a toast instead of vanishing).
+        redlineTurn.resolve.mutate(
+          {
+            redlineId: item.redline.redlineId,
+            action: "modified",
+            tier,
+            docName,
+            baseVersionId: fileVersionsQuery.data?.activeVersionId ?? null,
+          },
+          {
+            onError: (error) => {
+              if (isVersionConflict(error)) {
+                toastHandler.error(
+                  "Redline",
+                  "This document changed since you loaded it. Reload the latest version, then try again.",
+                );
+              }
+            },
+          },
+        );
       } else if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console
         console.warn(
@@ -586,7 +603,13 @@ const CollaborationToolPage: React.FC = () => {
         ),
       );
     },
-    [saveVersionSnapshot, redlineTurn, toastHandler],
+    [
+      saveVersionSnapshot,
+      redlineTurn,
+      toastHandler,
+      docName,
+      fileVersionsQuery.data?.activeVersionId,
+    ],
   );
 
   const handleDismissAi = useCallback(
@@ -599,13 +622,61 @@ const CollaborationToolPage: React.FC = () => {
             : p,
         ),
       );
-      // Audit-only. Fire-and-forget.
-      redlineTurn.resolve.mutate({
-        redlineId: item.redline.redlineId,
-        action: "rejected",
-      });
+      // Audit-only. Fire-and-forget (errors handled below — a 409 surfaces a toast).
+      redlineTurn.resolve.mutate(
+        {
+          redlineId: item.redline.redlineId,
+          action: "rejected",
+          docName,
+          baseVersionId: fileVersionsQuery.data?.activeVersionId ?? null,
+        },
+        {
+          onError: (error) => {
+            if (isVersionConflict(error)) {
+              toastHandler.error(
+                "Redline",
+                "This document changed since you loaded it. Reload the latest version, then try again.",
+              );
+            }
+          },
+        },
+      );
     },
-    [redlineTurn],
+    [redlineTurn, docName, fileVersionsQuery.data?.activeVersionId, toastHandler],
+  );
+
+  const handleUndoAi = useCallback(
+    (item: AiItem) => {
+      if (redlineTurn.isLocked) return;
+      redlineTurn.undo.mutate(
+        {
+          redlineId: item.redline.redlineId,
+          docName,
+          baseVersionId: fileVersionsQuery.data?.activeVersionId ?? null,
+        },
+        {
+          onSuccess: () => {
+            setAiItems((prev) =>
+              prev.map((p) =>
+                p.redline.redlineId === item.redline.redlineId
+                  ? { ...p, state: "pending" }
+                  : p,
+              ),
+            );
+            toastHandler.success("Redline", "Resolution undone.");
+          },
+          onError: (error) => {
+            toastHandler.error(
+              "Undo redline",
+              isVersionConflict(error)
+                ? "This document changed since the resolution. Reload the latest version and try again."
+                : (error as ApiResponseError),
+            );
+          },
+        },
+      );
+    },
+    [docName, fileVersionsQuery.data?.activeVersionId, redlineTurn, toastHandler],
   );
 
   // Clicking a suggestion card scrolls the editor to that redline.
@@ -828,6 +899,7 @@ const CollaborationToolPage: React.FC = () => {
           aiErrorMessage={(aiMutation.error as Error | undefined)?.message}
           onAiApprove={handleApproveAi}
           onAiDismiss={handleDismissAi}
+          onAiUndo={handleUndoAi}
           onAiFocus={handleFocusAi}
           onAiRetry={runAiSuggestions}
           isMyTurn={redlineTurn.canAct}

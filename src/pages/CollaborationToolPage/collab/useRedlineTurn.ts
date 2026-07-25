@@ -15,6 +15,7 @@ import { useUserRole } from "@/hooks/useUserRole";
  *   POST .../redline-turn/send
  *   POST .../redline-turn/finalize
  *   POST .../ai/redline-suggestions/{redlineId}/resolve
+ *   POST .../ai/redline-suggestions/{redlineId}/undo
  */
 
 export type RedlineHolder = "manager" | "vendor";
@@ -34,6 +35,24 @@ export type RedlineResolveInput = {
   action: RedlineResolutionAction;
   /** Required by the BE when action === "modified". */
   tier?: "low" | "medium" | "high";
+  /** Room/document name for the version-hint fields below. */
+  docName?: string;
+  /** Client's last-known active version id (advisory; BE verifies server-side). */
+  baseVersionId?: string | null;
+  /**
+   * Base64 Yjs document state (`Buffer.from(Y.encodeStateAsUpdate(ydoc)).toString("base64")`).
+   * Only populated when a live Y.Doc is available on the caller's side — this is
+   * NEVER true for the default shipped editor (SuperDoc iframe has no host-side
+   * Y.Doc). No call site in this repo currently supplies it; see the plan's
+   * scoping note in 260724-onj-PLAN.md.
+   */
+  documentState?: string;
+};
+
+export type UndoRedlineInput = {
+  redlineId: string;
+  docName?: string;
+  baseVersionId?: string | null;
 };
 
 type ApiEnvelope<T> = { status?: number; message?: string; data?: T };
@@ -59,6 +78,46 @@ export const redlineSideFromRole = (role: {
   if (role.isVendor || role.isProjectManager) return "vendor";
   return null;
 };
+
+/**
+ * Build the resolve POST body: `action`/`tier` plus optional version-hint
+ * fields, each included only when the caller explicitly supplied it (so
+ * `baseVersionId: null` is preserved but a fully-omitted `baseVersionId` is
+ * left out of the payload).
+ */
+export const buildResolvePayload = (
+  input: { action: RedlineResolutionAction; tier?: "low" | "medium" | "high" },
+  scope: {
+    docName?: string;
+    baseVersionId?: string | null;
+    documentState?: string;
+  },
+): Record<string, unknown> => {
+  const payload: Record<string, unknown> = { action: input.action };
+  if (input.tier !== undefined) payload.tier = input.tier;
+  if (scope.docName !== undefined) payload.docName = scope.docName;
+  if (scope.baseVersionId !== undefined)
+    payload.baseVersionId = scope.baseVersionId;
+  if (scope.documentState !== undefined)
+    payload.documentState = scope.documentState;
+  return payload;
+};
+
+/** Build the undo POST body: version-hint fields, included only when supplied. */
+export const buildUndoPayload = (scope: {
+  docName?: string;
+  baseVersionId?: string | null;
+}): Record<string, unknown> => {
+  const payload: Record<string, unknown> = {};
+  if (scope.docName !== undefined) payload.docName = scope.docName;
+  if (scope.baseVersionId !== undefined)
+    payload.baseVersionId = scope.baseVersionId;
+  return payload;
+};
+
+/** True when `error` is an axios-shaped error with HTTP status 409 (version/turn conflict). */
+export const isVersionConflict = (error: unknown): boolean =>
+  (error as { response?: { status?: number } })?.response?.status === 409;
 
 export function useRedlineTurn({ documentId, isMsa }: RedlineTurnScope) {
   const role = useUserRole();
@@ -116,20 +175,60 @@ export function useRedlineTurn({ documentId, isMsa }: RedlineTurnScope) {
   // document (the client already did that via replaceRedline). Fire-and-forget.
   const resolve = useMutation<unknown, unknown, RedlineResolveInput>({
     mutationKey: ["redline-resolve", resource, documentId],
-    mutationFn: async ({ redlineId, action, tier }) => {
+    mutationFn: async ({
+      redlineId,
+      action,
+      tier,
+      docName,
+      baseVersionId,
+      documentState,
+    }) => {
       if (!base) return null;
-      const payload =
-        action === "modified" && tier ? { action, tier } : { action };
+      const payload = buildResolvePayload(
+        { action, tier },
+        { docName, baseVersionId, documentState },
+      );
       const res = await postRequest({
         url: `${base}/ai/redline-suggestions/${redlineId}/resolve`,
         payload,
       });
       return res.data ?? null;
     },
-    onError: (error) => {
+    onError: (error, variables) => {
+      if (isVersionConflict(error) && variables?.docName) {
+        invalidate();
+        qc.invalidateQueries({
+          queryKey: ["collab-file-versions", variables.docName],
+        });
+      }
       if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console
         console.warn("[redline-resolve] audit call failed (non-blocking)", error);
+      }
+    },
+  });
+
+  // Reverts a previously-resolved suggestion back to pending. Unlike `resolve`
+  // (fire-and-forget audit call), undo is a deliberate user action that needs
+  // feedback on failure — so it throws (not silently no-ops) when the viewer
+  // has no turn endpoint for this role.
+  const undo = useMutation<unknown, unknown, UndoRedlineInput>({
+    mutationKey: ["redline-undo", resource, documentId],
+    mutationFn: async ({ redlineId, docName, baseVersionId }) => {
+      if (!base) throw new Error("Redline turn is not available for this role.");
+      const payload = buildUndoPayload({ docName, baseVersionId });
+      const res = await postRequest({
+        url: `${base}/ai/redline-suggestions/${redlineId}/undo`,
+        payload,
+      });
+      return res.data ?? null;
+    },
+    onError: (error, variables) => {
+      if (isVersionConflict(error) && variables?.docName) {
+        invalidate();
+        qc.invalidateQueries({
+          queryKey: ["collab-file-versions", variables.docName],
+        });
       }
     },
   });
@@ -171,6 +270,7 @@ export function useRedlineTurn({ documentId, isMsa }: RedlineTurnScope) {
     sendTurn,
     finalize,
     resolve,
+    undo,
     isLoading: query.isLoading,
     refetch: query.refetch,
   };

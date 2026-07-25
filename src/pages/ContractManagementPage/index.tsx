@@ -658,6 +658,17 @@ const ContractManagementPage: React.FC = () => {
               // isReadOnly={true}
               // disableActions={isApprover}
             />
+          ) : isCompanyAdmin ? (
+            <ContractsTable
+              rows={allContractsRows}
+              isLoading={isAllContractsLoading}
+              totalCount={allContractsData?.data.totalContracts}
+              isReadOnly={isViewOnly}
+              pagination={allPagination}
+              setPagination={setAllPagination}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+            />
           ) : (
             <Tabs
               defaultValue="all"

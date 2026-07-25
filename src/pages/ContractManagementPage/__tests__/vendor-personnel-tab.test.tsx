@@ -190,3 +190,94 @@ describe("Vendor Personnel tab — status/owner gating and PUT wiring", () => {
     });
   });
 });
+
+describe("Vendor Personnel tab — invalidateQueryKey (#253)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.assign(mockedUserRole, { isManager: true, isCompanyAdmin: false });
+    mockedGetRequest.mockResolvedValue({ data: { data: EXISTING_PERSONNEL } } as any);
+    mockedPutRequest.mockResolvedValue({ data: { message: "Saved" } } as any);
+  });
+
+  test("save invalidates both the tab's own queryKey and the passed invalidateQueryKey", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const parentQueryKey = ["contract-manager-contracts", "contract-1"];
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <VendorPersonnelTabContent
+          contractId="contract-1"
+          isActive
+          owner
+          status="active"
+          contractType="Contract"
+          invalidateQueryKey={parentQueryKey}
+        />
+      </QueryClientProvider>,
+    );
+
+    await screen.findByText("Jane Vendor");
+
+    fireEvent.click(screen.getByRole("button", { name: /add personnel/i }));
+    fireEvent.change(screen.getByPlaceholderText("Full name"), {
+      target: { value: "New Person" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("name@example.com"), {
+      target: { value: "new@person.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ queryKey: parentQueryKey }),
+      );
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ["vendor-personnel", "Contract", "contract-1"],
+      }),
+    );
+  });
+
+  test("save without invalidateQueryKey only invalidates the tab's own queryKey (no crash)", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <VendorPersonnelTabContent
+          contractId="contract-1"
+          isActive
+          owner
+          status="active"
+          contractType="Contract"
+        />
+      </QueryClientProvider>,
+    );
+
+    await screen.findByText("Jane Vendor");
+
+    fireEvent.click(screen.getByRole("button", { name: /add personnel/i }));
+    fireEvent.change(screen.getByPlaceholderText("Full name"), {
+      target: { value: "New Person" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("name@example.com"), {
+      target: { value: "new@person.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryKey: ["vendor-personnel", "Contract", "contract-1"],
+        }),
+      );
+    });
+    expect(invalidateSpy).toHaveBeenCalledTimes(1);
+  });
+});

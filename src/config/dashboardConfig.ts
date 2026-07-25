@@ -347,6 +347,7 @@ const companyAdminConfig: DashboardConfig = {
           visible: true,
           filters: ["12 months", "6 months", "3 months", "30 days", "7 days"],
           legendIconType: "circle",
+          legendPosition: { horizontal: "left" },
         },
         {
           id: "company-role-distribution",

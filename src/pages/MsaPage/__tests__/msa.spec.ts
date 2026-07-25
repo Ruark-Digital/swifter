@@ -358,6 +358,21 @@ test.describe("MSA Page (stats)", () => {
       0,
     );
   });
+
+  test("company admin sees only the MSA table, no My MSA tab (QA #266)", async ({
+    page,
+  }) => {
+    await seedAuth(page, "company_admin");
+
+    await page.goto("/dashboard/msa", { waitUntil: "domcontentloaded" });
+
+    await expect(page.getByText("MSA Pending", { exact: true })).toBeVisible({
+      timeout: 30000,
+    });
+
+    await expect(page.getByRole("tab", { name: "My MSA" })).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: "All MSA" })).toHaveCount(0);
+  });
 });
 
 test.describe("MSA Detail (project manager approval)", () => {

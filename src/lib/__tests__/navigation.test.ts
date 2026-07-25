@@ -66,4 +66,19 @@ describe("navigation role access", () => {
     );
     expect(items.some((i) => i?.title === "Dashboard")).toBe(false);
   });
+
+  it("places Contract Management then Evaluation Management right after Solicitation Management for company_admin", () => {
+    const items = getNavigationForRole(
+      "company_admin",
+      "/dashboard",
+      allModules,
+    );
+
+    const solicitationIndex = items.findIndex(
+      (item) => item.title === "Solicitation Management",
+    );
+    expect(solicitationIndex).toBeGreaterThanOrEqual(0);
+    expect(items[solicitationIndex + 1]?.title).toBe("Contract Management");
+    expect(items[solicitationIndex + 2]?.title).toBe("Evaluation Management");
+  });
 });

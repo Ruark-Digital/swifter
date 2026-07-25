@@ -371,7 +371,8 @@ export const useDashboardData = (
   const isContractDashboardRole =
     userRole === "contract_manager" ||
     userRole === "approver" ||
-    userRole === "procurement";
+    userRole === "procurement" ||
+    userRole === "company_admin";
   const contractDashboardBasePath =
     userRole === "approver"
       ? "/contract/approver/contracts/dashboard"
@@ -1284,7 +1285,8 @@ export const useDashboardData = (
     enabled:
       userRole === "contract_manager" ||
       userRole === "procurement" ||
-      userRole === "approver",
+      userRole === "approver" ||
+      userRole === "company_admin",
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,

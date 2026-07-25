@@ -323,7 +323,9 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({
                           {item.name}
                         </span>
                         <span className="text-gray-500 dark:text-gray-400 font-bold">
-                          {typeof item.value === "number" ? item.value.toFixed(0) : 0}%
+                          {typeof (item.percentage ?? item.value) === "number"
+                            ? Number(item.percentage ?? item.value).toFixed(0)
+                            : 0}%
                         </span>
                       </span>
                     );
@@ -492,8 +494,12 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({
                     const hasNameProperty = allKeys.includes("name");
 
                     if (hasNameProperty && allKeys.length > 1) {
-                      // For consolidated single key-value data, exclude 'name' property
-                      return allKeys.filter((key) => key !== "name");
+                      // For consolidated single key-value data, exclude 'name'
+                      // and the display-only 'percentage' companion field
+                      // (never plotted as its own bar series).
+                      return allKeys.filter(
+                        (key) => key !== "name" && key !== "percentage",
+                      );
                     } else {
                       // For multi-key data, assume first key is label, rest are data
                       return allKeys.slice(1);

@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { redlineSideFromRole } from "./useRedlineTurn";
+import {
+  redlineSideFromRole,
+  buildResolvePayload,
+  buildUndoPayload,
+  isVersionConflict,
+} from "./useRedlineTurn";
 
 const role = (over: Partial<{
   isManager: boolean;
@@ -35,5 +40,69 @@ describe("redlineSideFromRole", () => {
     expect(
       redlineSideFromRole(role({ isManager: true, isVendor: true })),
     ).toBe("manager");
+  });
+});
+
+describe("buildResolvePayload", () => {
+  it("omits docName/baseVersionId/documentState when the caller omits them", () => {
+    expect(buildResolvePayload({ action: "accepted" }, {})).toEqual({
+      action: "accepted",
+    });
+  });
+
+  it("includes tier, docName, and baseVersionId when supplied", () => {
+    expect(
+      buildResolvePayload(
+        { action: "modified", tier: "low" },
+        { docName: "room-1", baseVersionId: "v1" },
+      ),
+    ).toEqual({
+      action: "modified",
+      tier: "low",
+      docName: "room-1",
+      baseVersionId: "v1",
+    });
+  });
+
+  it("includes an explicit null baseVersionId rather than omitting it", () => {
+    expect(
+      buildResolvePayload(
+        { action: "rejected" },
+        { docName: "room-1", baseVersionId: null },
+      ),
+    ).toEqual({
+      action: "rejected",
+      docName: "room-1",
+      baseVersionId: null,
+    });
+  });
+});
+
+describe("buildUndoPayload", () => {
+  it("returns an empty object when the scope is empty", () => {
+    expect(buildUndoPayload({})).toEqual({});
+  });
+
+  it("includes docName and an explicit null baseVersionId when supplied", () => {
+    expect(
+      buildUndoPayload({ docName: "room-1", baseVersionId: null }),
+    ).toEqual({
+      docName: "room-1",
+      baseVersionId: null,
+    });
+  });
+});
+
+describe("isVersionConflict", () => {
+  it("is true for a 409 response", () => {
+    expect(isVersionConflict({ response: { status: 409 } })).toBe(true);
+  });
+
+  it("is false for a non-409 response", () => {
+    expect(isVersionConflict({ response: { status: 400 } })).toBe(false);
+  });
+
+  it("is false for an error with no response shape", () => {
+    expect(isVersionConflict(new Error("network"))).toBe(false);
   });
 });

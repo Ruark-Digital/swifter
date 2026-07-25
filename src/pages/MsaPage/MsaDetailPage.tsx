@@ -969,6 +969,7 @@ const MsaDetailPage: React.FC = () => {
               owner={isMsaOwner}
               status={msa?.status}
               contractType="MsaContract"
+              invalidateQueryKey={[...queryKey]}
             />
 
             <Reports

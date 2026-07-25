@@ -344,6 +344,14 @@ export const getNavigationForRole = (
             ],
           }
         : undefined,
+      isModuleEnabled(modules?.evaluationsManagement)
+        ? {
+            icon: ClipboardList,
+            title: "Evaluation Management",
+            to: "/dashboard/evaluation",
+            active: currentPath.startsWith("/dashboard/evaluation"),
+          }
+        : undefined,
       {
         icon: Building2,
         title: "Business Divisions",
@@ -362,14 +370,6 @@ export const getNavigationForRole = (
             title: "Vendor Management",
             to: "/dashboard/vendor",
             active: currentPath.startsWith("/dashboard/vendor"),
-          }
-        : undefined,
-      isModuleEnabled(modules?.evaluationsManagement)
-        ? {
-            icon: ClipboardList,
-            title: "Evaluation",
-            to: "/dashboard/evaluation",
-            active: currentPath.startsWith("/dashboard/evaluation"),
           }
         : undefined,
       {
