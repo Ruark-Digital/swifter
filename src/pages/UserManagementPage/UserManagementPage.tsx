@@ -338,7 +338,7 @@ const UserManagementPage = () => {
       } else {
         params.set("role", value);
       }
-      navigate(`/dashboard/users?${params.toString()}`, { replace: true });
+      navigate(`/dashboard/user-management?${params.toString()}`, { replace: true });
     } else if (filterTitle === "Status") {
       setStatusFilter(value === "all" ? "" : value);
       // Update URL
@@ -348,7 +348,7 @@ const UserManagementPage = () => {
       } else {
         params.set("status", value);
       }
-      navigate(`/dashboard/users?${params.toString()}`, { replace: true });
+      navigate(`/dashboard/user-management?${params.toString()}`, { replace: true });
     }
   };
 
