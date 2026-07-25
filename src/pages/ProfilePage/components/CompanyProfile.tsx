@@ -35,6 +35,23 @@ interface CompanyData {
   }
 }
 
+/**
+ * `GET /companies/me`. The company-owned fields that `PUT /users/company`
+ * writes (businessType, location, website, phone, logo) live on the COMPANY
+ * document, not on the user — reading them back off `/users/me` is what made
+ * saved values look discarded (QA #273).
+ */
+interface CompanyDetail {
+  _id: string;
+  name: string;
+  phone?: string;
+  businessType?: string;
+  location?: string;
+  website?: string;
+  currency?: string;
+  logo?: string;
+}
+
 type FormValues = {
   name: string;
   email: string;
@@ -75,6 +92,17 @@ const CompanyProfile: React.FC = () => {
     retryOnMount: true
   });
 
+  // Query for the company record itself — the source of truth for the fields
+  // this form saves.
+  const {
+    data: companyDetail,
+    refetch: refetchCompanyDetail,
+  } = useQuery<ApiResponse<CompanyDetail>, ApiResponseError>({
+    queryKey: ["getCompanyDetail"],
+    queryFn: async () => await getRequest({ url: "/companies/me" }),
+    enabled: !!user?._id,
+  });
+
   // Mutation to update company profile
   const { mutateAsync: updateCompanyProfile, isPending } = useMutation<
     ApiResponse<{ user: any }>,
@@ -87,6 +115,7 @@ const CompanyProfile: React.FC = () => {
     onSuccess: () => {
       toast.success("Success", "Company profile updated successfully");
       refetch();
+      refetchCompanyDetail();
     },
     onError: (error) => {
       console.log(error);
@@ -130,23 +159,24 @@ const CompanyProfile: React.FC = () => {
   useEffect(() => {
     if(isSuccess) {
       const _companyData = companyData?.data?.data?.user;
-      
+      const _company = companyDetail?.data?.data;
+
       const payload = {
-        name: _companyData?.companyId?.name || user?.name || "",
+        name: _company?.name || _companyData?.companyId?.name || user?.name || "",
         email: _companyData?.email || user?.email || "",
         contact: _companyData?.contact || user?.name || "",
-        phone: _companyData?.phone || user?.phone || "",
-        businessType: _companyData?.businessType || user?.businessType || "",
-        location: _companyData?.location || user?.location || "",
-        website: _companyData?.website || user?.website || "",
-        currency: _companyData?.companyId?.currency || _companyData?.currency || "CAD",
+        phone: _company?.phone || _companyData?.phone || user?.phone || "",
+        businessType: _company?.businessType || _companyData?.businessType || user?.businessType || "",
+        location: _company?.location || _companyData?.location || user?.location || "",
+        website: _company?.website || _companyData?.website || user?.website || "",
+        currency: _company?.currency || _companyData?.companyId?.currency || _companyData?.currency || "CAD",
       }
-      
+
       Object.entries(payload).forEach(([key, value]) => {
         setValue(key as keyof FormValues, value)
       })
     }
-  }, [isSuccess, setValue]);
+  }, [isSuccess, companyData, companyDetail, setValue]);
 
   const handleSubmit = async (data: any) => {
     try {
@@ -198,16 +228,27 @@ const CompanyProfile: React.FC = () => {
       <div className="flex items-center gap-6 mb-8">
         {/* Company Logo */}
         <AvatarUploader
-          currentImage={companyData?.data?.data?.user?.logo || user?.logo}
+          currentImage={
+            companyDetail?.data?.data?.logo ||
+            companyData?.data?.data?.user?.logo ||
+            user?.logo
+          }
           selectedFiles={selectedFiles}
           onFilesChange={setSelectedFiles}
-          fallbackText={companyData?.data?.data?.user?.companyId?.name?.charAt(0) || "C"}
+          fallbackText={
+            (
+              companyDetail?.data?.data?.name ||
+              companyData?.data?.data?.user?.companyId?.name
+            )?.charAt(0) || "C"
+          }
         />
 
         {/* Company Header */}
         <div className="flex-1">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">
-            {companyData?.data?.data?.user?.companyId?.name || "Company Name"}
+            {companyDetail?.data?.data?.name ||
+              companyData?.data?.data?.user?.companyId?.name ||
+              "Company Name"}
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mb-3">
             Update your logo and Company details.
