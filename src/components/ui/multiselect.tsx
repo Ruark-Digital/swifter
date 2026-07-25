@@ -274,6 +274,7 @@ const MultipleSelector = React.forwardRef<
         <Button
           ref={ref}
           {...props}
+          type="button"
           onClick={handleTogglePopover}
           className={cn(
             // `min-w-0` is load-bearing: Button base ships `inline-flex` +
@@ -304,6 +305,7 @@ const MultipleSelector = React.forwardRef<
                     >
                       {option.label}
                       <button
+                        type="button"
                         className={cn(
                           "ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                           (option as any).fixed &&
@@ -333,6 +335,7 @@ const MultipleSelector = React.forwardRef<
                   >
                     {`+ ${selectedValues.length - maxCount} more`}
                     <button
+                      type="button"
                       className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
@@ -354,6 +357,7 @@ const MultipleSelector = React.forwardRef<
                 {!hideClearAllButton && (
                   <div>
                     <button
+                      type="button"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           handleClearAll()
