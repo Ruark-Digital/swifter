@@ -200,7 +200,7 @@ const CreateCompanyDialog = () => {
           Create New Company
         </Button>
       </DialogTrigger>
-      <DialogContent className=" transition-colors duration-200">
+      <DialogContent className="max-h-[90vh] overflow-y-auto transition-colors duration-200">
         <DialogHeader className="flex flex-row items-center justify-between  pb-4">
           <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-white">
             Create New Company
