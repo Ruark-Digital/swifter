@@ -67,7 +67,7 @@ describe("navigation role access", () => {
     expect(items.some((i) => i?.title === "Dashboard")).toBe(false);
   });
 
-  it("places Evaluation Management then Contract Management right after Solicitation Management for company_admin", () => {
+  it("places Evaluation Management then Projects then Contract Management right after Solicitation Management for company_admin", () => {
     const items = getNavigationForRole(
       "company_admin",
       "/dashboard",
@@ -79,6 +79,17 @@ describe("navigation role access", () => {
     );
     expect(solicitationIndex).toBeGreaterThanOrEqual(0);
     expect(items[solicitationIndex + 1]?.title).toBe("Evaluation Management");
-    expect(items[solicitationIndex + 2]?.title).toBe("Contract Management");
+    expect(items[solicitationIndex + 2]?.title).toBe("Projects");
+    expect(items[solicitationIndex + 3]?.title).toBe("Contract Management");
+  });
+
+  it("hides Projects for company_admin when contractManagement is off", () => {
+    const items = getNavigationForRole(
+      "company_admin",
+      "/dashboard",
+      { ...allModules, contractManagement: false },
+    );
+
+    expect(items.some((item) => item.title === "Projects")).toBe(false);
   });
 });
