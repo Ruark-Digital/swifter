@@ -65,7 +65,8 @@ type CompanyDetails = {
   industry?: string;
   sizeCategory: string;
   status: "active" | "inactive" | "suspended";
-  maxUsers: number;
+  // Not returned by GET /companies/{id} — the seat counts live on `subscription`.
+  maxUsers?: number;
   admins: CompanyAdmin[];
   domain?: string;
   subscription?: {
@@ -76,7 +77,10 @@ type CompanyDetails = {
       name: string;
       description: string;
       price: number;
+      maxUsers?: number;
     };
+    usersUsed?: number;
+    maxUsers?: number;
     status: "active" | "expired" | "canceled" | "pending";
     startDate: string;
     expiryDate: string;
@@ -185,6 +189,16 @@ const CompanyDetailPage = () => {
   });
 
   const adminData = adminsResponse?.data?.data?.data || companyData?.admins || [];
+
+  // Seat usage for the Subscription Plan tab. Both numbers come off the
+  // subscription: `usersUsed` counts every user, whereas the admin list only
+  // covers company admins, and the seat limit is not on the company document at
+  // all — reading `companyData.maxUsers` rendered an empty denominator.
+  const seatsUsed = companyData?.subscription?.usersUsed;
+  const seatLimit =
+    companyData?.subscription?.maxUsers ??
+    companyData?.subscription?.plan?.maxUsers ??
+    companyData?.maxUsers;
 
   // Company status update mutation
   const { mutateAsync: updateCompanyStatus, isPending: isUpdatingStatus } =
@@ -902,7 +916,7 @@ const CompanyDetailPage = () => {
                   Max Users
                 </label>
                 <p className="text-lg font-medium text-gray-900 dark:text-gray-100 font-quicksand">
-                  {(adminData || []).length}/{companyData.maxUsers}
+                  {seatsUsed ?? "-"}/{seatLimit ?? "-"}
                 </p>
               </div>
             </div>
