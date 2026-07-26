@@ -4,6 +4,7 @@ import { ForgeControl, Forger } from "@adexdsamson/forge";
 import { TextInput } from "../../../components/layouts/FormInputs/TextInput";
 import { Plus, Trash2 } from "lucide-react";
 import { FormValues } from "./SubmitProposalPage";
+import { numberFieldTransform } from "./proposalFieldTransforms";
 
 interface ProposalItemRowProps {
   index: number;
@@ -49,21 +50,7 @@ const ProposalItemRow: React.FC<ProposalItemRowProps> = ({
           type="number"
           className="h-8"
           control={control as any}
-          transform={{
-            input: (value: any) => {
-              if (typeof value === 'number') {
-                return value.toString();
-              }
-              return value?.toString() || "";
-            },
-            output: (value: string) => {
-              if (typeof value !== 'string') {
-                return 0;
-              }
-              const parsed = parseFloat(value);
-              return isNaN(parsed) ? 0 : parsed;
-            },
-          }}
+          transform={numberFieldTransform}
         />
       </div>
       <div className="col-span-2">
@@ -83,21 +70,7 @@ const ProposalItemRow: React.FC<ProposalItemRowProps> = ({
           type="number"
           className="h-8"
           control={control as any}
-          transform={{
-            input: (value: any) => {
-              if (typeof value === 'number') {
-                return value.toString();
-              }
-              return value?.toString() || "";
-            },
-            output: (value: string) => {
-              if (typeof value !== 'string') {
-                return 0;
-              }
-              const parsed = parseFloat(value);
-              return isNaN(parsed) ? 0 : parsed;
-            },
-          }}
+          transform={numberFieldTransform}
         />
       </div>
       <div className="col-span-1">

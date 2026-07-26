@@ -27,9 +27,18 @@ export const ComplianceStatusCard: React.FC<Props> = ({
   selectedRange = "ytd",
   onRangeChange,
 }) => {
-  // No compliance payload at all → nothing to report. Only the presence of the
-  // object means the API answered; individual absent fields read as 0.
-  const hasData = !!data;
+  // Show the card only when there's real compliance ACTIVITY to report. The BE
+  // returns a standalone `auditTrailCompleteness` (e.g. 89) even for companies
+  // with no contracts / insurance / security submissions, which rendered a card
+  // carrying a lone 89% bar next to all-zero rows — read as leftover demo data
+  // (QA re-report). Match the sibling analytics cards' "all-zero → empty" rule
+  // and gate on the activity fields, not the derived percentage.
+  const hasData =
+    !!data &&
+    ((data.insuranceActive?.total ?? 0) > 0 ||
+      (data.securitySubmission?.total ?? 0) > 0 ||
+      (data.missedApprovals ?? 0) > 0 ||
+      (data.ncrs ?? 0) > 0);
   const rows: Row[] = [
     {
       label: "Active Insurance",
