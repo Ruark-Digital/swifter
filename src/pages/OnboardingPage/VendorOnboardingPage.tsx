@@ -222,12 +222,16 @@ const VendorOnboardingPage = () => {
           const uploadResponse = await uploadFile(fileFormData);
           uploadedFiles = uploadResponse.data?.data || [];
         } catch (uploadError) {
-          // console.log("File upload failed:", uploadError);
-          // Don't return here - continue with registration even if file upload fails
+          // Stop here rather than registering without the documents (QA #284).
+          // Step 3 being "(Optional)" means attaching files is optional — not
+          // that files the vendor DID attach may be silently dropped. Leaving
+          // them on this step lets them retry; the upload mutation's own
+          // onError has already surfaced the underlying reason.
           toast.error(
-            "File Upload Warning",
-            "Files could not be uploaded, but registration will continue."
+            "Documents not uploaded",
+            "Your documents could not be uploaded, so registration was not completed. Please try again, or remove the files to continue without them."
           );
+          return;
         }
       }
 
