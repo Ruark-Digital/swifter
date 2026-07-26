@@ -495,10 +495,16 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({
 
                     if (hasNameProperty && allKeys.length > 1) {
                       // For consolidated single key-value data, exclude 'name'
-                      // and the display-only 'percentage' companion field
-                      // (never plotted as its own bar series).
+                      // and the display-only companion fields that must never be
+                      // plotted as their own bar series: 'percentage' and
+                      // 'color' (the latter is injected by applyConsistentColors
+                      // for pie-slice coloring; if left in it renders a stray
+                      // series and leaks a "color #ef4444" row into the tooltip).
                       return allKeys.filter(
-                        (key) => key !== "name" && key !== "percentage",
+                        (key) =>
+                          key !== "name" &&
+                          key !== "percentage" &&
+                          key !== "color",
                       );
                     } else {
                       // For multi-key data, assume first key is label, rest are data
