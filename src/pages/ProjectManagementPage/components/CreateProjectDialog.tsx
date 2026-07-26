@@ -295,7 +295,7 @@ const CreateProjectDialog: React.FC<Props> = ({
     enabled: open,
   });
 
-  const { control, watch, setValue } = useForge({
+  const { control, watch, setValue, reset } = useForge({
     resolver: yupResolver(schema),
     defaultValues,
     mode: "onChange",
@@ -448,6 +448,9 @@ const CreateProjectDialog: React.FC<Props> = ({
       }
       onOpenChange(false);
       onSuccess();
+      reset(defaultValues);
+      setFileUploadStateByKey({});
+      setRetainedExistingFiles([]);
     } catch (e) {
       // noop: errors handled by caller
     }

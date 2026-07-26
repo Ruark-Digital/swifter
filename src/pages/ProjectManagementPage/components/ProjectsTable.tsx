@@ -107,7 +107,11 @@ const ProjectsTable: React.FC<Props> = ({
                 ? "bg-green-100 text-green-700 font-semibold capitalize px-4"
                 : row.original.status === "completed"
                   ? "bg-blue-100 text-blue-700 font-semibold capitalize px-4"
-                  : "bg-red-100 text-red-700 font-semibold capitalize px-4"
+                  : row.original.status === "pending"
+                    ? "bg-yellow-100 text-yellow-700 font-semibold capitalize px-4"
+                    : row.original.status === "cancelled"
+                      ? "bg-red-100 text-red-700 font-semibold capitalize px-4"
+                      : "bg-slate-100 text-slate-700 font-semibold capitalize px-4"
             }
           >
             {row.original.status?.replace(/_/g, " ")}
