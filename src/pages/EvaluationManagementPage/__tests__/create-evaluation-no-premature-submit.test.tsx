@@ -80,15 +80,21 @@ describe("CreateEvaluationDialog — no premature submit", () => {
   });
 });
 
-// Source-level guard. The wizard cannot be driven to step 4 in jsdom (Radix
+// Source-level guard. Neither wizard can be driven to step 4 in jsdom (Radix
 // selects + date pickers), so this asserts the property that actually prevents
 // the bug instead of pretending to reproduce it: the dialog must not hand the
 // browser a submit-typed control whose activation it does not control.
-describe("CreateEvaluationDialog — source invariants", () => {
-  it("never renders a submit-typed button in the wizard footer", async () => {
+//
+// QA #293 (create: error toast on reaching stage 4) and QA #294 (edit: draft
+// published on clicking continue at stage 3) are both this pattern.
+describe("evaluation wizards — source invariants", () => {
+  it.each([
+    "CreateEvaluationDialog",
+    "EditEvaluationDialog",
+  ])("%s never renders a submit-typed button in its footer", async (name) => {
     const fs = await import("node:fs/promises");
     const source = await fs.readFile(
-      "src/pages/EvaluationManagementPage/components/CreateEvaluationDialog.tsx",
+      `src/pages/EvaluationManagementPage/components/${name}.tsx`,
       "utf8",
     );
 
