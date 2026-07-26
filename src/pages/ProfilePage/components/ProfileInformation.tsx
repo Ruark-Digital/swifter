@@ -96,9 +96,21 @@ const ProfileInformation: React.FC = () => {
       await putRequest({ url: "/users", payload: userData }),
     onSuccess: (response) => {
       toast.success("Success", "Profile updated successfully");
-      // Update the auth store with the new user data
-      if (response.data?.data?.user) {
-        setUser(response.data.data.user);
+      // Merge — don't replace — the auth store user. The PUT /users response
+      // returns a trimmed user object that omits `module` (and can reshape
+      // `role`/`roles`). The sidebar/navigation is built from `user.module`
+      // plus the resolved role, so replacing the whole user wiped `module`,
+      // every module-gated nav item failed its `isModuleEnabled` gate, and the
+      // menu collapsed to just Profile. Preserve those nav-critical fields.
+      const updated = response.data?.data?.user;
+      if (updated) {
+        setUser({
+          ...user,
+          ...updated,
+          module: updated.module ?? user?.module,
+          role: updated.role ?? user?.role,
+          roles: updated.roles ?? user?.roles,
+        } as User);
       }
       refetch();
     },
