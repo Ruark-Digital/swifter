@@ -416,7 +416,12 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
     <div
       className={
         isInline
-          ? "flex h-full w-full flex-col bg-transparent"
+          ? // `flex-1 min-h-0`, not `h-full`: inline the panel shares its
+            // column with the turn banner, so `h-full` would claim the whole
+            // column height and push the list's tail below the clipped area —
+            // the scrollbar then bottoms out with redlines still unread
+            // (QA #257).
+            "flex min-h-0 w-full flex-1 flex-col bg-transparent"
           : "fixed inset-y-0 right-0 z-40 flex w-[420px] max-w-[90vw] flex-col border-l border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
       }
     >
