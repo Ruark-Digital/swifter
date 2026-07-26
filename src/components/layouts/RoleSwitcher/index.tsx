@@ -10,7 +10,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useUser } from '@/store/authSlice';
+import { getFirstAccessibleRoute } from '@/lib/navigation';
 import { UserRole } from '@/types';
 import { ChevronDown, User, Shield, Building, Crown, Briefcase, FileText, UserCheck, Eye } from 'lucide-react';
 
@@ -70,6 +73,8 @@ const roleConfig: Record<UserRole, { label: string; icon: React.ComponentType<{ 
 export const RoleSwitcher: React.FC = () => {
   const { roles, userRole, hasMultipleRoles, setActiveRole } = useUserRole();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const user = useUser();
 
   if (!hasMultipleRoles) return null;
 
@@ -82,6 +87,11 @@ export const RoleSwitcher: React.FC = () => {
     // The active role drives dashboard config and the /manager|/approver|/vendor
     // API dispatch, so re-scope role-dependent data on switch.
     queryClient.invalidateQueries();
+    // The previous role's page may not exist in the new role's navigation (its
+    // sidebar item is gone, so the user is stranded on a route they can no
+    // longer reach from the menu). Land them on the new role's first accessible
+    // sidebar item instead — module-gated, same source the sidebar uses.
+    navigate(getFirstAccessibleRoute(newRole, user?.module));
   };
 
   return (

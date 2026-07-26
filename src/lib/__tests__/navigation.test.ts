@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getNavigationForRole } from "@/lib/navigation";
+import { getNavigationForRole, getFirstAccessibleRoute } from "@/lib/navigation";
 import type { Modules } from "@/types";
 
 const allModules: Modules = {
@@ -91,5 +91,35 @@ describe("navigation role access", () => {
     );
 
     expect(items.some((item) => item.title === "Projects")).toBe(false);
+  });
+});
+
+// The RoleSwitcher routes to this on a role switch so the user never lingers on
+// the previous role's now-unreachable page. It must return the first item that
+// role's sidebar actually shows.
+describe("getFirstAccessibleRoute", () => {
+  it("returns the (role-aware) dashboard when the role shows one", () => {
+    expect(getFirstAccessibleRoute("company_admin", allModules)).toBe(
+      "/dashboard",
+    );
+  });
+
+  it("returns the first role-specific item when the role has no dashboard", () => {
+    // view_only never gets a Dashboard entry, so its first accessible item is
+    // Contract Management.
+    expect(getFirstAccessibleRoute("view_only", allModules)).toBe(
+      "/dashboard/contract-management",
+    );
+  });
+
+  it("skips module-gated items and returns the first that survives", () => {
+    // view_only with contractManagement off loses Contract Management, leaving
+    // Profile as the only (and therefore first) accessible route.
+    expect(
+      getFirstAccessibleRoute("view_only", {
+        ...allModules,
+        contractManagement: false,
+      }),
+    ).toBe("/dashboard/profile");
   });
 });
