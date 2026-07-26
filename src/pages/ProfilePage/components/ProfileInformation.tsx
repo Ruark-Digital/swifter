@@ -1,7 +1,8 @@
 import React, { useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getRequest, putRequest, postRequest } from "@/lib/axiosInstance";
-import { ApiResponse, ApiResponseError, User } from "@/types";
+import { ApiResponse, ApiResponseError, User, UserRole } from "@/types";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,22 @@ interface Vendor {
   category: string;
 }
 
+// Listed exhaustively (and type-checked against UserRole) so adding a role to
+// the union surfaces here as a decision instead of silently hiding every
+// profile field for it — the QA #280 failure mode.
+const EVERY_INTERNAL_ROLE: UserRole[] = [
+  "super_admin",
+  "company_admin",
+  "procurement",
+  "contract_manager",
+  "evaluator",
+  "approver",
+  "project_manager",
+  "view_only",
+];
+
+const EVERY_ROLE: UserRole[] = [...EVERY_INTERNAL_ROLE, "vendor"];
+
 type FormValues = {
   firstName: string;
   lastName: string;
@@ -49,7 +66,11 @@ const ProfileInformation: React.FC = () => {
   const user = useUser();
   const setUser = useSetUser();
   const toast = useToastHandler();
-  const userRole = user?.role?.name?.toLowerCase()?.replace("_", " ");
+  // Resolve via useUserRole rather than reading `user.role.name` directly: the
+  // raw value may be a populated object, a name slug or a bare id, and
+  // multi-role users carry `roles[]` with no legacy `role` at all — in those
+  // cases the direct read yields undefined and every field below is hidden.
+  const { userRole } = useUserRole();
   const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
 
   // Query to fetch user data
@@ -118,33 +139,37 @@ const ProfileInformation: React.FC = () => {
     },
   });
 
-  // Field visibility configuration based on roles
-  const fieldVisibility = {
+  // Field visibility configuration based on roles. Keyed by the `UserRole`
+  // slug so it matches what useUserRole resolves — the previous
+  // space-separated labels ("company admin") silently matched nothing once the
+  // slug form was used.
+  //
+  // A role absent from a list gets that field hidden, so a role missing from
+  // ALL of them renders an empty form (QA #280 — this happened to
+  // contract_manager, project_manager, approver and view_only). Everyone must
+  // be able to edit their own personal details, so the personal fields below
+  // are keyed off EVERY_ROLE / EVERY_INTERNAL_ROLE rather than hand-listed;
+  // only genuinely role-specific fields carry a short explicit list.
+  const fieldVisibility: Record<string, UserRole[]> = {
     // firstName: [],
     // lastName: [],
     // middleName: [],
-    email: [
-      "super admin",
-      "vendor",
-      "evaluator",
-      "procurement",
-      "company admin",
-    ],
-    role: ["super admin", "company admin", "evaluator", "procurement", "vendor"],
-    phoneNumber: ["super admin", "company admin", "vendor", "procurement", 
-      "evaluator",],
-    department: ["super admin", "evaluator", "procurement"],
-    companyName: ["company admin"],
-    name: ["company admin", "procurement", "super admin", "evaluator", "vendor"],
-    website: ["company admin", "vendor"],
+    email: EVERY_ROLE,
+    role: EVERY_ROLE,
+    phoneNumber: EVERY_ROLE,
+    name: EVERY_ROLE,
+    // Vendors have no internal department; company admins never had this field.
+    department: EVERY_INTERNAL_ROLE.filter((r) => r !== "company_admin"),
+    companyName: ["company_admin"],
+    website: ["company_admin", "vendor"],
     businessType: ["vendor"],
     location: ["vendor"],
-    category: ["company admin", "vendor"],
+    category: ["company_admin", "vendor"],
   };
 
   // Helper function to check if field should be visible
   const isFieldVisible = (fieldName: keyof typeof fieldVisibility) => {
-    return fieldVisibility[fieldName].includes(userRole || "");
+    return fieldVisibility[fieldName].includes(userRole);
   };
 
   const { control, setValue } = useForge<FormValues>({});
@@ -154,10 +179,20 @@ const ProfileInformation: React.FC = () => {
       const _user = userData?.data?.data?.user;
       const _vendor = userData?.data?.data?.vendor;
       
+      // `/users/me` returns `role` as a populated object for some accounts and
+      // a bare slug string for others (e.g. view_only → "view_only"), so
+      // reading `.name` unconditionally left the Role field blank. Fall back to
+      // the role useUserRole already resolved.
+      const rawRole = _user?.role as unknown;
+      const resolvedRole =
+        typeof rawRole === "string"
+          ? rawRole
+          : (rawRole as { name?: string } | undefined)?.name;
+
       const payload = {
         firstName: _user?.name,
         email: _user?.email,
-        role: _user?.role.name,
+        role: resolvedRole ?? userRole,
         phone: _user?.phone,
         department: _user?.department,
         companyName: _vendor?.companyName || _user?.companyId?.name,
@@ -173,10 +208,16 @@ const ProfileInformation: React.FC = () => {
       })
     }
 
-  }, [isSuccess])
+  }, [isSuccess, userRole])
 
   const handleSubmit = async (data: any) => {
     try {
+      // Role and email are rendered disabled — they exist to inform, not to
+      // edit. Now that the Role field carries a real value for slug-shaped
+      // roles, drop both from the update so saving a profile can never submit
+      // a role change.
+      const { role: _omitRole, email: _omitEmail, ...editable } = data ?? {};
+      data = editable;
       // Validate website URL if provided
       // if (data.website && data.website.trim() && !data.website.startsWith('https://')) {
       //   toast.error("Error", "Website URL must start with https://");

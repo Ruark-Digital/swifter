@@ -190,7 +190,10 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
           </Suspense>
         )}
         {activeTab === "redline" && (
-          <div className="flex h-full flex-col">
+          // `min-h-0` so the panel below can actually shrink and scroll:
+          // a flex child defaults to `min-height: auto`, which refuses to
+          // shrink below its content and defeats the inner overflow-y-auto.
+          <div className="flex h-full min-h-0 flex-col">
             {redlineTurnBanner ? (
               <div className="px-5 pt-4">{redlineTurnBanner}</div>
             ) : null}

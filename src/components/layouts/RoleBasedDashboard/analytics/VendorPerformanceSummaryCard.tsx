@@ -1,8 +1,10 @@
+import { Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { TopNFilter } from "./TopNFilter";
+import { AnalyticsEmptyState } from "./AnalyticsEmptyState";
 
 type VendorRow = {
   vendor: string;
@@ -81,60 +83,26 @@ export const VendorPerformanceSummaryCard: React.FC<Props> = ({
   selectedTop = 10,
   onTopChange,
 }) => {
-  const allRows: VendorRow[] =
-    data?.rows && Array.isArray(data.rows) && data.rows.length > 0
-      ? data.rows.map((r) => {
-          const performanceRaw = (r.performance ?? "").toLowerCase();
-          const performance: VendorRow["performance"] =
-            performanceRaw === "critical" || performanceRaw === "warn"
-              ? "warn"
-              : performanceRaw === "ok"
-                ? "ok"
-                : "good";
+  const allRows: VendorRow[] = Array.isArray(data?.rows)
+    ? data.rows.map((r) => {
+        const performanceRaw = (r.performance ?? "").toLowerCase();
+        const performance: VendorRow["performance"] =
+          performanceRaw === "critical" || performanceRaw === "warn"
+            ? "warn"
+            : performanceRaw === "ok"
+              ? "ok"
+              : "good";
 
-          return {
-            vendor: r.vendor ?? "Unknown",
-            contracts: r.contracts ?? 0,
-            risk: r.riskScore ?? 0,
-            claims: r.claims ?? 0,
-            changeOrders: r.changeOrders ?? 0,
-            performance,
-          };
-        })
-      : [
-          {
-            vendor: "BuildCorp Ltd",
-            contracts: 8,
-            risk: 65,
-            claims: 2,
-            changeOrders: 12,
-            performance: "warn",
-          },
-          {
-            vendor: "TechServices Inc",
-            contracts: 15,
-            risk: 42,
-            claims: 0,
-            changeOrders: 5,
-            performance: "good",
-          },
-          {
-            vendor: "Global Consulting",
-            contracts: 12,
-            risk: 58,
-            claims: 1,
-            changeOrders: 8,
-            performance: "ok",
-          },
-          {
-            vendor: "Equipment Supplier",
-            contracts: 6,
-            risk: 38,
-            claims: 0,
-            changeOrders: 3,
-            performance: "good",
-          },
-        ];
+        return {
+          vendor: r.vendor ?? "Unknown",
+          contracts: r.contracts ?? 0,
+          risk: r.riskScore ?? 0,
+          claims: r.claims ?? 0,
+          changeOrders: r.changeOrders ?? 0,
+          performance,
+        };
+      })
+    : [];
   const rows = allRows.slice(0, selectedTop);
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col max-h-[32rem]">
@@ -170,19 +138,27 @@ export const VendorPerformanceSummaryCard: React.FC<Props> = ({
             ))}
           </TabsList>
         </Tabs>
-        <DataTable
-          data={rows}
-          columns={columns}
-          options={{ disablePagination: true, disableSelection: true, isLoading: false, totalCounts: rows.length, manualPagination: false }}
-          classNames={{
-            tHeader: "rounded-xl",
-            tHead: "text-xs text-[#6B6B6B] dark:text-slate-400 font-medium",
-            tRow: "rounded-xl dark:border-slate-800",
-            tCell: "text-sm",
-            table: "w-full",
-            container: "w-full",
-          }}
-        />
+        {rows.length === 0 ? (
+          <AnalyticsEmptyState
+            icon={Users}
+            title="No vendor performance data yet"
+            description="Risk scores, claims and change orders per vendor will appear here once contracts are awarded."
+          />
+        ) : (
+          <DataTable
+            data={rows}
+            columns={columns}
+            options={{ disablePagination: true, disableSelection: true, isLoading: false, totalCounts: rows.length, manualPagination: false }}
+            classNames={{
+              tHeader: "rounded-xl",
+              tHead: "text-xs text-[#6B6B6B] dark:text-slate-400 font-medium",
+              tRow: "rounded-xl dark:border-slate-800",
+              tCell: "text-sm",
+              table: "w-full",
+              container: "w-full",
+            }}
+          />
+        )}
       </CardContent>
     </Card>
   );
