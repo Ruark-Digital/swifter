@@ -2,6 +2,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Dialog, DialogContent, DialogTitle } from "../dialog";
+import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 
 describe("DialogContent", () => {
   it("stays open when interacting with portaled Radix popper content", () => {
@@ -17,6 +18,27 @@ describe("DialogContent", () => {
     );
 
     fireEvent.pointerDown(screen.getByRole("button", { name: "Select option" }));
+
+    expect(screen.getByRole("dialog")).toBeVisible();
+  });
+
+  it("stays open when a nested form select trigger is clicked twice", () => {
+    render(
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>Create Contract</DialogTitle>
+          <TextSelect
+            name="solicitation"
+            placeholder="Select Solicitation"
+            options={[{ label: "Solicitation 1", value: "solicitation-1" }]}
+          />
+        </DialogContent>
+      </Dialog>,
+    );
+
+    const trigger = screen.getByRole("combobox");
+    fireEvent.click(trigger);
+    fireEvent.click(trigger);
 
     expect(screen.getByRole("dialog")).toBeVisible();
   });

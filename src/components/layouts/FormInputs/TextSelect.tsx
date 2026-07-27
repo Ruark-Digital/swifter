@@ -98,6 +98,11 @@ export const TextSelect = (
       )}
 
       <Select
+        // This select is commonly rendered inside a modal Dialog. Keeping the
+        // nested select non-modal prevents its dismissable layer from treating
+        // the parent dialog as an outside interaction when the trigger is
+        // clicked repeatedly.
+        modal={false}
         value={value}
         onValueChange={handleValueChange}
         name={name}
