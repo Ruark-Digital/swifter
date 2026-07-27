@@ -169,8 +169,25 @@ const Step7ApprovalLevel: React.FC<Props> = ({ control }) => {
                       String(idx),
                   ),
                 );
+                const selectedInOtherGroups = new Set(
+                  (approvalGroups ?? [])
+                    .filter((_, groupIndex) => groupIndex !== index)
+                    .flatMap((group) =>
+                      (group.approvers ?? []).map(
+                        (approver, approverIndex) =>
+                          approver?.value ||
+                          approver?.id ||
+                          approver?.email ||
+                          approver?.text ||
+                          String(approverIndex),
+                      ),
+                    ),
+                );
                 const tagKey = tag.value || tag.id || tag.text;
-                return tagKey ? !selectedIds.has(tagKey) : true;
+                return tagKey
+                  ? !selectedIds.has(tagKey) &&
+                      !selectedInOtherGroups.has(tagKey)
+                  : true;
               })}
               inputProps={{ autoComplete: "off" }}
               // containerClass="min-h-[7rem] border rounded-lg cursor-pointer"

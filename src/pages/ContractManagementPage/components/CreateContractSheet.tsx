@@ -834,6 +834,26 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       if (!fields.length) return true;
       const ok = await formTrigger(fields as any, { shouldFocus: true });
       if (!ok) return false;
+      if (currentStep === 8) {
+        const approvalGroups = getValues().approvalGroups ?? [];
+        const seenApprovers = new Set<string>();
+        const hasDuplicateApprover = approvalGroups.some((group) =>
+          (group.approvers ?? []).some((approver) => {
+            const key = toApproverUserKeyOrUndefined(approver);
+            if (!key) return false;
+            if (seenApprovers.has(key)) return true;
+            seenApprovers.add(key);
+            return false;
+          }),
+        );
+        if (hasDuplicateApprover) {
+          error(
+            "Approval Groups",
+            "An approver can only be assigned to one approval group.",
+          );
+          return false;
+        }
+      }
       if (currentStep !== 5) return true;
       // Step 5: when paymentStructure === "milestone", every row must
       // have amount AND dueDate. Schema keeps them optional so the
@@ -864,7 +884,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       });
       return allValid;
     },
-    [formTrigger, getValues, setError],
+    [error, formTrigger, getValues, setError],
   );
 
   const buildPayload = React.useCallback(
