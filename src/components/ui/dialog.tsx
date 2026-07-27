@@ -44,22 +44,41 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+const isPortaledRadixContent = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return false
+
+  return Boolean(
+    target.closest(
+      [
+        "[data-radix-popper-content-wrapper]",
+        "[data-radix-select-content]",
+        "[data-radix-select-viewport]",
+        '[data-slot="select-content"]',
+        '[data-slot="select-item"]',
+      ].join(","),
+    ),
+  )
+}
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     showCloseButton?: boolean
   }
->(({ className, children, showCloseButton = true, onInteractOutside, ...props }, ref) => (
+>(({ className, children, showCloseButton = true, onInteractOutside, onPointerDownOutside, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
+      onPointerDownOutside={(event) => {
+        if (isPortaledRadixContent(event.target)) {
+          event.preventDefault();
+          return;
+        }
+        onPointerDownOutside?.(event);
+      }}
       onInteractOutside={(event) => {
-        const target = event.target as HTMLElement;
-        if (
-          target.closest("[data-radix-popper-content-wrapper]") ||
-          target.closest("[data-radix-select-viewport]")
-        ) {
+        if (isPortaledRadixContent(event.target)) {
           event.preventDefault();
           return;
         }
