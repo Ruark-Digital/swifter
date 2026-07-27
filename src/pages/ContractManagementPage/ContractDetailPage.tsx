@@ -408,25 +408,29 @@ const ContractDetailPage: React.FC = () => {
     toastErrorRef.current("Contract Details", error as ApiResponseError);
   }, [error]);
 
+  const contractStatus = contractsResponse?.data?.data?.status;
+  const isDraftContract = contractStatus === "draft";
+
   const visibleTabs = React.useMemo(() => {
+    let tabs: Array<{ key: TabKey; label: string }>;
     if (isApprover) {
-      return ALL_TABS.filter((t) =>
-        ROLE_TAB_WHITELIST.approver.includes(t.key),
-      );
-    }
-    if (isContractVendorLike) {
-      return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.vendor.includes(t.key));
-    }
-    if (isViewOnly) {
-      return ALL_TABS.filter((t) =>
+      tabs = ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.approver.includes(t.key));
+    } else if (isContractVendorLike) {
+      tabs = ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.vendor.includes(t.key));
+    } else if (isViewOnly) {
+      tabs = ALL_TABS.filter((t) =>
         ROLE_TAB_WHITELIST["view only"].includes(t.key),
       );
+    } else if (isManager) {
+      tabs = ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
+    } else {
+      tabs = ALL_TABS;
     }
-    if (isManager) {
-      return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
+    if (isDraftContract) {
+      tabs = tabs.filter((t) => t.key !== "clause-library");
     }
-    return ALL_TABS;
-  }, [isApprover, isContractVendorLike, isViewOnly, isManager]);
+    return tabs;
+  }, [isApprover, isContractVendorLike, isViewOnly, isManager, isDraftContract]);
 
   // A deep-linked ?tab= may point at a tab this role can't see — fall back to overview.
   React.useEffect(() => {
