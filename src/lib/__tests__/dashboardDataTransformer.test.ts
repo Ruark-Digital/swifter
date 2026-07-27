@@ -21,6 +21,25 @@ describe("DashboardDataTransformer", () => {
     expect(item.text).not.toContain("<strong>");
   });
 
+  it("links procurement evaluation actions when the solicitation is nested in evaluation", () => {
+    const [item] = DashboardDataTransformer.transformProcurementMyActions([
+      {
+        evaluation: {
+          _id: "evaluation-123",
+          solicitation: {
+            _id: "solicitation-123",
+            name: "Mechanical and Piping Installation",
+          },
+        },
+        action: "score solicitation",
+        statusText:
+          "Commercial group for Mechanical and Piping Installation has been released for evaluation, please proceed with scoring",
+      },
+    ]);
+
+    expect(item.text).toContain('<a href="/dashboard/evaluation/evaluation-123" class="underline underline-offset-4 text-blue-600">Mechanical and Piping Installation</a>');
+  });
+
   describe("transformSubDistribution", () => {
     it("computes a real percentage per plan from counts", () => {
       const result = DashboardDataTransformer.transformSubDistribution({

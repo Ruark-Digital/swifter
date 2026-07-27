@@ -591,11 +591,11 @@ export const SolicitationDetailPage = () => {
       id: "actions",
       header: "Actions",
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-start gap-2">
           {row.original.status !== "invited" && (
             <Button
               variant="link"
-              className="text-green-700"
+              className="text-green-700 px-0"
               onClick={() =>
                 navigate(
                   `/dashboard/solicitations/${id}/proposal-details/${row.original.id._id}`,
@@ -614,7 +614,7 @@ export const SolicitationDetailPage = () => {
               isCompanyAdmin) && (
               <Button
                 variant="link"
-                className=""
+                className="px-0"
                 onClick={() => setExtendOpen(true)}
                 disabled={
                   remindEvaluatorMutation.isPending ||

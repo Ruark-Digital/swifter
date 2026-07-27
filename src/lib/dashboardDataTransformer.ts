@@ -45,6 +45,9 @@ const ACTIVITY_LINK_MAPPINGS: LinkMapping = {
       // evaluation, please proceed with scoring" — no `release_group` token.
       // Match on the phrase so PL's My Actions row is linked, not plain text.
       "released for evaluation": "/dashboard/evaluation",
+      "proceed with evaluation": "/dashboard/evaluation",
+      "proceed with scoring": "/dashboard/evaluation",
+      evaluation: "/dashboard/evaluation",
     },
   },
   evaluator: {
@@ -2218,31 +2221,35 @@ export class DashboardDataTransformer {
     }
 
     console.log({ data })
-    return data.map((action: any, index: number) => ({
-      id: action?.solicitation?._id || `action-${index}`,
+    return data.map((action: any, index: number) => {
+      const solicitation = action?.solicitation ?? action?.evaluation?.solicitation;
+
+      return {
+      id: solicitation?._id || `action-${index}`,
       text: applyDynamicStatusTextReplacement(
         action.statusText,
         "procurement",
         "myActions",
         {
-          name: action?.solicitation?.name,
-          solId: action?.solicitation?._id,
+          name: solicitation?.name,
+          solId: solicitation?._id,
           evaId: action?.evaluation?._id,
           evaGroupId: action?.evaluationGroup?._id,
         }
       ),
       type: action?.replace?.("_", " ") || "",
-      title: action?.solicitation?.name ?? "Unknown",
+      title: solicitation?.name ?? "Unknown",
       date: 
-        action?.solicitation?.createdAt
+        solicitation?.createdAt
           ? formatDateTZ(
-              action?.solicitation?.createdAt,
+              solicitation?.createdAt,
               "MMM d, yyyy h:mm a 'GMT'xxx",
-              action?.solicitation?.timezone
+              solicitation?.timezone
             )
           : null,
       status: action.status || "active",
-    }));
+      };
+    });
   }
 
   /**
