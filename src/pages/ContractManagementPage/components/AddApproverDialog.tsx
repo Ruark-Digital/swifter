@@ -14,16 +14,13 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import { contractManagerApi } from "../api/contractManagerApi";
+import {
+  getPersonnelOptionLabel,
+  isApproverPersonnel,
+  type PersonnelLike,
+} from "../lib/approverSelection";
 
-type PersonnelRole = { _id?: string; name?: string };
-type PersonnelItem = {
-  _id?: string;
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-  name?: string;
-  role?: PersonnelRole[];
-};
+type PersonnelItem = PersonnelLike;
 
 type ApproverTag = {
   id?: string;
@@ -76,18 +73,18 @@ const AddApproverDialog: React.FC<{
   const approverOptions = React.useMemo<ApproverTag[]>(() => {
     const people = personnelRes?.data?.data ?? [];
     return people
-      .filter((p) => (p.role ?? []).some((r) => r?.name === "approver"))
+      .filter(isApproverPersonnel)
       .map((p) => {
         const email = p.email ?? "";
-        const fullName =
-          p.name?.trim() ||
-          [p.firstName, p.lastName]
-            .filter((part) => typeof part === "string" && part.trim())
-            .join(" ")
-            .trim();
-        const label = fullName || email || p._id || "";
+        const fullName = getPersonnelOptionLabel(p);
         const value = p._id || email;
-        return { id: value, value, text: label, email };
+        return {
+          id: value,
+          value,
+          text: fullName,
+          email,
+          meta: { roles: p.roles ?? p.role },
+        };
       });
   }, [personnelRes?.data?.data]);
 
