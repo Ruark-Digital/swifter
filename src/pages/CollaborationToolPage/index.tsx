@@ -30,7 +30,9 @@ import {
 } from "./collab/useFileVersionsApi";
 import {
   useAiRedlineSuggestions,
+  usePersistedSuggestions,
   type AiRedlineSuggestion,
+  type SuggestionProgress,
 } from "./collab/useAiRedlineSuggestions";
 import { useRedlineTurn, isVersionConflict } from "./collab/useRedlineTurn";
 import TurnBanner from "./components/TurnBanner";
@@ -173,6 +175,10 @@ const CollaborationToolPage: React.FC = () => {
     documentId: msaContractIdParam || contractIdParam,
     isMsa: Boolean(msaContractIdParam),
   });
+  const persistedQuery = usePersistedSuggestions({
+    documentId: msaContractIdParam || contractIdParam,
+    isMsa: Boolean(msaContractIdParam),
+  });
   // Turn-based redline negotiation (company side ⇄ vendor side).
   const redlineTurn = useRedlineTurn({
     documentId: msaContractIdParam || contractIdParam,
@@ -181,6 +187,7 @@ const CollaborationToolPage: React.FC = () => {
   const [aiItems, setAiItems] = useState<AiItem[]>([]);
   const [aiHasRun, setAiHasRun] = useState(false);
   const [aiNoRedlines, setAiNoRedlines] = useState(false);
+  const [aiProgress, setAiProgress] = useState<SuggestionProgress>({});
 
   const sourceUrl = searchParams.get("sourceUrl") || "";
   const fileName = searchParams.get("fileName") || "";
@@ -517,14 +524,43 @@ const CollaborationToolPage: React.FC = () => {
     );
   }, [aiMutation]);
 
-  // Auto-run the first time the user opens the Redline tab. Only auto-run on
-  // the current user's negotiation turn — never on the opposing side's turn.
+  // QA #232/#237: load persisted suggestions from GET before generating new
+  // ones. When persisted data exists, rehydrate aiItems with the saved
+  // resolution state and skip the POST entirely. Only generate (POST) when
+  // the GET returns an empty array or on explicit "Regenerate".
   useEffect(() => {
     if (activeTab !== "redline") return;
     if (aiHasRun) return;
     if (!redlineTurn.canAct) return;
+    if (persistedQuery.isLoading) return;
+
+    const persisted = persistedQuery.data;
+    if (persisted && persisted.suggestions.length > 0) {
+      const resolutionToState = (
+        status?: string,
+      ): AiItem["state"] => {
+        if (status === "accepted" || status === "modified") return "approved";
+        if (status === "rejected") return "dismissed";
+        return "pending";
+      };
+      setAiItems(
+        persisted.suggestions.map((s) => ({
+          redline: {
+            redlineId: s.redlineId,
+            kind: "insertion" as const,
+            text: "",
+          },
+          suggestion: s,
+          state: resolutionToState(s.resolution?.action),
+        })),
+      );
+      setAiProgress(persisted.progress);
+      setAiHasRun(true);
+      return;
+    }
+
     void runAiSuggestions();
-  }, [activeTab, aiHasRun, runAiSuggestions, redlineTurn.canAct]);
+  }, [activeTab, aiHasRun, runAiSuggestions, redlineTurn.canAct, persistedQuery.isLoading, persistedQuery.data]);
 
   // Push the current turn's edit permission into the SuperDoc iframe. The init
   // payload sets "editing" once; here we correct it — "suggesting" on your turn,
@@ -691,7 +727,7 @@ const CollaborationToolPage: React.FC = () => {
   }, []);
 
   const aiStatus: "idle" | "loading" | "ready" | "error" | "empty" =
-    aiMutation.isPending
+    aiMutation.isPending || (persistedQuery.isLoading && activeTab === "redline")
       ? "loading"
       : aiMutation.isError
         ? "error"
@@ -896,6 +932,7 @@ const CollaborationToolPage: React.FC = () => {
           isLoadingVersions={fileVersionsQuery.isLoading}
           aiStatus={aiStatus}
           aiItems={aiItems}
+          aiProgress={aiProgress}
           aiErrorMessage={(aiMutation.error as Error | undefined)?.message}
           onAiApprove={handleApproveAi}
           onAiDismiss={handleDismissAi}

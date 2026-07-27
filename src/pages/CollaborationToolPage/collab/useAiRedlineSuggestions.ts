@@ -1,5 +1,5 @@
-import { useMutation } from "@tanstack/react-query";
-import { postRequest } from "@/lib/axiosInstance";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import type { RedlineSpan } from "./redlineScan";
 
@@ -261,5 +261,90 @@ export function useAiRedlineSuggestions({ documentId, isMsa }: AiRedlineScope) {
       }
       return mergeAnalyses(parts);
     },
+  });
+}
+
+// ── Persisted suggestions (GET) ──────────────────────────────────────
+
+export type PersistedResolution = {
+  status?: string;
+  action?: "accepted" | "modified" | "rejected";
+  tier?: "low" | "medium" | "high";
+  resolvedBy?: string;
+};
+
+export type PersistedSuggestion = AiRedlineSuggestion & {
+  resolution?: PersistedResolution;
+};
+
+export type SuggestionProgress = {
+  total?: number;
+  pending?: number;
+  addressedCount?: number;
+  resolvedCount?: number;
+  resolvedByManager?: number;
+  resolvedByVendor?: number;
+};
+
+export type PersistedSuggestionsResponse = {
+  suggestions: PersistedSuggestion[];
+  progress: SuggestionProgress;
+};
+
+type PersistedApiBody = {
+  status?: number;
+  message?: string;
+  data?: {
+    suggestions?: Array<Record<string, unknown>>;
+    progress?: SuggestionProgress;
+  };
+};
+
+const parsePersistedBody = (body: PersistedApiBody): PersistedSuggestionsResponse => {
+  const data = body?.data ?? {};
+  const suggestions: PersistedSuggestion[] = Array.isArray(data.suggestions)
+    ? data.suggestions
+        .filter((s) => Boolean(s?.redlineId))
+        .map((s) => ({
+          redlineId: s.redlineId as string,
+          assessment: (s.assessment as string) ?? "",
+          suggestion: typeof s.suggestion === "string" ? s.suggestion : "",
+          acceptability: s.acceptability as AiAcceptability | undefined,
+          considerations: s.considerations as AiConsiderations | undefined,
+          alternativeLanguage: s.alternativeLanguage as AiAlternativeLanguage | undefined,
+          solution: typeof s.solution === "string" ? s.solution : undefined,
+          riskLevel: (s.riskLevel as AiRiskLevel) ?? "medium",
+          replacementText: typeof s.replacementText === "string" ? s.replacementText : undefined,
+          resolution: s.resolution as PersistedResolution | undefined,
+        }))
+    : [];
+  return { suggestions, progress: data.progress ?? {} };
+};
+
+/**
+ * GET persisted AI redline suggestions. Returns previously-generated
+ * suggestions with their resolution state and aggregate progress counts.
+ * When no suggestions have been generated yet, returns an empty array.
+ */
+export function usePersistedSuggestions({ documentId, isMsa }: AiRedlineScope) {
+  const role = useUserRole();
+  const url = documentId
+    ? buildEndpoint({
+        documentId,
+        isMsa: Boolean(isMsa),
+        isManager: role.isManager,
+        isVendor: role.isVendor,
+        isProjectManager: role.isProjectManager,
+      })
+    : null;
+
+  return useQuery<PersistedSuggestionsResponse>({
+    queryKey: ["ai-redline-suggestions-persisted", url],
+    enabled: Boolean(url),
+    queryFn: async () => {
+      const res = await getRequest({ url: url! });
+      return parsePersistedBody(res.data as PersistedApiBody);
+    },
+    staleTime: 30000,
   });
 }
