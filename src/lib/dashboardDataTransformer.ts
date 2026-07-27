@@ -41,6 +41,10 @@ const ACTIVITY_LINK_MAPPINGS: LinkMapping = {
       create_evaluation: "/dashboard/evaluation",
       create_evaluation_group: "/dashboard/evaluation",
       release_group: "/dashboard/evaluation",
+      // BE statusText for a released group reads "…has been released for
+      // evaluation, please proceed with scoring" — no `release_group` token.
+      // Match on the phrase so PL's My Actions row is linked, not plain text.
+      "released for evaluation": "/dashboard/evaluation",
     },
   },
   evaluator: {

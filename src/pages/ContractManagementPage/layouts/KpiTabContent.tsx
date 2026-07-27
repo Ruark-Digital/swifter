@@ -30,24 +30,32 @@ const KpiTabContent: React.FC<Props> = ({ contractId, isActive, owner }) => {
     enabled: !!contractId && !!isActive,
   });
 
-  const rows: KpiRow[] = (data ?? []).map((item: any) => ({
-    kpiId: item.kpiId ?? item.id ?? "",
-    category: item.category ?? "",
-    currentAvgScore:
-      typeof item.currentAvgScore === "number"
-        ? `${item.currentAvgScore}%`
-        : `${item.currentAvgScore ?? ""}`,
-    allTimeAvgScore:
-      typeof item.allTimeAvgScore === "number"
-        ? `${item.allTimeAvgScore}%`
-        : `${item.allTimeAvgScore ?? ""}`,
-    lastUpdated: (() => {
-      if (!item.lastUpdated) return "-";
-      const d = new Date(item.lastUpdated);
-      return Number.isNaN(d.getTime()) ? "-" : format(d, "dd MMM yyyy");
-    })(),
-    actions: ["Update", "View"],
-  }));
+  const rows: KpiRow[] = (data ?? []).map((item: any) => {
+    // BE stamps `lastUpdated` at row-creation, so a Draft contract that has
+    // never been scored still shows today's date. Suppress when there's no
+    // score to back it — the only signal exposed on the list row.
+    const neverScored =
+      (item.currentAvgScore === 0 || item.currentAvgScore == null) &&
+      (item.allTimeAvgScore === 0 || item.allTimeAvgScore == null);
+    return {
+      kpiId: item.kpiId ?? item.id ?? "",
+      category: item.category ?? "",
+      currentAvgScore:
+        typeof item.currentAvgScore === "number"
+          ? `${item.currentAvgScore}%`
+          : `${item.currentAvgScore ?? ""}`,
+      allTimeAvgScore:
+        typeof item.allTimeAvgScore === "number"
+          ? `${item.allTimeAvgScore}%`
+          : `${item.allTimeAvgScore ?? ""}`,
+      lastUpdated: (() => {
+        if (neverScored || !item.lastUpdated) return "-";
+        const d = new Date(item.lastUpdated);
+        return Number.isNaN(d.getTime()) ? "-" : format(d, "dd MMM yyyy");
+      })(),
+      actions: ["Update", "View"],
+    };
+  });
 
   return (
     <TabsContent value="kpi" className="space-y-8">
