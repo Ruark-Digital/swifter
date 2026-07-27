@@ -125,7 +125,7 @@ const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "rfi", label: "RFI" },
   { key: "ncr-log", label: "NCR Log" },
   { key: "approvers", label: "Approvers" },
-  { key: "vendor-personnel", label: "Vendor Personnel" },
+  { key: "vendor-personnel", label: "Vendor Key Personnel" },
   { key: "reports", label: "Vendor’s Reports" },
   { key: "clause-library", label: "Clause Library" },
   { key: "action-log", label: "Action Log" },

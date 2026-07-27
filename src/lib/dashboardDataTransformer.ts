@@ -45,6 +45,9 @@ const ACTIVITY_LINK_MAPPINGS: LinkMapping = {
       // evaluation, please proceed with scoring" — no `release_group` token.
       // Match on the phrase so PL's My Actions row is linked, not plain text.
       "released for evaluation": "/dashboard/evaluation",
+      "proceed with evaluation": "/dashboard/evaluation",
+      "proceed with scoring": "/dashboard/evaluation",
+      evaluation: "/dashboard/evaluation",
     },
   },
   evaluator: {

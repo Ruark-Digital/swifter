@@ -107,7 +107,7 @@ const VendorPersonnelTabContent: React.FC<Props> = ({
         await qc.invalidateQueries({ queryKey: invalidateQueryKey });
       }
     },
-    onError: (err) => toastHandler.error("Vendor Personnel", err),
+    onError: (err) => toastHandler.error("Vendor Key Personnel", err),
   });
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
@@ -145,7 +145,7 @@ const VendorPersonnelTabContent: React.FC<Props> = ({
       await saveMutation.mutateAsync(next);
       setDialogOpen(false);
       toastHandler.success(
-        "Vendor Personnel",
+        "Vendor Key Personnel",
         editIndex === null ? "Personnel added" : "Personnel updated",
       );
     } catch {
@@ -159,7 +159,7 @@ const VendorPersonnelTabContent: React.FC<Props> = ({
     try {
       await saveMutation.mutateAsync(next);
       setRemoveIndex(null);
-      toastHandler.success("Vendor Personnel", "Personnel removed");
+      toastHandler.success("Vendor Key Personnel", "Personnel removed");
     } catch {
       // error toast handled in onError
     }
@@ -223,10 +223,10 @@ const VendorPersonnelTabContent: React.FC<Props> = ({
       <div className="flex items-center justify-between gap-4">
         <div>
           <h3 className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
-            Vendor Personnel
+            Vendor Key Personnel
           </h3>
           <p className="text-sm text-[#6B7280] dark:text-slate-400">
-            People the vendor has assigned to this{" "}
+            Assigned vendor&apos;s key personnel for the execution of this{" "}
             {contractType === "MsaContract" ? "MSA" : "contract"}.
           </p>
           {(isManager || isCompanyAdmin) &&

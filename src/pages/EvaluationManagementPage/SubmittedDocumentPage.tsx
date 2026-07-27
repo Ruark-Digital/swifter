@@ -629,11 +629,7 @@ const SubmittedDocumentPage: React.FC = () => {
   const evaluationStatus = (evaluationInfo?.status || criteriaEvaluationInfo?.status || "").toString();
   const isEvaluationCompleted = evaluationStatus.toLowerCase() === "completed";
   const incompleteEvaluationMessage =
-    incompleteCriteriaCount === 1
-      ? "Complete the remaining score and comment before submitting."
-      : incompleteCriteriaCount > 1
-        ? `Complete the remaining ${incompleteCriteriaCount} scores and comments before submitting.`
-        : "Score and comment every criterion before submitting.";
+    "Please complete scoring and add your comments before submitting.";
 
   const handleOpenSubmitDialog = () => {
     if (!isEvaluationReadyForSubmission) {
@@ -1205,11 +1201,7 @@ const SubmittedDocumentPage: React.FC = () => {
                   </Button>
                   {!isEvaluationReadyForSubmission ? (
                     <p className="text-xs text-red-600 dark:text-red-400">
-                      {incompleteCriteriaCount === 1
-                        ? "Complete 1 remaining score and comment before submitting."
-                        : incompleteCriteriaCount > 1
-                          ? `Complete ${incompleteCriteriaCount} remaining scores and comments before submitting.`
-                          : "Score and comment every criterion before submitting."}
+                      Please complete scoring and add your comments before submitting.
                     </p>
                   ) : null}
                 </div>
