@@ -244,19 +244,31 @@ const MsaPage: React.FC = () => {
 
       {hasData ? (
         isCompanyAdmin ? (
-          <MsaTable
-            rows={allRows}
-            totalCount={allTotalCount}
-            pagination={allPagination}
-            setPagination={setAllPagination}
-            isLoading={allQuery.isLoading}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            categoryFilter={categoryFilter}
-            onCategoryFilterChange={setCategoryFilter}
-            dateFilter={dateFilter}
-            onDateFilterChange={setDateFilter}
-          />
+          <Tabs defaultValue="all" className="w-full bg-transparent space-y-4">
+            <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
+              <TabsTrigger
+                value="all"
+                className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+              >
+                All MSA
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="all">
+              <MsaTable
+                rows={allRows}
+                totalCount={allTotalCount}
+                pagination={allPagination}
+                setPagination={setAllPagination}
+                isLoading={allQuery.isLoading}
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                categoryFilter={categoryFilter}
+                onCategoryFilterChange={setCategoryFilter}
+                dateFilter={dateFilter}
+                onDateFilterChange={setDateFilter}
+              />
+            </TabsContent>
+          </Tabs>
         ) : (
           <Tabs defaultValue="all" className="w-full bg-transparent space-y-4">
             <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
