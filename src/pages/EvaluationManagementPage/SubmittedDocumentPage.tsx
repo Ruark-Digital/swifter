@@ -30,10 +30,7 @@ import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import * as yup from "yup";
 import { useUser } from "@/store/authSlice";
-import {
-  canSubmitEvaluationCriteria,
-  getIncompleteEvaluationCriteriaCount,
-} from "./utils/evaluationSubmission";
+import { canSubmitEvaluationCriteria } from "./utils/evaluationSubmission";
 
 // API Types based on documentation
 type VendorDocument = {
@@ -549,15 +546,11 @@ const SubmittedDocumentPage: React.FC = () => {
     setEditingCriteriaId(null);
   };
 
-  // Hooks MUST run on every render, before any early return. Placing these
-  // useMemo calls after the loading/error early returns below shortens the
+  // Hooks MUST run on every render, before any early return. Placing this
+  // useMemo call after the loading/error early returns below shortens the
   // hooks list on the first render and lengthens it later, tripping React's
   // "Rendered more hooks than during the previous render" and crashing the
   // page via the error boundary.
-  const incompleteCriteriaCount = useMemo(
-    () => getIncompleteEvaluationCriteriaCount(criteria),
-    [criteria],
-  );
   const isEvaluationReadyForSubmission = useMemo(
     () => canSubmitEvaluationCriteria(criteria),
     [criteria],
