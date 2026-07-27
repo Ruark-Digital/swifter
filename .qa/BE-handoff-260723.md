@@ -6,15 +6,17 @@ Items the frontend traced to the backend during QA reviews. Each was reproduced 
 
 | # | Status |
 |---|--------|
-| 230 | **Open** (§11) — comment click-to-location. `/file-comment/{fileId}` response still only carries `{author,text,date}`; no anchor persisted. FE+BE work needed. |
+| 230 | ⚠️ **Guide-documented, swagger-unconfirmed** (§11) — comment click-to-location. `redline-collaboration-frontend-guide.md §13` documents extended `FileComment { commentId, anchorCommentId?, redlineId?, location?, from?, to?, baseVersionId? }` returned on GET `/file-comment/{fileId}`, but `docs.json` GET response still only carries `{author,text,date}`. **BE: confirm shipped and update swagger.** |
 | 231 | **Client-struck** — Ctrl+F arrow navigation on redlined document. Closed. |
 | 232 | ✅ **RESOLVED 2026-07-27** — `GET .../ai/redline-suggestions` now exists (BE). FE follow-up: load persisted before regenerating. |
 | 233 | **Client-struck** — click redline in document to open side-tab. Closed. |
-| 234 | **Open** (§12) — Apply Conservative/Balanced/Minimal. No batch-apply endpoint in spec. |
+| 234 | ⚠️ **Guide-documented, swagger-unconfirmed** (§12) — Apply Conservative/Balanced/Minimal. Guide §13 documents `POST .../ai/redline-suggestions/batch-resolve` with `BatchResolveRequest { resolutions: [{redlineId, action, tier?}], docName?, baseVersionId?, documentState? }`, but not in `docs.json`. **BE: confirm shipped and update swagger.** |
 | 235 | ✅ **RESOLVED 2026-07-27** — `progress.addressedCount` / `progress.resolvedCount` returned by `GET .../ai/redline-suggestions`. FE follow-up: render from GET. |
-| 236 | **Open** (§6) — Undo. `RedlineUndoRequest` schema still exists but no path references it. |
+| 236 | ⚠️ **Guide-documented, swagger-unconfirmed** (§6) — Undo. Guide §8 documents `POST .../ai/redline-suggestions/:redlineId/undo` with `UndoRedlineRequest { docName?, baseVersionId? }`, but not in `docs.json` (schema `RedlineUndoRequest` present, no path references it). **BE: confirm shipped and update swagger.** |
 | 237 | ✅ **RESOLVED 2026-07-27** — per-suggestion `resolution.{status,action,tier,resolvedBy}` returned by `GET .../ai/redline-suggestions` enables resume. FE follow-up: rehydrate. |
 | 238 | **Open** (§8) — version lifecycle still undefined; only `/file/versions/{docName}` exists. |
+
+**⚠ Guide vs swagger drift:** the 2026-07-27 later drop of `redline-collaboration-frontend-guide.md` §13 documents three endpoints/shapes (batch-resolve, undo, extended FileComment anchors) that are **not present in `docs.json`**. Per standing precedence rule (swagger > md, per `project_be_spec_doc_precedence`), the FE will not wire these until the BE confirms and swagger is updated. The three items above (230/234/236) stay open in FE tracking pending that confirmation.
 
 ---
 
@@ -75,7 +77,7 @@ Three manager MSA endpoints use `/manager/msa-contract/...` (singular) but every
 - **Observed / asked:** no way to reverse a suggestion once applied or dismissed.
 - **Root cause (BE gap):** docs.json v2.3.0 **defines a `RedlineUndoRequest` schema** (`{ docName, baseVersionId }`) — the intent is clearly a document-version restore — **but no endpoint references it.** There is no `/undo` (or equivalent) path, and the `resolve` endpoint's `RedlineResolutionRequest.action` enum is only `accepted|modified|rejected` (no reopen/undo).
 - **Why FE can't do it alone:** the FE `resolve` call is **audit-only** (`useRedlineTurn.ts:115` — "records who resolved a suggestion and how. Does NOT mutate the document"); the actual apply/dismiss is a client-side Yjs edit. Undo via `baseVersionId` is a server-side version restore that must be authoritative for the manager↔vendor negotiation — client state can't own it.
-- **Ask:** wire an endpoint (e.g. `POST .../redline-turn/undo` or `.../ai/redline-suggestions/{redlineId}/undo`) that consumes the already-defined `RedlineUndoRequest`. Then the FE can offer Undo.
+- **2026-07-27 guide update:** `redline-collaboration-frontend-guide.md §8` documents `POST /{manager|vendor}/{contracts|msa-contracts}/:contractId/ai/redline-suggestions/:redlineId/undo` with `UndoRedlineRequest { docName?, baseVersionId? }` and the four allow-conditions (redline currently resolved; caller owns turn; document unchanged since resolution; supplied baseVersionId matches). **This path is NOT in `docs.json`.** Please confirm whether it's shipped and update the swagger; once confirmed the FE will wire Undo.
 
 ---
 
@@ -115,6 +117,21 @@ Three manager MSA endpoints use `/manager/msa-contract/...` (singular) but every
   1. **BE:** persist and return an anchor for every comment (either the SuperDoc `commentId` covering the selection, or a text range `{from,to}` in the current base version). Without this the FE cannot scroll anywhere.
   2. **FE (once BE returns anchors):** treat every comment as clickable — if we have an anchor, scroll to it; if not, disable the click affordance rather than showing a dead pointer.
 - **2026-07-27 note:** the fresh `docs.json` drop adds an **optional `location: string`** to `POST /file-comment/{fileId}` (example `"A101"`, description "Optional location of the comment"), but the GET response still returns only `{author,text,date}` — `location` is not read back, so it is still not usable as a document-range anchor. #230 remains open.
+- **2026-07-27 guide update:** `redline-collaboration-frontend-guide.md §13` documents extended `FileComment` returned on GET `/file-comment/:fileId`:
+
+  ```ts
+  type FileComment = {
+    commentId: string;
+    author: string; text: string; date: string;
+    anchorCommentId?: string; // SuperDoc click-to-location
+    redlineId?: string;
+    location?: string;
+    from?: number; to?: number; // only apply with matching baseVersionId
+    baseVersionId?: string;
+  };
+  ```
+
+  **These fields are NOT in `docs.json`** (GET response still `{author,text,date}` only). Please confirm whether the extended shape is shipped and update the swagger; once confirmed the FE will treat every comment as clickable per §11 point 2.
 - **Related:** existing memory hubs [[project_collab_comments_polish]], [[project_file_comment_api_shape]].
 
 ---
@@ -124,7 +141,18 @@ Three manager MSA endpoints use `/manager/msa-contract/...` (singular) but every
 - **Where:** Collaboration editor → AI Polish → Apply Conservative / Balanced / Minimal buttons.
 - **Observed:** Clicking Apply does not insert the suggested text into the document — the button appears to complete but no document edit happens.
 - **Root cause (BE gap):** batch "apply" is not a persisted server action — the individual `resolve/{redlineId}` endpoint is audit-only (records who resolved what; does NOT mutate the Yjs document — see §5 and §6). The client-side Yjs edit that actually inserts text has to run per suggestion, and it can only run against suggestions the client can see. Once a resolve is persisted server-side, the document mutation needs to happen authoritatively so both parties see it.
-- **Ask:** define a server-authoritative "apply batch" action that (a) marks each suggestion in the batch as resolved with its accept/modify decision, and (b) emits the document mutations (via Yjs update or version snapshot) so both parties converge on the same document state. Depends on the same persisted-suggestion endpoint requested in §5.
+- **2026-07-27 guide update:** `redline-collaboration-frontend-guide.md §13` documents `POST /{manager|vendor}/{contracts|msa-contracts}/:contractId/ai/redline-suggestions/batch-resolve` with:
+
+  ```ts
+  type BatchResolveRequest = {
+    resolutions: Array<{ redlineId: string; action: "accepted"|"modified"|"rejected"; tier?: "low"|"medium"|"high" }>;
+    docName?: string;
+    baseVersionId?: string | null;
+    documentState?: string; // base64 Yjs state after all local edits
+  };
+  ```
+
+  When `documentState` is supplied, the BE stores one immutable snapshot for the whole batch and returns `activeVersionId`; stale `baseVersionId` returns `409`; the response includes updated resolution records and aggregate `progress`. **This path is NOT in `docs.json`.** Please confirm whether it's shipped and update the swagger; once confirmed the FE will wire batch Apply.
 
 ---
 
@@ -142,11 +170,11 @@ Three manager MSA endpoints use `/manager/msa-contract/...` (singular) but every
 | 220 | Deliverable late status | Bug | none (renders BE status) | ✅ resolved 2026-07-27 |
 | 229 | Approver count list≠detail | Bug | none (renders each endpoint) | make list count match detail |
 | 239 | Current Balance value | Bug | visibility fixed (`2168f2925`) | fix currentBalance calc; confirm PM/vendor payload carries billed/balance |
-| 230 | Comment click-to-location | Missing anchor data | scroll wired for anchored comments; needs anchor from BE | persist + return per-comment anchor (SuperDoc `commentId` or `{from,to}`) |
+| 230 | Comment click-to-location | Missing anchor data | scroll wired for anchored comments; waits on swagger confirmation | ⚠️ guide §13 documents extended FileComment; **confirm shipped + update swagger** |
 | 232 | AI redline regenerates on open | Missing endpoint | **FE: load persisted from GET before generating** | ✅ resolved 2026-07-27 (`GET .../ai/redline-suggestions`) |
-| 234 | Apply Conservative/Balanced/Minimal writes to doc | Missing server-authoritative apply | none possible yet | server-authoritative batch apply that persists + mutates doc for both parties |
+| 234 | Apply Conservative/Balanced/Minimal writes to doc | Missing server-authoritative apply | waits on swagger confirmation | ⚠️ guide §13 documents `POST .../batch-resolve`; **confirm shipped + update swagger** |
 | 235 | Addressed / Resolved counts | Missing read state | **FE: render from `data.progress`** | ✅ resolved 2026-07-27 (`progress.addressedCount`/`resolvedCount` in GET) |
-| 236 | Undo applied/dismissed redline | Missing endpoint | none possible yet | wire an undo endpoint consuming `RedlineUndoRequest` (schema exists, unused); FE will add Undo |
+| 236 | Undo applied/dismissed redline | Missing endpoint | waits on swagger confirmation | ⚠️ guide §8 documents `POST .../:redlineId/undo`; **confirm shipped + update swagger** |
 | 237 | Save/resume redline progress | Missing read state | **FE: rehydrate from GET** | ✅ resolved 2026-07-27 (per-suggestion `resolution` in GET) |
 | 238 | Define how versions work | Design + BE | UI exists; restore of BE versions can't apply | define version lifecycle; serve restorable snapshots for historical versions |
 | — | `/manager/msa-contract/*` paths | Spec typo | uses `/msa-contracts/` | correct singular→plural + confirm mount |
