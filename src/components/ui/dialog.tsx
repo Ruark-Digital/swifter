@@ -55,6 +55,7 @@ const isPortaledRadixContent = (target: EventTarget | null) => {
         "[data-radix-select-viewport]",
         '[data-slot="select-content"]',
         '[data-slot="select-item"]',
+        '[data-slot="select-trigger"]',
       ].join(","),
     ),
   )

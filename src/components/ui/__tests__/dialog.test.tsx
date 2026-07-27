@@ -37,8 +37,8 @@ describe("DialogContent", () => {
     );
 
     const trigger = screen.getByRole("combobox");
-    fireEvent.click(trigger);
-    fireEvent.click(trigger);
+    fireEvent.pointerDown(trigger);
+    fireEvent.pointerDown(trigger);
 
     expect(screen.getByRole("dialog")).toBeVisible();
   });
