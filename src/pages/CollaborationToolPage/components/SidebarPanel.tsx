@@ -7,7 +7,7 @@ import type { CommentsFeedItem } from "./CommentsTab";
 import type { Mentionable } from "../collab/useContractMentionables";
 import type { Version } from "./VersionHistoryModal";
 import type { RedlineSpan } from "../collab/redlineScan";
-import type { AiRedlineSuggestion } from "../collab/useAiRedlineSuggestions";
+import type { AiRedlineSuggestion, SuggestionProgress } from "../collab/useAiRedlineSuggestions";
 
 const CommentsTab = lazyWithRetry(() => import("./CommentsTab"));
 const VersionsTab = lazyWithRetry(() => import("./VersionsTab"));
@@ -65,6 +65,8 @@ interface SidebarPanelProps {
   onAiRetry: () => void;
   /** Turn-based negotiation gate — disables Apply/Dismiss when false. */
   isMyTurn?: boolean;
+  /** Server-side progress counts (addressedCount, resolvedCount). */
+  aiProgress?: SuggestionProgress;
   /** Rendered above the suggestions on the Redline tab (turn status + Send /
    *  Finalize). Built by the page with `useRedlineTurn` data. */
   redlineTurnBanner?: React.ReactNode;
@@ -113,6 +115,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   onAiFocus,
   onAiRetry,
   isMyTurn = true,
+  aiProgress,
   redlineTurnBanner,
 }) => {
   const avatarPublic = "/assets/collaboration/avatar-user.png";
@@ -210,6 +213,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
                 onFocus={onAiFocus}
                 onRetry={onAiRetry}
                 isMyTurn={isMyTurn}
+                progress={aiProgress}
               />
             </Suspense>
           </div>

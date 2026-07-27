@@ -6,6 +6,7 @@ import type {
   AiRedlineSuggestion,
   AiAlternativeLanguage,
   AiRiskLevel,
+  SuggestionProgress,
 } from "../collab/useAiRedlineSuggestions";
 
 type Status = "idle" | "loading" | "ready" | "error" | "empty";
@@ -42,6 +43,8 @@ interface AiSuggestionsPanelProps {
    *  disabled (not hidden) with a tooltip — the viewer must wait for their
    *  turn. Defaults to true so callers without turn state are unaffected. */
   isMyTurn?: boolean;
+  /** Server-side progress counts from GET .../ai/redline-suggestions. */
+  progress?: SuggestionProgress;
 }
 
 const KindPill: React.FC<{ kind: RedlineSpan["kind"] }> = ({ kind }) => (
@@ -406,10 +409,14 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
   onRetry,
   variant = "overlay",
   isMyTurn = true,
+  progress,
 }) => {
   if (!open) return null;
 
   const remaining = items.filter((i) => i.state === "pending").length;
+  const addressed = progress?.addressedCount;
+  const resolved = progress?.resolvedCount;
+  const hasProgress = typeof addressed === "number" || typeof resolved === "number";
   const isInline = variant === "inline";
 
   return (
@@ -443,6 +450,20 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
                       ? "Last request failed"
                       : "Professional rephrases for your redlines"}
             </div>
+            {status === "ready" && hasProgress && (
+              <div className="mt-0.5 flex gap-3 text-[11px]">
+                {typeof addressed === "number" && (
+                  <span className="text-amber-600 dark:text-amber-400">
+                    {addressed} addressed
+                  </span>
+                )}
+                {typeof resolved === "number" && (
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    {resolved} resolved
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
