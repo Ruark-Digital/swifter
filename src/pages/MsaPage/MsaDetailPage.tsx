@@ -432,21 +432,28 @@ const MsaDetailPage: React.FC = () => {
     toastErrorRef.current("MSA Details", error as any);
   }, [error]);
 
+  const msaRawStatus = (msaResponse?.data?.data as MSAContractDetail | undefined)
+    ?.status;
+  const isDraftMsa = msaRawStatus === "draft";
+
   const visibleTabs = React.useMemo(() => {
+    let tabs: Array<{ key: TabKey; label: string }>;
     if (isApprover)
-      return ALL_TABS.filter((t) =>
+      tabs = ALL_TABS.filter((t) =>
         ROLE_TAB_WHITELIST.approver.includes(t.key),
       );
-    if (isVendor || isProjectManager)
-      return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.vendor.includes(t.key));
-    if (isViewOnly)
-      return ALL_TABS.filter((t) =>
+    else if (isVendor || isProjectManager)
+      tabs = ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.vendor.includes(t.key));
+    else if (isViewOnly)
+      tabs = ALL_TABS.filter((t) =>
         ROLE_TAB_WHITELIST["view only"].includes(t.key),
       );
-    if (isManager)
-      return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
-    return ALL_TABS;
-  }, [isApprover, isVendor, isProjectManager, isViewOnly, isManager]);
+    else if (isManager)
+      tabs = ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
+    else tabs = ALL_TABS;
+    if (isDraftMsa) tabs = tabs.filter((t) => t.key !== "clause-library");
+    return tabs;
+  }, [isApprover, isVendor, isProjectManager, isViewOnly, isManager, isDraftMsa]);
 
   const msa = msaResponse?.data?.data as MSAContractDetail | undefined;
 
