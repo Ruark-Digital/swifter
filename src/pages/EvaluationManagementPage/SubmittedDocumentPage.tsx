@@ -549,6 +549,20 @@ const SubmittedDocumentPage: React.FC = () => {
     setEditingCriteriaId(null);
   };
 
+  // Hooks MUST run on every render, before any early return. Placing these
+  // useMemo calls after the loading/error early returns below shortens the
+  // hooks list on the first render and lengthens it later, tripping React's
+  // "Rendered more hooks than during the previous render" and crashing the
+  // page via the error boundary.
+  const incompleteCriteriaCount = useMemo(
+    () => getIncompleteEvaluationCriteriaCount(criteria),
+    [criteria],
+  );
+  const isEvaluationReadyForSubmission = useMemo(
+    () => canSubmitEvaluationCriteria(criteria),
+    [criteria],
+  );
+
   // Loading state
   if (documentsLoading || criteriaLoading) {
     return (
@@ -614,14 +628,6 @@ const SubmittedDocumentPage: React.FC = () => {
     submitEvaluationMutation.isSuccess;
   const evaluationStatus = (evaluationInfo?.status || criteriaEvaluationInfo?.status || "").toString();
   const isEvaluationCompleted = evaluationStatus.toLowerCase() === "completed";
-  const incompleteCriteriaCount = useMemo(
-    () => getIncompleteEvaluationCriteriaCount(criteria),
-    [criteria],
-  );
-  const isEvaluationReadyForSubmission = useMemo(
-    () => canSubmitEvaluationCriteria(criteria),
-    [criteria],
-  );
   const incompleteEvaluationMessage =
     incompleteCriteriaCount === 1
       ? "Complete the remaining score and comment before submitting."
