@@ -21,7 +21,7 @@ import { getRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
-  getPersonnelOptionLabel,
+  getPersonnelDisplayName,
   isApproverPersonnel,
   type PersonnelLike,
 } from "../lib/approverSelection";
@@ -92,13 +92,13 @@ const Step7ApprovalLevel: React.FC<Props> = ({ control }) => {
 
     return people.map((p) => {
       const email = p.email ?? "";
-      const label = getPersonnelOptionLabel(p as PersonnelLike);
+      const name = getPersonnelDisplayName(p as PersonnelLike);
       const value = p._id || email;
       return {
         id: value,
         value,
-        text: label,
-        meta: { email, roles: p.role },
+        text: name,
+        meta: { email, name, roles: p.role },
       };
     });
   }, [personnelData]);
