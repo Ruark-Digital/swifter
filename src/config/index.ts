@@ -13,7 +13,25 @@ const deriveChatBaseUrl = (apiBaseUrl: string): string => {
   }
 };
 
+// Environment inferred from the API host so Sentry, chat, and any future
+// env-aware code all agree on which backend they're pointed at. Order matters:
+// `bug-api` must be checked before the generic `api` prefix.
+export type AppEnv = "prod" | "staging" | "bug" | "dev";
+
+const deriveEnv = (apiBaseUrl: string): AppEnv => {
+  try {
+    const host = new URL(apiBaseUrl).hostname;
+    if (host === "bug-api.swiftpro.tech") return "bug";
+    if (host === "api.swiftpro.tech") return "prod";
+    if (host === "dev.swiftpro.tech") return "staging";
+    return "dev";
+  } catch {
+    return "dev";
+  }
+};
+
 export const config = {
   baseUrl,
   chatBaseUrl: deriveChatBaseUrl(baseUrl),
+  env: deriveEnv(baseUrl),
 };
