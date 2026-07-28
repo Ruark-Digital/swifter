@@ -126,10 +126,13 @@ function applyDynamicStatusTextReplacement(
     // are evaluation-scoped even though "evaluation" isn't in the phrase.
     const isScoringEvent = lower.includes("scored on") || lower.includes("was scored");
     const toEvaluation = lower.includes("evaluation") || isScoringEvent;
-    const base = toEvaluation
+    const hasEvaluationTarget = Boolean(data.evaId);
+    const base = toEvaluation && hasEvaluationTarget
       ? "/dashboard/evaluation"
       : "/dashboard/solicitation";
-    const targetId = toEvaluation ? data.evaId : data.solId;
+    const targetId = toEvaluation
+      ? data.evaId ?? data.solId
+      : data.solId ?? data.evaId;
     const href = targetId ? `${base}/${targetId}` : base;
 
     // For scoring events the BE payload doesn't populate sol/evaluation.name
@@ -141,7 +144,9 @@ function applyDynamicStatusTextReplacement(
       isScoringEvent &&
       (!anchorTarget || !statusText.includes(anchorTarget))
     ) {
-      const match = statusText.match(/^(.+?)\s+was scored on/i);
+      const match = statusText.match(
+        /^(.+?)\s+(?:was\s+)?scored(?:\s+on)?\b/i,
+      );
       if (match) anchorTarget = match[1].trim();
     }
 
