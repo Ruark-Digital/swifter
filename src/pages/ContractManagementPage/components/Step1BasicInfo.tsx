@@ -138,6 +138,12 @@ const Step1BasicInfo: React.FC<Props> = ({
   // categoryOptions are keyed (value === name).
   const { setValue } = useFormContext();
   const awardedSolicitation = useWatch({ name: "awardedSolicitation" });
+
+  React.useEffect(() => {
+    if (!selectedCurrency && userCurrency) {
+      setValue("currency", userCurrency, { shouldValidate: true });
+    }
+  }, [selectedCurrency, setValue, userCurrency]);
   React.useEffect(() => {
     if (!enableAwardedPrefill) return;
     if (!awardedSolicitation) return;
