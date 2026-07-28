@@ -31,6 +31,7 @@ import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import * as yup from "yup";
 import { useUser } from "@/store/authSlice";
 import { canSubmitEvaluationCriteria } from "./utils/evaluationSubmission";
+import { formatDateTZ } from "@/lib/utils";
 
 // API Types based on documentation
 type VendorDocument = {
@@ -981,12 +982,12 @@ const SubmittedDocumentPage: React.FC = () => {
                                 </p>
                                 {submittedCriteriaTimestamps[criteriaItem._id] && (
                                   <p className="text-xs text-gray-600 mt-1 dark:text-gray-300">
-                                    Submitted at: {new Date(submittedCriteriaTimestamps[criteriaItem._id]).toLocaleString()}
+                                    Submitted at: {formatDateTZ(submittedCriteriaTimestamps[criteriaItem._id], "MMM d, yyyy h:mm a")}
                                   </p>
                                 )}
                                 {revisedCriteriaTimestamps[criteriaItem._id] && (
                                   <p className="text-xs text-green-600 mt-1 dark:text-green-300">
-                                    Revised at: {new Date(revisedCriteriaTimestamps[criteriaItem._id]).toLocaleString()}
+                                    Revised at: {formatDateTZ(revisedCriteriaTimestamps[criteriaItem._id], "MMM d, yyyy h:mm a")}
                                   </p>
                                 )}
                                 {criteriaItem.scoring.comment && (

@@ -7,7 +7,7 @@ import {
   Sparkles,
   Pencil,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatDateTZ } from "@/lib/utils";
 import type { Version, VersionKind } from "./VersionHistoryModal";
 
 interface VersionsTabProps {
@@ -58,7 +58,7 @@ const formatRelativeOrAbsolute = (iso: string): string => {
   if (diff < 60_000) return "just now";
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  return new Date(iso).toLocaleString();
+  return formatDateTZ(iso, "MMM d, yyyy h:mm a");
 };
 
 const VersionsTab: React.FC<VersionsTabProps> = ({
@@ -136,7 +136,7 @@ const VersionsTab: React.FC<VersionsTabProps> = ({
                       <button
                         onClick={() => onRestore(version.id)}
                         className="inline-flex shrink-0 items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
-                        aria-label={`Restore ${version.label ?? "version"} from ${new Date(version.timestamp).toLocaleString()}`}
+                        aria-label={`Restore ${version.label ?? "version"} from ${formatRelativeOrAbsolute(version.timestamp)}`}
                         title="Replace the current document with this snapshot"
                       >
                         <RotateCcw className="h-3 w-3" />

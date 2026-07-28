@@ -13,7 +13,7 @@ import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { contractManagerApi } from "../api/contractManagerApi";
 import { useParams } from "react-router-dom";
 import { format } from "date-fns";
-import { formatModuleLabel } from "@/lib/utils";
+import { formatDateTZ, formatModuleLabel } from "@/lib/utils";
 // import { ContractStatusBadge } from "./StatusBadge";
 
 type ActionLogItem = {
@@ -125,7 +125,7 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
     const submissionDate =
       submissionDateValue &&
       !Number.isNaN(new Date(submissionDateValue).getTime())
-        ? format(new Date(submissionDateValue), "dd MMM yyyy")
+        ? formatDateTZ(submissionDateValue, "dd MMM yyyy")
         : `${action?.dateLine1 || ""} ${action?.dateLine2 || ""}`.trim() || "-";
 
     // const statusText =
@@ -163,7 +163,7 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
                   label="Response Deadline"
                   value={
                     anyData.updatedAt
-                      ? format(new Date(anyData.updatedAt), "dd MMM yyyy")
+                      ? formatDateTZ(anyData.updatedAt, "dd MMM yyyy")
                       : "-"
                   }
                 />
