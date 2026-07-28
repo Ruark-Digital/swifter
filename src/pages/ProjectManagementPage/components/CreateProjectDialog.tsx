@@ -460,6 +460,16 @@ const CreateProjectDialog: React.FC<Props> = ({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         showCloseButton={false}
+        onInteractOutside={(event) => {
+          const target = event.target as HTMLElement;
+          if (
+            target.closest(
+              '[data-radix-popper-content-wrapper], [data-radix-select-viewport], [data-slot="select-content"], [role="listbox"]',
+            )
+          ) {
+            event.preventDefault();
+          }
+        }}
         className=" rounded-2xl p-6 gap-6 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-start justify-between">

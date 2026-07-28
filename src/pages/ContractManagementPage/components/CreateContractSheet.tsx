@@ -1198,6 +1198,16 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       <DialogContent
         forceMount
         showCloseButton={false}
+        onInteractOutside={(event) => {
+          const target = event.target as HTMLElement;
+          if (
+            target.closest(
+              '[data-radix-popper-content-wrapper], [data-radix-select-viewport], [data-slot="select-content"], [role="listbox"]',
+            )
+          ) {
+            event.preventDefault();
+          }
+        }}
         className={cn(
           "rounded-2xl p-0 max-h-[90vh] overflow-y-auto",
           step === 8 ? "sm:max-w-5xl" : "sm:max-w-xl",
