@@ -85,12 +85,11 @@ const Step8ApprovalLevel: React.FC<Props> = ({ control }) => {
         .join(" ")
         .trim();
       const name = fullName || email || p._id;
-      const label = email && name && email !== name ? `${name} (${email})` : name;
       const value = p._id || email;
       return {
         id: value,
         value,
-        text: label,
+        text: name,
         meta: { email, name: fullName },
       };
     });

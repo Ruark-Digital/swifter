@@ -122,7 +122,10 @@ function applyDynamicStatusTextReplacement(
   // Only route to evaluation page if "evaluation" is mentioned in statusText; otherwise route to solicitation.
   if (userRole === "procurement" && activityType === "general") {
     const lower = statusText.toLowerCase();
-    const toEvaluation = lower.includes("evaluation");
+    const toEvaluation =
+      lower.includes("evaluation") ||
+      lower.includes("scored") ||
+      lower.includes("score");
     const base = toEvaluation
       ? "/dashboard/evaluation"
       : "/dashboard/solicitation";
@@ -2492,8 +2495,8 @@ export class DashboardDataTransformer {
         };
       }
 
-      const sol = update?.solicitation ?? null;
       const evaluation = update?.evaluation ?? null;
+      const sol = update?.solicitation ?? evaluation?.solicitation ?? null;
 
       const title = sol?.name ?? evaluation?.name ?? "Unknown";
       const entityName = sol?.name ?? evaluation?.name ?? "Unknown";

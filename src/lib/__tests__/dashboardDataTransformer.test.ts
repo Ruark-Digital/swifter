@@ -2,6 +2,23 @@ import { describe, expect, it } from "vitest";
 import { DashboardDataTransformer } from "@/lib/dashboardDataTransformer";
 
 describe("DashboardDataTransformer", () => {
+  it("links company admin scored updates to the nested evaluation", () => {
+    const [item] = DashboardDataTransformer.transformCompanyAdminGeneralUpdates([
+      {
+        _id: "update-1",
+        statusText: "Madison Construction Ltd. was scored on Relevant Project Experience by Dennis Rose",
+        evaluation: {
+          _id: "evaluation-1",
+          solicitation: { _id: "solicitation-1", name: "Madison Construction Ltd." },
+        },
+      },
+    ]);
+
+    expect(item.text).toContain(
+      '<a href="/dashboard/evaluation/evaluation-1" class="underline underline-offset-4 text-blue-600">Madison Construction Ltd.</a>',
+    );
+  });
+
   it("keeps contract manager my actions as plain text", () => {
     const [item] = DashboardDataTransformer.transformContractManagerDashboardActivity([
       {
