@@ -3,16 +3,18 @@ import { useQuery } from "@tanstack/react-query";
 import { TabsContent } from "@/components/ui/tabs";
 import { getRequest } from "@/lib/axiosInstance";
 import AnalyticsTab from "@/pages/ContractManagementPage/components/AnalyticsTab";
+import { useUserRole } from "@/hooks/useUserRole";
 
 type Props = { contractId: string; isActive?: boolean };
 
 const DEFAULT_CONTRACT_TYPE = "MsaContract" as const;
 type AnalyticsRange = "YTD" | 90 | 60 | 7;
 
-const roleNs = "msa-contract-manager" as const;
-const baseUrl = "/contract/manager/msa-contracts";
-
 const Analytics: React.FC<Props> = ({ contractId, isActive = false }) => {
+  const { isApprover } = useUserRole();
+  const roleSegment = isApprover ? "approver" : "manager";
+  const roleNs = `msa-contract-${roleSegment}`;
+  const baseUrl = `/contract/${roleSegment}/msa-contracts`;
   const [activitiesRange, setActivitiesRange] =
     React.useState<AnalyticsRange>("YTD");
   const [deliverySummaryRange, setDeliverySummaryRange] =
