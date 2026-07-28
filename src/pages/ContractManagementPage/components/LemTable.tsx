@@ -33,13 +33,18 @@ import { ArrowLeft, Search, Share2, X } from "lucide-react";
 import { useToastHandler } from "@/hooks/useToaster";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
 import { formatDate } from "date-fns";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { getFileExtension } from "@/lib/fileUtils";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, formatDateTZ, resolveCurrency } from "@/lib/utils";
 import SubmitLemDialog from "./SubmitLemDialog";
-import { Edit2 } from "lucide-react";
+import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
+import type {
+  ContractCommentDTO,
+  ContractChangeCommentDTO,
+} from "../api/contractManagerApi";
 
 const formatDateValue = (value: unknown) => {
   if (!value) return "—";
@@ -96,10 +101,12 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   basePath,
   currency,
 }) => {
-  const currencyCode = currency || "USD";
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
+  const user = useUser();
+  const queryClient = useQueryClient();
   const { data: lemDetail, isLoading: detailLoading } = useQuery({
     queryKey: useUserQueryKey(["lem-detail", contractId, lemId, basePath]),
     queryFn: async () => {
@@ -112,6 +119,74 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   });
 
   const toast = useToastHandler();
+
+  // Comments (QA #202) — GET/POST .../lems/{lemId}/comments exist across all
+  // roles; `basePath` already carries the role prefix so we just append.
+  const commentsQueryKey = useUserQueryKey([
+    "contractLemComments",
+    contractId,
+    lemId,
+    basePath,
+  ]);
+  const { data: commentsRes, isLoading: isCommentsLoading } = useQuery<{
+    message?: string;
+    data?: { data?: ContractCommentDTO[]; page?: number; limit?: number };
+  }>({
+    queryKey: commentsQueryKey,
+    queryFn: async () => {
+      const res = await getRequest({ url: `${basePath}/${lemId}/comments` });
+      return (res as { data?: unknown })?.data as {
+        message?: string;
+        data?: { data?: ContractCommentDTO[]; page?: number; limit?: number };
+      };
+    },
+    enabled: !!contractId && !!lemId,
+    staleTime: 60000,
+  });
+
+  const addCommentMutation = useMutation<
+    { message?: string; data?: ContractCommentDTO },
+    unknown,
+    ContractChangeCommentDTO
+  >({
+    mutationKey: ["contractLemComments-add", contractId, lemId, basePath],
+    mutationFn: async (payload) => {
+      const res = await postRequest({
+        url: `${basePath}/${lemId}/comments`,
+        payload,
+      });
+      return (res as { data?: unknown })?.data as {
+        message?: string;
+        data?: ContractCommentDTO;
+      };
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: commentsQueryKey });
+    },
+    onError: (error) => {
+      toast.error("LEM Comment", error as ApiResponseError);
+    },
+  });
+
+  const comments = (commentsRes?.data?.data ?? []) as Array<
+    ContractCommentDTO & { createdBy?: { name?: string; email?: string } }
+  >;
+
+  const getCommentAuthor = (c: ContractCommentDTO) =>
+    c.user?.name ??
+    (c as { createdBy?: { name?: string } }).createdBy?.name ??
+    c.replyTo?.name ??
+    "Unknown";
+
+  const handleSendComment = async (content: string) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    try {
+      await addCommentMutation.mutateAsync({ content: trimmed });
+    } catch {
+      // handled in onError
+    }
+  };
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [selectedDoc, setSelectedDoc] = React.useState<DocType | null>(null);
 
@@ -191,29 +266,6 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                 {detailLoading ? "Loading..." : lemDetail?.title || "—"}
               </div>
               <div className="flex items-center gap-2">
-                {isContractVendorLike &&
-                  lemDetail?.status?.toLowerCase?.() === "rejected" && (
-                    <SubmitLemDialog
-                      mode="edit"
-                      lemId={lemId}
-                      contractId={contractId}
-                      initialLem={{
-                        title: lemDetail?.title,
-                        amount: lemDetail?.amount,
-                        description: lemDetail?.description,
-                        files: lemDetail?.files,
-                      }}
-                      trigger={
-                        <Button
-                          variant="outline"
-                          data-testid="edit-lem-trigger"
-                          className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#2A4467] dark:text-slate-200"
-                        >
-                          <Edit2 className="mr-2 h-4 w-4" /> Edit
-                        </Button>
-                      }
-                    />
-                  )}
                 <Button
                   variant="outline"
                   className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
@@ -224,7 +276,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
             </div>
 
             <Tabs
-              value="overview"
+              defaultValue="overview"
               className="space-y-4"
             >
               <TabsList className="h-auto rounded-none w-full border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
@@ -233,6 +285,12 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                 >
                   Overview
+                </TabsTrigger>
+                <TabsTrigger
+                  value="comments"
+                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                >
+                  Comments
                 </TabsTrigger>
               </TabsList>
 
@@ -319,8 +377,94 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   </div>
                 )}
               </TabsContent>
+
+              <TabsContent value="comments" className="space-y-4">
+                <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+                  Comments
+                </div>
+                {isCommentsLoading ? (
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                    Loading comments...
+                  </div>
+                ) : comments.length ? (
+                  <div className="space-y-3">
+                    {comments.map((comment, index) => (
+                      <div
+                        key={comment._id ?? `${index}`}
+                        className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+                            {getCommentAuthor(comment)}
+                          </div>
+                          <div className="text-xs text-[#6B7280] dark:text-slate-400">
+                            {comment.createdAt
+                              ? formatDateTZ(comment.createdAt, "dd MMM yyyy, HH:mm")
+                              : ""}
+                          </div>
+                        </div>
+                        <div
+                          className="mt-2 text-sm text-[#374151] dark:text-slate-200 prose prose-sm dark:prose-invert max-w-none"
+                          dangerouslySetInnerHTML={{
+                            __html: comment.content ?? "",
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                    No comments yet.
+                  </div>
+                )}
+
+                <MessageComposer
+                  onSend={(content) => {
+                    void handleSendComment(content);
+                  }}
+                  isLoading={addCommentMutation.isPending}
+                  currentUser={user ? { name: user.name } : { name: "You" }}
+                  sendType="reply"
+                  isNewChat={false}
+                  onSendTypeChange={() => {}}
+                  sendLabel="Send"
+                />
+              </TabsContent>
             </Tabs>
           </div>
+
+          {/* Vendor/PM edit (pending) or resubmit (rejected) — bottom footer,
+              matching the Deliverables detail layout. */}
+          {isContractVendorLike &&
+            (lemDetail?.status?.toLowerCase?.() === "pending" ||
+              lemDetail?.status?.toLowerCase?.() === "rejected") && (
+              <div className="flex gap-3 pt-6 justify-end">
+                <SubmitLemDialog
+                  mode="edit"
+                  isResubmit={
+                    lemDetail?.status?.toLowerCase?.() === "rejected"
+                  }
+                  lemId={lemId}
+                  contractId={contractId}
+                  initialLem={{
+                    title: lemDetail?.title,
+                    amount: lemDetail?.amount,
+                    description: lemDetail?.description,
+                    files: lemDetail?.files,
+                  }}
+                  trigger={
+                    <Button
+                      data-testid="edit-lem-trigger"
+                      className="h-11 w-64 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
+                    >
+                      {lemDetail?.status?.toLowerCase?.() === "rejected"
+                        ? "Resubmit"
+                        : "Edit"}
+                    </Button>
+                  }
+                />
+              </div>
+            )}
 
           {showApprovalActions && (
             <div className="flex gap-3 pt-6">

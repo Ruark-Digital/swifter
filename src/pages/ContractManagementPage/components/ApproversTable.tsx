@@ -409,7 +409,7 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
                             />
                           )}
                           {amountLabel && (
-                            <LabelRow label="Amount" value={amountLabel} />
+                            <LabelRow label="Approval Limit" value={amountLabel} />
                           )}
                           {actionedAtLabel && (
                             <LabelRow

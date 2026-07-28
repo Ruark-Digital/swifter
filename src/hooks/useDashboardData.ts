@@ -274,11 +274,14 @@ export type ContractManagerRiskDistribution = {
   high: number;
 };
 
+// BE ships two field-name variants for the same values; accept either.
 export type ContractManagerChangeOrderImpact = {
-  totalCOs: number;
-  valueIncrease: number;
-  percentageIncrease: number;
-  chartData: Array<{ date: string; original: number; revised: number }>;
+  totalChangeOrders?: number;
+  totalCOs?: number;
+  valueIncrease?: number;
+  valueIncreasePercentage?: number;
+  percentageIncrease?: number;
+  chartData?: Array<{ date: string; original: number; revised: number }>;
 };
 
 export type ContractManagerComplianceStatus = {
@@ -368,7 +371,8 @@ export const useDashboardData = (
   const isContractDashboardRole =
     userRole === "contract_manager" ||
     userRole === "approver" ||
-    userRole === "procurement";
+    userRole === "procurement" ||
+    userRole === "company_admin";
   const contractDashboardBasePath =
     userRole === "approver"
       ? "/contract/approver/contracts/dashboard"
@@ -1281,7 +1285,8 @@ export const useDashboardData = (
     enabled:
       userRole === "contract_manager" ||
       userRole === "procurement" ||
-      userRole === "approver",
+      userRole === "approver" ||
+      userRole === "company_admin",
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,

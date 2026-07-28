@@ -44,11 +44,19 @@ const SingleSelectField = ({
   name?: string;
 }) => {
   const normalizedValue = typeof value === "string" ? value.trim() : "";
+  // See contract Step2ContractTeam (QA #81): don't flash the raw Mongo ObjectId
+  // while the PM/vendor option list is still loading — show the placeholder
+  // until `options.find` resolves the id to a name; typed emails/names still show.
+  const isUnresolvedObjectId =
+    /^[a-f\d]{24}$/i.test(normalizedValue) && !fallbackLabel;
   const selectedOption = normalizedValue
-    ? options.find((option) => option.value === normalizedValue) ?? {
-        label: fallbackLabel || normalizedValue,
-        value: normalizedValue,
-      }
+    ? options.find((option) => option.value === normalizedValue) ??
+      (isUnresolvedObjectId
+        ? undefined
+        : {
+            label: fallbackLabel || normalizedValue,
+            value: normalizedValue,
+          })
     : undefined;
 
   const selectedValues = selectedOption ? [selectedOption] : [];
@@ -102,8 +110,8 @@ const Step2ContractTeam: React.FC<Props> = ({ defaultPmLabel }) => {
       Array.isArray((personnelData as any)?.data?.data)
         ? (personnelData as any)?.data?.data?.map((p: any) => ({
             id: p._id,
-            label: p.firstName && p.lastName ? `${p.firstName} (${p.lastName})` : p.firstName,
-            text: p.firstName && p.lastName ? `${p.firstName} (${p.lastName})` : p.firstName,
+            label: p.firstName && p.lastName ? `${p.firstName} ${p.lastName}` : p.firstName,
+            text: p.firstName && p.lastName ? `${p.firstName} ${p.lastName}` : p.firstName,
             value: p._id,
             meta: { email: p.email, role: p.role, phone: p.phone },
           }))

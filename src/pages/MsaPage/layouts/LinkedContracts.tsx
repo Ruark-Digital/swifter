@@ -142,7 +142,7 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
       },
       {
         accessorKey: "value",
-        header: "Value",
+        header: "Original Value",
         cell: ({ getValue }) => {
           const v = getValue<string | undefined>();
           return (

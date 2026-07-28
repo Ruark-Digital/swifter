@@ -259,6 +259,12 @@ type ContractTerm = { _id: string; name: string; description?: string };
 type AwardedVendorItem = {
   _id: string;
   name: string;
+  // BE (docs.json) documents this as `categoryName` ("Name of the first
+  // category assigned to the solicitation"). The live payload has historically
+  // used shorter keys than the spec (e.g. `name` vs documented `solicitationName`),
+  // so we read `category` as a fallback.
+  categoryName?: string;
+  category?: string;
   vendor: { _id: string; name: string; email: string };
 };
 
@@ -719,6 +725,11 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
             value: a._id,
             vendorEmail: a.vendor.email,
             vendorId: a.vendor._id,
+            // Carried so Step 1 can auto-populate the contract name, vendor and
+            // category when an awarded solicitation is selected (QA #222/#242/#243).
+            solicitationName: a.name,
+            vendorName: a.vendor.name,
+            categoryName: a.categoryName ?? a.category,
           }))
         : [],
     [awardedQuery.data?.data],
@@ -749,6 +760,9 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       qc.invalidateQueries({ queryKey: ["contracts-all"] });
       qc.invalidateQueries({ queryKey: ["contracts-me"] });
       qc.invalidateQueries({ queryKey: ["contracts-stats"] });
+      // Refresh the contract detail so a freshly published contract's
+      // status/publish date update immediately, not only after reload (QA #244).
+      qc.invalidateQueries({ queryKey: ["contract-manager-contracts"] });
       reset(defaultValues);
       setStep(1);
       clearSession();
@@ -820,6 +834,26 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       if (!fields.length) return true;
       const ok = await formTrigger(fields as any, { shouldFocus: true });
       if (!ok) return false;
+      if (currentStep === 8) {
+        const approvalGroups = getValues().approvalGroups ?? [];
+        const seenApprovers = new Set<string>();
+        const hasDuplicateApprover = approvalGroups.some((group) =>
+          (group.approvers ?? []).some((approver) => {
+            const key = toApproverUserKeyOrUndefined(approver);
+            if (!key) return false;
+            if (seenApprovers.has(key)) return true;
+            seenApprovers.add(key);
+            return false;
+          }),
+        );
+        if (hasDuplicateApprover) {
+          error(
+            "Approval Groups",
+            "An approver can only be assigned to one approval group.",
+          );
+          return false;
+        }
+      }
       if (currentStep !== 5) return true;
       // Step 5: when paymentStructure === "milestone", every row must
       // have amount AND dueDate. Schema keeps them optional so the
@@ -850,7 +884,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       });
       return allValid;
     },
-    [formTrigger, getValues, setError],
+    [error, formTrigger, getValues, setError],
   );
 
   const buildPayload = React.useCallback(
@@ -1198,6 +1232,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
                   projectOptions={projectOptions}
                   awardedOptions={awardedOptions}
                   msaOptions={msaOptions}
+                  enableAwardedPrefill
                 />
               )}
 

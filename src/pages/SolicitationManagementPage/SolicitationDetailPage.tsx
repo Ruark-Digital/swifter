@@ -26,6 +26,7 @@ import {
   Share2,
 } from "lucide-react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getRequest, putRequest, deleteRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
@@ -515,9 +516,7 @@ export const SolicitationDetailPage = () => {
     });
   }, [evaluatorGroups, evaluatorSearchQuery]);
 
-  const handleBack = () => {
-    navigate(-1);
-  };
+  const handleBack = useGoBack("/dashboard/solicitation");
 
   // Show loading state
   if (isLoading) {
@@ -590,13 +589,13 @@ export const SolicitationDetailPage = () => {
     },
     {
       id: "actions",
-      header: "Actions",
+      header: () => <div className="text-left">Actions</div>,
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-start gap-2">
           {row.original.status !== "invited" && (
             <Button
               variant="link"
-              className="text-green-700"
+              className="text-green-700 px-0"
               onClick={() =>
                 navigate(
                   `/dashboard/solicitations/${id}/proposal-details/${row.original.id._id}`,
@@ -615,7 +614,7 @@ export const SolicitationDetailPage = () => {
               isCompanyAdmin) && (
               <Button
                 variant="link"
-                className=""
+                className="px-0"
                 onClick={() => setExtendOpen(true)}
                 disabled={
                   remindEvaluatorMutation.isPending ||
@@ -1625,7 +1624,12 @@ export const SolicitationDetailPage = () => {
         )}
 
         <TabsContent value="questions">
-          <QuestionsTab solicitationStatus={solicitation?.status} isOwner={isOwner} />
+          <QuestionsTab
+            solicitationStatus={solicitation?.status}
+            isOwner={isOwner}
+            questionDeadline={solicitation?.questionDeadline}
+            timezone={solicitation?.timezone}
+          />
         </TabsContent>
 
         <TabsContent value="addendums">

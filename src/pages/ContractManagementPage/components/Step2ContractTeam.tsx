@@ -46,11 +46,22 @@ const SingleSelectField = ({
   name?: string;
 }) => {
   const normalizedValue = typeof value === "string" ? value.trim() : "";
+  // A stored id (e.g. the assigned PM) arrives before its option list has
+  // finished loading. Until the option resolves, don't render the raw Mongo
+  // ObjectId as a chip (QA #81 — it flashed for a few seconds before the
+  // vendor's PM fetch completed). Show the placeholder instead; a real typed
+  // value (email/name, not a 24-hex id) still renders, and once the options
+  // load `options.find` resolves the id to the person's name.
+  const isUnresolvedObjectId =
+    /^[a-f\d]{24}$/i.test(normalizedValue) && !fallbackLabel;
   const selectedOption = normalizedValue
-    ? options.find((option) => option.value === normalizedValue) ?? {
-        label: fallbackLabel || normalizedValue,
-        value: normalizedValue,
-      }
+    ? options.find((option) => option.value === normalizedValue) ??
+      (isUnresolvedObjectId
+        ? undefined
+        : {
+            label: fallbackLabel || normalizedValue,
+            value: normalizedValue,
+          })
     : undefined;
 
   const selectedValues = selectedOption ? [selectedOption] : [];

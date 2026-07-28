@@ -15,7 +15,9 @@ import {
   buildFocusRedline,
   buildAddComment,
   buildFocusComment,
+  buildSetMode,
   type PresenceUser,
+  type DocumentMode,
 } from "../collab/superdocBridge";
 
 type EditorImportMeta = { sourceUrl: string; fileName: string; fileType: string };
@@ -31,6 +33,12 @@ type Props = {
   importMeta: EditorImportMeta;
   collabMeta: EditorCollabMeta;
   onEditorReady: (adapter: EditorAdapter | null) => void;
+  /** SuperDoc document mode. Defaults to "editing" (the collab editor).
+   *  Pass "viewing" for a read-only preview. */
+  documentMode?: DocumentMode;
+  /** Called when the iframe fails to load / the document can't be fetched,
+   *  so a host can fall back to another renderer. */
+  onError?: () => void;
 };
 
 // Handshake phases, surfaced in the overlay so a stuck load is self-diagnosing:
@@ -45,6 +53,12 @@ type Props = {
 const CONNECT_TIMEOUT_MS = 12000;
 // Budget for downloading the .docx before we call it a stalled fetch.
 const FETCH_TIMEOUT_MS = 30000;
+// Budget for SuperDoc to turn the posted bytes into a rendered document. Without
+// this the `rendering` phase is unbounded: if the app never answers with
+// `superdoc:editor-ready` (or an error), the overlay spins forever and hosts
+// that rely on `onError` to fall back to another renderer never get told
+// (QA #286 — "The Document does not open").
+const RENDER_TIMEOUT_MS = 45000;
 
 // Renders the AGPL SuperDoc app in an isolated iframe and bridges to it via
 // postMessage only. The host fetches the .docx bytes (it has the network
@@ -55,6 +69,8 @@ const IframeEditorPane: React.FC<Props> = ({
   importMeta,
   collabMeta,
   onEditorReady,
+  documentMode = "editing",
+  onError,
 }) => {
   const user = useUser();
   const toastHandler = useToastHandler();
@@ -73,14 +89,25 @@ const IframeEditorPane: React.FC<Props> = ({
   const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([]);
   const [presenceReady, setPresenceReady] = useState(false);
 
+  // Watchdog for the `rendering` phase, armed once the bytes are posted and
+  // disarmed by `superdoc:editor-ready`, an error, unmount, or a retry.
+  const renderTimerRef = useRef<number | null>(null);
+  const clearRenderWatchdog = useCallback(() => {
+    if (renderTimerRef.current !== null) {
+      window.clearTimeout(renderTimerRef.current);
+      renderTimerRef.current = null;
+    }
+  }, []);
+
   // Re-attempt the editor handshake after a failure: reset to the connecting
   // state and remount the iframe so it reloads its src from scratch.
   const retry = useCallback(() => {
     readyRef.current = false;
+    clearRenderWatchdog();
     setErrorMsg("");
     setPhase("connecting");
     setReloadKey((k) => k + 1);
-  }, []);
+  }, [clearRenderWatchdog]);
 
   const origin = superdocOrigin();
 
@@ -115,6 +142,7 @@ const IframeEditorPane: React.FC<Props> = ({
     extractRedlines: () => redlinesRef.current,
     replaceRedline: (redlineId, replacement) =>
       postCommand(buildApplyRedline(redlineId, replacement)),
+    setMode: (mode) => postCommand(buildSetMode(mode)),
     anchorComment: (text) =>
       new Promise<string | null>((resolve) => {
         const requestId = crypto.randomUUID();
@@ -128,10 +156,20 @@ const IframeEditorPane: React.FC<Props> = ({
   }), [postCommand, settleAnchor]);
   const buildAdapterRef = useRef(buildAdapter);
 
-  const fail = useCallback((message: string) => {
-    setErrorMsg(message);
-    setPhase("error");
-  }, []);
+  // Keep the latest onError reachable from the stable `fail` callback without
+  // adding it to fail's deps (which would churn failRef / effect identities).
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+
+  const fail = useCallback(
+    (message: string) => {
+      clearRenderWatchdog();
+      setErrorMsg(message);
+      setPhase("error");
+      onErrorRef.current?.();
+    },
+    [clearRenderWatchdog],
+  );
 
   const sendInit = useCallback(
     async (unmountSignal: AbortSignal) => {
@@ -163,13 +201,20 @@ const IframeEditorPane: React.FC<Props> = ({
           docBytes,
           fileName: importMeta.fileName,
           fileType: importMeta.fileType,
-          documentMode: "editing",
+          documentMode,
           user: { name: user?.name || "Unknown User", email: user?.email || "" },
           roomId: collabMeta.roomId,
           wsUrl: collabMeta.wsUrl,
           token: collabMeta.token,
         });
         frame.postMessage(msg, origin, [docBytes]);
+        clearRenderWatchdog();
+        renderTimerRef.current = window.setTimeout(() => {
+          renderTimerRef.current = null;
+          fail(
+            "The document was downloaded but the editor never finished opening it.",
+          );
+        }, RENDER_TIMEOUT_MS);
       } catch (error) {
         if (unmountSignal.aborted) return; // component gone — stay silent
         const detail = timedOut
@@ -185,9 +230,11 @@ const IframeEditorPane: React.FC<Props> = ({
       }
     },
     [
+      clearRenderWatchdog,
       collabMeta.roomId,
       collabMeta.token,
       collabMeta.wsUrl,
+      documentMode,
       fail,
       importMeta.fileName,
       importMeta.fileType,
@@ -230,6 +277,7 @@ const IframeEditorPane: React.FC<Props> = ({
           void sendInitRef.current(controller.signal);
           break;
         case "superdoc:editor-ready":
+          clearRenderWatchdog();
           setPhase("ready");
           onEditorReadyRef.current(buildAdapterRef.current());
           break;
@@ -307,6 +355,7 @@ const IframeEditorPane: React.FC<Props> = ({
       window.removeEventListener("ct-focus-comment", onFocusComment);
       window.removeEventListener("ct-focus-mark", onFocusMark);
       window.clearTimeout(connectTimer);
+      clearRenderWatchdog();
       controller.abort();
       // Settle any in-flight anchor requests so awaiting callers don't hang.
       for (const requestId of [...pendingAnchors.keys()]) {
@@ -318,7 +367,7 @@ const IframeEditorPane: React.FC<Props> = ({
     // watchdog for the remounted iframe). It only changes inside `retry`, never
     // on a normal re-render, so the mount-once guarantee still holds.
     // `settleAnchor` is a stable useCallback([]) — it never retriggers this.
-  }, [origin, postCommand, reloadKey, settleAnchor]);
+  }, [clearRenderWatchdog, origin, postCommand, reloadKey, settleAnchor]);
 
   // Not `.ct-editor-panel` — that class forces height:100vh (for the legacy
   // full-page editors), which overflows the header'd column and adds a second
@@ -334,7 +383,12 @@ const IframeEditorPane: React.FC<Props> = ({
             className="absolute inset-0 z-10 transition-opacity duration-300"
             aria-busy={phase !== "error"}
           >
-            <EditorLoadingSkeleton phase={phase} errorMsg={errorMsg} onRetry={retry} />
+            <EditorLoadingSkeleton
+              phase={phase}
+              errorMsg={errorMsg}
+              onRetry={retry}
+              collaborative={!collabMeta.disable}
+            />
           </div>
         )}
         <iframe

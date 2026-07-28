@@ -21,6 +21,7 @@ import VendorContractsTable, {
   VendorContractRow,
 } from "./components/VendorContractsTable";
 import { formatDate } from "date-fns";
+import { resolveCurrency } from "@/lib/utils";
 
 type ContractApi = {
   _id: string;
@@ -89,6 +90,7 @@ type VendorContractApi = {
   contractId: string;
   contractRelationship?: "standalone" | "project" | "msa_project" | "msa";
   contractValue?: number;
+  currency?: string;
   status:
     | "active"
     | "completed"
@@ -312,13 +314,17 @@ const mapStatusToLabel = (
   return "Suspended";
 };
 
-const mapContractsToRows = (contracts?: ContractApi[]): ContractRow[] => {
+const mapContractsToRows = (contracts?: ContractApi[], profileCurrency?: string): ContractRow[] => {
   if (!contracts) return [];
 
   return contracts.map((c) => {
     const value =
       typeof c.contractValue === "number"
-        ? `${c.contractValue.toLocaleString()}`
+        ? new Intl.NumberFormat(undefined, {
+            style: "currency",
+            currency: resolveCurrency(c.currency, profileCurrency),
+            maximumFractionDigits: 0,
+          }).format(c.contractValue)
         : undefined;
 
     return {
@@ -327,7 +333,7 @@ const mapContractsToRows = (contracts?: ContractApi[]): ContractRow[] => {
       title: c.title,
       code: c._id,
       vendor: c.vendor?.name ?? c.projectManager?.name ?? "-",
-      value: `$${value}`,
+      value,
       owner: c.creator?.name ?? "-",
       ownerId: c.creator?._id,
       isOwner: c.owner,
@@ -364,12 +370,17 @@ const mapVendorStatusToLabel = (
 
 const mapVendorContractsToRows = (
   contracts?: VendorContractApi[],
+  profileCurrency?: string,
 ): VendorContractRow[] => {
   if (!contracts) return [];
   return contracts.map((c) => {
     const value =
       typeof c.contractValue === "number"
-        ? c.contractValue.toLocaleString()
+        ? new Intl.NumberFormat(undefined, {
+            style: "currency",
+            currency: resolveCurrency(c.currency, profileCurrency),
+            maximumFractionDigits: 0,
+          }).format(c.contractValue)
         : undefined;
 
     return {
@@ -379,7 +390,7 @@ const mapVendorContractsToRows = (
       code: c.contractId,
       company: mapCompanyLabel(c.company, c.vendor),
       contractRelationship: mapContractRelationshipLabel(c.contractRelationship),
-      value: value != null ? `$${value}` : undefined,
+      value,
       published: c.datePublished
         ? formatDate(c.datePublished, "dd MMM yyyy")
         : undefined,
@@ -456,19 +467,23 @@ const ContractManagementPage: React.FC = () => {
       }
     : undefined;
 
-  const allContractsRows = mapContractsToRows(allContractsData?.data.contracts);
-  const myContractsRows = mapContractsToRows(myContractsData?.data.contracts);
+  const user = useUser();
+  const profileCurrency = user?.currency;
+  const allContractsRows = mapContractsToRows(allContractsData?.data.contracts, profileCurrency);
+  const myContractsRows = mapContractsToRows(myContractsData?.data.contracts, profileCurrency);
   const approverContractsRows = mapContractsToRows(
     approverContractsData?.data.contracts,
+    profileCurrency,
   );
   const vendorContractsRows = mapVendorContractsToRows(
     vendorContractsData?.data.contracts,
+    profileCurrency,
   );
   const pmAllContractsRows = mapVendorContractsToRows(
     pmAllContractsData?.data.contracts,
+    profileCurrency,
   );
 
-  const user = useUser();
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
 
@@ -649,6 +664,34 @@ const ContractManagementPage: React.FC = () => {
               // isReadOnly={true}
               // disableActions={isApprover}
             />
+          ) : isCompanyAdmin ? (
+            <Tabs
+              defaultValue="all"
+              className="w-full bg-transparent space-y-4"
+              onValueChange={() => setStatusFilter("all")}
+            >
+              <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
+                <TabsTrigger
+                  value="all"
+                  className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                >
+                  All Contracts
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="all">
+                <ContractsTable
+                  rows={allContractsRows}
+                  isLoading={isAllContractsLoading}
+                  totalCount={allContractsData?.data.totalContracts}
+                  isReadOnly={isViewOnly}
+                  pagination={allPagination}
+                  setPagination={setAllPagination}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
+                />
+              </TabsContent>
+            </Tabs>
           ) : (
             <Tabs
               defaultValue="all"

@@ -230,7 +230,7 @@ const CreateSolicitationDialog = () => {
       await postRequest({ url: "/procurement/solicitations", payload: data }),
   });
 
-  const onSubmit = async (data: any, event?: React.FormEvent) => {
+  const onSubmit = async (data: any, event?: React.BaseSyntheticEvent) => {
     // Prevent default form submission behavior which causes page reload
     if (event) {
       event.preventDefault();
@@ -324,8 +324,10 @@ const CreateSolicitationDialog = () => {
               }))
             : undefined,
         vendors:
-          completeData.vendor?.map((item: any) => ({ id: item.value })) ||
-          undefined,
+          completeData.visibility === "public"
+            ? undefined
+            : completeData.vendor?.map((item: any) => ({ id: item.value })) ||
+              undefined,
       };
 
       const response = await createSolicitation(apiPayload);
@@ -358,7 +360,8 @@ const CreateSolicitationDialog = () => {
 
   const handleBack = () => {
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+      const isPublic = forge.getValues().visibility === "public";
+      setCurrentStep(currentStep === 6 && isPublic ? 4 : currentStep - 1);
     }
   };
 
@@ -462,8 +465,10 @@ const CreateSolicitationDialog = () => {
               }))
             : undefined,
         vendors:
-          formData.vendor?.map((item: any) => ({ id: item.value })) ||
-          undefined,
+          formData.visibility === "public"
+            ? undefined
+            : formData.vendor?.map((item: any) => ({ id: item.value })) ||
+              undefined,
       };
 
       const response = await createSolicitation(apiPayload);
@@ -524,8 +529,12 @@ const CreateSolicitationDialog = () => {
           break;
       }
 
-      // If we reach here, validation passed, proceed to next step
-      setCurrentStep((prev) => prev + 1);
+      // Public solicitations are broadcast to all vendors and do not need an
+      // explicit invitation step.
+      setCurrentStep((prev) => {
+        const isPublic = forge.getValues().visibility === "public";
+        return prev === 4 && isPublic ? 6 : prev + 1;
+      });
     } catch (error) {
       // Handle validation errors
       if (error instanceof yup.ValidationError) {
@@ -562,19 +571,22 @@ const CreateSolicitationDialog = () => {
   };
 
   const getStepTitle = () => {
+    const isPublic = forge.getValues().visibility === "public";
+    const totalSteps = isPublic ? 5 : 6;
+    const displayStep = currentStep === 6 && isPublic ? 5 : currentStep;
     switch (currentStep) {
       case 1:
-        return "Step 1 of 6: Basic Information";
+        return `Step ${displayStep} of ${totalSteps}: Basic Information`;
       case 2:
-        return "Step 2 of 6: Timeline & Bid Details";
+        return `Step ${displayStep} of ${totalSteps}: Timeline & Bid Details`;
       case 3:
-        return "Step 3 of 6: Create Event";
+        return `Step ${displayStep} of ${totalSteps}: Create Event`;
       case 4:
-        return "Step 4 of 6: Documents";
+        return `Step ${displayStep} of ${totalSteps}: Documents`;
       case 5:
-        return "Step 5 of 6: Invite Vendors";
+        return `Step ${displayStep} of ${totalSteps}: Invite Vendors`;
       case 6:
-        return "Step 6 of 6: Review & Publish";
+        return `Step ${displayStep} of ${totalSteps}: Review & Publish`;
       default:
         return "Step 1 of 6: Basic Information";
     }
@@ -678,9 +690,19 @@ const CreateSolicitationDialog = () => {
               >
                 Back
               </Button>
+              {/* Always type="button". Letting the type flip to "submit" on the
+                  final step hands the browser control of when the form fires,
+                  so simply arriving at step 6 could publish the solicitation
+                  before the user pressed anything. The submit is now driven
+                  explicitly by this click via forge.handleSubmit and nothing
+                  else. */}
               <Button
-                type={currentStep === 6 ? "submit" : "button"}
-                onClick={currentStep === 6 ? undefined : validateAndProceed}
+                type="button"
+                onClick={
+                  currentStep === 6
+                    ? forge.handleSubmit(onSubmit)
+                    : validateAndProceed
+                }
                 disabled={isPending}
                 className="px-8 py-2 bg-[#2A4467] hover:bg-[#1e3147] text-white rounded-lg"
               >

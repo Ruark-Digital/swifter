@@ -30,6 +30,7 @@ type UpdateVendorResponse = {
   name: string;
   website?: string;
   location?: string;
+  email?: string;
   secondaryEmails?: string[];
   phone?: string;
   businessType?: string;
@@ -40,6 +41,7 @@ const editVendorSchema = yup.object({
   name: yup.string().required("Vendor name is required"),
   website: yup.string().url("Valid website URL is required").optional(),
   location: yup.string().optional(),
+  email: yup.string().email("Valid email is required").optional(),
   phone: yup.string().optional(),
   businessType: yup.string().optional(),
   secondaryEmails: yup
@@ -63,6 +65,7 @@ interface EditVendorDialogProps {
     name: string;
     website?: string;
     location?: string;
+    email?: string;
     phone?: string;
     businessType?: string;
     secondaryEmails?: string[];
@@ -116,6 +119,7 @@ const EditVendorDialog: React.FC<EditVendorDialogProps> = ({
       name: vendorData?.name || "",
       website: vendorData?.website || "",
       location: vendorData?.location || "",
+      email: vendorData?.email || "",
       phone: vendorData?.phone || "",
       businessType: vendorData?.businessType || "",
       secondaryEmails: vendorData?.secondaryEmails?.map(email => ({ text: email })) || [],
@@ -123,6 +127,11 @@ const EditVendorDialog: React.FC<EditVendorDialogProps> = ({
   });
 
   const onSubmit = async (data: EditVendorFormData) => {
+    // Only send `email` when it actually changed — the backend emails a
+    // verification link on every email in the payload, and the address stays
+    // unchanged until the vendor confirms it.
+    const emailChanged = !!data.email && data.email !== vendorData?.email;
+
     // Transform form data to API payload
     const payload: UpdateVendorPayload = {
       name: data.name,
@@ -132,9 +141,19 @@ const EditVendorDialog: React.FC<EditVendorDialogProps> = ({
       businessType: data.businessType,
       secondaryEmails:
         data.secondaryEmails?.map((contact) => contact.text ?? "") || [],
+      ...(emailChanged ? { email: data.email } : {}),
     };
 
-    await updateVendor(payload);
+    await updateVendor(payload, {
+      onSuccess: () => {
+        if (emailChanged) {
+          toast.success(
+            "Verification sent",
+            `A verification link was sent to ${data.email}. The vendor's email stays unchanged until they confirm it.`
+          );
+        }
+      },
+    });
   };
 
   const handleCancel = () => {
@@ -163,6 +182,15 @@ const EditVendorDialog: React.FC<EditVendorDialogProps> = ({
               name="name"
               label="Vendor Name"
               placeholder="Enter Vendor Name"
+              containerClass="space-y-2"
+            />
+
+            {/* Primary Email */}
+            <Forger
+              component={TextInput}
+              name="email"
+              label="Email Address"
+              placeholder="Enter Email Address"
               containerClass="space-y-2"
             />
 

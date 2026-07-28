@@ -14,6 +14,7 @@ import { contractManagerApi, LogModule } from "../api/contractManagerApi";
 import { format } from "date-fns";
 import ActionLogDetailsSheet from "../components/ActionLogDetailsSheet";
 import { useUserRole } from "@/hooks/useUserRole";
+import { formatDateTZ, formatModuleLabel } from "@/lib/utils";
 
 type Props = { isActive?: boolean };
 
@@ -64,7 +65,8 @@ const ActionLogTabContent: React.FC<Props> = () => {
     if (!logsData?.data?.logs) return [];
 
     return logsData.data.logs.map((log: any) => {
-      const date = log.date ? new Date(log.date) : new Date();
+      const sourceDate = log.date ?? new Date().toISOString();
+      const date = new Date(sourceDate);
       let refStr = "Unknown";
       if (log.reference) {
         if (typeof log.reference === "string") {
@@ -96,8 +98,8 @@ const ActionLogTabContent: React.FC<Props> = () => {
         actorName: userName,
         actorRole: roleName,
         reference: refStr,
-        dateLine1: format(date, "dd MMM yyyy"),
-        dateLine2: format(date, "hh:mm a"),
+        dateLine1: formatDateTZ(sourceDate, "dd MMM yyyy"),
+        dateLine2: formatDateTZ(sourceDate, "hh:mm a"),
         rawDate: date,
         rawReference: log.reference,
       };
@@ -110,7 +112,7 @@ const ActionLogTabContent: React.FC<Props> = () => {
     if (!rows.length) return;
     const exportRows = rows.map((r) => ({
       "Action ID": r.actionId,
-      Module: (r.module || "").replace(/([a-z])([A-Z])/g, "$1 $2"),
+      Module: formatModuleLabel(r.module),
       Description: r.description,
       User: r.actorName,
       Role: r.actorRole ?? "",
@@ -142,7 +144,7 @@ const ActionLogTabContent: React.FC<Props> = () => {
         accessorKey: "module", 
         header: "Module",
         cell: ({ getValue }) => (
-            <span className="capitalize">{getValue<string>().replace(/([a-z])([A-Z])/g, "$1 $2")}</span>
+            <span>{formatModuleLabel(getValue<string>())}</span>
         )
     },
     { accessorKey: "description", header: "Description" },

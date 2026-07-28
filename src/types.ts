@@ -17,18 +17,25 @@ export type Role = {
   __v: number;
 };
 
+// BE ships module flags as `{ enabled: boolean }`; legacy payloads (and
+// persisted auth state) carry plain booleans. Read via isModuleEnabled /
+// isModuleDisabled from src/lib/moduleFlags.ts.
+export type ModuleFlagValue = boolean | { enabled: boolean };
+
 export interface Modules {
-  contractManagement: boolean;
+  contractManagement: ModuleFlagValue;
   _id: string;
   companyId: string;
-  solicitationManagement: boolean;
-  evaluationsManagement: boolean;
-  vendorManagement: boolean;
-  reportsAnalytics: boolean;
-  vendorsQA: boolean;
-  generalUpdatesNotifications: boolean;
-  addendumManagement: boolean;
-  myActions: boolean;
+  solicitationManagement: ModuleFlagValue;
+  evaluationsManagement: ModuleFlagValue;
+  vendorManagement: ModuleFlagValue;
+  reportsAnalytics: ModuleFlagValue;
+  vendorsQA: ModuleFlagValue;
+  generalUpdatesNotifications: ModuleFlagValue;
+  addendumManagement: ModuleFlagValue;
+  myActions: ModuleFlagValue;
+  MSAmanagement?: ModuleFlagValue;
+  projectmanagement?: ModuleFlagValue;
   createdAt: Date;
   updatedAt: Date;
   __v: number;
@@ -41,6 +48,9 @@ export type User = {
   email: string;
   name: string;
   role: Role;
+  // Multi-role (QA #177). BE ships up to 2 roles; items may be populated Role
+  // objects, name slugs, or bare document ids. Resolved via useUserRole.
+  roles?: (Role | string)[];
   currency?: string;
   status: string;
   module: Modules;
@@ -195,6 +205,13 @@ export interface ContractDetail {
   __v:                    number;
   holdBackReleased:       number;
   savingAmount:           number;
+  /** Payment-summary figures from the contract-detail response (v2.3.0).
+   *  `billedAmount` drives Billed Till Date; `currentBalance` drives the
+   *  Payment Summary's Current Balance (previously sourced from the
+   *  financial-statement dashboard endpoint). */
+  billedAmount?:          number;
+  billPayment?:           number;
+  currentBalance?:        number;
 }
 
 export interface ContractDeliverable {

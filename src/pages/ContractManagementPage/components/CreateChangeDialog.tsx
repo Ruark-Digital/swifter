@@ -44,6 +44,9 @@ type Props = {
    *  a new one (QA #150). Requires changeId; initialChange pre-fills the
    *  form. Vendor-only — managers don't resubmit their own change requests. */
   mode?: "create" | "edit";
+  /** In edit mode, distinguishes a rejected-item resubmit ("Resubmit") from a
+   *  pending-item edit ("Edit"). Both hit the same PUT. */
+  isResubmit?: boolean;
   changeId?: string;
   initialChange?: {
     title?: string;
@@ -84,6 +87,7 @@ const CreateChangeDialog: React.FC<Props> = ({
   isManager = true,
   documentType = "Contract",
   mode = "create",
+  isResubmit = false,
   changeId,
   initialChange,
 }) => {
@@ -126,7 +130,9 @@ const CreateChangeDialog: React.FC<Props> = ({
   const files = useWatch({ control, name: "files" }) as File[] | null;
   const changeType = useWatch({ control, name: "changeType" }) as ContractChangeType | undefined;
   const submitLabel = isEdit
-    ? "Resubmit"
+    ? isResubmit
+      ? "Resubmit"
+      : "Save Changes"
     : getCreateChangeSubmitLabel({
         isManager,
         changeType: changeType ?? defaultChangeType,
@@ -184,7 +190,9 @@ const CreateChangeDialog: React.FC<Props> = ({
       toastHandler.success(
         "Change Request",
         isEdit
-          ? "Change request resubmitted successfully"
+          ? isResubmit
+            ? "Change request resubmitted successfully"
+            : "Change request updated successfully"
           : "Change request submitted successfully",
       );
       setOpen(false);
@@ -273,7 +281,11 @@ const CreateChangeDialog: React.FC<Props> = ({
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-8 pt-8">
           <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
-            {isEdit ? "Resubmit Change" : "Create Change"}
+            {isEdit
+              ? isResubmit
+                ? "Resubmit Change"
+                : "Edit Change"
+              : "Create Change"}
           </DialogTitle>
         </div>
         <div className="px-8 pb-8 pt-6">
@@ -379,7 +391,13 @@ const CreateChangeDialog: React.FC<Props> = ({
                 disabled={isSubmitting}
                 className="h-12 flex-1 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
               >
-                {isSubmitting ? (isEdit ? "Resubmitting..." : "Sending...") : submitLabel}
+                {isSubmitting
+                  ? isEdit
+                    ? isResubmit
+                      ? "Resubmitting..."
+                      : "Saving..."
+                    : "Sending..."
+                  : submitLabel}
               </Button>
             </div>
           </Forge>

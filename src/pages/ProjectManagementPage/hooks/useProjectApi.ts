@@ -27,6 +27,12 @@ type Project = {
   contract: Contract[];
   files?: ProjectFile[];
   budget: number;
+  /** Sum of approved contract invoice amounts for all contracts linked to this project. */
+  totalSpend?: number;
+  /** Manually entered Estimated At Completion value; `null`/absent until first entered via the EAC endpoint. */
+  eac?: number | null;
+  /** ISO date-time the EAC value was last manually updated. */
+  lastEacUpdate?: string;
   status: "active" | "completed" | "cancelled";
   allowMultiple?: boolean;
   createdAt?: string;
@@ -102,6 +108,22 @@ export const useCompleteProject = (projectId?: string) => {
       queryClient.invalidateQueries({
         queryKey: ["project-contracts", projectId],
       });
+    },
+  });
+};
+
+export const useUpdateProjectEac = (projectId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation<ApiResponse<Project>, ApiResponseError, { eac: number }>({
+    mutationFn: async (payload) =>
+      await patchRequest({
+        url: `/contract/manager/projects/${projectId}/eac`,
+        payload,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project-detail", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["projects-list"] });
+      queryClient.invalidateQueries({ queryKey: ["projects-stats"] });
     },
   });
 };

@@ -1,5 +1,7 @@
+import { FileSearch } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AnalyticsEmptyState } from "./AnalyticsEmptyState";
 import { ChartContainer, ChartConfig } from "@/components/ui/chart";
 import {
   RadarChart,
@@ -33,18 +35,9 @@ export const ClauseIntelligenceCard: React.FC<Props> = ({
   selectedRange = "ytd",
   onRangeChange,
 }) => {
-  const mostNegotiated =
-    data?.mostNegotiatedClauses &&
-    Array.isArray(data.mostNegotiatedClauses) &&
-    data.mostNegotiatedClauses.length > 0
-      ? data.mostNegotiatedClauses
-      : [
-          { category: "Warranties", count: 50 },
-          { category: "Indemnities", count: 75 },
-          { category: "Termination", count: 40 },
-          { category: "Payment Terms", count: 30 },
-          { category: "LDs", count: 65 },
-        ];
+  const mostNegotiated = Array.isArray(data?.mostNegotiatedClauses)
+    ? data.mostNegotiatedClauses
+    : [];
 
   const max = Math.max(1, ...mostNegotiated.map((m) => m.count ?? 0));
   const radarData = mostNegotiated.map((m) => ({
@@ -57,24 +50,14 @@ export const ClauseIntelligenceCard: React.FC<Props> = ({
       ? data.highRiskClauses
       : data?.highRiskClauseTypes;
 
-  const highRisk =
-    highRiskSource && Array.isArray(highRiskSource) && highRiskSource.length > 0
-      ? highRiskSource.map((h) => ({
-          category: h.category || (h as { title?: string }).title || "",
-          contracts: h.contracts,
-          severity: h.severity,
-          averageDeviation: (h as { averageDeviation?: number }).averageDeviation,
-        }))
-      : ([
-          { category: "Liquidated Damages", contracts: 78, severity: "high" },
-          { category: "Indemnities", contracts: 65, severity: "medium" },
-          { category: "Termination Rights", contracts: 52, severity: "low" },
-        ] as Array<{
-          category: string;
-          contracts: number;
-          severity: string;
-          averageDeviation?: number;
-        }>);
+  const highRisk = Array.isArray(highRiskSource)
+    ? highRiskSource.map((h) => ({
+        category: h.category || (h as { title?: string }).title || "",
+        contracts: h.contracts,
+        severity: h.severity,
+        averageDeviation: (h as { averageDeviation?: number }).averageDeviation,
+      }))
+    : [];
 
   // Tailwind classes (not inline styles) so dark variants can override
   // the light tint. Inline `style` wins over `dark:bg-*` due to CSS
@@ -118,7 +101,20 @@ export const ClauseIntelligenceCard: React.FC<Props> = ({
         </Tabs>
       </CardHeader>
       <CardContent className="space-y-4 pt-0 flex-1 min-h-0 overflow-y-auto flex flex-col">
+        {radarData.length === 0 && highRisk.length === 0 ? (
+          <AnalyticsEmptyState
+            icon={FileSearch}
+            title="No clause data yet"
+            description="Negotiated and high-risk clause trends will appear here once contracts are analysed."
+          />
+        ) : (
+          <>
         <p className="text-sm font-semibold text-[#030712] dark:text-slate-100">Most Negotiated Clauses</p>
+        {radarData.length === 0 ? (
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            No negotiated clauses recorded yet.
+          </p>
+        ) : (
         <ChartContainer config={{} as ChartConfig} className="flex-1 min-h-0">
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart data={radarData}>
@@ -138,9 +134,15 @@ export const ClauseIntelligenceCard: React.FC<Props> = ({
             </RadarChart>
           </ResponsiveContainer>
         </ChartContainer>
+        )}
 
         <p className="text-sm font-semibold text-[#030712] dark:text-slate-100">High-Risk Clause Types</p>
         <div className="space-y-3">
+          {highRisk.length === 0 && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              No high-risk clauses identified yet.
+            </p>
+          )}
           {highRisk.map((h, idx) => {
             return (
               <div
@@ -162,6 +164,8 @@ export const ClauseIntelligenceCard: React.FC<Props> = ({
             );
           })}
         </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

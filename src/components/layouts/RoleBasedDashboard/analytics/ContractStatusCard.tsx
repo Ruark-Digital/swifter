@@ -1,7 +1,9 @@
+import { FileStack } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartConfig } from "@/components/ui/chart";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { AnalyticsEmptyState } from "./AnalyticsEmptyState";
 
 type Props = {
   data?: {
@@ -21,14 +23,7 @@ export const ContractStatusCard: React.FC<Props> = ({
   selectedRange = "ytd",
   onRangeChange,
 }) => {
-  const v = api || {
-    active: 12,
-    pendingApproval: 24,
-    completed: 54,
-    terminated: 120,
-    suspended: 120,
-    draft: 120,
-  };
+  const v = api ?? {};
 
   // Colors mirror the canonical status palette (ContractStatusBadge / list table):
   // active=green, pending_approval=yellow, completed=blue, terminated=red, draft=slate.
@@ -40,6 +35,8 @@ export const ContractStatusCard: React.FC<Props> = ({
     { name: "Suspended", value: v.suspended ?? 0, color: "#F97316" },
     { name: "Draft", value: v.draft ?? 0, color: "#64748B" },
   ];
+  // An all-zero breakdown draws no pie slices — show the empty state instead.
+  const hasData = data.some((d) => d.value > 0);
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col max-h-[32rem]">
       <CardHeader className="pb-3 shrink-0">
@@ -73,6 +70,14 @@ export const ContractStatusCard: React.FC<Props> = ({
         </Tabs>
       </CardHeader>
       <CardContent className="pt-0 space-y-4 flex-1 flex flex-col min-h-0">
+        {!hasData ? (
+          <AnalyticsEmptyState
+            icon={FileStack}
+            title="No contract data yet"
+            description="The breakdown of contracts by status will appear here once contracts exist."
+          />
+        ) : (
+          <>
         <ChartContainer className="flex-1 min-h-0" config={{} as ChartConfig}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -106,6 +111,8 @@ export const ContractStatusCard: React.FC<Props> = ({
             </div>
           ))}
         </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

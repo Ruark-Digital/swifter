@@ -42,6 +42,7 @@ export const ProposalPriceBreakdownSheet = ({
 }: ProposalPriceBreakdownSheetProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const toastHandlers = useToastHandler();
+  const currency = "USD";
 
   const {
     data: priceBreakdownData,
@@ -189,7 +190,7 @@ export const ProposalPriceBreakdownSheet = ({
         <div className="text-right">
           {row.original.unitPrice.toLocaleString("en-US", {
             style: "currency",
-            currency: "USD",
+            currency,
           })}
         </div>
       ),
@@ -201,7 +202,7 @@ export const ProposalPriceBreakdownSheet = ({
         <div className="text-right font-medium">
           {row.original.subtotal.toLocaleString("en-US", {
             style: "currency",
-            currency: "USD",
+            currency,
           })}
         </div>
       ),
@@ -341,7 +342,7 @@ export const ProposalPriceBreakdownSheet = ({
                   <span className="text-lg font-bold text-gray-900 dark:text-slate-200">
                     {totalAmount.toLocaleString("en-US", {
                       style: "currency",
-                      currency: "USD",
+                      currency,
                     })}
                   </span>
                 </div>

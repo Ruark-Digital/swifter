@@ -41,6 +41,13 @@ const ACTIVITY_LINK_MAPPINGS: LinkMapping = {
       create_evaluation: "/dashboard/evaluation",
       create_evaluation_group: "/dashboard/evaluation",
       release_group: "/dashboard/evaluation",
+      // BE statusText for a released group reads "…has been released for
+      // evaluation, please proceed with scoring" — no `release_group` token.
+      // Match on the phrase so PL's My Actions row is linked, not plain text.
+      "released for evaluation": "/dashboard/evaluation",
+      "proceed with evaluation": "/dashboard/evaluation",
+      "proceed with scoring": "/dashboard/evaluation",
+      evaluation: "/dashboard/evaluation",
     },
   },
   evaluator: {
@@ -115,16 +122,40 @@ function applyDynamicStatusTextReplacement(
   // Only route to evaluation page if "evaluation" is mentioned in statusText; otherwise route to solicitation.
   if (userRole === "procurement" && activityType === "general") {
     const lower = statusText.toLowerCase();
-    const toEvaluation = lower.includes("evaluation");
-    const base = toEvaluation
+    // Scoring events ("Vendor X was scored on Criterion Y by Reviewer Z")
+    // are evaluation-scoped even though "evaluation" isn't in the phrase.
+    const isScoringEvent = lower.includes("scored on") || lower.includes("was scored");
+    const toEvaluation = lower.includes("evaluation") || isScoringEvent;
+    const hasEvaluationTarget = Boolean(data.evaId);
+    const base = toEvaluation && hasEvaluationTarget
       ? "/dashboard/evaluation"
       : "/dashboard/solicitation";
-    const targetId = toEvaluation ? data.evaId : data.solId;
+    const targetId = toEvaluation
+      ? data.evaId ?? data.solId
+      : data.solId ?? data.evaId;
     const href = targetId ? `${base}/${targetId}` : base;
 
+    // For scoring events the BE payload doesn't populate sol/evaluation.name
+    // with the vendor, so data.name resolves to "Unknown" and no anchor is
+    // inserted. Fall back to the leading vendor phrase in statusText so the
+    // Company Admin / PL general-updates row is at least linkable.
+    let anchorTarget = data.name;
+    if (
+      isScoringEvent &&
+      (!anchorTarget || !statusText.includes(anchorTarget))
+    ) {
+      const match = statusText.match(
+        /^(.+?)\s+(?:was\s+)?scored(?:\s+on)?\b/i,
+      );
+      if (match) anchorTarget = match[1].trim();
+    }
+
+    if (!anchorTarget) return statusText;
+    const escapedName = anchorTarget.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return statusText.replace(
-      data.name,
-      `<a href="${href}" class="underline underline-offset-4 text-blue-600">${data.name}</a>`
+      new RegExp(escapedName, "i"),
+      (matchedName) =>
+        `<a href="${href}" class="underline underline-offset-4 text-blue-600">${matchedName}</a>`,
     );
   }
 
@@ -981,18 +1012,54 @@ export class DashboardDataTransformer {
       data.distribution.length === 0
     ) {
       return applyConsistentColors([
-        { name: "Basic", value: 0 },
-        { name: "Pro", value: 0 },
-        { name: "Enterprise", value: 0 },
+        { name: "Basic", value: 0, percentage: 0 },
+        { name: "Pro", value: 0, percentage: 0 },
+        { name: "Enterprise", value: 0, percentage: 0 },
       ]);
     }
 
-    const chartData = data.distribution.map((item) => ({
+    const total = data.distribution.reduce(
+      (sum, item) => sum + (item.count || 0),
+      0,
+    );
+
+    const percentages = this.apportionPercentages(
+      data.distribution.map((item) => item.count || 0),
+      total,
+    );
+
+    const chartData = data.distribution.map((item, index) => ({
       name: item.plan,
       value: item.count,
+      percentage: percentages[index],
     }));
 
     return applyConsistentColors(chartData);
+  }
+
+  /**
+   * Split 100% across the given counts using largest-remainder apportionment.
+   * Rounding each share independently lets the slices drift off 100 (three equal
+   * thirds render as 33+33+33=99); this always sums to exactly 100.
+   */
+  private static apportionPercentages(counts: number[], total: number) {
+    if (total <= 0) return counts.map(() => 0);
+
+    const exact = counts.map((count) => (count / total) * 100);
+    const percentages = exact.map(Math.floor);
+    let remaining = 100 - percentages.reduce((sum, value) => sum + value, 0);
+
+    const byLargestRemainder = exact
+      .map((value, index) => ({ index, remainder: value - Math.floor(value) }))
+      .sort((a, b) => b.remainder - a.remainder);
+
+    for (const { index } of byLargestRemainder) {
+      if (remaining <= 0) break;
+      percentages[index] += 1;
+      remaining -= 1;
+    }
+
+    return percentages;
   }
 
   /**
@@ -2178,31 +2245,35 @@ export class DashboardDataTransformer {
     }
 
     console.log({ data })
-    return data.map((action: any, index: number) => ({
-      id: action?.solicitation?._id || `action-${index}`,
+    return data.map((action: any, index: number) => {
+      const solicitation = action?.solicitation ?? action?.evaluation?.solicitation;
+
+      return {
+      id: solicitation?._id || `action-${index}`,
       text: applyDynamicStatusTextReplacement(
         action.statusText,
         "procurement",
         "myActions",
         {
-          name: action?.solicitation?.name,
-          solId: action?.solicitation?._id,
+          name: solicitation?.name,
+          solId: solicitation?._id,
           evaId: action?.evaluation?._id,
           evaGroupId: action?.evaluationGroup?._id,
         }
       ),
       type: action?.replace?.("_", " ") || "",
-      title: action?.solicitation?.name ?? "Unknown",
+      title: solicitation?.name ?? "Unknown",
       date: 
-        action?.solicitation?.createdAt
+        solicitation?.createdAt
           ? formatDateTZ(
-              action?.solicitation?.createdAt,
+              solicitation?.createdAt,
               "MMM d, yyyy h:mm a 'GMT'xxx",
-              action?.solicitation?.timezone
+              solicitation?.timezone
             )
           : null,
       status: action.status || "active",
-    }));
+      };
+    });
   }
 
   /**
@@ -2375,14 +2446,15 @@ export class DashboardDataTransformer {
         contractRef && contractTitle
           ? `<a href="${detailBase}/${contractRef}" class="underline underline-offset-4 text-blue-600">${contractTitle}</a>`
           : contractTitle;
-      const strongTitle = title ? `<strong>${title}</strong>` : "<strong>Update</strong>";
+      // Plain text (no bold) to match the General Updates styling — QA #225.
+      const plainTitle = title || "Update";
       const suffixParts = [description, linkedContractTitle, requestedBy].filter(Boolean);
       const suffix = suffixParts.length > 0 ? ` — ${suffixParts.join(" • ")}` : "";
 
       return {
         id: item?.id ?? `cm-${index}`,
         title: contractTitle || title || "Contract",
-        text: `${strongTitle}${suffix}`,
+        text: `${plainTitle}${suffix}`,
         date: dateValue ? formatDateTZ(dateValue, "MMM d, yyyy h:mm a") : undefined,
         status: item?.status ?? undefined,
         type: item?.type ?? undefined,

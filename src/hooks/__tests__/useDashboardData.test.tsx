@@ -72,4 +72,23 @@ describe("useDashboardData", () => {
       );
     });
   });
+
+  test("requests AI insights for company_admin from the contract manager dashboard endpoint", async () => {
+    renderHook(() => useDashboardData("company_admin"), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(mockedGetRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: "/contract/manager/contracts/dashboard/ai-insights",
+          config: expect.objectContaining({
+            params: expect.objectContaining({
+              type: "Contract",
+            }),
+          }),
+        }),
+      );
+    });
+  });
 });

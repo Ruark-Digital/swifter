@@ -1,5 +1,7 @@
+import { CalendarClock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCompactCurrency } from "@/lib/utils";
+import { AnalyticsEmptyState } from "./AnalyticsEmptyState";
 
 type Item = {
   title: string;
@@ -25,37 +27,7 @@ type Props = {
 };
 
 export const RenewalsTimelineCard: React.FC<Props> = ({ data }) => {
-  const timeline = data?.timeline && Array.isArray(data.timeline) && data.timeline.length > 0
-    ? data.timeline
-    : [
-        {
-          contractTitle: "AWS Cloud Services",
-          vendor: "BlueCorp Industries",
-          contractCode: "CON-2024-001",
-          value: 2500000,
-          daysToExpiry: 30,
-          timelineStatus: "critical",
-          label: "Expires in 30 days",
-        },
-        {
-          contractTitle: "Office Lease Agreement",
-          vendor: "BlueCorp Industries",
-          contractCode: "CON-2024-002",
-          value: 1200000,
-          daysToExpiry: 60,
-          timelineStatus: "warning",
-          label: "Expires in 60 days",
-        },
-        {
-          contractTitle: "Software Licenses",
-          vendor: "BlueCorp Industries",
-          contractCode: "CON-2024-003",
-          value: 800000,
-          daysToExpiry: 90,
-          timelineStatus: "ok",
-          label: "Expires in 90 days",
-        },
-      ];
+  const timeline = Array.isArray(data?.timeline) ? data.timeline : [];
 
   const items: Item[] = timeline.map((t) => {
     const status = (t.timelineStatus ?? "").toLowerCase();
@@ -83,7 +55,14 @@ export const RenewalsTimelineCard: React.FC<Props> = ({ data }) => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 pt-0 flex-1 min-h-0 overflow-y-auto">
-        {items.map((item, idx) => (
+        {items.length === 0 ? (
+          <AnalyticsEmptyState
+            icon={CalendarClock}
+            title="No upcoming renewals"
+            description="Contracts approaching their expiry date will appear here."
+          />
+        ) : (
+          items.map((item, idx) => (
           <div
             key={idx}
             className="flex items-stretch gap-3 rounded-xl border border-[#E5E7EB] dark:border-slate-800 px-3 py-3"
@@ -120,7 +99,8 @@ export const RenewalsTimelineCard: React.FC<Props> = ({ data }) => {
               </div>
             </div>
           </div>
-        ))}
+          ))
+        )}
       </CardContent>
     </Card>
   );

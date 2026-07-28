@@ -1,6 +1,8 @@
+import { Timer } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { AnalyticsEmptyState } from "./AnalyticsEmptyState";
 
 type Props = {
   values?: { draft: number; review: number; approval: number; execution: number };
@@ -41,8 +43,10 @@ export const CycleTimeCard: React.FC<Props> = ({
   selectedRange = "ytd",
   onRangeChange,
 }) => {
-  const v = values || { draft: 5, review: 8, approval: 12, execution: 6 };
-  const max = Math.max(...Object.values(v), 12);
+  const v = values || { draft: 0, review: 0, approval: 0, execution: 0 };
+  // Every stage at zero means the API returned nothing to chart.
+  const hasData = Object.values(v).some((days) => days > 0);
+  const max = Math.max(...Object.values(v), 1);
 
   return (
     <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800">
@@ -82,10 +86,20 @@ export const CycleTimeCard: React.FC<Props> = ({
         </Tabs>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Row label="Draft" days={v.draft} max={max} />
-        <Row label="Review" days={v.review} max={max} />
-        <Row label="Approval" days={v.approval} max={max} />
-        <Row label="Execution" days={v.execution} max={max} />
+        {!hasData ? (
+          <AnalyticsEmptyState
+            icon={Timer}
+            title="No cycle time data yet"
+            description="Average time per contract stage will appear here once contracts move through the workflow."
+          />
+        ) : (
+          <>
+            <Row label="Draft" days={v.draft} max={max} />
+            <Row label="Review" days={v.review} max={max} />
+            <Row label="Approval" days={v.approval} max={max} />
+            <Row label="Execution" days={v.execution} max={max} />
+          </>
+        )}
 
         {(bottleneck?.stage || bottleneck?.reason) && (
           <div className="rounded-md bg-[#FEFCE8] dark:bg-yellow-900/30 border border-[#FDE68A] dark:border-yellow-900/50 p-3">

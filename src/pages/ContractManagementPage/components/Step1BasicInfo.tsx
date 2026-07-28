@@ -6,7 +6,7 @@ import {
   TextSelectWithSearch,
   TextArea,
 } from "@/components/layouts/FormInputs";
-import { useWatch } from "react-hook-form";
+import { useWatch, useFormContext } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -31,7 +31,13 @@ type Props = {
     value: string;
     vendorEmail?: string;
     vendorId?: string;
+    solicitationName?: string;
+    vendorName?: string;
+    categoryName?: string;
   }>;
+  /** Only the create flow auto-populates name/vendor from the selected awarded
+   *  solicitation. Left off in edit mode so a hydrated contract isn't clobbered. */
+  enableAwardedPrefill?: boolean;
 };
 
 const MSA_CATEGORY_OPTIONS = [
@@ -115,12 +121,49 @@ const Step1BasicInfo: React.FC<Props> = ({
   projectOptions,
   msaOptions,
   awardedOptions,
+  enableAwardedPrefill = false,
 }) => {
   const { isManager } = useUserRole();
   const currentUser = useUser();
   const userCurrency = currentUser?.currency;
   const relationship = useWatch({ name: "relationship" });
   const selectedCurrency = useWatch({ name: "currency" });
+
+  // QA #222/#242/#243: when an awarded solicitation is selected, auto-populate
+  // the contract name, vendor and category from it. We watch the field rather
+  // than injecting an `onChange` on the <Forger>, because a passed onChange
+  // would override the Forge field's own onChange and stop the select from
+  // updating. Category is now carried on the awarded payload (BE added
+  // `categoryName`); its value is the category name, which matches how
+  // categoryOptions are keyed (value === name).
+  const { setValue } = useFormContext();
+  const awardedSolicitation = useWatch({ name: "awardedSolicitation" });
+
+  React.useEffect(() => {
+    if (!selectedCurrency && userCurrency) {
+      setValue("currency", userCurrency, { shouldValidate: true });
+    }
+  }, [selectedCurrency, setValue, userCurrency]);
+  React.useEffect(() => {
+    if (!enableAwardedPrefill) return;
+    if (!awardedSolicitation) return;
+    const selected = awardedOptions.find(
+      (opt) => opt.value === awardedSolicitation,
+    );
+    if (!selected) return;
+    if (selected.solicitationName) {
+      setValue("name", selected.solicitationName, { shouldValidate: true });
+    }
+    if (selected.categoryName) {
+      setValue("category", selected.categoryName, { shouldValidate: true });
+    }
+    if (selected.vendorId) {
+      setValue("vendor", selected.vendorId, { shouldValidate: true });
+      if (selected.vendorName) {
+        setValue("vendorLabel", selected.vendorName);
+      }
+    }
+  }, [enableAwardedPrefill, awardedSolicitation, awardedOptions, setValue]);
   const { data: divisionsRes, isLoading: isLoadingDivisions } = useQuery<
     Awaited<ReturnType<typeof businessDivisionApi.listDivisions>>
   >({

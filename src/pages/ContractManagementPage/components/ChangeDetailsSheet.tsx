@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Share2, Edit2 } from "lucide-react";
+import { Share2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -46,7 +46,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn, formatSecurityType, formatCurrency, formatCompactCurrency } from "@/lib/utils";
+import { cn, formatSecurityType, formatCurrency, formatCompactCurrency, resolveCurrency } from "@/lib/utils";
 
 type Props = {
   trigger?: React.ReactNode;
@@ -99,7 +99,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   claimAssignUrl,
   currency,
 }) => {
-  const currencyCode = currency || "USD";
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const toast = useToastHandler();
   const qc = useQueryClient();
   const { isManager, isApprover, isVendor, isProjectManager, isAdmin, isViewOnly } =
@@ -466,67 +466,6 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             <div className="flex items-center justify-between">
               <SheetTitle>{isClaim ? "Claim Details" : "Change Details"}</SheetTitle>
               <div className="flex items-center gap-2 mr-14">
-                {!isClaim &&
-                  isContractVendorLike &&
-                  status?.toLowerCase?.() === "rejected" && (
-                    <CreateChangeDialog
-                      contractId={contractId}
-                      isManager={false}
-                      mode="edit"
-                      changeId={changeId}
-                      initialChange={{
-                        title,
-                        type: changeType,
-                        description,
-                        files: files as any,
-                      }}
-                      trigger={
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          data-testid="edit-change-trigger"
-                        >
-                          <Edit2 className="mr-2 h-4 w-4" /> Edit
-                        </Button>
-                      }
-                    />
-                  )}
-                {isClaim &&
-                  isContractVendorLike &&
-                  status?.toLowerCase?.() === "rejected" && (
-                    <RequestClaimDialog
-                      mode="edit"
-                      editPath={
-                        usesListBasePath
-                          ? `${roleBasePath}/${changeId}`
-                          : `${roleBasePath}/${contractId}/claims/${changeId}`
-                      }
-                      detailInvalidateQueryKey={changeDetailQueryKey}
-                      initialClaim={{
-                        title,
-                        type: changeType,
-                        impact:
-                          impact === "time" ||
-                          impact === "cost" ||
-                          impact === "time_cost"
-                            ? impact
-                            : undefined,
-                        time,
-                        cost,
-                        description,
-                        files: files as any,
-                      }}
-                      trigger={
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          data-testid="edit-claim-trigger"
-                        >
-                          <Edit2 className="mr-2 h-4 w-4" /> Edit
-                        </Button>
-                      }
-                    />
-                  )}
                 <Button variant="outline" size="sm">
                   <Share2 className="mr-2 h-4 w-4" /> Export
                 </Button>
@@ -714,6 +653,78 @@ const ChangeDetailsSheet: React.FC<Props> = ({
               />
             </TabsContent>
           </Tabs>
+
+          {/* Vendor/PM edit (pending) or resubmit (rejected) — bottom footer,
+              matching the Deliverables detail layout. */}
+          {isContractVendorLike &&
+            activeTab === "overview" &&
+            (status?.toLowerCase?.() === "pending" ||
+              status?.toLowerCase?.() === "rejected") && (
+              <SheetFooter>
+                <div className="flex w-full gap-3 pt-2 justify-end">
+                  {!isClaim ? (
+                    <CreateChangeDialog
+                      contractId={contractId}
+                      isManager={false}
+                      mode="edit"
+                      isResubmit={status?.toLowerCase?.() === "rejected"}
+                      changeId={changeId}
+                      initialChange={{
+                        title,
+                        type: changeType,
+                        description,
+                        files: files as any,
+                      }}
+                      trigger={
+                        <Button
+                          data-testid="edit-change-trigger"
+                          className="h-11 w-64 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
+                        >
+                          {status?.toLowerCase?.() === "rejected"
+                            ? "Resubmit"
+                            : "Edit"}
+                        </Button>
+                      }
+                    />
+                  ) : (
+                    <RequestClaimDialog
+                      mode="edit"
+                      isResubmit={status?.toLowerCase?.() === "rejected"}
+                      editPath={
+                        usesListBasePath
+                          ? `${roleBasePath}/${changeId}`
+                          : `${roleBasePath}/${contractId}/claims/${changeId}`
+                      }
+                      detailInvalidateQueryKey={changeDetailQueryKey}
+                      initialClaim={{
+                        title,
+                        type: changeType,
+                        impact:
+                          impact === "time" ||
+                          impact === "cost" ||
+                          impact === "time_cost"
+                            ? impact
+                            : undefined,
+                        time,
+                        cost,
+                        description,
+                        files: files as any,
+                      }}
+                      trigger={
+                        <Button
+                          data-testid="edit-claim-trigger"
+                          className="h-11 w-64 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
+                        >
+                          {status?.toLowerCase?.() === "rejected"
+                            ? "Resubmit"
+                            : "Edit"}
+                        </Button>
+                      }
+                    />
+                  )}
+                </div>
+              </SheetFooter>
+            )}
 
           {showDecisionActions && activeTab === "overview" && (
             <SheetFooter>

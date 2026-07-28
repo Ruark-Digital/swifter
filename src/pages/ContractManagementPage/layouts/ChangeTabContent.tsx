@@ -170,6 +170,11 @@ const ChangeTabContent: React.FC<Props> = ({
     urgency: change.urgency as ContractChangeDTO['urgency'],
     status: change.status as ContractChangeDTO['status'],
     proposalCategory: change.changeRefModel,
+    // "Submitted" column (QA #246): BE change objects carry createdAt as the
+    // submission time; surface it as submittedAt when the field is absent.
+    submittedAt:
+      (change as { submittedAt?: string }).submittedAt ??
+      (change.createdAt as unknown as string),
   }));
 
   return (
@@ -284,6 +289,7 @@ const ChangeTabContent: React.FC<Props> = ({
           <ChangeTable
             contractId={contractId}
             basePath={basePath}
+            variant={isApprover ? "approver" : "manager"}
             rows={filteredRows.filter((row) => row.type === "order")}
             isLoading={isChangesLoading}
             totalCount={totalCount}

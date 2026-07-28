@@ -30,10 +30,8 @@ import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import * as yup from "yup";
 import { useUser } from "@/store/authSlice";
-import {
-  canSubmitEvaluationCriteria,
-  getIncompleteEvaluationCriteriaCount,
-} from "./utils/evaluationSubmission";
+import { canSubmitEvaluationCriteria } from "./utils/evaluationSubmission";
+import { formatDateTZ } from "@/lib/utils";
 
 // API Types based on documentation
 type VendorDocument = {
@@ -549,6 +547,16 @@ const SubmittedDocumentPage: React.FC = () => {
     setEditingCriteriaId(null);
   };
 
+  // Hooks MUST run on every render, before any early return. Placing this
+  // useMemo call after the loading/error early returns below shortens the
+  // hooks list on the first render and lengthens it later, tripping React's
+  // "Rendered more hooks than during the previous render" and crashing the
+  // page via the error boundary.
+  const isEvaluationReadyForSubmission = useMemo(
+    () => canSubmitEvaluationCriteria(criteria),
+    [criteria],
+  );
+
   // Loading state
   if (documentsLoading || criteriaLoading) {
     return (
@@ -614,20 +622,8 @@ const SubmittedDocumentPage: React.FC = () => {
     submitEvaluationMutation.isSuccess;
   const evaluationStatus = (evaluationInfo?.status || criteriaEvaluationInfo?.status || "").toString();
   const isEvaluationCompleted = evaluationStatus.toLowerCase() === "completed";
-  const incompleteCriteriaCount = useMemo(
-    () => getIncompleteEvaluationCriteriaCount(criteria),
-    [criteria],
-  );
-  const isEvaluationReadyForSubmission = useMemo(
-    () => canSubmitEvaluationCriteria(criteria),
-    [criteria],
-  );
   const incompleteEvaluationMessage =
-    incompleteCriteriaCount === 1
-      ? "Complete the remaining score and comment before submitting."
-      : incompleteCriteriaCount > 1
-        ? `Complete the remaining ${incompleteCriteriaCount} scores and comments before submitting.`
-        : "Score and comment every criterion before submitting.";
+    "Please complete scoring and add your comments before submitting.";
 
   const handleOpenSubmitDialog = () => {
     if (!isEvaluationReadyForSubmission) {
@@ -986,12 +982,12 @@ const SubmittedDocumentPage: React.FC = () => {
                                 </p>
                                 {submittedCriteriaTimestamps[criteriaItem._id] && (
                                   <p className="text-xs text-gray-600 mt-1 dark:text-gray-300">
-                                    Submitted at: {new Date(submittedCriteriaTimestamps[criteriaItem._id]).toLocaleString()}
+                                    Submitted at: {formatDateTZ(submittedCriteriaTimestamps[criteriaItem._id], "MMM d, yyyy h:mm a")}
                                   </p>
                                 )}
                                 {revisedCriteriaTimestamps[criteriaItem._id] && (
                                   <p className="text-xs text-green-600 mt-1 dark:text-green-300">
-                                    Revised at: {new Date(revisedCriteriaTimestamps[criteriaItem._id]).toLocaleString()}
+                                    Revised at: {formatDateTZ(revisedCriteriaTimestamps[criteriaItem._id], "MMM d, yyyy h:mm a")}
                                   </p>
                                 )}
                                 {criteriaItem.scoring.comment && (
@@ -1199,11 +1195,7 @@ const SubmittedDocumentPage: React.FC = () => {
                   </Button>
                   {!isEvaluationReadyForSubmission ? (
                     <p className="text-xs text-red-600 dark:text-red-400">
-                      {incompleteCriteriaCount === 1
-                        ? "Complete 1 remaining score and comment before submitting."
-                        : incompleteCriteriaCount > 1
-                          ? `Complete ${incompleteCriteriaCount} remaining scores and comments before submitting.`
-                          : "Score and comment every criterion before submitting."}
+                      Please complete scoring and add your comments before submitting.
                     </p>
                   ) : null}
                 </div>

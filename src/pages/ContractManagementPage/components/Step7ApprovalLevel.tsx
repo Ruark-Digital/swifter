@@ -20,15 +20,20 @@ import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { Button } from "@/components/ui/button";
+import {
+  getPersonnelDisplayName,
+  isApproverPersonnel,
+  type PersonnelLike,
+} from "../lib/approverSelection";
 
 type Props = { control: Control<CreateContractFormData> };
 export interface Personnel {
-  _id:         string;
-  email:       string;
-  role:        Role[];
-  firstName:   string;
-  lastName:    string;
-  status:      string;
+  _id: string;
+  email: string;
+  role: Role[];
+  firstName: string;
+  lastName: string;
+  status: string;
   statusOrder: string;
 }
 
@@ -82,24 +87,18 @@ const Step7ApprovalLevel: React.FC<Props> = ({ control }) => {
   const approverTags = React.useMemo<ApproverTag[]>(() => {
     const people =
       personnelData?.data?.data?.filter?.((item) =>
-        (item.role ?? []).some((role) => role?.name === "approver"),
+        isApproverPersonnel(item as PersonnelLike),
       ) ?? [];
 
     return people.map((p) => {
       const email = p.email ?? "";
-      const fullName = [p.firstName, p.lastName]
-        .filter((part) => typeof part === "string" && part.trim())
-        .join(" ")
-        .trim();
-      const name = fullName || email || p._id;
-      const label =
-        email && name && email !== name ? `${name} (${email})` : name;
+      const name = getPersonnelDisplayName(p as PersonnelLike);
       const value = p._id || email;
       return {
         id: value,
         value,
-        text: label,
-        meta: { email, name: fullName },
+        text: name,
+        meta: { email, name, roles: p.role },
       };
     });
   }, [personnelData]);
@@ -170,8 +169,25 @@ const Step7ApprovalLevel: React.FC<Props> = ({ control }) => {
                       String(idx),
                   ),
                 );
+                const selectedInOtherGroups = new Set(
+                  (approvalGroups ?? [])
+                    .filter((_, groupIndex) => groupIndex !== index)
+                    .flatMap((group) =>
+                      (group.approvers ?? []).map(
+                        (approver, approverIndex) =>
+                          approver?.value ||
+                          approver?.id ||
+                          approver?.email ||
+                          approver?.text ||
+                          String(approverIndex),
+                      ),
+                    ),
+                );
                 const tagKey = tag.value || tag.id || tag.text;
-                return tagKey ? !selectedIds.has(tagKey) : true;
+                return tagKey
+                  ? !selectedIds.has(tagKey) &&
+                      !selectedInOtherGroups.has(tagKey)
+                  : true;
               })}
               inputProps={{ autoComplete: "off" }}
               // containerClass="min-h-[7rem] border rounded-lg cursor-pointer"

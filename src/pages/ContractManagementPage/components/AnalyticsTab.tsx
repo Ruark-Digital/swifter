@@ -25,7 +25,7 @@ type DashboardOverview = {
   riskScore?: { score?: number; tier?: DashboardTier };
   compliance?: { score?: number; tier?: DashboardTier };
   rating?: { score?: number; tier?: DashboardTier };
-  budget?: { score?: number; tier?: DashboardTier };
+  budget?: { score?: number | string; tier?: DashboardTier };
   kpi?: { score?: number; tier?: DashboardTier };
 };
 
@@ -262,8 +262,10 @@ const AnalyticsTab: React.FC<Props> = ({
       label: "Budget Status",
       value: overview?.budget?.score,
       tier: overview?.budget?.tier,
-      displayType: "score" as const,
-      maxValue: 10,
+      // budget.score is a 0-100 percentage (e.g. "23.99"), not a /10 score —
+      // render it as a percentage like SLA Performance.
+      displayType: "percentage" as const,
+      maxValue: 100,
     },
     {
       label: "SLA Performance",
@@ -510,10 +512,10 @@ const AnalyticsTab: React.FC<Props> = ({
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {kpiCards.map((kpi, index) => {
-          const value =
-            typeof kpi.value === "number" && Number.isFinite(kpi.value)
-              ? kpi.value
-              : 0;
+          // The BE sends some scores as numeric strings (e.g. budget.score
+          // "23.99"); coerce so they don't fall through to 0.
+          const numericValue = Number(kpi.value);
+          const value = Number.isFinite(numericValue) ? numericValue : 0;
           const max = kpi.maxValue;
           const color = tierToColor(kpi.tier);
           const remainder = Math.max(0, max - value);

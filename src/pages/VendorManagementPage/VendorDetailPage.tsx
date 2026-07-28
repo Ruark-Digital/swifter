@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError, Vendor } from "@/types";
@@ -618,7 +619,6 @@ const ProjectManagersTab = ({
 
 export const VendorDetailPage = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
 
   // Document viewer state
@@ -650,9 +650,7 @@ export const VendorDetailPage = () => {
   const submissions = vendorData?.data?.data?.submissions ?? [];
   const projectManagers = vendorData?.data?.data?.projectmnagers ?? [];
 
-  const handleBack = () => {
-    navigate(-1);
-  };
+  const handleBack = useGoBack("/dashboard/vendor");
 
   // Handle document viewing
   const handleViewDocument = (
@@ -716,6 +714,7 @@ export const VendorDetailPage = () => {
                     name: vendor.name,
                     website: vendor.website,
                     location: vendor.location,
+                    email: vendor.user?.email,
                     phone: vendor.phone,
                     businessType: vendor.businessType,
                     secondaryEmails: vendor.secondaryEmails,

@@ -6,6 +6,7 @@ import type {
   AiRedlineSuggestion,
   AiAlternativeLanguage,
   AiRiskLevel,
+  SuggestionProgress,
 } from "../collab/useAiRedlineSuggestions";
 
 type Status = "idle" | "loading" | "ready" | "error" | "empty";
@@ -29,12 +30,21 @@ interface AiSuggestionsPanelProps {
    *  replacement text to write into the document. */
   onApprove: (item: Item, tier: AlternativeTier) => void;
   onDismiss: (item: Item) => void;
+  /** Revert a previously-resolved (approved/dismissed) suggestion back to
+   *  pending. When omitted, no Undo control is rendered. */
+  onUndo?: (item: Item) => void;
   /** Click a card body to scroll/select the redline in the editor. */
   onFocus?: (item: Item) => void;
   onRetry: () => void;
   /** When "inline", renders without the fixed-overlay chrome so the
    *  panel can live inside a sidebar tab. */
   variant?: "overlay" | "inline";
+  /** Turn-based negotiation gate. When false, the Apply/Dismiss controls are
+   *  disabled (not hidden) with a tooltip — the viewer must wait for their
+   *  turn. Defaults to true so callers without turn state are unaffected. */
+  isMyTurn?: boolean;
+  /** Server-side progress counts from GET .../ai/redline-suggestions. */
+  progress?: SuggestionProgress;
 }
 
 const KindPill: React.FC<{ kind: RedlineSpan["kind"] }> = ({ kind }) => (
@@ -104,14 +114,18 @@ type SuggestionCardProps = {
   item: Item;
   onApprove: (item: Item, tier: AlternativeTier) => void;
   onDismiss: (item: Item) => void;
+  onUndo?: (item: Item) => void;
   onFocus?: (item: Item) => void;
+  isMyTurn: boolean;
 };
 
 const SuggestionCard: React.FC<SuggestionCardProps> = ({
   item,
   onApprove,
   onDismiss,
+  onUndo,
   onFocus,
+  isMyTurn,
 }) => {
   const { suggestion } = item;
   const isPending = item.state === "pending";
@@ -166,16 +180,37 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
           </span>
         )}
         {!isPending && (
-          <span
-            className={cn(
-              "ml-auto text-xs font-semibold",
-              item.state === "approved"
-                ? "text-green-600 dark:text-green-400"
-                : "text-slate-500 dark:text-slate-400",
+          <div className="ml-auto flex items-center gap-2">
+            <span
+              className={cn(
+                "text-xs font-semibold",
+                item.state === "approved"
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-slate-500 dark:text-slate-400",
+              )}
+            >
+              {item.state === "approved" ? "Replaced" : "Dismissed"}
+            </span>
+            {onUndo && (
+              <button
+                type="button"
+                disabled={!isMyTurn}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUndo(item);
+                }}
+                title={isMyTurn ? undefined : "Waiting for your turn"}
+                className={cn(
+                  "rounded-md border px-2 py-0.5 text-[11px] font-semibold",
+                  isMyTurn
+                    ? "border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                    : "cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-800 dark:text-slate-500",
+                )}
+              >
+                Undo
+              </button>
             )}
-          >
-            {item.state === "approved" ? "Replaced" : "Dismissed"}
-          </span>
+          </div>
         )}
       </div>
 
@@ -311,29 +346,38 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
             <div className="mt-3 flex justify-end gap-2">
               <button
                 type="button"
+                disabled={!isMyTurn}
                 onClick={(e) => {
                   e.stopPropagation();
                   onDismiss(item);
                 }}
-                className="rounded-md border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                title={isMyTurn ? undefined : "Waiting for your turn"}
+                className={cn(
+                  "rounded-md border px-3 py-1 text-xs font-semibold",
+                  isMyTurn
+                    ? "border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                    : "cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-800 dark:text-slate-500",
+                )}
               >
                 Dismiss
               </button>
               <button
                 type="button"
-                disabled={!hasReplacement}
+                disabled={!hasReplacement || !isMyTurn}
                 onClick={(e) => {
                   e.stopPropagation();
                   onApprove(item, tier);
                 }}
                 title={
-                  hasReplacement
-                    ? `Apply ${TIER_LABEL[tier].toLowerCase()} replacement`
-                    : "No alternative text available"
+                  !isMyTurn
+                    ? "Waiting for your turn"
+                    : hasReplacement
+                      ? `Apply ${TIER_LABEL[tier].toLowerCase()} replacement`
+                      : "No alternative text available"
                 }
                 className={cn(
                   "inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-semibold text-white",
-                  hasReplacement
+                  hasReplacement && isMyTurn
                     ? "bg-indigo-600 hover:bg-indigo-700"
                     : "cursor-not-allowed bg-slate-300 dark:bg-slate-700",
                 )}
@@ -360,20 +404,31 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
   items,
   onApprove,
   onDismiss,
+  onUndo,
   onFocus,
   onRetry,
   variant = "overlay",
+  isMyTurn = true,
+  progress,
 }) => {
   if (!open) return null;
 
   const remaining = items.filter((i) => i.state === "pending").length;
+  const addressed = progress?.addressedCount;
+  const resolved = progress?.resolvedCount;
+  const hasProgress = typeof addressed === "number" || typeof resolved === "number";
   const isInline = variant === "inline";
 
   return (
     <div
       className={
         isInline
-          ? "flex h-full w-full flex-col bg-transparent"
+          ? // `flex-1 min-h-0`, not `h-full`: inline the panel shares its
+            // column with the turn banner, so `h-full` would claim the whole
+            // column height and push the list's tail below the clipped area —
+            // the scrollbar then bottoms out with redlines still unread
+            // (QA #257).
+            "flex min-h-0 w-full flex-1 flex-col bg-transparent"
           : "fixed inset-y-0 right-0 z-40 flex w-[420px] max-w-[90vw] flex-col border-l border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
       }
     >
@@ -395,6 +450,20 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
                       ? "Last request failed"
                       : "Professional rephrases for your redlines"}
             </div>
+            {status === "ready" && hasProgress && (
+              <div className="mt-0.5 flex gap-3 text-[11px]">
+                {typeof addressed === "number" && (
+                  <span className="text-amber-600 dark:text-amber-400">
+                    {addressed} addressed
+                  </span>
+                )}
+                {typeof resolved === "number" && (
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    {resolved} resolved
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -499,7 +568,9 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
               item={item}
               onApprove={onApprove}
               onDismiss={onDismiss}
+              onUndo={onUndo}
               onFocus={onFocus}
+              isMyTurn={isMyTurn}
             />
           ))}
       </div>

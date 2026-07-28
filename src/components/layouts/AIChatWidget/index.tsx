@@ -30,6 +30,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAIChat, Message } from "@/hooks/useAIChat";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
+import { getNavigationForRole } from "@/lib/navigation";
 import MessageContainer from "./components/MessageContainer";
 
 interface FileAttachment {
@@ -61,11 +64,23 @@ interface AIChatWidgetProps {
   welcomeMessage?: string;
 }
 
-const SUGGESTED_PROMPTS = [
-  "Summarize my active contracts",
-  "Show my open solicitations",
-  "What's awaiting my evaluation?",
-];
+// Suggested prompts are scoped to the pages a role can actually reach. Each
+// entry is keyed by the exact nav route it belongs to; a prompt is only shown
+// when that route is present in the user's navigation (see getNavigationForRole,
+// which already applies role + module gating). Insertion order is the display
+// priority — the list is capped so the widget stays tidy for wide roles.
+const PROMPTS_BY_ROUTE: Record<string, string> = {
+  "/dashboard/contract-management": "Summarize my active contracts",
+  "/dashboard/solicitation": "Show my open solicitations",
+  "/dashboard/evaluation": "What's awaiting my evaluation?",
+  "/dashboard/project-management": "Give me a status update on my projects",
+  "/dashboard/vendor": "How many active vendors do we have?",
+  "/dashboard/user-management": "What's our current team role distribution?",
+  "/dashboard/companies": "How many companies are on the platform?",
+  "/dashboard/subscription": "Show subscription distribution across plans",
+};
+
+const MAX_SUGGESTED_PROMPTS = 4;
 
 const createWelcomeMessage = (content: string): Message => ({
   id: "welcome-message",
@@ -89,6 +104,25 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   placeholder = "Type your message...",
   welcomeMessage = "Hello! How can I help you today?",
 }) => {
+  const { userRole } = useUserRole();
+  const user = useUser();
+  const suggestedPrompts = useMemo(() => {
+    // Reuse the sidebar's navigation as the single source of truth for what the
+    // user can reach (role + module gated), then surface only the prompts whose
+    // route is actually in that navigation.
+    const navigation = getNavigationForRole(userRole, "/", user?.module);
+    const reachableRoutes = new Set<string>();
+    navigation.forEach((item) => {
+      reachableRoutes.add(item.to);
+      item.children?.forEach((child) => reachableRoutes.add(child.to));
+    });
+
+    return Object.entries(PROMPTS_BY_ROUTE)
+      .filter(([route]) => reachableRoutes.has(route))
+      .map(([, prompt]) => prompt)
+      .slice(0, MAX_SUGGESTED_PROMPTS);
+  }, [userRole, user?.module]);
+
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -799,13 +833,16 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                 )}
 
                 {/* Suggested prompts (before the first question) */}
-                {!hasUserMessage && !isLoading && attachedFiles.length === 0 && (
+                {!hasUserMessage &&
+                  !isLoading &&
+                  attachedFiles.length === 0 &&
+                  suggestedPrompts.length > 0 && (
                   <div className="px-4 pb-1 pt-3">
                     <p className="mb-2 px-1 text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
                       Try asking
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {SUGGESTED_PROMPTS.map((prompt) => (
+                      {suggestedPrompts.map((prompt) => (
                         <button
                           key={prompt}
                           type="button"

@@ -88,7 +88,7 @@ const AdminDetailsSheet: React.FC<AdminDetailsSheetProps> = ({
     string
   >({
     mutationFn: (adminId: string) =>
-      deleteRequest({ url: `/delete/${adminId}` }),
+      deleteRequest({ url: `/admins/${adminId}` }),
     onSuccess: (result) => {
       toast.success(
         "Delete Admin",

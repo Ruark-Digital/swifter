@@ -7,7 +7,7 @@ import type { CommentsFeedItem } from "./CommentsTab";
 import type { Mentionable } from "../collab/useContractMentionables";
 import type { Version } from "./VersionHistoryModal";
 import type { RedlineSpan } from "../collab/redlineScan";
-import type { AiRedlineSuggestion } from "../collab/useAiRedlineSuggestions";
+import type { AiRedlineSuggestion, SuggestionProgress } from "../collab/useAiRedlineSuggestions";
 
 const CommentsTab = lazyWithRetry(() => import("./CommentsTab"));
 const VersionsTab = lazyWithRetry(() => import("./VersionsTab"));
@@ -60,8 +60,16 @@ interface SidebarPanelProps {
   aiErrorMessage?: string;
   onAiApprove: (item: AiItem) => void;
   onAiDismiss: (item: AiItem) => void;
+  onAiUndo?: (item: AiItem) => void;
   onAiFocus?: (item: AiItem) => void;
   onAiRetry: () => void;
+  /** Turn-based negotiation gate — disables Apply/Dismiss when false. */
+  isMyTurn?: boolean;
+  /** Server-side progress counts (addressedCount, resolvedCount). */
+  aiProgress?: SuggestionProgress;
+  /** Rendered above the suggestions on the Redline tab (turn status + Send /
+   *  Finalize). Built by the page with `useRedlineTurn` data. */
+  redlineTurnBanner?: React.ReactNode;
 }
 
 const fallbackComments: Feed[] = [
@@ -103,8 +111,12 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   aiErrorMessage,
   onAiApprove,
   onAiDismiss,
+  onAiUndo,
   onAiFocus,
   onAiRetry,
+  isMyTurn = true,
+  aiProgress,
+  redlineTurnBanner,
 }) => {
   const avatarPublic = "/assets/collaboration/avatar-user.png";
   const commentsFeed: CommentsFeedItem[] = useFallbackFeed ? fallbackComments : comments;
@@ -181,19 +193,30 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
           </Suspense>
         )}
         {activeTab === "redline" && (
-          <Suspense fallback={fallbackNode}>
-            <AiSuggestionsPanel
-              open={true}
-              variant="inline"
-              status={aiStatus}
-              errorMessage={aiErrorMessage}
-              items={aiItems}
-              onApprove={onAiApprove}
-              onDismiss={onAiDismiss}
-              onFocus={onAiFocus}
-              onRetry={onAiRetry}
-            />
-          </Suspense>
+          // `min-h-0` so the panel below can actually shrink and scroll:
+          // a flex child defaults to `min-height: auto`, which refuses to
+          // shrink below its content and defeats the inner overflow-y-auto.
+          <div className="flex h-full min-h-0 flex-col">
+            {redlineTurnBanner ? (
+              <div className="px-5 pt-4">{redlineTurnBanner}</div>
+            ) : null}
+            <Suspense fallback={fallbackNode}>
+              <AiSuggestionsPanel
+                open={true}
+                variant="inline"
+                status={aiStatus}
+                errorMessage={aiErrorMessage}
+                items={aiItems}
+                onApprove={onAiApprove}
+                onDismiss={onAiDismiss}
+                onUndo={onAiUndo}
+                onFocus={onAiFocus}
+                onRetry={onAiRetry}
+                isMyTurn={isMyTurn}
+                progress={aiProgress}
+              />
+            </Suspense>
+          </div>
         )}
         {activeTab === "versions" && (
           <Suspense fallback={fallbackNode}>

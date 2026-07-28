@@ -25,7 +25,8 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
-import { cn, formatCompactCurrency } from "@/lib/utils";
+import { cn, formatCompactCurrency, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import type { ApiResponseError } from "@/types";
 import type {
@@ -87,7 +88,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
   invoicesQueryKey,
   currency,
 }) => {
-  const currencyCode = currency || "USD";
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const { isApprover, isManager } = useUserRole();
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
@@ -487,7 +488,7 @@ const formatCurrency = (value?: number, currency?: string) => {
 };
 
 const Invoice: React.FC<Props> = ({ contractId, currency, isActive, actionsDisabled }) => {
-  const currencyCode = currency || "USD";
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const { isManager, isApprover, isVendor, isProjectManager, isAdmin, isViewOnly } =
     useUserRole();
   const toastHandler = useToastHandler();

@@ -1,5 +1,5 @@
-import { useMutation } from "@tanstack/react-query";
-import { postRequest } from "@/lib/axiosInstance";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import type { RedlineSpan } from "./redlineScan";
 
@@ -111,27 +111,21 @@ const buildEndpoint = ({
   documentId,
   isMsa,
   isManager,
-  isApprover,
   isVendor,
   isProjectManager,
-  isViewOnly,
 }: {
   documentId: string;
   isMsa: boolean;
   isManager: boolean;
-  isApprover: boolean;
   isVendor: boolean;
   isProjectManager: boolean;
-  isViewOnly: boolean;
 }): string | null => {
   const resource = isMsa ? "msa-contracts" : "contracts";
   // axios baseURL is /api/v1/dev — swagger paths live under /contract.
   const prefix = "/contract";
   if (isManager) return `${prefix}/manager/${resource}/${documentId}/ai/redline-suggestions`;
-  if (isApprover) return `${prefix}/approver/${resource}/${documentId}/ai/redline-suggestions`;
   if (isVendor || isProjectManager)
     return `${prefix}/vendor/${resource}/${documentId}/ai/redline-suggestions`;
-  if (isViewOnly) return `${prefix}/user/${resource}/${documentId}/ai/redline-suggestions`;
   return null;
 };
 
@@ -224,8 +218,12 @@ const mergeAnalyses = (parts: AiRedlineAnalysis[]): AiRedlineAnalysis => {
  * every redline overloads the LLM proxy on large documents.
  *
  * Swagger endpoints (all share the same request/response shape):
- *   POST /manager|approver|vendor|user/contracts/{contractId}/ai/redline-suggestions
- *   POST /manager|approver|vendor|user/msa-contracts/{contractId}/ai/redline-suggestions
+ *   POST /manager|vendor/contracts/{contractId}/ai/redline-suggestions
+ *   POST /manager|vendor/msa-contracts/{contractId}/ai/redline-suggestions
+ *
+ * Approver and view-only (user) roles have no live endpoint — buildEndpoint
+ * resolves url=null for them, which the mutationFn null-url guard below
+ * turns into a benign no-op result.
  *
  * Body:     { redlines: RedlineSpan[] }  (≤ BATCH_SIZE spans per request)
  * 200 data: { summary, riskLevel, overallSuggestion, redlineAnalysis: [...] }
@@ -237,10 +235,8 @@ export function useAiRedlineSuggestions({ documentId, isMsa }: AiRedlineScope) {
         documentId,
         isMsa: Boolean(isMsa),
         isManager: role.isManager,
-        isApprover: role.isApprover,
         isVendor: role.isVendor,
         isProjectManager: role.isProjectManager,
-        isViewOnly: role.isViewOnly,
       })
     : null;
 
@@ -265,5 +261,90 @@ export function useAiRedlineSuggestions({ documentId, isMsa }: AiRedlineScope) {
       }
       return mergeAnalyses(parts);
     },
+  });
+}
+
+// ── Persisted suggestions (GET) ──────────────────────────────────────
+
+export type PersistedResolution = {
+  status?: string;
+  action?: "accepted" | "modified" | "rejected";
+  tier?: "low" | "medium" | "high";
+  resolvedBy?: string;
+};
+
+export type PersistedSuggestion = AiRedlineSuggestion & {
+  resolution?: PersistedResolution;
+};
+
+export type SuggestionProgress = {
+  total?: number;
+  pending?: number;
+  addressedCount?: number;
+  resolvedCount?: number;
+  resolvedByManager?: number;
+  resolvedByVendor?: number;
+};
+
+export type PersistedSuggestionsResponse = {
+  suggestions: PersistedSuggestion[];
+  progress: SuggestionProgress;
+};
+
+type PersistedApiBody = {
+  status?: number;
+  message?: string;
+  data?: {
+    suggestions?: Array<Record<string, unknown>>;
+    progress?: SuggestionProgress;
+  };
+};
+
+const parsePersistedBody = (body: PersistedApiBody): PersistedSuggestionsResponse => {
+  const data = body?.data ?? {};
+  const suggestions: PersistedSuggestion[] = Array.isArray(data.suggestions)
+    ? data.suggestions
+        .filter((s) => Boolean(s?.redlineId))
+        .map((s) => ({
+          redlineId: s.redlineId as string,
+          assessment: (s.assessment as string) ?? "",
+          suggestion: typeof s.suggestion === "string" ? s.suggestion : "",
+          acceptability: s.acceptability as AiAcceptability | undefined,
+          considerations: s.considerations as AiConsiderations | undefined,
+          alternativeLanguage: s.alternativeLanguage as AiAlternativeLanguage | undefined,
+          solution: typeof s.solution === "string" ? s.solution : undefined,
+          riskLevel: (s.riskLevel as AiRiskLevel) ?? "medium",
+          replacementText: typeof s.replacementText === "string" ? s.replacementText : undefined,
+          resolution: s.resolution as PersistedResolution | undefined,
+        }))
+    : [];
+  return { suggestions, progress: data.progress ?? {} };
+};
+
+/**
+ * GET persisted AI redline suggestions. Returns previously-generated
+ * suggestions with their resolution state and aggregate progress counts.
+ * When no suggestions have been generated yet, returns an empty array.
+ */
+export function usePersistedSuggestions({ documentId, isMsa }: AiRedlineScope) {
+  const role = useUserRole();
+  const url = documentId
+    ? buildEndpoint({
+        documentId,
+        isMsa: Boolean(isMsa),
+        isManager: role.isManager,
+        isVendor: role.isVendor,
+        isProjectManager: role.isProjectManager,
+      })
+    : null;
+
+  return useQuery<PersistedSuggestionsResponse>({
+    queryKey: ["ai-redline-suggestions-persisted", url],
+    enabled: Boolean(url),
+    queryFn: async () => {
+      const res = await getRequest({ url: url! });
+      return parsePersistedBody(res.data as PersistedApiBody);
+    },
+    staleTime: 30000,
   });
 }

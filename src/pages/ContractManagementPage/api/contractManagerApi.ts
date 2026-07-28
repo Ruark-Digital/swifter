@@ -1404,11 +1404,12 @@ export const createContractManagerApi = (
       return res.data as { message?: string; data?: ContractRFIDetailDTO };
     },
     createRfiResponse: async (
+      contractId: string,
       rfiId: string,
       payload: ContractRfiResponseDTO,
     ) => {
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/rfis/${rfiId}/response`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/rfis/${rfiId}/response`,
         payload,
       });
       return res.data as { message?: string; data?: ContractRfiResponseDTO };

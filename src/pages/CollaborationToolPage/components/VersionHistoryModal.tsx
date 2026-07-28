@@ -1,5 +1,6 @@
 import React from 'react';
 import { XIcon, RotateCcw } from 'lucide-react';
+import { formatDateTZ } from '@/lib/utils';
 
 export type VersionKind =
   | "edit"
@@ -74,7 +75,7 @@ const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
                 >
                   <div className="flex flex-col">
                     <span className="text-sm font-medium text-gray-800 dark:text-slate-100">
-                      {new Date(version.timestamp).toLocaleString()}
+                      {formatDateTZ(version.timestamp, "MMM d, yyyy h:mm a")}
                     </span>
                     <span className="text-xs text-gray-500 dark:text-slate-400">
                       Saved by: {version.author}
@@ -83,7 +84,7 @@ const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
                   <button
                     onClick={() => onRestore(version.id)}
                     className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors dark:text-blue-300 dark:bg-blue-900/30 dark:hover:bg-blue-900/50"
-                    aria-label={`Restore version from ${new Date(version.timestamp).toLocaleString()}`}
+                    aria-label={`Restore version from ${formatDateTZ(version.timestamp, "MMM d, yyyy h:mm a")}`}
                   >
                     <RotateCcw className="w-4 h-4" />
                     Restore

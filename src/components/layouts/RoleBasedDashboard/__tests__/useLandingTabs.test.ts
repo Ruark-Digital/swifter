@@ -12,9 +12,9 @@ const modulesOn: Modules = {
 const modulesOff: Modules = { ...modulesOn, contractManagement: false };
 
 describe("computeLandingTabs", () => {
-  it("procurement with flag on returns [solicitations, contracts]", () => {
+  it("procurement with flag on returns [solicitations] only", () => {
     const tabs = computeLandingTabs("procurement", modulesOn);
-    expect(tabs.map((t) => t.id)).toEqual(["solicitations", "contracts"]);
+    expect(tabs.map((t) => t.id)).toEqual(["solicitations"]);
   });
   it("procurement with flag off returns [solicitations] only", () => {
     const tabs = computeLandingTabs("procurement", modulesOff);

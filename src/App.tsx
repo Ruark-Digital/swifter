@@ -8,8 +8,10 @@ import Loading from "@/components/ui/Spinner";
 import AIChatWidget from "./components/layouts/AIChatWidget";
 import { useAuthentication } from "@/hooks/useAuthentication";
 import { useToken, useUser } from "@/store/authSlice";
+import { config } from "@/config";
 
-const MCP_BASE_URL = "https://dev.swiftpro.tech";
+// Chat (MCP) origin tracks the active API environment (bug/staging/prod).
+const MCP_BASE_URL = config.chatBaseUrl;
 
 // All users share a single chat endpoint.
 const CHAT_URL = `${MCP_BASE_URL}/chat/`;
@@ -18,24 +20,67 @@ import * as Sentry from "@sentry/react";
 import { routes } from "./routes";
 import { Suspense } from "react";
 
-Sentry.init({
-  dsn: import.meta.env.VITE_SENTRY_DSN,
-  // For example, automatic IP address collection on events
-  sendDefaultPii: true,
-  // Enable logs to be sent to Sentry
-  // enableLogs: true,
-  integrations: [
-    Sentry.browserTracingIntegration(),
-    Sentry.replayIntegration()
-  ],
-  // Tracing
-  tracesSampleRate: 1.0, //  Capture 100% of the transactions
-  // Set 'tracePropagationTargets' to control for which URLs distributed tracing should be enabled
-  tracePropagationTargets: ["localhost", /^https:\/\/api\.swiftpro\.tech\/api/],
-  // Session Replay
-  replaysSessionSampleRate: 0.1, // This sets the sample rate at 10%. You may want to change it to 100% while in development and then sample at a lower rate in production.
-  replaysOnErrorSampleRate: 1.0 // If you're not already sampling the entire session, change the sample rate to 100% when sampling sessions where errors occur.,
-});
+// Per-env Sentry knobs. Prod is conservative (cost + PII), bug is verbose
+// (that's the whole point of the env), staging sits in the middle, dev
+// mirrors bug so local repro matches what QA sees.
+const SENTRY_ENV_CONFIG: Record<
+  typeof config.env,
+  {
+    dsn: string | undefined;
+    tracesSampleRate: number;
+    replaysSessionSampleRate: number;
+    replaysOnErrorSampleRate: number;
+  }
+> = {
+  prod: {
+    dsn: import.meta.env.VITE_SENTRY_DSN_PROD ?? import.meta.env.VITE_SENTRY_DSN,
+    tracesSampleRate: 0.1,
+    replaysSessionSampleRate: 0.05,
+    replaysOnErrorSampleRate: 1.0,
+  },
+  staging: {
+    dsn: import.meta.env.VITE_SENTRY_DSN_STAGING ?? import.meta.env.VITE_SENTRY_DSN,
+    tracesSampleRate: 0.5,
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
+  },
+  bug: {
+    dsn: import.meta.env.VITE_SENTRY_DSN_BUG ?? import.meta.env.VITE_SENTRY_DSN,
+    tracesSampleRate: 1.0,
+    replaysSessionSampleRate: 0.5,
+    replaysOnErrorSampleRate: 1.0,
+  },
+  dev: {
+    dsn: import.meta.env.VITE_SENTRY_DSN,
+    tracesSampleRate: 1.0,
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
+  },
+};
+
+const sentrySettings = SENTRY_ENV_CONFIG[config.env];
+
+if (sentrySettings.dsn) {
+  Sentry.init({
+    dsn: sentrySettings.dsn,
+    environment: config.env,
+    release: import.meta.env.VITE_SENTRY_RELEASE,
+    sendDefaultPii: true,
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration(),
+    ],
+    tracesSampleRate: sentrySettings.tracesSampleRate,
+    tracePropagationTargets: [
+      "localhost",
+      /^https:\/\/api\.swiftpro\.tech\/api/,
+      /^https:\/\/dev\.swiftpro\.tech\/api/,
+      /^https:\/\/bug-api\.swiftpro\.tech\/api/,
+    ],
+    replaysSessionSampleRate: sentrySettings.replaysSessionSampleRate,
+    replaysOnErrorSampleRate: sentrySettings.replaysOnErrorSampleRate,
+  });
+}
 
 const RenderLoader = () => {
   return (

@@ -15,6 +15,8 @@ import { LabelItem } from "../components/LabelItem";
 import MsaReleaseHoldbackDialog from "../components/MsaReleaseHoldbackDialog";
 import MsaUpdateSavingsDialog from "../components/MsaUpdateSavingsDialog";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
+import { resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 
 type PaymentSummaryProps = {
   contractId: string;
@@ -184,7 +186,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
     toastErrorRef.current("MSA Payment Savings", savingsError as any);
   }, [savingsError]);
 
-  const currency = msa?.currency || "USD";
+  const currency = resolveCurrency(msa?.currency, useUser()?.currency);
   const formatMoney = React.useCallback(
     (value?: number) => {
       if (value == null || !Number.isFinite(value)) return "-";

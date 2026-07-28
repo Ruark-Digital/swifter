@@ -31,12 +31,17 @@ import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUser } from "@/store/authSlice";
 import { formatDateTZ } from "@/lib/utils";
 import SubmitCapaDialog from "./SubmitCapaDialog";
-import { getRequest, patchRequest } from "@/lib/axiosInstance";
+import { getRequest, patchRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getFileExtension, getFileIcon, formatFileSize } from "@/lib/fileUtils";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
+import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
+import type {
+  ContractCommentDTO,
+  ContractChangeCommentDTO,
+} from "../api/contractManagerApi";
 
 export type NcrRow = {
   id: string;
@@ -187,6 +192,74 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
     enabled: Boolean(contractId) && Boolean(ncrId) && open,
     staleTime: 60000,
   });
+
+  // Comments (QA #262) — GET/POST .../ncrs/{ncrId}/comments exist across all
+  // roles; `basePath` already carries the role prefix so we just append.
+  const commentsQueryKey = useUserQueryKey([
+    "contractNcrComments",
+    contractId,
+    ncrId,
+    basePath,
+  ]);
+  const { data: commentsRes, isLoading: isCommentsLoading } = useQuery<{
+    message?: string;
+    data?: { data?: ContractCommentDTO[]; page?: number; limit?: number };
+  }>({
+    queryKey: commentsQueryKey,
+    queryFn: async () => {
+      const res = await getRequest({ url: `${basePath}/${ncrId}/comments` });
+      return (res as { data?: unknown })?.data as {
+        message?: string;
+        data?: { data?: ContractCommentDTO[]; page?: number; limit?: number };
+      };
+    },
+    enabled: Boolean(contractId) && Boolean(ncrId) && open,
+    staleTime: 60000,
+  });
+
+  const addCommentMutation = useMutation<
+    { message?: string; data?: ContractCommentDTO },
+    unknown,
+    ContractChangeCommentDTO
+  >({
+    mutationKey: ["contractNcrComments-add", contractId, ncrId, basePath],
+    mutationFn: async (payload) => {
+      const res = await postRequest({
+        url: `${basePath}/${ncrId}/comments`,
+        payload,
+      });
+      return (res as { data?: unknown })?.data as {
+        message?: string;
+        data?: ContractCommentDTO;
+      };
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: commentsQueryKey });
+    },
+    onError: (error) => {
+      toastHandler.error("NCR Comment", error as ApiResponseError);
+    },
+  });
+
+  const comments = (commentsRes?.data?.data ?? []) as Array<
+    ContractCommentDTO & { createdBy?: { name?: string; email?: string } }
+  >;
+
+  const getCommentAuthor = (c: ContractCommentDTO) =>
+    c.user?.name ??
+    (c as { createdBy?: { name?: string } }).createdBy?.name ??
+    c.replyTo?.name ??
+    "Unknown";
+
+  const handleSendComment = async (content: string) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    try {
+      await addCommentMutation.mutateAsync({ content: trimmed });
+    } catch {
+      // handled in onError
+    }
+  };
 
   const detail = detailRes?.data?.data;
   const title = detail?.title ?? "-";
@@ -380,6 +453,12 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                     Corrective &amp; Preventive Action Plan
                   </TabsTrigger>
                 )}
+                <TabsTrigger
+                  value="comments"
+                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                >
+                  Comments
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
@@ -432,7 +511,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                     Attached Documents
                   </div>
                   {overviewDocs.length > 0 ? (
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="flex flex-col gap-3">
                       {overviewDocs.map((doc) => (
                         <DocumentItem
                           key={doc.id}
@@ -484,6 +563,59 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                   </div>
                 </TabsContent>
               )}
+
+              <TabsContent value="comments" className="space-y-4">
+                <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+                  Comments
+                </div>
+                {isCommentsLoading ? (
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                    Loading comments...
+                  </div>
+                ) : comments.length ? (
+                  <div className="space-y-3">
+                    {comments.map((comment, index) => (
+                      <div
+                        key={comment._id ?? `${index}`}
+                        className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+                            {getCommentAuthor(comment)}
+                          </div>
+                          <div className="text-xs text-[#6B7280] dark:text-slate-400">
+                            {comment.createdAt
+                              ? formatDateTZ(comment.createdAt, "dd MMM yyyy, HH:mm")
+                              : ""}
+                          </div>
+                        </div>
+                        <div
+                          className="mt-2 text-sm text-[#374151] dark:text-slate-200 prose prose-sm dark:prose-invert max-w-none"
+                          dangerouslySetInnerHTML={{
+                            __html: comment.content ?? "",
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                    No comments yet.
+                  </div>
+                )}
+
+                <MessageComposer
+                  onSend={(content) => {
+                    void handleSendComment(content);
+                  }}
+                  isLoading={addCommentMutation.isPending}
+                  currentUser={user ? { name: user.name } : { name: "You" }}
+                  sendType="reply"
+                  isNewChat={false}
+                  onSendTypeChange={() => {}}
+                  sendLabel="Send"
+                />
+              </TabsContent>
 
             </Tabs>
           </div>

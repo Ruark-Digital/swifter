@@ -26,6 +26,7 @@ type Props = {
   isActive?: boolean;
   contract?: ContractComplianceDTO;
   actionsDisabled?: boolean;
+  owner?: boolean;
 };
 
 type PolicyRow = {
@@ -79,7 +80,7 @@ const getStatusTone = (status?: string) => {
   return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 };
 
-const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
+const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled, owner }) => {
   const {
     isVendor,
     isProjectManager,
@@ -99,6 +100,11 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
   const [activeTab, setActiveTab] = React.useState<"policy" | "security">("policy");
   const queryClient = useQueryClient();
 
+  // NOTE: all MSA compliance endpoints use `/msa-contracts/`. docs.json v2.3.0
+  // lists the manager per-item security approve as bare `/manager/msa/.../approve`
+  // — that is a docs typo (3 new manager paths slipped `/msa/`; the 291 other MSA
+  // paths, incl. the vendor security twin and the working bulk approve, use
+  // `/msa-contracts/`). Do NOT "fix" this to `/msa/` to match the spec.
   const basePath = React.useMemo(() => {
     if (isVendor || isProjectManager)
       return `/contract/vendor/msa-contracts/${contractId}/compliance`;
@@ -316,6 +322,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
                 contractId={contractId}
                 basePath={basePath}
                 actionsDisabled={actionsDisabled}
+                canApprove={isContractManager && !!owner}
                 trigger={
                   <Button
                     variant="link"
@@ -348,7 +355,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
         },
       },
     ],
-    [basePath, contractId, actionsDisabled, isVendorOrProjectManager, queryClient, queryKey],
+    [basePath, contractId, actionsDisabled, isVendorOrProjectManager, queryClient, queryKey, isContractManager, owner],
   );
 
   const securityTypeLabel = React.useMemo(() => {
@@ -412,6 +419,9 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) 
 
   const canManagerActOnActive = React.useMemo(() => {
     if (!isContractManager) return false;
+    // Security is approved per-item now (see securityColumns' canApprove sheet),
+    // so the tab-wide bulk Approve/Reject bar must not compete for it.
+    if (activeTab === "security") return false;
     if (!hasFiles) return false;
     const status = String(getCategoryStatus(activeTab) || "").toLowerCase();
     if (!status) return false;

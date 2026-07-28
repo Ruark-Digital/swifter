@@ -13,6 +13,7 @@ import { TextInput } from "../../../components/layouts/FormInputs/TextInput";
 import { CornerDownRight, Plus, Trash2 } from "lucide-react";
 import ProposalItemRow from "./ProposalItemRow";
 import { FormValues } from "./SubmitProposalPage";
+import { numberFieldTransform } from "./proposalFieldTransforms";
 import { useEffect, useMemo, useCallback } from "react";
 import { formatCurrency } from "@/lib/utils";
 import { UseFormSetValue, UseFormGetValues, useWatch } from "react-hook-form";
@@ -58,6 +59,7 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
   shouldUnregister = false,
   onComplete,
 }) => {
+  const currency = "USD";
   const { fields, append, remove, update } = useFieldArray({
     control,
     name: "priceAction",
@@ -304,21 +306,7 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
                                   type="number"
                                   className="h-8"
                                   control={control as any}
-                                  transform={{
-                                    input: (value: any) => {
-                                      if (typeof value === "number") {
-                                        return value.toString();
-                                      }
-                                      return value?.toString() || "";
-                                    },
-                                    output: (value: string) => {
-                                      if (typeof value !== "string") {
-                                        return 0;
-                                      }
-                                      const parsed = parseFloat(value);
-                                      return isNaN(parsed) ? 0 : parsed;
-                                    },
-                                  }}
+                                  transform={numberFieldTransform}
                                 />
                               </div>
                               <div className="col-span-2">
@@ -338,21 +326,7 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
                                   className="h-8"
                                   type="number"
                                   control={control as any}
-                                  transform={{
-                                    input: (value: any) => {
-                                      if (typeof value === "number") {
-                                        return value.toString();
-                                      }
-                                      return value?.toString() || "";
-                                    },
-                                    output: (value: string) => {
-                                      if (typeof value !== "string") {
-                                        return 0;
-                                      }
-                                      const parsed = parseFloat(value);
-                                      return isNaN(parsed) ? 0 : parsed;
-                                    },
-                                  }}
+                                  transform={numberFieldTransform}
                                 />
                               </div>
                               <div className="col-span-1">
@@ -405,7 +379,7 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
               </div>
               <div className="text-right">
                 <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                  {formatCurrency(totalAmount, "en-US", "USD")}
+                  {formatCurrency(totalAmount, "en-US", currency)}
                 </div>
               </div>
             </div>

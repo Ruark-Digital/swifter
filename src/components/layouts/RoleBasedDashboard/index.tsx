@@ -11,6 +11,7 @@ import { ActivityComponent } from "./components/ActivityCard";
 import { CardStats } from "./components/StatsCard";
 import { cn } from "@/lib/utils";
 import { DashboardConfig, dashboardConfigs } from "@/config/dashboardConfig";
+import { isModuleDisabled, isModuleEnabled } from "@/lib/moduleFlags";
 import { DashboardSkeleton } from "./components/DashboardSkeleton";
 import { ContractsTabView } from "./ContractsTabView";
 import { VendorContractsView } from "./VendorContractsView";
@@ -95,6 +96,41 @@ const STAT_ROUTE_MAPPINGS: Record<
     filters: { status: "inactive" },
   },
 };
+
+// QA #187 — when the super-admin disables a company's Solicitation / Evaluation
+// modules, the dashboard must stop surfacing that content. These sets identify
+// solicitation/evaluation stat cards (by title) and charts (by id) so they can
+// be stripped from the config-driven dashboard for the roles whose primary view
+// is solicitation-oriented (procurement, company_admin, vendor).
+const SOLICITATION_STAT_TITLES = new Set([
+  "All Solicitations",
+  "Active Solicitations",
+  "Published Solicitations",
+  "Under Evaluations",
+  "Closed Solicitations",
+  "Awarded",
+  "Total Solicitations",
+  "All Invitations",
+  "Confirmed Invitations",
+  "Declined Invitations",
+  "Pending Invitations",
+]);
+const EVALUATION_STAT_TITLES = new Set([
+  "All Evaluations",
+  "Active Evaluations",
+  "Pending Evaluations",
+  "Completed Evaluations",
+]);
+const SOLICITATION_CHART_IDS = new Set([
+  "solicitation-status",
+  "solicitation-activities",
+  "proposal-submission",
+  "vendors-bid-intent-status",
+  "vendors-intent-status",
+  "bid-intent",
+  "vendors-distribution",
+]);
+const EVALUATION_CHART_IDS = new Set(["total-evaluation"]);
 
 const CM_YTD_STATS = [
   {
@@ -826,6 +862,50 @@ export const RoleBasedDashboard: React.FC = () => {
     contractManagerGeneralUpdates,
   ]);
 
+  // QA #187 — strip solicitation/evaluation stat cards and charts when the
+  // company's module is disabled. Only applies to roles whose primary dashboard
+  // is solicitation-oriented; contract/super-admin views are untouched. A module
+  // is considered "off" only when explicitly `false` (absent/loading => keep).
+  const moduleFilteredConfig: DashboardConfig = useMemo(() => {
+    const solicitationOff = isModuleDisabled(modules?.solicitationManagement);
+    const evaluationOff = isModuleDisabled(modules?.evaluationsManagement);
+    const roleInScope =
+      userRole === "procurement" ||
+      userRole === "company_admin" ||
+      userRole === "vendor";
+    if ((!solicitationOff && !evaluationOff) || !roleInScope) {
+      return enhancedDashboardConfig;
+    }
+
+    const keepStat = (title?: string) => {
+      if (solicitationOff && title && SOLICITATION_STAT_TITLES.has(title))
+        return false;
+      if (evaluationOff && title && EVALUATION_STAT_TITLES.has(title))
+        return false;
+      return true;
+    };
+    const keepChart = (id?: string) => {
+      if (solicitationOff && id && SOLICITATION_CHART_IDS.has(id)) return false;
+      if (evaluationOff && id && EVALUATION_CHART_IDS.has(id)) return false;
+      return true;
+    };
+
+    return {
+      ...enhancedDashboardConfig,
+      stats: enhancedDashboardConfig.stats.filter((s) => keepStat(s.title)),
+      rows: enhancedDashboardConfig.rows
+        .map((row) => ({
+          ...row,
+          // Activity components (My Actions / General Updates) carry `items`
+          // and are kept as-is; only chart properties are filtered by id.
+          properties: row.properties.filter((p) =>
+            p.items ? true : keepChart(p.id),
+          ),
+        }))
+        .filter((row) => row.properties.length > 0),
+    };
+  }, [enhancedDashboardConfig, modules, userRole]);
+
   // Handle individual chart filter changes
   const handleFilterChange = useCallback((chartId?: string, filter?: string) => {
     if (!chartId || !filter) return;
@@ -866,8 +946,10 @@ export const RoleBasedDashboard: React.FC = () => {
 
   const isContractAnalyticsRole =
     userRole === "contract_manager" || userRole === "approver";
-  const canShowMyActions = modules?.myActions === true;
-  const canShowGeneralUpdates = modules?.generalUpdatesNotifications === true;
+  const canShowMyActions = isModuleEnabled(modules?.myActions);
+  const canShowGeneralUpdates = isModuleEnabled(
+    modules?.generalUpdatesNotifications
+  );
 
   // Procurement's Contracts tab reuses the solicitation config's activity row
   // shells (My Actions / General Updates) but must render CONTRACT activity data
@@ -901,6 +983,34 @@ export const RoleBasedDashboard: React.FC = () => {
     contractManagerActionLogs,
     contractManagerGeneralUpdates,
   ]);
+
+  // Company Admin's Contracts tab must render CONTRACT activity data, not the
+  // solicitation data companyAdminConfig carries. Company Admin's own base
+  // config has no "activity"-type row to reuse, so build the contract-shaped
+  // activity rows from the canonical contract_manager row template instead.
+  const companyAdminContractsRows = useMemo(() => {
+    const contractGeneralUpdates =
+      DashboardDataTransformer.transformContractManagerDashboardActivity(
+        contractManagerGeneralUpdates
+      );
+    // Company Admin never performs contract "my actions" (approvals/personal
+    // actions are CM/PM/approver-only), so that card is permanently empty for
+    // this role — drop it and let General Updates take the full row width.
+    return dashboardConfigs.contract_manager.rows
+      .filter((row) => row.type === "activity")
+      .map((row) => ({
+        ...row,
+        className: "lg:grid-cols-1",
+        properties: row.properties
+          .filter((activity) => activity.id !== "my-actions")
+          .map((activity) => {
+            if (activity.id === "general-updates") {
+              return { ...activity, items: contractGeneralUpdates };
+            }
+            return activity;
+          }),
+      }));
+  }, [contractManagerGeneralUpdates]);
 
   if (isInitialLoading && LOADING_ROLES.has(userRole)) {
     return <DashboardSkeleton />;
@@ -1034,8 +1144,8 @@ export const RoleBasedDashboard: React.FC = () => {
           setTopTab={setCmTopTab}
           subTab={cmSubTab}
           setSubTab={setCmSubTab}
-          stats={enhancedDashboardConfig.stats}
-          rows={enhancedDashboardConfig.rows}
+          stats={cmTotalStats}
+          rows={companyAdminContractsRows}
           cmYtdStats={cmYtdStats}
           cmCycleTimeValues={cmCycleTimeValues}
           chartFilters={chartFilters}
@@ -1074,14 +1184,14 @@ export const RoleBasedDashboard: React.FC = () => {
         !(userRole === "vendor" && activeLandingTab === "contracts") && (
         <div
           className={cn(`grid grid-cols-1 md:grid-cols-2 gap-6`, {
-            "lg:grid-cols-2": enhancedDashboardConfig.stats.length === 8,
-            "lg:grid-cols-3": enhancedDashboardConfig.stats.length === 6,
+            "lg:grid-cols-2": moduleFilteredConfig.stats.length === 8,
+            "lg:grid-cols-3": moduleFilteredConfig.stats.length === 6,
             "lg:grid-cols-4":
-              enhancedDashboardConfig.stats.length === 4 ||
-              enhancedDashboardConfig.stats.length > 8,
+              moduleFilteredConfig.stats.length === 4 ||
+              moduleFilteredConfig.stats.length > 8,
           })}
         >
-          {enhancedDashboardConfig.stats?.map?.((stat, index) => (
+          {moduleFilteredConfig.stats?.map?.((stat, index) => (
             <CardStats
               key={`${stat.title}-${index}`}
               {...stat}
@@ -1098,7 +1208,7 @@ export const RoleBasedDashboard: React.FC = () => {
       {!isContractAnalyticsRole &&
         !(userRole === "company_admin" && activeLandingTab === "contracts") &&
         !(userRole === "procurement" && activeLandingTab === "contracts") &&
-        enhancedDashboardConfig.rows?.map?.((item, rowIndex) => {
+        moduleFilteredConfig.rows?.map?.((item, rowIndex) => {
         if (
           userRole === "vendor" &&
           activeLandingTab === "contracts" &&

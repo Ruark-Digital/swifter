@@ -537,11 +537,18 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   // they need the Submit button back so they can upload a corrected version.
   // POST .../deliverables/{id}/submit is not documented as one-shot in the BE
   // spec, so re-calling it with a fresh payload should work.
-  const isDeliverableRejected = approverStatus === "rejected";
+  // QA #198: a rejected deliverable must offer edit+resubmit to the vendor/PM.
+  // Rejection is conveyed by the deliverable's `status` field (which drives the
+  // "Rejected" badge) — `approverStatus` isn't reliably set to "rejected", so
+  // read both. Keying only off `approverStatus` left rejected deliverables with
+  // no Resubmit button.
+  const isDeliverableRejected =
+    approverStatus === "rejected" ||
+    (detail?.status ?? "").toLowerCase() === "rejected";
   const canShowSubmitButton =
     isVendor &&
-    approverStatus !== "N/A" &&
-    (isDeliverableRejected || (!isSubmitted && !hasBeenSubmitted));
+    (isDeliverableRejected ||
+      (approverStatus !== "N/A" && !isSubmitted && !hasBeenSubmitted));
 
   // Approve / reject opens a comment dialog first. `pendingAction` drives
   // both the dialog visibility and which variant (Approve vs Reject) we
@@ -869,9 +876,12 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                             : ""}
                         </div>
                       </div>
-                      <div className="mt-2 text-sm text-[#374151] dark:text-slate-200 whitespace-pre-wrap">
-                        {comment.content ?? ""}
-                      </div>
+                      <div
+                        className="mt-2 text-sm text-[#374151] dark:text-slate-200 prose prose-sm dark:prose-invert max-w-none"
+                        dangerouslySetInnerHTML={{
+                          __html: comment.content ?? "",
+                        }}
+                      />
                     </div>
                   ))}
                 </div>

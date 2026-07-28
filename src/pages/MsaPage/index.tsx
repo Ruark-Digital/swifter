@@ -160,10 +160,13 @@ const MsaPage: React.FC = () => {
       id: String((it as any)?.id ?? it?._id ?? ""),
       title: String(it?.title ?? "-"),
       code: String(it?.msaContractId ?? "-"),
+      // Vendor column shows the vendor company — not the project manager
+      // (QA #195). Accept either the populated `{ name }` object or a bare
+      // string id/name; fall back to "-" for rows without a vendor yet.
       vendor:
-        typeof it?.projectManager === "string"
-          ? String(it.projectManager || "-")
-          : String(it?.projectManager?.name ?? "-"),
+        typeof it?.vendor === "string"
+          ? String(it.vendor || "-")
+          : String((it?.vendor as { name?: string })?.name ?? "-"),
       value: Number.isFinite(it?.contractValue)
         ? `$${it.contractValue.toLocaleString()}`
         : undefined,
@@ -240,52 +243,80 @@ const MsaPage: React.FC = () => {
       />
 
       {hasData ? (
-        <Tabs defaultValue="all" className="w-full bg-transparent space-y-4">
-          <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
-            <TabsTrigger
-              value="all"
-              className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              All MSA
-            </TabsTrigger>
-            <TabsTrigger
-              value="mine"
-              className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
-            >
-              My MSA
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="all">
-            <MsaTable
-              rows={allRows}
-              totalCount={allTotalCount}
-              pagination={allPagination}
-              setPagination={setAllPagination}
-              isLoading={allQuery.isLoading}
-              statusFilter={statusFilter}
-              onStatusFilterChange={setStatusFilter}
-              categoryFilter={categoryFilter}
-              onCategoryFilterChange={setCategoryFilter}
-              dateFilter={dateFilter}
-              onDateFilterChange={setDateFilter}
-            />
-          </TabsContent>
-          <TabsContent value="mine">
-            <MsaTable
-              rows={myRows}
-              totalCount={myTotalCount}
-              pagination={myPagination}
-              setPagination={setMyPagination}
-              isLoading={mineQuery.isLoading}
-              statusFilter={statusFilter}
-              onStatusFilterChange={setStatusFilter}
-              categoryFilter={categoryFilter}
-              onCategoryFilterChange={setCategoryFilter}
-              dateFilter={dateFilter}
-              onDateFilterChange={setDateFilter}
-            />
-          </TabsContent>
-        </Tabs>
+        isCompanyAdmin ? (
+          <Tabs defaultValue="all" className="w-full bg-transparent space-y-4">
+            <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
+              <TabsTrigger
+                value="all"
+                className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+              >
+                All MSA
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="all">
+              <MsaTable
+                rows={allRows}
+                totalCount={allTotalCount}
+                pagination={allPagination}
+                setPagination={setAllPagination}
+                isLoading={allQuery.isLoading}
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                categoryFilter={categoryFilter}
+                onCategoryFilterChange={setCategoryFilter}
+                dateFilter={dateFilter}
+                onDateFilterChange={setDateFilter}
+              />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <Tabs defaultValue="all" className="w-full bg-transparent space-y-4">
+            <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
+              <TabsTrigger
+                value="all"
+                className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+              >
+                All MSA
+              </TabsTrigger>
+              <TabsTrigger
+                value="mine"
+                className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+              >
+                My MSA
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="all">
+              <MsaTable
+                rows={allRows}
+                totalCount={allTotalCount}
+                pagination={allPagination}
+                setPagination={setAllPagination}
+                isLoading={allQuery.isLoading}
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                categoryFilter={categoryFilter}
+                onCategoryFilterChange={setCategoryFilter}
+                dateFilter={dateFilter}
+                onDateFilterChange={setDateFilter}
+              />
+            </TabsContent>
+            <TabsContent value="mine">
+              <MsaTable
+                rows={myRows}
+                totalCount={myTotalCount}
+                pagination={myPagination}
+                setPagination={setMyPagination}
+                isLoading={mineQuery.isLoading}
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                categoryFilter={categoryFilter}
+                onCategoryFilterChange={setCategoryFilter}
+                dateFilter={dateFilter}
+                onDateFilterChange={setDateFilter}
+              />
+            </TabsContent>
+          </Tabs>
+        )
       ) : (
         <EmptyState />
       )}

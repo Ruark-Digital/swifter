@@ -28,7 +28,8 @@ import { formatDate } from "date-fns";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { approverApi } from "../api/approverApi";
 import type { ApprovalActionDTO } from "../api/approverApi";
-import { formatCompactCurrency } from "@/lib/utils";
+import { formatCompactCurrency, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 
 type Props = {
   trigger: React.ReactNode;
@@ -73,7 +74,7 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
   basePath,
   currency,
 }) => {
-  const currencyCode = currency || "USD";
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const toast = useToastHandler();
   const qc = useQueryClient();
   const [open, setOpen] = React.useState(false);

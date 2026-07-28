@@ -20,7 +20,8 @@ import type { ContractDetail } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { contractManagerApi } from "../api/contractManagerApi";
-import { formatDateTZ } from "@/lib/utils";
+import { formatDateTZ, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useFormContext } from "react-hook-form";
 import { formatFileSize, getSimpleFileExtension } from "@/lib/fileUtils";
@@ -662,33 +663,18 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
     toastErrorRef.current("Payment Savings", savingsError as any);
   }, [savingsError]);
 
-  // QA #157: pull Billed Till Date + Current Contract Value (Original +
-  // change orders) from the manager/approver dashboard. Vendor/PM/view-only
-  // have no financial-statement endpoint per Phase 2 docs.
-  const canFetchFinancialStatement = isManager || isApprover;
-  const financialStatementRoleSegment = isApprover ? "approver" : "manager";
-  const { data: financialStatement } = useQuery({
-    queryKey: [
-      `contract-${financialStatementRoleSegment}-dashboard`,
-      "financial-statement",
-      contractId,
-    ],
-    queryFn: async () => {
-      const res = await getRequest({
-        url: `/contract/${financialStatementRoleSegment}/contracts/${contractId}/dashboard/financial-statement`,
-        config: { params: { type: "Contract" } },
-      });
-      return res.data?.data as
-        | { billedTillDate?: number; currentContractValue?: number }
-        | undefined;
-    },
-    enabled:
-      Boolean(contractId) && !!isActive && canFetchFinancialStatement,
-    staleTime: 60000,
-    retry: false,
-  });
+  // QA #157: Billed Till Date + Current Balance come straight from the
+  // contract-detail response (`billedAmount` / `currentBalance`).
+  // QA #239: the reviewer asked for these on the Vendor PM "and other profiles"
+  // too, not just CM/PL — show them to every payment-summary viewer. The values
+  // read from the shared `contract` object (which every role's detail fetch
+  // populates) and `formatMoney` degrades gracefully if a role's payload omits
+  // them. (Reviewer also flagged the Current Balance VALUE needs a BE fix —
+  // that is server-side, tracked separately.)
+  const showBilledAndBalance =
+    isManager || isApprover || isContractVendorLike || isViewOnly;
 
-  const currency = contract?.currency || "USD";
+  const currency = resolveCurrency(contract?.currency, useUser()?.currency);
   const formatMoney = React.useCallback(
     (value?: number) => {
       if (value == null || !Number.isFinite(value)) return "-";
@@ -901,14 +887,14 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
             </div>
           </div>
           {/* QA #157: Billed Till Date + Current Balance for manager/approver. */}
-          {canFetchFinancialStatement && (
+          {showBilledAndBalance && (
             <>
               <div className="flex flex-col justify-center gap-4">
                 <div className="text-sm leading-7 text-[#6B6B6B] dark:text-slate-400">
                   Billed Till Date
                 </div>
                 <div className="text-base font-semibold leading-7 text-[#0F0F0F] dark:text-slate-100">
-                  {formatMoney(financialStatement?.billedTillDate)}
+                  {formatMoney(contract?.billedAmount)}
                 </div>
               </div>
               <div className="flex flex-col justify-center gap-4">
@@ -916,7 +902,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
                   Current Balance
                 </div>
                 <div className="text-base font-semibold leading-7 text-[#0F0F0F] dark:text-slate-100">
-                  {formatMoney(financialStatement?.currentContractValue)}
+                  {formatMoney(contract?.currentBalance)}
                 </div>
               </div>
             </>

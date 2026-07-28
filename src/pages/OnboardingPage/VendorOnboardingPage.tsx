@@ -222,12 +222,16 @@ const VendorOnboardingPage = () => {
           const uploadResponse = await uploadFile(fileFormData);
           uploadedFiles = uploadResponse.data?.data || [];
         } catch (uploadError) {
-          // console.log("File upload failed:", uploadError);
-          // Don't return here - continue with registration even if file upload fails
+          // Stop here rather than registering without the documents (QA #284).
+          // Step 3 being "(Optional)" means attaching files is optional — not
+          // that files the vendor DID attach may be silently dropped. Leaving
+          // them on this step lets them retry; the upload mutation's own
+          // onError has already surfaced the underlying reason.
           toast.error(
-            "File Upload Warning",
-            "Files could not be uploaded, but registration will continue."
+            "Documents not uploaded",
+            "Your documents could not be uploaded, so registration was not completed. Please try again, or remove the files to continue without them."
           );
+          return;
         }
       }
 
@@ -264,6 +268,39 @@ const VendorOnboardingPage = () => {
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+    }
+  };
+
+  // Validate the current step and advance. Extracted so the footer button can
+  // stay type="button" always (see the button below for why that matters).
+  const handleNextStep = async () => {
+    let isValid = false;
+    try {
+      if (currentStep === 1) {
+        await step1Schema.validate(forge.getValues(), {
+          abortEarly: false,
+        });
+      } else if (currentStep === 2) {
+        await step2Schema.validate(forge.getValues(), {
+          abortEarly: false,
+        });
+      }
+      isValid = true;
+    } catch (error: any) {
+      // Show validation errors
+      if (error.inner) {
+        error.inner.forEach((err: any) => {
+          forge.setError(err.path, { message: err.message });
+        });
+      }
+      toast.error(
+        "Validation Error",
+        "Please fill in all required fields correctly."
+      );
+    }
+
+    if (isValid) {
+      setCurrentStep(currentStep + 1);
     }
   };
 
@@ -326,41 +363,21 @@ const VendorOnboardingPage = () => {
                   Back
                 </Button>
               )}
+              {/* Always keep this button type="button". If its type flipped to
+                  a submit type on the final step, the browser would own when
+                  the form fires: the click that advances the wizard mutates
+                  this same node to a submit control before the browser
+                  evaluates that click's default action, so merely ARRIVING at
+                  step 3 would submit and register the vendor before "Complete
+                  Registration" is pressed. Submission is now driven explicitly
+                  by this click only. */}
               <Button
-                type={currentStep === 3 ? "submit" : "button"}
-                onClick={async () => {
-                  if (currentStep === 3) return; // Submit will be handled by form
-
-                  // Validate current step before proceeding
-                  let isValid = false;
-                  try {
-                    if (currentStep === 1) {
-                      await step1Schema.validate(forge.getValues(), {
-                        abortEarly: false,
-                      });
-                    } else if (currentStep === 2) {
-                      await step2Schema.validate(forge.getValues(), {
-                        abortEarly: false,
-                      });
-                    }
-                    isValid = true;
-                  } catch (error: any) {
-                    // Show validation errors
-                    if (error.inner) {
-                      error.inner.forEach((err: any) => {
-                        forge.setError(err.path, { message: err.message });
-                      });
-                    }
-                    toast.error(
-                      "Validation Error",
-                      "Please fill in all required fields correctly."
-                    );
-                  }
-
-                  if (isValid) {
-                    setCurrentStep(currentStep + 1);
-                  }
-                }}
+                type="button"
+                onClick={
+                  currentStep === 3
+                    ? forge.handleSubmit(onSubmit)
+                    : handleNextStep
+                }
                 className="w-full h-12 bg-[#2A4467] hover:bg-[#1e3147] text-white"
                 disabled={
                   currentStep === 3 && (isUploadingFiles || isCreatingVendor)

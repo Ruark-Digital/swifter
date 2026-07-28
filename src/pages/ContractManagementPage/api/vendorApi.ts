@@ -6,6 +6,7 @@ import {
   ContractCommentDTO,
   ContractInvoiceDTO,
   ContractRfiDTO,
+  ContractRfiResponseDTO,
   ContractChangeCommentDTO,
   ManagerListRfisQuery,
 } from "./contractManagerApi";
@@ -188,6 +189,21 @@ export const createVendorApi = (
     return (res as { data?: unknown })?.data as {
       message?: string;
       data?: ContractCommentDTO;
+    };
+  },
+  createRfiResponse: async (
+    contractId: string,
+    rfiId: string,
+    payload: ContractRfiResponseDTO,
+  ) => {
+    const post = client.post ?? ((params: PostParams) => postRequest(params));
+    const res = await post({
+      url: `/contract/vendor/contracts/${contractId}/rfi/${rfiId}/response`,
+      payload,
+    });
+    return (res as { data?: unknown })?.data as {
+      message?: string;
+      data?: ContractRfiDTO;
     };
   },
   createLem: async (

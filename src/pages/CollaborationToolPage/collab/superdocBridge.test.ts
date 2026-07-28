@@ -8,6 +8,7 @@ import {
   buildFocusRedline,
   buildAddComment,
   buildFocusComment,
+  buildSetMode,
 } from "./superdocBridge";
 
 const ORIGIN = "https://superdoc.example.com";
@@ -256,6 +257,17 @@ describe("anchored-comment messages", () => {
     expect(buildFocusComment("c1")).toEqual({
       type: "superdoc:focus-comment",
       payload: { commentId: "c1" },
+    });
+  });
+
+  it("builds set-mode commands for the turn-based redline gate", () => {
+    expect(buildSetMode("viewing")).toEqual({
+      type: "superdoc:set-mode",
+      payload: { documentMode: "viewing" },
+    });
+    expect(buildSetMode("suggesting")).toEqual({
+      type: "superdoc:set-mode",
+      payload: { documentMode: "suggesting" },
     });
   });
 });

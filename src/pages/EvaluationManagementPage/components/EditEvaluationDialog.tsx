@@ -631,11 +631,18 @@ const EditEvaluationDialog = ({
                 >
                   Back
                 </Button>
+                {/* Always type="button". This handler advances the step
+                    synchronously, so letting the type flip to "submit" meant
+                    React re-rendered before the browser ran the click's
+                    activation behaviour — which then found a submit button and
+                    fired the form. Clicking Continue on step 3 published the
+                    evaluation without the user ever pressing Publish (QA #294).
+                    The submit is now driven explicitly by this click. */}
                 <Button
-                  type={currentStep === 4 ? "submit" : "button"}
+                  type="button"
                   onClick={
                     currentStep === 4
-                      ? undefined
+                      ? forge.handleSubmit(onSubmit)
                       : () => setCurrentStep((prev) => prev + 1)
                   }
                   disabled={currentStep === 4 && isUpdatingEvaluation}

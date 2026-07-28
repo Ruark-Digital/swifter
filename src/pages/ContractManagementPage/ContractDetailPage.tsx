@@ -26,6 +26,7 @@ import { viewOnlyApi } from "./api/viewOnlyApi";
 import { companyAdminApi } from "./api/companyAdminApi";
 import AnalyticsTabContent from "./layouts/AnalyticsTabContent";
 import ApproversTabContent from "./layouts/ApproversTabContent";
+import VendorPersonnelTabContent from "./layouts/VendorPersonnelTabContent";
 import ActionLogTabContent from "./layouts/ActionLogTabContent";
 import ChangeTabContent from "./layouts/ChangeTabContent";
 import ClaimsTabContent from "./layouts/ClaimsTabContent";
@@ -80,6 +81,8 @@ const formatContractStatus = (status?: ContractDetail["status"]) => {
     return { label: "Expired", className: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" };
   if (status === "terminated")
     return { label: "Terminated", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" };
+  if (status === "suspended")
+    return { label: "Suspended", className: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" };
   return { label: "Unknown", className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" };
 };
 
@@ -100,6 +103,7 @@ type TabKey =
   | "rfi"
   | "ncr-log"
   | "approvers"
+  | "vendor-personnel"
   | "reports"
   | "clause-library"
   | "action-log";
@@ -121,6 +125,7 @@ const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "rfi", label: "RFI" },
   { key: "ncr-log", label: "NCR Log" },
   { key: "approvers", label: "Approvers" },
+  { key: "vendor-personnel", label: "Vendor Key Personnel" },
   { key: "reports", label: "Vendor’s Reports" },
   { key: "clause-library", label: "Clause Library" },
   { key: "action-log", label: "Action Log" },
@@ -262,9 +267,12 @@ const ContractDetailPage: React.FC = () => {
   const lifecycleActions = availableLifecycleActions(contractData?.status);
   const canSuspendContract =
     isManager && isContractOwner && lifecycleActions.includes("suspend");
+  const canUnsuspendContract =
+    isManager && isContractOwner && lifecycleActions.includes("unsuspend");
   const canTerminateContract =
     isManager && isContractOwner && lifecycleActions.includes("terminate");
-  const showLifecycleActions = canSuspendContract || canTerminateContract;
+  const showLifecycleActions =
+    canSuspendContract || canUnsuspendContract || canTerminateContract;
 
   const isContractProjectManager = Boolean(
     user?.projectmanagerId &&
@@ -282,19 +290,19 @@ const ContractDetailPage: React.FC = () => {
     isContractProjectManagerNotApproved &&
     contractData?.status === "pending_approval";
 
+  const isLiveContract =
+    contractData?.status === "active" || contractData?.status === "publish";
+
   // Take-over approval is distinct from the PM-accepts-contract flow: it applies
-  // to a pending projectManager assignment on an already-live contract (not a
-  // freshly created pending_approval one), and only a CM/PL approves it.
+  // to a pending projectManager assignment on an already-live (publish/active)
+  // contract, not a freshly created one, and only a CM/PL approves it.
   const takeOverPending =
-    contractData?.projectManager?.status === "pending" &&
-    contractData?.status !== "pending_approval";
+    contractData?.projectManager?.status === "pending" && isLiveContract;
   const canApproveTakeOver = isManager && isContractOwner && takeOverPending;
   const takeOverRequesterName =
     (contractData?.projectManager?.user as { user?: { name?: string } })
       ?.user?.name ?? contractData?.projectManager?.user?.name;
 
-  const isLiveContract =
-    contractData?.status === "active" || contractData?.status === "publish";
   const canAssignPm =
     ((isManager && isContractOwner) || isCompanyAdmin) &&
     isLiveContract &&
@@ -400,25 +408,29 @@ const ContractDetailPage: React.FC = () => {
     toastErrorRef.current("Contract Details", error as ApiResponseError);
   }, [error]);
 
+  const contractStatus = contractsResponse?.data?.data?.status;
+  const isDraftContract = contractStatus === "draft";
+
   const visibleTabs = React.useMemo(() => {
+    let tabs: Array<{ key: TabKey; label: string }>;
     if (isApprover) {
-      return ALL_TABS.filter((t) =>
-        ROLE_TAB_WHITELIST.approver.includes(t.key),
-      );
-    }
-    if (isContractVendorLike) {
-      return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.vendor.includes(t.key));
-    }
-    if (isViewOnly) {
-      return ALL_TABS.filter((t) =>
+      tabs = ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.approver.includes(t.key));
+    } else if (isContractVendorLike) {
+      tabs = ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.vendor.includes(t.key));
+    } else if (isViewOnly) {
+      tabs = ALL_TABS.filter((t) =>
         ROLE_TAB_WHITELIST["view only"].includes(t.key),
       );
+    } else if (isManager) {
+      tabs = ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
+    } else {
+      tabs = ALL_TABS;
     }
-    if (isManager) {
-      return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
+    if (isDraftContract) {
+      tabs = tabs.filter((t) => t.key !== "clause-library");
     }
-    return ALL_TABS;
-  }, [isApprover, isContractVendorLike, isViewOnly, isManager]);
+    return tabs;
+  }, [isApprover, isContractVendorLike, isViewOnly, isManager, isDraftContract]);
 
   // A deep-linked ?tab= may point at a tab this role can't see — fall back to overview.
   React.useEffect(() => {
@@ -481,6 +493,14 @@ const ContractDetailPage: React.FC = () => {
     contract?.status === "expired";
   const actionsDisabled =
     contract?.status === "pending_approval" || isFrozenStatus;
+  // QA #112: a company admin may amend an EXPIRED contract (Amendments tab only)
+  // to extend its duration — mirrors the solicitation admin-override of
+  // closed/awarded solicitations. Every other tab stays frozen. Gated to
+  // company_admin (not the broader isAdmin) because super_admin is not in the
+  // BE amendment roles. NOTE: the contract amendments endpoint still needs
+  // company_admin added server-side (MSA already allows it) — see BE handoff.
+  const amendmentActionsDisabled =
+    actionsDisabled && !(isCompanyAdmin && contract?.status === "expired");
   // Rate Sheets, Vendor's Reports, NCR, and LEM are day-to-day operational
   // actions that should only be reachable once the contract is actually
   // published — unlike `actionsDisabled` above, draft is also gated here.
@@ -549,6 +569,15 @@ const ContractDetailPage: React.FC = () => {
               onClick={() => setLifecycleAction("suspend")}
             >
               Suspend Contract
+            </Button>
+          )}
+          {canUnsuspendContract && (
+            <Button
+              variant="outline"
+              className="bg-[#F3F4F6] border-[#E5E7EB]"
+              onClick={() => setLifecycleAction("unsuspend")}
+            >
+              Reactivate Contract
             </Button>
           )}
           {canTerminateContract && (
@@ -693,6 +722,15 @@ const ContractDetailPage: React.FC = () => {
           owner={contract?.owner}
         />
 
+        <VendorPersonnelTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "vendor-personnel"}
+          owner={contract?.owner}
+          status={contract?.status}
+          contractType="Contract"
+          invalidateQueryKey={[...queryKey]}
+        />
+
         <InvoiceTabContent
           contractId={contract?._id ?? ""}
           currency={contract?.currency}
@@ -744,7 +782,7 @@ const ContractDetailPage: React.FC = () => {
           contractId={contract?._id ?? ""}
           currency={contract?.currency}
           isActive={activeTab === "amendments"}
-          actionsDisabled={actionsDisabled}
+          actionsDisabled={amendmentActionsDisabled}
         />
 
         <PaymentSummaryTabContent

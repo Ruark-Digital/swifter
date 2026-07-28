@@ -30,8 +30,13 @@ import {
 } from "./collab/useFileVersionsApi";
 import {
   useAiRedlineSuggestions,
+  usePersistedSuggestions,
   type AiRedlineSuggestion,
+  type SuggestionProgress,
 } from "./collab/useAiRedlineSuggestions";
+import { useRedlineTurn, isVersionConflict } from "./collab/useRedlineTurn";
+import TurnBanner from "./components/TurnBanner";
+import type { ApiResponseError } from "@/types";
 import type { Version } from "./components/VersionHistoryModal";
 
 type AiItem = {
@@ -146,9 +151,13 @@ const CollaborationToolPage: React.FC = () => {
   const [collabYDoc, setCollabYDoc] = useState<
     EditorAdapter["doc"] | undefined
   >(undefined);
+  // Re-render signal so effects that drive the (ref-held) adapter re-run once
+  // the editor is actually mounted — e.g. pushing the initial redline-turn mode.
+  const [editorReady, setEditorReady] = useState(false);
   const handleEditorReady = useCallback((adapter: EditorAdapter | null) => {
     editorAdapterRef.current = adapter;
     setCollabYDoc(adapter?.doc);
+    setEditorReady(Boolean(adapter));
   }, []);
 
   // Version history backed by Yjs so every client in the same room
@@ -166,9 +175,19 @@ const CollaborationToolPage: React.FC = () => {
     documentId: msaContractIdParam || contractIdParam,
     isMsa: Boolean(msaContractIdParam),
   });
+  const persistedQuery = usePersistedSuggestions({
+    documentId: msaContractIdParam || contractIdParam,
+    isMsa: Boolean(msaContractIdParam),
+  });
+  // Turn-based redline negotiation (company side ⇄ vendor side).
+  const redlineTurn = useRedlineTurn({
+    documentId: msaContractIdParam || contractIdParam,
+    isMsa: Boolean(msaContractIdParam),
+  });
   const [aiItems, setAiItems] = useState<AiItem[]>([]);
   const [aiHasRun, setAiHasRun] = useState(false);
   const [aiNoRedlines, setAiNoRedlines] = useState(false);
+  const [aiProgress, setAiProgress] = useState<SuggestionProgress>({});
 
   const sourceUrl = searchParams.get("sourceUrl") || "";
   const fileName = searchParams.get("fileName") || "";
@@ -505,17 +524,71 @@ const CollaborationToolPage: React.FC = () => {
     );
   }, [aiMutation]);
 
-  // Auto-run the first time the user opens the Redline tab.
+  // QA #232/#237: load persisted suggestions from GET before generating new
+  // ones. When persisted data exists, rehydrate aiItems with the saved
+  // resolution state and skip the POST entirely. Only generate (POST) when
+  // the GET returns an empty array or on explicit "Regenerate".
   useEffect(() => {
     if (activeTab !== "redline") return;
     if (aiHasRun) return;
+    if (!redlineTurn.canAct) return;
+    if (persistedQuery.isLoading) return;
+
+    const persisted = persistedQuery.data;
+    if (persisted && persisted.suggestions.length > 0) {
+      const resolutionToState = (
+        status?: string,
+      ): AiItem["state"] => {
+        if (status === "accepted" || status === "modified") return "approved";
+        if (status === "rejected") return "dismissed";
+        return "pending";
+      };
+      setAiItems(
+        persisted.suggestions.map((s) => ({
+          redline: {
+            redlineId: s.redlineId,
+            kind: "insertion" as const,
+            text: "",
+          },
+          suggestion: s,
+          state: resolutionToState(s.resolution?.action),
+        })),
+      );
+      setAiProgress(persisted.progress);
+      setAiHasRun(true);
+      return;
+    }
+
     void runAiSuggestions();
-  }, [activeTab, aiHasRun, runAiSuggestions]);
+  }, [activeTab, aiHasRun, runAiSuggestions, redlineTurn.canAct, persistedQuery.isLoading, persistedQuery.data]);
+
+  // Push the current turn's edit permission into the SuperDoc iframe. The init
+  // payload sets "editing" once; here we correct it — "suggesting" on your turn,
+  // "viewing" while you wait. Runs after the editor mounts and on every flip.
+  // Only participants with authoritative turn state drive this; non-participants
+  // keep the editor's default mode (pre-existing behavior).
+  useEffect(() => {
+    const adapter = editorAdapterRef.current;
+    if (!adapter?.setMode) return;
+    if (!redlineTurn.turnGateReady) return;
+    adapter.setMode(redlineTurn.isMyTurn ? "suggesting" : "viewing");
+  }, [editorReady, redlineTurn.turnGateReady, redlineTurn.isMyTurn]);
 
   const handleApproveAi = useCallback(
     (item: AiItem, tier: "low" | "medium" | "high" = "medium") => {
       const adapter = editorAdapterRef.current;
       if (!adapter || !item.suggestion) return;
+      // Turn gate: only the current holder may mutate redlines (buttons are
+      // already disabled; this is defense-in-depth).
+      if (redlineTurn.isLocked) {
+        toastHandler.error(
+          "Redline",
+          redlineTurn.isParticipant
+            ? "It's not your turn — wait for the other side to hand the document back."
+            : "Only the contract manager and vendor can modify redlines.",
+        );
+        return;
+      }
       // Pick the user's chosen alternative-language tier (or fall back
       // through the others, then to the legacy `replacementText` field
       // for older BE deployments).
@@ -530,6 +603,27 @@ const CollaborationToolPage: React.FC = () => {
         adapter.replaceRedline(item.redline.redlineId, replacement);
         // Auto-snapshot so the user can revert the AI-applied change.
         saveVersionSnapshot(`Applied AI suggestion (${tier})`, "ai-apply");
+        // Audit-only; does not mutate the doc. Fire-and-forget (errors are
+        // handled below — a 409 surfaces a toast instead of vanishing).
+        redlineTurn.resolve.mutate(
+          {
+            redlineId: item.redline.redlineId,
+            action: "modified",
+            tier,
+            docName,
+            baseVersionId: fileVersionsQuery.data?.activeVersionId ?? null,
+          },
+          {
+            onError: (error) => {
+              if (isVersionConflict(error)) {
+                toastHandler.error(
+                  "Redline",
+                  "This document changed since you loaded it. Reload the latest version, then try again.",
+                );
+              }
+            },
+          },
+        );
       } else if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console
         console.warn(
@@ -545,18 +639,81 @@ const CollaborationToolPage: React.FC = () => {
         ),
       );
     },
-    [saveVersionSnapshot],
+    [
+      saveVersionSnapshot,
+      redlineTurn,
+      toastHandler,
+      docName,
+      fileVersionsQuery.data?.activeVersionId,
+    ],
   );
 
-  const handleDismissAi = useCallback((item: AiItem) => {
-    setAiItems((prev) =>
-      prev.map((p) =>
-        p.redline.redlineId === item.redline.redlineId
-          ? { ...p, state: "dismissed" }
-          : p,
-      ),
-    );
-  }, []);
+  const handleDismissAi = useCallback(
+    (item: AiItem) => {
+      if (redlineTurn.isLocked) return;
+      setAiItems((prev) =>
+        prev.map((p) =>
+          p.redline.redlineId === item.redline.redlineId
+            ? { ...p, state: "dismissed" }
+            : p,
+        ),
+      );
+      // Audit-only. Fire-and-forget (errors handled below — a 409 surfaces a toast).
+      redlineTurn.resolve.mutate(
+        {
+          redlineId: item.redline.redlineId,
+          action: "rejected",
+          docName,
+          baseVersionId: fileVersionsQuery.data?.activeVersionId ?? null,
+        },
+        {
+          onError: (error) => {
+            if (isVersionConflict(error)) {
+              toastHandler.error(
+                "Redline",
+                "This document changed since you loaded it. Reload the latest version, then try again.",
+              );
+            }
+          },
+        },
+      );
+    },
+    [redlineTurn, docName, fileVersionsQuery.data?.activeVersionId, toastHandler],
+  );
+
+  const handleUndoAi = useCallback(
+    (item: AiItem) => {
+      if (redlineTurn.isLocked) return;
+      redlineTurn.undo.mutate(
+        {
+          redlineId: item.redline.redlineId,
+          docName,
+          baseVersionId: fileVersionsQuery.data?.activeVersionId ?? null,
+        },
+        {
+          onSuccess: () => {
+            setAiItems((prev) =>
+              prev.map((p) =>
+                p.redline.redlineId === item.redline.redlineId
+                  ? { ...p, state: "pending" }
+                  : p,
+              ),
+            );
+            toastHandler.success("Redline", "Resolution undone.");
+          },
+          onError: (error) => {
+            toastHandler.error(
+              "Undo redline",
+              isVersionConflict(error)
+                ? "This document changed since the resolution. Reload the latest version and try again."
+                : (error as ApiResponseError),
+            );
+          },
+        },
+      );
+    },
+    [docName, fileVersionsQuery.data?.activeVersionId, redlineTurn, toastHandler],
+  );
 
   // Clicking a suggestion card scrolls the editor to that redline.
   // IframeEditorPane listens for `ct-focus-redline` and forwards it to the
@@ -570,7 +727,7 @@ const CollaborationToolPage: React.FC = () => {
   }, []);
 
   const aiStatus: "idle" | "loading" | "ready" | "error" | "empty" =
-    aiMutation.isPending
+    aiMutation.isPending || (persistedQuery.isLoading && activeTab === "redline")
       ? "loading"
       : aiMutation.isError
         ? "error"
@@ -775,11 +932,49 @@ const CollaborationToolPage: React.FC = () => {
           isLoadingVersions={fileVersionsQuery.isLoading}
           aiStatus={aiStatus}
           aiItems={aiItems}
+          aiProgress={aiProgress}
           aiErrorMessage={(aiMutation.error as Error | undefined)?.message}
           onAiApprove={handleApproveAi}
           onAiDismiss={handleDismissAi}
+          onAiUndo={handleUndoAi}
           onAiFocus={handleFocusAi}
           onAiRetry={runAiSuggestions}
+          isMyTurn={redlineTurn.canAct}
+          redlineTurnBanner={
+            <TurnBanner
+              mySide={redlineTurn.mySide}
+              turn={redlineTurn.turn}
+              isMyTurn={redlineTurn.isMyTurn}
+              isFinalized={redlineTurn.isFinalized}
+              pendingCount={
+                aiItems.filter((i) => i.state === "pending").length
+              }
+              onSend={() =>
+                redlineTurn.sendTurn.mutate(undefined, {
+                  onSuccess: () =>
+                    toastHandler.success(
+                      "Redline",
+                      "Document sent to the other side.",
+                    ),
+                  onError: (e) =>
+                    toastHandler.error("Send redline turn", e as ApiResponseError),
+                })
+              }
+              onFinalize={() =>
+                redlineTurn.finalize.mutate(undefined, {
+                  onSuccess: () =>
+                    toastHandler.success(
+                      "Redline",
+                      "Redline negotiation finalized.",
+                    ),
+                  onError: (e) =>
+                    toastHandler.error("Finalize redline", e as ApiResponseError),
+                })
+              }
+              isSending={redlineTurn.sendTurn.isPending}
+              isFinalizing={redlineTurn.finalize.isPending}
+            />
+          }
         />
         </div>
       </div>

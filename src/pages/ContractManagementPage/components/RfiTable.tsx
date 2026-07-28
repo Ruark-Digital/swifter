@@ -63,6 +63,7 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
 import { postRequest } from "@/lib/axiosInstance";
+import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { IssueRfiDialog } from "../layouts/RfiTabContent";
 
@@ -249,6 +250,40 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   const rfiIdentifier = rfi?.rfiId ?? rfi?._id ?? "-";
   const responderName = getResponderName(rfiDetail) || getResponderName(rfi);
 
+  // Only the RFI issuer may close it, and only while it is still open.
+  // Manager uses /rfis (plural); vendor/approver/user use /rfi (singular) —
+  // mirror RfiTabContent.getBasePath() and the edit path above.
+  const rfiIssuerId =
+    typeof submittedByRaw === "object" ? submittedByRaw?._id : undefined;
+  const isRfiIssuer =
+    Boolean(currentUser?._id) &&
+    Boolean(rfiIssuerId) &&
+    rfiIssuerId === currentUser?._id;
+  // RFI close is singular `/rfi/{id}/close` for ALL roles per docs.json —
+  // including manager (which uniquely uses `/rfis` plural for EDIT but `/rfi`
+  // for close). Do not reuse the edit base here.
+  const rfiRoleBase = isApprover
+    ? `/contract/approver/contracts/${contractId}/rfi`
+    : isContractVendorLike
+      ? `/contract/vendor/contracts/${contractId}/rfi`
+      : `/contract/manager/contracts/${contractId}/rfi`;
+  const [closeRfiOpen, setCloseRfiOpen] = React.useState(false);
+  const closeRfiMutation = useMutation<{ message?: string }, ApiResponseError, void>({
+    mutationKey: [roleNs, "contractRfis", "close", contractId, rfiId],
+    mutationFn: async () => {
+      const res = await postRequest({ url: `${rfiRoleBase}/${rfiId}/close`, payload: {} });
+      return res.data as { message?: string };
+    },
+    onSuccess: async (res) => {
+      toastHandler.success("RFI", res?.message ?? "RFI closed");
+      setCloseRfiOpen(false);
+      await queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (error) => {
+      toastHandler.error("Close RFI", error);
+    },
+  });
+
   const formatDate = (value?: string | Date) =>
     formatDateTZ(value, "dd MMM yyyy");
 
@@ -388,6 +423,16 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                 >
                   <Download className="mr-2 h-4 w-4" /> Export
                 </Button>
+                {isRfiIssuer && rfiStatus?.toLowerCase() !== "closed" && (
+                  <Button
+                    variant="outline"
+                    className="h-9 rounded-lg border-red-200 px-3 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-900/30"
+                    data-testid="close-rfi-trigger"
+                    onClick={() => setCloseRfiOpen(true)}
+                  >
+                    Close RFI
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -584,7 +629,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
             </Tabs>
           </div>
 
-          {!((rfiDetailRes?.data as any)?.isResponse ?? false) && isApprover && isAssignedResponder && (
+          {!((rfiDetailRes?.data as any)?.isResponse ?? false) && isAssignedResponder && (
             <SheetFooter>
               <div className="flex w-full gap-3 pt-2">
                 <Button variant="outline" className="flex-1 h-12 rounded-xl">
@@ -602,6 +647,18 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
             </SheetFooter>
           )}
         </div>
+        <ConfirmAlert
+          open={closeRfiOpen}
+          onClose={(o) => !o && setCloseRfiOpen(false)}
+          type="warning"
+          title="Close RFI"
+          text="Close this RFI? Once closed it can no longer receive a response."
+          primaryButtonText="Close RFI"
+          secondaryButtonText="Cancel"
+          primaryButtonLoading={closeRfiMutation.isPending}
+          onPrimaryAction={() => closeRfiMutation.mutate()}
+          onSecondaryAction={() => setCloseRfiOpen(false)}
+        />
       </SheetContent>
     </Sheet>
   );
@@ -697,9 +754,9 @@ function RespondFileListItem({ file }: { file: File }) {
     );
   };
   return (
-    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-3">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB]">
+    <div className="flex w-full min-w-0 items-center justify-between gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-[#EAF1FB]">
           <CloudUpload className="h-5 w-5 text-[#2A4467]" />
         </div>
         <div className="min-w-0">
@@ -714,7 +771,7 @@ function RespondFileListItem({ file }: { file: File }) {
       <button
         type="button"
         onClick={handleRemove}
-        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF]"
+        className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[#9CA3AF]"
       >
         <X className="h-4 w-4" />
       </button>
@@ -728,7 +785,8 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
   rfi,
   contractId,
 }) => {
-  const { isApprover } = useUserRole();
+  const { isApprover, isVendor, isProjectManager } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
 
@@ -791,11 +849,15 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
               }))
             : undefined,
       };
-      return await approverApi.createRfiResponse(
-        contractId,
-        rfiId,
-        payload as any,
-      );
+      return isApprover
+        ? await approverApi.createRfiResponse(contractId, rfiId, payload as any)
+        : isContractVendorLike
+          ? await vendorApi.createRfiResponse(contractId, rfiId, payload as any)
+          : await contractManagerApi.createRfiResponse(
+              contractId,
+              rfiId,
+              payload as any,
+            );
     },
     onSuccess: async () => {
       setIsSuccess(true);
@@ -817,13 +879,6 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
     responseDescription: string;
     files: File[] | null;
   }) => {
-    if (!isApprover) {
-      toastHandler.error("RFI Response", {
-        message: "Only approvers can respond to RFIs.",
-      } as ApiResponseError);
-      return;
-    }
-
     try {
       await respondMutation.mutateAsync({
         responseDescription: data.responseDescription,

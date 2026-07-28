@@ -972,9 +972,18 @@ const EditSolicitationDialogContent = ({
               >
                 Back
               </Button>
+              {/* Always type="button". Letting the type flip to "submit" on the
+                  final step hands the browser control of when the form fires,
+                  so arriving at step 6 could publish/update before the user
+                  pressed anything. Submit is driven explicitly by this click
+                  via forge.handleSubmit and nothing else. */}
               <Button
-                type={currentStep === 6 ? "submit" : "button"}
-                onClick={currentStep === 6 ? undefined : validateAndProceed}
+                type="button"
+                onClick={
+                  currentStep === 6
+                    ? forge.handleSubmit(onSubmit)
+                    : validateAndProceed
+                }
                 disabled={isPending}
                 className="px-8 py-2 bg-[#2A4467] hover:bg-[#1e3147] text-white rounded-lg"
               >

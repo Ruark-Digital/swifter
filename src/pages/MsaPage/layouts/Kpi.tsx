@@ -51,24 +51,32 @@ const Kpi: React.FC<Props> = ({ contractId, isActive }) => {
 
   const rows: KpiRow[] = React.useMemo(
     () =>
-      (data ?? []).map((item: any) => ({
-        kpiId: item.kpiId ?? item.id ?? "",
-        category: item.category ?? "",
-        currentAvgScore:
-          typeof item.currentAvgScore === "number"
-            ? `${item.currentAvgScore}%`
-            : `${item.currentAvgScore ?? ""}`,
-        allTimeAvgScore:
-          typeof item.allTimeAvgScore === "number"
-            ? `${item.allTimeAvgScore}%`
-            : `${item.allTimeAvgScore ?? ""}`,
-        lastUpdated: (() => {
-          if (!item.lastUpdated) return "";
-          const parsed = new Date(item.lastUpdated);
-          return isNaN(parsed.getTime()) ? "" : format(parsed, "dd-MM-yyyy");
-        })(),
-        actions: canManageKpi ? ["Update", "View"] : [],
-      })),
+      (data ?? []).map((item: any) => {
+        // BE stamps `lastUpdated` at row-creation, so a Draft MSA that has
+        // never been scored still shows today's date. Suppress when there's
+        // no score to back it — the only signal exposed on the list row.
+        const neverScored =
+          (item.currentAvgScore === 0 || item.currentAvgScore == null) &&
+          (item.allTimeAvgScore === 0 || item.allTimeAvgScore == null);
+        return {
+          kpiId: item.kpiId ?? item.id ?? "",
+          category: item.category ?? "",
+          currentAvgScore:
+            typeof item.currentAvgScore === "number"
+              ? `${item.currentAvgScore}%`
+              : `${item.currentAvgScore ?? ""}`,
+          allTimeAvgScore:
+            typeof item.allTimeAvgScore === "number"
+              ? `${item.allTimeAvgScore}%`
+              : `${item.allTimeAvgScore ?? ""}`,
+          lastUpdated: (() => {
+            if (neverScored || !item.lastUpdated) return "";
+            const parsed = new Date(item.lastUpdated);
+            return isNaN(parsed.getTime()) ? "" : format(parsed, "dd-MM-yyyy");
+          })(),
+          actions: canManageKpi ? ["Update", "View"] : [],
+        };
+      }),
     [canManageKpi, data],
   );
 

@@ -1417,7 +1417,10 @@ export const SolicitationManagementPage = () => {
         )}
         {!isProcurement && (
           <StatCard
-            title="Draft Proposal"
+            // A vendor never drafts a solicitation — their draft is a proposal.
+            // Scope the relabel to vendors only so company_admin / CM / PL keep
+            // seeing "Draft Solicitation" (QA #296).
+            title={isVendor ? "Draft Proposal" : "Draft Solicitation"}
             value={dashboardStats.draft}
             icon={IconMap["folder-open"] as any}
             iconColor="text-gray-600"

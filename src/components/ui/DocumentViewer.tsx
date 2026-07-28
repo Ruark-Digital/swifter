@@ -9,6 +9,13 @@ import mammoth from 'mammoth';
 import { getFileExtension } from '../../lib/fileUtils';
 import { useTheme } from '../../contexts/ThemeContext';
 
+// Lazy so the SuperDoc bridge (which resolves VITE_SUPERDOC_APP_URL at module
+// load and throws in prod when unset) only evaluates when a Word preview is
+// actually rendered — never at DocumentViewer import time.
+const IframeEditorPane = React.lazy(
+  () => import('@/pages/CollaborationToolPage/components/IframeEditorPane'),
+);
+
 // Set up PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc =`//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -41,14 +48,32 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [excelData, setExcelData] = useState<ExcelData | null>(null);
   const [activeSheet, setActiveSheet] = useState<string>('');
   const [docxContent, setDocxContent] = useState<string>('');
+  // Word docs render in the high-fidelity SuperDoc iframe (read-only). If that
+  // can't load (app unreachable / fetch fails), fall back to the mammoth
+  // HTML render. `superdocFailed` flips the Word branch to the fallback.
+  const [superdocFailed, setSuperdocFailed] = useState(false);
 
   const extension = getFileExtension(fileName, fileType || '');
+  const isWord = extension === 'DOC' || extension === 'DOCX';
 
   useEffect(() => {
     if (isOpen && fileUrl) {
+      setSuperdocFailed(false);
+      setDocxContent('');
       loadDocument();
     }
   }, [isOpen, fileUrl, fileName]);
+
+  // Lazy-load the mammoth fallback only when SuperDoc has failed.
+  useEffect(() => {
+    if (superdocFailed && isWord && !docxContent) {
+      loadWordFile().catch((err) =>
+        setError(
+          `Failed to load DOCX preview: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        ),
+      );
+    }
+  }, [superdocFailed, isWord, docxContent]);
 
   const loadDocument = async () => {
     setLoading(true);
@@ -57,9 +82,9 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     try {
       if (extension === 'XLS' || extension === 'XLSX') {
         await loadExcelFile();
-      } else if (extension === 'DOC' || extension === 'DOCX') {
-        await loadWordFile();
       }
+      // Word docs are rendered by the SuperDoc iframe (see renderWordViewer);
+      // mammoth is only loaded as a fallback when SuperDoc fails.
       // PDF files are handled by react-pdf component directly
     } catch (err) {
       setError(`Failed to load ${extension} file: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -229,16 +254,58 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     );
   };
 
-  const renderWordViewer = () => (
-    <div className="flex-1 overflow-auto p-6 h-full">
-      <div
-        className={`prose max-w-none dark:text-gray-400 ${
-          actualTheme === 'dark' ? 'prose-invert' : ''
-        }`}
-        dangerouslySetInnerHTML={{ __html: docxContent }}
-      />
-    </div>
-  );
+  const renderWordViewer = () => {
+    // High-fidelity render via the SuperDoc iframe (read-only "viewing" mode,
+    // collaboration disabled). Falls back to mammoth HTML if SuperDoc fails.
+    if (!superdocFailed) {
+      return (
+        <div className="flex-1 h-full min-h-0">
+          <React.Suspense
+            fallback={
+              <div className="flex items-center justify-center h-96">
+                <Loader2 className="h-8 w-8 animate-spin text-foreground" />
+                <span className="ml-2 text-foreground">Loading document...</span>
+              </div>
+            }
+          >
+            <IframeEditorPane
+              importMeta={{ sourceUrl: fileUrl, fileName, fileType: fileType || '' }}
+              collabMeta={{
+                wsUrl: '',
+                roomId: '',
+                token: '',
+                disable: true,
+                presenceActive: false,
+              }}
+              documentMode="viewing"
+              onEditorReady={() => {}}
+              onError={() => setSuperdocFailed(true)}
+            />
+          </React.Suspense>
+        </div>
+      );
+    }
+
+    if (!docxContent) {
+      return (
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-foreground" />
+          <span className="ml-2 text-foreground">Loading document...</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex-1 overflow-auto p-6 h-full">
+        <div
+          className={`prose max-w-none dark:text-gray-400 ${
+            actualTheme === 'dark' ? 'prose-invert' : ''
+          }`}
+          dangerouslySetInnerHTML={{ __html: docxContent }}
+        />
+      </div>
+    );
+  };
 
   const renderContent = () => {
     if (loading) {

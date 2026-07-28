@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,10 +14,23 @@ import { getRequest, putRequest, deleteRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
+import { useUserRole } from "@/hooks/useUserRole";
 import EditCompanyDialog from "./components/EditCompanyDialog";
 import React, { useState } from "react";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { formatDateTZ } from "@/lib/utils";
+
+// Normalizes ambiguous truthy/falsy shapes (e.g. a stray `{ enabled: "true" }`
+// or the string "true") coming from portalSettingsData into a real boolean,
+// so the moduleSchema's yup.boolean() fields never receive a non-boolean value.
+const toBool = (value: unknown, fallback = false): boolean => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return value === "true";
+  if (value && typeof value === "object" && "enabled" in value) {
+    return toBool((value as { enabled: unknown }).enabled, fallback);
+  }
+  return fallback;
+};
 
 // Schema for module form validation
 const moduleSchema = yup.object().shape({
@@ -52,7 +65,8 @@ type CompanyDetails = {
   industry?: string;
   sizeCategory: string;
   status: "active" | "inactive" | "suspended";
-  maxUsers: number;
+  // Not returned by GET /companies/{id} — the seat counts live on `subscription`.
+  maxUsers?: number;
   admins: CompanyAdmin[];
   domain?: string;
   subscription?: {
@@ -63,7 +77,10 @@ type CompanyDetails = {
       name: string;
       description: string;
       price: number;
+      maxUsers?: number;
     };
+    usersUsed?: number;
+    maxUsers?: number;
     status: "active" | "expired" | "canceled" | "pending";
     startDate: string;
     expiryDate: string;
@@ -120,6 +137,7 @@ const CompanyDetailPage = () => {
   const navigate = useNavigate();
   const toast = useToastHandler();
   const queryClient = useQueryClient();
+  const { isSuperAdmin } = useUserRole();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   // Admin management handlers
@@ -172,6 +190,16 @@ const CompanyDetailPage = () => {
 
   const adminData = adminsResponse?.data?.data?.data || companyData?.admins || [];
 
+  // Seat usage for the Subscription Plan tab. Both numbers come off the
+  // subscription: `usersUsed` counts every user, whereas the admin list only
+  // covers company admins, and the seat limit is not on the company document at
+  // all — reading `companyData.maxUsers` rendered an empty denominator.
+  const seatsUsed = companyData?.subscription?.usersUsed;
+  const seatLimit =
+    companyData?.subscription?.maxUsers ??
+    companyData?.subscription?.plan?.maxUsers ??
+    companyData?.maxUsers;
+
   // Company status update mutation
   const { mutateAsync: updateCompanyStatus, isPending: isUpdatingStatus } =
     useMutation<
@@ -192,6 +220,68 @@ const CompanyDetailPage = () => {
         );
       },
     });
+
+  // Export company data (super admin only). BE runs this asynchronously:
+  //   1. GET .../export        starts the job and returns { jobId, ... }.
+  //   2. GET .../export/{jobId} returns 202 while generating, then 200 with the
+  //      ZIP (protected multi-sheet XLSX + all files linked to the company).
+  // We start the job, poll the jobId endpoint until it yields the ZIP, then
+  // trigger a download.
+  const { mutate: exportCompanyData, isPending: isExporting } = useMutation<
+    Blob,
+    ApiResponseError
+  >({
+    mutationFn: async () => {
+      // 1. Start the export job.
+      const startRes = await getRequest({
+        url: `/admins/companies/${id}/export`,
+      });
+      const startBody = startRes.data?.data ?? startRes.data;
+      const jobId: string | undefined = startBody?.jobId;
+      if (!jobId) {
+        throw new Error("Export did not return a job id");
+      }
+
+      // 2. Poll until the ZIP is ready (202 = still generating, 200 = done).
+      const POLL_INTERVAL_MS = 2500;
+      const MAX_ATTEMPTS = 48; // ~2 minutes
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        const pollRes = await getRequest({
+          url: `/admins/companies/${id}/export/${jobId}`,
+          config: { responseType: "blob" },
+        });
+        if (pollRes.status === 200) {
+          return pollRes.data as Blob;
+        }
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      }
+      throw new Error("Export timed out. Please try again.");
+    },
+    onSuccess: (data) => {
+      const url = window.URL.createObjectURL(
+        new Blob([data], { type: "application/zip" })
+      );
+      const safeName =
+        (companyData?.name || "company")
+          .replace(/[^a-z0-9]+/gi, "-")
+          .replace(/^-+|-+$/g, "")
+          .toLowerCase() || "company";
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `${safeName}-data-export.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success("Export Complete", "Company data exported successfully");
+    },
+    onError: (error) => {
+      toast.error(
+        "Export Failed",
+        error.response?.data?.message || "Failed to export company data"
+      );
+    },
+  });
 
   // Fetch portal settings from API
   const { data: portalSettingsResponse, isLoading: isLoadingPortalSettings } =
@@ -230,17 +320,27 @@ const CompanyDetailPage = () => {
   const { control, reset, handleSubmit } = useForge<ModuleFormValues>({
     resolver: yupResolver(moduleSchema),
     defaultValues: {
-      solicitationsManagement:
-        portalSettingsData?.solicitationManagement ?? true,
-      evaluationsManagement: portalSettingsData?.evaluationsManagement ?? true,
-      contractManagement: portalSettingsData?.contractManagement ?? true,
-      reportsAnalytics: portalSettingsData?.reportsAnalytics ?? true,
-      generalUpdatesNotifications:
-        portalSettingsData?.generalUpdatesNotifications ?? true,
-      myActions: portalSettingsData?.myActions ?? true,
-      vendorsQA: portalSettingsData?.vendorsQA ?? true,
-      addendumManagement: portalSettingsData?.addendumManagement ?? false,
-      isAi: portalSettingsData?.isAi ?? false,
+      solicitationsManagement: toBool(
+        portalSettingsData?.solicitationManagement,
+        true
+      ),
+      evaluationsManagement: toBool(
+        portalSettingsData?.evaluationsManagement,
+        true
+      ),
+      contractManagement: toBool(portalSettingsData?.contractManagement, true),
+      reportsAnalytics: toBool(portalSettingsData?.reportsAnalytics, true),
+      generalUpdatesNotifications: toBool(
+        portalSettingsData?.generalUpdatesNotifications,
+        true
+      ),
+      myActions: toBool(portalSettingsData?.myActions, true),
+      vendorsQA: toBool(portalSettingsData?.vendorsQA, true),
+      addendumManagement: toBool(
+        portalSettingsData?.addendumManagement,
+        false
+      ),
+      isAi: toBool(portalSettingsData?.isAi, false),
     },
   });
 
@@ -249,17 +349,22 @@ const CompanyDetailPage = () => {
   React.useEffect(() => {
     if (portalSettingsData) {
       reset({
-        solicitationsManagement: portalSettingsData.solicitationManagement,
-        evaluationsManagement: portalSettingsData.evaluationsManagement,
-        vendorManagement: portalSettingsData.vendorManagement,
-        reportsAnalytics: portalSettingsData.reportsAnalytics,
-        generalUpdatesNotifications:
-          portalSettingsData.generalUpdatesNotifications,
-        contractManagement: portalSettingsData.contractManagement,
-        myActions: portalSettingsData.myActions,
-        vendorsQA: portalSettingsData.vendorsQA,
-        addendumManagement: portalSettingsData.addendumManagement,
-        isAi: portalSettingsData.isAi ?? false,
+        solicitationsManagement: toBool(
+          portalSettingsData.solicitationManagement
+        ),
+        evaluationsManagement: toBool(
+          portalSettingsData.evaluationsManagement
+        ),
+        vendorManagement: toBool(portalSettingsData.vendorManagement),
+        reportsAnalytics: toBool(portalSettingsData.reportsAnalytics),
+        generalUpdatesNotifications: toBool(
+          portalSettingsData.generalUpdatesNotifications
+        ),
+        contractManagement: toBool(portalSettingsData.contractManagement),
+        myActions: toBool(portalSettingsData.myActions),
+        vendorsQA: toBool(portalSettingsData.vendorsQA),
+        addendumManagement: toBool(portalSettingsData.addendumManagement),
+        isAi: toBool(portalSettingsData.isAi, false),
       });
     }
   }, [portalSettingsData, reset]);
@@ -545,6 +650,19 @@ const CompanyDetailPage = () => {
           />
         </div>
         <div className="flex items-center gap-3">
+          {isSuperAdmin && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => exportCompanyData()}
+              isLoading={isExporting}
+              disabled={isExporting}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export Data
+            </Button>
+          )}
           <Badge
             className={`${getStatusColor(
               companyData.status
@@ -798,7 +916,7 @@ const CompanyDetailPage = () => {
                   Max Users
                 </label>
                 <p className="text-lg font-medium text-gray-900 dark:text-gray-100 font-quicksand">
-                  {(adminData || []).length}/{companyData.maxUsers}
+                  {seatsUsed ?? "-"}/{seatLimit ?? "-"}
                 </p>
               </div>
             </div>

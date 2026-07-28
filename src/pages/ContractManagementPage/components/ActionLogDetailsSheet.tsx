@@ -12,7 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { contractManagerApi } from "../api/contractManagerApi";
 import { useParams } from "react-router-dom";
-import { format } from "date-fns";
+import { formatDateTZ, formatModuleLabel } from "@/lib/utils";
 // import { ContractStatusBadge } from "./StatusBadge";
 
 type ActionLogItem = {
@@ -112,7 +112,10 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
       return <div className="p-4 text-center">No details available.</div>;
 
     const anyData = detailData;
-    const moduleLabel = action?.module || "-";
+    // Match the table/export formatting (ActionLogTabContent) — split camelCase
+    // and upper-case acronyms so e.g. "ContractSavings" reads "Contract Savings"
+    // and "rfi" reads "RFI".
+    const moduleLabel = formatModuleLabel(action?.module);
 
     const submittedByRaw = anyData.user?.name || anyData.user || "Unknown";
     const submittedBy = typeof submittedByRaw === "string" ? submittedByRaw : "Unknown";
@@ -121,7 +124,7 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
     const submissionDate =
       submissionDateValue &&
       !Number.isNaN(new Date(submissionDateValue).getTime())
-        ? format(new Date(submissionDateValue), "dd MMM yyyy")
+        ? formatDateTZ(submissionDateValue, "dd MMM yyyy")
         : `${action?.dateLine1 || ""} ${action?.dateLine2 || ""}`.trim() || "-";
 
     // const statusText =
@@ -159,7 +162,7 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
                   label="Response Deadline"
                   value={
                     anyData.updatedAt
-                      ? format(new Date(anyData.updatedAt), "dd MMM yyyy")
+                      ? formatDateTZ(anyData.updatedAt, "dd MMM yyyy")
                       : "-"
                   }
                 />

@@ -41,6 +41,7 @@ import Invoice from "./layouts/Invoice";
 import Rfi from "./layouts/Rfi";
 import Lem from "./layouts/Lem";
 import Approvers from "./layouts/Approvers";
+import VendorPersonnelTabContent from "@/pages/ContractManagementPage/layouts/VendorPersonnelTabContent";
 import Deliverables from "./layouts/Deliverables";
 import Reports from "./layouts/Reports";
 import ActionLogTabContent from "./layouts/ActionLogTabContent";
@@ -50,6 +51,7 @@ import NcrLog from "./layouts/NcrLog";
 import { Share2 } from "lucide-react";
 import { Status, StatusBadge } from "./components/StatusBadge";
 import { useUser } from "@/store/authSlice";
+import { resolveCurrency } from "@/lib/utils";
 import type { ApiResponseError } from "@/types";
 import ContractLifecycleDialog from "@/pages/ContractManagementPage/components/ContractLifecycleDialog";
 import {
@@ -74,6 +76,7 @@ type TabKey =
   | "rfi"
   | "ncr-log"
   | "approvers"
+  | "vendor-personnel"
   | "reports"
   | "action-log"
   | "clause-library";
@@ -95,6 +98,7 @@ const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "rfi", label: "RFI" },
   { key: "ncr-log", label: "NCR Log" },
   { key: "approvers", label: "Approvers" },
+  { key: "vendor-personnel", label: "Vendor Key Personnel" },
   { key: "reports", label: "Vendor’s Reports" },
   { key: "clause-library", label: "Clause Library" },
   { key: "action-log", label: "Action Log" },
@@ -106,6 +110,7 @@ const ROLE_TAB_WHITELIST: Record<
 > = {
   approver: [
     "overview",
+    "analytics",
     "documents",
     "amendments",
     "lem",
@@ -151,6 +156,7 @@ const ROLE_TAB_WHITELIST: Record<
     "deliverables",
     "ncr-log",
     "approvers",
+    "vendor-personnel",
     "reports",
     "payment-summary",
     "action-log",
@@ -264,6 +270,7 @@ export interface MSAContractDetail {
   timezone: string;
   isDeleted: boolean;
   vendorPersonnel: any[];
+  personnel?: VendorPersonnel[];
   milestone: any[];
   createdAt: Date;
   updatedAt: Date;
@@ -326,8 +333,18 @@ export interface Signatory {
   _id: string;
 }
 
+export interface VendorPersonnel {
+  _id?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+}
+
 export interface Vendor {
-  status: string;
+  _id?: string;
+  name?: string;
+  status?: string;
 }
 
 const formatDate = (iso?: string) => {
@@ -417,23 +434,31 @@ const MsaDetailPage: React.FC = () => {
     toastErrorRef.current("MSA Details", error as any);
   }, [error]);
 
+  const msaRawStatus = (msaResponse?.data?.data as MSAContractDetail | undefined)
+    ?.status;
+  const isDraftMsa = msaRawStatus === "draft";
+
   const visibleTabs = React.useMemo(() => {
+    let tabs: Array<{ key: TabKey; label: string }>;
     if (isApprover)
-      return ALL_TABS.filter((t) =>
+      tabs = ALL_TABS.filter((t) =>
         ROLE_TAB_WHITELIST.approver.includes(t.key),
       );
-    if (isVendor || isProjectManager)
-      return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.vendor.includes(t.key));
-    if (isViewOnly)
-      return ALL_TABS.filter((t) =>
+    else if (isVendor || isProjectManager)
+      tabs = ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.vendor.includes(t.key));
+    else if (isViewOnly)
+      tabs = ALL_TABS.filter((t) =>
         ROLE_TAB_WHITELIST["view only"].includes(t.key),
       );
-    if (isManager)
-      return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
-    return ALL_TABS;
-  }, [isApprover, isVendor, isProjectManager, isViewOnly, isManager]);
+    else if (isManager)
+      tabs = ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
+    else tabs = ALL_TABS;
+    if (isDraftMsa) tabs = tabs.filter((t) => t.key !== "clause-library");
+    return tabs;
+  }, [isApprover, isVendor, isProjectManager, isViewOnly, isManager, isDraftMsa]);
 
   const msa = msaResponse?.data?.data as MSAContractDetail | undefined;
+  const user = useUser();
 
   const canFetchLinkedContracts = (isManager || isCompanyAdmin) && Boolean(id);
   const linkedContractsQueryKey = useUserQueryKey(["msa-linked-contract", id]);
@@ -458,7 +483,7 @@ const MsaDetailPage: React.FC = () => {
       try {
         return new Intl.NumberFormat(undefined, {
           style: "currency",
-          currency: currency ?? "USD",
+          currency: resolveCurrency(currency, user?.currency),
           maximumFractionDigits: 0,
         }).format(num);
       } catch {
@@ -507,7 +532,6 @@ const MsaDetailPage: React.FC = () => {
     }));
   }, [formatMoney, linkedContractsResponse?.data]);
 
-  const user = useUser();
   const currentUserId = user?._id;
   const isMsaOwner =
     typeof msa?.owner === "boolean"
@@ -544,6 +568,10 @@ const MsaDetailPage: React.FC = () => {
     msa?.status === "expired";
   const tabActionsDisabled =
     msa?.status === "pending_approval" || isMsaFrozenStatus;
+  // QA #112: company admin may amend an EXPIRED MSA (Amendments tab only) to
+  // extend its duration. MSA amendments already allow company_admin server-side.
+  const msaAmendmentActionsDisabled =
+    tabActionsDisabled && !(isCompanyAdmin && msa?.status === "expired");
 
   const { data: approveStatusResponse } = useQuery({
     queryKey: [approveStatusQueryKey[0], msa?._id],
@@ -683,9 +711,10 @@ const MsaDetailPage: React.FC = () => {
   const internalTeam = Array.isArray(msa?.internalTeam)
     ? msa!.internalTeam
     : [];
-  const vendorPersonnel = Array.isArray(msa?.vendorPersonnel)
-    ? msa!.vendorPersonnel!
-    : [];
+  // Vendor key personnel come from the top-level `personnel` array on the MSA
+  // detail response — not `vendorPersonnel` (which never existed, so this
+  // always rendered "N/A"). Mirrors the Contract detail behaviour.
+  const vendorPersonnel = Array.isArray(msa?.personnel) ? msa!.personnel! : [];
 
   return (
     <div className="space-y-8 pt-5">
@@ -882,13 +911,14 @@ const MsaDetailPage: React.FC = () => {
               contractId={id ?? ""}
               currency={msa?.currency}
               isActive={activeTab === "amendments"}
-              actionsDisabled={tabActionsDisabled}
+              actionsDisabled={msaAmendmentActionsDisabled}
             />
 
             <Compliance
               contractId={id ?? ""}
               isActive={activeTab === "compliance"}
               actionsDisabled={tabActionsDisabled}
+              owner={isMsaOwner}
             />
 
             <ChangeManagement
@@ -940,6 +970,15 @@ const MsaDetailPage: React.FC = () => {
             <Approvers
               contractId={id ?? ""}
               isActive={activeTab === "approvers"}
+            />
+
+            <VendorPersonnelTabContent
+              contractId={id ?? ""}
+              isActive={activeTab === "vendor-personnel"}
+              owner={isMsaOwner}
+              status={msa?.status}
+              contractType="MsaContract"
+              invalidateQueryKey={[...queryKey]}
             />
 
             <Reports

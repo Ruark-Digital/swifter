@@ -47,7 +47,7 @@ const Amendments: React.FC<Props> = ({
   isActive,
   actionsDisabled,
 }) => {
-  const { isApprover, isVendor, isProjectManager, isManager, isViewOnly, isAdmin } =
+  const { isApprover, isVendor, isProjectManager, isManager, isViewOnly, isAdmin, isCompanyAdmin } =
     useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
@@ -199,7 +199,7 @@ const Amendments: React.FC<Props> = ({
             </Button>
           </ExportReportSheet>
 
-          {isManager && (
+          {(isManager || isCompanyAdmin) && (
             <CreateAmendmentDialog
               contractId={contractId}
               createPath={`/contract/manager/msa-contracts/${contractId}/amendments`}

@@ -385,6 +385,7 @@ const PricingTable: React.FC<PricingTableProps> = ({
   setValue,
   getValues,
 }) => {
+  const currency = "USD";
   // Use field array for price actions
   const { fields, append, remove, update } = useFieldArray({
     control,
@@ -401,7 +402,7 @@ const PricingTable: React.FC<PricingTableProps> = ({
     const subtotal = quantity * unitPrice;
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency,
     }).format(subtotal);
   };
 
@@ -633,7 +634,7 @@ const PricingTable: React.FC<PricingTableProps> = ({
             <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
               {new Intl.NumberFormat("en-US", {
                 style: "currency",
-                currency: "USD",
+                currency,
               }).format(parseFloat(totalAmount))}
             </div>
           </div>
@@ -657,6 +658,7 @@ const SubPriceTable: React.FC<SubPriceTableProps> = ({
   control,
   removeSubItem,
 }) => {
+  const currency = "USD";
   return (
     <div className="ml-8 space-y-2">
       {subItems!.map((subItem: any, subIndex: any) => (
@@ -717,7 +719,7 @@ const SubPriceTable: React.FC<SubPriceTableProps> = ({
             <div className="h-8 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm flex items-center">
               {new Intl.NumberFormat("en-US", {
                 style: "currency",
-                currency: "USD",
+                currency,
               }).format((subItem?.quantity || 0) * (subItem?.unitPrice || 0))}
             </div>
           </div>
