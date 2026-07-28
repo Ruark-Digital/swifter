@@ -573,11 +573,11 @@ const ProposalDetailsPage: React.FC = () => {
         return (
           <div className="text-sm text-gray-600 dark:text-gray-300">
             {document.uploadedAt
-              ? formatDateTZ(
+              ? `${formatDateTZ(
                   document.uploadedAt,
                   "MMM d, yyyy h:mm a",
                   solicitation?.timezone
-                )
+                )}${solicitation?.timezone ? ` ${solicitation.timezone}` : ""}`
               : "N/A"}
           </div>
         );
@@ -753,11 +753,11 @@ const ProposalDetailsPage: React.FC = () => {
         return (
           <div className="text-sm text-gray-600 dark:text-gray-300">
             {amendment.createdAt
-              ? formatDateTZ(
+              ? `${formatDateTZ(
                   amendment.createdAt,
-                  "yyyy-MM-dd, h:mm a",
+                  "MMM d, yyyy h:mm a",
                   solicitation?.timezone
-                )
+                )}${solicitation?.timezone ? ` ${solicitation.timezone}` : ""}`
               : "N/A"}
           </div>
         );
