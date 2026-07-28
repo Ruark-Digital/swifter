@@ -110,8 +110,8 @@ const Step2ContractTeam: React.FC<Props> = ({ defaultPmLabel }) => {
       Array.isArray((personnelData as any)?.data?.data)
         ? (personnelData as any)?.data?.data?.map((p: any) => ({
             id: p._id,
-            label: p.firstName && p.lastName ? `${p.firstName} (${p.lastName})` : p.firstName,
-            text: p.firstName && p.lastName ? `${p.firstName} (${p.lastName})` : p.firstName,
+            label: p.firstName && p.lastName ? `${p.firstName} ${p.lastName}` : p.firstName,
+            text: p.firstName && p.lastName ? `${p.firstName} ${p.lastName}` : p.firstName,
             value: p._id,
             meta: { email: p.email, role: p.role, phone: p.phone },
           }))
