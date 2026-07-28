@@ -148,6 +148,54 @@ export interface Amendment {
   updatedAt: string;
 }
 
+const SOLICITATION_TIMEZONE_ALIASES: Record<string, string> = {
+  EST: "America/New_York",
+  CST: "America/Chicago",
+  MST: "America/Denver",
+  PST: "America/Los_Angeles",
+  AEST: "Australia/Sydney",
+  CET: "Europe/Paris",
+  EET: "Europe/Helsinki",
+  GMT: "UTC",
+};
+
+const formatProposalDateTime = (
+  value: string | Date,
+  timezone?: string,
+) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "N/A";
+
+  const configuredTimezone = timezone?.trim();
+  const timeZone = configuredTimezone
+    ? SOLICITATION_TIMEZONE_ALIASES[configuredTimezone.toUpperCase()] ??
+      configuredTimezone
+    : undefined;
+
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      ...(timeZone ? { timeZone } : {}),
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      ...(timeZone ? { timeZoneName: "short" } : {}),
+    }).formatToParts(date);
+    const values = Object.fromEntries(
+      parts
+        .filter(({ type }) => type !== "literal")
+        .map(({ type, value: partValue }) => [type, partValue]),
+    );
+    const datePart = `${values.month} ${values.day}, ${values.year}`;
+    const timePart = `${values.hour}:${values.minute} ${values.dayPeriod}`;
+    return [datePart, timePart, values.timeZoneName].filter(Boolean).join(" ");
+  } catch {
+    return formatDateTZ(value, "MMM d, yyyy h:mm a", timezone);
+  }
+};
+
 const ProposalDetailsPage: React.FC = () => {
   const { id, proposalId } = useParams<{ id: string; proposalId: string }>();
   const navigate = useNavigate();
@@ -573,11 +621,10 @@ const ProposalDetailsPage: React.FC = () => {
         return (
           <div className="text-sm text-gray-600 dark:text-gray-300">
             {document.uploadedAt
-              ? `${formatDateTZ(
+              ? formatProposalDateTime(
                   document.uploadedAt,
-                  "MMM d, yyyy h:mm a",
-                  solicitation?.timezone
-                )}${solicitation?.timezone ? ` ${solicitation.timezone}` : ""}`
+                  solicitation?.timezone ?? "EST",
+                )
               : "N/A"}
           </div>
         );
@@ -753,11 +800,10 @@ const ProposalDetailsPage: React.FC = () => {
         return (
           <div className="text-sm text-gray-600 dark:text-gray-300">
             {amendment.createdAt
-              ? `${formatDateTZ(
+              ? formatProposalDateTime(
                   amendment.createdAt,
-                  "MMM d, yyyy h:mm a",
-                  solicitation?.timezone
-                )}${solicitation?.timezone ? ` ${solicitation.timezone}` : ""}`
+                  solicitation?.timezone ?? "EST",
+                )
               : "N/A"}
           </div>
         );
