@@ -86,22 +86,13 @@ const Step8ApprovalLevel: React.FC<Props> = ({ control }) => {
 
     return people.map((p) => {
       const email = p.email ?? "";
-<<<<<<< HEAD
       const name = getPersonnelDisplayName(p as PersonnelLike);
-=======
-      const name = getPersonnelDisplayName(p as PersonnelLike);
->>>>>>> 0f77cd0fd (fix msa approver roles and scored update links)
       const value = p._id || email;
       return {
         id: value,
         value,
-<<<<<<< HEAD
         text: name,
         meta: { email, name },
-=======
-        text: name,
-        meta: { email, name },
->>>>>>> 0f77cd0fd (fix msa approver roles and scored update links)
       };
     });
   }, [personnelData]);
