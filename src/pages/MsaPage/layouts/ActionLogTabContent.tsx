@@ -17,6 +17,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import * as XLSX from "xlsx";
+import { formatDateTZ } from "@/lib/utils";
 
 type Props = { contractId: string; isActive?: boolean };
 
@@ -117,7 +118,8 @@ const ActionLogTabContent: React.FC<Props> = ({ contractId, isActive }) => {
     if (!logsData?.data?.logs) return [];
     return logsData.data.logs
       .map((log: any) => {
-        const date = log.date ? new Date(log.date) : new Date();
+        const sourceDate = log.date ?? new Date().toISOString();
+        const date = new Date(sourceDate);
         let refStr = "Unknown";
         if (log.reference) {
           if (typeof log.reference === "string") {
@@ -152,8 +154,8 @@ const ActionLogTabContent: React.FC<Props> = ({ contractId, isActive }) => {
           actorName: userName,
           actorRole: roleName,
           reference: refStr,
-          dateLine1: format(date, "dd MMM yyyy"),
-          dateLine2: format(date, "hh:mm a"),
+          dateLine1: formatDateTZ(sourceDate, "dd MMM yyyy"),
+          dateLine2: formatDateTZ(sourceDate, "hh:mm a"),
           rawDate: date,
         };
       })
