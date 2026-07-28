@@ -122,16 +122,35 @@ function applyDynamicStatusTextReplacement(
   // Only route to evaluation page if "evaluation" is mentioned in statusText; otherwise route to solicitation.
   if (userRole === "procurement" && activityType === "general") {
     const lower = statusText.toLowerCase();
-    const toEvaluation = lower.includes("evaluation");
+    // Scoring events ("Vendor X was scored on Criterion Y by Reviewer Z")
+    // are evaluation-scoped even though "evaluation" isn't in the phrase.
+    const isScoringEvent = lower.includes("scored on") || lower.includes("was scored");
+    const toEvaluation = lower.includes("evaluation") || isScoringEvent;
     const base = toEvaluation
       ? "/dashboard/evaluation"
       : "/dashboard/solicitation";
     const targetId = toEvaluation ? data.evaId : data.solId;
     const href = targetId ? `${base}/${targetId}` : base;
 
+    // For scoring events the BE payload doesn't populate sol/evaluation.name
+    // with the vendor, so data.name resolves to "Unknown" and no anchor is
+    // inserted. Fall back to the leading vendor phrase in statusText so the
+    // Company Admin / PL general-updates row is at least linkable.
+    let anchorTarget = data.name;
+    if (
+      isScoringEvent &&
+      (!anchorTarget || !statusText.includes(anchorTarget))
+    ) {
+      const match = statusText.match(/^(.+?)\s+was scored on/i);
+      if (match) anchorTarget = match[1].trim();
+    }
+
+    if (!anchorTarget) return statusText;
+    const escapedName = anchorTarget.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return statusText.replace(
-      data.name,
-      `<a href="${href}" class="underline underline-offset-4 text-blue-600">${data.name}</a>`
+      new RegExp(escapedName, "i"),
+      (matchedName) =>
+        `<a href="${href}" class="underline underline-offset-4 text-blue-600">${matchedName}</a>`,
     );
   }
 
