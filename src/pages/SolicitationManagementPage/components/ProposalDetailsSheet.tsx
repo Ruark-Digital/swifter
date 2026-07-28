@@ -9,7 +9,8 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { getFileExtension } from "@/lib/fileUtils.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 
@@ -76,6 +77,7 @@ const ProposalDetailsSheet: React.FC<ProposalDetailsSheetProps> = ({
   solicitationName,
   onClose,
 }) => {
+  const currency = resolveCurrency(undefined, useUser()?.currency);
   // Document viewer state
   const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<{
@@ -137,12 +139,12 @@ const ProposalDetailsSheet: React.FC<ProposalDetailsSheetProps> = ({
         </div>
         <div className="sm:col-span-1 min-w-0">
           <div className="text-right text-gray-900 dark:text-gray-100 px-3">
-            {formatCurrency(item?.unitPrice ?? 0, "en-US", "USD")}
+            {formatCurrency(item?.unitPrice ?? 0, "en-US", currency)}
           </div>
         </div>
         <div className="sm:col-span-1 min-w-0">
           <div className="text-right font-semibold text-gray-900 dark:text-gray-100">
-            {formatCurrency(item?.subtotal ?? 0, "en-US", "USD")}
+            {formatCurrency(item?.subtotal ?? 0, "en-US", currency)}
           </div>
         </div>
       </div>
@@ -241,7 +243,7 @@ const ProposalDetailsSheet: React.FC<ProposalDetailsSheetProps> = ({
       header: "Unit Price",
       cell: ({ row }) => (
         <div className="">
-          {formatCurrency(row.original.unitPrice ?? 0, "en-US", "USD")}
+          {formatCurrency(row.original.unitPrice ?? 0, "en-US", currency)}
         </div>
       ),
     },
@@ -250,7 +252,7 @@ const ProposalDetailsSheet: React.FC<ProposalDetailsSheetProps> = ({
       header: "Subtotal",
       cell: ({ row }) => (
         <div className="font-semibold">
-          {formatCurrency(row.original.subtotal ?? 0, "en-US", "USD")}
+          {formatCurrency(row.original.subtotal ?? 0, "en-US", currency)}
         </div>
       ),
     },

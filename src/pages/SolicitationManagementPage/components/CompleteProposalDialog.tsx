@@ -15,7 +15,8 @@ import ProposalItemRow from "./ProposalItemRow";
 import { FormValues } from "./SubmitProposalPage";
 import { numberFieldTransform } from "./proposalFieldTransforms";
 import { useEffect, useMemo, useCallback } from "react";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 import { UseFormSetValue, UseFormGetValues, useWatch } from "react-hook-form";
 
 interface CompleteProposalDialogProps {
@@ -59,6 +60,7 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
   shouldUnregister = false,
   onComplete,
 }) => {
+  const currency = resolveCurrency(undefined, useUser()?.currency);
   const { fields, append, remove, update } = useFieldArray({
     control,
     name: "priceAction",
@@ -378,7 +380,7 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
               </div>
               <div className="text-right">
                 <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                  {formatCurrency(totalAmount, "en-US", "USD")}
+                  {formatCurrency(totalAmount, "en-US", currency)}
                 </div>
               </div>
             </div>

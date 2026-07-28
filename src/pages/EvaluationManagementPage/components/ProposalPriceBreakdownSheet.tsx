@@ -7,6 +7,8 @@ import { ChevronLeft, Download, Printer } from "lucide-react";
 import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { useToastHandler } from "@/hooks/useToaster";
+import { useUser } from "@/store/authSlice";
+import { resolveCurrency } from "@/lib/utils";
 
 // ProposalPriceAction interface based on API schema
 interface ProposalPriceAction {
@@ -42,6 +44,7 @@ export const ProposalPriceBreakdownSheet = ({
 }: ProposalPriceBreakdownSheetProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const toastHandlers = useToastHandler();
+  const currency = resolveCurrency(undefined, useUser()?.currency);
 
   const {
     data: priceBreakdownData,
@@ -189,7 +192,7 @@ export const ProposalPriceBreakdownSheet = ({
         <div className="text-right">
           {row.original.unitPrice.toLocaleString("en-US", {
             style: "currency",
-            currency: "USD",
+            currency,
           })}
         </div>
       ),
@@ -201,7 +204,7 @@ export const ProposalPriceBreakdownSheet = ({
         <div className="text-right font-medium">
           {row.original.subtotal.toLocaleString("en-US", {
             style: "currency",
-            currency: "USD",
+            currency,
           })}
         </div>
       ),
@@ -341,7 +344,7 @@ export const ProposalPriceBreakdownSheet = ({
                   <span className="text-lg font-bold text-gray-900 dark:text-slate-200">
                     {totalAmount.toLocaleString("en-US", {
                       style: "currency",
-                      currency: "USD",
+                      currency,
                     })}
                   </span>
                 </div>

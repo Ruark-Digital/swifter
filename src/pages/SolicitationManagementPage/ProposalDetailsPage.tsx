@@ -31,7 +31,8 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useState } from "react";
 import { isAfter, parseISO, isValid } from "date-fns";
-import { formatCurrency, formatDateTZ } from "@/lib/utils";
+import { formatCurrency, formatDateTZ, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { getFileExtension, isViewableFile } from "@/lib/fileUtils.tsx";
 import EvaluationScorecardSheet from "@/pages/EvaluationManagementPage/components/EvaluationScorecardSheet";
@@ -154,6 +155,7 @@ const ProposalDetailsPage: React.FC = () => {
   const location = useLocation();
   const queryClient = useQueryClient();
   const toastHandlers = useToastHandler();
+  const currency = resolveCurrency(undefined, useUser()?.currency);
   const [showAwardModal, setShowAwardModal] = useState(false);
   const [showAmendDialog, setShowAmendDialog] = useState(false);
   const [selectedDocumentForAmend, setSelectedDocumentForAmend] =
@@ -1024,7 +1026,7 @@ const ProposalDetailsPage: React.FC = () => {
                 {formatCurrency(
                   proposal?.proposalDetails?.total || 0,
                   "en-US",
-                  "USD"
+                  currency
                 ) || "N/A"}
               </p>
             </div>
