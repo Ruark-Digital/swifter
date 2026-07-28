@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { cn, resolveCurrency } from "@/lib/utils";
 import { ArrowLeft, Search, X } from "lucide-react";
 import CreateInvoiceDialog from "./CreateInvoiceDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -28,6 +28,7 @@ import { approverApi } from "../api/approverApi";
 import { vendorApi } from "../api/vendorApi";
 import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { DocumentItem, type DocType } from "./DocumentItem";
@@ -75,7 +76,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   owner,
   currency,
 }) => {
-  const currencyCode = currency || "USD";
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
   const toastHandler = useToastHandler();
@@ -605,7 +606,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
   currency,
   contractRemaining,
 }) => {
-  const currencyCode = currency || "USD";
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const columns = React.useMemo<ColumnDef<InvoiceRow>[]>(() => {
     return [
       { accessorKey: "id", header: "Invoice ID" },

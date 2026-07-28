@@ -12,7 +12,8 @@ import {
   useProjectsStats,
   useCreateProject,
 } from "./services/useProjectApi";
-import { formatDateTZ } from "@/lib/utils";
+import { formatDateTZ, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 
 const ProjectManagementPage: React.FC = () => {
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
@@ -40,23 +41,24 @@ const ProjectManagementPage: React.FC = () => {
   });
   const { data: statsRes } = useProjectsStats();
   const createProject = useCreateProject();
+  const profileCurrency = useUser()?.currency;
 
   const handleCreateClick = () => setIsCreateOpen(true);
   const handleSuccess = () => setIsSuccessOpen(true);
 
-  const formatUsd = (value: number) =>
+  const formatAmount = (value: number) =>
     new Intl.NumberFormat(undefined, {
       style: "currency",
-      currency: "USD",
+      currency: resolveCurrency(undefined, profileCurrency),
     }).format(value);
 
   const rows = (listRes?.data ?? []).map((p) => ({
     id: p._id,
     name: p.name,
-    budget: typeof p.budget === "number" ? formatUsd(p.budget) : undefined,
+    budget: typeof p.budget === "number" ? formatAmount(p.budget) : undefined,
     totalSpend:
-      typeof p.totalSpend === "number" ? formatUsd(p.totalSpend) : undefined,
-    eac: typeof p.eac === "number" ? formatUsd(p.eac) : undefined,
+      typeof p.totalSpend === "number" ? formatAmount(p.totalSpend) : undefined,
+    eac: typeof p.eac === "number" ? formatAmount(p.eac) : undefined,
     startDate: p.startDate ? formatDateTZ(p.startDate, "yyyy-MM-dd") : undefined,
     endDate: p.endDate ? formatDateTZ(p.endDate, "yyyy-MM-dd") : undefined,
     status: p.status,

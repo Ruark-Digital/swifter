@@ -28,7 +28,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState as GenericEmptyState } from "@/components/ui/empty-state";
 import { ApiResponseError } from "@/types";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
-import { formatDateTZ } from "@/lib/utils";
+import { formatDateTZ, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 import {
   ContractStatusBadge,
   type Status,
@@ -235,6 +236,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   open,
   onOpenChange,
 }) => {
+  const profileCurrency = useUser()?.currency;
   const toast = useToastHandler();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [dateFilter, setDateFilter] = React.useState("all");
@@ -386,7 +388,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                           projectRes?.data?.data?.budget != null
                             ? new Intl.NumberFormat(undefined, {
                                 style: "currency",
-                                currency: "USD",
+                                currency: resolveCurrency(undefined, profileCurrency),
                                 maximumFractionDigits: 0,
                               }).format(projectRes.data.data.budget)
                             : ""
@@ -464,7 +466,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                                 {project?.eac != null
                                   ? new Intl.NumberFormat(undefined, {
                                       style: "currency",
-                                      currency: "USD",
+                                      currency: resolveCurrency(undefined, profileCurrency),
                                       maximumFractionDigits: 0,
                                     }).format(project.eac)
                                   : "Not set"}
@@ -592,7 +594,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                       c.contractValue != null
                         ? new Intl.NumberFormat(undefined, {
                             style: "currency",
-                            currency: c.currency ?? "USD",
+                            currency: resolveCurrency(c.currency, profileCurrency),
                             maximumFractionDigits: 0,
                           }).format(c.contractValue)
                         : undefined,

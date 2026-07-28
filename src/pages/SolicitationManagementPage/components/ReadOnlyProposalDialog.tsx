@@ -12,7 +12,8 @@ import { CornerDownRight, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 
 // ProposalPriceAction interface based on API schema
 interface ProposalPriceAction {
@@ -42,6 +43,7 @@ const ReadOnlyProposalDialog: React.FC<ReadOnlyProposalDialogProps> = ({
   onOpenChange,
   proposalId,
 }) => {
+  const currency = resolveCurrency(undefined, useUser()?.currency);
   const toastHandlers = useToastHandler();
 
   const { data: priceBreakdownData, isLoading, error, isError } = useQuery({
@@ -99,12 +101,12 @@ const ReadOnlyProposalDialog: React.FC<ReadOnlyProposalDialogProps> = ({
           </div>
           <div className="col-span-1">
             <div className="text-right text-gray-900 dark:text-gray-100">
-              {formatCurrency(item.unitPrice, "en-US", "USD")}
+              {formatCurrency(item.unitPrice, "en-US", currency)}
             </div>
           </div>
           <div className="col-span-1">
             <div className="text-right font-medium text-gray-900 dark:text-gray-100">
-              {formatCurrency(item.subtotal, "en-US", "USD")}
+              {formatCurrency(item.subtotal, "en-US", currency)}
             </div>
           </div>
         </div>
@@ -178,7 +180,7 @@ const ReadOnlyProposalDialog: React.FC<ReadOnlyProposalDialogProps> = ({
                   </div>
                   <div className="text-right">
                     <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                      {formatCurrency(totalAmount, "en-US", "USD")}
+                      {formatCurrency(totalAmount, "en-US", currency)}
                     </div>
                   </div>
                 </div>

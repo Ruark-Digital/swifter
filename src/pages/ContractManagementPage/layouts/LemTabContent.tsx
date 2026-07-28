@@ -6,7 +6,8 @@ import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import SubmitLemDialog from "../components/SubmitLemDialog";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 
 type Props = {
   contractId: string;
@@ -16,7 +17,7 @@ type Props = {
 };
 
 const LemTabContent: React.FC<Props> = ({ contractId, currency, isActive, actionsDisabled }) => {
-  const currencyCode = currency || "USD";
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const { isApprover, isManager, isVendor, isProjectManager, isAdmin, isViewOnly } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;

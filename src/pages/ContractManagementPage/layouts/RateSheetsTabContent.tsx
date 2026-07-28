@@ -28,7 +28,8 @@ import {
   formatFileSize,
   getSimpleFileExtension,
 } from "@/lib/fileUtils";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import {
@@ -1138,7 +1139,7 @@ const RateSheetsTabContent: React.FC<Props> = ({
   contractType = "Contract",
   actionsDisabled,
 }) => {
-  const currencyCode = currency || "USD";
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const [search, setSearch] = React.useState("");
   const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } =
     useUserRole();

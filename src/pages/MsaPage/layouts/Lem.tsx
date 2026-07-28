@@ -9,7 +9,8 @@ import { useToastHandler } from "@/hooks/useToaster";
 import type { ApiResponseError } from "@/types";
 import LemTable, { type LemRow } from "@/pages/ContractManagementPage/components/LemTable";
 import SubmitLemDialog from "@/pages/ContractManagementPage/components/SubmitLemDialog";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 
 type Props = {
   contractId: string;
@@ -19,7 +20,7 @@ type Props = {
 };
 
 const Lem: React.FC<Props> = ({ contractId, currency, isActive, actionsDisabled }) => {
-  const currencyCode = currency || "USD";
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const { isApprover, isManager, isVendor, isProjectManager, isAdmin, isViewOnly } =
     useUserRole();
   const toastHandler = useToastHandler();

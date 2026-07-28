@@ -51,6 +51,7 @@ import NcrLog from "./layouts/NcrLog";
 import { Share2 } from "lucide-react";
 import { Status, StatusBadge } from "./components/StatusBadge";
 import { useUser } from "@/store/authSlice";
+import { resolveCurrency } from "@/lib/utils";
 import type { ApiResponseError } from "@/types";
 import ContractLifecycleDialog from "@/pages/ContractManagementPage/components/ContractLifecycleDialog";
 import {
@@ -456,6 +457,7 @@ const MsaDetailPage: React.FC = () => {
   }, [isApprover, isVendor, isProjectManager, isViewOnly, isManager, isDraftMsa]);
 
   const msa = msaResponse?.data?.data as MSAContractDetail | undefined;
+  const user = useUser();
 
   const canFetchLinkedContracts = (isManager || isCompanyAdmin) && Boolean(id);
   const linkedContractsQueryKey = useUserQueryKey(["msa-linked-contract", id]);
@@ -480,7 +482,7 @@ const MsaDetailPage: React.FC = () => {
       try {
         return new Intl.NumberFormat(undefined, {
           style: "currency",
-          currency: currency ?? "USD",
+          currency: resolveCurrency(currency, user?.currency),
           maximumFractionDigits: 0,
         }).format(num);
       } catch {
@@ -529,7 +531,6 @@ const MsaDetailPage: React.FC = () => {
     }));
   }, [formatMoney, linkedContractsResponse?.data]);
 
-  const user = useUser();
   const currentUserId = user?._id;
   const isMsaOwner =
     typeof msa?.owner === "boolean"
