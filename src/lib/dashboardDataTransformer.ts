@@ -129,9 +129,11 @@ function applyDynamicStatusTextReplacement(
     const targetId = toEvaluation ? data.evaId : data.solId;
     const href = targetId ? `${base}/${targetId}` : base;
 
+    const escapedName = data.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return statusText.replace(
-      data.name,
-      `<a href="${href}" class="underline underline-offset-4 text-blue-600">${data.name}</a>`
+      new RegExp(escapedName, "i"),
+      (matchedName) =>
+        `<a href="${href}" class="underline underline-offset-4 text-blue-600">${matchedName}</a>`,
     );
   }
 

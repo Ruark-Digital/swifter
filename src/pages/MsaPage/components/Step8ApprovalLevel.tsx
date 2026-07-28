@@ -20,6 +20,11 @@ import {
 } from "@/components/ui/tooltip";
 import { InfoIcon } from "lucide-react";
 import { ApiResponse, ApiResponseError } from "@/types";
+import {
+  getPersonnelDisplayName,
+  isApproverPersonnel,
+  type PersonnelLike,
+} from "@/pages/ContractManagementPage/lib/approverSelection";
 
 type ApproverTag = {
   id?: string;
@@ -34,7 +39,8 @@ type Props = { control: Control<CreateMsaFormData> };
 type Personnel = {
   _id: string;
   email?: string;
-  role?: Array<{ name?: string }>;
+  role?: Array<{ name?: string }> | { name?: string } | string;
+  roles?: Array<{ name?: string }> | { name?: string } | string;
   firstName?: string;
   lastName?: string;
 };
@@ -75,23 +81,27 @@ const Step8ApprovalLevel: React.FC<Props> = ({ control }) => {
   const approverTags = React.useMemo<ApproverTag[]>(() => {
     const people =
       personnelData?.data?.data?.filter?.((item) =>
-        (item.role ?? []).some((r) => r?.name === "approver"),
+        isApproverPersonnel(item as PersonnelLike),
       ) ?? [];
 
     return people.map((p) => {
       const email = p.email ?? "";
-      const fullName = [p.firstName, p.lastName]
-        .filter((part) => typeof part === "string" && part.trim())
-        .join(" ")
-        .trim();
-      const name = fullName || email || p._id;
-      const label = email && name && email !== name ? `${name} (${email})` : name;
+<<<<<<< HEAD
+      const name = getPersonnelDisplayName(p as PersonnelLike);
+=======
+      const name = getPersonnelDisplayName(p as PersonnelLike);
+>>>>>>> 0f77cd0fd (fix msa approver roles and scored update links)
       const value = p._id || email;
       return {
         id: value,
         value,
-        text: label,
-        meta: { email, name: fullName },
+<<<<<<< HEAD
+        text: name,
+        meta: { email, name },
+=======
+        text: name,
+        meta: { email, name },
+>>>>>>> 0f77cd0fd (fix msa approver roles and scored update links)
       };
     });
   }, [personnelData]);
