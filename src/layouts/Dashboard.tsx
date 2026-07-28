@@ -19,8 +19,19 @@ export const Dashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (userRole !== "project_manager") return;
     const path = routerLocation.pathname;
+
+    if (
+      userRole === "procurement" &&
+      (path === "/dashboard" ||
+        path.startsWith("/dashboard/contract-management") ||
+        path.startsWith("/dashboard/msa"))
+    ) {
+      navigate("/dashboard/solicitation", { replace: true });
+      return;
+    }
+
+    if (userRole !== "project_manager") return;
     const isAllowed =
       path === "/dashboard" ||
       path === "/dashboard/profile" ||

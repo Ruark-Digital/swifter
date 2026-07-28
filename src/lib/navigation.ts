@@ -34,7 +34,9 @@ export const getNavigationForRole = (
   const showDashboard =
     role === "project_manager"
       ? isModuleEnabled(modules?.contractManagement)
-      : isModuleEnabled(modules?.reportsAnalytics) && role !== "view_only";
+      : isModuleEnabled(modules?.reportsAnalytics) &&
+        role !== "view_only" &&
+        role !== "procurement";
 
   const baseNavigation: (NavigationItem | undefined)[] = [
     showDashboard
@@ -74,30 +76,6 @@ export const getNavigationForRole = (
             title: "Projects",
             to: "/dashboard/project-management",
             active: currentPath.startsWith("/dashboard/project-management"),
-          }
-        : undefined,
-      isModuleEnabled(modules?.contractManagement)
-        ? {
-            icon: FileText,
-            title: "Contract Management",
-            to: "/dashboard/contract-management",
-            active:
-              currentPath.startsWith("/dashboard/contract-management") ||
-              currentPath.startsWith("/dashboard/msa"),
-            children: [
-              {
-                title: "Contracts",
-                to: "/dashboard/contract-management",
-                active: currentPath.startsWith(
-                  "/dashboard/contract-management"
-                ),
-              },
-              {
-                title: "Master Service Agreements (MSA)",
-                to: "/dashboard/msa",
-                active: currentPath.startsWith("/dashboard/msa"),
-              },
-            ],
           }
         : undefined,
       isModuleEnabled(modules?.vendorManagement)

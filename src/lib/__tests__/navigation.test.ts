@@ -40,6 +40,17 @@ describe("navigation role access", () => {
     expect(items.some((item) => item.title === "Vendor Management")).toBe(true);
   });
 
+  it("hides Dashboard and Contract Management for procurement", () => {
+    const items = getNavigationForRole(
+      "procurement",
+      "/dashboard",
+      allModules,
+    );
+
+    expect(items.some((item) => item.title === "Dashboard")).toBe(false);
+    expect(items.some((item) => item.title === "Contract Management")).toBe(false);
+  });
+
   it("shows Dashboard for project_manager when contractManagement is on", () => {
     const items = getNavigationForRole(
       "project_manager",
