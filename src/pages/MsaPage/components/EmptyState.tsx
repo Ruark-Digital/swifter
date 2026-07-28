@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { FolderOffIcon, Add01Icon } from "@hugeicons/core-free-icons";
 import { useUserRole } from "@/hooks/useUserRole";
+import CreateMSADialog from "../layouts/CreateMSADialog";
 
 const EmptyState: React.FC = () => {
   const { isManager } = useUserRole();
@@ -25,9 +26,13 @@ const EmptyState: React.FC = () => {
         </p>
       </div>
       {isManager ? (
-        <Button className="h-12 rounded-xl" data-testid="create-msa-cta">
-          <HugeiconsIcon icon={Add01Icon} className="mr-2 h-4 w-4" /> Create MSA
-        </Button>
+        <CreateMSADialog
+          trigger={
+            <Button className="h-12 rounded-xl" data-testid="create-msa-cta">
+              <HugeiconsIcon icon={Add01Icon} className="mr-2 h-4 w-4" /> Create MSA
+            </Button>
+          }
+        />
       ) : null}
     </div>
   );
