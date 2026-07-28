@@ -23,8 +23,7 @@ export const Dashboard = () => {
 
     if (
       userRole === "procurement" &&
-      (path === "/dashboard" ||
-        path.startsWith("/dashboard/contract-management") ||
+      (path.startsWith("/dashboard/contract-management") ||
         path.startsWith("/dashboard/msa"))
     ) {
       navigate("/dashboard/solicitation", { replace: true });

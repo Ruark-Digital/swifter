@@ -35,8 +35,7 @@ export const getNavigationForRole = (
     role === "project_manager"
       ? isModuleEnabled(modules?.contractManagement)
       : isModuleEnabled(modules?.reportsAnalytics) &&
-        role !== "view_only" &&
-        role !== "procurement";
+        role !== "view_only";
 
   const baseNavigation: (NavigationItem | undefined)[] = [
     showDashboard
