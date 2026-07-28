@@ -16,7 +16,7 @@ import { useMutation } from "@tanstack/react-query";
 import { putRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
-import { useForge, Forge, Forger, useForgeValues } from "@adexdsamson/forge";
+import { useForge, Forge, Forger } from "@adexdsamson/forge";
 import { useWatch } from "react-hook-form";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -76,7 +76,7 @@ const AmendSubmissionDialog: React.FC<AmendSubmissionDialogProps> = ({
   const toast = useToastHandler();
   
   // Initialize form with forge
-  const { control, reset, formState: { errors, isSubmitting } } = useForge<AmendSubmissionFormData>({
+  const forge = useForge<AmendSubmissionFormData>({
     resolver: yupResolver(amendSubmissionSchema),
     defaultValues: {
       action: "amend",
@@ -84,9 +84,7 @@ const AmendSubmissionDialog: React.FC<AmendSubmissionDialogProps> = ({
       files: [],
     },
   });
-  
-  // Get setValue function from useForgeValues
-  const { setValue } = useForgeValues({ control });
+  const { control, reset, setValue, formState: { errors, isSubmitting } } = forge;
   
   // Watch form values
   const selectedFiles = useWatch({ control, name: "files" });
