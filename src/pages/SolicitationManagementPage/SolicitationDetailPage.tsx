@@ -1624,7 +1624,12 @@ export const SolicitationDetailPage = () => {
         )}
 
         <TabsContent value="questions">
-          <QuestionsTab solicitationStatus={solicitation?.status} isOwner={isOwner} />
+          <QuestionsTab
+            solicitationStatus={solicitation?.status}
+            isOwner={isOwner}
+            questionDeadline={solicitation?.questionDeadline}
+            timezone={solicitation?.timezone}
+          />
         </TabsContent>
 
         <TabsContent value="addendums">

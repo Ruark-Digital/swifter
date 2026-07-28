@@ -12,6 +12,7 @@ import MessageThread from "./MessageThread";
 import MessageComposer from "./MessageComposer";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import CreateAddendumDialog from "./CreateAddendumDialog";
+import { formatDateTZ, zonedTimeToUtc } from "@/lib/utils";
 
 // Question type definition
 export interface Question {
@@ -62,9 +63,16 @@ type QuestionsResponse = {
 interface QuestionsTabProps {
   solicitationStatus?: string;
   isOwner?: boolean;
+  questionDeadline?: string | null;
+  timezone?: string;
 }
 
-const QuestionsTab: React.FC<QuestionsTabProps> = ({ solicitationStatus, isOwner }) => {
+const QuestionsTab: React.FC<QuestionsTabProps> = ({
+  solicitationStatus,
+  isOwner,
+  questionDeadline,
+  timezone,
+}) => {
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
   const { id: solicitationId } = useParams<{ id: string }>();
@@ -75,6 +83,19 @@ const QuestionsTab: React.FC<QuestionsTabProps> = ({ solicitationStatus, isOwner
   const [showCreateQuestion, setShowCreateQuestion] = useState(false);
   const [isCreateAddendumDialogOpen, setIsCreateAddendumDialogOpen] =
     useState(false);
+  const [questionDraftClearSignal, setQuestionDraftClearSignal] = useState(0);
+
+  const questionDeadlineDate = useMemo(() => {
+    if (!questionDeadline) return null;
+    const hasOffset = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(questionDeadline);
+    const parsed = hasOffset
+      ? new Date(questionDeadline)
+      : zonedTimeToUtc(questionDeadline, timezone || "UTC");
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }, [questionDeadline, timezone]);
+  const questionDeadlinePassed = Boolean(
+    questionDeadlineDate && Date.now() >= questionDeadlineDate.getTime(),
+  );
 
   // Fetch questions
   const { data: questionsData, isLoading } = useQuery<QuestionsResponse>({
@@ -104,6 +125,7 @@ const QuestionsTab: React.FC<QuestionsTabProps> = ({ solicitationStatus, isOwner
     onSuccess: () => {
       toastHandler.success("Success", "Question submitted successfully");
       setShowCreateQuestion(false);
+      setQuestionDraftClearSignal((signal) => signal + 1);
       queryClient.invalidateQueries({
         queryKey: ["solicitation-questions", solicitationId],
       });
@@ -330,6 +352,12 @@ const QuestionsTab: React.FC<QuestionsTabProps> = ({ solicitationStatus, isOwner
         ))}
       </div>
 
+      {isVendor && questionDeadlinePassed && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          Questions closed on {formatDateTZ(questionDeadlineDate, "MMM d, yyyy h:mm a")}.
+        </div>
+      )}
+
       {/* Create Addendum Dialog */}
       <Dialog
         open={isCreateAddendumDialogOpen}
@@ -364,12 +392,14 @@ const QuestionsTab: React.FC<QuestionsTabProps> = ({ solicitationStatus, isOwner
               </Button>
             )}
           </div>
-          <MessageComposer
+                  <MessageComposer
             onSend={handleSendMessage}
             isNewChat={questions.length === 0}
-            isLoading={
-              createQuestionMutation.isPending || replyMutation.isPending
-            }
+                    isLoading={
+                      createQuestionMutation.isPending || replyMutation.isPending
+                    }
+                    clearOnSend={!isVendor}
+                    clearSignal={questionDraftClearSignal}
             replyToUser={
               replyToQuestion
                 ? {
@@ -383,7 +413,10 @@ const QuestionsTab: React.FC<QuestionsTabProps> = ({ solicitationStatus, isOwner
             currentUser={{ name: "You" }}
             sendType={sendType}
             onSendTypeChange={setSendType}
-            disabled={isProcurement && !isOwner}
+                    disabled={
+                      (isProcurement && !isOwner) ||
+                      (isVendor && questionDeadlinePassed)
+                    }
           />
         </div>
       )}
