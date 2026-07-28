@@ -917,13 +917,11 @@ const EditContract: React.FC<Props> = ({
         undefined;
 
       const personnel =
-        (data.personnelMeta && data.personnelMeta.length > 0
-          ? (data.personnelMeta ?? [])
-              .map((p: any) => toPersonnelOrUndefined(p))
-              .filter(Boolean)
-          : (data.personnel ?? [])
-              .map((t: any) => toPersonnelOrUndefined(t))
-              .filter(Boolean)) ?? undefined;
+        ((data.personnel && data.personnel.length > 0
+          ? data.personnel
+          : data.personnelMeta ?? []) as any[])
+          .map((person: any) => toPersonnelOrUndefined(person))
+          .filter(Boolean) ?? undefined;
 
       const payload = {
         title: data.name,
