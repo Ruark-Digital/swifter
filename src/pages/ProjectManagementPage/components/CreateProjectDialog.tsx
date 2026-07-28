@@ -292,7 +292,12 @@ const CreateProjectDialog: React.FC<Props> = ({
     queryKey: ["businessDivisions", "list", "all"],
     queryFn: async () =>
       await businessDivisionApi.listDivisions({ page: 1, limit: 1000 }),
+    // Fetch once when opened and keep the resolved list cached across
+    // re-opens so `businessDivisionOptions` doesn't churn while the Select
+    // is open (which was collapsing the trigger and letting the pointerdown
+    // reach the Dialog on the second click).
     enabled: open,
+    staleTime: Infinity,
   });
 
   const { control, watch, setValue, reset } = useForge({
