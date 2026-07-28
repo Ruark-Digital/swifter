@@ -40,6 +40,20 @@ describe("DashboardDataTransformer", () => {
     expect(item.text).toContain('<a href="/dashboard/evaluation/evaluation-123" class="underline underline-offset-4 text-blue-600">Mechanical and Piping Installation</a>');
   });
 
+  it("links Company Admin scoring updates to the evaluation detail", () => {
+    const [item] = DashboardDataTransformer.transformCompanyAdminGeneralUpdates([
+      {
+        evaluation: { _id: "evaluation-456" },
+        statusText: "Maddison Construction Ltd. was scored on Relevant Project Experience by Dennis Rose",
+        createdAt: "2026-07-27T12:00:00.000Z",
+      },
+    ]);
+
+    expect(item.text).toContain(
+      '<a href="/dashboard/evaluation/evaluation-456" class="underline underline-offset-4 text-blue-600">Maddison Construction Ltd.</a>'
+    );
+  });
+
   describe("transformSubDistribution", () => {
     it("computes a real percentage per plan from counts", () => {
       const result = DashboardDataTransformer.transformSubDistribution({
