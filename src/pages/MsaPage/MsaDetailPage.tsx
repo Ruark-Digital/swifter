@@ -110,6 +110,7 @@ const ROLE_TAB_WHITELIST: Record<
 > = {
   approver: [
     "overview",
+    "analytics",
     "documents",
     "amendments",
     "lem",
