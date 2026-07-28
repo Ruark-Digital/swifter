@@ -9,8 +9,7 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { getFileExtension } from "@/lib/fileUtils.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatCurrency, resolveCurrency } from "@/lib/utils";
-import { useUser } from "@/store/authSlice";
+import { formatCurrency } from "@/lib/utils";
 import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 
@@ -77,7 +76,7 @@ const ProposalDetailsSheet: React.FC<ProposalDetailsSheetProps> = ({
   solicitationName,
   onClose,
 }) => {
-  const currency = resolveCurrency(undefined, useUser()?.currency);
+  const currency = "USD";
   // Document viewer state
   const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<{
