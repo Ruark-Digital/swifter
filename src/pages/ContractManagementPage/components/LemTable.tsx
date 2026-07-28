@@ -40,7 +40,6 @@ import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { getFileExtension } from "@/lib/fileUtils";
 import { cn, formatCurrency, formatDateTZ, resolveCurrency } from "@/lib/utils";
 import SubmitLemDialog from "./SubmitLemDialog";
-import { useUser } from "@/store/authSlice";
 import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
 import type {
   ContractCommentDTO,
