@@ -21,6 +21,7 @@ import VendorContractsTable, {
   VendorContractRow,
 } from "./components/VendorContractsTable";
 import { formatDate } from "date-fns";
+import { resolveCurrency } from "@/lib/utils";
 
 type ContractApi = {
   _id: string;
@@ -313,7 +314,7 @@ const mapStatusToLabel = (
   return "Suspended";
 };
 
-const mapContractsToRows = (contracts?: ContractApi[]): ContractRow[] => {
+const mapContractsToRows = (contracts?: ContractApi[], profileCurrency?: string): ContractRow[] => {
   if (!contracts) return [];
 
   return contracts.map((c) => {
@@ -321,7 +322,7 @@ const mapContractsToRows = (contracts?: ContractApi[]): ContractRow[] => {
       typeof c.contractValue === "number"
         ? new Intl.NumberFormat(undefined, {
             style: "currency",
-            currency: c.currency ?? "USD",
+            currency: resolveCurrency(c.currency, profileCurrency),
             maximumFractionDigits: 0,
           }).format(c.contractValue)
         : undefined;
@@ -369,6 +370,7 @@ const mapVendorStatusToLabel = (
 
 const mapVendorContractsToRows = (
   contracts?: VendorContractApi[],
+  profileCurrency?: string,
 ): VendorContractRow[] => {
   if (!contracts) return [];
   return contracts.map((c) => {
@@ -376,7 +378,7 @@ const mapVendorContractsToRows = (
       typeof c.contractValue === "number"
         ? new Intl.NumberFormat(undefined, {
             style: "currency",
-            currency: c.currency ?? "USD",
+            currency: resolveCurrency(c.currency, profileCurrency),
             maximumFractionDigits: 0,
           }).format(c.contractValue)
         : undefined;
@@ -465,19 +467,23 @@ const ContractManagementPage: React.FC = () => {
       }
     : undefined;
 
-  const allContractsRows = mapContractsToRows(allContractsData?.data.contracts);
-  const myContractsRows = mapContractsToRows(myContractsData?.data.contracts);
+  const user = useUser();
+  const profileCurrency = user?.currency;
+  const allContractsRows = mapContractsToRows(allContractsData?.data.contracts, profileCurrency);
+  const myContractsRows = mapContractsToRows(myContractsData?.data.contracts, profileCurrency);
   const approverContractsRows = mapContractsToRows(
     approverContractsData?.data.contracts,
+    profileCurrency,
   );
   const vendorContractsRows = mapVendorContractsToRows(
     vendorContractsData?.data.contracts,
+    profileCurrency,
   );
   const pmAllContractsRows = mapVendorContractsToRows(
     pmAllContractsData?.data.contracts,
+    profileCurrency,
   );
 
-  const user = useUser();
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
 

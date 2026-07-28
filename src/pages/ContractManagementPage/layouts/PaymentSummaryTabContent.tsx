@@ -20,7 +20,8 @@ import type { ContractDetail } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { contractManagerApi } from "../api/contractManagerApi";
-import { formatDateTZ } from "@/lib/utils";
+import { formatDateTZ, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useFormContext } from "react-hook-form";
 import { formatFileSize, getSimpleFileExtension } from "@/lib/fileUtils";
@@ -673,7 +674,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
   const showBilledAndBalance =
     isManager || isApprover || isContractVendorLike || isViewOnly;
 
-  const currency = contract?.currency || "USD";
+  const currency = resolveCurrency(contract?.currency, useUser()?.currency);
   const formatMoney = React.useCallback(
     (value?: number) => {
       if (value == null || !Number.isFinite(value)) return "-";

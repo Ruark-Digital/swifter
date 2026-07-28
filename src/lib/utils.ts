@@ -29,6 +29,17 @@ export function formatCurrency(
   }
 }
 
+export function resolveCurrency(
+  localCurrency?: string | null,
+  profileCurrency?: string | null,
+) {
+  return (
+    [localCurrency, profileCurrency].find(
+      (currency) => typeof currency === "string" && currency.trim(),
+    ) ?? "USD"
+  );
+}
+
 // Compact currency: one decimal with K/M/B/T (e.g. $527.5M, $358.3K) per the
 // dashboard figma. Used where large spend/value figures would otherwise overflow.
 export function formatCompactCurrency(
