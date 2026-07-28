@@ -589,7 +589,7 @@ export const SolicitationDetailPage = () => {
     },
     {
       id: "actions",
-      header: "Actions",
+      header: () => <div className="text-left">Actions</div>,
       cell: ({ row }) => (
         <div className="flex items-center justify-start gap-2">
           {row.original.status !== "invited" && (
