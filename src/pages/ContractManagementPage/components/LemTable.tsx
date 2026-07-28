@@ -33,11 +33,12 @@ import { ArrowLeft, Search, Share2, X } from "lucide-react";
 import { useToastHandler } from "@/hooks/useToaster";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
 import { formatDate } from "date-fns";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { getFileExtension } from "@/lib/fileUtils";
-import { cn, formatCurrency, formatDateTZ } from "@/lib/utils";
+import { cn, formatCurrency, formatDateTZ, resolveCurrency } from "@/lib/utils";
 import SubmitLemDialog from "./SubmitLemDialog";
 import { useUser } from "@/store/authSlice";
 import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
@@ -101,7 +102,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   basePath,
   currency,
 }) => {
-  const currencyCode = currency || "USD";
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;

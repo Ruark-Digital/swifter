@@ -17,7 +17,8 @@ import ChangeDetailsSheet from "./ChangeDetailsSheet";
 import ApproverChangeDetailsSheet from "./ApproverChangeDetailsSheet";
 import type { ContractChangeDTO } from "../api/contractManagerApi";
 import { formatChangeTypeLabel } from "../lib/contractChanges";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -102,7 +103,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
   currency,
 }) => {
   const [search, setSearch] = React.useState("");
-  const currencyCode = currency || "USD";
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
 
   const approverColumns: ColumnDef<ContractChangeDTO>[] = React.useMemo(
     () => [

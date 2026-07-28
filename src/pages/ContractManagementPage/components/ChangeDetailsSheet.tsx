@@ -46,7 +46,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn, formatSecurityType, formatCurrency, formatCompactCurrency } from "@/lib/utils";
+import { cn, formatSecurityType, formatCurrency, formatCompactCurrency, resolveCurrency } from "@/lib/utils";
 
 type Props = {
   trigger?: React.ReactNode;
@@ -99,7 +99,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   claimAssignUrl,
   currency,
 }) => {
-  const currencyCode = currency || "USD";
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const toast = useToastHandler();
   const qc = useQueryClient();
   const { isManager, isApprover, isVendor, isProjectManager, isAdmin, isViewOnly } =
