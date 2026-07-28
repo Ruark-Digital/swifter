@@ -54,6 +54,20 @@ describe("DashboardDataTransformer", () => {
     );
   });
 
+  it("links scoring updates when only the solicitation target is available", () => {
+    const [item] = DashboardDataTransformer.transformCompanyAdminGeneralUpdates([
+      {
+        solicitation: { _id: "solicitation-789" },
+        statusText: "ME Industrial Services scored on Execution Methodology by Lorne Hambleton",
+        createdAt: "2026-07-27T12:00:00.000Z",
+      },
+    ]);
+
+    expect(item.text).toContain(
+      '<a href="/dashboard/solicitation/solicitation-789" class="underline underline-offset-4 text-blue-600">ME Industrial Services</a>'
+    );
+  });
+
   describe("transformSubDistribution", () => {
     it("computes a real percentage per plan from counts", () => {
       const result = DashboardDataTransformer.transformSubDistribution({
