@@ -69,14 +69,6 @@ export const getNavigationForRole = (
             active: currentPath.startsWith("/dashboard/evaluation"),
           }
         : undefined,
-      isModuleEnabled(modules?.contractManagement)
-        ? {
-            icon: Folder,
-            title: "Projects",
-            to: "/dashboard/project-management",
-            active: currentPath.startsWith("/dashboard/project-management"),
-          }
-        : undefined,
       isModuleEnabled(modules?.vendorManagement)
         ? {
             icon: Users,

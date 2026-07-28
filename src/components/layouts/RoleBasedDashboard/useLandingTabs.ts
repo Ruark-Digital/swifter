@@ -21,7 +21,8 @@ export function computeLandingTabs(
 ): LandingTab[] {
   // Module flags can be booleans (legacy/persisted) or `{ enabled: boolean }`
   // objects (current BE payload) — the helpers handle both.
-  const contractsOn = isModuleEnabled(modules?.contractManagement);
+  const contractsOn =
+    role !== "procurement" && isModuleEnabled(modules?.contractManagement);
   // Solicitation is treated as on unless the super-admin explicitly disabled it
   // for the company — so the tab keeps showing while `modules` is still loading
   // or when the flag is absent, but hides once it's toggled off (QA #187).

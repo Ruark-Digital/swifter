@@ -17,7 +17,7 @@ describe("useLandingTabs (hook integration)", () => {
       ({ role, modules }: { role: any; modules: Modules }) => useLandingTabs(role, modules),
       { initialProps: { role: "procurement" as const, modules: modulesOn } },
     );
-    expect(result.current.map((t) => t.id)).toEqual(["solicitations", "contracts"]);
+    expect(result.current.map((t) => t.id)).toEqual(["solicitations"]);
     const firstRef = result.current;
     rerender({ role: "procurement", modules: modulesOn });
     expect(result.current).toBe(firstRef); // memoization
