@@ -169,6 +169,13 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
 
   const evaluation = evaluationResponse?.data?.data;
   const isOwner = evaluation?.owner || false;
+  const evaluationStartDate = evaluation?.startDate
+    ? new Date(evaluation.startDate)
+    : undefined;
+  const isEvaluationStartInFuture =
+    !!evaluationStartDate &&
+    !Number.isNaN(evaluationStartDate.getTime()) &&
+    evaluationStartDate.getTime() > Date.now();
   const { data: evaluatorsResponse } = useEvaluationEvaluators(id);
 
   // State for dialog management
@@ -321,6 +328,15 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
 
   // Handle release group
   const handleReleaseGroup = async () => {
+    if (isEvaluationStartInFuture) {
+      toastHandlers.error(
+        "Release Group",
+        "The evaluation group cannot be released until the evaluation start date."
+      );
+      setReleaseDialogOpen(false);
+      return;
+    }
+
     try {
       const result = await releaseGroupMutation.mutateAsync({
         evaluationGroupId: selectedGroupId,
@@ -1156,8 +1172,15 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
                         trigger={
                           <Button
                             size="sm"
-                            className="bg-green-600 hover:bg-green-700 text-white"
+                            disabled={isEvaluationStartInFuture}
+                            title={
+                              isEvaluationStartInFuture
+                                ? "Available when the evaluation starts"
+                                : undefined
+                            }
+                            className="bg-green-600 hover:bg-green-700 text-white disabled:cursor-not-allowed disabled:opacity-50"
                             onClick={() => {
+                              if (isEvaluationStartInFuture) return;
                               setSelectedGroupId(group.groupId);
                               setReleaseDialogOpen(true);
                             }}
