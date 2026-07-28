@@ -7,8 +7,6 @@ import { ChevronLeft, Download, Printer } from "lucide-react";
 import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { useToastHandler } from "@/hooks/useToaster";
-import { useUser } from "@/store/authSlice";
-import { resolveCurrency } from "@/lib/utils";
 
 // ProposalPriceAction interface based on API schema
 interface ProposalPriceAction {
@@ -44,7 +42,7 @@ export const ProposalPriceBreakdownSheet = ({
 }: ProposalPriceBreakdownSheetProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const toastHandlers = useToastHandler();
-  const currency = resolveCurrency(undefined, useUser()?.currency);
+  const currency = "USD";
 
   const {
     data: priceBreakdownData,

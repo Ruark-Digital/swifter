@@ -12,8 +12,7 @@ import { CornerDownRight, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
-import { formatCurrency, resolveCurrency } from "@/lib/utils";
-import { useUser } from "@/store/authSlice";
+import { formatCurrency } from "@/lib/utils";
 
 // ProposalPriceAction interface based on API schema
 interface ProposalPriceAction {
@@ -43,7 +42,7 @@ const ReadOnlyProposalDialog: React.FC<ReadOnlyProposalDialogProps> = ({
   onOpenChange,
   proposalId,
 }) => {
-  const currency = resolveCurrency(undefined, useUser()?.currency);
+  const currency = "USD";
   const toastHandlers = useToastHandler();
 
   const { data: priceBreakdownData, isLoading, error, isError } = useQuery({

@@ -26,8 +26,6 @@ import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { resolveCurrency } from "@/lib/utils";
-import { useUser } from "@/store/authSlice";
 
 // ProposalPriceAction interface based on API schema
 interface ProposalPriceAction {
@@ -387,7 +385,7 @@ const PricingTable: React.FC<PricingTableProps> = ({
   setValue,
   getValues,
 }) => {
-  const currency = resolveCurrency(undefined, useUser()?.currency);
+  const currency = "USD";
   // Use field array for price actions
   const { fields, append, remove, update } = useFieldArray({
     control,
@@ -660,7 +658,7 @@ const SubPriceTable: React.FC<SubPriceTableProps> = ({
   control,
   removeSubItem,
 }) => {
-  const currency = resolveCurrency(undefined, useUser()?.currency);
+  const currency = "USD";
   return (
     <div className="ml-8 space-y-2">
       {subItems!.map((subItem: any, subIndex: any) => (
