@@ -34,6 +34,10 @@ interface MessageComposerProps {
    * Solicitation Q&A (e.g. Change/Claims/RFI comments), where that copy
    * doesn't apply. */
   sendLabel?: string;
+  /** Keep the draft after submit until the parent confirms success. */
+  clearOnSend?: boolean;
+  /** Increment after a successful submit to clear a retained draft. */
+  clearSignal?: number;
 }
 
 // Helper function to get initials from name
@@ -56,11 +60,17 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   isNewChat,
   disabled = false,
   sendLabel,
+  clearOnSend = true,
+  clearSignal,
 }) => {
   const { isProcurement } = useUserRole();
   const [content, setContent] = useState("");
   const [selectedReplyUser, setSelectedReplyUser] = useState(replyToUser);
   const user = useUser();
+
+  React.useEffect(() => {
+    if (clearSignal !== undefined) setContent("");
+  }, [clearSignal]);
 
   React.useEffect(() => {
     setSelectedReplyUser(replyToUser);
@@ -76,7 +86,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   const handleSend = () => {
     if (!content.trim()) return;
     onSend(content, sendType);
-    setContent("");
+    if (clearOnSend) setContent("");
   };
 
   const isContentEmpty =
