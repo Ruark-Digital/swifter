@@ -2384,7 +2384,15 @@ export class DashboardDataTransformer {
     return data.map((item: any, index: number) => {
       const statusText: string = item?.statusText ?? "";
       const actionText: string = item?.actionText ?? "";
-      const contractRef = item?.contractRef ?? "";
+      // Dashboard action logs use `detailRef`, while older general-update
+      // payloads use `contractRef`. Support both so every contract activity
+      // can link back to its detail page.
+      const contractRef =
+        item?.contractRef ??
+        item?.detailRef ??
+        item?.contractId ??
+        item?.entityId ??
+        "";
       const contractDef = String(item?.contractDef ?? item?.type ?? "Contract");
       const isMSA = /msa/i.test(contractDef);
       const detailBase = isMSA ? "/dashboard/msa" : "/dashboard/contract-management";
