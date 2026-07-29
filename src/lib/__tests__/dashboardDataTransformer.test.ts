@@ -21,6 +21,21 @@ describe("DashboardDataTransformer", () => {
     expect(item.text).not.toContain("<strong>");
   });
 
+  it("links contract updates when the API provides detailRef", () => {
+    const [item] = DashboardDataTransformer.transformContractManagerDashboardActivity([
+      {
+        statusText: 'Finch Monica created contract "Fire Protection Systems Installation".',
+        detailRef: "contract-456",
+        contractDef: "Contract",
+        createdAt: "2026-07-27T18:14:00.000Z",
+      },
+    ]);
+
+    expect(item.text).toContain(
+      '<a href="/dashboard/contract-management/contract-456" class="underline underline-offset-4 text-blue-600">Fire Protection Systems Installation</a>',
+    );
+  });
+
   it("links procurement evaluation actions when the solicitation is nested in evaluation", () => {
     const [item] = DashboardDataTransformer.transformProcurementMyActions([
       {
