@@ -501,6 +501,8 @@ export const SolicitationManagementPage = () => {
   const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
   const [selectedSolicitationForAction, setSelectedSolicitationForAction] =
     useState<string | null>(null);
+  // Keep a single action menu open across all solicitation rows.
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
   // const [activeTab, setActiveTab] = useState<string>("all");
 
   // Initialize filters from URL parameters
@@ -883,7 +885,12 @@ export const SolicitationManagementPage = () => {
             if (row.original.isArchive) {
               if (!isCompanyAdmin) return null;
               return (
-                <DropdownMenu>
+                <DropdownMenu
+                  open={openActionMenuId === row.original._id}
+                  onOpenChange={(open) =>
+                    setOpenActionMenuId(open ? row.original._id : null)
+                  }
+                >
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
                       <MoreHorizontal className="h-4 w-4" />
@@ -938,7 +945,12 @@ export const SolicitationManagementPage = () => {
             const canShowConfirmButton =
               isPublic && !isDeadlinePast && !isClosedOrCompleted && (!hasVendor || isInvited);
             return (
-              <DropdownMenu>
+              <DropdownMenu
+                open={openActionMenuId === row.original._id}
+                onOpenChange={(open) =>
+                  setOpenActionMenuId(open ? row.original._id : null)
+                }
+              >
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="h-8 w-8 p-0">
                     <MoreHorizontal className="h-4 w-4" />
@@ -1084,7 +1096,12 @@ export const SolicitationManagementPage = () => {
           cell: ({ row }) => {
             if (row.original.isArchive) {
               return (
-                <DropdownMenu>
+                <DropdownMenu
+                  open={openActionMenuId === row.original._id}
+                  onOpenChange={(open) =>
+                    setOpenActionMenuId(open ? row.original._id : null)
+                  }
+                >
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
                       <MoreHorizontal className="h-4 w-4" />
@@ -1121,7 +1138,12 @@ export const SolicitationManagementPage = () => {
               );
             }
             return (
-              <DropdownMenu>
+              <DropdownMenu
+                open={openActionMenuId === row.original._id}
+                onOpenChange={(open) =>
+                  setOpenActionMenuId(open ? row.original._id : null)
+                }
+              >
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="h-8 w-8 p-0">
                     <MoreHorizontal className="h-4 w-4" />
@@ -1287,7 +1309,12 @@ export const SolicitationManagementPage = () => {
           cell: ({ row }) => {
             if (row.original.isArchive) {
               return (
-                <DropdownMenu>
+                <DropdownMenu
+                  open={openActionMenuId === row.original._id}
+                  onOpenChange={(open) =>
+                    setOpenActionMenuId(open ? row.original._id : null)
+                  }
+                >
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
                       <MoreHorizontal className="h-4 w-4" />
@@ -1324,7 +1351,12 @@ export const SolicitationManagementPage = () => {
               );
             }
             return (
-              <DropdownMenu>
+              <DropdownMenu
+                open={openActionMenuId === row.original._id}
+                onOpenChange={(open) =>
+                  setOpenActionMenuId(open ? row.original._id : null)
+                }
+              >
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="h-8 w-8 p-0">
                     <MoreHorizontal className="h-4 w-4" />
