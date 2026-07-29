@@ -177,7 +177,9 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
   );
 
   const addSubItem = useCallback((itemIndex: number) => {
-    const currentItem = fields[itemIndex] as unknown as PriceActionItem;
+    const currentItem = (getValue().priceAction || [])[itemIndex] as
+      | PriceActionItem
+      | undefined;
     if (currentItem) {
       const updatedItem: PriceActionItem = {
         ...currentItem,
@@ -195,7 +197,7 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
       };
       update(itemIndex, updatedItem as any);
     }
-  }, [fields, update]);
+  }, [getValue, update]);
 
   const unregisterSubItemFields = useCallback(
     (itemIndex: number, subIndex: number) => {
