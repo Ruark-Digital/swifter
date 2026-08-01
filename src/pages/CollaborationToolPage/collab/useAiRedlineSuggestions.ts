@@ -37,6 +37,8 @@ export type AiAlternativeLanguage = {
  */
 export type AiRedlineSuggestion = {
   redlineId: string;
+  /** Original document text associated with a persisted redline suggestion. */
+  sourceText?: string;
   /** Full paragraph analysis of what the redline changes and why it matters. */
   assessment: string;
   /** Free-text recommendation summary (e.g. "This change should not be
@@ -307,6 +309,8 @@ const parsePersistedBody = (body: PersistedApiBody): PersistedSuggestionsRespons
         .filter((s) => Boolean(s?.redlineId))
         .map((s) => ({
           redlineId: s.redlineId as string,
+          sourceText:
+            typeof s.sourceText === "string" ? s.sourceText : undefined,
           assessment: (s.assessment as string) ?? "",
           suggestion: typeof s.suggestion === "string" ? s.suggestion : "",
           acceptability: s.acceptability as AiAcceptability | undefined,

@@ -36,6 +36,39 @@ describe("DashboardDataTransformer", () => {
     );
   });
 
+  it.each(["approve_invoice", "project_created"])(
+    "links status text for the backend activity name %s",
+    (name) => {
+      const [item] =
+        DashboardDataTransformer.transformContractManagerDashboardActivity([
+          {
+            name,
+            statusText: "Office Lease Agreement requires attention",
+            detailRef: "contract-789",
+            contractDef: "Contract",
+          },
+        ]);
+
+      expect(item.text).toBe(
+        '<a href="/dashboard/contract-management/contract-789" class="underline underline-offset-4 text-blue-600">Office Lease Agreement requires attention</a>',
+      );
+    },
+  );
+
+  it("does not link unrecognized backend activity names without a link target in the text", () => {
+    const [item] =
+      DashboardDataTransformer.transformContractManagerDashboardActivity([
+        {
+          name: "unknown_activity",
+          statusText: "Office Lease Agreement requires attention",
+          detailRef: "contract-789",
+          contractDef: "Contract",
+        },
+      ]);
+
+    expect(item.text).toBe("Office Lease Agreement requires attention");
+  });
+
   it("links procurement evaluation actions when the solicitation is nested in evaluation", () => {
     const [item] = DashboardDataTransformer.transformProcurementMyActions([
       {

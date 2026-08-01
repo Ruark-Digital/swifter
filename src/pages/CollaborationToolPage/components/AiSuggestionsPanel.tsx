@@ -534,9 +534,8 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
             <div className="font-semibold text-slate-900 dark:text-slate-100">No redlines to polish</div>
             <div className="mt-1">
               This document doesn&apos;t contain any insertion or deletion
-              redlines yet. Use the <span className="font-semibold">+</span> /{" "}
-              <span className="font-semibold">−</span> buttons on the editor
-              toolbar to mark redlines, then come back here.
+              redlines yet. Use the editor&apos;s <span className="font-semibold">Document mode</span>{" "}
+              control to switch to suggesting mode, then make your changes.
             </div>
             <button
               type="button"

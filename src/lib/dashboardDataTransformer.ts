@@ -74,6 +74,92 @@ const ACTIVITY_LINK_MAPPINGS: LinkMapping = {
   },
 };
 
+const LINKABLE_DASHBOARD_ACTIVITY_NAMES = new Set([
+  "approve",
+  "reject",
+  "change_reject",
+  "amendment_reject",
+  "invoice_reject",
+  "deliverable_reject",
+  "claim_reject",
+  "rejection",
+  "create",
+  "update",
+  "delete",
+  "approve_level",
+  "comment",
+  "add_comment",
+  "publish",
+  "reply_comment",
+  "upload_document",
+  "manage_contract",
+  "create_claim",
+  "create_change",
+  "create_rfi",
+  "create_invoice",
+  "create_invoice_co_required",
+  "assign_pm",
+  "approve_pm_assignment",
+  "reject_pm_assignment",
+  "create_lem",
+  "approve_lem",
+  "approve_change",
+  "approve_change_next_level",
+  "approve_rfi",
+  "approve_invoice",
+  "approve_invoice_co_required",
+  "approve_holdback",
+  "savings",
+  "approve_amendment",
+  "create_amendment",
+  "amendment_applied",
+  "amendment_msa_ceiling_exceeded",
+  "notify_no_evaluators",
+  "send_redline_turn",
+  "finalize_redline_turn",
+  "issue_rfi",
+  "reply_rfi",
+  "issue_ncr",
+  "issue_ncr_capa",
+  "respond_ncr",
+  "respond_ncr_capa",
+  "approve_ncr_capa",
+  "close_ncr",
+  "release_holdback",
+  "submit_deliverable",
+  "approve_deliverable",
+  "submit_kpi",
+  "submit_report",
+  "new_ratesheet",
+  "approve_ratesheet",
+  "update_ratesheet",
+  "submit_compliance",
+  "update_policy",
+  "approve_policy",
+  "update_security_compliance",
+  "approve_security_compliance",
+  "approve_compliance",
+  "update_compliance",
+  "approve_claim",
+  "amendment_cost_change",
+  "amendment_acceptance",
+  "amendment_acceptance_update",
+  "edit_change",
+  "create_approver",
+  "create_holdback_invoice",
+  "reopen_invoice_approval",
+  "amendment_assign_approver",
+  "completed",
+  "terminated",
+  "suspended",
+  "new_lem",
+  "project_created",
+  "project_updated",
+  "project_eac_updated",
+  "business_division_created",
+  "business_division_updated",
+]);
+
 /**
  * Generate dynamic link based on user role, activity type, and action
  * @param userRole - The user's role (procurement, evaluator, vendor)
@@ -2384,6 +2470,7 @@ export class DashboardDataTransformer {
     return data.map((item: any, index: number) => {
       const statusText: string = item?.statusText ?? "";
       const actionText: string = item?.actionText ?? "";
+      const activityName = String(item?.name ?? item?.action ?? "");
       // Dashboard action logs use `detailRef`, while older general-update
       // payloads use `contractRef`. Support both so every contract activity
       // can link back to its detail page.
@@ -2433,6 +2520,8 @@ export class DashboardDataTransformer {
               quotedTitleMatch[0],
               `"<a href="${contractUrl}" class="${linkClass}">${contractTitle}</a>"`,
             )
+          : contractUrl && LINKABLE_DASHBOARD_ACTIVITY_NAMES.has(activityName)
+            ? `<a href="${contractUrl}" class="${linkClass}">${statusText}</a>`
           : statusText;
 
         return {
