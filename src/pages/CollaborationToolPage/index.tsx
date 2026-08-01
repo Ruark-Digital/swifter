@@ -548,7 +548,7 @@ const CollaborationToolPage: React.FC = () => {
           redline: {
             redlineId: s.redlineId,
             kind: "insertion" as const,
-            text: "",
+            text: s.sourceText ?? "",
           },
           suggestion: s,
           state: resolutionToState(s.resolution?.action),
