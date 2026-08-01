@@ -182,7 +182,7 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
       <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-8 pt-8">
           <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
-            Submit CAPA
+            Submit Corrective Action and Preventive Action
           </DialogTitle>
         </div>
         <div className="px-8 pb-8 pt-2">
