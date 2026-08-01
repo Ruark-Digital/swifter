@@ -58,11 +58,12 @@ const formatDate = (value?: string) => {
   });
 };
 
-const formatCurrencyCompact = (value?: string | number) => {
+// Show the full amount as entered during creation, without decimals — matches
+// the contract-side compliance display (QA #37). No compact "$1.5M" rounding.
+const formatCurrencyFull = (value?: string | number) => {
   const num = Number(value);
   if (!Number.isFinite(num)) return "-";
-  if (num >= 1000000) return `$${(num / 1000000).toFixed(1)}M`;
-  return `$${num.toLocaleString("en-US")}`;
+  return `$${num.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 };
 
 const getStatusTone = (status?: string) => {
@@ -157,7 +158,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled, ow
         id: policy._id || "",
         policyId: policy.policyId || policy._id || "-",
         policyName: policy.policyName || "-",
-        limit: formatCurrencyCompact(policy.value),
+        limit: formatCurrencyFull(policy.value),
         status: policy.status || "Pending",
       })),
     [complianceData?.policy],
@@ -183,7 +184,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled, ow
           id: security._id || security.securityTypeId || "",
           securityId: security.securityTypeId || security._id || "-",
           securityType: formatSecurityType(security.securityType),
-          amount: formatCurrencyCompact(security.amount),
+          amount: formatCurrencyFull(security.amount),
           dueDate,
           dueIn,
           status: security.status || "Pending",

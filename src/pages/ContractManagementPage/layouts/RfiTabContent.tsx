@@ -175,7 +175,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
       ? personnelData?.data?.data?.map((p) => ({
           label:
             p.firstName && p.lastName
-              ? `${p.firstName} (${p.lastName})`
+              ? `${p.firstName} ${p.lastName}`
               : p.firstName
                 ? p.firstName
                 : (p.email ?? p._id),

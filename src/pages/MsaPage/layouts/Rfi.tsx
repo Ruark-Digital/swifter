@@ -298,7 +298,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
       list?.map((p) => ({
         label:
           p.firstName && p.lastName
-            ? `${p.firstName} (${p.lastName})`
+            ? `${p.firstName} ${p.lastName}`
             : p.firstName || (p.email ?? p._id),
         value: p._id,
         searchText: [p.firstName, p.lastName, p.email].filter(Boolean).join(" "),
