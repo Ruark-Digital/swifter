@@ -462,6 +462,7 @@ const UserManagementPage = () => {
               <DropdownMenuItem
                 onClick={() => {
                   setSelectedUserId(row.original?.userId ?? "");
+                  setSelectedUser(row.original as unknown as User);
                   setIsUserDetailsOpen(true);
                 }}
                 className="p-3"
@@ -667,6 +668,7 @@ const UserManagementPage = () => {
         open={isUserDetailsOpen}
         onOpenChange={setIsUserDetailsOpen}
         userId={selectedUserId || undefined}
+        lastActivity={selectedUser?.lastActivity}
         onEdit={(userId) => {
           setIsUserDetailsOpen(false);
           setEditUserId(userId ?? "");

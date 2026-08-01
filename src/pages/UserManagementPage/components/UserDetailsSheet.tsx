@@ -63,6 +63,12 @@ interface UserDetailsSheetProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   userId?: string;
+  /**
+   * Last-activity value from the list row. The list (`/users`) and the detail
+   * (`/users/{id}`) expose different fields (`lastActivity` vs `lastLoginAt`),
+   * so prefer this to keep the sheet aligned with the list (QA #44).
+   */
+  lastActivity?: string;
   children?: React.ReactNode;
   onStatusUpdate?: (userId: string, status: "active" | "inactive") => void;
   onDelete?: (userId: string) => void;
@@ -73,6 +79,7 @@ const UserDetailsSheet: React.FC<UserDetailsSheetProps> = ({
   open,
   onOpenChange,
   userId,
+  lastActivity,
   children,
   onStatusUpdate,
   onDelete,
@@ -417,8 +424,8 @@ const UserDetailsSheet: React.FC<UserDetailsSheetProps> = ({
                           Last Activity
                         </label>
                         <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
-                          {userData.lastLoginAt
-                            ? formatDateTime(userData.lastLoginAt)
+                          {(lastActivity ?? userData.lastLoginAt)
+                            ? formatDateTime((lastActivity ?? userData.lastLoginAt) as string)
                             : "No recent activity"}
                         </p>
                       </div>
