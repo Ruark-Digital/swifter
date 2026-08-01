@@ -59,7 +59,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { cn, resolveCurrency } from "@/lib/utils";
 
 const formatContractStatus = (status?: ContractDetail["status"]) => {
   if (status === "active")
@@ -467,6 +467,11 @@ const ContractDetailPage: React.FC = () => {
 
   const contract = contractsResponse?.data?.data;
 
+  // Show the contract's own formation currency. Approver/vendor detail
+  // endpoints sometimes omit `currency` (QA #22) — fall back to the viewer's
+  // company/profile currency rather than a hardcoded USD in the tabs.
+  const displayCurrency = resolveCurrency(contract?.currency, user?.currency);
+
   if (!contract) {
     return (
       <div className="space-y-8">
@@ -678,24 +683,24 @@ const ContractDetailPage: React.FC = () => {
 
         <OverviewTab
           contract={contract}
-          currency={contract?.currency}
+          currency={displayCurrency}
           status={status}
         />
 
         <AnalyticsTabContent
-          currency={contract?.currency}
+          currency={displayCurrency}
           isActive={activeTab === "analytics"}
         />
 
         <KpiTabContent
           contractId={contract?._id ?? ""}
-          currency={contract?.currency}
+          currency={displayCurrency}
           isActive={activeTab === "kpi"}
           owner={contract?.owner}
         />
 
         <ComplianceTabContent
-          currency={contract?.currency}
+          currency={displayCurrency}
           isActive={activeTab === "compliance"}
           actionsDisabled={actionsDisabled}
           owner={contract?.owner}
@@ -703,21 +708,21 @@ const ContractDetailPage: React.FC = () => {
 
         <ChangeTabContent
           contractId={contract?._id ?? ""}
-          currency={contract?.currency}
+          currency={displayCurrency}
           isActive={activeTab === "change"}
           actionsDisabled={actionsDisabled}
         />
 
         <ClaimsTabContent
           contractId={contract?._id ?? ""}
-          currency={contract?.currency}
+          currency={displayCurrency}
           isActive={activeTab === "claims"}
           actionsDisabled={actionsDisabled}
         />
 
         <ApproversTabContent
           contractId={contract?._id ?? ""}
-          currency={contract?.currency}
+          currency={displayCurrency}
           isActive={activeTab === "approvers"}
           owner={contract?.owner}
         />
@@ -733,7 +738,7 @@ const ContractDetailPage: React.FC = () => {
 
         <InvoiceTabContent
           contractId={contract?._id ?? ""}
-          currency={contract?.currency}
+          currency={displayCurrency}
           isActive={activeTab === "invoice"}
           actionsDisabled={actionsDisabled}
           owner={contract?.owner}
@@ -743,21 +748,21 @@ const ContractDetailPage: React.FC = () => {
 
         <RateSheetsTabContent
           contractId={contract?._id ?? ""}
-          currency={contract?.currency}
+          currency={displayCurrency}
           isActive={activeTab === "rate-sheets"}
           actionsDisabled={publishGatedActionsDisabled}
         />
 
         <LemTabContent
           contractId={contract?._id ?? ""}
-          currency={contract?.currency}
+          currency={displayCurrency}
           isActive={activeTab === "lem"}
           actionsDisabled={publishGatedActionsDisabled}
         />
 
         <RfiTabContent
           contractId={contract?._id ?? ""}
-          currency={contract?.currency}
+          currency={displayCurrency}
           isActive={activeTab === "rfi"}
           actionsDisabled={actionsDisabled}
         />
@@ -770,7 +775,7 @@ const ContractDetailPage: React.FC = () => {
         />
 
         <DocumentsTabContent
-          currency={contract?.currency}
+          currency={displayCurrency}
           files={contract?.files}
           contractId={contract?._id ?? ""}
           effectiveDate={contract?.startDate}
@@ -780,20 +785,20 @@ const ContractDetailPage: React.FC = () => {
 
         <AmendmentsTabContent
           contractId={contract?._id ?? ""}
-          currency={contract?.currency}
+          currency={displayCurrency}
           isActive={activeTab === "amendments"}
           actionsDisabled={amendmentActionsDisabled}
         />
 
         <PaymentSummaryTabContent
           contractId={contract?._id ?? ""}
-          currency={contract?.currency}
+          currency={displayCurrency}
           contract={contract}
           isActive={activeTab === "payment-summary"}
         />
 
         <ClauseLibraryTabContent
-          currency={contract?.currency}
+          currency={displayCurrency}
           vendorName={contract?.vendor?.name}
           isActive={activeTab === "clause-library"}
         />
