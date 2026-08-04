@@ -2471,26 +2471,39 @@ export class DashboardDataTransformer {
       const statusText: string = item?.statusText ?? "";
       const actionText: string = item?.actionText ?? "";
       const activityName = String(item?.name ?? item?.action ?? "");
-      // Dashboard action logs use `detailRef`, while older general-update
-      // payloads use `contractRef`. Support both so every contract activity
-      // can link back to its detail page.
-      const contractRef =
-        item?.contractRef ??
-        item?.detailRef ??
-        item?.contractId ??
-        item?.entityId ??
-        "";
-      const contractDef = String(item?.contractDef ?? item?.type ?? "Contract");
-      const isMSA = /msa/i.test(contractDef);
-      const detailBase = isMSA ? "/dashboard/msa" : "/dashboard/contract-management";
+      // Activity kind. Projects carry type/entityType "Project"; contracts/MSAs
+      // carry contractDef.
+      const kind = String(
+        item?.contractDef ?? item?.type ?? item?.entityType ?? "Contract",
+      );
+      const isProject = /project/i.test(kind);
+      const isMSA = !isProject && /msa/i.test(kind);
+      // Detail pages load by Mongo _id — NEVER the human code (contractId /
+      // entityId), which 404s (QA #85: the project code "PJTMC7918" was sent to
+      // /contract/manager/contracts/PJTMC7918). Fall back only through _id refs:
+      // `contractRef`/`detailRef` for contracts & MSAs (action-log uses
+      // detailRef), `entityRef` for projects.
+      const contractRef = isProject
+        ? "" // project list route takes no id (there is no project detail route)
+        : (item?.contractRef ?? item?.detailRef ?? item?.entityRef ?? "");
+      const detailBase = isProject
+        ? "/dashboard/project-management"
+        : isMSA
+          ? "/dashboard/msa"
+          : "/dashboard/contract-management";
       const dateValue = item?.date ?? item?.createdAt;
       // Deep-link to the specific tab (contract detail only; the MSA page tabs differ).
-      const deepLinkTab = !isMSA
-        ? DETAIL_TYPE_TO_TAB[String(item?.detailType ?? item?.type ?? "")]
-        : undefined;
-      const contractUrl = contractRef
-        ? `${detailBase}/${contractRef}${deepLinkTab ? `?tab=${deepLinkTab}` : ""}`
-        : "";
+      const deepLinkTab =
+        !isMSA && !isProject
+          ? DETAIL_TYPE_TO_TAB[String(item?.detailType ?? item?.type ?? "")]
+          : undefined;
+      // Projects open via a slideover on the list (no ":id" detail route), so
+      // link to the list to avoid the 404 (QA #85).
+      const contractUrl = isProject
+        ? "/dashboard/project-management"
+        : contractRef
+          ? `${detailBase}/${contractRef}${deepLinkTab ? `?tab=${deepLinkTab}` : ""}`
+          : "";
       const linkClass = "underline underline-offset-4 text-blue-600";
 
       // Action-log shape (260528): { actionText, statusText, action, detailRef, detailType, ... }.
