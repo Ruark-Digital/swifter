@@ -374,6 +374,30 @@ const CreateChangeDialog: React.FC<Props> = ({
                 </span>
                 {isUploadingFiles ? <span>Uploading...</span> : null}
               </div>
+              {isEdit && initialChange?.files?.length ? (
+                <div className="space-y-1 pt-1">
+                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                    Existing attachments
+                  </p>
+                  <ul className="space-y-1">
+                    {initialChange.files.map((f, i) => (
+                      <li key={f.url || f.name || i}>
+                        <a
+                          href={f.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-[#2A4467] dark:text-blue-300 underline underline-offset-2 break-all"
+                        >
+                          {f.name || "Attachment"}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                    These stay attached unless you upload replacements.
+                  </p>
+                </div>
+              ) : null}
             </div>
             <div className="flex items-center gap-4 pt-2">
               <DialogClose asChild>
