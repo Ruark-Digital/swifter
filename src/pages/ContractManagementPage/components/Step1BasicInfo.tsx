@@ -25,7 +25,12 @@ import { getExchangeRate } from "@/lib/currencyUtils";
 type Props = {
   typeOptions: Array<{ label: string; value: string }>;
   projectOptions: Array<{ label: string; value: string }>;
-  msaOptions: Array<{ label: string; value: string }>;
+  msaOptions: Array<{
+    label: string;
+    value: string;
+    vendorId?: string;
+    vendorName?: string;
+  }>;
   awardedOptions: Array<{
     label: string;
     value: string;
@@ -164,6 +169,21 @@ const Step1BasicInfo: React.FC<Props> = ({
       }
     }
   }, [enableAwardedPrefill, awardedSolicitation, awardedOptions, setValue]);
+
+  // QA #67: linking a contract to an MSA auto-populates the vendor so no manual
+  // vendor selection is needed. Create-mode only (same gate as the awarded
+  // prefill) so an edited contract's hydrated vendor isn't clobbered on mount.
+  const selectedMsaId = useWatch({ name: "msaContractId" });
+
+  React.useEffect(() => {
+    if (!enableAwardedPrefill || !selectedMsaId) return;
+    const msa = msaOptions.find((opt) => opt.value === selectedMsaId);
+    if (msa?.vendorId) {
+      setValue("vendor", msa.vendorId, { shouldValidate: true });
+      if (msa.vendorName) setValue("vendorLabel", msa.vendorName);
+    }
+  }, [enableAwardedPrefill, selectedMsaId, msaOptions, setValue]);
+
   const { data: divisionsRes, isLoading: isLoadingDivisions } = useQuery<
     Awaited<ReturnType<typeof businessDivisionApi.listDivisions>>
   >({

@@ -740,6 +740,9 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     return contracts.map((c: any) => ({
       label: c.title || "Untitled MSA",
       value: c._id,
+      // Carried so Step 1 auto-fills the vendor when an MSA is linked (QA #67).
+      vendorId: c?.vendor?._id,
+      vendorName: c?.vendor?.name,
     }));
   }, [msaQuery.data?.data?.contracts]);
 
