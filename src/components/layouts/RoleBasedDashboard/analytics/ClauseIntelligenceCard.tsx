@@ -158,7 +158,7 @@ export const ClauseIntelligenceCard: React.FC<Props> = ({
                 <p className="text-[12px] text-[#6B7280] dark:text-slate-400">
                   Severity: {h.severity}
                   {typeof h.averageDeviation === "number" &&
-                    ` · ${h.averageDeviation}% deviation from standard`}
+                    ` · ${h.averageDeviation}% compliance with standard`}
                 </p>
               </div>
             );
