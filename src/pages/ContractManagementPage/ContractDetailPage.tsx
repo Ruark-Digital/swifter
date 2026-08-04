@@ -151,6 +151,10 @@ const ROLE_TAB_WHITELIST: Record<
     "deliverables",
     "ncr-log",
     "reports",
+    // Approvers get a read/approve view of rate sheets (QA #35). BE exposes
+    // /approver/contracts/{id}/ratesheets and RateSheetsTabContent already
+    // resolves the approver base path.
+    "rate-sheets",
   ],
   vendor: [
     "overview",
