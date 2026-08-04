@@ -37,6 +37,11 @@ type Props = {
   contractType?: "Contract" | "MsaContract";
   /** Optional query key to also invalidate on save (e.g. the parent contract/MSA detail query). */
   invalidateQueryKey?: unknown[];
+  /** Read-only personnel sourced from the already-loaded contract/MSA detail.
+   *  Used for roles without a dedicated vendor-personnel endpoint (approvers,
+   *  QA #35): when provided, the manager fetch is skipped and this list is
+   *  rendered view-only. */
+  externalPersonnel?: VendorPersonnel[];
 };
 
 const emptyDraft: VendorPersonnel = { name: "", email: "", phone: "", role: "" };
@@ -48,8 +53,10 @@ const VendorPersonnelTabContent: React.FC<Props> = ({
   status,
   contractType = "Contract",
   invalidateQueryKey,
+  externalPersonnel,
 }) => {
   const { isManager, isCompanyAdmin } = useUserRole();
+  const isExternal = Array.isArray(externalPersonnel);
   // Tab is visible to the owning CM/PL, but add/edit/remove is only allowed
   // once the contract is active/published (per product rule).
   const isActionableStatus = status === "active" || status === "publish";
@@ -75,15 +82,22 @@ const VendorPersonnelTabContent: React.FC<Props> = ({
       const res = await getRequest({ url: basePath });
       return res.data as { data?: VendorPersonnel[] };
     },
-    enabled: Boolean(contractId) && !!isActive,
+    enabled: Boolean(contractId) && !!isActive && !isExternal,
     staleTime: 60000,
     retry: false,
   });
 
   const personnel = React.useMemo<VendorPersonnel[]>(
-    () => (Array.isArray(data?.data) ? (data?.data as VendorPersonnel[]) : []),
-    [data?.data],
+    () =>
+      isExternal
+        ? (externalPersonnel as VendorPersonnel[])
+        : Array.isArray(data?.data)
+          ? (data?.data as VendorPersonnel[])
+          : [],
+    [isExternal, externalPersonnel, data?.data],
   );
+
+  const showLoading = !isExternal && isLoading;
 
   // The endpoint replaces the whole list, so every add/edit/remove rebuilds the
   // array and PUTs it back.
@@ -249,9 +263,9 @@ const VendorPersonnelTabContent: React.FC<Props> = ({
       <DataTable<VendorPersonnel>
         data={personnel}
         columns={columns}
-        options={{ isLoading }}
+        options={{ isLoading: showLoading }}
         emptyPlaceholder={
-          isLoading ? "Loading..." : "No vendor personnel yet."
+          showLoading ? "Loading..." : "No vendor personnel yet."
         }
       />
 

@@ -127,6 +127,9 @@ const ROLE_TAB_WHITELIST: Record<
     // /approver/msa-contracts/{id}/ratesheets and RateSheetsTabContent
     // resolves the approver base path for the msa-contracts segment.
     "rate-sheets",
+    // Approvers get a read-only Vendor Key Personnel list (QA #35), sourced
+    // from the MSA detail (no approver vendor-personnel endpoint exists).
+    "vendor-personnel",
   ],
   vendor: [
     "overview",
@@ -988,6 +991,18 @@ const MsaDetailPage: React.FC = () => {
               status={msa?.status}
               contractType="MsaContract"
               invalidateQueryKey={[...queryKey]}
+              // Approvers have no vendor-personnel endpoint — feed the read-only
+              // list from the already-loaded MSA detail (QA #35). Coerce the
+              // optional name/email to strings the tab's row type requires.
+              externalPersonnel={
+                isApprover
+                  ? vendorPersonnel.map((p) => ({
+                      ...p,
+                      name: p.name ?? "",
+                      email: p.email ?? "",
+                    }))
+                  : undefined
+              }
             />
 
             <Reports

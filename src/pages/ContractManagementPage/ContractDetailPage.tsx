@@ -155,6 +155,9 @@ const ROLE_TAB_WHITELIST: Record<
     // /approver/contracts/{id}/ratesheets and RateSheetsTabContent already
     // resolves the approver base path.
     "rate-sheets",
+    // Approvers get a read-only Vendor Key Personnel list (QA #35), sourced
+    // from the contract detail (no approver vendor-personnel endpoint exists).
+    "vendor-personnel",
   ],
   vendor: [
     "overview",
@@ -738,6 +741,13 @@ const ContractDetailPage: React.FC = () => {
           status={contract?.status}
           contractType="Contract"
           invalidateQueryKey={[...queryKey]}
+          // Approvers have no vendor-personnel endpoint — feed the read-only
+          // list from the already-loaded contract detail (QA #35).
+          externalPersonnel={
+            isApprover
+              ? (contract?.personnel ?? contract?.vendorPersonnel ?? [])
+              : undefined
+          }
         />
 
         <InvoiceTabContent
