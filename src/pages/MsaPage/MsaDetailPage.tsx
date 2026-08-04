@@ -123,6 +123,10 @@ const ROLE_TAB_WHITELIST: Record<
     // "approvers" intentionally omitted — approvers can't see the Approvers tab
     "reports",
     "payment-summary",
+    // Approvers get a read/approve view of rate sheets (QA #35). BE exposes
+    // /approver/msa-contracts/{id}/ratesheets and RateSheetsTabContent
+    // resolves the approver base path for the msa-contracts segment.
+    "rate-sheets",
   ],
   vendor: [
     "overview",
