@@ -160,8 +160,21 @@ export const createFormData = (body: Record<string, any>) => {
 };
 
 /**
- * Safely format dates with optional IANA timezone support.
- * Falls back to local formatting when timezone is not provided.
+ * Format a date/time in the VIEWER's local browser timezone.
+ *
+ * The source value is interpreted as an absolute instant (an ISO string with a
+ * `Z`/offset suffix, or a `Date`) and rendered with `date-fns` `format`, whose
+ * tokens read the Date's local getters — so every user sees the same instant in
+ * their own timezone. This is the app-wide model (QA #23/#41a/#44/#49/#59b):
+ * one consistent, viewer-relative clock instead of raw source digits.
+ *
+ * Correctness depends on the backend emitting real instants (`…Z` or an
+ * explicit offset). A naive datetime with no offset is parsed as the viewer's
+ * local time by the JS engine, i.e. shown unconverted — that is a backend
+ * contract gap, not something the display layer can recover.
+ *
+ * The third argument is retained for call-site compatibility but ignored: the
+ * viewer's timezone is always used, never a passed-in zone.
  */
 export function formatDateTZ(
   dateInput: string | Date | undefined | null,
@@ -171,139 +184,33 @@ export function formatDateTZ(
   // Guard: undefined/null -> safe string
   if (!dateInput) return "N/A";
 
-  // If a timezone is requested, we'll interpret the input as an actual instant (Date)
-  // and then render it for that timezone using formatInTimeZone.
-  // if (timezone && timezone.trim().length > 0) {
-  //   let instant: Date;
-
-  //   if (typeof dateInput === "string") {
-  //     // If plain YYYY-MM-DD (no time part) -> construct a UTC midnight for that date
-  //     if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
-  //       const [y, m, d] = dateInput.split("-").map(Number);
-  //       // create a UTC midnight instant for that date
-  //       instant = new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
-  //     } else {
-  //       // For ISO-like strings (with 'T' or timezone suffix) parse as ISO -> real instant
-  //       instant = parseISO(dateInput);
-  //     }
-  //   } else {
-  //     instant = dateInput;
-  //   }
-
-  //   if (isNaN(instant.getTime())) return "N/A";
-
-  //   return formatInTimeZone(instant, timezone, formatStr || "MMM dd, yyyy hh:mm a");
-  // }
+  const pattern = formatStr || "MMM dd, yyyy hh:mm a";
 
   try {
-    // Read the wall-clock digits exactly as recorded in the source string (or Date
-    // object) -- we intentionally do NOT convert to the viewer's browser timezone.
-    // The goal is to show the time in the zone it was captured in.
-    let year: number, month: number, day: number, hour: number, minute: number, second: number;
-    let offsetLabel = "";
+    let instant: Date;
 
     if (typeof dateInput === "string") {
-      const match = dateInput.match(
-        /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/
-      );
-
-      if (match) {
-        [year, month, day, hour, minute, second] = match
-          .slice(1, 7)
-          .map(Number) as [number, number, number, number, number, number];
-        if (match[7]) offsetLabel = getOffsetAbbreviation(match[7]);
+      // Date-only strings (YYYY-MM-DD) carry no instant. Parsing them via
+      // `new Date` would assume UTC midnight and can roll back a day for
+      // west-of-UTC viewers, so build a local-midnight date and render as-is.
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+        const [y, m, d] = dateInput.split("-").map(Number);
+        instant = new Date(y, m - 1, d);
       } else {
-        // Not a "T"-delimited ISO datetime (e.g. a plain date-only string) --
-        // fall back to native parsing.
-        const parsed = new Date(dateInput);
-        if (isNaN(parsed.getTime())) return "N/A";
-        year = parsed.getFullYear();
-        month = parsed.getMonth() + 1;
-        day = parsed.getDate();
-        hour = parsed.getHours();
-        minute = parsed.getMinutes();
-        second = parsed.getSeconds();
+        // ISO datetime with a Z/offset suffix -> a real instant. `format`
+        // reads local getters, so this renders in the viewer's timezone.
+        instant = new Date(dateInput);
       }
     } else {
-      year = dateInput.getFullYear();
-      month = dateInput.getMonth() + 1;
-      day = dateInput.getDate();
-      hour = dateInput.getHours();
-      minute = dateInput.getMinutes();
-      second = dateInput.getSeconds();
+      instant = dateInput;
     }
 
-    // `format()` reads the Date's LOCAL getters, so building it from the source's
-    // own wall-clock digits reproduces those exact digits in the output regardless
-    // of the viewer's browser timezone (no conversion happens).
-    const displayDate = new Date(year, month - 1, day, hour, minute, second);
+    if (isNaN(instant.getTime())) return "N/A";
 
-    const pattern = formatStr || "MMM dd, yyyy hh:mm a";
-
-    // date-fns's localized-time tokens (p/pp/ppp/pppp) pull their timezone name
-    // from the BROWSER's Intl data, not the source's -- swap that piece out for
-    // our own offset-derived abbreviation so e.g. a "-05:00" source renders "EST",
-    // not the viewer's local zone.
-    const zoneToken = pattern.match(/p{1,4}$/);
-    if (zoneToken && offsetLabel) {
-      const prefix = pattern.slice(0, -zoneToken[0].length).trim();
-      const timePart = format(displayDate, "h:mm:ss a");
-      return `${prefix ? format(displayDate, prefix) + " " : ""}${timePart} ${offsetLabel}`;
-    }
-
-    return format(displayDate, pattern);
+    return format(instant, pattern);
   } catch {
     return "N/A";
   }
-}
-
-// Best-effort UTC-offset -> common abbreviation mapping, covering every
-// standard-time offset in use worldwide (labels sourced from and kept
-// consistent with `src/assets/timezones.json`, the same list used by the
-// app's timezone pickers). A bare numeric offset can't distinguish e.g. EST
-// from CDT (both -05:00), or EET from CAT (both +02:00) -- multiple real
-// zones share almost every offset, so each entry below is a representative
-// pick, not a guaranteed-unique resolution. Falls back to a "GMT±HH:MM"
-// label for the handful of rarer offsets not listed here.
-const TIMEZONE_OFFSET_ABBREVIATIONS: Record<string, string> = {
-  "-10:00": "HST",
-  "-09:00": "AKST",
-  "-08:00": "PST",
-  "-07:00": "MST",
-  "-06:00": "CST",
-  "-05:00": "EST",
-  "-04:00": "EDT",
-  "-03:00": "BRT",
-  "-01:00": "AZOT",
-  "+00:00": "GMT",
-  "+01:00": "CET",
-  "+02:00": "EET",
-  "+03:00": "MSK",
-  "+04:00": "GST",
-  "+05:00": "PKT",
-  "+05:30": "IST",
-  "+05:45": "NPT",
-  "+06:00": "BTT",
-  "+06:30": "MMT",
-  "+07:00": "ICT",
-  "+08:00": "SGT",
-  "+09:00": "JST",
-  "+09:30": "ACST",
-  "+10:00": "AEST",
-  "+12:00": "NZST",
-  "+12:45": "CHAST",
-  "+13:00": "TON",
-  "+14:00": "LINT",
-};
-
-function getOffsetAbbreviation(offsetRaw: string): string {
-  const normalized =
-    offsetRaw === "Z"
-      ? "+00:00"
-      : offsetRaw.length === 5
-      ? `${offsetRaw.slice(0, 3)}:${offsetRaw.slice(3)}`
-      : offsetRaw;
-  return TIMEZONE_OFFSET_ABBREVIATIONS[normalized] || `GMT${normalized}`;
 }
 
 // Internal helper: compute the timezone offset (in minutes) for a given UTC date and IANA timezone.
