@@ -20,7 +20,11 @@ import type { ContractDetail } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { contractManagerApi } from "../api/contractManagerApi";
-import { formatDateTZ, resolveCurrency } from "@/lib/utils";
+import {
+  formatDateTZ,
+  resolveCurrency,
+  resolveMilestoneDeliverableName,
+} from "@/lib/utils";
 import { useUser } from "@/store/authSlice";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useFormContext } from "react-hook-form";
@@ -731,6 +735,23 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
     [contractId],
   );
 
+  // BE returns `milestone[].deliverable` as the deliverable's _id (or a
+  // populated object / legacy name). Build a _id -> name map from the
+  // contract's deliverables so the column shows the deliverable name, not the
+  // milestone title (QA #47).
+  const deliverableNameById = React.useMemo(
+    () =>
+      new Map<string, string>(
+        (Array.isArray((contract as any)?.deliverables)
+          ? (contract as any).deliverables
+          : []
+        )
+          .filter((d: any) => d?._id && d?.name)
+          .map((d: any) => [String(d._id), String(d.name)]),
+      ),
+    [contract],
+  );
+
   const milestoneRows = React.useMemo(() => {
     const milestones = Array.isArray(contract?.milestone)
       ? contract?.milestone
@@ -742,12 +763,16 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
       return {
         milestoneId: milestone?.milestoneId ?? `milestone-${index + 1}`,
         milestoneTitle: milestone?.name ?? "-",
-        deliverable: milestone?.deliverable?.name ?? milestone?.name ?? "-",
+        deliverable:
+          resolveMilestoneDeliverableName(
+            milestone?.deliverable,
+            deliverableNameById,
+          ) || "-",
         amount: formatMoney(milestone?.amount),
         dueDate,
       };
     });
-  }, [contract?.milestone, formatMoney]);
+  }, [contract?.milestone, deliverableNameById, formatMoney]);
 
   const contractValue = formatMoney(contract?.contractValue);
   const holdbackReleased = formatMoney(contract?.holdBackReleased);

@@ -62,6 +62,38 @@ export function formatCompactCurrency(
   }
 }
 
+const OBJECT_ID_RE = /^[a-f0-9]{24}$/i;
+
+/**
+ * Resolve a milestone's linked deliverable to a display name.
+ *
+ * The backend returns `milestone[].deliverable` inconsistently: a populated
+ * `{ name }` object, the deliverable's `_id` string, or a legacy name string.
+ * Pass a `_id -> name` map (built from the contract/MSA `deliverables` list)
+ * to resolve id references. Returns "" — caller renders "-" — when nothing
+ * resolves, and never the milestone's own name (QA #47).
+ */
+export function resolveMilestoneDeliverableName(
+  raw: unknown,
+  nameById?: Map<string, string>,
+): string {
+  if (raw && typeof raw === "object") {
+    const name = (raw as { name?: unknown }).name;
+    return typeof name === "string" ? name.trim() : "";
+  }
+  if (typeof raw === "string") {
+    const val = raw.trim();
+    if (!val) return "";
+    const mapped = nameById?.get(val);
+    if (mapped) return mapped;
+    // An unresolved ObjectId isn't a human-readable name → show blank, not
+    // the raw id (and never the milestone title).
+    if (OBJECT_ID_RE.test(val)) return "";
+    return val; // legacy name string
+  }
+  return "";
+}
+
 const getFileNameFromUrl = (url: string) => {
   const parts = url.split("/");
   return parts[parts.length - 1] || "";
