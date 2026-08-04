@@ -24,6 +24,7 @@ const formatCompactCurrency = (value?: number) => {
     style: "currency",
     currency: "USD",
     notation: "compact",
+    compactDisplay: "short",
     maximumFractionDigits: 0,
   }).format(num);
 };
