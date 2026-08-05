@@ -44,6 +44,15 @@ const schema = yup.object().shape({
     )
     .min(1, "At least one admin is required")
     .max(3, "Maximum 3 admins allowed"),
+  apEmails: yup
+    .array()
+    .of(
+      yup.object().shape({
+        id: yup.string().required(),
+        text: yup.string().email().required(),
+      }),
+    )
+    .optional(),
 });
 
 type CreateCompanyData = yup.InferType<typeof schema>;
@@ -62,6 +71,7 @@ const CreateCompanyDialog = () => {
       duration: "1",
       currency: "",
       adminEmails: [],
+      apEmails: [],
     },
   });
 
@@ -89,6 +99,7 @@ const CreateCompanyDialog = () => {
         planName: data.planName,
         duration: Number(data.duration),
         adminEmails: data.adminEmails?.map((admin) => admin.text), // Extract email addresses
+        apEmails: data.apEmails?.map((ap) => ap.text), // AP recipients for invoice-lifecycle emails
       };
       return await postRequest({
         url: "/onboarding/company",
@@ -251,6 +262,13 @@ const CreateCompanyDialog = () => {
             label="Assign Admins (Multi-Select)"
             // tags={adminTags}
             helperText="Add up to 3 admins. separate each emails with a comma or enter button"
+          />
+
+          <Forger
+            name="apEmails"
+            component={TextTagInput}
+            label="Accounts Payable Email(s)"
+            helperText="Invoice emails (submitted, approved, rejected) are sent here. Separate each email with a comma or enter button."
           />
 
           <div className="flex justify-between pt-6  mt-6">
