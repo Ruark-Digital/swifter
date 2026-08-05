@@ -63,6 +63,12 @@ interface SidebarPanelProps {
   onAiUndo?: (item: AiItem) => void;
   onAiFocus?: (item: AiItem) => void;
   onAiRetry: () => void;
+  /** Bulk "resolve all pending" — applies one action/tier to every pending
+   *  suggestion in a single batch-resolve call. When omitted, no bulk bar. */
+  onAiResolveAll?: (
+    action: "modified" | "rejected",
+    tier: "low" | "medium" | "high",
+  ) => void;
   /** Turn-based negotiation gate — disables Apply/Dismiss when false. */
   isMyTurn?: boolean;
   /** Server-side progress counts (addressedCount, resolvedCount). */
@@ -114,6 +120,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   onAiUndo,
   onAiFocus,
   onAiRetry,
+  onAiResolveAll,
   isMyTurn = true,
   aiProgress,
   redlineTurnBanner,
@@ -212,6 +219,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
                 onUndo={onAiUndo}
                 onFocus={onAiFocus}
                 onRetry={onAiRetry}
+                onResolveAll={onAiResolveAll}
                 isMyTurn={isMyTurn}
                 progress={aiProgress}
               />

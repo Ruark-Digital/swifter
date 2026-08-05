@@ -55,6 +55,44 @@ export type UndoRedlineInput = {
   baseVersionId?: string | null;
 };
 
+/** One entry in a batch-resolve request (swagger: RedlineBatchResolutionRequest.resolutions[]). */
+export type RedlineBatchItem = {
+  redlineId: string;
+  action: RedlineResolutionAction;
+  /** Required by the BE when action === "modified". */
+  tier?: "low" | "medium" | "high";
+};
+
+export type RedlineBatchResolveInput = {
+  /** At least one resolution (BE enforces minItems: 1). */
+  resolutions: RedlineBatchItem[];
+  docName?: string;
+  baseVersionId?: string | null;
+  documentState?: string;
+};
+
+/** swagger: RedlineProgress. */
+export type RedlineProgress = {
+  total: number;
+  pending: number;
+  resolved: number;
+  addressed: number;
+  resolvedByManager: number;
+  resolvedByVendor: number;
+};
+
+/** swagger: RedlineBatchResolutionResult (the `data` of the 200 envelope). */
+export type RedlineBatchResolutionResult = {
+  resolutions: Array<{
+    redlineId: string;
+    action?: RedlineResolutionAction;
+    status?: "pending" | "resolved";
+    tier?: "low" | "medium" | "high";
+  }>;
+  activeVersionId: string | null;
+  progress: RedlineProgress;
+};
+
 type ApiEnvelope<T> = { status?: number; message?: string; data?: T };
 
 export type RedlineTurnScope = {
@@ -112,6 +150,28 @@ export const buildUndoPayload = (scope: {
   if (scope.docName !== undefined) payload.docName = scope.docName;
   if (scope.baseVersionId !== undefined)
     payload.baseVersionId = scope.baseVersionId;
+  return payload;
+};
+
+/**
+ * Build the batch-resolve POST body: the required `resolutions` array plus the
+ * shared version-hint fields, each included only when the caller supplied it
+ * (so `baseVersionId: null` is preserved but an omitted one is left out).
+ */
+export const buildBatchResolvePayload = (
+  resolutions: RedlineBatchItem[],
+  scope: {
+    docName?: string;
+    baseVersionId?: string | null;
+    documentState?: string;
+  },
+): Record<string, unknown> => {
+  const payload: Record<string, unknown> = { resolutions };
+  if (scope.docName !== undefined) payload.docName = scope.docName;
+  if (scope.baseVersionId !== undefined)
+    payload.baseVersionId = scope.baseVersionId;
+  if (scope.documentState !== undefined)
+    payload.documentState = scope.documentState;
   return payload;
 };
 
@@ -233,6 +293,40 @@ export function useRedlineTurn({ documentId, isMsa }: RedlineTurnScope) {
     },
   });
 
+  // Resolve every supplied redline in ONE call — backs the "resolve all
+  // pending" bulk action. A deliberate user action, so it THROWS on failure
+  // (mirrors `undo`, not the fire-and-forget single `resolve`).
+  // Endpoint: POST .../ai/redline-suggestions/batch-resolve.
+  const batchResolve = useMutation<
+    RedlineBatchResolutionResult | null,
+    unknown,
+    RedlineBatchResolveInput
+  >({
+    mutationKey: ["redline-batch-resolve", resource, documentId],
+    mutationFn: async ({ resolutions, docName, baseVersionId, documentState }) => {
+      if (!base) throw new Error("Redline turn is not available for this role.");
+      if (resolutions.length === 0) return null;
+      const payload = buildBatchResolvePayload(resolutions, {
+        docName,
+        baseVersionId,
+        documentState,
+      });
+      const res = await postRequest({
+        url: `${base}/ai/redline-suggestions/batch-resolve`,
+        payload,
+      });
+      return (res.data as ApiEnvelope<RedlineBatchResolutionResult>)?.data ?? null;
+    },
+    onError: (error, variables) => {
+      if (isVersionConflict(error) && variables?.docName) {
+        invalidate();
+        qc.invalidateQueries({
+          queryKey: ["collab-file-versions", variables.docName],
+        });
+      }
+    },
+  });
+
   const turn = query.data ?? null;
   const isParticipant = mySide !== null;
   const isFinalized = turn?.status === "finalized";
@@ -271,6 +365,7 @@ export function useRedlineTurn({ documentId, isMsa }: RedlineTurnScope) {
     finalize,
     resolve,
     undo,
+    batchResolve,
     isLoading: query.isLoading,
     refetch: query.refetch,
   };
