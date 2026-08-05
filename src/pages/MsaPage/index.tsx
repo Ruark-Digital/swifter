@@ -170,7 +170,14 @@ const MsaPage: React.FC = () => {
       value: Number.isFinite(it?.contractValue)
         ? `$${it.contractValue.toLocaleString()}`
         : undefined,
-      owner: String(it?.creator?.name ?? "-"),
+      // Owner = the assigned project manager. The vendor MSA list now returns
+      // `projectManager.name` (QA #72); the old `creator.name` field isn't on
+      // that list item, so it always rendered "-". Prefer the PM, fall back.
+      owner: String(
+        (it as { projectManager?: { name?: string } })?.projectManager?.name ??
+          it?.creator?.name ??
+          "-",
+      ),
       ownerId: it?.creator?._id ? String(it.creator._id) : undefined,
       isOwner: typeof it?.owner === "boolean" ? it.owner : undefined,
       published: it?.createdAt || undefined,
