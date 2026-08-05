@@ -24,7 +24,11 @@ import { getExchangeRate } from "@/lib/currencyUtils";
 
 type Props = {
   typeOptions: Array<{ label: string; value: string }>;
-  projectOptions: Array<{ label: string; value: string }>;
+  projectOptions: Array<{
+    label: string;
+    value: string;
+    businessDivision?: string;
+  }>;
   msaOptions: Array<{
     label: string;
     value: string;
@@ -183,6 +187,21 @@ const Step1BasicInfo: React.FC<Props> = ({
       if (msa.vendorName) setValue("vendorLabel", msa.vendorName);
     }
   }, [enableAwardedPrefill, selectedMsaId, msaOptions, setValue]);
+
+  // QA #67: linking a contract to a project auto-populates the business
+  // division (the BE project list now returns `businessDivision`). Create-mode
+  // only, so an edited contract's hydrated division isn't clobbered on mount.
+  const selectedProjectId = useWatch({ name: "project" });
+
+  React.useEffect(() => {
+    if (!enableAwardedPrefill || !selectedProjectId) return;
+    const project = projectOptions.find((opt) => opt.value === selectedProjectId);
+    if (project?.businessDivision) {
+      setValue("businessDivision", project.businessDivision, {
+        shouldValidate: true,
+      });
+    }
+  }, [enableAwardedPrefill, selectedProjectId, projectOptions, setValue]);
 
   const { data: divisionsRes, isLoading: isLoadingDivisions } = useQuery<
     Awaited<ReturnType<typeof businessDivisionApi.listDivisions>>

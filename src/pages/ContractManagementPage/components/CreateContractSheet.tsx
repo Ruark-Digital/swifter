@@ -713,7 +713,13 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
   const projectOptions = React.useMemo(
     () =>
       Array.isArray(projectsData?.data)
-        ? projectsData.data.map((p) => ({ label: p.name, value: p._id }))
+        ? projectsData.data.map((p) => ({
+            label: p.name,
+            value: p._id,
+            // Carried so Step 1 auto-fills the business division when a project
+            // is linked (QA #67). BE `Project` schema returns `businessDivision`.
+            businessDivision: p.businessDivision,
+          }))
         : [],
     [projectsData?.data],
   );

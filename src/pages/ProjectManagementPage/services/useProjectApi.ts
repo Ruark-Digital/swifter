@@ -12,6 +12,8 @@ export type ProjectApi = {
         name?: string;
         email?: string;
       };
+  /** Division `_id`; returned by the list per the BE `Project` schema. */
+  businessDivision?: string;
   name: string;
   category: string;
   description?: string;
