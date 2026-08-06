@@ -44,6 +44,14 @@ const schema = yup.object().shape({
         text: yup.string().email().required(),
       })
     ).optional(),
+  apEmails: yup
+    .array()
+    .of(
+      yup.object().shape({
+        id: yup.string().required(),
+        text: yup.string().email().required(),
+      })
+    ).optional(),
 });
 
 type EditCompanyData = yup.InferType<typeof schema>;
@@ -61,6 +69,7 @@ type Company = {
   domain?: string;
   planName?: string;
   duration?: number;
+  apEmails?: string[];
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -88,6 +97,7 @@ const EditCompanyDialog = ({
       // planName: "",
       // duration: 1,
       adminEmails: [],
+      apEmails: [],
     },
   });
 
@@ -116,6 +126,14 @@ const EditCompanyDialog = ({
           text: admin.email,
         })) || [];
       setValue("adminEmails", adminEmailTags);
+
+      // AP emails come back as plain strings on CompanyDetails — map to tag objects
+      const apEmailTags =
+        company.apEmails?.map((email, index) => ({
+          id: `${index}-${email}`,
+          text: email,
+        })) || [];
+      setValue("apEmails", apEmailTags);
     }
   }, [isOpen, company, setValue]);
 
@@ -133,6 +151,7 @@ const EditCompanyDialog = ({
         // duration: data.duration,
         currency: data.currency,
         adminEmails: data.adminEmails?.map((admin) => admin.text), // Extract email addresses
+        apEmails: data.apEmails?.map((ap) => ap.text), // AP recipients for invoice-lifecycle emails
       };
       return await putRequest({
         url: `/companies/${company._id}`,
@@ -281,6 +300,13 @@ const EditCompanyDialog = ({
           <div className="text-sm text-gray-500 dark:text-gray-400 mt-2 transition-colors duration-200">
             Add up to 3 admins.
           </div>
+
+          <Forger
+            name="apEmails"
+            component={TextTagInput}
+            label="Accounts Payable Email(s)"
+            helperText="Invoice emails (submitted, approved, rejected) are sent here. Separate each email with a comma or enter button."
+          />
 
           <div className="flex justify-between pt-6 mt-6">
             <Button

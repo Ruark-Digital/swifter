@@ -15,7 +15,7 @@ import { LabelItem } from "../components/LabelItem";
 import MsaReleaseHoldbackDialog from "../components/MsaReleaseHoldbackDialog";
 import MsaUpdateSavingsDialog from "../components/MsaUpdateSavingsDialog";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
-import { resolveCurrency } from "@/lib/utils";
+import { resolveCurrency, resolveMilestoneDeliverableName } from "@/lib/utils";
 import { useUser } from "@/store/authSlice";
 
 type PaymentSummaryProps = {
@@ -203,16 +203,34 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
     [currency],
   );
 
+  // Resolve deliverable id/object/legacy-name to a display name; never fall
+  // back to the milestone title (QA #47). Map from the MSA deliverables list
+  // when the detail carries populated {_id, name} entries.
+  const deliverableNameById = React.useMemo(
+    () =>
+      new Map<string, string>(
+        (Array.isArray((msa as any)?.deliverables)
+          ? (msa as any).deliverables
+          : []
+        )
+          .filter((d: any) => d?._id && d?.name)
+          .map((d: any) => [String(d._id), String(d.name)]),
+      ),
+    [msa],
+  );
+
   const milestoneRows = React.useMemo<PaymentMilestoneRow[]>(() => {
     const milestones = Array.isArray(msa?.milestone) ? msa.milestone : [];
     return milestones.map((item, index) => ({
       milestoneId: item?.milestoneId ?? `MIL-${index + 1}`,
       milestoneTitle: item?.name ?? "-",
-      deliverable: item?.deliverable?.name ?? item?.name ?? "-",
+      deliverable:
+        resolveMilestoneDeliverableName(item?.deliverable, deliverableNameById) ||
+        "-",
       amount: formatMoney(item?.amount),
       dueDate: formatShortDate(item?.dueDate),
     }));
-  }, [formatMoney, msa?.milestone]);
+  }, [deliverableNameById, formatMoney, msa?.milestone]);
 
   const holdbackRows = React.useMemo<HoldbackReleaseRow[]>(() => {
     const holdbacks = holdbacksResponse?.data ?? [];

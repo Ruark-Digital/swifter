@@ -74,6 +74,92 @@ const ACTIVITY_LINK_MAPPINGS: LinkMapping = {
   },
 };
 
+const LINKABLE_DASHBOARD_ACTIVITY_NAMES = new Set([
+  "approve",
+  "reject",
+  "change_reject",
+  "amendment_reject",
+  "invoice_reject",
+  "deliverable_reject",
+  "claim_reject",
+  "rejection",
+  "create",
+  "update",
+  "delete",
+  "approve_level",
+  "comment",
+  "add_comment",
+  "publish",
+  "reply_comment",
+  "upload_document",
+  "manage_contract",
+  "create_claim",
+  "create_change",
+  "create_rfi",
+  "create_invoice",
+  "create_invoice_co_required",
+  "assign_pm",
+  "approve_pm_assignment",
+  "reject_pm_assignment",
+  "create_lem",
+  "approve_lem",
+  "approve_change",
+  "approve_change_next_level",
+  "approve_rfi",
+  "approve_invoice",
+  "approve_invoice_co_required",
+  "approve_holdback",
+  "savings",
+  "approve_amendment",
+  "create_amendment",
+  "amendment_applied",
+  "amendment_msa_ceiling_exceeded",
+  "notify_no_evaluators",
+  "send_redline_turn",
+  "finalize_redline_turn",
+  "issue_rfi",
+  "reply_rfi",
+  "issue_ncr",
+  "issue_ncr_capa",
+  "respond_ncr",
+  "respond_ncr_capa",
+  "approve_ncr_capa",
+  "close_ncr",
+  "release_holdback",
+  "submit_deliverable",
+  "approve_deliverable",
+  "submit_kpi",
+  "submit_report",
+  "new_ratesheet",
+  "approve_ratesheet",
+  "update_ratesheet",
+  "submit_compliance",
+  "update_policy",
+  "approve_policy",
+  "update_security_compliance",
+  "approve_security_compliance",
+  "approve_compliance",
+  "update_compliance",
+  "approve_claim",
+  "amendment_cost_change",
+  "amendment_acceptance",
+  "amendment_acceptance_update",
+  "edit_change",
+  "create_approver",
+  "create_holdback_invoice",
+  "reopen_invoice_approval",
+  "amendment_assign_approver",
+  "completed",
+  "terminated",
+  "suspended",
+  "new_lem",
+  "project_created",
+  "project_updated",
+  "project_eac_updated",
+  "business_division_created",
+  "business_division_updated",
+]);
+
 /**
  * Generate dynamic link based on user role, activity type, and action
  * @param userRole - The user's role (procurement, evaluator, vendor)
@@ -2384,26 +2470,40 @@ export class DashboardDataTransformer {
     return data.map((item: any, index: number) => {
       const statusText: string = item?.statusText ?? "";
       const actionText: string = item?.actionText ?? "";
-      // Dashboard action logs use `detailRef`, while older general-update
-      // payloads use `contractRef`. Support both so every contract activity
-      // can link back to its detail page.
-      const contractRef =
-        item?.contractRef ??
-        item?.detailRef ??
-        item?.contractId ??
-        item?.entityId ??
-        "";
-      const contractDef = String(item?.contractDef ?? item?.type ?? "Contract");
-      const isMSA = /msa/i.test(contractDef);
-      const detailBase = isMSA ? "/dashboard/msa" : "/dashboard/contract-management";
+      const activityName = String(item?.name ?? item?.action ?? "");
+      // Activity kind. Projects carry type/entityType "Project"; contracts/MSAs
+      // carry contractDef.
+      const kind = String(
+        item?.contractDef ?? item?.type ?? item?.entityType ?? "Contract",
+      );
+      const isProject = /project/i.test(kind);
+      const isMSA = !isProject && /msa/i.test(kind);
+      // Detail pages load by Mongo _id — NEVER the human code (contractId /
+      // entityId), which 404s (QA #85: the project code "PJTMC7918" was sent to
+      // /contract/manager/contracts/PJTMC7918). Fall back only through _id refs:
+      // `contractRef`/`detailRef` for contracts & MSAs (action-log uses
+      // detailRef), `entityRef` for projects.
+      const contractRef = isProject
+        ? "" // project list route takes no id (there is no project detail route)
+        : (item?.contractRef ?? item?.detailRef ?? item?.entityRef ?? "");
+      const detailBase = isProject
+        ? "/dashboard/project-management"
+        : isMSA
+          ? "/dashboard/msa"
+          : "/dashboard/contract-management";
       const dateValue = item?.date ?? item?.createdAt;
       // Deep-link to the specific tab (contract detail only; the MSA page tabs differ).
-      const deepLinkTab = !isMSA
-        ? DETAIL_TYPE_TO_TAB[String(item?.detailType ?? item?.type ?? "")]
-        : undefined;
-      const contractUrl = contractRef
-        ? `${detailBase}/${contractRef}${deepLinkTab ? `?tab=${deepLinkTab}` : ""}`
-        : "";
+      const deepLinkTab =
+        !isMSA && !isProject
+          ? DETAIL_TYPE_TO_TAB[String(item?.detailType ?? item?.type ?? "")]
+          : undefined;
+      // Projects open via a slideover on the list (no ":id" detail route), so
+      // link to the list to avoid the 404 (QA #85).
+      const contractUrl = isProject
+        ? "/dashboard/project-management"
+        : contractRef
+          ? `${detailBase}/${contractRef}${deepLinkTab ? `?tab=${deepLinkTab}` : ""}`
+          : "";
       const linkClass = "underline underline-offset-4 text-blue-600";
 
       // Action-log shape (260528): { actionText, statusText, action, detailRef, detailType, ... }.
@@ -2433,6 +2533,8 @@ export class DashboardDataTransformer {
               quotedTitleMatch[0],
               `"<a href="${contractUrl}" class="${linkClass}">${contractTitle}</a>"`,
             )
+          : contractUrl && LINKABLE_DASHBOARD_ACTIVITY_NAMES.has(activityName)
+            ? `<a href="${contractUrl}" class="${linkClass}">${statusText}</a>`
           : statusText;
 
         return {

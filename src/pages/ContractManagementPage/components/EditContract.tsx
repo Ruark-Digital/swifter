@@ -403,21 +403,38 @@ const EditContract: React.FC<Props> = ({
         name: d.name,
         dueDate: d.dueDate ? new Date(d.dueDate) : undefined,
       })) ?? [];
+    // Do NOT auto-pick the first deliverable. "Select Deliverable" is an
+    // optional field for non-milestone payment structures and must stay empty
+    // unless the user actually chose one (QA #66). It isn't persisted, so
+    // hydrate from a saved value if one ever appears, otherwise empty.
     const selectedDeliverable =
-      deliverables.find((d) => Boolean(d.name))?.name ?? "";
+      typeof (contract as { selectedDeliverable?: unknown })
+        ?.selectedDeliverable === "string"
+        ? (contract as { selectedDeliverable?: string }).selectedDeliverable ?? ""
+        : "";
+
+    // The milestone deliverable dropdown is keyed by deliverable NAME, but the
+    // backend now returns `milestone[].deliverable` as the deliverable's _id
+    // (ObjectId string). Build an id -> name lookup so a saved link resolves to
+    // an existing option on re-edit instead of rendering blank (QA #48).
+    const deliverableNameById = new Map<string, string>(
+      (contract.deliverables ?? [])
+        .filter((d: any) => d?._id && d?.name)
+        .map((d: any) => [String(d._id), String(d.name)]),
+    );
 
     const milestones =
       (contract.milestone ?? []).map((m: any) => {
-        // Backend persists the milestone deliverable as
-        // `{ name, dueDate }`, but the form's TextSelect expects a
-        // plain string (the deliverable's name) — same shape Create
-        // emits. Without this unwrap the dropdown rendered blank and
-        // on save `typeof m.deliverable === "string"` was false, so
-        // the deliverable silently dropped out of the payload.
+        // `milestone.deliverable` may arrive as the deliverable's _id (current
+        // shape), a plain name string (legacy), or a { name } object. Resolve
+        // all three to the deliverable name the TextSelect expects; unknown ids
+        // fall back to the raw value. Without this the dropdown rendered blank
+        // and, on save, `typeof m.deliverable === "string"` mishandled it so the
+        // deliverable silently dropped out of the payload.
         const rawDeliverable = m?.deliverable;
         const deliverable =
           typeof rawDeliverable === "string"
-            ? rawDeliverable
+            ? (deliverableNameById.get(rawDeliverable) ?? rawDeliverable)
             : (rawDeliverable?.name ?? "");
         return {
           name: m?.name ?? m?.milestoneName ?? "",

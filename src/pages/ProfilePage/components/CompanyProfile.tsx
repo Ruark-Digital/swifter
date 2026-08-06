@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { getRequest, putRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { Forge, Forger, useForge } from "@adexdsamson/forge";
-import { TextInput } from "@/components/layouts/FormInputs/TextInput";
+import { TextInput, TextTagInput } from "@/components/layouts/FormInputs/TextInput";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/store/authSlice";
@@ -50,6 +50,7 @@ interface CompanyDetail {
   website?: string;
   currency?: string;
   logo?: string;
+  apEmails?: string[];
 }
 
 type FormValues = {
@@ -61,6 +62,7 @@ type FormValues = {
   location: string;
   website: string;
   currency: string;
+  apEmails?: { id: string; text: string }[];
 }
 
 const CURRENCY_OPTIONS = [
@@ -175,6 +177,17 @@ const CompanyProfile: React.FC = () => {
       Object.entries(payload).forEach(([key, value]) => {
         setValue(key as keyof FormValues, value)
       })
+
+      // AP emails live on the company doc. GET /companies/me is spec-opaque, so
+      // guard: only pre-fill when the field is actually returned. If it isn't,
+      // leave the field empty AND rely on handleSubmit omitting empty apEmails
+      // from the PUT so an unrelated save never clobbers existing AP emails.
+      const apEmailTags =
+        _company?.apEmails?.map((email, index) => ({
+          id: `${index}-${email}`,
+          text: email,
+        })) || [];
+      setValue("apEmails", apEmailTags);
     }
   }, [isSuccess, companyData, companyDetail, setValue]);
 
@@ -197,6 +210,18 @@ const CompanyProfile: React.FC = () => {
         }
       }
       
+      // AP emails: TagInput yields {id,text} objects; PUT /users/company expects
+      // string[]. Convert, and OMIT when empty so an unrelated save never wipes
+      // AP emails that a super-admin may have set (GET /companies/me read-back is
+      // not spec-guaranteed, so the field may not have pre-filled).
+      if (Array.isArray(data.apEmails)) {
+        const apList = data.apEmails
+          .map((t: { text: string }) => t.text)
+          .filter(Boolean);
+        if (apList.length > 0) data.apEmails = apList;
+        else delete data.apEmails;
+      }
+
       await updateCompanyProfile(data);
     } catch (error) {
       // Error handling is done in the mutation's onError callback
@@ -339,6 +364,15 @@ const CompanyProfile: React.FC = () => {
           label="Default Currency"
           placeholder="Select currency"
           options={CURRENCY_OPTIONS}
+          containerClass="space-y-2"
+        />
+
+        {/* Accounts Payable Emails */}
+        <Forger
+          component={TextTagInput}
+          name="apEmails"
+          label="Accounts Payable Email(s)"
+          helperText="Invoice emails (submitted, approved, rejected) are sent here. Separate each email with a comma or enter button."
           containerClass="space-y-2"
         />
 

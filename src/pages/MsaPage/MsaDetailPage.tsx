@@ -123,6 +123,10 @@ const ROLE_TAB_WHITELIST: Record<
     // "approvers" intentionally omitted — approvers can't see the Approvers tab
     "reports",
     "payment-summary",
+    // Approvers get a read/approve view of rate sheets (QA #35). BE exposes
+    // /approver/msa-contracts/{id}/ratesheets and RateSheetsTabContent
+    // resolves the approver base path for the msa-contracts segment.
+    "rate-sheets",
   ],
   vendor: [
     "overview",
@@ -459,6 +463,11 @@ const MsaDetailPage: React.FC = () => {
 
   const msa = msaResponse?.data?.data as MSAContractDetail | undefined;
   const user = useUser();
+
+  // Use the MSA's formation currency; fall back to the viewer's company/profile
+  // currency when the detail response omits it, so approver/vendor views show
+  // the right currency instead of a hardcoded USD (QA #59a).
+  const displayCurrency = resolveCurrency(msa?.currency, user?.currency);
 
   const canFetchLinkedContracts = (isManager || isCompanyAdmin) && Boolean(id);
   const linkedContractsQueryKey = useUserQueryKey(["msa-linked-contract", id]);
@@ -909,7 +918,7 @@ const MsaDetailPage: React.FC = () => {
 
             <Amendments
               contractId={id ?? ""}
-              currency={msa?.currency}
+              currency={displayCurrency}
               isActive={activeTab === "amendments"}
               actionsDisabled={msaAmendmentActionsDisabled}
             />
@@ -923,21 +932,21 @@ const MsaDetailPage: React.FC = () => {
 
             <ChangeManagement
               contractId={id ?? ""}
-              currency={msa?.currency}
+              currency={displayCurrency}
               isActive={activeTab === "change"}
               actionsDisabled={tabActionsDisabled}
             />
 
             <Invoice
               contractId={id ?? ""}
-              currency={msa?.currency}
+              currency={displayCurrency}
               isActive={activeTab === "invoice"}
               actionsDisabled={tabActionsDisabled}
             />
 
             <Claims
               contractId={id ?? ""}
-              currency={msa?.currency}
+              currency={displayCurrency}
               isActive={activeTab === "claims"}
               actionsDisabled={tabActionsDisabled}
             />
@@ -962,7 +971,7 @@ const MsaDetailPage: React.FC = () => {
 
             <Lem
               contractId={id ?? ""}
-              currency={msa?.currency}
+              currency={displayCurrency}
               isActive={activeTab === "lem"}
               actionsDisabled={publishGatedActionsDisabled}
             />
@@ -994,7 +1003,7 @@ const MsaDetailPage: React.FC = () => {
 
             <RateSheetsTabContent
               contractId={id ?? ""}
-              currency={msa?.currency}
+              currency={displayCurrency}
               contractType="MsaContract"
               isActive={activeTab === "rate-sheets"}
               actionsDisabled={publishGatedActionsDisabled}
@@ -1003,7 +1012,7 @@ const MsaDetailPage: React.FC = () => {
             <ClauseLibraryTabContent
               contractType="MsaContract"
               isActive={activeTab === "clause-library"}
-              currency={msa?.currency}
+              currency={displayCurrency}
               vendorName={(msa?.vendor as any)?.name}
             />
 

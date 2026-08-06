@@ -234,6 +234,25 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   const responderId = getResponderId(rfiDetail) ?? getResponderId(rfi);
   const isAssignedResponder =
     Boolean(currentUser?._id) && responderId === currentUser?._id;
+
+  // RFI response is now embedded on the detail DTO (QA #52), so the issuer
+  // (Vendor PM) sees it via their own role's detail fetch — no separate,
+  // role-gated /response call. `isCurrentResponder`/`hasResponse` are
+  // BE-authoritative; fall back to the legacy `isResponse` flag + client-side
+  // responder check for older payloads.
+  const rfiResponse = (rfiDetail?.response ?? null) as {
+    description?: string;
+    files?: Array<{ name?: string; url?: string; type?: string; size?: string | number }>;
+  } | null;
+  const hasResponse = Boolean(
+    rfiDetail?.hasResponse ??
+      (rfiDetailRes?.data as any)?.isResponse ??
+      rfiResponse,
+  );
+  const canRespond =
+    typeof rfiDetail?.isCurrentResponder === "boolean"
+      ? rfiDetail.isCurrentResponder
+      : !hasResponse && isAssignedResponder;
   const rfiTitle = rfiDetail?.title ?? rfi?.title ?? "-";
   const rfiDescription = rfiDetail?.description ?? rfi?.description ?? "-";
   const rfiStatus = rfi?.status ?? "-";
@@ -446,9 +465,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                 </TabsTrigger>
 
                 {(() => {
-                  const detailAny = rfiDetailRes as any;
-                  const isResponse = detailAny?.data?.isResponse ?? false;
-                  return isResponse ? (
+                  return hasResponse ? (
                     <TabsTrigger
                       value="response"
                       className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
@@ -547,6 +564,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                   rfiId={rfiId}
                   contractId={contractId}
                   isApprover={isApprover}
+                  response={rfiResponse}
                 />
               </TabsContent>
 
@@ -629,7 +647,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
             </Tabs>
           </div>
 
-          {!((rfiDetailRes?.data as any)?.isResponse ?? false) && isAssignedResponder && (
+          {canRespond && (
             <SheetFooter>
               <div className="flex w-full gap-3 pt-2">
                 <Button variant="outline" className="flex-1 h-12 rounded-xl">
@@ -668,7 +686,15 @@ const RfiResponseContent: React.FC<{
   rfiId: string;
   contractId: string;
   isApprover: boolean;
-}> = ({ rfiId, contractId, isApprover }) => {
+  /** Response embedded on the RFI detail DTO (QA #52). When present it is used
+   *  directly — role-agnostic, so the issuer (Vendor PM) sees it too. The
+   *  dedicated fetch below only exists for approver/manager and is a fallback
+   *  for older payloads. */
+  response?: {
+    description?: string;
+    files?: Array<{ name?: string; url?: string; type?: string; size?: string | number }>;
+  } | null;
+}> = ({ rfiId, contractId, isApprover, response }) => {
   const { data: respRes } = useQuery({
     queryKey: useUserQueryKey([
       isApprover ? "approver" : "contractManager",
@@ -680,13 +706,16 @@ const RfiResponseContent: React.FC<{
       isApprover
         ? await approverApi.getRfiResponse(contractId, rfiId)
         : await contractManagerApi.getRfiResponse(contractId, rfiId),
-    enabled: Boolean(rfiId),
+    // Only fetch when the detail didn't already embed the response, so we don't
+    // fire a role-gated call that 403s for the issuer (Vendor PM).
+    enabled: Boolean(rfiId) && !response,
     staleTime: 60000,
   });
 
-  const resp = Array.isArray(respRes?.data)
+  const fetched = Array.isArray(respRes?.data)
     ? (respRes.data[0] ?? {})
     : (respRes?.data ?? {});
+  const resp = response ?? fetched;
   const description = resp?.description ?? "-";
   const files = (resp?.files ?? []) as Array<{
     name?: string;

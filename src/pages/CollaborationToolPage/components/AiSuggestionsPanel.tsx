@@ -33,6 +33,12 @@ interface AiSuggestionsPanelProps {
   /** Revert a previously-resolved (approved/dismissed) suggestion back to
    *  pending. When omitted, no Undo control is rendered. */
   onUndo?: (item: Item) => void;
+  /** Bulk "resolve all pending" — one action/tier applied to every pending
+   *  suggestion in a single call. When omitted, the bulk bar is not rendered. */
+  onResolveAll?: (
+    action: "modified" | "rejected",
+    tier: AlternativeTier,
+  ) => void;
   /** Click a card body to scroll/select the redline in the editor. */
   onFocus?: (item: Item) => void;
   onRetry: () => void;
@@ -407,10 +413,12 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
   onUndo,
   onFocus,
   onRetry,
+  onResolveAll,
   variant = "overlay",
   isMyTurn = true,
   progress,
 }) => {
+  const [bulkTier, setBulkTier] = useState<AlternativeTier>("medium");
   if (!open) return null;
 
   const remaining = items.filter((i) => i.state === "pending").length;
@@ -534,9 +542,8 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
             <div className="font-semibold text-slate-900 dark:text-slate-100">No redlines to polish</div>
             <div className="mt-1">
               This document doesn&apos;t contain any insertion or deletion
-              redlines yet. Use the <span className="font-semibold">+</span> /{" "}
-              <span className="font-semibold">−</span> buttons on the editor
-              toolbar to mark redlines, then come back here.
+              redlines yet. Use the editor&apos;s <span className="font-semibold">Document mode</span>{" "}
+              control to switch to suggesting mode, then make your changes.
             </div>
             <button
               type="button"
@@ -558,6 +565,70 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
             >
               <RotateCw className="h-3 w-3" /> Try again
             </button>
+          </div>
+        )}
+
+        {status === "ready" && onResolveAll && remaining > 0 && (
+          <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-800/60">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Resolve all {remaining}
+            </span>
+            <div className="flex gap-1 rounded-md bg-white p-0.5 dark:bg-slate-900">
+              {TIER_ORDER.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  title={TIER_HINT[t]}
+                  onClick={() => setBulkTier(t)}
+                  className={cn(
+                    "rounded px-2 py-0.5 text-[11px] font-semibold transition-colors",
+                    t === bulkTier
+                      ? "bg-indigo-600 text-white"
+                      : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
+                  )}
+                >
+                  {TIER_LABEL[t]}
+                </button>
+              ))}
+            </div>
+            <div className="ml-auto flex gap-2">
+              <button
+                type="button"
+                disabled={!isMyTurn}
+                onClick={() => onResolveAll("rejected", bulkTier)}
+                title={
+                  isMyTurn
+                    ? "Dismiss every pending suggestion"
+                    : "Waiting for your turn"
+                }
+                className={cn(
+                  "rounded-md border px-2 py-1 text-[11px] font-semibold",
+                  isMyTurn
+                    ? "border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                    : "cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-800 dark:text-slate-500",
+                )}
+              >
+                Dismiss all
+              </button>
+              <button
+                type="button"
+                disabled={!isMyTurn}
+                onClick={() => onResolveAll("modified", bulkTier)}
+                title={
+                  isMyTurn
+                    ? `Apply the ${TIER_LABEL[bulkTier].toLowerCase()} replacement to every pending suggestion`
+                    : "Waiting for your turn"
+                }
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-white",
+                  isMyTurn
+                    ? "bg-indigo-600 hover:bg-indigo-700"
+                    : "cursor-not-allowed bg-slate-300 dark:bg-slate-700",
+                )}
+              >
+                <Check className="h-3 w-3" /> Apply all
+              </button>
+            </div>
           </div>
         )}
 

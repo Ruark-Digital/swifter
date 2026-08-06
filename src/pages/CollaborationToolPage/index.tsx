@@ -34,7 +34,11 @@ import {
   type AiRedlineSuggestion,
   type SuggestionProgress,
 } from "./collab/useAiRedlineSuggestions";
-import { useRedlineTurn, isVersionConflict } from "./collab/useRedlineTurn";
+import {
+  useRedlineTurn,
+  isVersionConflict,
+  type RedlineBatchItem,
+} from "./collab/useRedlineTurn";
 import TurnBanner from "./components/TurnBanner";
 import type { ApiResponseError } from "@/types";
 import type { Version } from "./components/VersionHistoryModal";
@@ -548,7 +552,7 @@ const CollaborationToolPage: React.FC = () => {
           redline: {
             redlineId: s.redlineId,
             kind: "insertion" as const,
-            text: "",
+            text: s.sourceText ?? "",
           },
           suggestion: s,
           state: resolutionToState(s.resolution?.action),
@@ -713,6 +717,106 @@ const CollaborationToolPage: React.FC = () => {
       );
     },
     [docName, fileVersionsQuery.data?.activeVersionId, redlineTurn, toastHandler],
+  );
+
+  // Bulk "resolve all pending": apply one action/tier to every pending
+  // suggestion, then record them in a SINGLE batch-resolve call (vs one audit
+  // POST per card). For "modified" we apply each item's chosen-tier replacement
+  // to the document first (mirroring handleApproveAi), then batch-record.
+  const handleResolveAllAi = useCallback(
+    (action: "modified" | "rejected", tier: "low" | "medium" | "high" = "medium") => {
+      const adapter = editorAdapterRef.current;
+      if (redlineTurn.isLocked) {
+        toastHandler.error(
+          "Redline",
+          redlineTurn.isParticipant
+            ? "It's not your turn — wait for the other side to hand the document back."
+            : "Only the contract manager and vendor can modify redlines.",
+        );
+        return;
+      }
+      const pending = aiItems.filter((i) => i.state === "pending");
+      if (pending.length === 0) return;
+
+      const resolutions: RedlineBatchItem[] = [];
+      if (action === "modified") {
+        for (const item of pending) {
+          const alt = item.suggestion?.alternativeLanguage;
+          const replacement =
+            alt?.[tier] ??
+            alt?.medium ??
+            alt?.low ??
+            alt?.high ??
+            item.suggestion?.replacementText;
+          if (adapter && typeof replacement === "string" && replacement.length > 0) {
+            adapter.replaceRedline(item.redline.redlineId, replacement);
+            resolutions.push({
+              redlineId: item.redline.redlineId,
+              action: "modified",
+              tier,
+            });
+          }
+        }
+        if (resolutions.length > 0) {
+          saveVersionSnapshot(
+            `Applied ${resolutions.length} AI suggestions (${tier})`,
+            "ai-apply",
+          );
+        }
+      } else {
+        for (const item of pending) {
+          resolutions.push({ redlineId: item.redline.redlineId, action: "rejected" });
+        }
+      }
+      if (resolutions.length === 0) return;
+
+      const resolvedIds = new Set(resolutions.map((r) => r.redlineId));
+      const nextState: AiItem["state"] =
+        action === "modified" ? "approved" : "dismissed";
+      redlineTurn.batchResolve.mutate(
+        {
+          resolutions,
+          docName,
+          baseVersionId: fileVersionsQuery.data?.activeVersionId ?? null,
+        },
+        {
+          onSuccess: () => {
+            setAiItems((prev) =>
+              prev.map((p) =>
+                resolvedIds.has(p.redline.redlineId)
+                  ? { ...p, state: nextState }
+                  : p,
+              ),
+            );
+            // Refresh persisted resolutions + progress counts.
+            persistedQuery.refetch();
+            toastHandler.success(
+              "Redline",
+              `Resolved ${resolutions.length} suggestion${
+                resolutions.length === 1 ? "" : "s"
+              }.`,
+            );
+          },
+          onError: (error) => {
+            toastHandler.error(
+              "Redline",
+              isVersionConflict(error)
+                ? "This document changed since you loaded it. Reload the latest version, then try again."
+                : (error as ApiResponseError),
+            );
+          },
+        },
+      );
+    },
+    [
+      aiItems,
+      redlineTurn,
+      docName,
+      fileVersionsQuery.data?.activeVersionId,
+      saveVersionSnapshot,
+      toastHandler,
+      persistedQuery,
+    ],
   );
 
   // Clicking a suggestion card scrolls the editor to that redline.
@@ -937,6 +1041,7 @@ const CollaborationToolPage: React.FC = () => {
           onAiApprove={handleApproveAi}
           onAiDismiss={handleDismissAi}
           onAiUndo={handleUndoAi}
+          onAiResolveAll={handleResolveAllAi}
           onAiFocus={handleFocusAi}
           onAiRetry={runAiSuggestions}
           isMyTurn={redlineTurn.canAct}

@@ -350,9 +350,9 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
     },
     onSuccess: async (res) => {
       toastHandler.success(
-        "NCR CAPA",
+        "NCR Corrective Action and Preventive Action",
         (res as ApiResponse<{ message?: string }>)?.data?.message ??
-          "CAPA approved successfully",
+          "Corrective Action and Preventive Action approved successfully",
       );
       queryClient.invalidateQueries({
         queryKey: ["contractNcrs", "detail", contractId, ncrId, basePath],
@@ -360,7 +360,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
       invalidateNcrQueries();
     },
     onError: (error: ApiResponseError) => {
-      toastHandler.error("NCR CAPA", error);
+      toastHandler.error("NCR Corrective Action and Preventive Action", error);
     },
   });
 
@@ -645,7 +645,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                 statsInvalidateQueryKey={statsInvalidateQueryKey}
                 trigger={
                   <Button className="flex-1 h-12 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]">
-                    Submit CAPA
+                    Submit Corrective Action and Preventive Action
                   </Button>
                 }
               />
@@ -668,7 +668,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                 onClick={() => approveCapaMutation.mutate()}
                 disabled={isRespondActionPending}
               >
-                Approve CAPA
+                Approve Corrective Action and Preventive Action
               </Button>
             </div>
           ) : null}

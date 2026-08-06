@@ -69,6 +69,7 @@ type CompanyDetails = {
   maxUsers?: number;
   admins: CompanyAdmin[];
   domain?: string;
+  apEmails?: string[];
   subscription?: {
     _id: string;
     companyId: string;
