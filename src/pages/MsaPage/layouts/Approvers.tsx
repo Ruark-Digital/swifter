@@ -298,7 +298,7 @@ const ApproverDetailsSheet = ({
             <div className="grid gap-6 sm:grid-cols-2">
               <LabelRow
                 label="Approver Name"
-                value={detail?.approver?.name ?? row.name || "N/A"}
+                value={(detail?.approver?.name ?? row.name) || "N/A"}
               />
               <LabelRow
                 label="Contact"
