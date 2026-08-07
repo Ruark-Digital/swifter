@@ -38,29 +38,38 @@ type ApproverRow = {
 };
 
 // Shape returned by GET /{role}/msa-contracts/{contractId}/approvers/{approverId}.
-// Only the fields the sheet renders are typed; the rest is intentionally loose.
+// Mirrors components.MsaContractApproverDetails from the bug-api swagger (v2.3.0).
 type MsaApproverDetail = {
   approver?: { _id?: string; name?: string | null; email?: string | null };
   submissionDate?: string;
   assignedApproval?: { completed?: number; total?: number };
-  status?: string;
-  models?: Record<
-    string,
-    { status?: string; comment?: string | null; actionedAt?: string | null }
+  // BE detail status is the coarse approver-level status.
+  status?: "pending" | "completed";
+  models?: Partial<
+    Record<
+      "project" | "change" | "claim" | "invoice" | "lem" | "amendment",
+      { status?: string; comment?: string | null; actionedAt?: string | null }
+    >
   >;
-  items?: Record<string, Array<{
-    refId?: string;
-    refType?: string;
-    refCode?: string | null;
-    title?: string;
-    status?: string;
-    comment?: string | null;
-    actionedAt?: string | null;
-    level?: number | null;
-    group?: string | null;
-    amount?: number | null;
-    completedAt?: string | null;
-  }>>;
+  // BE items keys are plural: project, changes, claims, invoices, lems, amendments.
+  items?: Partial<
+    Record<
+      "project" | "changes" | "claims" | "invoices" | "lems" | "amendments",
+      Array<{
+        refId?: string;
+        refType?: "contract" | "change" | "claim" | "invoice" | "lem" | "amendment";
+        refCode?: string | null;
+        title?: string;
+        status?: "pending" | "approved" | "rejected";
+        comment?: string | null;
+        actionedAt?: string | null;
+        level?: number | null;
+        group?: string | null;
+        amount?: number | null;
+        completedAt?: string | null;
+      }>
+    >
+  >;
 };
 
 const LabelRow = ({
@@ -284,10 +293,10 @@ const ApproverDetailsSheet = ({
               <span
                 className={cn(
                   "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
-                  getStatusClass(detail?.status ?? row.status),
+                  getStatusClass(row.status ?? detail?.status),
                 )}
               >
-                {detail?.status ?? row.status}
+                {row.status ?? detail?.status}
               </span>
             </div>
             {detailLoading && (

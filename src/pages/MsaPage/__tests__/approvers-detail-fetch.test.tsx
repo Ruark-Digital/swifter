@@ -62,7 +62,7 @@ const detailResponse = {
       approver: { _id: APPROVER_ID, name: "Detail Name", email: "detail@example.com" },
       submissionDate: "2026-07-30T12:00:00.000Z",
       assignedApproval: { completed: 2, total: 3 },
-      status: "Partially Approved",
+      status: "pending",
       items: {
         changes: [
           {
@@ -132,5 +132,12 @@ describe("MSA Approvers tab — detail sheet fetch", () => {
     // Per-type approval item title + status badge.
     expect(await screen.findByText("Scope Adjustment")).toBeInTheDocument();
     expect(await screen.findByText("approved")).toBeInTheDocument();
+
+    // Row list status ("Pending", richer) must win over the detail's coarser
+    // status ("pending") so opening the sheet doesn't downgrade the badge.
+    expect(screen.queryByText("pending")).not.toBeInTheDocument();
+    // "Pending" should still be present (rendered in both the table row and the
+    // sheet badge after the fix flips precedence to the richer row status).
+    expect(screen.getAllByText("Pending").length).toBeGreaterThan(0);
   });
 });
