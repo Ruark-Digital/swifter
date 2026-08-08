@@ -339,6 +339,31 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     [changeLock, toast],
   );
 
+  // #76 (edit path) — gate opening the edit dialog behind an exclusive "edit"
+  // lock. Only one edit dialog renders at a time (pending/rejected vs draft
+  // CO), so a single controlled-open flag covers both. Vetoes the open on a
+  // 409; fail-open otherwise (the acquire itself never rejects).
+  const [editOpen, setEditOpen] = React.useState(false);
+  const handleEditOpenChange = React.useCallback(
+    async (next: boolean) => {
+      if (next) {
+        const res = await changeLock.acquire("edit");
+        if (!res.ok && res.conflict) {
+          toast.error(
+            "Change locked",
+            `This change is currently being edited by ${res.holder ?? "another user"}. Please try again shortly.`,
+          );
+          return;
+        }
+        setEditOpen(true);
+      } else {
+        setEditOpen(false);
+        changeLock.release();
+      }
+    },
+    [changeLock, toast],
+  );
+
   const { mutate: mutateApproval, isPending: isApproving } = useMutation({
     mutationKey: ["approveChange", roleBasePath, contractId, changeId],
     mutationFn: async ({
@@ -737,6 +762,8 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                       mode="edit"
                       isResubmit={status?.toLowerCase?.() === "rejected"}
                       changeId={changeId}
+                      open={editOpen}
+                      onOpenChange={handleEditOpenChange}
                       initialChange={{
                         title,
                         type: changeType,
@@ -808,6 +835,8 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     isManager={false}
                     mode="edit"
                     changeId={changeId}
+                    open={editOpen}
+                    onOpenChange={handleEditOpenChange}
                     initialChange={{
                       title,
                       type: changeType,
