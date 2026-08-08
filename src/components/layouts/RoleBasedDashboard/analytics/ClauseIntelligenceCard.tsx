@@ -14,14 +14,21 @@ import {
 
 type Props = {
   data?: {
+    // Live BE ships a chart-series object (`mostNegotiated`); the legacy
+    // `mostNegotiatedClauses` array is still accepted for older role-paths.
+    mostNegotiated?: { labels?: string[]; data?: number[]; max?: number };
     mostNegotiatedClauses?: Array<{ category: string; count: number }>;
     // BE field is `highRiskClauses` (title-keyed); kept `highRiskClauseTypes`
     // accepted too in case an older role-path still sends the legacy shape.
+    // Live BE keys are `risk`/`contractCount`; `severity`/`contracts` are the
+    // legacy names — both are read below.
     highRiskClauses?: Array<{
       title?: string;
       category?: string;
-      contracts: number;
-      severity: string;
+      contracts?: number;
+      contractCount?: number;
+      severity?: string;
+      risk?: string;
       averageDeviation?: number;
     }>;
     highRiskClauseTypes?: Array<{ category: string; contracts: number; severity: string }>;
@@ -35,9 +42,17 @@ export const ClauseIntelligenceCard: React.FC<Props> = ({
   selectedRange = "ytd",
   onRangeChange,
 }) => {
-  const mostNegotiated = Array.isArray(data?.mostNegotiatedClauses)
-    ? data.mostNegotiatedClauses
-    : [];
+  // Live BE shape: `mostNegotiated: { labels, data, max }`. Fall back to the
+  // legacy `mostNegotiatedClauses: [{ category, count }]` array.
+  const mostNegotiated =
+    Array.isArray(data?.mostNegotiated?.labels)
+      ? (data!.mostNegotiated!.labels || []).map((label, i) => ({
+          category: label,
+          count: data!.mostNegotiated!.data?.[i] ?? 0,
+        }))
+      : Array.isArray(data?.mostNegotiatedClauses)
+      ? data.mostNegotiatedClauses
+      : [];
 
   const max = Math.max(1, ...mostNegotiated.map((m) => m.count ?? 0));
   const radarData = mostNegotiated.map((m) => ({
@@ -52,17 +67,20 @@ export const ClauseIntelligenceCard: React.FC<Props> = ({
 
   const highRisk = Array.isArray(highRiskSource)
     ? highRiskSource.map((h) => ({
-      category: h.category || (h as { title?: string }).title || "",
-      contracts: h.contracts,
-      severity: h.severity ?? "",
-      averageDeviation: (h as { averageDeviation?: number }).averageDeviation,
-    }))
+        category: h.category || (h as { title?: string }).title || "",
+        // Live BE key is `contractCount`; `contracts` is the legacy name.
+        contracts:
+          h.contracts ?? (h as { contractCount?: number }).contractCount,
+        // Live BE key is `risk`; `severity` is the legacy name.
+        severity: h.severity ?? (h as { risk?: string }).risk ?? "",
+        averageDeviation: (h as { averageDeviation?: number }).averageDeviation,
+      }))
     : [];
 
   // Tailwind classes (not inline styles) so dark variants can override
   // the light tint. Inline `style` wins over `dark:bg-*` due to CSS
   // specificity, so we use class-only tints here.
-  const tintForSeverity = (severity: string | undefined) => {
+  const tintForSeverity = (severity?: string) => {
     const s = (severity ?? "").toLowerCase();
     if (s === "high" || s === "critical") return "bg-red-50 dark:bg-red-900/30";
     if (s === "medium" || s === "warning") return "bg-amber-50 dark:bg-amber-900/30";
