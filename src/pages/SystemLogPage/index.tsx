@@ -7,18 +7,25 @@ import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { formatDateTZ } from "@/lib/utils";
 
-// System log entry type definition based on API response
+// System log entry type definition based on the real API response.
+// SYSTEM-actor rows (login, upload, …) carry no `performedBy`; and the BE
+// describes the target via companyId / targetModule / targetType rather than a
+// single `targetAffected` object — so every entity field here is optional.
 type SystemLogEntry = {
   _id: string;
   actionType: string;
-  performedBy: {
+  actorType?: string;
+  performedBy?: {
     _id: string;
     name: string;
   };
-  targetAffected: {
+  companyId?: {
     _id: string;
     name: string;
   };
+  targetModule?: string;
+  targetType?: string;
+  targetId?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -151,7 +158,8 @@ const SystemLogPage = () => {
       header: "Performed By",
       cell: ({ row }) => (
         <span className="text-sm text-gray-700 dark:text-gray-300">
-          {row.original.performedBy.name}
+          {/* SYSTEM-actor events (login, upload, …) have no performedBy. */}
+          {row.original.performedBy?.name ?? "System"}
         </span>
       ),
     },
@@ -160,7 +168,12 @@ const SystemLogPage = () => {
       header: "Target/Affected",
       cell: ({ row }) => (
         <span className="text-sm text-gray-700 dark:text-gray-300">
-          {row.original.targetAffected.name}
+          {/* The BE has no `targetAffected` — surface the affected company,
+              falling back to the target type/module. */}
+          {row.original.companyId?.name ??
+            row.original.targetType ??
+            row.original.targetModule ??
+            "—"}
         </span>
       ),
     },
