@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn, resolveCurrency } from "@/lib/utils";
+import { cn, formatDateTZ, resolveCurrency } from "@/lib/utils";
 import { ArrowLeft, Search, X } from "lucide-react";
 import CreateInvoiceDialog from "./CreateInvoiceDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -327,6 +327,21 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                     {statusLabel}
                   </span>
                 }
+              />
+              {/* #92 — surface the invoice submission date. Prefer an explicit
+                  submission field; fall back to the invoice's creation instant
+                  (submission = creation for an invoice). Viewer-local. */}
+              <LabelRow
+                label="Invoice Submission Date"
+                value={(() => {
+                  const submitted =
+                    invoice?.submissionDate ??
+                    invoice?.submittedAt ??
+                    invoice?.createdAt;
+                  return submitted
+                    ? formatDateTZ(submitted, "MMM dd, yyyy")
+                    : "-";
+                })()}
               />
             </div>
 

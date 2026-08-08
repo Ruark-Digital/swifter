@@ -478,6 +478,12 @@ export type ContractInvoiceDTO = {
   remaining?: number;
   balance?: number;
   remainingAmount?: number;
+  // When the invoice was submitted. The BE has not surfaced a dedicated
+  // `submissionDate`/`submittedAt` on every path, so `createdAt` (the Mongo
+  // creation instant = submission for an invoice) is read as the fallback.
+  submissionDate?: string;
+  submittedAt?: string;
+  createdAt?: string;
   status?: "pending" | "approved" | "rejected" | "draft" | "active";
   lem?: unknown;
   files?: Array<{
