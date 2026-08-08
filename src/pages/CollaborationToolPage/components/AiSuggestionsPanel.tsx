@@ -2,11 +2,13 @@ import React, { useState } from "react";
 import { Sparkles, X, Check, RotateCw, Play, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RedlineSpan } from "../collab/redlineScan";
-import type {
-  AiRedlineSuggestion,
-  AiAlternativeLanguage,
-  AiRiskLevel,
-  SuggestionProgress,
+import {
+  redlineStageLabel,
+  type AiRedlineSuggestion,
+  type AiAlternativeLanguage,
+  type AiRiskLevel,
+  type RedlineResolvedHolder,
+  type SuggestionProgress,
 } from "../collab/useAiRedlineSuggestions";
 
 type Status = "idle" | "loading" | "ready" | "error" | "empty";
@@ -17,6 +19,8 @@ type Item = {
   redline: RedlineSpan;
   suggestion?: AiRedlineSuggestion;
   state: "pending" | "approved" | "dismissed";
+  /** #87 — who resolved it: "vendor" → "Resolved", else "Addressed". */
+  resolvedByHolder?: RedlineResolvedHolder;
 };
 
 interface AiSuggestionsPanelProps {
@@ -187,15 +191,26 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
         )}
         {!isPending && (
           <div className="ml-auto flex items-center gap-2">
+            {/* #87 — stage first: "Resolved" only once the Vendor PM accepts;
+                a manager-side accept/dismiss reads "Addressed". The action
+                (replaced/dismissed) follows as a muted suffix. */}
             <span
               className={cn(
                 "text-xs font-semibold",
-                item.state === "approved"
-                  ? "text-green-600 dark:text-green-400"
-                  : "text-slate-500 dark:text-slate-400",
+                item.resolvedByHolder === "vendor"
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-amber-600 dark:text-amber-400",
               )}
+              title={
+                item.resolvedByHolder === "vendor"
+                  ? "Resolved — accepted by the Vendor PM"
+                  : "Addressed — actioned on the company side; awaiting the Vendor PM's acceptance"
+              }
             >
-              {item.state === "approved" ? "Replaced" : "Dismissed"}
+              {redlineStageLabel(item.resolvedByHolder)}
+              <span className="ml-1 font-normal text-slate-400 dark:text-slate-500">
+                · {item.state === "approved" ? "replaced" : "dismissed"}
+              </span>
             </span>
             {onUndo && (
               <button

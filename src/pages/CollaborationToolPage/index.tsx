@@ -31,7 +31,9 @@ import {
 import {
   useAiRedlineSuggestions,
   usePersistedSuggestions,
+  getRedlineResolvedHolder,
   type AiRedlineSuggestion,
+  type RedlineResolvedHolder,
   type SuggestionProgress,
 } from "./collab/useAiRedlineSuggestions";
 import {
@@ -47,6 +49,8 @@ type AiItem = {
   redline: RedlineSpan;
   suggestion?: AiRedlineSuggestion;
   state: "pending" | "approved" | "dismissed";
+  /** #87 — which side resolved it: "manager" → Addressed, "vendor" → Resolved. */
+  resolvedByHolder?: RedlineResolvedHolder;
 };
 
 type SidebarAttachment = {
@@ -556,6 +560,7 @@ const CollaborationToolPage: React.FC = () => {
           },
           suggestion: s,
           state: resolutionToState(s.resolution?.action),
+          resolvedByHolder: getRedlineResolvedHolder(s.resolution),
         })),
       );
       setAiProgress(persisted.progress);
@@ -638,7 +643,7 @@ const CollaborationToolPage: React.FC = () => {
       setAiItems((prev) =>
         prev.map((p) =>
           p.redline.redlineId === item.redline.redlineId
-            ? { ...p, state: "approved" }
+            ? { ...p, state: "approved", resolvedByHolder: redlineTurn.mySide ?? undefined }
             : p,
         ),
       );
@@ -658,7 +663,7 @@ const CollaborationToolPage: React.FC = () => {
       setAiItems((prev) =>
         prev.map((p) =>
           p.redline.redlineId === item.redline.redlineId
-            ? { ...p, state: "dismissed" }
+            ? { ...p, state: "dismissed", resolvedByHolder: redlineTurn.mySide ?? undefined }
             : p,
         ),
       );
@@ -699,7 +704,7 @@ const CollaborationToolPage: React.FC = () => {
             setAiItems((prev) =>
               prev.map((p) =>
                 p.redline.redlineId === item.redline.redlineId
-                  ? { ...p, state: "pending" }
+                  ? { ...p, state: "pending", resolvedByHolder: undefined }
                   : p,
               ),
             );
@@ -784,7 +789,7 @@ const CollaborationToolPage: React.FC = () => {
             setAiItems((prev) =>
               prev.map((p) =>
                 resolvedIds.has(p.redline.redlineId)
-                  ? { ...p, state: nextState }
+                  ? { ...p, state: nextState, resolvedByHolder: redlineTurn.mySide ?? undefined }
                   : p,
               ),
             );
