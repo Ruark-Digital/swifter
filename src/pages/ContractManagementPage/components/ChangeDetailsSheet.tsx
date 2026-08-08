@@ -823,16 +823,17 @@ const ChangeDetailsSheet: React.FC<Props> = ({
 
           {/* #79 — draft change-order finalization. The originator either
               finalizes directly (Approve → approve-draft-co, applies the value
-              now) or edits it (Vendor PM only for now — the edit PUT routes
-              through the vendor API; manager/directive-origin edit is a
-              follow-up) to send it through a fresh approval. */}
+              now) or edits it to send it through a fresh approval. The edit PUT
+              is role-routed in CreateChangeDialog (manager vs vendor), so both
+              the Vendor PM (request/proposal origin) and the manager
+              (directive origin) can edit. */}
           {canActOnDraftCo && activeTab === "overview" && (
             <SheetFooter>
               <div className="flex w-full gap-3 pt-2">
-                {isContractVendorLike && (
+                {(isContractVendorLike || isManager) && (
                   <CreateChangeDialog
                     contractId={contractId}
-                    isManager={false}
+                    isManager={isManager}
                     mode="edit"
                     changeId={changeId}
                     open={editOpen}

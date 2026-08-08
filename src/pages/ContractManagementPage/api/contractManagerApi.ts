@@ -1073,6 +1073,26 @@ export const createContractManagerApi = (
       });
       return res.data as { message?: string; data?: ContractChangeDTO };
     },
+    // Edit a manager-owned change (e.g. a directive-origin draft CO, or a
+    // rejected change) and re-submit it for approval. Swagger `PUT
+    // /manager/contracts/{id}/changes/{changeId}` accepts title/description/
+    // urgency/approvers and resets the manager + approver statuses.
+    updateChange: async (
+      contractId: string,
+      changeId: string,
+      payload: {
+        title?: string;
+        description?: string;
+        urgency?: "low" | "medium" | "high";
+        approvers?: string[];
+      },
+    ) => {
+      const res = await client.put({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/changes/${changeId}`,
+        payload,
+      });
+      return res.data as { message?: string; data?: ContractChangeDTO };
+    },
     approveChange: async (
       contractId: string,
       changeId: string,
