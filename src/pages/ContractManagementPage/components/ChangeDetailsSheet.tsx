@@ -38,6 +38,7 @@ import {
   getManagerApproveChangeUrl,
   shouldShowChangeDecisionActions,
 } from "../lib/contractChanges";
+import { useChangeLock } from "../hooks/useChangeLock";
 import { formatDate } from "date-fns";
 import Spinner from "@/components/ui/Spinner";
 import {
@@ -301,6 +302,31 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     if (pendingAction === null) setCommentDraft("");
   }, [pendingAction]);
 
+  // #76 — acquire an exclusive "approve" lock before opening the decision
+  // dialog so two managers can't approve/reject the same change at once.
+  // Locks apply to changes only (claims have no lock endpoint); fail-open.
+  const changeLock = useChangeLock({
+    roleBasePath,
+    contractId,
+    changeId,
+    enabled: !isClaim,
+  });
+
+  const handleOpenDecision = React.useCallback(
+    async (action: "approved" | "rejected") => {
+      const res = await changeLock.acquire("approve");
+      if (!res.ok && res.conflict) {
+        toast.error(
+          "Change locked",
+          `This change is currently being reviewed by ${res.holder ?? "another user"}. Please try again shortly.`,
+        );
+        return;
+      }
+      setPendingAction(action);
+    },
+    [changeLock, toast],
+  );
+
   const { mutate: mutateApproval, isPending: isApproving } = useMutation({
     mutationKey: ["approveChange", roleBasePath, contractId, changeId],
     mutationFn: async ({
@@ -346,6 +372,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
       }
       qc.invalidateQueries({ queryKey: changeDetailQueryKey });
       setPendingAction(null);
+      changeLock.release();
     },
     onError: (err: any) => {
       toast.error("Failed to update change status", err);
@@ -744,7 +771,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                         );
                         return;
                       }
-                      setPendingAction("rejected");
+                      handleOpenDecision("rejected");
                     }}
                   >
                     Reject Change
@@ -753,7 +780,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     <Button
                       className="flex-1 h-12 rounded-xl"
                       disabled={isApproving}
-                      onClick={() => setPendingAction("approved")}
+                      onClick={() => handleOpenDecision("approved")}
                     >
                       Approve
                     </Button>
@@ -854,7 +881,10 @@ const ChangeDetailsSheet: React.FC<Props> = ({
         <Dialog
           open={pendingAction !== null}
           onOpenChange={(next) => {
-            if (!next && !isApproving) setPendingAction(null);
+            if (!next && !isApproving) {
+              setPendingAction(null);
+              changeLock.release();
+            }
           }}
         >
           <DialogContent className="sm:max-w-md p-0 overflow-hidden">
