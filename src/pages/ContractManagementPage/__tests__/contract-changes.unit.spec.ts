@@ -3,8 +3,10 @@ import {
   changeTabToApiType,
   extractLockHolderName,
   formatChangeTypeLabel,
+  getApproveDraftCoUrl,
   getChangeLockUrl,
   getCreateChangeTypeOptionsForRole,
+  isDraftChangeOrder,
   isLockConflict,
   pruneEmptyValuesDeep,
   shouldShowChangeDecisionActions,
@@ -245,5 +247,52 @@ test.describe("contractChanges helpers (unit)", () => {
     // No holder info → undefined (caller uses a generic label).
     expect(extractLockHolderName({ response: { data: {} } })).toBeUndefined();
     expect(extractLockHolderName(undefined)).toBeUndefined();
+  });
+
+  // ── #79 draft change-order finalization helpers ───────────────────
+  test("detects a draft change order (type order + status draft)", async () => {
+    expect(isDraftChangeOrder({ type: "order", status: "draft" })).toBe(true);
+    expect(isDraftChangeOrder({ type: "Order", status: "Draft" })).toBe(true);
+    // Not a draft CO:
+    expect(isDraftChangeOrder({ type: "order", status: "pending" })).toBe(false);
+    expect(isDraftChangeOrder({ type: "order", status: "approved" })).toBe(false);
+    expect(isDraftChangeOrder({ type: "proposal", status: "draft" })).toBe(false);
+    expect(isDraftChangeOrder({ type: "request", status: "draft" })).toBe(false);
+    expect(isDraftChangeOrder({})).toBe(false);
+    expect(isDraftChangeOrder(null)).toBe(false);
+    expect(isDraftChangeOrder(undefined)).toBe(false);
+  });
+
+  test("builds approve-draft-co url with dual path + resource handling", async () => {
+    // basePath already ends with /{id}/changes
+    expect(
+      getApproveDraftCoUrl({
+        roleBasePath: "/contract/vendor/contracts/C1/changes",
+        contractId: "C1",
+        changeId: "CO2",
+      })
+    ).toBe("/contract/vendor/contracts/C1/changes/CO2/approve-draft-co");
+
+    // rebuilt from role + resource
+    expect(
+      getApproveDraftCoUrl({
+        roleBasePath: "/contract/vendor/contracts",
+        contractId: "C1",
+        changeId: "CO2",
+      })
+    ).toBe("/contract/vendor/contracts/C1/changes/CO2/approve-draft-co");
+
+    expect(
+      getApproveDraftCoUrl({
+        roleBasePath: "/contract/manager/msa-contracts",
+        contractId: "M1",
+        changeId: "CO9",
+      })
+    ).toBe("/contract/manager/msa-contracts/M1/changes/CO9/approve-draft-co");
+
+    // unknown basePath → manager + contracts fallback
+    expect(
+      getApproveDraftCoUrl({ roleBasePath: "", contractId: "C1", changeId: "CO2" })
+    ).toBe("/contract/manager/contracts/C1/changes/CO2/approve-draft-co");
   });
 });

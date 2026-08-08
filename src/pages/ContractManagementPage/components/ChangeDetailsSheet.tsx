@@ -35,7 +35,9 @@ import {
   getSimpleFileExtension,
 } from "@/lib/fileUtils";
 import {
+  getApproveDraftCoUrl,
   getManagerApproveChangeUrl,
+  isDraftChangeOrder,
   shouldShowChangeDecisionActions,
 } from "../lib/contractChanges";
 import { useChangeLock } from "../hooks/useChangeLock";
@@ -201,6 +203,14 @@ const ChangeDetailsSheet: React.FC<Props> = ({
 
   const canApprove = isManager;
 
+  // #79 — a draft change order (auto-created from an approved request/proposal,
+  // or from a directive) awaits its originator's finalization. Vendor PMs
+  // finalize CR/CP-origin drafts; managers finalize directive-origin drafts.
+  // The BE 403s if the caller isn't the eligible originator, so gate on role
+  // here for UX and let the server enforce ownership.
+  const isDraftCo = !isClaim && isDraftChangeOrder({ type: changeType, status });
+  const canActOnDraftCo = isDraftCo && (isManager || isContractVendorLike);
+
   const statusBadgeTone = (s?: string) => {
     const k = (s ?? "").toLowerCase();
     if (k === "approved" || k === "accepted")
@@ -216,6 +226,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   // re-gated below.
   const showChangeDecisionActions =
     !isClaim &&
+    !isDraftCo &&
     shouldShowChangeDecisionActions(changeType) &&
     approverStatus === "pending";
 
@@ -294,6 +305,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     "approved" | "rejected" | null
   >(null);
   const [commentDraft, setCommentDraft] = React.useState("");
+  const [confirmDraftApprove, setConfirmDraftApprove] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<"overview" | "comments">(
     "overview",
   );
@@ -376,6 +388,35 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     },
     onError: (err: any) => {
       toast.error("Failed to update change status", err);
+    },
+  });
+
+  // #79 — finalize a draft change order directly (no modification). POSTs the
+  // bodyless `approve-draft-co`, which sets the CO to "approved" and applies
+  // its value to the contract immediately.
+  const { mutate: approveDraftCo, isPending: isApprovingDraft } = useMutation({
+    mutationKey: ["approveDraftCo", roleBasePath, contractId, changeId],
+    mutationFn: async () => {
+      const url = getApproveDraftCoUrl({ roleBasePath, contractId, changeId });
+      return await postRequest({ url, payload: {} });
+    },
+    onSuccess: (res) => {
+      toast.success(
+        "Change order approved",
+        (res as any)?.data?.message ??
+          "The change order value has been applied to the contract.",
+      );
+      qc.invalidateQueries({
+        queryKey: listInvalidateQueryKey ?? ["contractChanges", contractId],
+      });
+      if (statsInvalidateQueryKey) {
+        qc.invalidateQueries({ queryKey: statsInvalidateQueryKey });
+      }
+      qc.invalidateQueries({ queryKey: changeDetailQueryKey });
+      setConfirmDraftApprove(false);
+    },
+    onError: (err: any) => {
+      toast.error("Failed to approve change order", err);
     },
   });
 
@@ -753,6 +794,49 @@ const ChangeDetailsSheet: React.FC<Props> = ({
               </SheetFooter>
             )}
 
+          {/* #79 — draft change-order finalization. The originator either
+              finalizes directly (Approve → approve-draft-co, applies the value
+              now) or edits it (Vendor PM only for now — the edit PUT routes
+              through the vendor API; manager/directive-origin edit is a
+              follow-up) to send it through a fresh approval. */}
+          {canActOnDraftCo && activeTab === "overview" && (
+            <SheetFooter>
+              <div className="flex w-full gap-3 pt-2">
+                {isContractVendorLike && (
+                  <CreateChangeDialog
+                    contractId={contractId}
+                    isManager={false}
+                    mode="edit"
+                    changeId={changeId}
+                    initialChange={{
+                      title,
+                      type: changeType,
+                      description,
+                      files: files as any,
+                    }}
+                    trigger={
+                      <Button
+                        variant="outline"
+                        data-testid="edit-draft-co-trigger"
+                        className="flex-1 h-12 rounded-xl"
+                      >
+                        Edit & Send for Approval
+                      </Button>
+                    }
+                  />
+                )}
+                <Button
+                  className="flex-1 h-12 rounded-xl"
+                  data-testid="approve-draft-co"
+                  disabled={isApprovingDraft}
+                  onClick={() => setConfirmDraftApprove(true)}
+                >
+                  Approve Change Order
+                </Button>
+              </div>
+            </SheetFooter>
+          )}
+
           {showDecisionActions && activeTab === "overview" && (
             <SheetFooter>
               {/* Change flow (unchanged): manager gets Reject+Approve;
@@ -948,6 +1032,52 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     : pendingAction === "approved"
                       ? "Confirm Approve"
                       : "Confirm Reject"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* #79 — confirm direct finalization of a draft change order. */}
+        <Dialog
+          open={confirmDraftApprove}
+          onOpenChange={(next) => {
+            if (!next && !isApprovingDraft) setConfirmDraftApprove(false);
+          }}
+        >
+          <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-2">
+              <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                Approve Change Order
+              </DialogTitle>
+            </DialogHeader>
+            <div className="px-6 pb-6 space-y-4">
+              <p className="text-sm text-[#6B7280] dark:text-slate-400">
+                Approving this draft change order applies its value
+                {value != null
+                  ? ` (${formatCompactCurrency(Number(value), currencyCode)})`
+                  : ""}{" "}
+                to the contract immediately. To review or attach documents
+                first, use “Edit &amp; Send for Approval” instead.
+              </p>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
+                  disabled={isApprovingDraft}
+                  onClick={() => setConfirmDraftApprove(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className="h-11 flex-1 rounded-xl bg-[#16A34A] text-sm font-semibold text-white hover:bg-[#15803D] disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isApprovingDraft}
+                  aria-busy={isApprovingDraft}
+                  onClick={() => approveDraftCo()}
+                >
+                  {isApprovingDraft ? "Approving..." : "Confirm Approve"}
                 </Button>
               </div>
             </div>
