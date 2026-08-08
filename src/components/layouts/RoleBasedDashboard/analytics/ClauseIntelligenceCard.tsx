@@ -52,18 +52,18 @@ export const ClauseIntelligenceCard: React.FC<Props> = ({
 
   const highRisk = Array.isArray(highRiskSource)
     ? highRiskSource.map((h) => ({
-        category: h.category || (h as { title?: string }).title || "",
-        contracts: h.contracts,
-        severity: h.severity,
-        averageDeviation: (h as { averageDeviation?: number }).averageDeviation,
-      }))
+      category: h.category || (h as { title?: string }).title || "",
+      contracts: h.contracts,
+      severity: h.severity ?? "",
+      averageDeviation: (h as { averageDeviation?: number }).averageDeviation,
+    }))
     : [];
 
   // Tailwind classes (not inline styles) so dark variants can override
   // the light tint. Inline `style` wins over `dark:bg-*` due to CSS
   // specificity, so we use class-only tints here.
-  const tintForSeverity = (severity: string) => {
-    const s = severity.toLowerCase();
+  const tintForSeverity = (severity: string | undefined) => {
+    const s = (severity ?? "").toLowerCase();
     if (s === "high" || s === "critical") return "bg-red-50 dark:bg-red-900/30";
     if (s === "medium" || s === "warning") return "bg-amber-50 dark:bg-amber-900/30";
     return "bg-yellow-50 dark:bg-yellow-900/20";
