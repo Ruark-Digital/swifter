@@ -25,7 +25,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
-import { cn, formatCompactCurrency, resolveCurrency } from "@/lib/utils";
+import { cn, formatCompactCurrency, formatDateTZ, resolveCurrency } from "@/lib/utils";
 import { useUser } from "@/store/authSlice";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import type { ApiResponseError } from "@/types";
@@ -307,6 +307,24 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
                     : typeof invoice?.taxValue === "number"
                       ? `${invoice.taxValue}%`
                       : "-"
+                }
+              />
+              {/* #92 — invoice submission date (submission = creation for an
+                  invoice); viewer-local, falls back to createdAt. */}
+              <LabelRow
+                label="Invoice Submission Date"
+                value={
+                  isLoading
+                    ? "Loading..."
+                    : (() => {
+                        const submitted =
+                          invoice?.submissionDate ??
+                          invoice?.submittedAt ??
+                          invoice?.createdAt;
+                        return submitted
+                          ? formatDateTZ(submitted, "MMM dd, yyyy")
+                          : "-";
+                      })()
                 }
               />
             </div>
