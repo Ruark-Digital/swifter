@@ -19,6 +19,11 @@ export const ROLE_PARTNER: Record<string, string> = {
   evaluator: "approver",
   contract_manager: "procurement",
   procurement: "contract_manager",
+  // #84 — a vendor-side account may hold Vendor (Solicitation) and/or
+  // Vendor-PM (CLM = project_manager) access. Only assignable from the
+  // vendor-scoped builder below, never from the internal admin dialogs.
+  vendor: "project_manager",
+  project_manager: "vendor",
 };
 
 export const partnerOf = (role?: string): string | undefined =>
@@ -51,6 +56,32 @@ export const buildRoleOptions = (catalog: RoleCatalogItem[]): RoleOption[] =>
       label: (r.name ?? "").replace(/_/g, " ").toUpperCase(),
       name: (r.name ?? "").toLowerCase(),
     }));
+
+// #84 — the two vendor-side accesses, with client-facing labels.
+export const VENDOR_ACCESS_ROLE_NAMES = ["vendor", "project_manager"];
+const VENDOR_ACCESS_LABELS: Record<string, string> = {
+  vendor: "Vendor (Solicitation)",
+  project_manager: "Vendor-PM (CLM)",
+};
+
+/**
+ * Vendor-scoped option list: only Vendor + Vendor-PM, with friendly labels.
+ * Kept separate from {@link buildRoleOptions} so these roles stay excluded
+ * from the internal admin dialogs (they remain in RESTRICTED_ROLE_NAMES).
+ */
+export const buildVendorAccessOptions = (
+  catalog: RoleCatalogItem[]
+): RoleOption[] =>
+  (catalog ?? [])
+    .filter((r) => r.name && VENDOR_ACCESS_ROLE_NAMES.includes(r.name.toLowerCase()))
+    .map((r) => {
+      const name = (r.name ?? "").toLowerCase();
+      return {
+        value: r._id ?? r.id ?? "",
+        label: VENDOR_ACCESS_LABELS[name] ?? name.replace(/_/g, " ").toUpperCase(),
+        name,
+      };
+    });
 
 /** Live pair-enforcement: narrow the options to what may still be selected. */
 export const filterOptionsByCombo = (

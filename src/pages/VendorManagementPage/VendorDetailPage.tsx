@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import EditVendorDialog from "./components/EditVendorDialog";
+import ManageVendorAccessDialog from "./components/ManageVendorAccessDialog";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils.tsx";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
@@ -730,6 +731,24 @@ export const VendorDetailPage = () => {
                     </Button>
                   }
                 />
+                {/* #84 — assign Vendor (Solicitation) and/or Vendor-PM (CLM)
+                    access to this vendor's user account. */}
+                {vendor.user?._id && (
+                  <ManageVendorAccessDialog
+                    userId={vendor.user._id}
+                    vendorName={vendor.name}
+                    vendorId={id}
+                    trigger={
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg"
+                      >
+                        Manage Access
+                      </Button>
+                    }
+                  />
+                )}
                 {/* <ExportReportSheet /> */}
               </div>
             </div>
