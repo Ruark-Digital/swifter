@@ -186,7 +186,13 @@ const CreateChangeDialog: React.FC<Props> = ({
     ],
     mutationFn: async (payload: ContractChangeManagerDTO) => {
       if (isEdit && changeId) {
-        return await vendorApi.updateChange(contractId, changeId, payload as any);
+        // Route the edit PUT by role: managers edit their own changes (incl.
+        // directive-origin draft COs) via the manager endpoint; vendors via
+        // the vendor endpoint. The manager PUT only reads title/description/
+        // urgency (BE ignores the rest).
+        return isManager
+          ? await contractManagerApi.updateChange(contractId, changeId, payload as any)
+          : await vendorApi.updateChange(contractId, changeId, payload as any);
       }
       if (isManager) {
         const res = await contractManagerApi.createChangeRequest(
