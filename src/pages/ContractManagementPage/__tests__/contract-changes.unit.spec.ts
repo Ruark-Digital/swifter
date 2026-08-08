@@ -1,8 +1,13 @@
 import { test, expect } from "@playwright/test";
 import {
   changeTabToApiType,
+  extractLockHolderName,
   formatChangeTypeLabel,
+  getApproveDraftCoUrl,
+  getChangeLockUrl,
   getCreateChangeTypeOptionsForRole,
+  isDraftChangeOrder,
+  isLockConflict,
   pruneEmptyValuesDeep,
   shouldShowChangeDecisionActions,
   toContractChangeFileItem,
@@ -180,5 +185,114 @@ test.describe("contractChanges helpers (unit)", () => {
       arr: ["x", 0, false, { y: "z" }],
       keepDate: new Date("2025-01-01T00:00:00.000Z"),
     });
+  });
+
+  // ── #76 change edit/approve lock helpers ──────────────────────────
+  test("builds change lock url — basePath already ends with /{id}/changes", async () => {
+    expect(
+      getChangeLockUrl({
+        roleBasePath: "/contract/manager/contracts/C1/changes",
+        contractId: "C1",
+        changeId: "CHG1",
+      })
+    ).toBe("/contract/manager/contracts/C1/changes/CHG1/lock");
+  });
+
+  test("builds change lock url — rebuilds from role + resource segments", async () => {
+    expect(
+      getChangeLockUrl({
+        roleBasePath: "/contract/manager/contracts",
+        contractId: "C1",
+        changeId: "CHG1",
+      })
+    ).toBe("/contract/manager/contracts/C1/changes/CHG1/lock");
+
+    // MSA resource segment is preserved (lock exists for both resources).
+    expect(
+      getChangeLockUrl({
+        roleBasePath: "/contract/approver/msa-contracts",
+        contractId: "M1",
+        changeId: "CHG9",
+      })
+    ).toBe("/contract/approver/msa-contracts/M1/changes/CHG9/lock");
+
+    // Unknown/empty basePath falls back to manager + contracts.
+    expect(
+      getChangeLockUrl({ roleBasePath: "", contractId: "C1", changeId: "CHG1" })
+    ).toBe("/contract/manager/contracts/C1/changes/CHG1/lock");
+  });
+
+  test("detects a 409 lock conflict only", async () => {
+    expect(isLockConflict({ response: { status: 409 } })).toBe(true);
+    expect(isLockConflict({ response: { status: 403 } })).toBe(false);
+    expect(isLockConflict({ response: { status: 500 } })).toBe(false);
+    expect(isLockConflict(new Error("network"))).toBe(false);
+    expect(isLockConflict(undefined)).toBe(false);
+  });
+
+  test("extracts the lock holder name from varied 409 body shapes", async () => {
+    expect(
+      extractLockHolderName({ response: { data: { lockedBy: { name: "Ada L" } } } })
+    ).toBe("Ada L");
+    expect(
+      extractLockHolderName({ response: { data: { data: { holder: { name: "Bob" } } } } })
+    ).toBe("Bob");
+    expect(
+      extractLockHolderName({ response: { data: { lockedBy: "Cara" } } })
+    ).toBe("Cara");
+    // Holder object with only an email falls back to email.
+    expect(
+      extractLockHolderName({ response: { data: { holder: { email: "d@e.com" } } } })
+    ).toBe("d@e.com");
+    // No holder info → undefined (caller uses a generic label).
+    expect(extractLockHolderName({ response: { data: {} } })).toBeUndefined();
+    expect(extractLockHolderName(undefined)).toBeUndefined();
+  });
+
+  // ── #79 draft change-order finalization helpers ───────────────────
+  test("detects a draft change order (type order + status draft)", async () => {
+    expect(isDraftChangeOrder({ type: "order", status: "draft" })).toBe(true);
+    expect(isDraftChangeOrder({ type: "Order", status: "Draft" })).toBe(true);
+    // Not a draft CO:
+    expect(isDraftChangeOrder({ type: "order", status: "pending" })).toBe(false);
+    expect(isDraftChangeOrder({ type: "order", status: "approved" })).toBe(false);
+    expect(isDraftChangeOrder({ type: "proposal", status: "draft" })).toBe(false);
+    expect(isDraftChangeOrder({ type: "request", status: "draft" })).toBe(false);
+    expect(isDraftChangeOrder({})).toBe(false);
+    expect(isDraftChangeOrder(null)).toBe(false);
+    expect(isDraftChangeOrder(undefined)).toBe(false);
+  });
+
+  test("builds approve-draft-co url with dual path + resource handling", async () => {
+    // basePath already ends with /{id}/changes
+    expect(
+      getApproveDraftCoUrl({
+        roleBasePath: "/contract/vendor/contracts/C1/changes",
+        contractId: "C1",
+        changeId: "CO2",
+      })
+    ).toBe("/contract/vendor/contracts/C1/changes/CO2/approve-draft-co");
+
+    // rebuilt from role + resource
+    expect(
+      getApproveDraftCoUrl({
+        roleBasePath: "/contract/vendor/contracts",
+        contractId: "C1",
+        changeId: "CO2",
+      })
+    ).toBe("/contract/vendor/contracts/C1/changes/CO2/approve-draft-co");
+
+    expect(
+      getApproveDraftCoUrl({
+        roleBasePath: "/contract/manager/msa-contracts",
+        contractId: "M1",
+        changeId: "CO9",
+      })
+    ).toBe("/contract/manager/msa-contracts/M1/changes/CO9/approve-draft-co");
+
+    // unknown basePath → manager + contracts fallback
+    expect(
+      getApproveDraftCoUrl({ roleBasePath: "", contractId: "C1", changeId: "CO2" })
+    ).toBe("/contract/manager/contracts/C1/changes/CO2/approve-draft-co");
   });
 });

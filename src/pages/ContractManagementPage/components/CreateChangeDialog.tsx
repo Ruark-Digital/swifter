@@ -55,6 +55,11 @@ type Props = {
     description?: string;
     files?: { name: string; url: string; type: string; size: string | number }[];
   };
+  /** Optional controlled-open. When provided, the parent owns the open state
+   *  (used to gate opening behind an edit lock — #76). Omit for the default
+   *  self-managed behavior. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 function FileListItem({ file, index }: { file: File; index?: number }) {
@@ -90,10 +95,21 @@ const CreateChangeDialog: React.FC<Props> = ({
   isResubmit = false,
   changeId,
   initialChange,
+  open: controlledOpen,
+  onOpenChange,
 }) => {
   const isEdit = mode === "edit" && !!changeId;
   const queryClient = useQueryClient();
-  const [open, setOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = React.useCallback(
+    (next: boolean) => {
+      onOpenChange?.(next);
+      // Only self-manage when uncontrolled; a controlled parent owns `open`.
+      if (controlledOpen === undefined) setInternalOpen(next);
+    },
+    [onOpenChange, controlledOpen],
+  );
   const toastHandler = useToastHandler();
   const changeTypeOptions = React.useMemo(
     () => getCreateChangeTypeOptionsForRole({ isManager, isVendor: !isManager }),

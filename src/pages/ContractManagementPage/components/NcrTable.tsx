@@ -450,7 +450,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                     value="capa"
                     className="data-[state=active]:border-[#6941C6] data-[state=active]:text-[#6941C6] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                   >
-                    Corrective &amp; Preventive Action Plan
+                    Corrective Action and Preventive Action
                   </TabsTrigger>
                 )}
                 <TabsTrigger
@@ -533,7 +533,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                 <TabsContent value="capa" className="space-y-10">
                   <div className="space-y-4">
                     <div className="text-sm text-[#6B7280] dark:text-slate-400">
-                      Corrective &amp; Preventive Action Plan
+                      Corrective Action and Preventive Action
                     </div>
                     <div className="text-base font-semibold leading-[1.5] text-[#0F0F0F] dark:text-slate-100">
                       {latestCapa?.description ?? description}

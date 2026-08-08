@@ -5,9 +5,9 @@ import { useAuthentication } from '@/hooks/useAuthentication';
 
 /**
  * Hook that automatically logs out the user after a specified period of inactivity
- * @param timeout - Timeout in milliseconds (default: 5 minutes = 300000ms)
+ * @param timeout - Timeout in milliseconds (default: 20 minutes = 1200000ms)
  */
-export function useInactivityLogout(timeout = 300000) {
+export function useInactivityLogout(timeout = 1200000) {
   const navigate = useNavigate();
   const setReset = useSetReset();
   const isAuthenticated = useAuthentication();

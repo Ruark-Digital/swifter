@@ -268,16 +268,52 @@ export function useAiRedlineSuggestions({ documentId, isMsa }: AiRedlineScope) {
 
 // ── Persisted suggestions (GET) ──────────────────────────────────────
 
+/** Which side resolved a redline: the company/manager or the vendor PM. */
+export type RedlineResolvedHolder = "manager" | "vendor";
+
 export type PersistedResolution = {
-  status?: string;
+  status?: "pending" | "resolved" | string;
   action?: "accepted" | "modified" | "rejected";
   tier?: "low" | "medium" | "high";
-  resolvedBy?: string;
+  /**
+   * Who resolved the redline. Swagger `RedlineResolution.resolvedBy` is an
+   * object; the `holder` distinguishes a manager-side "Addressed" from a
+   * vendor-side "Resolved" (#87). Older deployments may send a bare string.
+   */
+  resolvedBy?:
+    | {
+        holder?: RedlineResolvedHolder;
+        userId?: string;
+        role?: string;
+        at?: string;
+      }
+    | string;
 };
 
 export type PersistedSuggestion = AiRedlineSuggestion & {
   resolution?: PersistedResolution;
 };
+
+/** Normalize `resolution.resolvedBy` (object or legacy string) to the holder. */
+export const getRedlineResolvedHolder = (
+  resolution?: PersistedResolution,
+): RedlineResolvedHolder | undefined => {
+  const rb = resolution?.resolvedBy;
+  if (!rb) return undefined;
+  if (typeof rb === "string") {
+    return rb === "manager" || rb === "vendor" ? rb : undefined;
+  }
+  return rb.holder;
+};
+
+/**
+ * #87 — stage word for a resolved redline. It is "Resolved" only once the
+ * Vendor PM has accepted it; a manager-side accept/dismiss reads "Addressed"
+ * (the redline is handled on the company side but the vendor hasn't accepted).
+ */
+export const redlineStageLabel = (
+  holder?: RedlineResolvedHolder,
+): "Resolved" | "Addressed" => (holder === "vendor" ? "Resolved" : "Addressed");
 
 export type SuggestionProgress = {
   total?: number;

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   allowedComboNames,
   buildRoleOptions,
+  buildVendorAccessOptions,
   filterOptionsByCombo,
   optionsFromUserRoles,
   partnerOf,
@@ -75,5 +76,31 @@ describe("roleCombos", () => {
     expect(
       optionsFromUserRoles(undefined, { _id: "p1", name: "procurement" }, options)
     ).toEqual([{ value: "p1", label: "PROCUREMENT" }]);
+  });
+
+  // ── #84 vendor dual-access ────────────────────────────────────────
+  it("pairs vendor with project_manager (Vendor-PM)", () => {
+    expect(partnerOf("vendor")).toBe("project_manager");
+    expect(partnerOf("project_manager")).toBe("vendor");
+  });
+
+  it("vendor-access options are only vendor + project_manager with friendly labels", () => {
+    const options = buildVendorAccessOptions(catalog);
+    expect(options).toEqual([
+      { value: "pm1", label: "Vendor-PM (CLM)", name: "project_manager" },
+      { value: "v1", label: "Vendor (Solicitation)", name: "vendor" },
+    ]);
+  });
+
+  it("keeps the vendor pair selectable together", () => {
+    const options = buildVendorAccessOptions(catalog);
+    const visible = filterOptionsByCombo(options, ["v1"]); // vendor selected
+    expect(visible.map((o) => o.name).sort()).toEqual(["project_manager", "vendor"]);
+  });
+
+  it("does NOT leak vendor/project_manager into the internal admin options", () => {
+    const names = buildRoleOptions(catalog).map((o) => o.name);
+    expect(names).not.toContain("vendor");
+    expect(names).not.toContain("project_manager");
   });
 });

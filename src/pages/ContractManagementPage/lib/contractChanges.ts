@@ -102,6 +102,104 @@ export const getManagerApproveChangeUrl = ({
   return `/contract/${role}/contracts/${contractId}/${entity}/${changeId}/approve`;
 };
 
+// ── Change edit/approve concurrency lock (#76) ───────────────────────
+// The BE exposes `…/changes/{changeId}/lock` (POST acquire / DELETE release)
+// so a change can't be edited or approved by two users at once. A 409 means
+// another user already holds an active (30-min) lock.
+export const LOCK_CONFLICT_STATUS = 409;
+
+export type ChangeLockType = "edit" | "approve";
+
+/**
+ * Build the change lock URL. Mirrors {@link getManagerApproveChangeUrl}'s
+ * dual-path handling but always targets the `changes` entity — the BE exposes
+ * the lock only for changes (claims have no lock endpoint) — and preserves the
+ * `contracts` vs `msa-contracts` resource segment from the incoming basePath.
+ */
+export const getChangeLockUrl = ({
+  roleBasePath,
+  contractId,
+  changeId,
+}: {
+  roleBasePath: string;
+  contractId: string;
+  changeId: string;
+}): string => {
+  // Case 1: roleBasePath already ends with /{contractId}/changes — use as-is.
+  if (roleBasePath.endsWith(`/${contractId}/changes`)) {
+    return `${roleBasePath}/${changeId}/lock`;
+  }
+  // Case 2: rebuild from the role + resource segments in roleBasePath.
+  const match = roleBasePath.match(
+    /^\/contract\/(manager|approver|vendor|user)\/(contracts|msa-contracts)/,
+  );
+  const role = match?.[1] ?? "manager";
+  const resource = match?.[2] ?? "contracts";
+  return `/contract/${role}/${resource}/${contractId}/changes/${changeId}/lock`;
+};
+
+/** True when an error is the lock's 409 Conflict (another user holds it). */
+export const isLockConflict = (error: unknown): boolean =>
+  (error as { response?: { status?: number } })?.response?.status ===
+  LOCK_CONFLICT_STATUS;
+
+/**
+ * Best-effort extraction of the current lock holder's name from a 409 body,
+ * tolerating the several shapes the BE might use. Returns undefined when the
+ * body carries no name — callers fall back to a generic "another user".
+ */
+export const extractLockHolderName = (error: unknown): string | undefined => {
+  const data = (error as { response?: { data?: any } })?.response?.data;
+  const holder =
+    data?.data?.lockedBy ??
+    data?.lockedBy ??
+    data?.data?.holder ??
+    data?.holder;
+  if (!holder) return undefined;
+  return typeof holder === "string" ? holder : holder?.name ?? holder?.email;
+};
+
+// ── Draft change-order finalization (#79) ────────────────────────────
+// When a change request/proposal is approved (or a directive is actioned),
+// the BE auto-creates a **draft** change order (`type: "order"`, `status:
+// "draft"` — the "draft" status is real but was missing from the swagger
+// enum). The original requester (Vendor PM for CR/CP, CM for a directive)
+// then either directly finalizes it via `approve-draft-co` (applies the value
+// to the contract immediately) or edits it (PUT) to route it through a fresh
+// approval.
+export const isDraftChangeOrder = (
+  change: { type?: string | null; status?: string | null } | null | undefined,
+): boolean =>
+  !!change &&
+  (change.type ?? "").toLowerCase() === "order" &&
+  (change.status ?? "").toLowerCase() === "draft";
+
+/**
+ * Build the `approve-draft-co` URL. Mirrors {@link getChangeLockUrl}'s
+ * dual-path handling — preserves the incoming role prefix and the
+ * `contracts` vs `msa-contracts` resource segment. Only the `manager` and
+ * `vendor` roles have this endpoint; the caller gates on role.
+ */
+export const getApproveDraftCoUrl = ({
+  roleBasePath,
+  contractId,
+  changeId,
+}: {
+  roleBasePath: string;
+  contractId: string;
+  changeId: string;
+}): string => {
+  if (roleBasePath.endsWith(`/${contractId}/changes`)) {
+    return `${roleBasePath}/${changeId}/approve-draft-co`;
+  }
+  const match = roleBasePath.match(
+    /^\/contract\/(manager|approver|vendor|user)\/(contracts|msa-contracts)/,
+  );
+  const role = match?.[1] ?? "manager";
+  const resource = match?.[2] ?? "contracts";
+  return `/contract/${role}/${resource}/${contractId}/changes/${changeId}/approve-draft-co`;
+};
+
 export type ManagerCreateChangeDialogValues = {
   changeName: string;
   changeType: string;
