@@ -105,7 +105,31 @@ type AlertsData = {
     contractCode?: string;
     contractTitle?: string;
     contractType?: string;
+    /** Swagger/prod shape: pre-formatted action strings. */
     recommendedActions?: string[];
+    overdueItems?: Array<{
+      entity?: string;
+      id?: string;
+      daysOpen?: number;
+      pendingWith?: string;
+    }>;
+    /** Live "bug" backend shape: alerts split across typed fields instead of
+     *  a single recommendedActions[]. */
+    kpiAlert?: { message?: string } | null;
+    expiryAlert?: { message?: string } | string | null;
+    insuranceWarnings?: Array<{
+      category?: string;
+      label?: string;
+      daysToExpiry?: number;
+    }>;
+    deliverableAlerts?: {
+      upcoming?: unknown[];
+      late?: unknown[];
+      missed?: unknown[];
+    } | null;
+    rfiAlerts?: unknown[];
+    ncrAlerts?: unknown[];
+    pendingApprovals?: unknown[];
   }>;
 };
 
@@ -337,13 +361,60 @@ const AnalyticsTab: React.FC<Props> = ({
     },
   ];
 
-  const alertsRows =
-    alerts?.contracts?.[0]?.recommendedActions?.length
-      ? alerts.contracts[0].recommendedActions.map((text) => ({
-          text,
-          urgent: true,
-        }))
-      : [];
+  // The BE returns two divergent per-contract alert shapes: the swagger/prod
+  // shape ships a ready-made `recommendedActions: string[]`, while the live
+  // "bug" backend splits the same information across typed fields
+  // (kpiAlert, insuranceWarnings, deliverableAlerts, rfi/ncr/pendingApprovals,
+  // expiryAlert). Prefer recommendedActions when present, otherwise synthesize
+  // the lines so the card isn't blank when only the drifted shape arrives.
+  const alertsRows = (() => {
+    const c = alerts?.contracts?.[0];
+    if (!c) return [];
+
+    if (c.recommendedActions?.length) {
+      return c.recommendedActions.map((text) => ({ text, urgent: true }));
+    }
+
+    const lines: string[] = [];
+    const push = (value?: string | null) => {
+      if (typeof value === "string" && value.trim()) lines.push(value.trim());
+    };
+    const count = (arr?: unknown[]) => (Array.isArray(arr) ? arr.length : 0);
+
+    push(c.kpiAlert?.message);
+    push(typeof c.expiryAlert === "string" ? c.expiryAlert : c.expiryAlert?.message);
+
+    (c.insuranceWarnings ?? []).forEach((w) => {
+      const label = (w.label ?? w.category ?? "policy").replace(/_/g, " ");
+      const days =
+        typeof w.daysToExpiry === "number" ? ` (expires in ${w.daysToExpiry} days)` : "";
+      push(`Insurance warning: ${label}${days}`);
+    });
+
+    const late = count(c.deliverableAlerts?.late);
+    const missed = count(c.deliverableAlerts?.missed);
+    const upcoming = count(c.deliverableAlerts?.upcoming);
+    if (late) push(`${late} late deliverable${late > 1 ? "s" : ""} require attention`);
+    if (missed) push(`${missed} missed deliverable${missed > 1 ? "s" : ""}`);
+    if (upcoming) push(`${upcoming} upcoming deliverable${upcoming > 1 ? "s" : ""} due soon`);
+
+    const rfi = count(c.rfiAlerts);
+    const ncr = count(c.ncrAlerts);
+    const approvals = count(c.pendingApprovals);
+    if (rfi) push(`${rfi} RFI${rfi > 1 ? "s" : ""} pending response`);
+    if (ncr) push(`${ncr} NCR${ncr > 1 ? "s" : ""} require action`);
+    if (approvals) push(`${approvals} item${approvals > 1 ? "s" : ""} pending approval`);
+
+    (c.overdueItems ?? []).forEach((o) => {
+      push(
+        `Follow up on ${o.entity ?? "item"} ${o.id ?? ""} (${o.daysOpen ?? "?"} days overdue)`
+          .replace(/\s+/g, " ")
+          .trim(),
+      );
+    });
+
+    return lines.map((text) => ({ text, urgent: true }));
+  })();
 
   const clauseRows =
     clauseLegalAnalysis?.clauses?.length
