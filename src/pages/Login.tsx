@@ -13,7 +13,8 @@ import { TextInput } from "@/components/layouts/FormInputs/TextInput";
 import { Link, useNavigate } from "react-router-dom";
 import { useSetToken, useSetUser } from "@/store/authSlice";
 import { SEOWrapper } from "@/components/SEO";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { getFirstAccessibleRoute } from "@/lib/navigation";
 import { UserRole } from "@/types";
 
@@ -30,6 +31,7 @@ const schema = yup.object().shape({
 const Login = () => {
   const toast = useToastHandler();
   const formRef = useRef<FormPropsRef>(null)
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const setToken = useSetToken();
@@ -128,9 +130,23 @@ const Login = () => {
               name="password"
               label="Password"
               placeholder="Enter Password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               component={TextInput}
               data-testid="password-input"
+              endAdornment={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              }
             />
 
             <div className="flex items-center justify-between gap-2 flex-wrap">
