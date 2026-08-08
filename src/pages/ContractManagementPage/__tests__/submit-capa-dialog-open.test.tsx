@@ -37,7 +37,7 @@ describe("SubmitCapaDialog", () => {
     ).not.toThrow();
 
     expect(
-      screen.getByText("Corrective & Preventive Action Plan"),
+      screen.getByText("Corrective Action and Preventive Action"),
     ).toBeInTheDocument();
   });
 });
