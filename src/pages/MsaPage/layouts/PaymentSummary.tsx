@@ -24,6 +24,10 @@ type PaymentSummaryProps = {
   msa?: {
     currency?: string;
     contractValue?: number;
+    /** MSA "Book Balance" (QA #122): BE-computed as the current MSA balance less
+     *  the balance of all linked contracts, plus change orders. Replaces the
+     *  contract-side "Current Balance", which MSAs previously did not surface. */
+    bookBalance?: number;
     holdBackReleased?: number;
     savingAmount?: number;
     holdBackBank?: number;
@@ -410,6 +414,8 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
 
       <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
         <LabelItem label="Contract Value" value={formatMoney(msa?.contractValue)} />
+
+        <LabelItem label="Book Balance" value={formatMoney(msa?.bookBalance)} />
 
         <LabelItem label="Contigency" value={contigencyValue} />
 
