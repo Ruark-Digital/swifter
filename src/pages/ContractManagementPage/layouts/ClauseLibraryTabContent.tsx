@@ -15,6 +15,16 @@ type ClauseCardProps = {
   ratesValues?: React.ReactNode;
 };
 
+type SectionAiSummaryData = {
+  headline?: string;
+  keyObligations?: string[];
+  risks?: string[];
+  opportunities?: string[];
+  recommendedActions?: string[];
+  riskLevel?: "low" | "medium" | "high" | "none";
+  generatedAt?: string;
+};
+
 function RiskPill({
   tone,
   children,
@@ -190,6 +200,95 @@ function ClauseCard({
   );
 }
 
+const AI_LIST_TONE = {
+  blue: "border-[#3B82F6] bg-[#EFF6FF] dark:bg-blue-950/40 text-[#1E3A8A] dark:text-blue-300",
+  red: "border-[#EF4444] bg-[#FEF2F2] dark:bg-red-950/40 text-[#991B1B] dark:text-red-300",
+  green:
+    "border-[#22C55E] bg-[#F0FDF4] dark:bg-green-950/40 text-[#14532D] dark:text-green-300",
+  slate:
+    "border-[#64748B] bg-[#F8FAFC] dark:bg-slate-800/60 text-[#334155] dark:text-slate-300",
+} as const;
+
+function AiList({
+  title,
+  items,
+  tone,
+}: {
+  title: string;
+  items: string[];
+  tone: keyof typeof AI_LIST_TONE;
+}) {
+  return (
+    <div className={`rounded border-l-4 px-3 py-2 ${AI_LIST_TONE[tone]}`}>
+      <div className="text-sm font-semibold leading-5">{title}</div>
+      <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-5 text-[#374151] dark:text-slate-300">
+        {items.map((item, index) => (
+          <li key={index}>{item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// Rendered in place of clauses when the BE extracted none but still returned a
+// section-level AI analysis (QA #100). Surfaces the analysis the backend already
+// produced so the section reads as informative rather than empty.
+function SectionAiSummary({
+  summary,
+  sectionSummary,
+}: {
+  summary?: SectionAiSummaryData;
+  sectionSummary?: string;
+}) {
+  const has = (arr?: string[]) => Array.isArray(arr) && arr.length > 0;
+  const hasAnalysis =
+    !!summary &&
+    (!!summary.headline ||
+      has(summary.keyObligations) ||
+      has(summary.risks) ||
+      has(summary.opportunities) ||
+      has(summary.recommendedActions));
+
+  if (!hasAnalysis) {
+    return (
+      <div className="px-5 py-5 text-sm leading-5 text-[#4B5563] dark:text-slate-400">
+        {sectionSummary?.trim() || "No clauses were extracted for this section."}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3 px-5 py-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="text-base font-semibold leading-6 text-[#111827] dark:text-slate-100">
+          {summary?.headline || "AI Analysis"}
+        </div>
+        {summary?.riskLevel && summary.riskLevel !== "none" && (
+          <RiskPill tone={riskClassFor(summary.riskLevel)}>
+            {riskLabelFor(summary.riskLevel)}
+          </RiskPill>
+        )}
+      </div>
+      {has(summary?.keyObligations) && (
+        <AiList title="✅ Key Obligations" items={summary!.keyObligations!} tone="blue" />
+      )}
+      {has(summary?.risks) && (
+        <AiList title="⚠️ Risks" items={summary!.risks!} tone="red" />
+      )}
+      {has(summary?.opportunities) && (
+        <AiList title="💡 Opportunities" items={summary!.opportunities!} tone="green" />
+      )}
+      {has(summary?.recommendedActions) && (
+        <AiList
+          title="📌 Recommended Actions"
+          items={summary!.recommendedActions!}
+          tone="slate"
+        />
+      )}
+    </div>
+  );
+}
+
 type Props = {
   isActive?: boolean;
   currency?: string;
@@ -228,6 +327,12 @@ type ClauseLibraryResponse = {
       id?: string;
       title?: string;
       risk?: "low" | "medium" | "high";
+      /** Section-level AI analysis the BE returns even when no individual
+       *  clauses were extracted (e.g. a document with no readable clause text).
+       *  Rendered as a fallback so the section isn't blank. */
+      sectionSummary?: string;
+      fullDetails?: string;
+      aiSummary?: SectionAiSummaryData;
       clauses?: Array<{
         id?: string;
         title?: string;
@@ -709,6 +814,12 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
                   clausesCount={`${section.clauses?.length || 0} clauses`}
                 >
                   <div className="flex flex-col">
+                    {(section.clauses?.length || 0) === 0 && (
+                      <SectionAiSummary
+                        summary={section.aiSummary}
+                        sectionSummary={section.sectionSummary}
+                      />
+                    )}
                     {(section.clauses || []).map((clause) => {
                       const risk = toRiskDisplay(clause.risk);
                       const values = (clause.values || []).map((v) => ({
