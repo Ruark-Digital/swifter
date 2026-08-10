@@ -423,6 +423,9 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled, ow
     // Security is approved per-item now (see securityColumns' canApprove sheet),
     // so the tab-wide bulk Approve/Reject bar must not compete for it.
     if (activeTab === "security") return false;
+    // Only the MSA owner/manager may approve/reject — a CM who isn't the owner
+    // must not see these buttons, matching the contract-side gate (QA #124).
+    if (!owner) return false;
     if (!hasFiles) return false;
     const status = String(getCategoryStatus(activeTab) || "").toLowerCase();
     if (!status) return false;
@@ -432,7 +435,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled, ow
       status === "pending_approval" ||
       status === "awaiting approval"
     );
-  }, [activeTab, getCategoryStatus, hasFiles, isContractManager]);
+  }, [activeTab, getCategoryStatus, hasFiles, isContractManager, owner]);
 
   const approveMutation = useMutation({
     mutationFn: async (action: "approved" | "rejected") => {
