@@ -30,7 +30,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft,
   Search,
-  Share2,
   AlertTriangle,
   Check,
   X,
@@ -832,14 +831,6 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                   Amendment Details
                 </SheetTitle>
               </div>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
-                  className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
-                >
-                  <Share2 className="mr-2 h-4 w-4" /> Export
-                </Button>
-              </div>
             </div>
           </SheetHeader>
 
@@ -1021,7 +1012,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
                         d={{
                           id: f.url ?? "",
                           name: f.name ?? "",
-                          icon: getFileIcon(f.type ?? ""),
+                          icon: getFileIcon(fileExtension),
                           type: fileExtension,
                           size: f.size ?? "-",
                           url: f.url,
