@@ -2,6 +2,7 @@ import { DocSVG } from "@/assets/icons/Doc";
 import { PdfSVG } from "@/assets/icons/Pdf";
 import PowerPointSVG from "@/assets/icons/PowerPoint";
 import { ExcelSVG } from "@/assets/icons/Excel";
+import { ImageSVG } from "@/assets/icons/Image";
 
 /**
  * Helper function to get file extension from name or type
@@ -115,6 +116,22 @@ export const getFileIcon = (fileExtension: string) => {
 
   const wordExtension = ["DOC", "DOCX", "RTF", "ODT"];
 
+  const imageExtension = [
+    "JPG",
+    "JPEG",
+    "PNG",
+    "GIF",
+    "WEBP",
+    "BMP",
+    "SVG",
+    "TIFF",
+    "TIF",
+    "HEIC",
+    "HEIF",
+    "AVIF",
+    "ICO",
+  ];
+
   if (excelExtension.includes(ext)) {
     return <ExcelSVG />;
   }
@@ -125,6 +142,10 @@ export const getFileIcon = (fileExtension: string) => {
 
   if (wordExtension.includes(ext)) {
     return <DocSVG />;
+  }
+
+  if (imageExtension.includes(ext)) {
+    return <ImageSVG />;
   }
 
   return <PdfSVG />

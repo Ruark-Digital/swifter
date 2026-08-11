@@ -69,8 +69,10 @@ function FileListItem({ file, index }: { file: File; index?: number }) {
       index={index ?? 0}
       className="h-auto w-full rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800"
     >
-      <div className="flex items-center gap-3 w-full">
-        <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center dark:bg-slate-700 dark:border-slate-600">
+      {/* pr-8 reserves room for FileUploaderItem's absolutely-positioned
+          delete button so the truncated name doesn't run underneath it. */}
+      <div className="flex items-center gap-3 w-full pr-8">
+        <div className="h-10 w-10 shrink-0 rounded-lg bg-white border border-slate-200 flex items-center justify-center dark:bg-slate-700 dark:border-slate-600">
           {getFileIcon(extension)}
         </div>
         <div className="flex-1 min-w-0">
