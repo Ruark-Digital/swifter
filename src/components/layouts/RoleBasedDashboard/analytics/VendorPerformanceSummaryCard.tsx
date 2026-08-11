@@ -93,6 +93,7 @@ type Props = {
       riskScore?: number;
       claims?: number;
       changeOrders?: number;
+      overallKpi?: number;
       performance?: string;
     }>;
   };
@@ -112,16 +113,26 @@ export const VendorPerformanceSummaryCard: React.FC<Props> = ({
   const allRows: VendorRow[] = Array.isArray(data?.rows)
     ? data.rows.map((r) => {
         const performanceRaw = (r.performance ?? "").trim().toLowerCase();
-        // Map ONLY explicit performance levels. Absent / "n/a" / "pending" /
-        // unrecognized values are "not yet rated" (neutral) — performance is
-        // determined later from KPIs during execution, so never default to
-        // "good"/green (QA #110 client clarification).
-        const performance: VendorRow["performance"] =
-          performanceRaw === "critical" || performanceRaw === "warn"
+        // Performance is KPI-based and set during contract EXECUTION (QA #110).
+        // The BE returns `overallKpi` (0-100); 0/absent means the vendor has no
+        // KPI ratings yet, so the dot is neutral regardless of the `performance`
+        // band the BE defaults to (it returns "bad" for un-rated vendors). Only
+        // rated vendors (overallKpi > 0) take a red/amber/green band — never
+        // default to green.
+        const isRated = typeof r.overallKpi === "number" && r.overallKpi > 0;
+        const performance: VendorRow["performance"] = !isRated
+          ? "none"
+          : performanceRaw === "bad" ||
+              performanceRaw === "poor" ||
+              performanceRaw === "critical" ||
+              performanceRaw === "warn"
             ? "warn"
-            : performanceRaw === "ok"
+            : performanceRaw === "ok" ||
+                performanceRaw === "fair" ||
+                performanceRaw === "average"
               ? "ok"
-              : performanceRaw === "good"
+              : performanceRaw === "good" ||
+                  performanceRaw === "excellent"
                 ? "good"
                 : "none";
 
