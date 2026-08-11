@@ -23,7 +23,6 @@ import {
   ArrowLeft,
   FileText,
   Search,
-  Share2,
   UploadCloud,
   X,
 } from "lucide-react";
@@ -752,12 +751,6 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                   <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                     {detail?.name ?? "Deliverable Details"}
                   </div>
-                  <Button
-                    variant="outline"
-                    className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
-                  >
-                    <Share2 className="mr-2 h-4 w-4" /> Export
-                  </Button>
                 </div>
 
                 {isLoading ? (

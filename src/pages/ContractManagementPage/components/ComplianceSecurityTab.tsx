@@ -616,7 +616,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         </div>
 
         {/* Search and Table */}
-        <div className="space-y-4 border border-slate-300 dark:border-slate-700 rounded-md">
+        <div className="space-y-4 border border-[#E5E7EB] dark:border-slate-700 rounded-md">
           <div className="flex items-center gap-4 p-4">
             <div className="font-medium text-slate-700 dark:text-slate-200 w-20">
               {activeView === "policy" ? "Policy" : "Security"}
@@ -632,7 +632,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
             </div>
           </div>
 
-          <div className="border rounded-md bg-white dark:bg-slate-900 dark:border-slate-700">
+          <div className="border border-[#E5E7EB] rounded-md bg-white dark:bg-slate-900 dark:border-slate-700">
             {activeView === "policy" ? (
               <DataTable<PolicyRow>
                 data={filteredPolicyRows}

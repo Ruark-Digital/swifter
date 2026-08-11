@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { useParams } from "react-router-dom";
 import { format } from "date-fns";
+import { ContractStatusBadge, type Status } from "@/pages/ContractManagementPage/components/StatusBadge";
 
 type ClauseCardProps = {
   title: string;
@@ -584,7 +585,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
 
   return (
     <TabsContent value="clause-library" className="space-y-6 pb-8">
-      <div className="flex max-w-[1152px] flex-col gap-4 bg-white dark:bg-slate-900 px-6 py-4">
+      <div className="flex max-w-[1152px] flex-col gap-4 bg-white dark:bg-slate-900 py-4">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
             <div className="text-2xl font-bold leading-8 text-[#2563EB] dark:text-blue-400">
@@ -661,11 +662,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
             </div>
           </div>
 
-          <div className="inline-flex rounded-full bg-[#22C55E] px-3 py-1">
-            <span className="text-sm font-semibold leading-5 text-white">
-              {formatContractStatusLabel(contract?.status)}
-            </span>
-          </div>
+          <ContractStatusBadge status={contract?.status as Status} />
         </div>
       </div>
 
