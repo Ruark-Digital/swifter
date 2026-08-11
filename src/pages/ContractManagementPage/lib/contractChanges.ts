@@ -236,6 +236,27 @@ export const toContractChangeFileItem = (
   };
 };
 
+type ChangeFileItem = { name: string; url: string; type: string; size: string | number };
+
+/**
+ * Merge previously-attached documents with newly uploaded ones for a
+ * change-order/request/proposal resubmit. Existing files are preserved and new
+ * uploads appended (de-duped by URL, then name) — a resubmit that sent only the
+ * new uploads dropped the prior attachments (QA #116).
+ */
+export const mergeChangeAttachments = (
+  existingFiles: ChangeFileItem[] = [],
+  uploadedFiles: ChangeFileItem[] = []
+): ChangeFileItem[] => {
+  const seen = new Set<string>();
+  return [...existingFiles, ...uploadedFiles].filter((f) => {
+    const key = f?.url || f?.name;
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 export const toManagerCreateChangePayload = (
   values: ManagerCreateChangeDialogValues
 ): {

@@ -25,6 +25,7 @@ import {
   getCreateChangeTypeOptionsForRole,
   getCreateChangeSubmitLabel,
   toContractChangeFileItem,
+  mergeChangeAttachments,
   toManagerCreateChangePayload,
   toVendorCreateChangePayload,
   type ContractChangeType,
@@ -156,6 +157,15 @@ const CreateChangeDialog: React.FC<Props> = ({
         changeType: changeType ?? defaultChangeType,
       });
 
+  // Notices must name the actual change type the user selected (Change Order /
+  // Change Request / Change Proposal / Change Directive), not a hardcoded
+  // "Change Request" (QA #106). The role-filtered options already hold the
+  // exact labels.
+  const changeTypeLabel =
+    changeTypeOptions.find(
+      (option) => option.value === (changeType ?? defaultChangeType),
+    )?.label ?? "Change Request";
+
   const { mutateAsync: uploadFile, isPending: isUploadingFiles } = useMutation<
     ApiResponse<UploadURLs[]>,
     ApiResponseError,
@@ -206,12 +216,12 @@ const CreateChangeDialog: React.FC<Props> = ({
     },
     onSuccess: async () => {
       toastHandler.success(
-        "Change Request",
+        changeTypeLabel,
         isEdit
           ? isResubmit
-            ? "Change request resubmitted successfully"
-            : "Change request updated successfully"
-          : "Change request submitted successfully",
+            ? `${changeTypeLabel} resubmitted successfully`
+            : `${changeTypeLabel} updated successfully`
+          : `${changeTypeLabel} submitted successfully`,
       );
       setOpen(false);
       reset();
@@ -225,7 +235,7 @@ const CreateChangeDialog: React.FC<Props> = ({
       }
     },
     onError: (error: ApiResponseError) => {
-      toastHandler.error("Change Request", error);
+      toastHandler.error(changeTypeLabel, error);
     },
   });
 
@@ -253,6 +263,12 @@ const CreateChangeDialog: React.FC<Props> = ({
           amount: data.amount,
         }) as unknown as ContractChangeManagerDTO);
 
+    let uploadedFiles: Array<{
+      name: string;
+      url: string;
+      type: string;
+      size: string;
+    }> = [];
     if (data.files?.length) {
       try {
         const uploadedItems = await Promise.all(
@@ -264,23 +280,24 @@ const CreateChangeDialog: React.FC<Props> = ({
           })
         );
 
-        const filesPayload = uploadedItems
-          .filter(
-            (item): item is { name: string; url: string; type: string; size: string } =>
-              Boolean(item),
-          );
-        if (filesPayload.length) {
-          payload.files = filesPayload;
-        }
+        uploadedFiles = uploadedItems.filter(
+          (item): item is { name: string; url: string; type: string; size: string } =>
+            Boolean(item),
+        );
       } catch (error) {
         toastHandler.error("Upload Failed", error as ApiResponseError);
         return;
       }
     }
 
-    // Editing without re-uploading shouldn't wipe the existing attachment.
-    if (isEdit && !payload.files?.length && initialChange?.files?.length) {
-      payload.files = initialChange.files as any;
+    // On resubmit/edit the previously-attached documents must carry over — a
+    // PATCH that sends only the new uploads (or omits files) drops them, so
+    // uploading a replacement wiped the prior docs (QA #116). Keep the existing
+    // attachments and APPEND any new uploads.
+    const existingFiles = isEdit ? (initialChange?.files ?? []) : [];
+    const mergedFiles = mergeChangeAttachments(existingFiles as any, uploadedFiles);
+    if (mergedFiles.length) {
+      payload.files = mergedFiles as any;
     }
 
     try {
@@ -412,7 +429,7 @@ const CreateChangeDialog: React.FC<Props> = ({
                     ))}
                   </ul>
                   <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                    These stay attached unless you upload replacements.
+                    These stay attached; any files you upload are added to them.
                   </p>
                 </div>
               ) : null}

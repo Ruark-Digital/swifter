@@ -8,6 +8,7 @@ import {
   getCreateChangeTypeOptionsForRole,
   isDraftChangeOrder,
   isLockConflict,
+  mergeChangeAttachments,
   pruneEmptyValuesDeep,
   shouldShowChangeDecisionActions,
   toContractChangeFileItem,
@@ -22,6 +23,30 @@ test.describe("contractChanges helpers (unit)", () => {
     expect(changeTabToApiType("orders")).toBe("order");
     expect(changeTabToApiType("directive")).toBe("directive");
     expect(changeTabToApiType("proposal")).toBe("proposal");
+  });
+
+  test("mergeChangeAttachments keeps existing docs and appends new uploads (QA #116)", async () => {
+    const existing = [
+      { name: "Prior.docx", url: "https://cdn/prior.docx", type: "docx", size: "1 MB" },
+    ];
+    const uploaded = [
+      { name: "New.docx", url: "https://cdn/new.docx", type: "docx", size: "2 MB" },
+    ];
+    const merged = mergeChangeAttachments(existing, uploaded);
+    expect(merged.map((f) => f.url)).toEqual([
+      "https://cdn/prior.docx",
+      "https://cdn/new.docx",
+    ]);
+  });
+
+  test("mergeChangeAttachments de-dupes by URL and preserves existing when no uploads", async () => {
+    const existing = [
+      { name: "A.pdf", url: "https://cdn/a.pdf", type: "pdf", size: "1 MB" },
+    ];
+    // No new uploads → existing must survive (the original QA #116 wipe case).
+    expect(mergeChangeAttachments(existing, [])).toEqual(existing);
+    // Same URL uploaded again → not duplicated.
+    expect(mergeChangeAttachments(existing, existing)).toHaveLength(1);
   });
 
   test("formats change type labels", async () => {
