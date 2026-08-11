@@ -150,6 +150,52 @@ const getResponderId = (raw: any): string | undefined => {
   return r?.user?._id ?? r?._id;
 };
 
+// "May the current user respond right now?" — mirrors the contract RfiTable
+// helper (QA #113). The Respond button is a RESPONDER-only affordance. BE
+// `canRespond` is thread-level and returns `true` for the ISSUER too (they may
+// post follow-ups), so it is not sufficient alone — require responder role
+// (isCurrentResponder / isEligibleResponder), which excludes the issuer. Falls
+// back to a legacy assigned-responder-and-not-issuer check for older payloads.
+const getLastThreadMessage = (raw: any): any => {
+  if (!raw) return null;
+  if (raw.lastResponse) return raw.lastResponse;
+  const thread = Array.isArray(raw.responses) ? raw.responses : [];
+  return thread.length ? thread[thread.length - 1] : null;
+};
+
+const canRespondToRfi = (raw: any, currentUserId?: string): boolean => {
+  if (!raw) return false;
+  // Turn guard: if the caller authored the latest thread message, it is the
+  // other party's turn — hide Respond until they reply (QA #114 #3).
+  const lastMsg = getLastThreadMessage(raw);
+  const lastAuthorId =
+    typeof lastMsg?.submittedBy === "string"
+      ? lastMsg.submittedBy
+      : lastMsg?.submittedBy?._id;
+  if (lastAuthorId && currentUserId && lastAuthorId === currentUserId)
+    return false;
+  if (typeof raw.canRespond === "boolean") {
+    if (!raw.canRespond) return false;
+    if (
+      typeof raw.isCurrentResponder === "boolean" ||
+      typeof raw.isEligibleResponder === "boolean"
+    ) {
+      return Boolean(raw.isCurrentResponder) || Boolean(raw.isEligibleResponder);
+    }
+  }
+  const isOpen = String(raw.status ?? "").toLowerCase() !== "closed";
+  const responded = Boolean(
+    raw.hasResponse ?? raw.response ?? (raw.responseCount ?? 0) > 0,
+  );
+  const isReceived = String(raw.type ?? "").toLowerCase() === "received";
+  const responderId = getResponderId(raw);
+  const isAssigned = Boolean(currentUserId) && responderId === currentUserId;
+  const issuerId =
+    typeof raw.submittedBy === "object" ? raw.submittedBy?._id : undefined;
+  const isIssuer = Boolean(currentUserId) && issuerId === currentUserId;
+  return isOpen && isReceived && !responded && isAssigned && !isIssuer;
+};
+
 const getResponderName = (raw: any): string => {
   const responder = raw?.responder;
   if (!responder) return "-";
@@ -184,7 +230,7 @@ function IssueFileListItem({
       index={index ?? 0}
       className="h-auto w-full rounded-xl border border-slate-200 bg-slate-50 p-3"
     >
-      <div className="flex items-center gap-3 w-full">
+      <div className="flex items-center gap-3 w-full min-w-0">
         <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
           {getFileIcon(extension)}
         </div>
@@ -608,9 +654,54 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     enabled: open && Boolean(contractId) && Boolean(rfiId),
   });
 
-  const detail = (data?.data as any)?.contractRfi ?? (data?.data as any) ?? fallback;
-  const isResponse = (data?.data as any)?.isResponse ?? false;
-  const responderName = getResponderName(detail) || getResponderName(fallback);
+  // The detail body is { status, message, data: { contractRfi, isResponse,
+  // canRespond, ... } }. The queryFn returns `response.data` (the body), so
+  // `data?.data` is the auth-flag envelope; its `contractRfi` is RICH
+  // (responder, submittedBy, status, files, responses[]). Merge over the list
+  // row (`fallback`) so data is present before/after the fetch resolves. Read
+  // responder from the merged object directly: getResponderName returns a
+  // truthy "-" for missing, so a `|| fallback` never fires (QA #114 #6). Never
+  // spread the raw body — that would leak its numeric `status: 200`.
+  const wrapper = data?.data as any;
+  const detailRich = wrapper?.contractRfi ?? undefined;
+  const detail = { ...((fallback as any) ?? {}), ...(detailRich ?? {}) };
+  const responderName = getResponderName(detail);
+
+  // Response content from the thread's most recent message (`lastResponse` /
+  // `responses[]`) — role-agnostic, so the issuer sees it too without the
+  // role-gated /response call that 403s for them (QA #114 #4/#5). Its
+  // `submittedBy` is the ACTUAL responder (QA #113 #1).
+  const lastResponseMsg = getLastThreadMessage(detail);
+  const embeddedResponse = (
+    lastResponseMsg
+      ? {
+          description: lastResponseMsg.description,
+          files: lastResponseMsg.files,
+          submittedBy: lastResponseMsg.submittedBy,
+          submittedAt: lastResponseMsg.submittedAt,
+        }
+      : ((detail as any)?.response ?? null)
+  ) as {
+    description?: string;
+    files?: Array<{ name?: string; url?: string; type?: string; size?: string | number }>;
+    submittedBy?: { name?: string; email?: string };
+    submittedAt?: string;
+  } | null;
+  const responseAuthorRaw =
+    embeddedResponse?.submittedBy ?? detail?.responseSubmittedBy ?? undefined;
+  const responseAuthor =
+    responseAuthorRaw?.name?.trim() || responseAuthorRaw?.email?.trim() || undefined;
+  const responseAt =
+    embeddedResponse?.submittedAt ?? detail?.responseSubmittedAt ?? undefined;
+  // Show the Response tab when ANY positive signal says a response exists — OR
+  // (not ??) so a stale wrapper `isResponse:false` can't hide a response the
+  // list row confirms via hasResponse/responseCount/lastResponse (QA #114 #2).
+  const isResponse = Boolean(
+    wrapper?.isResponse ||
+      (detail as any)?.hasResponse ||
+      ((detail as any)?.responseCount ?? 0) > 0 ||
+      embeddedResponse,
+  );
 
   // Only the RFI issuer may close it, and only while it is still open.
   const submittedByRaw = detail?.submittedBy;
@@ -899,6 +990,9 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                   contractId={contractId}
                   rfiId={rfiId}
                   basePath={basePath}
+                  response={embeddedResponse}
+                  responseAuthor={responseAuthor}
+                  responseAt={responseAt}
                 />
               </TabsContent>
 
@@ -985,7 +1079,15 @@ const RfiResponseContent: React.FC<{
   contractId: string;
   rfiId: string;
   basePath: string;
-}> = ({ contractId, rfiId, basePath }) => {
+  /** Response embedded on the detail DTO — role-agnostic, so the issuer sees it
+   *  too. When present the role-gated fetch below is skipped (QA #113). */
+  response?: {
+    description?: string;
+    files?: Array<{ name?: string; url?: string; type?: string; size?: string | number }>;
+  } | null;
+  responseAuthor?: string;
+  responseAt?: string;
+}> = ({ contractId, rfiId, basePath, response, responseAuthor, responseAt }) => {
   const { data: respRes } = useQuery({
     queryKey: useUserQueryKey([
       "msa-rfi-response",
@@ -999,13 +1101,16 @@ const RfiResponseContent: React.FC<{
       });
       return response.data as { data?: unknown };
     },
-    enabled: Boolean(rfiId),
+    // Skip the role-gated fetch when the detail already embedded the response
+    // (avoids a call that 403s for the issuer).
+    enabled: Boolean(rfiId) && !response,
     staleTime: 60000,
   });
 
-  const resp = Array.isArray((respRes as any)?.data)
+  const fetched = Array.isArray((respRes as any)?.data)
     ? ((respRes as any).data[0] ?? {})
     : ((respRes as any)?.data ?? {});
+  const resp = response ?? fetched;
   const description = resp?.description ?? "-";
   const files = (resp?.files ?? []) as Array<{
     name?: string;
@@ -1023,6 +1128,19 @@ const RfiResponseContent: React.FC<{
 
   return (
     <div className="space-y-6">
+      {responseAuthor ? (
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-[#9CA3AF]">Responded by</div>
+          <div className="text-sm font-medium text-[#111827] dark:text-slate-100">
+            {responseAuthor}
+            {responseAt ? (
+              <span className="ml-2 text-xs font-normal text-[#6B7280] dark:text-slate-400">
+                {formatDateTZ(responseAt, "dd MMM yyyy")}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
       <div className="space-y-2">
         <div className="text-xs font-medium text-[#9CA3AF]">
           Response / Description
@@ -1085,7 +1203,7 @@ function RespondFileListItem({
       index={index ?? 0}
       className="h-auto w-full rounded-xl border border-slate-200 bg-slate-50 p-3"
     >
-      <div className="flex items-center gap-3 w-full">
+      <div className="flex items-center gap-3 w-full min-w-0">
         <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
           {getFileIcon(extension)}
         </div>
@@ -1477,15 +1595,11 @@ const Rfi: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
         id: "actions",
         header: () => <div className="text-right">Actions</div>,
         cell: ({ row }) => {
-          const isReceived = row.original.type.toLowerCase() === "received";
-          const responderId = getResponderId(row.original.raw);
-          const isAssignedResponder =
-            Boolean(currentUser?._id) && responderId === currentUser?._id;
+          // Turn-aware gate (QA #113): BE `canRespond` clears once the user has
+          // answered (issuer's turn) and is never true for the issuer's own
+          // RFI; view-only users never respond.
           const canRespond =
-            isReceived &&
-            !isViewOnly &&
-            isAssignedResponder &&
-            row.original.status.toLowerCase() !== "closed";
+            !isViewOnly && canRespondToRfi(row.original.raw, currentUser?._id);
           return (
             <div className="flex items-center justify-end gap-3">
               <RfiDetailsSheet

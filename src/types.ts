@@ -322,6 +322,15 @@ export interface ContractRfis {
   createdAt:        Date;
   updatedAt:        Date;
   __v:              number;
+  // BE-authoritative turn-taking flags (guaranteed on list items in the
+  // v2.3.0 RFI thread contract; see project_rfi_responder_singular). Gate the
+  // "Respond" affordance on `canRespond` — it is turn-aware, unlike
+  // `isCurrentResponder` which merely marks the assigned responder.
+  canRespond?:         boolean;
+  isCurrentResponder?: boolean;
+  isEligibleResponder?: boolean;
+  hasResponse?:        boolean;
+  responseCount?:      number;
 }
 
 export interface VendorReportRow {

@@ -68,7 +68,7 @@ function FileListItem({ file, index }: { file: File; index?: number }) {
       index={index ?? 0}
       className="h-auto w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3"
     >
-      <div className="flex items-center gap-3 w-full">
+      <div className="flex items-center gap-3 w-full min-w-0">
         <div className="h-10 w-10 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
           {getFileIcon(extension)}
         </div>

@@ -12,7 +12,7 @@ type VendorRow = {
   risk: number;
   claims: number;
   changeOrders: number;
-  performance: "warn" | "ok" | "good";
+  performance: "warn" | "ok" | "good" | "none";
 };
 
 const columns: ColumnDef<VendorRow>[] = [
@@ -53,8 +53,34 @@ const columns: ColumnDef<VendorRow>[] = [
     header: "Performance",
     cell: ({ row }) => {
       const p = row.original.performance;
-      const color = p === "warn" ? "#DC2626" : p === "ok" ? "#F59E0B" : "#10B981";
-      return <span className="inline-block w-4 h-4 rounded-full" style={{ backgroundColor: color }} />;
+      // Performance level is KPI-based and set during contract EXECUTION — it is
+      // distinct from the Risk Score column (client clarification, QA #110).
+      // Contracts not yet executed/rated get a neutral grey dot rather than a
+      // misleading green ("high performance") or red ("low performance").
+      const color =
+        p === "warn"
+          ? "#DC2626"
+          : p === "ok"
+            ? "#F59E0B"
+            : p === "good"
+              ? "#10B981"
+              : "#CBD5E1"; // none / not yet rated
+      const label =
+        p === "warn"
+          ? "Low performance"
+          : p === "ok"
+            ? "Medium performance"
+            : p === "good"
+              ? "High performance"
+              : "Performance not yet rated";
+      return (
+        <span
+          className="inline-block h-4 w-4 rounded-full"
+          style={{ backgroundColor: color }}
+          title={label}
+          aria-label={label}
+        />
+      );
     },
   },
 ];
@@ -85,13 +111,19 @@ export const VendorPerformanceSummaryCard: React.FC<Props> = ({
 }) => {
   const allRows: VendorRow[] = Array.isArray(data?.rows)
     ? data.rows.map((r) => {
-        const performanceRaw = (r.performance ?? "").toLowerCase();
+        const performanceRaw = (r.performance ?? "").trim().toLowerCase();
+        // Map ONLY explicit performance levels. Absent / "n/a" / "pending" /
+        // unrecognized values are "not yet rated" (neutral) — performance is
+        // determined later from KPIs during execution, so never default to
+        // "good"/green (QA #110 client clarification).
         const performance: VendorRow["performance"] =
           performanceRaw === "critical" || performanceRaw === "warn"
             ? "warn"
             : performanceRaw === "ok"
               ? "ok"
-              : "good";
+              : performanceRaw === "good"
+                ? "good"
+                : "none";
 
         return {
           vendor: r.vendor ?? "Unknown",
