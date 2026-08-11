@@ -17,7 +17,6 @@ import { Forge, Forger, useForge } from "@adexdsamson/forge";
 // import * as yup from "yup";
 // import { yupResolver } from "@hookform/resolvers/yup";
 import { postRequest } from "@/lib/axiosInstance";
-import { DropdownFilters } from "@/components/layouts/SolicitationFilters";
 import { Button } from "@/components/ui/button";
 import { useToastHandler } from "@/hooks/useToaster";
 import { format } from "date-fns";
@@ -602,49 +601,6 @@ const KpiTable: React.FC<Props> = ({
               />
             </div>
           </div>
-
-          <DropdownFilters
-            filters={[
-              {
-                title: "Date",
-                options: [
-                  {
-                    hasOptions: true,
-                    value: "date",
-                    label: "Date Published",
-                    subOptions: [
-                      {
-                        title: "All",
-                        value: "all",
-                      },
-                      {
-                        title: "Today",
-                        value: "today",
-                      },
-                      {
-                        title: "Last 7 Days",
-                        value: "7_days",
-                      },
-                      {
-                        title: "Last 30 Days",
-                        value: "30_days",
-                      },
-                      {
-                        title: "Custom",
-                        value: "custom",
-                      },
-                    ],
-                  },
-                ],
-              },
-              // {
-              //   title: "Status",
-              //   showIcon: true,
-              //   options: statusOptions,
-              // },
-            ]}
-            onFilterChange={() => {}}
-          />
         </div>
 
         <DataTable<KpiRow>

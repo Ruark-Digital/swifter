@@ -13,7 +13,8 @@ export type Status =
   | "pending_approval"
   | "submitted"
   | "approved"
-  | "rejected";
+  | "rejected"
+  | "N/A";
 
 const getStatus = (status?: Status) => {
   if (status === "active")
@@ -43,6 +44,11 @@ const getStatus = (status?: Status) => {
     return { label: "Approved", className: "bg-green-100 text-green-700" };
   if (status === "rejected")
     return { label: "Rejected", className: "bg-red-100 text-red-700" };
+  // BE emits "N/A" when the category does not apply (e.g. no contract security).
+  // This is a real value, not an unrecognized one, so surface it verbatim
+  // instead of falling through to the "Unknown" default.
+  if (status?.toLowerCase() === "n/a")
+    return { label: "N/A", className: "bg-slate-100 text-slate-700" };
   return { label: "Unknown", className: "bg-slate-100 text-slate-700" };
 };
 

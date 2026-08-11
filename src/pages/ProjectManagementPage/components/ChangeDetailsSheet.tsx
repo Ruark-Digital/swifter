@@ -118,8 +118,11 @@ const DocCard = ({
       >
         {iconEl}
       </div>
-      <div className="flex-1">
-        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+      <div className="flex-1 min-w-0">
+        <p
+          className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate"
+          title={name}
+        >
           {name}
         </p>
         <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -453,7 +456,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     <>
                       <LabelRow
                         label="Project Category"
-                        value={projectRes?.data?.data?.category ?? ""}
+                        value={(projectRes?.data?.data?.category ?? "").replace(/_/g, " ")}
                         highlight
                       />
                       <LabelRow
