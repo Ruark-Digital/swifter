@@ -654,15 +654,17 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     enabled: open && Boolean(contractId) && Boolean(rfiId),
   });
 
-  // The detail endpoint returns a LEAN contractRfi (title/description/deadline);
-  // the rich fields (responder, submittedBy, status, files, response thread)
-  // live on the LIST row passed as `fallback`. Merge — list row is the rich
-  // base, lean detail refreshes descriptive fields, wrapper carries auth flags
-  // (QA #114). Read responder from the merged object directly: getResponderName
-  // returns a truthy "-" for missing, so a `|| fallback` never fires (#6).
+  // The detail body is { status, message, data: { contractRfi, isResponse,
+  // canRespond, ... } }. The queryFn returns `response.data` (the body), so
+  // `data?.data` is the auth-flag envelope; its `contractRfi` is RICH
+  // (responder, submittedBy, status, files, responses[]). Merge over the list
+  // row (`fallback`) so data is present before/after the fetch resolves. Read
+  // responder from the merged object directly: getResponderName returns a
+  // truthy "-" for missing, so a `|| fallback` never fires (QA #114 #6). Never
+  // spread the raw body — that would leak its numeric `status: 200`.
   const wrapper = data?.data as any;
-  const detailLean = wrapper?.contractRfi ?? wrapper ?? undefined;
-  const detail = { ...((fallback as any) ?? {}), ...(detailLean ?? {}) };
+  const detailRich = wrapper?.contractRfi ?? undefined;
+  const detail = { ...((fallback as any) ?? {}), ...(detailRich ?? {}) };
   const responderName = getResponderName(detail);
 
   // Response content from the thread's most recent message (`lastResponse` /

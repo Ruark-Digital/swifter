@@ -291,16 +291,30 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   // ONLY on the LIST row passed as `rfi`. So merge — the list row is the rich
   // base, the lean detail just refreshes the descriptive fields, and `wrapper`
   // supplies the authoritative auth flags (QA #114).
-  const wrapper = (rfiDetailRes?.data as any) ?? undefined;
-  const detailLean = wrapper?.contractRfi ?? wrapper ?? undefined;
-  const rfiDetail = { ...((rfi as any) ?? {}), ...(detailLean ?? {}) } as any;
+  // The detail API body is { status, message, data: { contractRfi, isResponse,
+  // canRespond, isIssuer, isCurrentResponder, isEligibleResponder,
+  // responderStatus } }. `client.get` returns the axios response, so
+  // rfiDetailRes.data is that BODY and the auth-flag envelope is one level
+  // deeper at `.data.data`. Detect the envelope (it carries contractRfi /
+  // isResponse) so this works whether or not the client already unwrapped a
+  // level. Reading the body directly leaked its numeric `status: 200` into the
+  // merge and crashed `rfiStatus.toLowerCase()` (QA #114 follow-up). The detail
+  // `contractRfi` is RICH (responder, responses[], status, files) — merge it
+  // over the list row so data is present before/after the fetch resolves.
+  const rawDetail = (rfiDetailRes?.data as any) ?? undefined;
+  const wrapper =
+    rawDetail?.contractRfi !== undefined ||
+    typeof rawDetail?.isResponse === "boolean"
+      ? rawDetail
+      : (rawDetail?.data ?? rawDetail);
+  const detailRich = wrapper?.contractRfi ?? undefined;
+  const rfiDetail = { ...((rfi as any) ?? {}), ...(detailRich ?? {}) } as any;
 
   // Response content comes from the thread's most recent message
-  // (`lastResponse` / `responses[]`), which is present on the LIST row and is
-  // therefore role-agnostic — the ISSUER (Vendor PM) sees it too, without the
-  // role-gated /response call that 403s for them (QA #114 #4/#5). Its
-  // `submittedBy` is the ACTUAL responder (QA #113 #1). Falls back to a legacy
-  // embedded `response` object.
+  // (`responses[]` / `lastResponse`), which is on the detail's contractRfi and
+  // is role-agnostic — the ISSUER (Vendor PM) sees it too, without the
+  // role-gated /response call that 403s for them (QA #114 #4/#5). Falls back to
+  // a legacy embedded `response` object.
   const lastResponseMsg = getLastThreadMessage(rfiDetail);
   const rfiResponse = (
     lastResponseMsg
@@ -314,13 +328,33 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   ) as {
     description?: string;
     files?: Array<{ name?: string; url?: string; type?: string; size?: string | number }>;
-    submittedBy?: { name?: string; email?: string };
+    submittedBy?: { _id?: string; name?: string; email?: string } | string;
     submittedAt?: string;
   } | null;
-  const responseAuthorRaw =
-    rfiResponse?.submittedBy ?? rfiDetail?.responseSubmittedBy ?? undefined;
+  // The thread message's `submittedBy` may be a populated object OR a bare id
+  // string. When it's a bare id that matches the assigned responder, resolve it
+  // to their name so "Responded by" shows the actual responder (QA #113 #1).
+  const responseAuthorObj =
+    rfiResponse && typeof rfiResponse.submittedBy === "object"
+      ? rfiResponse.submittedBy
+      : undefined;
+  const lastAuthorId =
+    typeof rfiResponse?.submittedBy === "string"
+      ? rfiResponse.submittedBy
+      : responseAuthorObj?._id;
+  const responderObj =
+    rfiDetail?.responder && typeof rfiDetail.responder === "object"
+      ? rfiDetail.responder
+      : undefined;
   const responseAuthor =
-    responseAuthorRaw?.name?.trim() || responseAuthorRaw?.email?.trim() || undefined;
+    responseAuthorObj?.name?.trim() ||
+    responseAuthorObj?.email?.trim() ||
+    (lastAuthorId && responderObj?._id === lastAuthorId
+      ? responderObj?.name?.trim() || responderObj?.email?.trim()
+      : undefined) ||
+    (rfiDetail?.responseSubmittedBy?.name?.trim() ||
+      rfiDetail?.responseSubmittedBy?.email?.trim()) ||
+    undefined;
   const responseAt =
     rfiResponse?.submittedAt ?? rfiDetail?.responseSubmittedAt ?? undefined;
 
@@ -357,7 +391,9 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   );
   const rfiTitle = rfiDetail?.title ?? "-";
   const rfiDescription = rfiDetail?.description ?? "-";
-  const rfiStatus = rfiDetail?.status ?? "-";
+  // Guard against a non-string ever reaching `rfiStatus.toLowerCase()`.
+  const rfiStatus =
+    typeof rfiDetail?.status === "string" ? rfiDetail.status : "-";
   // Backend returns `submittedBy` as a populated user object ({_id, name,
   // email}); older rows may be plain strings. Coerce before rendering.
   const submittedByRaw = rfiDetail?.submittedBy;
