@@ -78,6 +78,59 @@ const getResponderId = (raw: any): string | undefined => {
   return r?.user?._id ?? r?._id;
 };
 
+// "May the current user respond right now?" — the Respond button is a
+// RESPONDER-only affordance, never the issuer's. Note `canRespond` from the BE
+// is thread-level ("may add a message while open") and is returned `true` for
+// the ISSUER too (they may post follow-up questions), so it is NOT sufficient
+// on its own — verified via network payload: an `issued` RFI viewed by its
+// issuer returns canRespond:true, isCurrentResponder:false,
+// isEligibleResponder:false. Require responder role as well (QA #113 #4: the
+// issuer must not see Respond on their own RFI). Turn-taking (whose turn it is,
+// already-answered) stays encapsulated in `canRespond`.
+const getLastThreadMessage = (raw: any): any => {
+  if (!raw) return null;
+  if (raw.lastResponse) return raw.lastResponse;
+  const thread = Array.isArray(raw.responses) ? raw.responses : [];
+  return thread.length ? thread[thread.length - 1] : null;
+};
+
+const canRespondToRfi = (raw: any, currentUserId?: string): boolean => {
+  if (!raw) return false;
+  // Turn guard: if the caller authored the latest thread message, it is the
+  // other party's turn — hide Respond until they reply. Defends against a
+  // `canRespond` flag that doesn't flip after answering (QA #114 #3).
+  const lastMsg = getLastThreadMessage(raw);
+  const lastAuthorId =
+    typeof lastMsg?.submittedBy === "string"
+      ? lastMsg.submittedBy
+      : lastMsg?.submittedBy?._id;
+  if (lastAuthorId && currentUserId && lastAuthorId === currentUserId)
+    return false;
+  if (typeof raw.canRespond === "boolean") {
+    if (!raw.canRespond) return false;
+    // When the BE tells us the caller's responder role, honor it — this is what
+    // excludes the issuer (both flags false for them).
+    if (
+      typeof raw.isCurrentResponder === "boolean" ||
+      typeof raw.isEligibleResponder === "boolean"
+    ) {
+      return Boolean(raw.isCurrentResponder) || Boolean(raw.isEligibleResponder);
+    }
+  }
+  // Legacy fallback (older payloads without the flags): the assigned responder
+  // — and never the issuer — may respond while the RFI is open and unanswered.
+  const isOpen = String(raw.status ?? "").toLowerCase() !== "closed";
+  const responded = Boolean(
+    raw.hasResponse ?? raw.response ?? (raw.responseCount ?? 0) > 0,
+  );
+  const responderId = getResponderId(raw);
+  const isAssigned = Boolean(currentUserId) && responderId === currentUserId;
+  const issuerId =
+    typeof raw.submittedBy === "object" ? raw.submittedBy?._id : undefined;
+  const isIssuer = Boolean(currentUserId) && issuerId === currentUserId;
+  return isOpen && !responded && isAssigned && !isIssuer;
+};
+
 const getResponderName = (raw: any): string => {
   const responder = raw?.responder;
   if (!responder) return "-";
@@ -230,44 +283,93 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     },
   });
 
-  const rfiDetail = ((rfiDetailRes?.data as any)?.contractRfi ?? rfiDetailRes?.data ?? rfiDetailRes) as unknown as any;
-  const responderId = getResponderId(rfiDetail) ?? getResponderId(rfi);
-  const isAssignedResponder =
-    Boolean(currentUser?._id) && responderId === currentUser?._id;
+  // The detail endpoint returns a LEAN contractRfi — only title/description/
+  // deadline — with the auth flags alongside it (isResponse, canRespond,
+  // isIssuer, isCurrentResponder, isEligibleResponder, responderStatus).
+  // Verified via the live payload: the rich fields (responder, submittedBy,
+  // status, files, hasResponse, responseCount, and the response thread) live
+  // ONLY on the LIST row passed as `rfi`. So merge — the list row is the rich
+  // base, the lean detail just refreshes the descriptive fields, and `wrapper`
+  // supplies the authoritative auth flags (QA #114).
+  const wrapper = (rfiDetailRes?.data as any) ?? undefined;
+  const detailLean = wrapper?.contractRfi ?? wrapper ?? undefined;
+  const rfiDetail = { ...((rfi as any) ?? {}), ...(detailLean ?? {}) } as any;
 
-  // RFI response is now embedded on the detail DTO (QA #52), so the issuer
-  // (Vendor PM) sees it via their own role's detail fetch — no separate,
-  // role-gated /response call. `isCurrentResponder`/`hasResponse` are
-  // BE-authoritative; fall back to the legacy `isResponse` flag + client-side
-  // responder check for older payloads.
-  const rfiResponse = (rfiDetail?.response ?? null) as {
+  // Response content comes from the thread's most recent message
+  // (`lastResponse` / `responses[]`), which is present on the LIST row and is
+  // therefore role-agnostic — the ISSUER (Vendor PM) sees it too, without the
+  // role-gated /response call that 403s for them (QA #114 #4/#5). Its
+  // `submittedBy` is the ACTUAL responder (QA #113 #1). Falls back to a legacy
+  // embedded `response` object.
+  const lastResponseMsg = getLastThreadMessage(rfiDetail);
+  const rfiResponse = (
+    lastResponseMsg
+      ? {
+          description: lastResponseMsg.description,
+          files: lastResponseMsg.files,
+          submittedBy: lastResponseMsg.submittedBy,
+          submittedAt: lastResponseMsg.submittedAt,
+        }
+      : (rfiDetail?.response ?? null)
+  ) as {
     description?: string;
     files?: Array<{ name?: string; url?: string; type?: string; size?: string | number }>;
+    submittedBy?: { name?: string; email?: string };
+    submittedAt?: string;
   } | null;
+  const responseAuthorRaw =
+    rfiResponse?.submittedBy ?? rfiDetail?.responseSubmittedBy ?? undefined;
+  const responseAuthor =
+    responseAuthorRaw?.name?.trim() || responseAuthorRaw?.email?.trim() || undefined;
+  const responseAt =
+    rfiResponse?.submittedAt ?? rfiDetail?.responseSubmittedAt ?? undefined;
+
+  // Show the Response tab when ANY positive signal says a response exists — use
+  // OR (not ??) so a stale wrapper `isResponse:false` can't hide a response the
+  // list row confirms via hasResponse/responseCount/lastResponse (QA #114 #2).
   const hasResponse = Boolean(
-    rfiDetail?.hasResponse ??
-      (rfiDetailRes?.data as any)?.isResponse ??
+    wrapper?.isResponse ||
+      rfiDetail?.hasResponse ||
+      (rfiDetail?.responseCount ?? 0) > 0 ||
       rfiResponse,
   );
-  const canRespond =
-    typeof rfiDetail?.isCurrentResponder === "boolean"
-      ? rfiDetail.isCurrentResponder
-      : !hasResponse && isAssignedResponder;
-  const rfiTitle = rfiDetail?.title ?? rfi?.title ?? "-";
-  const rfiDescription = rfiDetail?.description ?? rfi?.description ?? "-";
-  const rfiStatus = rfi?.status ?? "-";
-  // Backend now returns `submittedBy` as a populated user object
-  // (`{_id, name, email}`) on both list + detail. Older rows could
-  // still be plain strings. Coerce to a string before rendering —
-  // otherwise React crashes with "Objects are not valid as a
-  // React child".
-  const submittedByRaw = rfiDetail?.submittedBy ?? rfi?.submittedBy;
+  // Respond is responder-only. The wrapper carries the caller's responder role
+  // (isCurrentResponder / isEligibleResponder) and canRespond; the issuer has
+  // canRespond:true but both responder flags false, so the helper hides Respond
+  // for them (QA #113 #4). The merged rfiDetail carries the list row's thread
+  // so the turn guard (QA #114 #3) works here too.
+  const canRespond = canRespondToRfi(
+    {
+      canRespond: wrapper?.canRespond ?? rfiDetail?.canRespond,
+      isCurrentResponder:
+        wrapper?.isCurrentResponder ?? rfiDetail?.isCurrentResponder,
+      isEligibleResponder:
+        wrapper?.isEligibleResponder ?? rfiDetail?.isEligibleResponder,
+      status: rfiDetail?.status,
+      submittedBy: rfiDetail?.submittedBy,
+      responder: rfiDetail?.responder,
+      hasResponse: rfiDetail?.hasResponse,
+      responseCount: rfiDetail?.responseCount,
+      lastResponse: rfiDetail?.lastResponse,
+      responses: rfiDetail?.responses,
+    },
+    currentUser?._id,
+  );
+  const rfiTitle = rfiDetail?.title ?? "-";
+  const rfiDescription = rfiDetail?.description ?? "-";
+  const rfiStatus = rfiDetail?.status ?? "-";
+  // Backend returns `submittedBy` as a populated user object ({_id, name,
+  // email}); older rows may be plain strings. Coerce before rendering.
+  const submittedByRaw = rfiDetail?.submittedBy;
   const rfiSubmittedBy =
     typeof submittedByRaw === "string"
       ? submittedByRaw
       : (submittedByRaw?.name ?? submittedByRaw?.email ?? "-");
-  const rfiIdentifier = rfi?.rfiId ?? rfi?._id ?? "-";
-  const responderName = getResponderName(rfiDetail) || getResponderName(rfi);
+  const rfiIdentifier = rfiDetail?.rfiId ?? rfiDetail?._id ?? "-";
+  // getResponderName returns "-" for a missing responder (which is TRUTHY), so
+  // a plain `|| fallback` never fires. The merged rfiDetail already carries the
+  // list row's responder, so read it directly (QA #114 #6).
+  const responderName = getResponderName(rfiDetail);
 
   // Only the RFI issuer may close it, and only while it is still open.
   // Manager uses /rfis (plural); vendor/approver/user use /rfi (singular) —
@@ -565,6 +667,8 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                   contractId={contractId}
                   isApprover={isApprover}
                   response={rfiResponse}
+                  responseAuthor={responseAuthor}
+                  responseAt={responseAt}
                 />
               </TabsContent>
 
@@ -655,7 +759,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                 </Button>
                 <RespondToRfiDialog
                   rfiId={rfiId}
-                  rfi={rfiDetail?.contractRfi}
+                  rfi={rfiDetail}
                   contractId={contractId}
                   trigger={
                     <Button className="flex-1 h-12 rounded-xl">Respond</Button>
@@ -694,7 +798,11 @@ const RfiResponseContent: React.FC<{
     description?: string;
     files?: Array<{ name?: string; url?: string; type?: string; size?: string | number }>;
   } | null;
-}> = ({ rfiId, contractId, isApprover, response }) => {
+  /** Name/email of who actually submitted the response (QA #113 #1) — the
+   *  assigned responder, not the issuer. */
+  responseAuthor?: string;
+  responseAt?: string;
+}> = ({ rfiId, contractId, isApprover, response, responseAuthor, responseAt }) => {
   const { data: respRes } = useQuery({
     queryKey: useUserQueryKey([
       isApprover ? "approver" : "contractManager",
@@ -726,6 +834,21 @@ const RfiResponseContent: React.FC<{
 
   return (
     <div className="space-y-6">
+      {responseAuthor ? (
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+            Responded by
+          </div>
+          <div className="text-sm font-medium text-[#111827] dark:text-slate-100">
+            {responseAuthor}
+            {responseAt ? (
+              <span className="ml-2 text-xs font-normal text-[#6B7280] dark:text-slate-400">
+                {formatDateTZ(responseAt, "dd MMM yyyy")}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
       <div className="space-y-2">
         <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
           Response / Description
@@ -890,13 +1013,13 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
     },
     onSuccess: async () => {
       setIsSuccess(true);
+      // Refresh every RFI-scoped query so the turn-taking reflects immediately:
+      // the list/stats use a bare ["contractRfis", ...] key, while the detail
+      // and comments queries are user-scoped ([userId, roleNs, "contractRfis",
+      // ...]). A predicate match catches both regardless of role, so the
+      // Respond button clears right after answering (QA #113 #3).
       await queryClient.invalidateQueries({
-        queryKey: ["approver", "contractRfis", "detail", rfiId],
-      });
-      // Refresh the RFI list + stats so the row's status/action update
-      // (list/stats use the ["contractRfis", ...] prefix, not ["approver", ...]).
-      await queryClient.invalidateQueries({
-        queryKey: ["contractRfis"],
+        predicate: (q) => q.queryKey.some((k) => k === "contractRfis"),
       });
     },
     onError: (error: ApiResponseError) => {
@@ -1092,9 +1215,10 @@ const columns: ColumnDef<RfiRow>[] = [
 
 const RfiRowActions: React.FC<{ row: RfiRow }> = ({ row }) => {
   const currentUser = useUser();
-  const responderId = getResponderId(row.rfi);
-  const isAssignedResponder =
-    Boolean(currentUser?._id) && responderId === currentUser?._id;
+  // Turn-aware gate: hides once the user has answered (issuer's turn) and never
+  // shows for the issuer's own RFI (QA #113 #3/#4). BE `canRespond` is the
+  // source of truth; the helper falls back for legacy payloads.
+  const canRespond = canRespondToRfi(row.rfi, currentUser?._id);
 
   return (
     <div className="flex items-center justify-end gap-3">
@@ -1112,7 +1236,7 @@ const RfiRowActions: React.FC<{ row: RfiRow }> = ({ row }) => {
           </button>
         }
       />
-      {row.type === "received" && row.status !== "closed" && isAssignedResponder && (
+      {canRespond && (
         <RespondToRfiDialog
           rfiId={row.id}
           rfi={row.rfi}
