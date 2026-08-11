@@ -159,5 +159,10 @@ describe("cards still render real API data", () => {
     expect(screen.getByTitle("Performance not yet rated")).toBeInTheDocument();
     expect(screen.getByTitle("Low performance")).toBeInTheDocument();
     expect(screen.getByTitle("High performance")).toBeInTheDocument();
+
+    // Overall KPI column: score shown when rated, "-" when not (QA #110).
+    expect(screen.getByText("30")).toBeInTheDocument();
+    expect(screen.getByText("85")).toBeInTheDocument();
+    expect(screen.getByText("-")).toBeInTheDocument();
   });
 });
