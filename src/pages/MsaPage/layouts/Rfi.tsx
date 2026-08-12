@@ -151,10 +151,10 @@ const getResponderId = (raw: any): string | undefined => {
 };
 
 // "May the current user respond right now?" — mirrors the contract RfiTable
-// helper (QA #113). The Respond button is a RESPONDER-only affordance. BE
-// `canRespond` is thread-level and returns `true` for the ISSUER too (they may
-// post follow-ups), so it is not sufficient alone — require responder role
-// (isCurrentResponder / isEligibleResponder), which excludes the issuer. Falls
+// helper. Gated on the BE-authoritative, turn-aware `canRespond` (v2.3.0: true
+// only when the RFI is open and it is THIS caller's turn). The RFI is a two-way
+// thread where the ISSUER answers the responder's response, so `canRespond` is
+// returned for the issuer on their turn too — trust it for both parties. Falls
 // back to a legacy assigned-responder-and-not-issuer check for older payloads.
 const getLastThreadMessage = (raw: any): any => {
   if (!raw) return null;
@@ -174,15 +174,9 @@ const canRespondToRfi = (raw: any, currentUserId?: string): boolean => {
       : lastMsg?.submittedBy?._id;
   if (lastAuthorId && currentUserId && lastAuthorId === currentUserId)
     return false;
-  if (typeof raw.canRespond === "boolean") {
-    if (!raw.canRespond) return false;
-    if (
-      typeof raw.isCurrentResponder === "boolean" ||
-      typeof raw.isEligibleResponder === "boolean"
-    ) {
-      return Boolean(raw.isCurrentResponder) || Boolean(raw.isEligibleResponder);
-    }
-  }
+  // BE turn-taking flag is authoritative when present: `canRespond` = open AND
+  // the caller's turn, for issuer and responder alike (v2.3.0).
+  if (typeof raw.canRespond === "boolean") return raw.canRespond;
   const isOpen = String(raw.status ?? "").toLowerCase() !== "closed";
   const responded = Boolean(
     raw.hasResponse ?? raw.response ?? (raw.responseCount ?? 0) > 0,

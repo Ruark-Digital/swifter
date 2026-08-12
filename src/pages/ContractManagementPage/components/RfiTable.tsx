@@ -78,15 +78,15 @@ const getResponderId = (raw: any): string | undefined => {
   return r?.user?._id ?? r?._id;
 };
 
-// "May the current user respond right now?" — the Respond button is a
-// RESPONDER-only affordance, never the issuer's. Note `canRespond` from the BE
-// is thread-level ("may add a message while open") and is returned `true` for
-// the ISSUER too (they may post follow-up questions), so it is NOT sufficient
-// on its own — verified via network payload: an `issued` RFI viewed by its
-// issuer returns canRespond:true, isCurrentResponder:false,
-// isEligibleResponder:false. Require responder role as well (QA #113 #4: the
-// issuer must not see Respond on their own RFI). Turn-taking (whose turn it is,
-// already-answered) stays encapsulated in `canRespond`.
+// "May the current user respond right now?" — gated on the BE-authoritative,
+// turn-aware `canRespond` flag. Per the v2.3.0 RFI contract `canRespond` is
+// `true` ONLY when the RFI is open and it is THIS caller's turn. The RFI is now
+// a two-way thread in which the ISSUER responds to the responder's response, so
+// the BE returns `canRespond:true` for the issuer on their turn as well — we
+// trust it for both parties. (The old code additionally required a responder
+// role via isCurrentResponder/isEligibleResponder to exclude the issuer, which
+// now wrongly blocks the issuer from taking their turn.) The lastAuthor guard
+// below is belt-and-suspenders against a stale flag right after the caller posts.
 const getLastThreadMessage = (raw: any): any => {
   if (!raw) return null;
   if (raw.lastResponse) return raw.lastResponse;
@@ -106,17 +106,10 @@ const canRespondToRfi = (raw: any, currentUserId?: string): boolean => {
       : lastMsg?.submittedBy?._id;
   if (lastAuthorId && currentUserId && lastAuthorId === currentUserId)
     return false;
-  if (typeof raw.canRespond === "boolean") {
-    if (!raw.canRespond) return false;
-    // When the BE tells us the caller's responder role, honor it — this is what
-    // excludes the issuer (both flags false for them).
-    if (
-      typeof raw.isCurrentResponder === "boolean" ||
-      typeof raw.isEligibleResponder === "boolean"
-    ) {
-      return Boolean(raw.isCurrentResponder) || Boolean(raw.isEligibleResponder);
-    }
-  }
+  // BE turn-taking flag is authoritative when present: `canRespond` already
+  // means "open AND the caller's turn", for issuer and responder alike (the
+  // issuer answers the responder's response under the v2.3.0 contract).
+  if (typeof raw.canRespond === "boolean") return raw.canRespond;
   // Legacy fallback (older payloads without the flags): the assigned responder
   // — and never the issuer — may respond while the RFI is open and unanswered.
   const isOpen = String(raw.status ?? "").toLowerCase() !== "closed";
@@ -367,18 +360,13 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
       (rfiDetail?.responseCount ?? 0) > 0 ||
       rfiResponse,
   );
-  // Respond is responder-only. The wrapper carries the caller's responder role
-  // (isCurrentResponder / isEligibleResponder) and canRespond; the issuer has
-  // canRespond:true but both responder flags false, so the helper hides Respond
-  // for them (QA #113 #4). The merged rfiDetail carries the list row's thread
-  // so the turn guard (QA #114 #3) works here too.
+  // Respond follows the BE turn-taking flag (`canRespond` = open AND the
+  // caller's turn) — for the issuer as well, now that they answer the
+  // responder's response (v2.3.0). The merged rfiDetail carries the list row's
+  // thread so the turn guard (QA #114 #3) works here too.
   const canRespond = canRespondToRfi(
     {
       canRespond: wrapper?.canRespond ?? rfiDetail?.canRespond,
-      isCurrentResponder:
-        wrapper?.isCurrentResponder ?? rfiDetail?.isCurrentResponder,
-      isEligibleResponder:
-        wrapper?.isEligibleResponder ?? rfiDetail?.isEligibleResponder,
       status: rfiDetail?.status,
       submittedBy: rfiDetail?.submittedBy,
       responder: rfiDetail?.responder,
