@@ -12,6 +12,7 @@ type VendorRow = {
   risk: number;
   claims: number;
   changeOrders: number;
+  overallKpi: number;
   performance: "warn" | "ok" | "good" | "none";
 };
 
@@ -48,6 +49,17 @@ const columns: ColumnDef<VendorRow>[] = [
     ),
   },
   { accessorKey: "changeOrders", header: "Change Orders", cell: ({ row }) => <span className="text-sm text-[#0F0F0F] dark:text-slate-100">{row.original.changeOrders}</span> },
+  {
+    accessorKey: "overallKpi",
+    header: "Overall KPI",
+    // KPI score (0-100) set during execution; 0/absent = not yet rated, shown as
+    // "-" to match the neutral Performance dot (QA #110).
+    cell: ({ row }) => (
+      <span className="text-sm text-[#0F0F0F] dark:text-slate-100">
+        {row.original.overallKpi > 0 ? row.original.overallKpi : "-"}
+      </span>
+    ),
+  },
   {
     accessorKey: "performance",
     header: "Performance",
@@ -93,6 +105,7 @@ type Props = {
       riskScore?: number;
       claims?: number;
       changeOrders?: number;
+      overallKpi?: number;
       performance?: string;
     }>;
   };
@@ -112,16 +125,26 @@ export const VendorPerformanceSummaryCard: React.FC<Props> = ({
   const allRows: VendorRow[] = Array.isArray(data?.rows)
     ? data.rows.map((r) => {
         const performanceRaw = (r.performance ?? "").trim().toLowerCase();
-        // Map ONLY explicit performance levels. Absent / "n/a" / "pending" /
-        // unrecognized values are "not yet rated" (neutral) — performance is
-        // determined later from KPIs during execution, so never default to
-        // "good"/green (QA #110 client clarification).
-        const performance: VendorRow["performance"] =
-          performanceRaw === "critical" || performanceRaw === "warn"
+        // Performance is KPI-based and set during contract EXECUTION (QA #110).
+        // The BE returns `overallKpi` (0-100); 0/absent means the vendor has no
+        // KPI ratings yet, so the dot is neutral regardless of the `performance`
+        // band the BE defaults to (it returns "bad" for un-rated vendors). Only
+        // rated vendors (overallKpi > 0) take a red/amber/green band — never
+        // default to green.
+        const isRated = typeof r.overallKpi === "number" && r.overallKpi > 0;
+        const performance: VendorRow["performance"] = !isRated
+          ? "none"
+          : performanceRaw === "bad" ||
+              performanceRaw === "poor" ||
+              performanceRaw === "critical" ||
+              performanceRaw === "warn"
             ? "warn"
-            : performanceRaw === "ok"
+            : performanceRaw === "ok" ||
+                performanceRaw === "fair" ||
+                performanceRaw === "average"
               ? "ok"
-              : performanceRaw === "good"
+              : performanceRaw === "good" ||
+                  performanceRaw === "excellent"
                 ? "good"
                 : "none";
 
@@ -131,6 +154,7 @@ export const VendorPerformanceSummaryCard: React.FC<Props> = ({
           risk: r.riskScore ?? 0,
           claims: r.claims ?? 0,
           changeOrders: r.changeOrders ?? 0,
+          overallKpi: r.overallKpi ?? 0,
           performance,
         };
       })

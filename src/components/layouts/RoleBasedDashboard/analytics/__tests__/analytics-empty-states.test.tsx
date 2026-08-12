@@ -139,4 +139,30 @@ describe("cards still render real API data", () => {
     expect(screen.queryByText("No vendor performance data yet")).toBeNull();
     expect(screen.getByText("Acme Ltd")).toBeInTheDocument();
   });
+
+  // QA #110: the BE now returns `overallKpi` (0 = not rated) and defaults the
+  // `performance` band to "bad" for un-rated vendors. The dot must stay neutral
+  // until a vendor is actually rated (overallKpi > 0) — the same "bad" band is
+  // grey when unrated and red once rated.
+  test("VendorPerformanceSummaryCard gates the dot on overallKpi", () => {
+    render(
+      <VendorPerformanceSummaryCard
+        data={{
+          rows: [
+            { vendor: "Unrated Co", overallKpi: 0, performance: "bad" },
+            { vendor: "Rated Bad Co", overallKpi: 30, performance: "bad" },
+            { vendor: "Rated Good Co", overallKpi: 85, performance: "good" },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByTitle("Performance not yet rated")).toBeInTheDocument();
+    expect(screen.getByTitle("Low performance")).toBeInTheDocument();
+    expect(screen.getByTitle("High performance")).toBeInTheDocument();
+
+    // Overall KPI column: score shown when rated, "-" when not (QA #110).
+    expect(screen.getByText("30")).toBeInTheDocument();
+    expect(screen.getByText("85")).toBeInTheDocument();
+    expect(screen.getByText("-")).toBeInTheDocument();
+  });
 });

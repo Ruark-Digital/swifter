@@ -325,6 +325,9 @@ export type ContractManagerVendorSummary = {
     riskScore?: number;
     claims?: number;
     changeOrders?: number;
+    /** KPI-based performance score (0-100) computed during contract execution.
+     *  0 / absent means the vendor has not been rated yet (QA #110). */
+    overallKpi?: number;
     performance?: string;
   }>;
   summary?: unknown;
