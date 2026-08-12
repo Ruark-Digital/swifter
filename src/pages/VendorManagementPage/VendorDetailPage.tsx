@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import EditVendorDialog from "./components/EditVendorDialog";
 import ManageVendorAccessDialog from "./components/ManageVendorAccessDialog";
+import ManageProjectManagerAccessDialog from "./components/ManageProjectManagerAccessDialog";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils.tsx";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
@@ -462,8 +463,10 @@ const SubmissionsTab = ({
 
 const ProjectManagersTab = ({
   projectManagers,
+  vendorId,
 }: {
   projectManagers: VendorProjectManager[];
+  vendorId?: string;
 }) => {
   const toast = useToastHandler();
   const [pagination, setPagination] = useState<PaginationState>({
@@ -472,6 +475,11 @@ const ProjectManagersTab = ({
   });
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedProjectManager, setSelectedProjectManager] =
+    useState<VendorProjectManager | null>(null);
+  // #84 — Manage Access is a per-project-manager action: it opens the dialog
+  // scoped to that PM's own user account (row._id), not the vendor account.
+  const [accessOpen, setAccessOpen] = useState(false);
+  const [accessTarget, setAccessTarget] =
     useState<VendorProjectManager | null>(null);
 
   const remindInviteMutation = useMutation<
@@ -541,6 +549,15 @@ const ProjectManagersTab = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44 rounded-2xl">
+            <DropdownMenuItem
+              className="p-3"
+              onClick={() => {
+                setAccessTarget(row.original);
+                setAccessOpen(true);
+              }}
+            >
+              Manage Access
+            </DropdownMenuItem>
             <DropdownMenuItem
               className="p-3"
               disabled={row.original.status === "active"}
@@ -613,6 +630,17 @@ const ProjectManagersTab = ({
           remindInviteMutation.mutate(selectedProjectManager.email);
         }}
         primaryButtonLoading={remindInviteMutation.isPending}
+      />
+      <ManageProjectManagerAccessDialog
+        open={accessOpen}
+        onOpenChange={(open) => {
+          setAccessOpen(open);
+          if (!open) setAccessTarget(null);
+        }}
+        pmId={accessTarget?._id}
+        pmName={accessTarget?.name || accessTarget?.email}
+        currentRole={(accessTarget as { role?: string } | null)?.role}
+        vendorId={vendorId}
       />
     </div>
   );
@@ -732,7 +760,8 @@ export const VendorDetailPage = () => {
                   }
                 />
                 {/* #84 — assign Vendor (Solicitation) and/or Vendor-PM (CLM)
-                    access to this vendor's user account. */}
+                    access to this vendor's user account. Per-PM access lives in
+                    each Project Manager row's dropdown (see ProjectManagersTab). */}
                 {vendor.user?._id && (
                   <ManageVendorAccessDialog
                     userId={vendor.user._id}
@@ -864,7 +893,10 @@ export const VendorDetailPage = () => {
               className="mt-0 border-0 p-0"
               data-testid="vendor-project-managers-content"
             >
-              <ProjectManagersTab projectManagers={projectManagers} />
+              <ProjectManagersTab
+                projectManagers={projectManagers}
+                vendorId={id}
+              />
             </TabsContent>
           )}
         </Tabs>

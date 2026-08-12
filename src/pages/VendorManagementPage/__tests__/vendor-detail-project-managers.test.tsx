@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
 import { VendorDetailPage } from "../VendorDetailPage";
 
 const getRequestMock = vi.fn();
@@ -100,7 +101,9 @@ describe("VendorDetailPage - Project Managers tab", () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <VendorDetailPage />
+        <MemoryRouter>
+          <VendorDetailPage />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
 
@@ -133,7 +136,21 @@ describe("VendorDetailPage - Project Managers tab", () => {
     fireEvent.pointerDown(menuButton as Element);
     fireEvent.click(menuButton as Element);
 
-    const resend = await screen.findByText("Resend Invite");
+    const resend = await screen.findByRole("menuitem", {
+      name: "Resend Invite",
+    });
     expect(resend).toHaveAttribute("data-disabled");
+
+    // #84 — a per-PM Manage Access menuitem lives in the row dropdown, above
+    // Resend Invite (distinct from the vendor-account Manage Access button in
+    // the page header).
+    const manageAccess = await screen.findByRole("menuitem", {
+      name: "Manage Access",
+    });
+    expect(manageAccess).toBeInTheDocument();
+    expect(
+      manageAccess.compareDocumentPosition(resend) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   }, 10000);
 });
