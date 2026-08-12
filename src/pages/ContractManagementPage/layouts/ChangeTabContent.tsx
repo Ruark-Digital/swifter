@@ -71,6 +71,9 @@ type Props = {
   currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
+  /** BE-computed flag: is the logged-in user the contract's owner. Gates the
+   *  manager-side Create Change action (vendor/PM keep their own flow). */
+  owner?: boolean;
 };
 
 const ChangeTabContent: React.FC<Props> = ({
@@ -78,6 +81,7 @@ const ChangeTabContent: React.FC<Props> = ({
   currency,
   isActive,
   actionsDisabled,
+  owner,
 }) => {
   const { isVendor, isProjectManager, isManager, isApprover, isAdmin, isViewOnly } =
     useUserRole();
@@ -192,7 +196,7 @@ const ChangeTabContent: React.FC<Props> = ({
               <Share2 className="mr-2 h-4 w-4" /> Export Report
             </Button>
           </ExportReportSheet>
-          {(isManager || isContractVendorLike) && (
+          {((isManager && Boolean(owner)) || isContractVendorLike) && (
             <CreateChangeDialog
               trigger={
                 <Button

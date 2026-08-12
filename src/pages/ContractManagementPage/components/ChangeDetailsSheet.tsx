@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Share2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -245,6 +244,23 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     | Array<{ user?: Array<{ user?: string }> }>
     | undefined;
   const currentUserId = currentUser?._id;
+
+  // Edit is restricted to the user who created/submitted the change (QA):
+  // detail endpoints populate `requestedBy` (and legacy `submittedBy`) as an
+  // object whose `_id` is the requester. When an id is present we match it
+  // against the logged-in user; if the BE omits an identifiable id we fall
+  // back to the role gate so the real creator isn't locked out by a missing
+  // field.
+  const changeCreatorId =
+    (typeof detail?.requestedBy === "object"
+      ? detail?.requestedBy?._id
+      : undefined) ??
+    (typeof detail?.submittedBy === "object"
+      ? detail?.submittedBy?._id
+      : undefined);
+  const isChangeCreator = changeCreatorId
+    ? !!currentUserId && changeCreatorId === currentUserId
+    : true;
 
   // Once the overall claim status is approved/rejected, no further decision
   // actions should be visible — regardless of role or impact.
@@ -556,14 +572,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
       >
         <div className="space-y-6" data-testid="change-details-sheet">
           <SheetHeader>
-            <div className="flex items-center justify-between">
-              <SheetTitle>{isClaim ? "Claim Details" : "Change Details"}</SheetTitle>
-              <div className="flex items-center gap-2 mr-14">
-                <Button variant="outline" size="sm">
-                  <Share2 className="mr-2 h-4 w-4" /> Export
-                </Button>
-              </div>
-            </div>
+            <SheetTitle>{isClaim ? "Claim Details" : "Change Details"}</SheetTitle>
           </SheetHeader>
 
           <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -750,6 +759,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
           {/* Vendor/PM edit (pending) or resubmit (rejected) — bottom footer,
               matching the Deliverables detail layout. */}
           {isContractVendorLike &&
+            isChangeCreator &&
             activeTab === "overview" &&
             (status?.toLowerCase?.() === "pending" ||
               status?.toLowerCase?.() === "rejected") && (
