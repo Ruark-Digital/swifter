@@ -918,7 +918,16 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
             isContractOwner && (
               <Button
                 onClick={() => setEditingContractId(contract?._id ?? null)}
-                disabled={contract?.status !== "draft"}
+                // Primary owners may edit any non-terminal contract; edits to a
+                // live (non-draft) contract re-enter the approval chain via
+                // EditContract (QA #118). "publish" is a live status too (see
+                // formatContractStatus). Terminal states (completed/cancelled/
+                // expired/terminated) stay locked.
+                disabled={
+                  !["draft", "pending_approval", "active", "publish"].includes(
+                    String(contract?.status ?? ""),
+                  )
+                }
               >
                 Edit Contract
               </Button>
