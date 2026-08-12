@@ -174,6 +174,18 @@ export const isDraftChangeOrder = (
   (change.type ?? "").toLowerCase() === "order" &&
   (change.status ?? "").toLowerCase() === "draft";
 
+// A draft change order is finalized/edited by its ORIGINATOR: the Vendor PM for
+// a change-request/proposal-origin draft, the CM for a directive-origin draft.
+// The CM must NOT get a convert/approve action on a CR/CP-origin draft by
+// default — only after the Vendor PM edits it and sends it for a fresh approval
+// (QA #117). A missing/unknown origin falls back to the CM (directive/legacy).
+export const isCrCpOriginDraftCo = (
+  change: { originalChangeType?: string | null } | null | undefined,
+): boolean => {
+  const origin = (change?.originalChangeType ?? "").toLowerCase();
+  return origin === "request" || origin === "proposal";
+};
+
 /**
  * Build the `approve-draft-co` URL. Mirrors {@link getChangeLockUrl}'s
  * dual-path handling — preserves the incoming role prefix and the

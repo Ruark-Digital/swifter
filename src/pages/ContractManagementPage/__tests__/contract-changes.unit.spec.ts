@@ -6,6 +6,7 @@ import {
   getApproveDraftCoUrl,
   getChangeLockUrl,
   getCreateChangeTypeOptionsForRole,
+  isCrCpOriginDraftCo,
   isDraftChangeOrder,
   isLockConflict,
   mergeChangeAttachments,
@@ -286,6 +287,19 @@ test.describe("contractChanges helpers (unit)", () => {
     expect(isDraftChangeOrder({})).toBe(false);
     expect(isDraftChangeOrder(null)).toBe(false);
     expect(isDraftChangeOrder(undefined)).toBe(false);
+  });
+
+  test("detects CR/CP-origin draft CO (drives who acts — QA #117)", async () => {
+    // CR/CP origin → Vendor PM acts.
+    expect(isCrCpOriginDraftCo({ originalChangeType: "request" })).toBe(true);
+    expect(isCrCpOriginDraftCo({ originalChangeType: "proposal" })).toBe(true);
+    expect(isCrCpOriginDraftCo({ originalChangeType: "Proposal" })).toBe(true);
+    // Directive / unknown / missing origin → CM acts (fallback).
+    expect(isCrCpOriginDraftCo({ originalChangeType: "directive" })).toBe(false);
+    expect(isCrCpOriginDraftCo({ originalChangeType: "" })).toBe(false);
+    expect(isCrCpOriginDraftCo({})).toBe(false);
+    expect(isCrCpOriginDraftCo(null)).toBe(false);
+    expect(isCrCpOriginDraftCo(undefined)).toBe(false);
   });
 
   test("builds approve-draft-co url with dual path + resource handling", async () => {

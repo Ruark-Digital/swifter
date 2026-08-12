@@ -37,6 +37,7 @@ import {
 import {
   getApproveDraftCoUrl,
   getManagerApproveChangeUrl,
+  isCrCpOriginDraftCo,
   isDraftChangeOrder,
   shouldShowChangeDecisionActions,
 } from "../lib/contractChanges";
@@ -209,7 +210,15 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   // The BE 403s if the caller isn't the eligible originator, so gate on role
   // here for UX and let the server enforce ownership.
   const isDraftCo = !isClaim && isDraftChangeOrder({ type: changeType, status });
-  const canActOnDraftCo = isDraftCo && (isManager || isContractVendorLike);
+  // A draft CO is finalized/edited only by its originator: the Vendor PM for a
+  // CR/CP-origin draft, the CM for a directive-origin (or legacy) draft. The CM
+  // must not see a convert/approve action on a CR/CP-origin draft by default —
+  // it appears for the CM only once the Vendor PM edits + re-sends for approval
+  // (which flips the status out of "draft" into the normal decision flow). (QA #117)
+  const draftCoActor = isCrCpOriginDraftCo({ originalChangeType })
+    ? isContractVendorLike
+    : isManager;
+  const canActOnDraftCo = isDraftCo && draftCoActor;
 
   const statusBadgeTone = (s?: string) => {
     const k = (s ?? "").toLowerCase();
@@ -427,7 +436,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     },
     onSuccess: (res) => {
       toast.success(
-        "Change order approved",
+        "Change order created",
         (res as any)?.data?.message ??
           "The change order value has been applied to the contract.",
       );
@@ -441,7 +450,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
       setConfirmDraftApprove(false);
     },
     onError: (err: any) => {
-      toast.error("Failed to approve change order", err);
+      toast.error("Failed to convert change order", err);
     },
   });
 
@@ -821,11 +830,12 @@ const ChangeDetailsSheet: React.FC<Props> = ({
               </SheetFooter>
             )}
 
-          {/* #79 — draft change-order finalization. The originator either
-              finalizes directly (Approve → approve-draft-co, applies the value
-              now) or edits it (Vendor PM only for now — the edit PUT routes
-              through the vendor API; manager/directive-origin edit is a
-              follow-up) to send it through a fresh approval. */}
+          {/* #79/#117 — draft change-order finalization by its originator only.
+              They either convert it directly (Convert → approve-draft-co, applies
+              the value now under the prior approval) or edit it (Vendor PM only
+              for now — the edit PUT routes through the vendor API;
+              manager/directive-origin edit is a follow-up) to send it through a
+              fresh approval. The CM has no action here on a CR/CP-origin draft. */}
           {canActOnDraftCo && activeTab === "overview" && (
             <SheetFooter>
               <div className="flex w-full gap-3 pt-2">
@@ -860,7 +870,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                   disabled={isApprovingDraft}
                   onClick={() => setConfirmDraftApprove(true)}
                 >
-                  Approve Change Order
+                  Convert to Change Order
                 </Button>
               </div>
             </SheetFooter>
@@ -1077,17 +1087,19 @@ const ChangeDetailsSheet: React.FC<Props> = ({
           <DialogContent className="sm:max-w-md p-0 overflow-hidden">
             <DialogHeader className="px-6 pt-6 pb-2">
               <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
-                Approve Change Order
+                Convert to Change Order
               </DialogTitle>
             </DialogHeader>
             <div className="px-6 pb-6 space-y-4">
               <p className="text-sm text-[#6B7280] dark:text-slate-400">
-                Approving this draft change order applies its value
+                Converting this draft change order applies its value
                 {value != null
                   ? ` (${formatCompactCurrency(Number(value), currencyCode)})`
                   : ""}{" "}
-                to the contract immediately. To review or attach documents
-                first, use “Edit &amp; Send for Approval” instead.
+                to the contract immediately — the prior approval still stands, so
+                no new approval is required. To modify or attach documents first
+                (which re-enters approval), use “Edit &amp; Send for Approval”
+                instead.
               </p>
               <div className="flex gap-3 pt-2">
                 <Button
@@ -1106,7 +1118,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                   aria-busy={isApprovingDraft}
                   onClick={() => approveDraftCo()}
                 >
-                  {isApprovingDraft ? "Approving..." : "Confirm Approve"}
+                  {isApprovingDraft ? "Converting..." : "Confirm Convert"}
                 </Button>
               </div>
             </div>
