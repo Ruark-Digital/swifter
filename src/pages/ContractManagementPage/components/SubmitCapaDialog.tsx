@@ -187,7 +187,7 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
         </div>
         <div className="px-8 pb-8 pt-2">
           <p className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100 mb-3">
-            Corrective & Preventive Action Plan
+            Corrective Action and Preventive Action
           </p>
           <Forge
             control={control}

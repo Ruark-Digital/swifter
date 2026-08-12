@@ -30,11 +30,6 @@ import * as yup from "yup";
 const schema = yup.object().shape({
   name: yup.string().required("Company name is required"),
   // planName: yup.string().required("Subscription plan is required"),
-  duration: yup
-    .number()
-    .positive()
-    .integer()
-    .required("Subscription duration is required"),
   currency: yup.string().required("Currency is required"),
   adminEmails: yup
     .array()

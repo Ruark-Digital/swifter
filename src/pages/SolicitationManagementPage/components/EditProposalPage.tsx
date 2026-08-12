@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
-import { Upload, CheckCircle } from "lucide-react";
+import { Upload, CheckCircle, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getRequest, putRequest } from "@/lib/axiosInstance";
@@ -480,6 +480,40 @@ const ProposalForm = ({
     }
   };
 
+  // Remove a single previously attached file from a document (QA #98). Mirrors
+  // the watch-driven display used by handleFilesUploaded: strip the file from
+  // form state, and drop the whole document entry once its last file is gone so
+  // the submit payload doesn't carry an empty document.
+  const handleRemoveFile = (
+    requiredDocumentId: string,
+    fileIndex: number
+  ) => {
+    const currentDocuments = forge.getValues("document") || [];
+    const docIndex = currentDocuments.findIndex(
+      (doc) => doc.requiredDocumentId === requiredDocumentId
+    );
+    if (docIndex < 0) return;
+
+    const updatedDocuments = [...currentDocuments];
+    const remainingFiles = (updatedDocuments[docIndex].files || []).filter(
+      (_, index) => index !== fileIndex
+    );
+
+    if (remainingFiles.length > 0) {
+      updatedDocuments[docIndex] = {
+        ...updatedDocuments[docIndex],
+        files: remainingFiles,
+      };
+    } else {
+      updatedDocuments.splice(docIndex, 1);
+    }
+
+    forge.setValue("document", updatedDocuments, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
+
   const handleSubmit = async (data: FormValues) => {
     try {
       const submissionData = {
@@ -629,9 +663,18 @@ const ProposalForm = ({
                 {uploadedFiles.map((file, index) => (
                   <span
                     key={index}
-                    className="text-xs text-blue-600 dark:text-blue-400"
+                    className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400"
                   >
-                    {file.name}
+                    <span className="truncate">{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFile(doc._id, index)}
+                      aria-label={`Remove ${file.name}`}
+                      title="Remove file"
+                      className="shrink-0 text-gray-400 hover:text-red-500 focus:outline-none"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   </span>
                 ))}
               </div>

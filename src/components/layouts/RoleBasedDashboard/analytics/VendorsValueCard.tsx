@@ -34,6 +34,32 @@ const formatVendorTick = (name: string) =>
     ? `${name.slice(0, MAX_VENDOR_LABEL_LENGTH)}…`
     : name;
 
+// Angled X-axis label so vendor names spread diagonally instead of colliding
+// horizontally — they overlapped even at 7 vendors and get denser at Top 10/20
+// (QA #126). Right-anchored + rotated keeps each label pinned under its bar.
+const VendorAxisTick = ({
+  x,
+  y,
+  payload,
+}: {
+  x?: number;
+  y?: number;
+  payload?: { value?: string | number };
+}) => (
+  <g transform={`translate(${x ?? 0},${y ?? 0})`}>
+    <text
+      dy={4}
+      textAnchor="end"
+      transform="rotate(-35)"
+      fill="#475467"
+      fontSize={11}
+      fontWeight={600}
+    >
+      {formatVendorTick(String(payload?.value ?? ""))}
+    </text>
+  </g>
+);
+
 export const VendorsValueCard: React.FC<Props> = ({
   rows,
   selectedRange = "ytd",
@@ -102,7 +128,7 @@ export const VendorsValueCard: React.FC<Props> = ({
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data}
-              margin={{ top: 10, right: 10, left: 10, bottom: 40 }}
+              margin={{ top: 10, right: 10, left: 10, bottom: 56 }}
             >
               <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
               <YAxis
@@ -122,13 +148,11 @@ export const VendorsValueCard: React.FC<Props> = ({
               />
               <XAxis
                 dataKey="name"
-                tick={{ fill: "#475467", fontSize: 12, fontWeight: 600 }}
+                tick={<VendorAxisTick />}
                 tickLine={false}
                 axisLine={false}
                 interval={0}
-                tickFormatter={formatVendorTick}
-                minTickGap={10}
-                height={56}
+                height={72}
               />
               <Tooltip
                 cursor={{ fill: "rgba(0,0,0,0.05)" }}

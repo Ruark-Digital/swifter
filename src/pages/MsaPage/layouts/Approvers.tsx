@@ -37,6 +37,32 @@ type ApproverRow = {
   raw: any;
 };
 
+// Shape returned by GET /{role}/msa-contracts/{contractId}/approvers/{approverId}.
+// Only the fields the sheet renders are typed; the rest is intentionally loose.
+type MsaApproverDetail = {
+  approver?: { _id?: string; name?: string | null; email?: string | null };
+  submissionDate?: string;
+  assignedApproval?: { completed?: number; total?: number };
+  status?: string;
+  models?: Record<
+    string,
+    { status?: string; comment?: string | null; actionedAt?: string | null }
+  >;
+  items?: Record<string, Array<{
+    refId?: string;
+    refType?: string;
+    refCode?: string | null;
+    title?: string;
+    status?: string;
+    comment?: string | null;
+    actionedAt?: string | null;
+    level?: number | null;
+    group?: string | null;
+    amount?: number | null;
+    completedAt?: string | null;
+  }>>;
+};
+
 const LabelRow = ({
   label,
   value,
@@ -49,6 +75,68 @@ const LabelRow = ({
     <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
+
+const APPROVAL_ITEM_LABELS: Record<string, string> = {
+  project: "Projects",
+  changes: "Changes",
+  claims: "Claims",
+  invoices: "Invoices",
+  lems: "LEMs",
+  amendments: "Amendments",
+};
+
+const ApprovalItemsList = ({
+  items,
+}: {
+  items: MsaApproverDetail["items"];
+}) => {
+  const entries = Object.entries(items ?? {}).filter(
+    ([, list]) => Array.isArray(list) && list.length > 0,
+  );
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="space-y-4">
+      <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+        Assigned Approvals
+      </div>
+      {entries.map(([key, list]) => (
+        <div key={key} className="space-y-2">
+          <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+            {APPROVAL_ITEM_LABELS[key] ?? key}
+          </div>
+          <ul className="space-y-1.5">
+            {list.map((item, idx) => (
+              <li
+                key={item.refId ?? idx}
+                className="flex items-center justify-between rounded-md border border-[#E5E7EB] dark:border-slate-800 px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium text-[#111827] dark:text-slate-100">
+                    {item.title || item.refCode || item.refType || "Untitled"}
+                  </div>
+                  {item.refCode && (
+                    <div className="text-xs text-[#9CA3AF] dark:text-slate-400">
+                      {item.refCode}
+                    </div>
+                  )}
+                </div>
+                <span
+                  className={cn(
+                    "ml-3 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize",
+                    getStatusClass(item.status ?? "Pending"),
+                  )}
+                >
+                  {item.status ?? "Pending"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const normalizeStatus = (
   value?: string,
@@ -83,14 +171,77 @@ const getStatusClass = (status: string) => {
   return "bg-[#FFF8E0] text-[#E8AE00]";
 };
 
+// Resolve the role-aware base path for a single MSA approver detail fetch.
+// Mirrors the list's `basePath` so manager/vendor/approver/view-only each hit
+// their own prefixed endpoint (e.g. /contract/manager/msa-contracts/:id/approvers/:aid).
+const approverDetailBasePath = (
+  contractId: string,
+  role: {
+    isManager: boolean;
+    isApprover: boolean;
+    isVendor: boolean;
+    isProjectManager: boolean;
+    isViewOnly: boolean;
+  },
+): string => {
+  if (role.isVendor || role.isProjectManager)
+    return `/contract/vendor/msa-contracts/${contractId}`;
+  if (role.isApprover) return `/contract/approver/msa-contracts/${contractId}`;
+  if (role.isViewOnly) return `/contract/user/msa-contracts/${contractId}`;
+  return `/contract/manager/msa-contracts/${contractId}`;
+};
+
 const ApproverDetailsSheet = ({
   trigger,
   row,
+  contractId,
 }: {
   trigger: React.ReactNode;
   row: ApproverRow;
+  contractId: string;
 }) => {
-  const createdAt = row.raw?.createdAt || row.raw?.updatedAt;
+  const { isManager, isApprover, isVendor, isProjectManager, isViewOnly } =
+    useUserRole();
+  // Prefer the approver's own id (matches the detail route param). Fall back to
+  // the list row id, which is set from approverId || _id in the flat mapping.
+  const approverId = row.raw?.approverId || row.raw?._id || row.id;
+
+  // Fetch the dedicated MSA approver detail. The list payload only carries a
+  // summary, so the sheet would otherwise show stale/partial data. The detail
+  // endpoint returns completed/total approvals and per-type approval items.
+  const {
+    data: detailData,
+    isLoading: detailLoading,
+  } = useQuery({
+    queryKey: useUserQueryKey([
+      "msa-approver-detail",
+      contractId,
+      approverId,
+    ]),
+    queryFn: async () => {
+      const base = approverDetailBasePath(contractId, {
+        isManager,
+        isApprover,
+        isVendor,
+        isProjectManager,
+        isViewOnly,
+      });
+      const response = await getRequest({
+        url: `${base}/approvers/${approverId}`,
+      });
+      return response.data as { data?: MsaApproverDetail };
+    },
+    enabled: Boolean(contractId) && Boolean(approverId),
+    staleTime: 60000,
+    retry: false,
+  });
+
+  // The detail fetch augments the list row; fall back to list data on any gap.
+  const detail = detailData?.data;
+  const createdAt =
+    detail?.submissionDate ||
+    row.raw?.createdAt ||
+    row.raw?.updatedAt;
   return (
     <Sheet>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
@@ -133,23 +284,31 @@ const ApproverDetailsSheet = ({
               <span
                 className={cn(
                   "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
-                  getStatusClass(row.status),
+                  getStatusClass(detail?.status ?? row.status),
                 )}
               >
-                {row.status}
+                {detail?.status ?? row.status}
               </span>
             </div>
+            {detailLoading && (
+              <div className="text-xs text-[#9CA3AF] dark:text-slate-400">
+                Loading approver details…
+              </div>
+            )}
             <div className="grid gap-6 sm:grid-cols-2">
-              <LabelRow label="Approver Name" value={row.name || "N/A"} />
+              <LabelRow
+                label="Approver Name"
+                value={(detail?.approver?.name ?? row.name) || "N/A"}
+              />
               <LabelRow
                 label="Contact"
                 value={
-                  row.email !== "-" ? (
+                  (detail?.approver?.email ?? row.email) !== "-" ? (
                     <a
                       className="text-[#2563EB] underline"
-                      href={`mailto:${row.email}`}
+                      href={`mailto:${detail?.approver?.email ?? row.email}`}
                     >
-                      {row.email}
+                      {detail?.approver?.email ?? row.email}
                     </a>
                   ) : (
                     "N/A"
@@ -163,7 +322,13 @@ const ApproverDetailsSheet = ({
               />
               <LabelRow
                 label="Assigned Approvals"
-                value={row.assignedApprovals || "-"}
+                value={
+                  detail?.assignedApproval
+                    ? `${detail.assignedApproval.completed ?? 0}/${
+                        detail.assignedApproval.total ?? 0
+                      }`
+                    : row.assignedApprovals || "-"
+                }
               />
               <LabelRow
                 label="Last Updated"
@@ -172,6 +337,9 @@ const ApproverDetailsSheet = ({
                 }
               />
             </div>
+            {detail?.items && (
+              <ApprovalItemsList items={detail.items} />
+            )}
           </div>
         </div>
       </SheetContent>
@@ -392,6 +560,7 @@ const Approvers: React.FC<Props> = ({ contractId, isActive }) => {
         cell: ({ row }) => (
           <ApproverDetailsSheet
             row={row.original}
+            contractId={contractId}
             trigger={
               <button
                 type="button"
@@ -404,7 +573,7 @@ const Approvers: React.FC<Props> = ({ contractId, isActive }) => {
         ),
       },
     ],
-    [],
+    [contractId],
   );
 
   return (

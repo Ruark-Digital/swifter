@@ -89,6 +89,7 @@ const renderPaymentSummary = () => {
           status: "publish",
           currency: "USD",
           contractValue: 1000,
+          bookBalance: 250,
           paymentTerms: "pt-1",
           milestone: [],
         } as any}
@@ -136,5 +137,12 @@ describe("MSA Payment Summary labels", () => {
 
     expect(screen.getByText("Payment Term")).toBeInTheDocument();
     expect(await screen.findByText("Net 30")).toBeInTheDocument();
+  });
+
+  test("renders Book Balance from the MSA detail (QA #122)", async () => {
+    renderPaymentSummary();
+
+    expect(screen.getByText("Book Balance")).toBeInTheDocument();
+    expect(screen.getByText("$250")).toBeInTheDocument();
   });
 });

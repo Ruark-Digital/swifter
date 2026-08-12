@@ -217,3 +217,139 @@ describe("Contract RfiTable — close/edit gating and URL wiring", () => {
     expect(parsed.basePath).not.toMatch(/\/rfis$/);
   });
 });
+
+// QA #113 / v2.3.0: the Respond affordance follows the BE-authoritative,
+// turn-aware `canRespond` flag — never the mere "assigned responder" identity —
+// so it disappears once the caller has answered (the other party's turn) and
+// appears for whoever owns the turn, INCLUDING the issuer replying to the
+// responder's response.
+describe("Contract RfiTable — respond-button turn-taking gate (QA #113)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedCurrentUser.value = { _id: undefined };
+    Object.assign(mockedUserRole, {
+      isApprover: false,
+      isVendor: false,
+      isProjectManager: false,
+    });
+  });
+
+  test("assigned responder (canRespond + isCurrentResponder) sees the Respond button", () => {
+    renderTable([
+      buildRfi({
+        type: "received",
+        status: "open",
+        canRespond: true,
+        isCurrentResponder: true,
+      } as any),
+    ]);
+    expect(screen.getByTestId("respond-rfi")).toBeInTheDocument();
+  });
+
+  test("eligible responder on an unassigned RFI (isEligibleResponder) sees Respond", () => {
+    renderTable([
+      buildRfi({
+        type: "received",
+        status: "open",
+        canRespond: true,
+        isCurrentResponder: false,
+        isEligibleResponder: true,
+      } as any),
+    ]);
+    expect(screen.getByTestId("respond-rfi")).toBeInTheDocument();
+  });
+
+  test("responder who already answered (canRespond=false) does NOT see Respond (#3)", () => {
+    renderTable([
+      buildRfi({
+        type: "received",
+        status: "open",
+        canRespond: false,
+        isCurrentResponder: true,
+        hasResponse: true,
+      } as any),
+    ]);
+    expect(screen.queryByTestId("respond-rfi")).not.toBeInTheDocument();
+  });
+
+  // v2.3.0: the RFI is a two-way thread — the issuer responds to the responder's
+  // response. The BE returns canRespond:true for the issuer ONLY on their turn,
+  // so the issuer now sees Respond when it is their turn (canRespond:true), even
+  // though both responder-role flags are false.
+  test("issuer on their turn (canRespond:true) sees the Respond button", () => {
+    mockedCurrentUser.value = { _id: ISSUER_ID };
+    renderTable([
+      buildRfi({
+        type: "issued",
+        status: "open",
+        canRespond: true,
+        isCurrentResponder: false,
+        isEligibleResponder: false,
+      } as any),
+    ]);
+    expect(screen.getByTestId("respond-rfi")).toBeInTheDocument();
+  });
+
+  // ...but NOT while it is the responder's turn (canRespond:false), e.g. an
+  // issued RFI awaiting the responder's first answer.
+  test("issuer awaiting the responder (canRespond:false) does NOT see Respond", () => {
+    mockedCurrentUser.value = { _id: ISSUER_ID };
+    renderTable([
+      buildRfi({
+        type: "issued",
+        status: "open",
+        canRespond: false,
+        isCurrentResponder: false,
+        isEligibleResponder: false,
+      } as any),
+    ]);
+    expect(screen.queryByTestId("respond-rfi")).not.toBeInTheDocument();
+  });
+
+  test("legacy payload (no canRespond flag): assigned, unanswered, open → Respond shows", () => {
+    mockedCurrentUser.value = { _id: "responder-9" };
+    renderTable([
+      buildRfi({
+        type: "received",
+        status: "open",
+        responder: "responder-9",
+      } as any),
+    ]);
+    expect(screen.getByTestId("respond-rfi")).toBeInTheDocument();
+  });
+
+  // Turn guard (QA #114 #3): a responder who authored the latest thread message
+  // must not keep the Respond button, even if a stale canRespond stays true.
+  test("responder who authored the latest response does NOT see Respond (#114 #3)", () => {
+    mockedCurrentUser.value = { _id: "responder-9" };
+    renderTable([
+      buildRfi({
+        type: "received",
+        status: "open",
+        canRespond: true,
+        isCurrentResponder: true,
+        hasResponse: true,
+        responseCount: 1,
+        lastResponse: { submittedBy: { _id: "responder-9" } },
+      } as any),
+    ]);
+    expect(screen.queryByTestId("respond-rfi")).not.toBeInTheDocument();
+  });
+
+  test("after the issuer replies last, the responder sees Respond again", () => {
+    mockedCurrentUser.value = { _id: "responder-9" };
+    renderTable([
+      buildRfi({
+        type: "received",
+        status: "open",
+        canRespond: true,
+        isCurrentResponder: true,
+        hasResponse: true,
+        responseCount: 2,
+        responder: "responder-9",
+        lastResponse: { submittedBy: { _id: ISSUER_ID } },
+      } as any),
+    ]);
+    expect(screen.getByTestId("respond-rfi")).toBeInTheDocument();
+  });
+});

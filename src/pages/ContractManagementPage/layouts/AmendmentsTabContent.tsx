@@ -386,6 +386,12 @@ export const CreateAmendmentDialog: React.FC<{
         <DialogTrigger asChild>{trigger}</DialogTrigger>
         <DialogContent
           showCloseButton={false}
+          // Don't discard in-progress form data on an accidental backdrop click
+          // or Escape. The dialog only closes (and resets on reopen) via the
+          // explicit Cancel / close button or by leaving the tab (unmount).
+          onInteractOutside={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
           className="max-h-[90vh] w-full max-w-2xl gap-0 overflow-hidden rounded-2xl border-0 p-0"
         >
           <Forge

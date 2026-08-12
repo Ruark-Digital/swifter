@@ -74,7 +74,7 @@ describe("App AI chat gating", () => {
 
     expect(screen.getByTestId("ai-chat-widget")).toBeInTheDocument();
     expect(screen.getByTestId("ai-chat-widget")).toHaveTextContent(
-      "Hi Adebiran, I'm the SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.",
+      "Hi Adebiran, I'm your SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.",
     );
   });
 

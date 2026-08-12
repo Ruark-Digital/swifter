@@ -361,6 +361,12 @@ const EditContract: React.FC<Props> = ({
     staleTime: 60_000,
   });
 
+  // Editing a contract past `draft` must re-enter the approval chain and never
+  // silently demote a live contract back to draft (QA #118). `isDraftContract`
+  // drives both the Save-as-Draft affordance and the primary button copy.
+  const currentContractStatus = contractRes?.data?.data?.status;
+  const isDraftContract = (currentContractStatus ?? "draft") === "draft";
+
   React.useEffect(() => {
     const contract = contractRes?.data?.data;
     if (!contract) return;
@@ -1031,7 +1037,15 @@ const EditContract: React.FC<Props> = ({
       data: yup.InferType<typeof createSchema>,
       status: "draft" | "pending_approval",
     ) => {
-      const payload = buildPayload(data, status) as any;
+      // Single enforcement point: only a contract that is currently a draft may
+      // be saved as a draft. Any edit to a contract past draft re-enters the
+      // approval chain (pending_approval) — never demote a live contract (QA
+      // #118). resolveContractSaveStatus encodes this rule.
+      const effectiveStatus =
+        status === "draft"
+          ? resolveContractSaveStatus(currentContractStatus)
+          : status;
+      const payload = buildPayload(data, effectiveStatus) as any;
 
       const baseCurrency = currentUser?.currency;
       const selectedCurrency = payload?.currency;
@@ -1059,7 +1073,7 @@ const EditContract: React.FC<Props> = ({
       setLastPayload(payload);
       mutation.mutate(payload);
     },
-    [buildPayload, currentUser?.currency, error, mutation],
+    [buildPayload, currentContractStatus, currentUser?.currency, error, mutation],
   );
 
   const STEP_FIELDS: Record<
@@ -1304,19 +1318,26 @@ const EditContract: React.FC<Props> = ({
                 </div>
               ) : (
                 <div className="flex w-full gap-4 pt-4 justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    aria-label="Save as draft"
-                    className=" h-12 rounded-xl"
-                    onClick={() => {
-                      const vals = getValues();
-                      void submit(vals as any, "draft");
-                    }}
-                    disabled={mutation.isPending}
-                  >
-                    {mutation.isPending ? "Saving..." : "Save as Draft"}
-                  </Button>
+                  {/* Save as Draft only applies to a contract that is still a
+                      draft — a live contract can't be demoted, its edits must go
+                      through re-approval (QA #118). */}
+                  {isDraftContract ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      aria-label="Save as draft"
+                      className=" h-12 rounded-xl"
+                      onClick={() => {
+                        const vals = getValues();
+                        void submit(vals as any, "draft");
+                      }}
+                      disabled={mutation.isPending}
+                    >
+                      {mutation.isPending ? "Saving..." : "Save as Draft"}
+                    </Button>
+                  ) : (
+                    <span />
+                  )}
 
                   <div className="flex gap-4">
                     <Button
@@ -1349,8 +1370,12 @@ const EditContract: React.FC<Props> = ({
                     >
                       {step === 9
                         ? mutation.isPending
-                          ? "Publishing..."
-                          : "Publish"
+                          ? isDraftContract
+                            ? "Publishing..."
+                            : "Submitting..."
+                          : isDraftContract
+                            ? "Publish"
+                            : "Submit for Approval"
                         : "Continue"}
                     </Button>
                   </div>
