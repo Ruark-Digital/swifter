@@ -158,7 +158,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
     {
       id: "1",
       content:
-        "Hi — I'm the SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.",
+        "Hi — I'm your SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.",
       sender: "ai",
       timestamp: new Date(),
     },
@@ -187,7 +187,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
             {
               id: "1",
               content:
-                "Hi — I'm the SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.",
+                "Hi — I'm your SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.",
               sender: "ai",
               timestamp: new Date(),
             },
