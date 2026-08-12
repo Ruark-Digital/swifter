@@ -218,10 +218,11 @@ describe("Contract RfiTable — close/edit gating and URL wiring", () => {
   });
 });
 
-// QA #113: the Respond affordance must follow the BE-authoritative, turn-aware
-// `canRespond` flag — never the mere "assigned responder" identity — so it
-// disappears once the user has answered (issuer's turn) and never appears for
-// the issuer's own RFI.
+// QA #113 / v2.3.0: the Respond affordance follows the BE-authoritative,
+// turn-aware `canRespond` flag — never the mere "assigned responder" identity —
+// so it disappears once the caller has answered (the other party's turn) and
+// appears for whoever owns the turn, INCLUDING the issuer replying to the
+// responder's response.
 describe("Contract RfiTable — respond-button turn-taking gate (QA #113)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -271,16 +272,33 @@ describe("Contract RfiTable — respond-button turn-taking gate (QA #113)", () =
     expect(screen.queryByTestId("respond-rfi")).not.toBeInTheDocument();
   });
 
-  // The real BE payload: an `issued` RFI viewed by its issuer returns
-  // canRespond:true (thread-level) but isCurrentResponder:false &
-  // isEligibleResponder:false. Respond must NOT show — it is responder-only.
-  test("issuer sees canRespond:true but no responder role → NO Respond action (#4)", () => {
+  // v2.3.0: the RFI is a two-way thread — the issuer responds to the responder's
+  // response. The BE returns canRespond:true for the issuer ONLY on their turn,
+  // so the issuer now sees Respond when it is their turn (canRespond:true), even
+  // though both responder-role flags are false.
+  test("issuer on their turn (canRespond:true) sees the Respond button", () => {
     mockedCurrentUser.value = { _id: ISSUER_ID };
     renderTable([
       buildRfi({
         type: "issued",
         status: "open",
         canRespond: true,
+        isCurrentResponder: false,
+        isEligibleResponder: false,
+      } as any),
+    ]);
+    expect(screen.getByTestId("respond-rfi")).toBeInTheDocument();
+  });
+
+  // ...but NOT while it is the responder's turn (canRespond:false), e.g. an
+  // issued RFI awaiting the responder's first answer.
+  test("issuer awaiting the responder (canRespond:false) does NOT see Respond", () => {
+    mockedCurrentUser.value = { _id: ISSUER_ID };
+    renderTable([
+      buildRfi({
+        type: "issued",
+        status: "open",
+        canRespond: false,
         isCurrentResponder: false,
         isEligibleResponder: false,
       } as any),
