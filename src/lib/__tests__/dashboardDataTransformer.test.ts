@@ -59,6 +59,24 @@ describe("DashboardDataTransformer", () => {
     );
   });
 
+  it("renders the activity date in the item's BE timezone with the abbreviation", () => {
+    const [item] = DashboardDataTransformer.transformContractManagerDashboardActivity([
+      {
+        id: "gu-1",
+        statusText: 'Lancaster Cole approved change request on "Office Lease Agreement"',
+        status: "approved",
+        contractRef: "contract-123",
+        contractDef: "Contract",
+        type: "ContractChange",
+        date: "2026-08-12T09:49:32.333Z",
+        timezone: "EST",
+      },
+    ]);
+
+    // 09:49 UTC converted into EST (UTC-5) = 4:49 AM, with the zone appended.
+    expect(item.date).toBe("Aug 12, 2026 4:49 AM EST");
+  });
+
   it.each(["approve_invoice", "project_created"])(
     "links status text for the backend activity name %s",
     (name) => {
