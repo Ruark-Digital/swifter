@@ -715,6 +715,7 @@ const ContractDetailPage: React.FC = () => {
           currency={displayCurrency}
           isActive={activeTab === "change"}
           actionsDisabled={actionsDisabled}
+          owner={contract?.owner}
         />
 
         <ClaimsTabContent
