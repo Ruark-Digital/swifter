@@ -196,7 +196,7 @@ const ChangeTabContent: React.FC<Props> = ({
             <CreateChangeDialog
               trigger={
                 <Button
-                  className="h-10 rounded-xl bg-[#F3F4F6] px-4 text-sm font-medium text-[#111827] hover:bg-[#E5E7EB] dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                  className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white hover:bg-[#2A4467]/90"
                   disabled={!!actionsDisabled}
                 >
                   Create Change
