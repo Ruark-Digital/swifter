@@ -13,7 +13,7 @@ import {
 } from "@/hooks/useDashboardData";
 import { DashboardConfig } from "@/config/dashboardConfig";
 import { applyConsistentColors } from "./chartColorUtils";
-import { formatDateTZ } from "./utils";
+import { formatDateTZ, formatDateInZoneAbbrev } from "./utils";
 
 // Dynamic link generation utility
 type UserRole = "procurement" | "evaluator" | "vendor";
@@ -2517,7 +2517,7 @@ export class DashboardDataTransformer {
           id: item?.id ?? `cm-${index}`,
           title: statusText || "Action",
           text: body ? `${actionText} — ${body}` : actionText,
-          date: dateValue ? formatDateTZ(dateValue, "MMM d, yyyy h:mm a") : undefined,
+          date: dateValue ? formatDateInZoneAbbrev(dateValue, "MMM d, yyyy h:mm a", item?.timezone) : undefined,
           status: item?.status ?? undefined,
           type: item?.type ?? undefined,
         };
@@ -2541,7 +2541,7 @@ export class DashboardDataTransformer {
           id: item?.id ?? `cm-${index}`,
           title: contractTitle || "Contract",
           text: linkedText,
-          date: dateValue ? formatDateTZ(dateValue, "MMM d, yyyy h:mm a") : undefined,
+          date: dateValue ? formatDateInZoneAbbrev(dateValue, "MMM d, yyyy h:mm a", item?.timezone) : undefined,
           status: item?.status ?? undefined,
           type: item?.type ?? undefined,
         };
@@ -2565,7 +2565,7 @@ export class DashboardDataTransformer {
         id: item?.id ?? `cm-${index}`,
         title: contractTitle || title || "Contract",
         text: `${plainTitle}${suffix}`,
-        date: dateValue ? formatDateTZ(dateValue, "MMM d, yyyy h:mm a") : undefined,
+        date: dateValue ? formatDateInZoneAbbrev(dateValue, "MMM d, yyyy h:mm a", item?.timezone) : undefined,
         status: item?.status ?? undefined,
         type: item?.type ?? undefined,
       };
