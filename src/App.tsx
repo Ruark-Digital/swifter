@@ -105,8 +105,8 @@ function App() {
   const token = useToken();
   const user = useUser();
   const chatWelcomeMessage = user?.name
-    ? `Hi ${user.name}, I'm the SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.`
-    : "Hi, I'm the SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.";
+    ? `Hi ${user.name}, I'm your SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.`
+    : "Hi, I'm your SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.";
 
   const postChat = async (message: string, stream: boolean) => {
     const response = await fetch(CHAT_URL, {
