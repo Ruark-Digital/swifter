@@ -688,7 +688,7 @@ const contractManagerConfig: DashboardConfig = {
       bgColor: "bg-blue-500/10",
     },
     {
-      title: "Committed vs Actual Value",
+      title: "Budget Spent",
       value: 0,
       icon: "creditCard",
       color: "text-blue-600",

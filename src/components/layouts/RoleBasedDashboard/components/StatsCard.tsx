@@ -416,7 +416,8 @@ export const CardStats: React.FC<CardStatsProps> = ({
   const displayValue = React.useMemo(() => {
     const safeValue = Number.isFinite(value) ? value : 0;
 
-    if (title.toLowerCase().includes("committed vs actual")) {
+    // "Budget Spent" (formerly "Committed vs Actual") is a percentage stat.
+    if (title.toLowerCase().includes("budget spent")) {
       return `${Math.round(safeValue)}%`;
     }
 
