@@ -80,12 +80,13 @@ const ManageVendorAccessDialog: React.FC<Props> = ({
   const { mutateAsync: save, isPending } = useMutation({
     mutationKey: ["updateVendorAccess", vendorId],
     // Vendor role access is updated on the vendor resource, not the linked
-    // user account (`PUT /procurement/vendors/{vendorId}`), matching how the
-    // vendor profile is edited.
-    mutationFn: async (roleIds: string[]) =>
+    // user account: `PUT /procurement/vendors/{vendorId}` with `role` — an
+    // array of role NAMES ("vendor"/"project_manager"), first = primary
+    // (same shape as the project-manager endpoint), NOT role document ids.
+    mutationFn: async (roleNames: string[]) =>
       await putRequest({
         url: `/procurement/vendors/${vendorId}`,
-        payload: { roles: roleIds },
+        payload: { role: roleNames },
       }),
     onSuccess: () => {
       toast.success("Access updated", "Vendor access roles saved.");
@@ -104,8 +105,8 @@ const ManageVendorAccessDialog: React.FC<Props> = ({
   });
 
   const onSubmit = async (data: { roles: Option[] }) => {
-    const roleIds = (data.roles ?? []).map((o) => o.value);
-    if (roleIds.length === 0) {
+    const selected = data.roles ?? [];
+    if (selected.length === 0) {
       toast.error("Select access", "Assign at least one access.");
       return;
     }
@@ -113,7 +114,17 @@ const ManageVendorAccessDialog: React.FC<Props> = ({
       toast.error("Error", "Missing vendor reference.");
       return;
     }
-    await save(roleIds);
+    // The BE expects role NAMES ("vendor"/"project_manager"), not the catalog
+    // document ids the multi-select carries as its value — map each back to its
+    // name via the option list.
+    const roleNames = selected
+      .map((o) => options.find((opt) => opt.value === o.value)?.name)
+      .filter((n): n is string => !!n);
+    if (roleNames.length === 0) {
+      toast.error("Select access", "Assign at least one access.");
+      return;
+    }
+    await save(roleNames);
   };
 
   return (
