@@ -46,6 +46,7 @@ type VendorDetail = Omit<Vendor, "documents"> & {
     email: string;
     phone: string;
     _id: string;
+    roles?: { _id: string; name: string }[];
   };
   documents?: {
     name: string;
@@ -767,6 +768,7 @@ export const VendorDetailPage = () => {
                     userId={vendor.user._id}
                     vendorName={vendor.name}
                     vendorId={id}
+                    currentRoles={vendor.user.roles}
                     trigger={
                       <Button
                         variant="outline"

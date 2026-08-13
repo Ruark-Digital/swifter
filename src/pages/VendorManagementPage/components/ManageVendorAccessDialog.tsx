@@ -25,6 +25,12 @@ type Props = {
   vendorName?: string;
   /** Vendor entity id — used only to invalidate the vendor detail cache. */
   vendorId?: string;
+  /**
+   * The vendor user's current roles as populated `{ _id, name }` objects (from
+   * the vendor-detail response). Preferred for prefill: `GET /users/{id}`
+   * returns bare role ids, which can't be matched to the two named options.
+   */
+  currentRoles?: Array<{ _id?: string; name?: string } | string>;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   trigger?: React.ReactNode;
@@ -33,14 +39,15 @@ type Props = {
 /**
  * #84 — grant a vendor-side account Vendor (Solicitation) and/or Vendor-PM
  * (CLM) access. Reuses the QA #177 paired-role mechanism (RoleComboField +
- * roleCombos) but scoped to the two vendor roles. Fetches the user's current
- * roles first so saving never clobbers an existing grant, then PUTs the
- * updated `roles[]` to `PUT /users/{id}`.
+ * roleCombos) but scoped to the two vendor roles. Prefills the current roles
+ * (so saving never drops an existing grant), then PUTs the selected role
+ * NAMES as `{ role }` to `PUT /procurement/vendors/{vendorId}`.
  */
 const ManageVendorAccessDialog: React.FC<Props> = ({
   userId,
   vendorName,
   vendorId,
+  currentRoles,
   open: controlledOpen,
   onOpenChange,
   trigger,
@@ -56,12 +63,16 @@ const ManageVendorAccessDialog: React.FC<Props> = ({
   const { roles: catalog } = useRoleCatalog(open);
   const options = useMemo(() => buildVendorAccessOptions(catalog), [catalog]);
 
+  const hasCurrentRoles =
+    Array.isArray(currentRoles) && currentRoles.length > 0;
+
   // Current roles of the vendor user — prefill so we don't drop an existing
-  // access on save.
+  // access on save. Only fetched when the caller didn't already pass the
+  // (populated) roles; `/users/{id}` returns bare role ids anyway.
   const { data: userRes, isLoading: isLoadingUser } = useQuery({
     queryKey: ["user", userId],
     queryFn: async () => (await getRequest({ url: `/users/${userId}` })).data,
-    enabled: open && !!userId,
+    enabled: open && !!userId && !hasCurrentRoles,
   });
   const user = (userRes as { data?: unknown })?.data ?? userRes;
 
@@ -70,12 +81,20 @@ const ManageVendorAccessDialog: React.FC<Props> = ({
   });
 
   useEffect(() => {
-    if (!open || !user || options.length === 0) return;
+    if (!open || options.length === 0) return;
+    // Prefer the populated roles passed from the vendor detail (they carry
+    // names, so they resolve to the two named options). The `/users/{id}`
+    // fetch only returns bare role ids and is a fallback.
+    if (hasCurrentRoles) {
+      forge.reset({ roles: optionsFromUserRoles(currentRoles, undefined, options) });
+      return;
+    }
+    if (!user) return;
     const u = user as { roles?: unknown; role?: unknown };
     forge.reset({ roles: optionsFromUserRoles(u.roles, u.role, options) });
-    // Re-hydrate only when the fetched user / option list changes.
+    // Re-hydrate only when the source roles / option list changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, user, options]);
+  }, [open, user, options, currentRoles]);
 
   const { mutateAsync: save, isPending } = useMutation({
     mutationKey: ["updateVendorAccess", vendorId],
