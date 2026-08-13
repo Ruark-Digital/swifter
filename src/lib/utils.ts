@@ -215,12 +215,13 @@ export function formatDateTZ(
 
 // Fixed UTC offsets (minutes east of UTC) for the timezone abbreviations in
 // `src/assets/timezones.json` — the same labels the app's timezone pickers store
-// and the BE returns on the dashboard activity feeds. Every entry is a
-// *standard-time* label (EST, not EDT), so a fixed offset is correct and no DST
-// resolution is needed. Two labels collide in that JSON; we resolve each to its
-// more common meaning: `CST` → US Central (−360, not China +480) and `AST` →
-// Atlantic (−240, not Arabia +180). Unknown/absent abbreviations fall back to
-// viewer-local formatting (see `formatDateInZoneAbbrev`).
+// and the BE returns on the dashboard activity feeds. Used only for zones that
+// do NOT observe daylight saving; DST-observing labels are resolved per-instant
+// via `ZONE_ABBREV_IANA` instead (a fixed offset would be an hour off for half
+// the year). Two labels collide in that JSON; we resolve each to its more common
+// meaning: `CST` → US Central (−360, not China +480) and `AST` → Atlantic (−240,
+// not Arabia +180). Unknown/absent abbreviations fall back to viewer-local
+// formatting (see `formatDateInZoneAbbrev`).
 const ZONE_ABBREV_OFFSET_MINUTES: Record<string, number> = {
   UTC: 0, GMT: 0, WET: 0,
   AZOT: -60, CVT: -60,
@@ -248,6 +249,25 @@ const ZONE_ABBREV_OFFSET_MINUTES: Record<string, number> = {
   LINT: 840,
 };
 
+// Abbreviations of DST-observing zones -> a representative IANA zone. For these,
+// the correct offset (and the correct seasonal label, e.g. EDT vs EST) is
+// resolved for the specific instant via `Intl`, so a summer timestamp is not an
+// hour behind. Both the standard and daylight labels map to the same zone. GMT
+// is intentionally excluded (it is widely used as a fixed UTC alias); UTC/WAT/GST
+// etc. observe no DST and stay on the fixed table above.
+const ZONE_ABBREV_IANA: Record<string, string> = {
+  EST: "America/New_York", EDT: "America/New_York",
+  CST: "America/Chicago", CDT: "America/Chicago",
+  MST: "America/Denver", MDT: "America/Denver",
+  PST: "America/Los_Angeles", PDT: "America/Los_Angeles",
+  CET: "Europe/Paris", CEST: "Europe/Paris",
+  EET: "Europe/Athens", EEST: "Europe/Athens",
+  BST: "Europe/London",
+  AEST: "Australia/Sydney", AEDT: "Australia/Sydney",
+  ACST: "Australia/Adelaide", ACDT: "Australia/Adelaide",
+  NZST: "Pacific/Auckland", NZDT: "Pacific/Auckland",
+};
+
 /**
  * Format a UTC instant as the wall-clock time in a named standard-time zone
  * abbreviation (e.g. `"EST"`), with the abbreviation appended:
@@ -266,11 +286,24 @@ export function formatDateInZoneAbbrev(
 ): string {
   if (!dateInput) return "N/A";
   const abbr = (zoneAbbrev ?? "").trim();
-  const offsetMin = ZONE_ABBREV_OFFSET_MINUTES[abbr];
-  if (offsetMin === undefined) return formatDateTZ(dateInput, formatStr);
 
   const instant = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
   if (!(instant instanceof Date) || isNaN(instant.getTime())) return "N/A";
+
+  // Prefer a real IANA zone for DST-observing abbreviations: resolve the offset
+  // for THIS instant (so summer timestamps aren't an hour behind) and use the
+  // instant's own seasonal label (EDT vs EST). Fall back to the fixed
+  // standard-offset table for non-DST zones, then to viewer-local.
+  const iana = ZONE_ABBREV_IANA[abbr.toUpperCase()];
+  let offsetMin: number | undefined;
+  let label = abbr;
+  if (iana) {
+    offsetMin = getTimeZoneOffset(instant, iana);
+    label = zoneShortName(instant, iana) ?? abbr;
+  } else {
+    offsetMin = ZONE_ABBREV_OFFSET_MINUTES[abbr];
+  }
+  if (offsetMin === undefined) return formatDateTZ(dateInput, formatStr);
 
   // Shift the instant so its UTC fields equal the target zone's wall clock, then
   // rebuild via the local `Date` constructor — `format` reads local getters, so
@@ -285,7 +318,25 @@ export function formatDateInZoneAbbrev(
     shifted.getUTCSeconds()
   );
   const pattern = formatStr || "MMM dd, yyyy hh:mm a";
-  return `${format(local, pattern)} ${abbr}`;
+  return `${format(local, pattern)} ${label}`;
+}
+
+// The zone's short name (e.g. "EST"/"EDT") for a given instant, via Intl.
+// Returns undefined when the platform yields a numeric name (e.g. "GMT-5") or
+// on any failure, so callers keep the BE-supplied abbreviation.
+function zoneShortName(instant: Date, timeZone: string): string | undefined {
+  try {
+    const name = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      timeZoneName: "short",
+    })
+      .formatToParts(instant)
+      .find((p) => p.type === "timeZoneName")?.value;
+    if (!name || /[+-]?\d/.test(name)) return undefined;
+    return name;
+  } catch {
+    return undefined;
+  }
 }
 
 // Internal helper: compute the timezone offset (in minutes) for a given UTC date and IANA timezone.

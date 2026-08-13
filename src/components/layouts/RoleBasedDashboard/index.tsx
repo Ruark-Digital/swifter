@@ -176,7 +176,7 @@ const CM_YTD_STATS = [
     bgColor: "bg-blue-500/10",
   },
   {
-    title: "Committed vs Actual",
+    title: "Budget Spent",
     value: 0,
     icon: "creditCard",
     color: "text-blue-600",
@@ -218,7 +218,7 @@ const buildContractTotalStats = (template: any[], cards: any) =>
                   ? cards?.terminatedContracts?.value ?? 0
                   : stat.title === "Total Contract Value"
                     ? cards?.totalContractValue?.value ?? 0
-                    : stat.title === "Committed vs Actual Value"
+                    : stat.title === "Budget Spent"
                       ? Math.round(cards?.committedVsActual?.percentage ?? 0)
                       : stat.title === "Savings Realized"
                         ? cards?.savingsRealized?.value ?? 0
@@ -359,7 +359,7 @@ export const RoleBasedDashboard: React.FC = () => {
                   ? ytd?.terminatedContracts?.value ?? 0
                   : stat.title === "Total Contract Value"
                     ? ytd?.totalContractValue?.value ?? 0
-                    : stat.title === "Committed vs Actual"
+                    : stat.title === "Budget Spent"
                       ? Math.round(ytd?.committedVsActual?.percentage ?? 0)
                       : stat.title === "Savings Realized"
                         ? ytd?.savingsRealized?.value ?? 0
