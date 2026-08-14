@@ -104,7 +104,6 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } =
     useUserRole();
-  const isContractVendorLike = isVendor || isProjectManager;
   const user = useUser();
   const queryClient = useQueryClient();
   const { data: lemDetail, isLoading: detailLoading } = useQuery({
@@ -418,24 +417,26 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   </div>
                 )}
 
-                <MessageComposer
-                  onSend={(content) => {
-                    void handleSendComment(content);
-                  }}
-                  isLoading={addCommentMutation.isPending}
-                  currentUser={user ? { name: user.name } : { name: "You" }}
-                  sendType="reply"
-                  isNewChat={false}
-                  onSendTypeChange={() => {}}
-                  sendLabel="Send"
-                />
+                {!isVendor && (
+                  <MessageComposer
+                    onSend={(content) => {
+                      void handleSendComment(content);
+                    }}
+                    isLoading={addCommentMutation.isPending}
+                    currentUser={user ? { name: user.name } : { name: "You" }}
+                    sendType="reply"
+                    isNewChat={false}
+                    onSendTypeChange={() => {}}
+                    sendLabel="Send"
+                  />
+                )}
               </TabsContent>
             </Tabs>
           </div>
 
           {/* Vendor/PM edit (pending) or resubmit (rejected) — bottom footer,
               matching the Deliverables detail layout. */}
-          {isContractVendorLike &&
+          {isProjectManager &&
             (lemDetail?.status?.toLowerCase?.() === "pending" ||
               lemDetail?.status?.toLowerCase?.() === "rejected") && (
               <div className="flex gap-3 pt-6 justify-end">

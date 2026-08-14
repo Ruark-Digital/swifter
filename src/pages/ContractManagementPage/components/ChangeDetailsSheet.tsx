@@ -215,7 +215,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   // it appears for the CM only once the Vendor PM edits + re-sends for approval
   // (which flips the status out of "draft" into the normal decision flow). (QA #117)
   const draftCoActor = isCrCpOriginDraftCo({ originalChangeType })
-    ? isContractVendorLike
+    ? isProjectManager
     : isManager;
   const canActOnDraftCo = isDraftCo && draftCoActor;
 
@@ -236,7 +236,10 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     !isClaim &&
     !isDraftCo &&
     shouldShowChangeDecisionActions(changeType) &&
-    approverStatus === "pending";
+    approverStatus === "pending" &&
+    // Active vendor is read-only in CLM; the non-manager "Send for Approval"
+    // branch below is for the Vendor-PM, not a plain vendor (strict).
+    !isVendor;
 
   // Claim-flow gating. Per spec:
   //  - Manager: visible Reject + Send for Approval. Send enabled when
@@ -752,22 +755,24 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                 )}
               </div>
 
-              <MessageComposer
-                onSend={(content) => {
-                  mutateAddComment(content);
-                }}
-                isLoading={isAddingComment}
-                sendType={null}
-                isNewChat={false}
-                onSendTypeChange={() => { }}
-                sendLabel="Send"
-              />
+              {!isVendor && (
+                <MessageComposer
+                  onSend={(content) => {
+                    mutateAddComment(content);
+                  }}
+                  isLoading={isAddingComment}
+                  sendType={null}
+                  isNewChat={false}
+                  onSendTypeChange={() => { }}
+                  sendLabel="Send"
+                />
+              )}
             </TabsContent>
           </Tabs>
 
           {/* Vendor/PM edit (pending) or resubmit (rejected) — bottom footer,
               matching the Deliverables detail layout. */}
-          {isContractVendorLike &&
+          {isProjectManager &&
             isChangeCreator &&
             activeTab === "overview" &&
             (status?.toLowerCase?.() === "pending" ||
@@ -850,7 +855,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
           {canActOnDraftCo && activeTab === "overview" && (
             <SheetFooter>
               <div className="flex w-full gap-3 pt-2">
-                {isContractVendorLike && (
+                {isProjectManager && (
                   <CreateChangeDialog
                     contractId={contractId}
                     isManager={false}
