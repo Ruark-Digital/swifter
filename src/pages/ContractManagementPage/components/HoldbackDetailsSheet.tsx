@@ -18,7 +18,7 @@ import {
 import { useUserRole } from "@/hooks/useUserRole";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
-import { getRequest, postRequest } from "@/lib/axiosInstance";
+import { getRequest, postRequest, putRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { DocumentItem, type DocType } from "./DocumentItem";
@@ -102,6 +102,14 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
     if (!isApprover || !contractId || !holdBackId) return null;
     return `/contract/approver/${contractSegment}/${contractId}/payment-holdbacks/${holdBackId}/approve`;
   }, [isApprover, contractId, holdBackId, contractSegment]);
+
+  // #142 — CM accept/reject stage on a vendor-submitted application. Distinct
+  // from the approver escalation above: the manager uses PUT `/approve`
+  // ("Approve or reject a vendor holdback application"), no `/approve/status`.
+  const managerDecideUrl = React.useMemo(() => {
+    if (!isManager || !contractId || !holdBackId) return null;
+    return `/contract/manager/${contractSegment}/${contractId}/payment-holdbacks/${holdBackId}/approve`;
+  }, [isManager, contractId, holdBackId, contractSegment]);
 
   const queryKey = useUserQueryKey([
     "contract-holdback-detail",
@@ -211,7 +219,7 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
   }, [pendingAction]);
 
   const approveMutation = useMutation({
-    mutationKey: ["approveHoldback", approveBaseUrl],
+    mutationKey: ["decideHoldback", approveBaseUrl ?? managerDecideUrl],
     mutationFn: async ({
       action,
       comment,
@@ -219,14 +227,23 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
       action: "approved" | "rejected";
       comment: string;
     }) => {
-      if (!approveBaseUrl) {
-        throw new Error("Approve endpoint is not available for this role.");
+      // Approver escalation → POST; CM accept/reject → PUT. A user has a single
+      // active role, so exactly one branch applies.
+      if (isApprover && approveBaseUrl) {
+        const res = await postRequest({
+          url: approveBaseUrl,
+          payload: { action, comment },
+        });
+        return res.data as { message?: string };
       }
-      const res = await postRequest({
-        url: approveBaseUrl,
-        payload: { action, comment },
-      });
-      return res.data as { message?: string };
+      if (isManager && managerDecideUrl) {
+        const res = await putRequest({
+          url: managerDecideUrl,
+          payload: { action, comment },
+        });
+        return res.data as { message?: string };
+      }
+      throw new Error("Approve endpoint is not available for this role.");
     },
     onSuccess: (res, vars) => {
       toast.success(
@@ -417,6 +434,31 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
           </div>
 
           {isApprover && canAct && (
+            <div className="flex items-center justify-between gap-6 border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 px-8 py-6">
+              <button
+                type="button"
+                className="h-12 flex-1 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F3F4F6] dark:bg-slate-800 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading || !holdBackId || isApproving}
+                onClick={() => setPendingAction("rejected")}
+              >
+                Reject
+              </button>
+              <button
+                type="button"
+                className="h-12 flex-1 rounded-xl bg-[#2A4467] text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading || !holdBackId || isApproving}
+                onClick={() => setPendingAction("approved")}
+              >
+                Approve
+              </button>
+            </div>
+          )}
+
+          {/* #142 — CM accept/reject on a vendor-submitted application. Shown
+              while the application is awaiting the CM's decision (status
+              "pending"); once the CM approves, the BE hands off to the approver
+              escalation above. */}
+          {isManager && (detail?.status ?? "").toLowerCase() === "pending" && (
             <div className="flex items-center justify-between gap-6 border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 px-8 py-6">
               <button
                 type="button"
