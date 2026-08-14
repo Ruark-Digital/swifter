@@ -29,6 +29,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUser } from "@/store/authSlice";
+import { useUserRole } from "@/hooks/useUserRole";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
 import type {
@@ -498,7 +499,10 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
     url: string;
     name: string;
   } | null>(null);
-  const isVendor = basePath.includes("/vendor/");
+  // Active-role gating (strict): only an active Vendor-PM may submit/resubmit
+  // or comment; a plain vendor is read-only. basePath is /vendor/ for BOTH
+  // vendor and PM, so role — not basePath — is the discriminator.
+  const { isVendor, isProjectManager } = useUserRole();
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
@@ -545,7 +549,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
     approverStatus === "rejected" ||
     (detail?.status ?? "").toLowerCase() === "rejected";
   const canShowSubmitButton =
-    isVendor &&
+    isProjectManager &&
     (isDeliverableRejected ||
       (approverStatus !== "N/A" && !isSubmitted && !hasBeenSubmitted));
 
@@ -884,19 +888,21 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                 </div>
               )}
 
-              <MessageComposer
-                onSend={(content) => {
-                  void handleSendComment(content);
-                }}
-                isLoading={addCommentMutation.isPending}
-                currentUser={
-                  user ? { name: user.name } : { name: "You" }
-                }
-                sendType="reply"
-                isNewChat={false}
-                onSendTypeChange={() => {}}
-                sendLabel="Send"
-              />
+              {!isVendor && (
+                <MessageComposer
+                  onSend={(content) => {
+                    void handleSendComment(content);
+                  }}
+                  isLoading={addCommentMutation.isPending}
+                  currentUser={
+                    user ? { name: user.name } : { name: "You" }
+                  }
+                  sendType="reply"
+                  isNewChat={false}
+                  onSendTypeChange={() => {}}
+                  sendLabel="Send"
+                />
+              )}
             </TabsContent>
           </Tabs>
 

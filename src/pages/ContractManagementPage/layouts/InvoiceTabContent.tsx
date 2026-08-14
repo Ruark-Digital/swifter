@@ -132,7 +132,7 @@ const InvoiceTabContent: React.FC<Props> = ({
     <TabsContent value="invoice" className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Invoice</h3>
-        {isContractVendorLike && !actionsDisabled && (
+        {isProjectManager && !actionsDisabled && (
           <CreateInvoiceDialog
             contractId={contractId}
             trigger={

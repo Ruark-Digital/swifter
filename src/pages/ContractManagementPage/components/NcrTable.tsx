@@ -29,6 +29,7 @@ import type { ContractNcrSummary } from "../api/contractManagerApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUser } from "@/store/authSlice";
+import { useUserRole } from "@/hooks/useUserRole";
 import { formatDateTZ } from "@/lib/utils";
 import SubmitCapaDialog from "./SubmitCapaDialog";
 import { getRequest, patchRequest, postRequest } from "@/lib/axiosInstance";
@@ -178,6 +179,9 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [selectedDoc, setSelectedDoc] = React.useState<DocType | null>(null);
   const user = useUser();
+  // Active vendor is read-only in CLM (strict): no CAPA submit/approve/close,
+  // no comment posting — even when identity would otherwise match.
+  const { isVendor } = useUserRole();
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
 
@@ -604,17 +608,19 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                   </div>
                 )}
 
-                <MessageComposer
-                  onSend={(content) => {
-                    void handleSendComment(content);
-                  }}
-                  isLoading={addCommentMutation.isPending}
-                  currentUser={user ? { name: user.name } : { name: "You" }}
-                  sendType="reply"
-                  isNewChat={false}
-                  onSendTypeChange={() => {}}
-                  sendLabel="Send"
-                />
+                {!isVendor && (
+                  <MessageComposer
+                    onSend={(content) => {
+                      void handleSendComment(content);
+                    }}
+                    isLoading={addCommentMutation.isPending}
+                    currentUser={user ? { name: user.name } : { name: "You" }}
+                    sendType="reply"
+                    isNewChat={false}
+                    onSendTypeChange={() => {}}
+                    sendLabel="Send"
+                  />
+                )}
               </TabsContent>
 
             </Tabs>
@@ -627,7 +633,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
               - NCR status approved + viewer is the NCR submitter → Cancel + Close NCR */}
           {String(status).toLowerCase() === "closed" ? null : (
           <>
-          {!latestCapa?._id && isResponderMatched ? (
+          {!latestCapa?._id && isResponderMatched && !isVendor ? (
             <div className="flex w-full gap-3 pt-2">
               <Button
                 variant="outline"
@@ -654,6 +660,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
 
           {latestCapa?._id &&
           isNcrSubmitter &&
+          !isVendor &&
           String(status).toLowerCase() !== "approved" ? (
             <div className="flex w-full gap-3 pt-2">
               <Button
@@ -673,7 +680,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
             </div>
           ) : null}
 
-          {String(status).toLowerCase() === "approved" && isNcrSubmitter ? (
+          {String(status).toLowerCase() === "approved" && isNcrSubmitter && !isVendor ? (
             <div className="flex w-full gap-3 pt-2">
               <Button
                 variant="outline"

@@ -477,7 +477,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
 
           {/* Vendor/PM edit (pending) or resubmit (rejected) — bottom footer,
               matching the Deliverables detail layout. */}
-          {isContractVendorLike &&
+          {isProjectManager &&
             !actionsDisabled &&
             (invoice?.status === "pending" ||
               invoice?.status === "rejected") && (

@@ -460,7 +460,7 @@ function VendorReportsTabContent({
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
           Vendor’s Reports
         </h2>
-        {isContractVendorLike && (
+        {isProjectManager && (
           <Dialog open={openCreate} onOpenChange={setOpenCreate}>
             <DialogTrigger asChild>
               <Button

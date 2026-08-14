@@ -25,6 +25,12 @@ type Props = {
   vendorName?: string;
   /** Vendor entity id — used only to invalidate the vendor detail cache. */
   vendorId?: string;
+  /**
+   * The vendor user's current roles, already present on the vendor-detail
+   * payload (`vendor.user.roles`). When supplied, the dialog pre-selects them
+   * directly and skips the redundant `/users/{id}` fetch.
+   */
+  currentRoles?: unknown;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   trigger?: React.ReactNode;
@@ -41,6 +47,7 @@ const ManageVendorAccessDialog: React.FC<Props> = ({
   userId,
   vendorName,
   vendorId,
+  currentRoles,
   open: controlledOpen,
   onOpenChange,
   trigger,
@@ -56,12 +63,16 @@ const ManageVendorAccessDialog: React.FC<Props> = ({
   const { roles: catalog } = useRoleCatalog(open);
   const options = useMemo(() => buildVendorAccessOptions(catalog), [catalog]);
 
+  // Roles already present on the vendor-detail payload are authoritative and
+  // avoid a round-trip. Only fall back to `/users/{id}` when they aren't passed.
+  const hasCurrentRoles = Array.isArray(currentRoles) && currentRoles.length > 0;
+
   // Current roles of the vendor user — prefill so we don't drop an existing
   // access on save.
   const { data: userRes, isLoading: isLoadingUser } = useQuery({
     queryKey: ["user", userId],
     queryFn: async () => (await getRequest({ url: `/users/${userId}` })).data,
-    enabled: open && !!userId,
+    enabled: open && !!userId && !hasCurrentRoles,
   });
   const user = (userRes as { data?: unknown })?.data ?? userRes;
 
@@ -70,12 +81,16 @@ const ManageVendorAccessDialog: React.FC<Props> = ({
   });
 
   useEffect(() => {
-    if (!open || !user || options.length === 0) return;
-    const u = user as { roles?: unknown; role?: unknown };
-    forge.reset({ roles: optionsFromUserRoles(u.roles, u.role, options) });
-    // Re-hydrate only when the fetched user / option list changes.
+    if (!open || options.length === 0) return;
+    const u = (user ?? {}) as { roles?: unknown; role?: unknown };
+    // Prefer the roles handed down from the vendor-detail payload; otherwise
+    // use the freshly fetched user. Bail until at least one source is ready.
+    const roles = hasCurrentRoles ? currentRoles : u.roles;
+    if (!hasCurrentRoles && !user) return;
+    forge.reset({ roles: optionsFromUserRoles(roles, u.role, options) });
+    // Re-hydrate only when the source roles / option list changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, user, options]);
+  }, [open, user, options, currentRoles]);
 
   const { mutateAsync: save, isPending } = useMutation({
     mutationKey: ["updateVendorAccess", userId],

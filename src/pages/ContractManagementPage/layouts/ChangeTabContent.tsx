@@ -196,7 +196,7 @@ const ChangeTabContent: React.FC<Props> = ({
               <Share2 className="mr-2 h-4 w-4" /> Export Report
             </Button>
           </ExportReportSheet>
-          {((isManager && Boolean(owner)) || isContractVendorLike) && (
+          {((isManager && Boolean(owner)) || isProjectManager) && (
             <CreateChangeDialog
               trigger={
                 <Button

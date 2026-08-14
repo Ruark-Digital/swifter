@@ -63,11 +63,11 @@ vi.mock("../components/ComplianceDetailsSheet", () => {
 });
 
 describe("Compliance & Security", () => {
-  it("shows submit policies button only when policy status is pending or rejected for vendor/project manager", async () => {
+  it("shows submit policies button only when policy status is pending or rejected for the vendor-PM", async () => {
     mockedUserRole = {
-      userRole: "vendor",
-      isVendor: true,
-      isProjectManager: false,
+      userRole: "project_manager",
+      isVendor: false,
+      isProjectManager: true,
       isApprover: false,
       isManager: false,
       isAdmin: false,
@@ -131,6 +131,40 @@ describe("Compliance & Security", () => {
     expect(
       screen.getByRole("button", { name: "Submit Policies" }),
     ).toBeInTheDocument();
+  });
+
+  it("hides submit policies button for a plain vendor even when pending (strict view-only)", async () => {
+    mockedUserRole = {
+      userRole: "vendor",
+      isVendor: true,
+      isProjectManager: false,
+      isApprover: false,
+      isManager: false,
+      isAdmin: false,
+    };
+
+    const queryClient = new QueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ComplianceSecurityTab
+          basePath="/contract/vendor/contracts/contract-1/compliance"
+          data={
+            {
+              details: {
+                policyStatus: { status: "pending" },
+                securityStatus: { status: "pending" },
+              },
+              policy: [],
+              security: [],
+            } as any
+          }
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Submit Policies" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows submit security button only when security status is pending or rejected for vendor/project manager", async () => {
