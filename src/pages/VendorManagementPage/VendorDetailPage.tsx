@@ -767,6 +767,7 @@ export const VendorDetailPage = () => {
                     userId={vendor.user._id}
                     vendorName={vendor.name}
                     vendorId={id}
+                    currentRoles={(vendor.user as { roles?: unknown }).roles}
                     trigger={
                       <Button
                         variant="outline"
