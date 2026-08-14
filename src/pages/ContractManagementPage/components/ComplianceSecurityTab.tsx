@@ -106,13 +106,13 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
   // action below), so a tab-wide aggregate button would incorrectly hide
   // once any single security type left "pending" (QA #91/#134).
   const canSubmitActive = React.useMemo(() => {
-    if (!isContractVendorLike) return false;
+    if (!isProjectManager) return false;
     if (activeView !== "policy") return false;
     const status = getSubmissionStatus(activeView);
     if (!status) return !hasFiles;
     const normalized = String(status).toLowerCase();
     return normalized === "pending" || normalized === "rejected";
-  }, [activeView, hasFiles, isContractVendorLike, data?.details]);
+  }, [activeView, hasFiles, isProjectManager, data?.details]);
 
   const canManagerActOnActive = React.useMemo(() => {
     if (!isContractManager) return false;
@@ -335,7 +335,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         cell: ({ row }) => {
           const rowStatus = row.original.status?.toLowerCase();
           const canSubmitRow =
-            isContractVendorLike &&
+            isProjectManager &&
             !actionsDisabled &&
             (rowStatus === "pending" || rowStatus === "rejected");
           return (
@@ -386,7 +386,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
       actionsDisabled,
       isContractManager,
       owner,
-      isContractVendorLike,
+      isProjectManager,
     ],
   );
 

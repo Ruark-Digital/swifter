@@ -581,7 +581,7 @@ const RfiTabContent: React.FC<Props> = ({
               <Share2 className="mr-2 h-4 w-4" /> Export Report
             </Button>
           </ExportReportSheet>
-          {!isViewOnly && (
+          {!isViewOnly && !isVendor && (
             <IssueRfiDialog
               contractId={contractId}
               basePath={basePath}

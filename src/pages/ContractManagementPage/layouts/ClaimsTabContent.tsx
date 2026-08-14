@@ -98,7 +98,7 @@ const ClaimsTabContent: React.FC<Props> = ({
             </Button>
           </ExportReportSheet>
 
-          {(isContractVendorLike || isManager) && (
+          {(isProjectManager || isManager) && (
             <RequestClaimDialog
               createPath={basePath}
               invalidateQueryKey={["contractClaims"]}

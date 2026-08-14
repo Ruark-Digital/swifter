@@ -837,8 +837,7 @@ const RateSheetDetailsSheet: React.FC<{
   const [open, setOpen] = React.useState(false);
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
-  const { isManager, isVendor, isProjectManager } = useUserRole();
-  const isContractVendorLike = isVendor || isProjectManager;
+  const { isManager, isProjectManager } = useUserRole();
   const rateSheetId = row.sheetId || row.id;
 
   const { data: detailRes, isLoading: detailLoading } = useQuery({
@@ -895,7 +894,7 @@ const RateSheetDetailsSheet: React.FC<{
   const rsStatus = (sheet?.status || row.status || "").toLowerCase();
   const isRejected = rsStatus === "rejected";
   const canEditOrResubmit =
-    isContractVendorLike && (rsStatus === "pending" || isRejected);
+    isProjectManager && (rsStatus === "pending" || isRejected);
 
   const [activeTab, setActiveTab] = React.useState("overview");
   
@@ -1271,7 +1270,7 @@ const RateSheetsTabContent: React.FC<Props> = ({
               Export Report
             </Button>
           </ExportReportSheet>
-          {isContractVendorLike && (
+          {isProjectManager && (
             <SubmitRateSheetDialog
               contractId={contractId}
               basePath={basePath}

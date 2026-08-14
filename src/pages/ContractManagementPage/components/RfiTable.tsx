@@ -519,7 +519,8 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                     Boolean(currentUser?._id) &&
                     Boolean(issuerId) &&
                     issuerId === currentUser?._id;
-                  if (!isIssuer) return null;
+                  // Active vendor is read-only in CLM (strict) — no Edit RFI.
+                  if (!isIssuer || isVendor) return null;
                   // Manager uses /rfis (plural); vendor/approver use /rfi
                   // (singular). Match RfiTabContent.getBasePath().
                   const editBase = isApprover
@@ -568,7 +569,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                 >
                   <Download className="mr-2 h-4 w-4" /> Export
                 </Button>
-                {isRfiIssuer && rfiStatus?.toLowerCase() !== "closed" && (
+                {isRfiIssuer && !isVendor && rfiStatus?.toLowerCase() !== "closed" && (
                   <Button
                     variant="outline"
                     className="h-9 rounded-lg border-red-200 px-3 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-900/30"
@@ -755,27 +756,29 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                   </div>
                 )}
 
-                <MessageComposer
-                  onSend={(content) => {
-                    void handleSendComment(content);
-                  }}
-                  isLoading={addCommentMutation.isPending}
-                  replyToUser={
-                    rfiSubmittedBy && rfiSubmittedBy !== "-"
-                      ? { name: rfiSubmittedBy }
-                      : undefined
-                  }
-                  currentUser={{ name: "You" }}
-                  sendType="reply"
-                  isNewChat={false}
-                  onSendTypeChange={() => {}}
-                  sendLabel="Send"
-                />
+                {!isVendor && (
+                  <MessageComposer
+                    onSend={(content) => {
+                      void handleSendComment(content);
+                    }}
+                    isLoading={addCommentMutation.isPending}
+                    replyToUser={
+                      rfiSubmittedBy && rfiSubmittedBy !== "-"
+                        ? { name: rfiSubmittedBy }
+                        : undefined
+                    }
+                    currentUser={{ name: "You" }}
+                    sendType="reply"
+                    isNewChat={false}
+                    onSendTypeChange={() => {}}
+                    sendLabel="Send"
+                  />
+                )}
               </TabsContent>
             </Tabs>
           </div>
 
-          {canRespond && (
+          {canRespond && !isVendor && (
             <SheetFooter>
               <div className="flex w-full gap-3 pt-2">
                 <Button variant="outline" className="flex-1 h-12 rounded-xl">
@@ -1239,6 +1242,7 @@ const columns: ColumnDef<RfiRow>[] = [
 
 const RfiRowActions: React.FC<{ row: RfiRow }> = ({ row }) => {
   const currentUser = useUser();
+  const { isVendor } = useUserRole();
   // Turn-aware gate: hides once the user has answered (issuer's turn) and never
   // shows for the issuer's own RFI (QA #113 #3/#4). BE `canRespond` is the
   // source of truth; the helper falls back for legacy payloads.
@@ -1260,7 +1264,7 @@ const RfiRowActions: React.FC<{ row: RfiRow }> = ({ row }) => {
           </button>
         }
       />
-      {canRespond && (
+      {canRespond && !isVendor && (
         <RespondToRfiDialog
           rfiId={row.id}
           rfi={row.rfi}

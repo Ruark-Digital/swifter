@@ -287,10 +287,10 @@ describe("Amendment details sheet", () => {
     });
   });
 
-  test("sends vendor rejection comments when rejecting an amendment", async () => {
+  test("sends vendor-PM rejection comments when rejecting an amendment", async () => {
     Object.assign(mockUserRole, {
-      isVendor: true,
-      isProjectManager: false,
+      isVendor: false,
+      isProjectManager: true,
       isManager: false,
       isApprover: false,
     });
@@ -325,5 +325,29 @@ describe("Amendment details sheet", () => {
         },
       });
     });
+  });
+
+  test("hides accept/reject for a plain vendor (strict view-only)", async () => {
+    Object.assign(mockUserRole, {
+      isVendor: true,
+      isProjectManager: false,
+      isManager: false,
+      isApprover: false,
+    });
+    Object.assign(mockDetail, {
+      vendorStatus: "pending",
+      status: "pending",
+    });
+
+    renderTable();
+
+    fireEvent.click(screen.getByRole("button", { name: "View" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Amendment Details")).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole("button", { name: "Reject Amendment" }),
+    ).not.toBeInTheDocument();
   });
 });

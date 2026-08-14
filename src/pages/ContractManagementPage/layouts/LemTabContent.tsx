@@ -85,7 +85,7 @@ const LemTabContent: React.FC<Props> = ({ contractId, currency, isActive, action
         <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
           Labor, Equipment & Material Reports
         </h3>
-        {isContractVendorLike ? (
+        {isProjectManager ? (
           <SubmitLemDialog
             contractId={contractId}
             trigger={
