@@ -154,14 +154,8 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
         "Holdback release application submitted",
       );
     },
-    onError: (error: any) => {
-      toastHandler.error(
-        "Error",
-        error?.response?.data?.message ||
-          error?.message ||
-          "Failed to submit holdback application",
-      );
-    },
+    // Errors are surfaced in onSubmit's catch (which also covers file-upload
+    // failures) so the real BE message shows in a single toast.
   });
 
   const onSubmit = async (data: ReleaseHoldbackFormValues) => {
@@ -201,9 +195,17 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
       };
 
       await createMutation.mutateAsync(payload);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting holdback release:", error);
-      toastHandler.error("Submission Failed", "An error occurred while submitting the form. Please try again.");
+      // Surface the actual BE reason (e.g. "Holdback amount cannot exceed the
+      // available holdback balance"). status:"fail" bodies are re-thrown above as
+      // Error(message); real HTTP errors carry response.data.message.
+      toastHandler.error(
+        "Submission Failed",
+        error?.response?.data?.message ||
+          error?.message ||
+          "An error occurred while submitting the form. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
