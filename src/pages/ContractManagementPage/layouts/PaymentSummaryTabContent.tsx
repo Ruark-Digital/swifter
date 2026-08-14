@@ -139,7 +139,7 @@ const buildHoldbackReleaseColumns = (
   },
   {
     accessorKey: "dueDate",
-    header: () => <div className="w-[120px] text-center">Due Date</div>,
+    header: () => <div className="w-[120px] text-center">Release Date</div>,
     cell: ({ getValue }) => (
       <div className="w-[120px] py-4 text-center text-sm font-medium text-[#374151] dark:text-slate-300">
         {getValue<string>()}

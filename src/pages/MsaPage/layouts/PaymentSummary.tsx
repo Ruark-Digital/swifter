@@ -283,7 +283,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
       },
       {
         accessorKey: "dueDate",
-        header: () => <div className="text-center">Due Date</div>,
+        header: () => <div className="text-center">Release Date</div>,
         cell: ({ getValue }) => (
           <div className="text-center">{getValue<string>()}</div>
         ),
