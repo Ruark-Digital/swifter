@@ -10,7 +10,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { postRequest } from "@/lib/axiosInstance";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
-import { contractManagerApi } from "../api/contractManagerApi";
 import { useToastHandler } from "@/hooks/useToaster";
 import { formatFileSize, getSimpleFileExtension } from "@/lib/fileUtils";
 import  Spinner from "@/components/ui/Spinner";
@@ -125,17 +124,22 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
   });
 
   const createMutation = useMutation({
-    mutationKey: ["createPaymentHoldback", contractId],
+    mutationKey: ["submitHoldbackApplication", contractId],
     mutationFn: async (data: any) => {
-      const body = await contractManagerApi.createPaymentHoldback(
-        contractId,
-        data,
-      );
+      // #142 — the Vendor-PM submits a holdback release *application*. The CM
+      // accepts/rejects it and the approver chain escalates from there; the
+      // manager no longer creates the release directly (BE has no manager
+      // create endpoint for regular contracts).
+      const res = await postRequest({
+        url: `/contract/vendor/contracts/${contractId}/payment-holdbacks`,
+        payload: data,
+      });
+      const body = res.data as { status?: string; message?: string };
       // BE may return HTTP 200 with `{status:"fail", message:"..."}` for
       // business-rule violations (e.g. "Pending holdback exists"). Treat that
       // as a failure so the dialog stays open and the message surfaces.
-      if ((body as any)?.status === "fail") {
-        throw new Error(body?.message || "Failed to release holdback");
+      if (body?.status === "fail") {
+        throw new Error(body?.message || "Failed to submit holdback application");
       }
       return body;
     },
@@ -145,16 +149,13 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
       await queryClient.invalidateQueries({
         queryKey: ["contract-payment-holdbacks", contractId],
       });
-      toastHandler.success("Success", "Holdback released successfully");
-    },
-    onError: (error: any) => {
-      toastHandler.error(
-        "Error",
-        error?.response?.data?.message ||
-          error?.message ||
-          "Failed to release holdback",
+      toastHandler.success(
+        "Success",
+        "Holdback release application submitted",
       );
     },
+    // Errors are surfaced in onSubmit's catch (which also covers file-upload
+    // failures) so the real BE message shows in a single toast.
   });
 
   const onSubmit = async (data: ReleaseHoldbackFormValues) => {
@@ -194,9 +195,17 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
       };
 
       await createMutation.mutateAsync(payload);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting holdback release:", error);
-      toastHandler.error("Submission Failed", "An error occurred while submitting the form. Please try again.");
+      // Surface the actual BE reason (e.g. "Holdback amount cannot exceed the
+      // available holdback balance"). status:"fail" bodies are re-thrown above as
+      // Error(message); real HTTP errors carry response.data.message.
+      toastHandler.error(
+        "Submission Failed",
+        error?.response?.data?.message ||
+          error?.message ||
+          "An error occurred while submitting the form. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -219,7 +228,7 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
       <DialogContent className="h-[80vh] overflow-auto gap-0 border-0 p-0 ">
         <Forge control={control} onSubmit={onSubmit} className="flex flex-col">
           <div className="flex items-center justify-between border-b border-[#E5E7EB] dark:border-slate-700 px-6 py-5">
-            <h2 className="text-xl font-semibold text-[#111827] dark:text-slate-100">Release Holdback</h2>
+            <h2 className="text-lg font-semibold text-[#111827] dark:text-slate-100">Apply for Holdback Release</h2>
           </div>
 
           <div className="flex flex-col gap-6 px-6 py-6">
@@ -293,10 +302,10 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
               {isSubmitting ? (
                 <div className="flex items-center gap-2">
                   <Spinner className="h-4 w-4 text-white" />
-                  <span>Releasing...</span>
+                  <span>Submitting...</span>
                 </div>
               ) : (
-                "Release"
+                "Submit Application"
               )}
             </button>
           </div>

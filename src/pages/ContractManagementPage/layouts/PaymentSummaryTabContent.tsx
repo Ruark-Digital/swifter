@@ -821,19 +821,26 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
                   </button>
                 }
               />
-
-              <ReleaseHoldbackDialog
-                contractId={contractId}
-                trigger={
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center rounded-xl bg-[#2A4467] px-4 py-2 text-base font-semibold text-white"
-                  >
-                    Release Holdback
-                  </button>
-                }
-              />
             </div>
+          )}
+
+          {/* #142 — the Vendor-PM submits a holdback release application; the CM
+              then accepts/rejects it in the holdback detail sheet and the
+              approver chain escalates from there. The manager no longer
+              initiates the release directly for regular contracts (the BE has no
+              manager create endpoint — only vendor submit + manager approve). */}
+          {isProjectManager && !isPendingApproval && (
+            <ReleaseHoldbackDialog
+              contractId={contractId}
+              trigger={
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-xl bg-[#2A4467] px-4 py-2 text-sm font-semibold text-white"
+                >
+                  Apply for Holdback Release
+                </button>
+              }
+            />
           )}
         </div>
       </div>
