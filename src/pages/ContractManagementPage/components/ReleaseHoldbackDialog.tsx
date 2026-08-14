@@ -226,7 +226,7 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
       <DialogContent className="h-[80vh] overflow-auto gap-0 border-0 p-0 ">
         <Forge control={control} onSubmit={onSubmit} className="flex flex-col">
           <div className="flex items-center justify-between border-b border-[#E5E7EB] dark:border-slate-700 px-6 py-5">
-            <h2 className="text-xl font-semibold text-[#111827] dark:text-slate-100">Apply for Holdback Release</h2>
+            <h2 className="text-lg font-semibold text-[#111827] dark:text-slate-100">Apply for Holdback Release</h2>
           </div>
 
           <div className="flex flex-col gap-6 px-6 py-6">
