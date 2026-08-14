@@ -35,10 +35,12 @@ import {
 } from "@/lib/fileUtils";
 import {
   getApproveDraftCoUrl,
+  getConvertDirectiveUrl,
   getManagerApproveChangeUrl,
   isCrCpOriginDraftCo,
   isDraftChangeOrder,
   shouldShowChangeDecisionActions,
+  toConvertDirectivePayload,
 } from "../lib/contractChanges";
 import { useChangeLock } from "../hooks/useChangeLock";
 import { formatDate } from "date-fns";
@@ -218,6 +220,13 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     ? isProjectManager
     : isManager;
   const canActOnDraftCo = isDraftCo && draftCoActor;
+
+  // #147 — a change directive (CD) needs no approval of itself; the assigned
+  // Vendor PM responds by converting it into a Change Order or Change Proposal.
+  // Gate on the PM role for UX and let the BE 403 enforce contract assignment
+  // (matches the draft-CO gating pattern above).
+  const canConvertDirective =
+    !isClaim && changeType === "directive" && isProjectManager;
 
   const statusBadgeTone = (s?: string) => {
     const k = (s ?? "").toLowerCase();
@@ -470,6 +479,70 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     },
     onError: (err: any) => {
       toast.error("Failed to approve change order", err);
+    },
+  });
+
+  // #147 — convert a change directive into a Change Order or Change Proposal.
+  // Title/description/amount are pre-filled from the directive (all required by
+  // the BE); the new change then runs the standard CM→approvers approval flow.
+  const [convertOpen, setConvertOpen] = React.useState(false);
+  const [convertType, setConvertType] = React.useState<"order" | "proposal">(
+    "order",
+  );
+  const [convertTitle, setConvertTitle] = React.useState("");
+  const [convertDescription, setConvertDescription] = React.useState("");
+  const [convertAmount, setConvertAmount] = React.useState("");
+  const [convertUrgency, setConvertUrgency] = React.useState("");
+
+  const openConvertDialog = React.useCallback(() => {
+    setConvertType("order");
+    setConvertTitle(title);
+    setConvertDescription(description);
+    setConvertAmount(value != null ? String(value) : "");
+    setConvertUrgency((detail?.urgency as string) ?? "");
+    setConvertOpen(true);
+  }, [title, description, value, detail]);
+
+  const convertAmountValid =
+    convertAmount.trim() !== "" &&
+    Number.isFinite(Number(convertAmount.replace(/[$,\s]/g, "")));
+  const convertValid =
+    convertTitle.trim() !== "" &&
+    convertDescription.trim() !== "" &&
+    convertAmountValid;
+
+  const { mutate: convertDirective, isPending: isConverting } = useMutation({
+    mutationKey: ["convertDirective", roleBasePath, contractId, changeId],
+    mutationFn: async () => {
+      const url = getConvertDirectiveUrl({ roleBasePath, contractId, changeId });
+      const payload = toConvertDirectivePayload({
+        type: convertType,
+        title: convertTitle,
+        description: convertDescription,
+        amount: convertAmount,
+        urgency: convertUrgency,
+      });
+      return await postRequest({ url, payload });
+    },
+    onSuccess: (res) => {
+      toast.success(
+        convertType === "order"
+          ? "Directive converted to change order"
+          : "Directive converted to change proposal",
+        (res as any)?.data?.message ??
+          "The new change has been sent for approval.",
+      );
+      qc.invalidateQueries({
+        queryKey: listInvalidateQueryKey ?? ["contractChanges", contractId],
+      });
+      if (statsInvalidateQueryKey) {
+        qc.invalidateQueries({ queryKey: statsInvalidateQueryKey });
+      }
+      qc.invalidateQueries({ queryKey: changeDetailQueryKey });
+      setConvertOpen(false);
+    },
+    onError: (err: any) => {
+      toast.error("Failed to convert directive", err);
     },
   });
 
@@ -892,6 +965,23 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             </SheetFooter>
           )}
 
+          {/* #147 — the assigned Vendor PM converts a change directive into a
+              Change Order or Change Proposal (the directive itself needs no
+              approval). Opens a dialog pre-filled from the directive. */}
+          {canConvertDirective && activeTab === "overview" && (
+            <SheetFooter>
+              <div className="flex w-full justify-end pt-2">
+                <Button
+                  data-testid="convert-directive-trigger"
+                  className="h-11 w-64 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
+                  onClick={openConvertDialog}
+                >
+                  Convert Directive
+                </Button>
+              </div>
+            </SheetFooter>
+          )}
+
           {showDecisionActions && activeTab === "overview" && (
             <SheetFooter>
               {/* Change flow (unchanged): manager gets Reject+Approve;
@@ -1134,6 +1224,135 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                   onClick={() => approveDraftCo()}
                 >
                   {isApprovingDraft ? "Approving..." : "Confirm Approve"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* #147 — convert a change directive to a CO or CP. */}
+        <Dialog
+          open={convertOpen}
+          onOpenChange={(next) => {
+            if (!next && !isConverting) setConvertOpen(false);
+          }}
+        >
+          <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-2">
+              <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                Convert Directive
+              </DialogTitle>
+            </DialogHeader>
+            <div className="px-6 pb-6 space-y-4">
+              <p className="text-sm text-[#6B7280] dark:text-slate-400">
+                Convert this change directive into a Change Order or Change
+                Proposal. The new change is sent for approval (CM first, then
+                approvers).
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                {(
+                  [
+                    { key: "order", label: "Change Order" },
+                    { key: "proposal", label: "Change Proposal" },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    data-testid={`convert-type-${opt.key}`}
+                    disabled={isConverting}
+                    onClick={() => setConvertType(opt.key)}
+                    className={cn(
+                      "h-11 rounded-xl border text-sm font-semibold transition-colors",
+                      convertType === opt.key
+                        ? "border-[#1F3B63] bg-[#1F3B63] text-white"
+                        : "border-[#E5E7EB] text-[#111827] dark:border-slate-700 dark:text-slate-100",
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm text-slate-500 dark:text-slate-400">
+                  Title
+                </label>
+                <input
+                  value={convertTitle}
+                  onChange={(e) => setConvertTitle(e.target.value)}
+                  placeholder="Change title"
+                  className="w-full rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm text-slate-500 dark:text-slate-400">
+                  Description
+                </label>
+                <textarea
+                  value={convertDescription}
+                  onChange={(e) => setConvertDescription(e.target.value)}
+                  placeholder="Describe the change"
+                  rows={3}
+                  className="w-full resize-none rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-sm text-slate-500 dark:text-slate-400">
+                    Amount ({currencyCode})
+                  </label>
+                  <input
+                    value={convertAmount}
+                    onChange={(e) => setConvertAmount(e.target.value)}
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    className="w-full rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm text-slate-500 dark:text-slate-400">
+                    Urgency
+                  </label>
+                  <select
+                    value={convertUrgency}
+                    onChange={(e) => setConvertUrgency(e.target.value)}
+                    className="w-full rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  >
+                    <option value="">—</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
+                  disabled={isConverting}
+                  onClick={() => setConvertOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  data-testid="confirm-convert-directive"
+                  className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white hover:bg-[#16304f] disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isConverting || !convertValid}
+                  aria-busy={isConverting}
+                  onClick={() => convertDirective()}
+                >
+                  {isConverting
+                    ? "Converting..."
+                    : convertType === "order"
+                      ? "Convert to Change Order"
+                      : "Convert to Change Proposal"}
                 </Button>
               </div>
             </div>
