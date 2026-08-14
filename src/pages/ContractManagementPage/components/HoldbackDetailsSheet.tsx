@@ -53,6 +53,10 @@ export interface HoldbackDetailDTO {
   releasedDate: Date;
   files: File[];
   __v: number;
+  // The CM's accept/reject decision is recorded here. The top-level `status`
+  // stays "pending" through the approver escalation, so this sub-status is the
+  // signal for whether the CM still has an action.
+  manager?: { status?: string; comment?: string };
 }
 
 export interface File {
@@ -144,6 +148,13 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
   const statusBadge = React.useMemo(
     () => getHoldbackStatusBadgeProps(detail?.status),
     [detail?.status],
+  );
+  // The CM accept/reject action shows only until the CM acts. On decision,
+  // `detail.manager.status` flips to approved/rejected while the top-level
+  // `status` stays "pending" through the approver escalation — so the CM
+  // buttons must key off the manager sub-status, not the top status.
+  const managerHasDecided = ["approved", "rejected"].includes(
+    (detail?.manager?.status ?? "").toLowerCase(),
   );
 
   const mappedDocs: DocType[] = (detail?.files ?? []).map((f) => {
@@ -295,20 +306,6 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
           </div>
 
           <div className="flex-1 overflow-y-auto px-8 pb-8 pt-6">
-            <div className="flex justify-end pb-6">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
-              >
-                <img
-                  src="/assets/contract-management/payment-summary/share.svg"
-                  className="h-4 w-4"
-                  alt=""
-                />
-                Export
-              </button>
-            </div>
-
             <div className="space-y-6">
               {!holdBackId ? (
                 <div className="rounded-xl border border-dashed border-[#E5E7EB] dark:border-slate-700 p-6 text-sm text-[#6B7280] dark:text-slate-400">
@@ -455,10 +452,12 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
           )}
 
           {/* #142 — CM accept/reject on a vendor-submitted application. Shown
-              while the application is awaiting the CM's decision (status
-              "pending"); once the CM approves, the BE hands off to the approver
-              escalation above. */}
-          {isManager && (detail?.status ?? "").toLowerCase() === "pending" && (
+              while the application awaits the CM's decision and hidden once the
+              CM has acted (manager.status flips even though the top-level status
+              stays "pending" for the approver escalation that follows). */}
+          {isManager &&
+            (detail?.status ?? "").toLowerCase() === "pending" &&
+            !managerHasDecided && (
             <div className="flex items-center justify-between gap-6 border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 px-8 py-6">
               <button
                 type="button"
