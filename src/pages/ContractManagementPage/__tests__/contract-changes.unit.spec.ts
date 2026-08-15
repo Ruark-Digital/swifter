@@ -5,6 +5,7 @@ import {
   formatChangeTypeLabel,
   getApproveDraftCoUrl,
   getChangeLockUrl,
+  getConvertDirectiveUrl,
   getCreateChangeTypeOptionsForRole,
   isCrCpOriginDraftCo,
   isDraftChangeOrder,
@@ -13,6 +14,7 @@ import {
   pruneEmptyValuesDeep,
   shouldShowChangeDecisionActions,
   toContractChangeFileItem,
+  toConvertDirectivePayload,
   toManagerCreateChangePayload,
   toVendorCreateChangePayload,
 } from "../lib/contractChanges";
@@ -333,5 +335,91 @@ test.describe("contractChanges helpers (unit)", () => {
     expect(
       getApproveDraftCoUrl({ roleBasePath: "", contractId: "C1", changeId: "CO2" })
     ).toBe("/contract/manager/contracts/C1/changes/CO2/approve-draft-co");
+  });
+
+  // ── #147 convert-directive helpers ────────────────────────────────
+  test("builds convert-directive url with dual path + resource handling", async () => {
+    // basePath already ends with /{id}/changes
+    expect(
+      getConvertDirectiveUrl({
+        roleBasePath: "/contract/vendor/contracts/C1/changes",
+        contractId: "C1",
+        changeId: "CD1",
+      })
+    ).toBe("/contract/vendor/contracts/C1/changes/CD1/convert-directive");
+
+    // rebuilt from role + resource (contract + MSA)
+    expect(
+      getConvertDirectiveUrl({
+        roleBasePath: "/contract/vendor/contracts",
+        contractId: "C1",
+        changeId: "CD1",
+      })
+    ).toBe("/contract/vendor/contracts/C1/changes/CD1/convert-directive");
+
+    expect(
+      getConvertDirectiveUrl({
+        roleBasePath: "/contract/vendor/msa-contracts",
+        contractId: "M1",
+        changeId: "CD9",
+      })
+    ).toBe("/contract/vendor/msa-contracts/M1/changes/CD9/convert-directive");
+
+    // unknown basePath → vendor + contracts fallback (vendor-only endpoint)
+    expect(
+      getConvertDirectiveUrl({ roleBasePath: "", contractId: "C1", changeId: "CD1" })
+    ).toBe("/contract/vendor/contracts/C1/changes/CD1/convert-directive");
+  });
+
+  test("builds convert-directive payload (CO/CP) from dialog values", async () => {
+    // Convert to Change Order — no proposalCategory.
+    expect(
+      toConvertDirectivePayload({
+        type: "order",
+        title: "Extra scaffolding",
+        description: "Directive to add scaffolding",
+        amount: "$12,000.50",
+        urgency: "high",
+      })
+    ).toEqual({
+      type: "order",
+      title: "Extra scaffolding",
+      description: "Directive to add scaffolding",
+      amount: 12000.5,
+      urgency: "high",
+    });
+
+    // Convert to Change Proposal — default placeholder category, mirrors create.
+    expect(
+      toConvertDirectivePayload({
+        type: "proposal",
+        title: "Extra scaffolding",
+        description: "Directive to add scaffolding",
+        amount: "5000",
+      })
+    ).toEqual({
+      type: "proposal",
+      title: "Extra scaffolding",
+      description: "Directive to add scaffolding",
+      amount: 5000,
+      proposalCategory: "placeholder",
+    });
+
+    // Explicit category wins; invalid urgency is dropped; missing amount → 0.
+    expect(
+      toConvertDirectivePayload({
+        type: "proposal",
+        title: "T",
+        description: "D",
+        urgency: "urgent",
+        proposalCategory: "Scope",
+      })
+    ).toEqual({
+      type: "proposal",
+      title: "T",
+      description: "D",
+      amount: 0,
+      proposalCategory: "Scope",
+    });
   });
 });

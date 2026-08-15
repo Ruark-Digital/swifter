@@ -18,6 +18,13 @@ import {
 import { cn } from "@/lib/utils";
 import type { ContractDetail } from "@/types";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
+import {
+  buildPendingApprovalLine,
+  buildRfiAlertLine,
+  isApprovalDelayed,
+  type PendingApproval,
+  type RfiAlert,
+} from "../lib/contractAlerts";
 
 type DashboardTier = "high" | "medium" | "good" | "critical" | "low" | string;
 
@@ -127,9 +134,9 @@ type AlertsData = {
       late?: unknown[];
       missed?: unknown[];
     } | null;
-    rfiAlerts?: unknown[];
+    rfiAlerts?: RfiAlert[];
     ncrAlerts?: unknown[];
-    pendingApprovals?: unknown[];
+    pendingApprovals?: PendingApproval[];
   }>;
 };
 
@@ -398,12 +405,20 @@ const AnalyticsTab: React.FC<Props> = ({
     if (missed) push(`${missed} missed deliverable${missed > 1 ? "s" : ""}`);
     if (upcoming) push(`${upcoming} upcoming deliverable${upcoming > 1 ? "s" : ""} due soon`);
 
-    const rfi = count(c.rfiAlerts);
+    // #141 — expand RFI + pending-approval alerts into one detailed line each
+    // (replacing the old aggregate "N items pending approval"). Approvals are
+    // gated to items delayed 24h+; the line uses the `pendingWith` role until
+    // the BE populates responsibleUsers with names.
+    const alertsCurrency =
+      financialStatement?.currency ?? (contract as any)?.currency;
+    (c.rfiAlerts ?? []).forEach((r) => push(buildRfiAlertLine(r)));
     const ncr = count(c.ncrAlerts);
-    const approvals = count(c.pendingApprovals);
-    if (rfi) push(`${rfi} RFI${rfi > 1 ? "s" : ""} pending response`);
     if (ncr) push(`${ncr} NCR${ncr > 1 ? "s" : ""} require action`);
-    if (approvals) push(`${approvals} item${approvals > 1 ? "s" : ""} pending approval`);
+    (c.pendingApprovals ?? [])
+      .filter(isApprovalDelayed)
+      .forEach((a) =>
+        push(buildPendingApprovalLine(a, (amount) => formatMoney(amount, alertsCurrency))),
+      );
 
     (c.overdueItems ?? []).forEach((o) => {
       push(
@@ -639,12 +654,12 @@ const AnalyticsTab: React.FC<Props> = ({
       {/* Middle Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Financial Overview */}
-        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm">
+        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm flex flex-col max-h-[420px]">
           <div className="flex items-center gap-2 mb-6">
             <DollarSign className="h-5 w-5 text-blue-600" />
             <h3 className="font-semibold text-slate-800 dark:text-slate-100">Financial Overview</h3>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-1">
             {financialRows.map((item, index) => (
               <div key={index} className="flex justify-between items-center text-sm">
                 <span className="text-slate-600 dark:text-slate-400 dark:text-slate-500">{item.label}</span>
@@ -664,16 +679,16 @@ const AnalyticsTab: React.FC<Props> = ({
         </div>
 
         {/* Alerts */}
-        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm border-l-4 border-l-orange-400">
+        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm border-l-4 border-l-orange-400 flex flex-col max-h-[420px]">
           <div className="flex items-center gap-2 mb-6">
             <AlertTriangle className="h-5 w-5 text-orange-500" />
             <h3 className="font-semibold text-slate-800 dark:text-slate-100">Alerts & Recommended Actions</h3>
           </div>
-          <ul className="space-y-4">
+          <ul className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-1">
             {alertsRows.map((alert, index) => (
-              <li key={index} className="flex gap-2 text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">
-                <span className="text-orange-500 mt-1.5">•</span>
-                <span dangerouslySetInnerHTML={{ 
+              <li key={index} className="flex items-start gap-2.5 text-sm text-slate-600 dark:text-slate-400">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500" aria-hidden />
+                <span dangerouslySetInnerHTML={{
                   __html: alert.text
                     .replace(/Renew by \d{4}-\d{2}-\d{2}/, '<span class="font-bold text-slate-800 dark:text-slate-100">$&</span>')
                     .replace(/Pending .*? review/, '<span class="font-bold text-slate-800 dark:text-slate-100">$&</span>')
@@ -685,12 +700,12 @@ const AnalyticsTab: React.FC<Props> = ({
         </div>
 
         {/* Legal Analysis */}
-        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm">
+        <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm flex flex-col max-h-[420px]">
           <div className="flex items-center gap-2 mb-6">
             <FileText className="h-5 w-5 text-blue-600" />
             <h3 className="font-semibold text-slate-800 dark:text-slate-100">Clause & Legal Analysis</h3>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-1">
             {clauseRows.map((item, index) => (
               <div 
                 key={index} 

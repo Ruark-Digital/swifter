@@ -358,4 +358,80 @@ export const toVendorCreateChangePayload = (
   return payload;
 };
 
+// ── Convert change directive (#147) ──────────────────────────────────
+// A change directive (CD) is issued by a CM/Approver and needs no approval of
+// itself. The assigned Vendor PM responds by **converting** it into a Change
+// Order (CO) or Change Proposal (CP) via `convert-directive`; the new change
+// then runs the standard approval flow (CM first, then approvers). The BE
+// requires `title`, `description`, `amount` and `type` — the convert dialog
+// pre-fills the first three from the directive. `proposalCategory`, `urgency`,
+// `approvers` and `files` are optional (mirrors ContractChangeConvertDirectiveDTO).
+export const getConvertDirectiveUrl = ({
+  roleBasePath,
+  contractId,
+  changeId,
+}: {
+  roleBasePath: string;
+  contractId: string;
+  changeId: string;
+}): string => {
+  if (roleBasePath.endsWith(`/${contractId}/changes`)) {
+    return `${roleBasePath}/${changeId}/convert-directive`;
+  }
+  // convert-directive is a vendor-only endpoint, so fall back to `vendor`
+  // (unlike the lock/approve builders which default to manager).
+  const match = roleBasePath.match(
+    /^\/contract\/(manager|approver|vendor|user)\/(contracts|msa-contracts)/,
+  );
+  const role = match?.[1] ?? "vendor";
+  const resource = match?.[2] ?? "contracts";
+  return `/contract/${role}/${resource}/${contractId}/changes/${changeId}/convert-directive`;
+};
+
+export type ConvertDirectiveDialogValues = {
+  type: "order" | "proposal";
+  title: string;
+  description: string;
+  amount?: string;
+  urgency?: string;
+  proposalCategory?: string;
+};
+
+export type ContractChangeConvertDirectivePayload = {
+  title: string;
+  description: string;
+  amount: number;
+  type: "order" | "proposal";
+  proposalCategory?: string;
+  urgency?: "low" | "medium" | "high";
+};
+
+export const toConvertDirectivePayload = (
+  values: ConvertDirectiveDialogValues,
+): ContractChangeConvertDirectivePayload => {
+  const payload: ContractChangeConvertDirectivePayload = {
+    title: values.title,
+    description: values.description,
+    amount: parseAmountToNumber(values.amount) ?? 0,
+    type: values.type,
+  };
+
+  // Proposals carry a category. Mirror the create-change flow, which always
+  // sends `proposalCategory: "placeholder"` for proposals (BE marks it optional
+  // but the create path relies on it) — prefer an explicit value when given.
+  if (values.type === "proposal") {
+    payload.proposalCategory = values.proposalCategory || "placeholder";
+  }
+
+  if (
+    values.urgency === "low" ||
+    values.urgency === "medium" ||
+    values.urgency === "high"
+  ) {
+    payload.urgency = values.urgency;
+  }
+
+  return payload;
+};
+
 export { pruneEmptyValuesDeep } from "@/lib/pruneEmptyValuesDeep";
