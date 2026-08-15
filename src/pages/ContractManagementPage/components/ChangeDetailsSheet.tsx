@@ -1239,56 +1239,82 @@ const ChangeDetailsSheet: React.FC<Props> = ({
         >
           <DialogContent className="sm:max-w-md p-0 overflow-hidden">
             <DialogHeader className="px-6 pt-6 pb-2">
-              <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
-                Convert Directive
-              </DialogTitle>
+              <div className="flex items-center gap-2.5">
+                <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                  Convert Directive
+                </DialogTitle>
+                {changeDisplayId && (
+                  <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                    {changeDisplayId}
+                  </span>
+                )}
+              </div>
             </DialogHeader>
-            <div className="px-6 pb-6 space-y-4">
-              <p className="text-sm text-[#6B7280] dark:text-slate-400">
-                Convert this change directive into a Change Order or Change
-                Proposal. The new change is sent for approval (CM first, then
-                approvers).
+            <div className="px-6 pb-6 space-y-5">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Convert this directive into a Change Order or Change Proposal.
+                The new change is sent for approval — CM first, then approvers.
               </p>
 
-              <div className="grid grid-cols-2 gap-3">
-                {(
-                  [
-                    { key: "order", label: "Change Order" },
-                    { key: "proposal", label: "Change Proposal" },
-                  ] as const
-                ).map((opt) => (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    data-testid={`convert-type-${opt.key}`}
-                    disabled={isConverting}
-                    onClick={() => setConvertType(opt.key)}
-                    className={cn(
-                      "h-11 rounded-xl border text-sm font-semibold transition-colors",
-                      convertType === opt.key
-                        ? "border-[#1F3B63] bg-[#1F3B63] text-white"
-                        : "border-[#E5E7EB] text-[#111827] dark:border-slate-700 dark:text-slate-100",
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+              {/* Signature: segmented CO/CP toggle with a sliding indicator.
+                  The indicator width equals one slot, so translateX(100%) lands
+                  it exactly on the second option. Modal keeps a centered origin;
+                  only this control animates (transform-only, reduced-motion safe). */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                  Convert to
+                </label>
+                <div className="relative flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-lg bg-white shadow-sm ring-1 ring-slate-900/5 transition-transform duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] will-change-transform motion-reduce:transition-none dark:bg-slate-700 dark:ring-white/10"
+                    style={{
+                      transform:
+                        convertType === "proposal"
+                          ? "translateX(100%)"
+                          : "translateX(0)",
+                    }}
+                  />
+                  {(
+                    [
+                      { key: "order", label: "Change Order" },
+                      { key: "proposal", label: "Change Proposal" },
+                    ] as const
+                  ).map((opt) => (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      data-testid={`convert-type-${opt.key}`}
+                      disabled={isConverting}
+                      aria-pressed={convertType === opt.key}
+                      onClick={() => setConvertType(opt.key)}
+                      className={cn(
+                        "relative z-10 flex-1 rounded-lg py-2.5 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2A4467] disabled:cursor-not-allowed",
+                        convertType === opt.key
+                          ? "text-[#1F3B63] dark:text-white"
+                          : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-sm text-slate-500 dark:text-slate-400">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
                   Title
                 </label>
                 <input
                   value={convertTitle}
                   onChange={(e) => setConvertTitle(e.target.value)}
                   placeholder="Change title"
-                  className="w-full rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                  className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#2A4467] focus:outline-none focus:ring-2 focus:ring-[#2A4467]/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-sm text-slate-500 dark:text-slate-400">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
                   Description
                 </label>
                 <textarea
@@ -1296,33 +1322,38 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                   onChange={(e) => setConvertDescription(e.target.value)}
                   placeholder="Describe the change"
                   rows={3}
-                  className="w-full resize-none rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                  className="w-full resize-none rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#2A4467] focus:outline-none focus:ring-2 focus:ring-[#2A4467]/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-sm text-slate-500 dark:text-slate-400">
-                    Amount ({currencyCode})
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                    Amount
                   </label>
-                  <input
-                    value={convertAmount}
-                    onChange={(e) => setConvertAmount(e.target.value)}
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    className="w-full rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
-                  />
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400 dark:text-slate-500">
+                      {currencyCode}
+                    </span>
+                    <input
+                      value={convertAmount}
+                      onChange={(e) => setConvertAmount(e.target.value)}
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      className="w-full rounded-lg border border-slate-200 bg-white py-3 pl-14 pr-3 text-sm tabular-nums text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#2A4467] focus:outline-none focus:ring-2 focus:ring-[#2A4467]/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-sm text-slate-500 dark:text-slate-400">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
                     Urgency
                   </label>
                   <select
                     value={convertUrgency}
                     onChange={(e) => setConvertUrgency(e.target.value)}
-                    className="w-full rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    className="h-[46px] w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 transition-colors focus:border-[#2A4467] focus:outline-none focus:ring-2 focus:ring-[#2A4467]/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                   >
-                    <option value="">—</option>
+                    <option value="">Not set</option>
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
                     <option value="high">High</option>
@@ -1330,11 +1361,11 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-1">
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
+                  className="h-11 flex-1 rounded-xl border-slate-200 text-sm font-semibold text-slate-700 transition-transform duration-150 ease-out active:scale-[0.98] dark:border-slate-700 dark:text-slate-100"
                   disabled={isConverting}
                   onClick={() => setConvertOpen(false)}
                 >
@@ -1343,7 +1374,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                 <Button
                   type="button"
                   data-testid="confirm-convert-directive"
-                  className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white hover:bg-[#16304f] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white transition-[transform,background-color] duration-150 ease-out hover:bg-[#16304f] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[#2A4467] focus-visible:ring-offset-2 dark:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100"
                   disabled={isConverting || !convertValid}
                   aria-busy={isConverting}
                   onClick={() => convertDirective()}
