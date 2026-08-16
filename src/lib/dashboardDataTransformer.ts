@@ -2435,9 +2435,11 @@ export class DashboardDataTransformer {
           }
         ),
         date: update?.createdAt
-          ? `${formatDateTZ(update.createdAt, "MMM d, yyyy h:mm a")} ${
-              update.solicitation.timezone || ""
-            }`
+          ? formatDateInZoneAbbrev(
+              update.createdAt,
+              "MMM d, yyyy h:mm a",
+              update?.solicitation?.timezone
+            )
           : undefined,
         status: update?.status || "active",
       };
@@ -2647,10 +2649,11 @@ export class DashboardDataTransformer {
         ),
         date:
           update?.updatedAt || update?.date || update?.createdAt
-            ? `${formatDateTZ(
+            ? formatDateInZoneAbbrev(
                 update.updatedAt || update.date || update.createdAt,
-                "MMM d, yyyy h:mm a"
-              )} ${update.solicitation?.timezone || ""}`
+                "MMM d, yyyy h:mm a",
+                update.solicitation?.timezone
+              )
             : formatDateTZ(new Date(), "MMM d, yyyy h:mm a 'GMT'xxx", update.solicitation?.timezone || ""),
         status: update?.status || "active",
       };
