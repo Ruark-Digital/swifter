@@ -38,8 +38,15 @@ const ACTIVITY_LINK_MAPPINGS: LinkMapping = {
       scored: "/dashboard/evaluation",
     },
     myActions: {
-      create_evaluation: "/dashboard/evaluation",
-      create_evaluation_group: "/dashboard/evaluation",
+      // "Create evaluation" actions fire before any evaluation exists (the BE
+      // sends evaluation: null / no evaId), so link to the SOLICITATION where
+      // the PL creates it — not /dashboard/evaluation/<id> with no id. Matched
+      // as natural-language phrases (BE statusText: "…please create evaluation")
+      // and listed before the generic "evaluation" key so they win.
+      "create evaluation group": "/dashboard/solicitation",
+      "create evaluation": "/dashboard/solicitation",
+      create_evaluation: "/dashboard/solicitation",
+      create_evaluation_group: "/dashboard/solicitation",
       release_group: "/dashboard/evaluation",
       // BE statusText for a released group reads "…has been released for
       // evaluation, please proceed with scoring" — no `release_group` token.
@@ -183,8 +190,10 @@ function generateDynamicLink(
   const basePath = activityMapping[action];
   if (!basePath) return null;
 
-  const isEvaluation = basePath.includes("/evaluation") ||
-    action.toLowerCase().includes("evaluation");
+  // The destination path decides which id to use — not the action text. A
+  // "create evaluation" action maps to the SOLICITATION (no evaluation exists
+  // yet), so it must use solId even though the action mentions "evaluation".
+  const isEvaluation = basePath.includes("/evaluation");
   const targetId = isEvaluation ? data.evaId : data.solId;
 
   return targetId ? `${basePath}/${targetId}` : null;

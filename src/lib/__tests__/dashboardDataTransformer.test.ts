@@ -152,6 +152,25 @@ describe("DashboardDataTransformer", () => {
     expect(item.date).toBe("Aug 15, 2026 5:02 PM EDT");
   });
 
+  it("links a 'create evaluation' my-action to the solicitation (no evaluation exists yet)", () => {
+    const [item] = DashboardDataTransformer.transformProcurementMyActions([
+      {
+        action: "create_evaluation",
+        solicitation: {
+          _id: "6a666cd158b11dd9e87bcb34",
+          name: "2025 Member Innovation Grants – Technology Education Projects",
+        },
+        evaluation: null,
+        statusText:
+          "Deadline approaching for 2025 Member Innovation Grants – Technology Education Projects, please create evaluation",
+      },
+    ]);
+
+    expect(item.text).toContain(
+      '<a href="/dashboard/solicitation/6a666cd158b11dd9e87bcb34" class="underline underline-offset-4 text-blue-600">2025 Member Innovation Grants – Technology Education Projects</a>'
+    );
+  });
+
   it("links Company Admin scoring updates to the evaluation detail", () => {
     const [item] = DashboardDataTransformer.transformCompanyAdminGeneralUpdates([
       {

@@ -185,6 +185,7 @@ export type Solicitation = {
   contact: string;
   vendorConfirmed: number;
   vendorDeclined: number;
+  datePublished?: string;
   createdAt: string;
   updatedAt: string;
   companyId: string;
@@ -1195,7 +1196,10 @@ export const SolicitationDetailPage = () => {
                       </label>
                       <p className="text-gray-900 dark:text-gray-200 font-medium">
                         {formatDateTZ(
-                          solicitation.createdAt,
+                          // Show the actual publish date; fall back to
+                          // createdAt only when the solicitation has not been
+                          // published yet (no datePublished from the BE).
+                          solicitation.datePublished ?? solicitation.createdAt,
                           "MMMM dd, yyyy KK:mm a",
                           solicitation.timezone
                         )}
