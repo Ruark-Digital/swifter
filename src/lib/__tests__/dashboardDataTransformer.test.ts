@@ -73,8 +73,9 @@ describe("DashboardDataTransformer", () => {
       },
     ]);
 
-    // 09:49 UTC converted into EST (UTC-5) = 4:49 AM, with the zone appended.
-    expect(item.date).toBe("Aug 12, 2026 4:49 AM EST");
+    // 09:49 UTC converted into US-Eastern with the zone appended. August is
+    // daylight time, so the DST-aware helper resolves EST -> EDT (UTC-4) = 5:49 AM.
+    expect(item.date).toBe("Aug 12, 2026 5:49 AM EDT");
   });
 
   it.each(["approve_invoice", "project_created"])(
