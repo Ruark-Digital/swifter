@@ -14,7 +14,7 @@ import { CornerDownRight, Plus, Trash2 } from "lucide-react";
 import ProposalItemRow from "./ProposalItemRow";
 import { FormValues } from "./SubmitProposalPage";
 import { numberFieldTransform } from "./proposalFieldTransforms";
-import { useEffect, useMemo, useCallback } from "react";
+import { useEffect, useMemo, useCallback, useState } from "react";
 import { formatCurrency } from "@/lib/utils";
 import {
   UseFormSetValue,
@@ -69,6 +69,11 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
 }) => {
   const currency = "USD";
   const toast = useToastHandler();
+  // Bumped on failed validation to remount the field rows so their inline
+  // errors surface immediately — Forge's field memo (MemorizeController) only
+  // re-renders on isDirty/prop changes, not on errors set by trigger(), so
+  // without a remount the errors would only appear after reopening the dialog.
+  const [revalidateNonce, setRevalidateNonce] = useState(0);
   const { fields, append, remove, update } = useFieldArray({
     control,
     name: "priceAction",
@@ -138,6 +143,9 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
     // fields inline; block completion and surface a toast if anything is missing.
     const isValid = await trigger("priceAction");
     if (!isValid) {
+      // Remount the rows so the just-set inline errors render now, not only
+      // after the dialog is closed and reopened.
+      setRevalidateNonce((n) => n + 1);
       toast.error(
         "Incomplete Proposal",
         "Please fill in every field (Item/Component, Description, Quantity, Unit of Measurement, Unit Price) for each item before completing."
@@ -279,7 +287,7 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
             {/* Items */}
             <div className="space-y-2">
               {fields.map((field, index) => (
-                <div key={field.id} className="space-y-2">
+                <div key={`${field.id}-${revalidateNonce}`} className="space-y-2">
                   {/* Main Item Row */}
                   <ProposalItemRow
                     {...{ control }}
