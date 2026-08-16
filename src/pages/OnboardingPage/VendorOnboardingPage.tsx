@@ -44,6 +44,7 @@ const step2Schema = yup.object({
   businessType: yup.string().required("Business type is required"),
   location: yup.string().required("Location is required"),
   phone: yup.string().required("Phone number is required"),
+  timezone: yup.string().required("Time zone is required"),
   website: yup.string().url("Invalid URL format").optional(),
 });
 
@@ -118,6 +119,7 @@ const VendorOnboardingPage = () => {
       phone: "",
       location: "",
       businessType: "",
+      timezone: "",
       website: "",
     },
   });
@@ -244,6 +246,7 @@ const VendorOnboardingPage = () => {
         businessType: formData.businessType,
         location: formData.location,
         phone: formData.phone,
+        timezone: formData.timezone,
         website: formData.website,
         files: uploadedFiles, // Use uploaded file data from API response
       };
