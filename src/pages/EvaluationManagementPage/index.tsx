@@ -673,7 +673,7 @@ export const EvaluationManagementPage = () => {
         <div className="flex flex-col">
           <span className="font-medium">{row.original.name}</span>
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            {row.original.solicitationId} • {row.original.type}
+            {row.original.solId} • {row.original.type}
           </span>
         </div>
       ),
