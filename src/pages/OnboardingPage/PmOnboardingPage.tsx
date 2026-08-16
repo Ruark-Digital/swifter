@@ -16,6 +16,7 @@ type PmFormState = {
   name: string;
   emailAddress: string;
   phone: string;
+  timezone: string;
   password: string;
   confirmPassword: string;
 };
@@ -27,6 +28,7 @@ const schema = yup.object({
     .email("Invalid email format")
     .required("Email address is required"),
   phone: yup.string().required("Phone number is required"),
+  timezone: yup.string().required("Time zone is required"),
   password: yup
     .string()
     .min(8, "Password must be at least 8 characters")
@@ -86,6 +88,7 @@ const PmOnboardingPage = () => {
       name: "",
       emailAddress: "",
       phone: "",
+      timezone: "",
       password: "",
       confirmPassword: "",
     },
@@ -140,6 +143,7 @@ const PmOnboardingPage = () => {
         emailAddress: data.emailAddress,
         name: data.name,
         phone: data.phone,
+        timezone: data.timezone,
         password: data.password,
       };
 
