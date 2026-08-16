@@ -16,7 +16,13 @@ import { FormValues } from "./SubmitProposalPage";
 import { numberFieldTransform } from "./proposalFieldTransforms";
 import { useEffect, useMemo, useCallback } from "react";
 import { formatCurrency } from "@/lib/utils";
-import { UseFormSetValue, UseFormGetValues, useWatch } from "react-hook-form";
+import {
+  UseFormSetValue,
+  UseFormGetValues,
+  UseFormTrigger,
+  useWatch,
+} from "react-hook-form";
+import { useToastHandler } from "@/hooks/useToaster";
 
 interface CompleteProposalDialogProps {
   open: boolean;
@@ -26,6 +32,7 @@ interface CompleteProposalDialogProps {
   reset?: () => void;
   setValue: UseFormSetValue<FormValues>;
   getValue: UseFormGetValues<FormValues>;
+  trigger: UseFormTrigger<FormValues>;
   shouldUnregister?: boolean;
   onComplete?: (documentId: string | null) => void;
 }
@@ -56,10 +63,12 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
   control,
   setValue,
   getValue,
+  trigger,
   shouldUnregister = false,
   onComplete,
 }) => {
   const currency = "USD";
+  const toast = useToastHandler();
   const { fields, append, remove, update } = useFieldArray({
     control,
     name: "priceAction",
@@ -123,14 +132,26 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
     setValue("total", totalAmount as number, { shouldDirty: false, shouldValidate: false });
   }, [open, watchedPriceAction, totalAmount, setValue, calculateItemSubtotal, getValue]);
 
-  const handleComplete = useCallback(() => {
+  const handleComplete = useCallback(async () => {
+    // Every proposal item field is compulsory — validate the whole priceAction
+    // array (main rows and sub-items) before completing. This marks the empty
+    // fields inline; block completion and surface a toast if anything is missing.
+    const isValid = await trigger("priceAction");
+    if (!isValid) {
+      toast.error(
+        "Incomplete Proposal",
+        "Please fill in every field (Item/Component, Description, Quantity, Unit of Measurement, Unit Price) for each item before completing."
+      );
+      return;
+    }
+
     setValue("document", [
       ...(getValue().document ?? []),
       { requiredDocumentId: id ?? "", files: [] },
     ]);
     onComplete?.(id);
     onOpenChange(false);
-  }, [getValue, id, onComplete, onOpenChange, setValue]);
+  }, [getValue, id, onComplete, onOpenChange, setValue, trigger, toast]);
 
   const addItem = useCallback(() => {
     append({
