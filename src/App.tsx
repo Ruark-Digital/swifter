@@ -8,6 +8,7 @@ import Loading from "@/components/ui/Spinner";
 import AIChatWidget from "./components/layouts/AIChatWidget";
 import { useAuthentication } from "@/hooks/useAuthentication";
 import { useToken, useUser } from "@/store/authSlice";
+import { useUserRole } from "@/hooks/useUserRole";
 import { config } from "@/config";
 
 // Chat (MCP) origin tracks the active API environment (bug/staging/prod).
@@ -100,13 +101,37 @@ const queryClient = new QueryClient({
   },
 });
 
+// Renders the assistant with a role-scoped greeting. Kept as its own component
+// so it can read the active role via useUserRole (which fetches the role
+// catalog through react-query) from inside the QueryClientProvider.
+const AssistantWidget: React.FC<{
+  onSendMessage: (message: string) => Promise<string>;
+  onStreamMessage: (
+    message: string,
+    onDelta: (partial: string) => void,
+    onTool?: (phase: "start" | "end", tool: string) => void,
+  ) => Promise<void>;
+  onReset: () => Promise<void>;
+}> = (props) => {
+  const user = useUser();
+  const { isVendor, isProjectManager } = useUserRole();
+  // Vendors and PMs have no access to evaluations, so omit that scope from the
+  // assistant's greeting for those roles.
+  const chatScope =
+    isVendor || isProjectManager
+      ? "contracts and solicitations"
+      : "contracts, solicitations, or evaluations";
+  const welcomeMessage = user?.name
+    ? `Hi ${user.name}, I'm your SwiftPro Assistant. Ask me about your ${chatScope}.`
+    : `Hi, I'm your SwiftPro Assistant. Ask me about your ${chatScope}.`;
+
+  return <AIChatWidget {...props} welcomeMessage={welcomeMessage} />;
+};
+
 function App() {
   const isAuthenticated = useAuthentication();
   const token = useToken();
   const user = useUser();
-  const chatWelcomeMessage = user?.name
-    ? `Hi ${user.name}, I'm your SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.`
-    : "Hi, I'm your SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.";
 
   const postChat = async (message: string, stream: boolean) => {
     const response = await fetch(CHAT_URL, {
@@ -228,11 +253,10 @@ function App() {
               <RouterProvider router={router} />
             </Suspense>
             {Boolean(user?.isAi) && isAuthenticated && (
-              <AIChatWidget
+              <AssistantWidget
                 onSendMessage={handleAIChatMessage}
                 onStreamMessage={handleAIChatMessageStream}
                 onReset={handleAIChatReset}
-                welcomeMessage={chatWelcomeMessage}
               />
             )}
           </QueryClientProvider>

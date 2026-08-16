@@ -14,9 +14,15 @@ import { CornerDownRight, Plus, Trash2 } from "lucide-react";
 import ProposalItemRow from "./ProposalItemRow";
 import { FormValues } from "./SubmitProposalPage";
 import { numberFieldTransform } from "./proposalFieldTransforms";
-import { useEffect, useMemo, useCallback } from "react";
+import { useEffect, useMemo, useCallback, useState } from "react";
 import { formatCurrency } from "@/lib/utils";
-import { UseFormSetValue, UseFormGetValues, useWatch } from "react-hook-form";
+import {
+  UseFormSetValue,
+  UseFormGetValues,
+  UseFormTrigger,
+  useWatch,
+} from "react-hook-form";
+import { useToastHandler } from "@/hooks/useToaster";
 
 interface CompleteProposalDialogProps {
   open: boolean;
@@ -26,6 +32,7 @@ interface CompleteProposalDialogProps {
   reset?: () => void;
   setValue: UseFormSetValue<FormValues>;
   getValue: UseFormGetValues<FormValues>;
+  trigger: UseFormTrigger<FormValues>;
   shouldUnregister?: boolean;
   onComplete?: (documentId: string | null) => void;
 }
@@ -56,10 +63,17 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
   control,
   setValue,
   getValue,
+  trigger,
   shouldUnregister = false,
   onComplete,
 }) => {
   const currency = "USD";
+  const toast = useToastHandler();
+  // Bumped on failed validation to remount the field rows so their inline
+  // errors surface immediately — Forge's field memo (MemorizeController) only
+  // re-renders on isDirty/prop changes, not on errors set by trigger(), so
+  // without a remount the errors would only appear after reopening the dialog.
+  const [revalidateNonce, setRevalidateNonce] = useState(0);
   const { fields, append, remove, update } = useFieldArray({
     control,
     name: "priceAction",
@@ -123,14 +137,29 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
     setValue("total", totalAmount as number, { shouldDirty: false, shouldValidate: false });
   }, [open, watchedPriceAction, totalAmount, setValue, calculateItemSubtotal, getValue]);
 
-  const handleComplete = useCallback(() => {
+  const handleComplete = useCallback(async () => {
+    // Every proposal item field is compulsory — validate the whole priceAction
+    // array (main rows and sub-items) before completing. This marks the empty
+    // fields inline; block completion and surface a toast if anything is missing.
+    const isValid = await trigger("priceAction");
+    if (!isValid) {
+      // Remount the rows so the just-set inline errors render now, not only
+      // after the dialog is closed and reopened.
+      setRevalidateNonce((n) => n + 1);
+      toast.error(
+        "Incomplete Proposal",
+        "Please fill in every field (Item/Component, Description, Quantity, Unit of Measurement, Unit Price) for each item before completing."
+      );
+      return;
+    }
+
     setValue("document", [
       ...(getValue().document ?? []),
       { requiredDocumentId: id ?? "", files: [] },
     ]);
     onComplete?.(id);
     onOpenChange(false);
-  }, [getValue, id, onComplete, onOpenChange, setValue]);
+  }, [getValue, id, onComplete, onOpenChange, setValue, trigger, toast]);
 
   const addItem = useCallback(() => {
     append({
@@ -258,7 +287,7 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
             {/* Items */}
             <div className="space-y-2">
               {fields.map((field, index) => (
-                <div key={field.id} className="space-y-2">
+                <div key={`${field.id}-${revalidateNonce}`} className="space-y-2">
                   {/* Main Item Row */}
                   <ProposalItemRow
                     {...{ control }}

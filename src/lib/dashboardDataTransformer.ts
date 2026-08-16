@@ -38,8 +38,15 @@ const ACTIVITY_LINK_MAPPINGS: LinkMapping = {
       scored: "/dashboard/evaluation",
     },
     myActions: {
-      create_evaluation: "/dashboard/evaluation",
-      create_evaluation_group: "/dashboard/evaluation",
+      // "Create evaluation" actions fire before any evaluation exists (the BE
+      // sends evaluation: null / no evaId), so link to the SOLICITATION where
+      // the PL creates it — not /dashboard/evaluation/<id> with no id. Matched
+      // as natural-language phrases (BE statusText: "…please create evaluation")
+      // and listed before the generic "evaluation" key so they win.
+      "create evaluation group": "/dashboard/solicitation",
+      "create evaluation": "/dashboard/solicitation",
+      create_evaluation: "/dashboard/solicitation",
+      create_evaluation_group: "/dashboard/solicitation",
       release_group: "/dashboard/evaluation",
       // BE statusText for a released group reads "…has been released for
       // evaluation, please proceed with scoring" — no `release_group` token.
@@ -183,8 +190,10 @@ function generateDynamicLink(
   const basePath = activityMapping[action];
   if (!basePath) return null;
 
-  const isEvaluation = basePath.includes("/evaluation") ||
-    action.toLowerCase().includes("evaluation");
+  // The destination path decides which id to use — not the action text. A
+  // "create evaluation" action maps to the SOLICITATION (no evaluation exists
+  // yet), so it must use solId even though the action mentions "evaluation".
+  const isEvaluation = basePath.includes("/evaluation");
   const targetId = isEvaluation ? data.evaId : data.solId;
 
   return targetId ? `${basePath}/${targetId}` : null;
@@ -2053,7 +2062,11 @@ export class DashboardDataTransformer {
       ),
       type: action.type || "unknown",
       date: action.createdAt
-        ? formatDateTZ(action.createdAt, "MMM d, yyyy h:mm a 'GMT'xxx", action.solicitation?.timezone || "")
+        ? formatDateInZoneAbbrev(
+            action.createdAt,
+            "MMM d, yyyy h:mm a",
+            action?.evaluation?.solicitation?.timezone ?? action?.solicitation?.timezone
+          )
         : undefined,
     }));
   }
@@ -2084,10 +2097,11 @@ export class DashboardDataTransformer {
       ),
       type: update.type || "evaluation",
       date: update.createdAt
-        ? formatDateTZ(
+        ? formatDateInZoneAbbrev(
             update.date || update.updatedAt || update.createdAt,
-            "MMM d, yyyy h:mm a "
-          ) +" " + update.evaluation?.timezone || ""
+            "MMM d, yyyy h:mm a",
+            update.evaluation?.timezone
+          )
         : undefined,
     }));
   }
@@ -2235,7 +2249,11 @@ export class DashboardDataTransformer {
           evaId: action?.evaluation?._id,
         }),
         date: action.createdAt
-          ? formatDateTZ(action.createdAt, "MMM d, yyyy h:mm a", action.solicitation?.timezone || "")
+          ? formatDateInZoneAbbrev(
+              action.createdAt,
+              "MMM d, yyyy h:mm a",
+              action?.solicitation?.timezone
+            )
           : null,
         title: action?.solicitation?.name ?? "Unknown Solicitation",
       };
@@ -2288,11 +2306,11 @@ export class DashboardDataTransformer {
           time:
             update?.time ||
             (campaign.createdAt
-              ? `${formatDateTZ(
+              ? formatDateInZoneAbbrev(
                   campaign.createdAt,
-                  "MMM d, yyyy",
+                  "MMM d, yyyy • h:mm a",
                   campaign?.timezone
-                )} • ${formatDateTZ(campaign.createdAt, "h:mm a", campaign?.timezone || "")}`
+                )
               : `${formatDateTZ(new Date(), "MMM d, yyyy")} • ${formatDateTZ(
                   new Date(),
                   "h:mm a",
@@ -2314,9 +2332,11 @@ export class DashboardDataTransformer {
         ),
         title: update?.solicitation?.name ?? "Unknown",
         time: update?.createdAt
-          ? `${formatDateTZ(update.createdAt, "MMM d, yyyy h:mm a", update?.solicitation?.timezone || "")} ${
-              update.timezone || update?.solicitation?.timezone || "UTC"
-            }`
+          ? formatDateInZoneAbbrev(
+              update.createdAt,
+              "MMM d, yyyy h:mm a",
+              update.timezone || update?.solicitation?.timezone
+            )
           : undefined,
       };
     });
@@ -2349,12 +2369,16 @@ export class DashboardDataTransformer {
       ),
       type: action?.replace?.("_", " ") || "",
       title: solicitation?.name ?? "Unknown",
-      date: 
-        solicitation?.createdAt
-          ? formatDateTZ(
-              solicitation?.createdAt,
-              "MMM d, yyyy h:mm a 'GMT'xxx",
-              solicitation?.timezone
+      date:
+        action?.createdAt ?? solicitation?.createdAt
+          ? formatDateInZoneAbbrev(
+              // The action's own createdAt/timezone are the reliable source —
+              // the nested solicitation object often omits createdAt (so the
+              // My Action rendered with no time). Fall back to the solicitation
+              // only if the action-level fields are absent.
+              action?.createdAt ?? solicitation?.createdAt,
+              "MMM d, yyyy h:mm a",
+              action?.timezone ?? solicitation?.timezone
             )
           : null,
       status: action.status || "active",
@@ -2408,7 +2432,7 @@ export class DashboardDataTransformer {
               ? `<strong>${campaign.subject}</strong> — ${campaign.subtitle}`
               : `<strong>${campaign.subject}</strong>`),
           date: campaign.createdAt
-            ? `${formatDateTZ(campaign.createdAt, "MMM d, yyyy h:mm a", campaign.timezone || "")} `
+            ? formatDateInZoneAbbrev(campaign.createdAt, "MMM d, yyyy h:mm a", campaign.timezone)
             : formatDateTZ(new Date(), "MMM d, yyyy h:mm a 'GMT'xxx", campaign.timezone || ""),
           status: update?.status || "active",
           campaign,
@@ -2435,9 +2459,11 @@ export class DashboardDataTransformer {
           }
         ),
         date: update?.createdAt
-          ? `${formatDateTZ(update.createdAt, "MMM d, yyyy h:mm a")} ${
-              update.solicitation.timezone || ""
-            }`
+          ? formatDateInZoneAbbrev(
+              update.createdAt,
+              "MMM d, yyyy h:mm a",
+              update?.solicitation?.timezone
+            )
           : undefined,
         status: update?.status || "active",
       };
@@ -2619,7 +2645,7 @@ export class DashboardDataTransformer {
               ? `<strong>${campaign.subject}</strong> — ${campaign.subtitle}`
               : `<strong>${campaign.subject}</strong>`),
           date: campaign.createdAt
-            ? `${formatDateTZ(campaign.createdAt, "MMM d, yyyy h:mm a", campaign.timezone || "")} `
+            ? formatDateInZoneAbbrev(campaign.createdAt, "MMM d, yyyy h:mm a", campaign.timezone)
             : formatDateTZ(new Date(), "MMM d, yyyy h:mm a 'GMT'xxx", campaign.timezone || ""),
           status: update?.status || "active",
           campaign,
@@ -2647,10 +2673,11 @@ export class DashboardDataTransformer {
         ),
         date:
           update?.updatedAt || update?.date || update?.createdAt
-            ? `${formatDateTZ(
+            ? formatDateInZoneAbbrev(
                 update.updatedAt || update.date || update.createdAt,
-                "MMM d, yyyy h:mm a"
-              )} ${update.solicitation?.timezone || ""}`
+                "MMM d, yyyy h:mm a",
+                update.solicitation?.timezone
+              )
             : formatDateTZ(new Date(), "MMM d, yyyy h:mm a 'GMT'xxx", update.solicitation?.timezone || ""),
         status: update?.status || "active",
       };

@@ -81,14 +81,14 @@ const schema = yup.object().shape({
         quantity: yup
           .number()
           .required("Quantity is required")
-          .min(0, "Quantity must be positive"),
+          .moreThan(0, "Quantity must be greater than 0"),
         unitOfmeasurement: yup
           .string()
           .required("Unit of measurement is required"),
         unitPrice: yup
           .number()
           .required("Unit price is required")
-          .min(0, "Unit price must be positive"),
+          .moreThan(0, "Unit price must be greater than 0"),
         subtotal: yup.number().optional().min(0, "Subtotal must be positive"),
         subItems: yup
           .array()
@@ -99,14 +99,14 @@ const schema = yup.object().shape({
               quantity: yup
                 .number()
                 .required("Sub-quantity is required")
-                .min(0, "Sub-quantity must be positive"),
+                .moreThan(0, "Sub-quantity must be greater than 0"),
               unitOfmeasurement: yup
                 .string()
                 .required("Sub-unit of measurement is required"),
               unitPrice: yup
                 .number()
                 .required("Sub-unit price is required")
-                .min(0, "Sub-unit price must be positive"),
+                .moreThan(0, "Sub-unit price must be greater than 0"),
               subtotal: yup
                 .number()
                 .required("Sub-subtotal is required")
@@ -769,6 +769,7 @@ const ProposalForm = ({
         reset={forge.reset}
         setValue={forge.setValue as any}
         getValue={forge.getValues as any}
+        trigger={forge.trigger as any}
         id={selectedDocumentId}
         {...{ shouldUnregister }}
         onComplete={(documentId) => {

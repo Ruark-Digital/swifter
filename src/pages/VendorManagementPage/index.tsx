@@ -50,7 +50,7 @@ type VendorDashboard = {
   allVendor: number;
   activeVendor: number;
   inActiveVendor: number;
-  suspendedVendor: number;
+  pendingVendor: number;
 };
 
 export interface InvitedEmail {
@@ -439,7 +439,7 @@ export const VendorManagementPage = () => {
     allVendor: 0,
     activeVendor: 0,
     inActiveVendor: 0,
-    suspendedVendor: 0,
+    pendingVendor: 0,
   };
 
   const vendors = vendorsData?.data?.data?.vendors || [];
@@ -463,8 +463,8 @@ export const VendorManagementPage = () => {
       case "inactive":
         setFilters((prev) => ({ ...prev, status: "Inactive" }));
         break;
-      case "suspended":
-        setFilters((prev) => ({ ...prev, status: "Suspended" }));
+      case "pending":
+        setFilters((prev) => ({ ...prev, status: "Pending" }));
         break;
       default:
         setFilters((prev) => ({ ...prev, status: "" }));
@@ -664,13 +664,13 @@ export const VendorManagementPage = () => {
           isActive={activeStatCard === "inactive"}
         />
         <StatCard
-          title="Suspended Vendors"
-          value={vendorStats.suspendedVendor ?? 0}
+          title="Pending Vendors"
+          value={vendorStats.pendingVendor ?? 0}
           icon={IconMap?.users as any}
           iconColor="text-yellow-600"
           iconBgColor="bg-yellow-100"
-          onClick={() => handleStatCardClick("suspended")}
-          isActive={activeStatCard === "suspended"}
+          onClick={() => handleStatCardClick("pending")}
+          isActive={activeStatCard === "pending"}
         />
       </div>
 

@@ -78,6 +78,26 @@ describe("App AI chat gating", () => {
     );
   });
 
+  it.each(["vendor", "project_manager"])(
+    "omits evaluations from the greeting for %s (no evaluation access)",
+    (roleName) => {
+      mockUseUser.mockReturnValue({
+        isAi: true,
+        name: "Adebiran",
+        role: { name: roleName },
+      });
+
+      render(<App />);
+
+      expect(screen.getByTestId("ai-chat-widget")).toHaveTextContent(
+        "Hi Adebiran, I'm your SwiftPro Assistant. Ask me about your contracts and solicitations.",
+      );
+      expect(screen.getByTestId("ai-chat-widget")).not.toHaveTextContent(
+        "evaluations",
+      );
+    },
+  );
+
   it("hides the AI chat widget when the account is not AI-enabled", () => {
     mockUseUser.mockReturnValue({ isAi: false, name: "Adebiran" });
 

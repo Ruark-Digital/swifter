@@ -182,7 +182,27 @@ type Props = {
 const toTitleCase = (value: string) => {
   const v = value.trim();
   if (!v) return v;
-  return v.charAt(0).toUpperCase() + v.slice(1).toLowerCase();
+  // Split on underscores/whitespace so backend enum values like
+  // "pending_approval" render as "Pending Approval", not "Pending_approval".
+  return v
+    .split(/[_\s]+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
+
+// Tone for the Analytics hero-card status badge, keyed off the raw contract
+// status. Mirrors the ContractsTable status colors (green=active/published,
+// yellow=pending approval, slate=draft, blue=completed, red=otherwise) so the
+// badge is no longer hardcoded green regardless of status.
+const statusToHeroBadge = (status?: string) => {
+  const s = (status ?? "").toLowerCase();
+  if (s === "active" || s === "published" || s === "publish")
+    return "bg-[#4ADE80] text-green-900 hover:bg-[#4ADE80]";
+  if (s === "pending_approval" || s === "pending")
+    return "bg-amber-300 text-amber-900 hover:bg-amber-300";
+  if (s === "draft") return "bg-slate-200 text-slate-800 hover:bg-slate-200";
+  if (s === "completed") return "bg-sky-200 text-sky-900 hover:bg-sky-200";
+  return "bg-red-300 text-red-900 hover:bg-red-300";
 };
 
 const tierToColor = (tier?: DashboardTier) => {
@@ -558,7 +578,7 @@ const AnalyticsTab: React.FC<Props> = ({
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-bold">{contract?.title ?? "--"}</h2>
-              <Badge className="bg-[#4ADE80] text-green-900 hover:bg-[#4ADE80] border-0">
+              <Badge className={`${statusToHeroBadge(contract?.status)} border-0`}>
                 {contractStatus}
               </Badge>
             </div>
