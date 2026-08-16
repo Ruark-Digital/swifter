@@ -130,6 +130,28 @@ describe("DashboardDataTransformer", () => {
     expect(item.text).toContain('<a href="/dashboard/evaluation/evaluation-123" class="underline underline-offset-4 text-blue-600">Mechanical and Piping Installation</a>');
   });
 
+  it("renders the my-action date from the top-level createdAt/timezone when the solicitation omits createdAt", () => {
+    const [item] = DashboardDataTransformer.transformProcurementMyActions([
+      {
+        action: "proposal_submitted",
+        createdAt: "2026-08-15T21:02:48.959Z",
+        timezone: "EST",
+        statusText:
+          "Lennox Capital Inc. has submitted a proposal for HVAC and Cooling Infrastructure, please review",
+        // The nested solicitation carries no createdAt (real BE payload shape).
+        solicitation: {
+          _id: "6a664a122d125dee0588cda7",
+          name: "HVAC and Cooling Infrastructure",
+          timezone: "EST",
+        },
+        evaluation: null,
+      },
+    ]);
+
+    // 21:02 UTC in US-Eastern; August is daylight time -> EDT (UTC-4) = 5:02 PM.
+    expect(item.date).toBe("Aug 15, 2026 5:02 PM EDT");
+  });
+
   it("links Company Admin scoring updates to the evaluation detail", () => {
     const [item] = DashboardDataTransformer.transformCompanyAdminGeneralUpdates([
       {
