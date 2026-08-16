@@ -153,15 +153,11 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
     },
   });
 
-  // Custom state management when using external onSendMessage/onStreamMessage
-  const [customMessages, setCustomMessages] = useState<Message[]>([
-    {
-      id: "1",
-      content:
-        "Hi — I'm your SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.",
-      sender: "ai",
-      timestamp: new Date(),
-    },
+  // Custom state management when using external onSendMessage/onStreamMessage.
+  // Seed from the caller-provided welcomeMessage so the greeting is correct on
+  // first paint (e.g. role-scoped text) instead of flashing a hardcoded default.
+  const [customMessages, setCustomMessages] = useState<Message[]>(() => [
+    createWelcomeMessage(welcomeMessage),
   ]);
   const [customIsLoading, setCustomIsLoading] = useState(false);
 
@@ -183,15 +179,6 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
     ? async () => {
         try {
           if (onReset) await onReset();
-          setCustomMessages([
-            {
-              id: "1",
-              content:
-                "Hi — I'm your SwiftPro Assistant. Ask me about your contracts, solicitations, or evaluations.",
-              sender: "ai",
-              timestamp: new Date(),
-            },
-          ]);
           setCustomMessages([createWelcomeMessage(welcomeMessage)]);
           setActiveTools([]);
         } catch (error) {
