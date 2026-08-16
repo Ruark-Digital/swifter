@@ -66,7 +66,7 @@ export const ComplianceStatusCard: React.FC<Props> = ({
     },
     {
       label: "Audit Trail Completeness",
-      right: `${data?.auditTrailCompleteness ?? 0}%`,
+      right: `${Math.round(data?.auditTrailCompleteness ?? 0)}%`,
       valuePct: data?.auditTrailCompleteness ?? 0,
       color: "#f59e0b",
     },
