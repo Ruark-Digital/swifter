@@ -2370,11 +2370,15 @@ export class DashboardDataTransformer {
       type: action?.replace?.("_", " ") || "",
       title: solicitation?.name ?? "Unknown",
       date:
-        solicitation?.createdAt
+        action?.createdAt ?? solicitation?.createdAt
           ? formatDateInZoneAbbrev(
-              solicitation?.createdAt,
+              // The action's own createdAt/timezone are the reliable source —
+              // the nested solicitation object often omits createdAt (so the
+              // My Action rendered with no time). Fall back to the solicitation
+              // only if the action-level fields are absent.
+              action?.createdAt ?? solicitation?.createdAt,
               "MMM d, yyyy h:mm a",
-              solicitation?.timezone
+              action?.timezone ?? solicitation?.timezone
             )
           : null,
       status: action.status || "active",
