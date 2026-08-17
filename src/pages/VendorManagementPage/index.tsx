@@ -51,6 +51,7 @@ type VendorDashboard = {
   activeVendor: number;
   inActiveVendor: number;
   pendingVendor: number;
+  suspendVendor: number;
 };
 
 export interface InvitedEmail {
@@ -440,6 +441,7 @@ export const VendorManagementPage = () => {
     activeVendor: 0,
     inActiveVendor: 0,
     pendingVendor: 0,
+    suspendVendor: 0,
   };
 
   const vendors = vendorsData?.data?.data?.vendors || [];
@@ -465,6 +467,9 @@ export const VendorManagementPage = () => {
         break;
       case "pending":
         setFilters((prev) => ({ ...prev, status: "Pending" }));
+        break;
+      case "suspended":
+        setFilters((prev) => ({ ...prev, status: "Suspended" }));
         break;
       default:
         setFilters((prev) => ({ ...prev, status: "" }));
@@ -635,7 +640,7 @@ export const VendorManagementPage = () => {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
         <StatCard
           title="All Vendors"
           value={vendorStats.allVendor ?? 0}
@@ -671,6 +676,15 @@ export const VendorManagementPage = () => {
           iconBgColor="bg-yellow-100"
           onClick={() => handleStatCardClick("pending")}
           isActive={activeStatCard === "pending"}
+        />
+        <StatCard
+          title="Suspended Vendors"
+          value={vendorStats.suspendVendor ?? 0}
+          icon={IconMap?.users as any}
+          iconColor="text-gray-600"
+          iconBgColor="bg-gray-100"
+          onClick={() => handleStatCardClick("suspended")}
+          isActive={activeStatCard === "suspended"}
         />
       </div>
 

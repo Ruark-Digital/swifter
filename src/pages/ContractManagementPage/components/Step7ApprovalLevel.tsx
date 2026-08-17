@@ -70,6 +70,13 @@ const Step7ApprovalLevel: React.FC<Props> = ({ control }) => {
     name: "approvalGroups",
   }) as { approvers?: ApproverTag[] }[] | undefined;
 
+  // Approval thresholds are in the contract's own currency (chosen in Step 1),
+  // so the amount input shows that currency's symbol, not a hardcoded "$".
+  const selectedCurrency = useWatch({
+    control,
+    name: "currency",
+  }) as string | undefined;
+
   const { data: personnelData, isLoading: isLoadingUsers } = useQuery<
     ApiResponse<Personnel[]>,
     ApiResponseError
@@ -199,7 +206,8 @@ const Step7ApprovalLevel: React.FC<Props> = ({ control }) => {
               name={`approvalGroups.${index}.amount`}
               component={TextCurrencyInput}
               containerClass="!w-40"
-              placeholder="$0.00"
+              placeholder="0.00"
+              currency={selectedCurrency}
             />
 
             <div className="flex flex-col gap-2">
