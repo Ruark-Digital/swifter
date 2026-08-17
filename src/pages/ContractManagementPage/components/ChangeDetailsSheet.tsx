@@ -8,6 +8,7 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Upload, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -41,6 +42,8 @@ import {
   isDraftChangeOrder,
   shouldShowChangeDecisionActions,
   toConvertDirectivePayload,
+  toContractChangeFileItem,
+  type UploadURLs,
 } from "../lib/contractChanges";
 import { useChangeLock } from "../hooks/useChangeLock";
 import { formatDate } from "date-fns";
@@ -496,6 +499,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const [convertDescription, setConvertDescription] = React.useState("");
   const [convertAmount, setConvertAmount] = React.useState("");
   const [convertUrgency, setConvertUrgency] = React.useState("");
+  const [convertFiles, setConvertFiles] = React.useState<File[]>([]);
 
   const openConvertDialog = React.useCallback(() => {
     setConvertType("order");
@@ -503,6 +507,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     setConvertDescription(description);
     setConvertAmount(value != null ? String(value) : "");
     setConvertUrgency((detail?.urgency as string) ?? "");
+    setConvertFiles([]);
     setConvertOpen(true);
   }, [title, description, value, detail]);
 
@@ -518,12 +523,37 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     mutationKey: ["convertDirective", roleBasePath, contractId, changeId],
     mutationFn: async () => {
       const url = getConvertDirectiveUrl({ roleBasePath, contractId, changeId });
+      // Pre-upload any attached documents to /upload, then transmit their
+      // metadata with the new change order/proposal (QA #160).
+      const uploadedFiles = (
+        await Promise.all(
+          convertFiles.map(async (file) => {
+            const res = await postRequest({
+              url: "/upload",
+              payload: (() => {
+                const fd = new FormData();
+                fd.append("file", file);
+                return fd;
+              })(),
+              config: { headers: { "Content-Type": "multipart/form-data" } },
+            });
+            const uploaded = (res as any)?.data?.data?.[0] as
+              | UploadURLs
+              | undefined;
+            return uploaded?.url ? toContractChangeFileItem(file, uploaded) : undefined;
+          }),
+        )
+      ).filter(
+        (item): item is { name: string; url: string; type: string; size: string } =>
+          Boolean(item),
+      );
       const payload = toConvertDirectivePayload({
         type: convertType,
         title: convertTitle,
         description: convertDescription,
         amount: convertAmount,
         urgency: convertUrgency,
+        files: uploadedFiles,
       });
       return await postRequest({ url, payload });
     },
@@ -1362,6 +1392,59 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     <option value="high">High</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                  Supporting Documents
+                </label>
+                <label
+                  htmlFor="convert-directive-files"
+                  className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-white p-3 text-sm text-slate-500 transition-colors hover:border-[#2A4467] hover:text-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span>Click to attach documents (sent with the {convertType === "order" ? "change order" : "change proposal"})</span>
+                </label>
+                <input
+                  id="convert-directive-files"
+                  type="file"
+                  multiple
+                  className="hidden"
+                  disabled={isConverting}
+                  onChange={(e) => {
+                    const picked = Array.from(e.target.files ?? []);
+                    if (picked.length) {
+                      setConvertFiles((prev) => [...prev, ...picked]);
+                    }
+                    // Reset so re-selecting the same file fires onChange again.
+                    e.target.value = "";
+                  }}
+                />
+                {convertFiles.length > 0 && (
+                  <ul className="space-y-1.5 pt-1">
+                    {convertFiles.map((file, idx) => (
+                      <li
+                        key={`${file.name}-${idx}`}
+                        className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+                      >
+                        <span className="truncate text-slate-700 dark:text-slate-200" title={file.name}>
+                          {file.name}
+                        </span>
+                        <button
+                          type="button"
+                          className="shrink-0 text-slate-400 transition-colors hover:text-red-600 disabled:opacity-50"
+                          disabled={isConverting}
+                          onClick={() =>
+                            setConvertFiles((prev) => prev.filter((_, i) => i !== idx))
+                          }
+                          aria-label={`Remove ${file.name}`}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div className="flex gap-3 pt-1">
