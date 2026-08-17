@@ -395,6 +395,7 @@ export type ConvertDirectiveDialogValues = {
   amount?: string;
   urgency?: string;
   proposalCategory?: string;
+  files?: Array<{ name: string; url: string; type: string; size: string }>;
 };
 
 export type ContractChangeConvertDirectivePayload = {
@@ -404,6 +405,7 @@ export type ContractChangeConvertDirectivePayload = {
   type: "order" | "proposal";
   proposalCategory?: string;
   urgency?: "low" | "medium" | "high";
+  files?: Array<{ name: string; url: string; type: string; size: string }>;
 };
 
 export const toConvertDirectivePayload = (
@@ -429,6 +431,12 @@ export const toConvertDirectivePayload = (
     values.urgency === "high"
   ) {
     payload.urgency = values.urgency;
+  }
+
+  // Documents attached in the Convert dialog are transmitted with the new
+  // change order/proposal (QA #160). Files are pre-uploaded metadata.
+  if (values.files?.length) {
+    payload.files = values.files;
   }
 
   return payload;
