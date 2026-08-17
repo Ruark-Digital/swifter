@@ -56,7 +56,7 @@ const columns: ColumnDef<VendorRow>[] = [
     // "-" to match the neutral Performance dot (QA #110).
     cell: ({ row }) => (
       <span className="text-sm text-[#0F0F0F] dark:text-slate-100">
-        {row.original.overallKpi > 0 ? row.original.overallKpi : "-"}
+        {row.original.overallKpi > 0 ? Math.round(row.original.overallKpi) : "-"}
       </span>
     ),
   },
