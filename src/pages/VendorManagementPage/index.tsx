@@ -314,14 +314,12 @@ export const VendorManagementPage = () => {
         }
       }
 
-      // Add status filter if selected
+      // Add status filter if selected. Suspended is filtered via the same
+      // `status` param as the others (the API expects status=suspended, not
+      // a separate isSuspended flag).
       if (filters.status && filters.status !== "all_status") {
-        if (filters.status === "Suspended") {
-          params.isSuspended = true;
-        } else {
-          params.status = filters.status;
-          params.isSuspended = false;
-        }
+        params.status =
+          filters.status === "Suspended" ? "suspended" : filters.status;
       }
 
       // Add plan filter if selected
