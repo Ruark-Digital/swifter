@@ -665,7 +665,10 @@ export const VendorDetailPage = () => {
     ApiResponse<{
       vendor: VendorDetail;
       submissions: VendorSubmission[];
-      projectmnagers: VendorProjectManager[];
+      // The API returns `projectManagers` (per docs); older payloads used the
+      // misspelled `projectmnagers`. Accept either so the PM tab doesn't vanish.
+      projectManagers?: VendorProjectManager[];
+      projectmnagers?: VendorProjectManager[];
     }>,
     ApiResponseError
   >({
@@ -677,7 +680,10 @@ export const VendorDetailPage = () => {
 
   const vendor = vendorData?.data?.data.vendor;
   const submissions = vendorData?.data?.data?.submissions ?? [];
-  const projectManagers = vendorData?.data?.data?.projectmnagers ?? [];
+  const projectManagers =
+    vendorData?.data?.data?.projectManagers ??
+    vendorData?.data?.data?.projectmnagers ??
+    [];
 
   const handleBack = useGoBack("/dashboard/vendor");
 
