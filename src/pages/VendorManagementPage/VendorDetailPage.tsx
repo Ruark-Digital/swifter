@@ -56,6 +56,8 @@ type VendorDetail = Omit<Vendor, "documents"> & {
   }[];
 };
 
+type PmRoleRef = { _id?: string; name?: string } | string;
+
 type VendorProjectManager = {
   _id: string;
   email: string;
@@ -66,6 +68,23 @@ type VendorProjectManager = {
     _id: string;
     email: string;
   };
+  /** Role(s) on the PM row and/or its user account. The detail payload
+   *  populates these as `{_id,name}` objects (e.g. project_manager + vendor);
+   *  used to pre-select the Manage Access dialog. */
+  roles?: PmRoleRef[];
+  user?: {
+    roles?: PmRoleRef[];
+  };
+};
+
+/** Extract role NAMES from a PM row, preferring the user account's roles
+ *  (authoritative — carries both when a PM also has vendor access) and
+ *  falling back to the row-level roles. Returns [] when none are present. */
+const pmRoleNames = (pm: VendorProjectManager | null): string[] => {
+  const raw = pm?.user?.roles ?? pm?.roles ?? [];
+  return raw
+    .map((r) => (typeof r === "string" ? r : r?.name))
+    .filter((n): n is string => !!n);
 };
 
 // Status badge component
@@ -639,7 +658,7 @@ const ProjectManagersTab = ({
         }}
         pmId={accessTarget?._id}
         pmName={accessTarget?.name || accessTarget?.email}
-        currentRole={(accessTarget as { role?: string } | null)?.role}
+        currentRole={pmRoleNames(accessTarget)}
         vendorId={vendorId}
       />
     </div>
