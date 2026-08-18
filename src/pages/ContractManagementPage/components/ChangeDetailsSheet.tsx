@@ -1270,7 +1270,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             if (!next && !isConverting) setConvertOpen(false);
           }}
         >
-          <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+          <DialogContent className="sm:max-w-md p-0 max-h-[90vh] overflow-y-auto">
             <DialogHeader className="px-6 pt-6 pb-2">
               <div className="flex items-center gap-2.5">
                 <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
