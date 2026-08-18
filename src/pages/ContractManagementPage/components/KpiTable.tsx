@@ -62,6 +62,35 @@ const KpiDetailSheet: React.FC<{
     enabled: !!kpiId,
   });
 
+  // The per-category metrics vary (On-Time Delivery has timestampDelivery /
+  // scheduleConfirm / mileStoneLog; other categories have different keys), so
+  // render whatever the payload carries rather than three hardcoded fields.
+  // Prefer the display-ready `metrics` array (category-agnostic {key,label,value});
+  // fall back to the documented `currentMetrics` object keyed by metric name.
+  const metricList = React.useMemo<
+    Array<{ key: string; label: string; value: unknown }>
+  >(() => {
+    if (!data) return [];
+    const currentMetrics =
+      (data.currentMetrics as Record<string, unknown> | undefined) ?? {};
+    const raw = (data as { metrics?: unknown }).metrics;
+    if (Array.isArray(raw) && raw.length) {
+      return raw.map((m: any, i: number) => {
+        const key = String(m?.key ?? i);
+        return {
+          key,
+          label: String(m?.label ?? m?.key ?? key),
+          value: m?.value ?? currentMetrics[key],
+        };
+      });
+    }
+    return Object.entries(currentMetrics).map(([key, value]) => ({
+      key,
+      label: key,
+      value,
+    }));
+  }, [data]);
+
   return (
     <SheetContent side="right" className="sm:max-w-[680px]">
       <div className="rounded-t-xl bg-[#F9FAFB] dark:bg-slate-800 px-6 py-6">
@@ -118,25 +147,18 @@ const KpiDetailSheet: React.FC<{
                   {formatSubmissionDate(data.submissionDate as string)}
                 </span>
               </div>
-              <div className="space-y-1">
-                <span className="text-slate-500 dark:text-slate-400">Time-Stamp Delivery</span>
-                <span className="block font-semibold text-[#0F0F0F] dark:text-slate-100">
-                  {(data.target as string) ?? "N/A"}
-                </span>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-slate-500 dark:text-slate-400">Scheduled Confirmation</span>
-                <span className="block font-semibold text-[#0F0F0F] dark:text-slate-100">
-                  {(data.scheduledConfirmation as string) || "N/A"}
-                </span>
-              </div>
-              <div className="space-y-1">
-                <span className="text-slate-500 dark:text-slate-400">Milestone Logs</span>
-                <span className="block font-semibold text-[#0F0F0F] dark:text-slate-100">
-                  {(data.milestoneLogs as string) || "N/A"}
-                </span>
-              </div>
+              {metricList.map((metric) => (
+                <div key={metric.key} className="space-y-1">
+                  <span className="text-slate-500 dark:text-slate-400">{metric.label}</span>
+                  <span className="block font-semibold text-[#0F0F0F] dark:text-slate-100">
+                    {metric.value === null ||
+                    metric.value === undefined ||
+                    metric.value === ""
+                      ? "N/A"
+                      : String(metric.value)}
+                  </span>
+                </div>
+              ))}
 
               <div className="space-y-1">
                 <span className="text-slate-500 dark:text-slate-400">Avg. Score</span>
