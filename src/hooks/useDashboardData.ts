@@ -356,7 +356,6 @@ export type ContractManagerRenewals = {
 export const useDashboardData = (
   userRole: UserRole,
   chartFilters: Record<string, string> = {},
-  isProjectManager: boolean = false,
   isContractsTabActive: boolean = false
 ) => {
   const defaultFilter = "12months";
@@ -693,7 +692,7 @@ export const useDashboardData = (
       queryKey: useUserQueryKey(["vendor-my-actions", userRole]),
       queryFn: async () =>
         await getRequest({ url: "/vendor/solicitations/my-actions" }),
-      enabled: userRole === "vendor" && !isProjectManager && !isContractsTabActive,
+      enabled: userRole === "vendor" && !isContractsTabActive,
       staleTime: 5 * 60 * 1000,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
@@ -707,7 +706,7 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["vendor-general-updates", userRole]),
     queryFn: async () =>
       await getRequest({ url: "/vendor/solicitations/general-updates" }),
-    enabled: userRole === "vendor" && !isProjectManager && !isContractsTabActive,
+    enabled: userRole === "vendor" && !isContractsTabActive,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -727,7 +726,7 @@ export const useDashboardData = (
         });
         return res.data as ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>;
       },
-      enabled: userRole === "vendor" && (isProjectManager || isContractsTabActive),
+      enabled: userRole === "vendor" && isContractsTabActive,
       staleTime: 60 * 1000,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
@@ -749,7 +748,7 @@ export const useDashboardData = (
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>;
     },
-    enabled: userRole === "vendor" && (isProjectManager || isContractsTabActive),
+    enabled: userRole === "vendor" && isContractsTabActive,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
