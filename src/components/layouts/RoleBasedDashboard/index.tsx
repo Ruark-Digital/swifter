@@ -339,7 +339,6 @@ export const RoleBasedDashboard: React.FC = () => {
   } = useDashboardData(
     userRole,
     chartFilters,
-    isProjectManager,
     userRole === "vendor" && activeLandingTab === "contracts"
   );
 
@@ -596,12 +595,12 @@ export const RoleBasedDashboard: React.FC = () => {
     }
 
     if (userRole === "vendor") {
-      // Transform Vendor data. PM is aliased to "vendor" for the rest of this
-      // dashboard, but its My Actions / General Updates are contract-scoped
-      // (fetched from the vendor-side CONTRACT dashboard, not solicitations).
-      // A real vendor gets the same contract-scoped data whenever the
-      // Contracts tab is active, and solicitation-scoped data otherwise.
-      const showContractActivity = isProjectManager || activeLandingTab === "contracts";
+      // Transform Vendor/PM data. My Actions / General Updates are tab-driven:
+      // the Contracts tab shows contract-scoped data, the Solicitation tab shows
+      // solicitation-scoped data. This applies to PMs too — a PM without
+      // solicitation access simply gets empty feeds on the Solicitation tab
+      // until they switch to the Contracts tab.
+      const showContractActivity = activeLandingTab === "contracts";
       const transformedVendorMyActions = showContractActivity
         ? DashboardDataTransformer.transformContractManagerDashboardActivity(
             pmContractMyActions
