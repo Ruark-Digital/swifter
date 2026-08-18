@@ -94,18 +94,6 @@ const BusinessDivisionDetailsSheet = ({
               <p className="text-lg font-semibold text-[#0F0F0F] dark:text-slate-100 font-quicksand">
                 {isLoading ? "—" : safeText(division?.name)}
               </p>
-              <Button
-                variant="outline"
-                className="h-10 gap-2 rounded-lg border-[#E5E7EB] bg-white px-4 text-sm font-semibold text-[#6B6B6B] font-quicksand dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                type="button"
-              >
-                <img
-                  src="/assets/business-divisions/icon-export.svg"
-                  alt=""
-                  className="h-4 w-4"
-                />
-                Export
-              </Button>
             </div>
 
             <div className="grid grid-cols-2 gap-x-16 gap-y-8">

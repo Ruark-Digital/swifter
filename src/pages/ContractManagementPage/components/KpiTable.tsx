@@ -1,6 +1,6 @@
 import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Search, ArrowLeft, Share2, Loader2 } from "lucide-react";
+import { Search, ArrowLeft, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/layouts/DataTable";
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -96,12 +96,6 @@ const KpiDetailSheet: React.FC<{
               <p className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 {data.category || "N/A"}
               </p>
-              <div className="inline-flex h-12 items-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-700 px-4">
-                <Share2 className="h-5 w-5 text-[#6B6B6B] dark:text-slate-400" />
-                <span className="text-sm font-semibold text-[#6B6B6B] dark:text-slate-300">
-                  Export
-                </span>
-              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-x-8 gap-y-6 h-full">
