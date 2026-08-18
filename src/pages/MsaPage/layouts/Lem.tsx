@@ -106,6 +106,7 @@ const Lem: React.FC<Props> = ({ contractId, currency, isActive, actionsDisabled 
         {isVendorLike ? (
           <SubmitLemDialog
             contractId={contractId}
+            currency={currencyCode}
             createPath={`/contract/vendor/msa-contracts/${contractId}/lems`}
             invalidateQueryKey={lemQueryKey}
             trigger={
