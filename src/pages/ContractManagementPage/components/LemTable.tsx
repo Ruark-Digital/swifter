@@ -29,7 +29,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Search, Share2, X } from "lucide-react";
+import { ArrowLeft, Search, X } from "lucide-react";
 import { useToastHandler } from "@/hooks/useToaster";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -264,14 +264,6 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
               <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 {detailLoading ? "Loading..." : lemDetail?.title || "—"}
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
-                >
-                  <Share2 className="mr-2 h-4 w-4" /> Export
-                </Button>
-              </div>
             </div>
 
             <Tabs
@@ -447,6 +439,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   }
                   lemId={lemId}
                   contractId={contractId}
+                  currency={currencyCode}
                   initialLem={{
                     title: lemDetail?.title,
                     amount: lemDetail?.amount,
