@@ -88,6 +88,7 @@ const LemTabContent: React.FC<Props> = ({ contractId, currency, isActive, action
         {isProjectManager ? (
           <SubmitLemDialog
             contractId={contractId}
+            currency={currencyCode}
             trigger={
               <Button className="h-10 rounded-xl px-4" disabled={!!actionsDisabled}>
                 Submit LEM

@@ -48,6 +48,9 @@ type SubmitLemDialogProps = {
    *  pending-item edit ("Edit"). Both hit the same PUT. */
   isResubmit?: boolean;
   lemId?: string;
+  /** Contract-level currency for the Amount input. Falls back to USD ("$")
+   *  inside TextCurrencyInput when omitted. */
+  currency?: string;
   initialLem?: {
     title?: string;
     amount?: number;
@@ -107,6 +110,7 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
   mode = "create",
   isResubmit = false,
   lemId,
+  currency,
   initialLem,
 }) => {
   const isEdit = mode === "edit" && !!lemId;
@@ -281,6 +285,7 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
               name="amount"
               label="Amount"
               component={TextCurrencyInput}
+              currency={currency}
               placeholder="Enter Amount"
             />
 
