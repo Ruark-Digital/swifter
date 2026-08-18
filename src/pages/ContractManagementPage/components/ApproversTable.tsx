@@ -2,7 +2,6 @@ import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +27,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ArrowLeft, Share2, X } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import type { ApiResponseError } from "@/types";
@@ -303,12 +302,6 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
               <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Approver Details
               </div>
-              <Button
-                variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
-              >
-                <Share2 className="mr-2 h-4 w-4" /> Export
-              </Button>
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2">
