@@ -46,7 +46,7 @@ const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, ef
             <UploadDocumentsDialog
               contractId={contractId}
               trigger={
-                <Button variant="outline" disabled={status !== "pending_approval"}>
+                <Button variant="outline">
                   <Upload className="mr-2 h-4 w-4" /> Upload Documents
                 </Button>
               }
