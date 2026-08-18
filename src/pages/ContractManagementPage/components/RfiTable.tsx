@@ -40,7 +40,6 @@ import {
   ArrowLeft,
   Check,
   CloudUpload,
-  Download,
   Edit2,
   Search,
   X,
@@ -324,32 +323,24 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     submittedBy?: { _id?: string; name?: string; email?: string } | string;
     submittedAt?: string;
   } | null;
-  // The thread message's `submittedBy` may be a populated object OR a bare id
-  // string. When it's a bare id that matches the assigned responder, resolve it
-  // to their name so "Responded by" shows the actual responder (QA #113 #1).
-  const responseAuthorObj =
-    rfiResponse && typeof rfiResponse.submittedBy === "object"
-      ? rfiResponse.submittedBy
-      : undefined;
-  const lastAuthorId =
-    typeof rfiResponse?.submittedBy === "string"
-      ? rfiResponse.submittedBy
-      : responseAuthorObj?._id;
+  // The assigned responder object (when populated) resolves a thread message's
+  // bare `submittedBy` id to a display name (QA #113 #1). Passed to the response
+  // panel, which renders the full thread (QA #177).
   const responderObj =
     rfiDetail?.responder && typeof rfiDetail.responder === "object"
       ? rfiDetail.responder
       : undefined;
-  const responseAuthor =
-    responseAuthorObj?.name?.trim() ||
-    responseAuthorObj?.email?.trim() ||
-    (lastAuthorId && responderObj?._id === lastAuthorId
-      ? responderObj?.name?.trim() || responderObj?.email?.trim()
-      : undefined) ||
-    (rfiDetail?.responseSubmittedBy?.name?.trim() ||
-      rfiDetail?.responseSubmittedBy?.email?.trim()) ||
-    undefined;
-  const responseAt =
-    rfiResponse?.submittedAt ?? rfiDetail?.responseSubmittedAt ?? undefined;
+
+  // Full ordered RFI response thread. The BE returns every message (each with
+  // its own attachments), so render them all instead of collapsing to the
+  // latest — previous responses and documents must be retained, not overridden
+  // by the newest (QA #177). Falls back to the single last message for older
+  // payloads that only carried `lastResponse`.
+  const responseThread = Array.isArray(rfiDetail?.responses)
+    ? rfiDetail.responses
+    : lastResponseMsg
+      ? [lastResponseMsg]
+      : [];
 
   // Show the Response tab when ANY positive signal says a response exists — use
   // OR (not ??) so a stale wrapper `isResponse:false` can't hide a response the
@@ -563,12 +554,6 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                     />
                   );
                 })()}
-                <Button
-                  variant="outline"
-                  className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
-                >
-                  <Download className="mr-2 h-4 w-4" /> Export
-                </Button>
                 {isRfiIssuer && !isVendor && rfiStatus?.toLowerCase() !== "closed" && (
                   <Button
                     variant="outline"
@@ -691,9 +676,8 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                   rfiId={rfiId}
                   contractId={contractId}
                   isApprover={isApprover}
-                  response={rfiResponse}
-                  responseAuthor={responseAuthor}
-                  responseAt={responseAt}
+                  thread={responseThread}
+                  responder={responderObj}
                 />
               </TabsContent>
 
@@ -813,23 +797,27 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   );
 };
 
+type RfiThreadMessage = {
+  _id?: string;
+  description?: string;
+  files?: Array<{ name?: string; url?: string; type?: string; size?: string | number }>;
+  submittedBy?: { _id?: string; name?: string; email?: string } | string;
+  submittedAt?: string;
+};
+
 const RfiResponseContent: React.FC<{
   rfiId: string;
   contractId: string;
   isApprover: boolean;
-  /** Response embedded on the RFI detail DTO (QA #52). When present it is used
-   *  directly — role-agnostic, so the issuer (Vendor PM) sees it too. The
-   *  dedicated fetch below only exists for approver/manager and is a fallback
-   *  for older payloads. */
-  response?: {
-    description?: string;
-    files?: Array<{ name?: string; url?: string; type?: string; size?: string | number }>;
-  } | null;
-  /** Name/email of who actually submitted the response (QA #113 #1) — the
-   *  assigned responder, not the issuer. */
-  responseAuthor?: string;
-  responseAt?: string;
-}> = ({ rfiId, contractId, isApprover, response, responseAuthor, responseAt }) => {
+  /** Full ordered RFI thread from the detail payload — every message with its
+   *  own attachments — so previous responses are retained, not overwritten by
+   *  the newest (QA #177). Role-agnostic, so the issuer (Vendor PM) sees it too. */
+  thread?: RfiThreadMessage[];
+  /** Assigned responder; resolves a message's bare `submittedBy` id to a name
+   *  (QA #113 #1). */
+  responder?: { _id?: string; name?: string; email?: string };
+}> = ({ rfiId, contractId, isApprover, thread, responder }) => {
+  const hasThread = Array.isArray(thread) && thread.length > 0;
   const { data: respRes } = useQuery({
     queryKey: useUserQueryKey([
       isApprover ? "approver" : "contractManager",
@@ -841,84 +829,124 @@ const RfiResponseContent: React.FC<{
       isApprover
         ? await approverApi.getRfiResponse(contractId, rfiId)
         : await contractManagerApi.getRfiResponse(contractId, rfiId),
-    // Only fetch when the detail didn't already embed the response, so we don't
+    // Only fetch when the detail didn't already embed the thread, so we don't
     // fire a role-gated call that 403s for the issuer (Vendor PM).
-    enabled: Boolean(rfiId) && !response,
+    enabled: Boolean(rfiId) && !hasThread,
     staleTime: 60000,
   });
 
-  const fetched = Array.isArray(respRes?.data)
-    ? (respRes.data[0] ?? {})
-    : (respRes?.data ?? {});
-  const resp = response ?? fetched;
-  const description = resp?.description ?? "-";
-  const files = (resp?.files ?? []) as Array<{
-    name?: string;
-    url?: string;
-    type?: string;
-    size?: string | number;
-  }>;
+  // The GET /response endpoint returns the full ordered thread array; use every
+  // message, not just the first, as the fallback for older payloads.
+  const fetched: RfiThreadMessage[] = Array.isArray(respRes?.data)
+    ? respRes.data
+    : respRes?.data
+      ? [respRes.data as RfiThreadMessage]
+      : [];
+  const messages = hasThread ? (thread as RfiThreadMessage[]) : fetched;
+
+  if (!messages.length) {
+    return (
+      <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+        No response yet.
+      </div>
+    );
+  }
+
+  const resolveAuthor = (msg: RfiThreadMessage): string | undefined => {
+    const by = msg?.submittedBy;
+    const obj = by && typeof by === "object" ? by : undefined;
+    const id = typeof by === "string" ? by : obj?._id;
+    return (
+      obj?.name?.trim() ||
+      obj?.email?.trim() ||
+      (id && responder?._id === id
+        ? responder?.name?.trim() || responder?.email?.trim()
+        : undefined) ||
+      undefined
+    );
+  };
 
   return (
-    <div className="space-y-6">
-      {responseAuthor ? (
-        <div className="space-y-2">
-          <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
-            Responded by
-          </div>
-          <div className="text-sm font-medium text-[#111827] dark:text-slate-100">
-            {responseAuthor}
-            {responseAt ? (
-              <span className="ml-2 text-xs font-normal text-[#6B7280] dark:text-slate-400">
-                {formatDateTZ(responseAt, "dd MMM yyyy")}
-              </span>
+    <div className="space-y-4">
+      {messages.map((msg, mi) => {
+        const author = resolveAuthor(msg);
+        const description = msg?.description ?? "-";
+        const files = (msg?.files ?? []) as Array<{
+          name?: string;
+          url?: string;
+          type?: string;
+          size?: string | number;
+        }>;
+        return (
+          <div
+            key={msg?._id ?? `resp-${mi}`}
+            className="space-y-4 rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4"
+          >
+            {author ? (
+              <div className="space-y-1">
+                <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+                  Responded by
+                </div>
+                <div className="text-sm font-medium text-[#111827] dark:text-slate-100">
+                  {author}
+                  {msg?.submittedAt ? (
+                    <span className="ml-2 text-xs font-normal text-[#6B7280] dark:text-slate-400">
+                      {formatDateTZ(msg.submittedAt, "dd MMM yyyy")}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+                Response / Description
+              </div>
+              <div className="text-sm text-[#374151] dark:text-slate-200">
+                {description}
+              </div>
+            </div>
+            {files.length ? (
+              <div className="space-y-3">
+                <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+                  Attached Documents
+                </div>
+                <div className="grid gap-3 sm:grid-cols-1">
+                  {files.map((file, index) => {
+                    const name = file.name ?? "Untitled";
+                    const type = getFileExtension(name, file.type ?? "");
+                    const d: DocType = {
+                      id: `${msg?._id ?? mi}-${name}-${index}`,
+                      name,
+                      type: type || "FILE",
+                      size: getSizeLabel(file.size),
+                      url: file.url,
+                      icon: getFileIcon(type || "FILE"),
+                    };
+                    return (
+                      <DocumentItem
+                        key={d.id}
+                        d={d}
+                        handlePreview={() => {
+                          window.open(d.url || "#", "_blank");
+                        }}
+                        handleDownload={() => {
+                          if (!d.url) return;
+                          const link = document.createElement("a");
+                          link.href = d.url;
+                          link.download = d.name;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
             ) : null}
           </div>
-        </div>
-      ) : null}
-      <div className="space-y-2">
-        <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
-          Response / Description
-        </div>
-        <div className="text-sm text-[#374151] dark:text-slate-200">{description}</div>
-      </div>
-      <div className="space-y-3">
-        <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
-          Attached Documents
-        </div>
-        <div className="grid gap-3 sm:grid-cols-1">
-          {files.map((file, index) => {
-            const name = file.name ?? "Untitled";
-            const type = getFileExtension(name, file.type ?? "");
-            const d: DocType = {
-              id: `${name}-${index}`,
-              name,
-              type: type || "FILE",
-              size: getSizeLabel(file.size),
-              url: file.url,
-              icon: getFileIcon(type || "FILE"),
-            };
-            return (
-              <DocumentItem
-                key={d.id}
-                d={d}
-                handlePreview={() => {
-                  window.open(d.url || "#", "_blank");
-                }}
-                handleDownload={() => {
-                  if (!d.url) return;
-                  const link = document.createElement("a");
-                  link.href = d.url;
-                  link.download = d.name;
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                }}
-              />
-            );
-          })}
-        </div>
-      </div>
+        );
+      })}
     </div>
   );
 };
@@ -969,10 +997,18 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
 
+  // Coerce the current deadline to a Date so the (now editable) picker prefills
+  // it and a follow-up responder can pick a fresh one (QA #176).
+  const initialDeadline = React.useMemo(() => {
+    if (!rfi?.deadline) return undefined;
+    const d = new Date(rfi.deadline as any);
+    return Number.isFinite(d.getTime()) ? d : undefined;
+  }, [rfi?.deadline]);
+
   const { control, reset, setValue } = useForge({
     defaultValues: {
       rfiTitle: rfi?.title ?? "",
-      responseDeadline: rfi?.deadline,
+      responseDeadline: initialDeadline,
       responseDescription: "",
       files: null as File[] | null,
     },
@@ -982,10 +1018,10 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
   React.useEffect(() => {
     if (rfi) {
       setValue("rfiTitle", rfi?.title ?? "", { shouldValidate: false });
-      setValue("responseDeadline", rfi?.deadline, { shouldValidate: false });
+      setValue("responseDeadline", initialDeadline, { shouldValidate: false });
       // setValue("responseDescription", rfi?.description ?? "", { shouldValidate: false });
     }
-  }, [rfi, setValue]);
+  }, [rfi, initialDeadline, setValue]);
 
   const uploadFiles = async (
     files: File[] | null,
@@ -1013,11 +1049,22 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
     mutationKey: ["approver", "contractRfis", "respond", rfiId],
     mutationFn: async (data: {
       responseDescription: string;
+      responseDeadline?: Date | string | null;
       files: File[] | null;
     }) => {
       const uploaded = await uploadFiles(data.files);
+      // The BE response DTO accepts a per-message `deadline`, so a responder
+      // posing a follow-up can set a fresh deadline for the next turn instead of
+      // being frozen to the initial one (QA #176).
+      const deadline = data.responseDeadline
+        ? (() => {
+            const d = new Date(data.responseDeadline as any);
+            return Number.isFinite(d.getTime()) ? d.toISOString() : undefined;
+          })()
+        : undefined;
       const payload = {
         description: data.responseDescription,
+        deadline,
         files:
           uploaded && uploaded.length > 0
             ? uploaded.map((f) => ({
@@ -1056,11 +1103,13 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
 
   const handleSubmit = async (data: {
     responseDescription: string;
+    responseDeadline?: Date | string | null;
     files: File[] | null;
   }) => {
     try {
       await respondMutation.mutateAsync({
         responseDescription: data.responseDescription,
+        responseDeadline: data.responseDeadline,
         files: data.files,
       });
     } catch {
@@ -1131,7 +1180,6 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
                   label="Response Deadline"
                   placeholder="Enter Date"
                   component={TextDatePicker}
-                  disabled
                 />
                 <Forger
                   name="responseDescription"
