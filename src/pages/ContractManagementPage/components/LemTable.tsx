@@ -94,6 +94,197 @@ const LabelRow = ({
   </div>
 );
 
+type LemSummarySheet = {
+  sheetName?: string;
+  headers?: string[];
+  rows?: Array<Record<string, unknown>>;
+};
+type LemSummary = {
+  files?: Array<{ name?: string; sheets?: LemSummarySheet[] }>;
+  comparison?: {
+    total?: number | null;
+    rateSheetTotal?: number | null;
+    totalVariance?: number | null;
+    complianceStatus?: string | null;
+  };
+};
+
+const complianceBadgeColor = (status?: string | null) => {
+  const s = (status ?? "").toLowerCase();
+  if (s === "fully compliant")
+    return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
+  if (s === "non-compliant")
+    return "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300";
+  return "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-300";
+};
+
+// Excel headers arrive with embedded CR/LF; collapse to a single line for th display.
+const cleanHeader = (h: string) => h.replace(/\r?\n/g, " ").trim();
+
+const SummaryTotalRow = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) => (
+  <div className="flex items-center justify-between px-4 py-3">
+    <span className="text-sm text-[#6B7280] dark:text-slate-400">{label}</span>
+    <span className="text-sm font-semibold text-[#111827] dark:text-slate-100">
+      {value}
+    </span>
+  </div>
+);
+
+/**
+ * Renders the BE-supplied LEM `summary`: one tab per parsed spreadsheet sheet
+ * (dynamic columns keyed by the sheet's own headers) plus the rate-sheet
+ * comparison totals. The design's normalized per-row comparison columns
+ * (Avg Rate / Man Hour / Fee / Rate Sheet Price / Variance / Match) are not in
+ * the payload — rows are raw cells and `comparison` carries only totals.
+ */
+const LemSummaryContent: React.FC<{
+  summary?: LemSummary;
+  currencyCode: string;
+}> = ({ summary, currencyCode }) => {
+  const sheets = React.useMemo(
+    () =>
+      (summary?.files ?? []).flatMap((f) =>
+        (f.sheets ?? []).map((s) => ({ ...s })),
+      ),
+    [summary],
+  );
+  const comparison = summary?.comparison;
+
+  const money = (v?: number | null) =>
+    typeof v === "number" ? formatCurrency(v, "en-US", currencyCode) : "—";
+
+  if (!sheets.length && !comparison) {
+    return (
+      <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+        No summary available.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {sheets.length > 0 && (
+        <Tabs
+          defaultValue={sheets[0]?.sheetName ?? "sheet-0"}
+          className="space-y-3"
+        >
+          <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 bg-transparent p-0">
+            {sheets.map((s, i) => (
+              <TabsTrigger
+                key={`${s.sheetName ?? "sheet"}-${i}`}
+                value={s.sheetName ?? `sheet-${i}`}
+                className="flex-none rounded-full border border-[#E5E7EB] px-3 py-1.5 text-xs font-semibold text-[#667085] dark:border-slate-700 dark:text-slate-400 data-[state=active]:border-[#1F3B63] data-[state=active]:bg-[#1F3B63] data-[state=active]:text-white"
+              >
+                {s.sheetName ?? `Sheet ${i + 1}`}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {sheets.map((s, i) => {
+            const headers = (s.headers ?? []).filter(Boolean);
+            const rows = s.rows ?? [];
+            return (
+              <TabsContent
+                key={`${s.sheetName ?? "sheet"}-${i}-content`}
+                value={s.sheetName ?? `sheet-${i}`}
+              >
+                <div className="overflow-x-auto rounded-xl border border-[#E5E7EB] dark:border-slate-800">
+                  <table className="w-full min-w-max text-sm">
+                    <thead className="bg-[#F9FAFB] dark:bg-slate-800">
+                      <tr className="border-b border-[#E5E7EB] dark:border-slate-800">
+                        {headers.map((h, hi) => (
+                          <th
+                            key={`${h}-${hi}`}
+                            className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400"
+                          >
+                            {cleanHeader(h)}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.length ? (
+                        rows.map((row, ri) => (
+                          <tr
+                            key={ri}
+                            className="border-b border-[#E5E7EB] last:border-0 dark:border-slate-800"
+                          >
+                            {headers.map((h, hi) => {
+                              const cell = row?.[h];
+                              return (
+                                <td
+                                  key={`${ri}-${hi}`}
+                                  className="whitespace-pre-line px-4 py-3 align-top text-slate-700 dark:text-slate-200"
+                                >
+                                  {cell === undefined ||
+                                  cell === null ||
+                                  cell === ""
+                                    ? "—"
+                                    : String(cell)}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan={Math.max(headers.length, 1)}
+                            className="px-4 py-6 text-center text-sm text-[#6B7280] dark:text-slate-400"
+                          >
+                            No rows.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </TabsContent>
+            );
+          })}
+        </Tabs>
+      )}
+
+      {comparison && (
+        <div className="divide-y divide-[#E5E7EB] rounded-xl border border-[#E5E7EB] dark:divide-slate-800 dark:border-slate-800">
+          <SummaryTotalRow label="Total" value={money(comparison.total)} />
+          <SummaryTotalRow
+            label="Rate Sheet Total"
+            value={money(comparison.rateSheetTotal)}
+          />
+          <SummaryTotalRow
+            label="Total Variance"
+            value={money(comparison.totalVariance)}
+          />
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-sm text-[#6B7280] dark:text-slate-400">
+              Compliance Status
+            </span>
+            {comparison.complianceStatus ? (
+              <span
+                className={cn(
+                  "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
+                  complianceBadgeColor(comparison.complianceStatus),
+                )}
+              >
+                {comparison.complianceStatus}
+              </span>
+            ) : (
+              <span className="text-sm text-slate-400">—</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   trigger,
   contractId,
@@ -220,6 +411,16 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   const showApprovalActions =
     canApproveOrReject && approverStatus === "pending";
 
+  const summary = lemDetail?.summary as LemSummary | undefined;
+  const hasSummary = !!(
+    summary &&
+    ((summary.files?.some((f) => f.sheets && f.sheets.length) ?? false) ||
+      !!summary.comparison)
+  );
+
+  // Widen the slide-over on the LEM Summary tab so its wide sheet tables breathe.
+  const [activeTab, setActiveTab] = React.useState("overview");
+
 
   return (
     <Sheet>
@@ -228,7 +429,8 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
         side="right"
         className={cn(
           "w-full rounded-2xl overflow-y-auto [&>button]:hidden",
-          "sm:max-w-2xl"
+          "transition-[max-width] duration-300 ease-in-out",
+          activeTab === "summary" ? "sm:max-w-5xl" : "sm:max-w-2xl"
         )}
       >
         <div className="space-y-6" data-testid="lem-details-sheet">
@@ -267,7 +469,8 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
             </div>
 
             <Tabs
-              defaultValue="overview"
+              value={activeTab}
+              onValueChange={setActiveTab}
               className="space-y-4"
             >
               <TabsList className="h-auto rounded-none w-full border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
@@ -277,6 +480,14 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                 >
                   Overview
                 </TabsTrigger>
+                {hasSummary && (
+                  <TabsTrigger
+                    value="summary"
+                    className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                  >
+                    LEM Summary
+                  </TabsTrigger>
+                )}
                 <TabsTrigger
                   value="comments"
                   className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
@@ -367,6 +578,13 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                     })}
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="summary" className="space-y-4">
+                <LemSummaryContent
+                  summary={summary}
+                  currencyCode={currencyCode}
+                />
               </TabsContent>
 
               <TabsContent value="comments" className="space-y-4">
