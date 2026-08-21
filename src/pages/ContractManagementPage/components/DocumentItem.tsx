@@ -1,6 +1,12 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye, Download, Edit, ScanText, Loader2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { Eye, Download, Edit, ScanText, Loader2, MoreVertical } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { postRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -20,21 +26,87 @@ export type DocType = {
   fileId?: string;
 };
 
-// Isolated in its own component so the react-query / role hooks it needs only
-// run when the parent actually wires up the analyze action (i.e. inside the
-// app's providers). DocumentItem's existing bare-render tests pass no
-// `onAnalyzed`, so this never mounts there and stays QueryClient-free.
-// (`useUserRole` itself calls `useQuery`, so it too must live here.)
-const AnalyzeDocumentButton = ({
+const buildCollaborationHref = (d: DocType, contractId?: string) =>
+  // SuperDoc is the default editor. The legacy TipTap/Yoopta panels stay
+  // reachable via `?editor=tiptap` / `?editor=yoopta`.
+  `/collaboration-tool?sourceUrl=${encodeURIComponent(d.url || "")}&fileName=${encodeURIComponent(d.name)}&fileType=${encodeURIComponent(d.type || "")}${contractId ? `&contractId=${encodeURIComponent(contractId)}` : ""}${d.id ? `&fileId=${encodeURIComponent(d.id)}` : ""}&editor=superdoc`;
+
+// Presentational kebab menu — no data hooks, so it can render anywhere
+// (including DocumentItem's provider-free unit tests). The analyze action is
+// injected as an optional `analyzeItem` node by the hook-bearing wrapper.
+const DocumentActionsMenu = ({
+  d,
+  contractId,
+  canEdit,
+  navigate,
+  handlePreview,
+  handleDownload,
+  analyzeItem,
+}: {
+  d: DocType;
+  contractId?: string;
+  canEdit?: boolean;
+  navigate?: (path: string) => void;
+  handlePreview?: (d: DocType) => void;
+  handleDownload?: (d: DocType) => void;
+  analyzeItem?: React.ReactNode;
+}) => {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Document actions"
+          data-testid="document-actions-dropdown"
+        >
+          <MoreVertical className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onSelect={() => handlePreview?.(d)}>
+          <Eye className="mr-2 h-4 w-4" /> Preview
+        </DropdownMenuItem>
+        {analyzeItem}
+        {canEdit && d.type?.toLowerCase() === "docx" && (
+          <DropdownMenuItem
+            onSelect={() => navigate?.(buildCollaborationHref(d, contractId))}
+          >
+            <Edit className="mr-2 h-4 w-4" /> Edit in Collaboration Tool
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem onSelect={() => handleDownload?.(d)}>
+          <Download className="mr-2 h-4 w-4" /> Download
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
+// Owns the clause-analysis mutation and the role/toast hooks. Wraps the whole
+// menu (rather than living inside DropdownMenuContent) so it stays mounted when
+// the menu closes on select — otherwise the mutation observer would unmount
+// before onSuccess fires. `useUserRole` also calls `useQuery`, so it too must
+// stay inside the app's providers; DocumentItem only renders this when the
+// parent wires `onAnalyzed`, and the tests never do — keeping them hook-free.
+const AnalyzeCapableActions = ({
   d,
   contractId,
   contractType,
   onAnalyzed,
+  canEdit,
+  navigate,
+  handlePreview,
+  handleDownload,
 }: {
   d: DocType;
   contractId?: string;
   contractType: "Contract" | "MsaContract";
   onAnalyzed: () => void;
+  canEdit?: boolean;
+  navigate?: (path: string) => void;
+  handlePreview?: (d: DocType) => void;
+  handleDownload?: (d: DocType) => void;
 }) => {
   const { success, error } = useToastHandler();
   const { isManager, isCompanyAdmin } = useUserRole();
@@ -72,29 +144,37 @@ const AnalyzeDocumentButton = ({
     },
   });
 
-  // Endpoint x-roles: contract_manager, procurement (isManager), company_admin.
-  if (!(isManager || isCompanyAdmin)) return null;
-
   const handleAnalyze = () => {
     if (!contractId || !analyzeId || analyzeMutation.isPending) return;
     analyzeMutation.mutate();
   };
 
+  // Endpoint x-roles: contract_manager, procurement (isManager), company_admin.
+  const analyzeItem =
+    isManager || isCompanyAdmin ? (
+      <DropdownMenuItem
+        disabled={!analyzeId || analyzeMutation.isPending}
+        onSelect={handleAnalyze}
+      >
+        {analyzeMutation.isPending ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <ScanText className="mr-2 h-4 w-4" />
+        )}
+        Analyze in Clause Library
+      </DropdownMenuItem>
+    ) : null;
+
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      aria-label="Analyze in Clause Library"
-      title="Analyze in Clause Library"
-      disabled={!analyzeId || analyzeMutation.isPending}
-      onClick={handleAnalyze}
-    >
-      {analyzeMutation.isPending ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <ScanText className="h-4 w-4" />
-      )}
-    </Button>
+    <DocumentActionsMenu
+      d={d}
+      contractId={contractId}
+      canEdit={canEdit}
+      navigate={navigate}
+      handlePreview={handlePreview}
+      handleDownload={handleDownload}
+      analyzeItem={analyzeItem}
+    />
   );
 };
 
@@ -135,47 +215,27 @@ export const DocumentItem = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Preview"
-            onClick={() => handlePreview?.(d)}
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          {onAnalyzed && (
-            <AnalyzeDocumentButton
+          {onAnalyzed ? (
+            <AnalyzeCapableActions
               d={d}
               contractId={contractId}
               contractType={contractType}
               onAnalyzed={onAnalyzed}
+              canEdit={canEdit}
+              navigate={navigate}
+              handlePreview={handlePreview}
+              handleDownload={handleDownload}
+            />
+          ) : (
+            <DocumentActionsMenu
+              d={d}
+              contractId={contractId}
+              canEdit={canEdit}
+              navigate={navigate}
+              handlePreview={handlePreview}
+              handleDownload={handleDownload}
             />
           )}
-          {canEdit && d.type?.toLowerCase() === "docx" && (
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Edit in Collaboration Tool"
-              title="Edit in Collaboration Tool"
-              onClick={() =>
-                navigate?.(
-                  // SuperDoc is the default editor. The legacy TipTap/Yoopta
-                  // panels stay reachable via `?editor=tiptap` / `?editor=yoopta`.
-                  `/collaboration-tool?sourceUrl=${encodeURIComponent(d.url || "")}&fileName=${encodeURIComponent(d.name)}&fileType=${encodeURIComponent(d.type || "")}${contractId ? `&contractId=${encodeURIComponent(contractId)}` : ""}${d.id ? `&fileId=${encodeURIComponent(d.id)}` : ""}&editor=superdoc`,
-                )
-              }
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Download"
-            onClick={() => handleDownload?.(d)}
-          >
-            <Download className="h-4 w-4" />
-          </Button>
         </div>
       </CardContent>
     </Card>
