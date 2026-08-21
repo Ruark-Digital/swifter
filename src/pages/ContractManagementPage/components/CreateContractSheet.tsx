@@ -266,6 +266,45 @@ type AwardedVendorItem = {
   categoryName?: string;
   category?: string;
   vendor: { _id: string; name: string; email: string };
+  // RFP documents attached to the awarded solicitation. BE (docs.json) types
+  // these loosely (array of objects); keys are read defensively when mapping
+  // them into the Documents step. QA: RFP docs migrate into the new contract.
+  files?: unknown[];
+};
+
+// Map an awarded solicitation's RFP file (loosely typed by BE) into the
+// `DocumentType` shape the Documents step (`Step4Form`) hydrates. Reads keys
+// defensively because the live payload has historically differed from the
+// documented schema. Only files with a resolvable `url` are usable (the step
+// keys/renders by url), so callers drop the rest.
+const mapAwardedFileToDocument = (file: unknown) => {
+  const f = (file ?? {}) as Record<string, unknown>;
+  const url = (f.url ?? f.fileUrl ?? f.location ?? "") as string;
+  if (!url) return null;
+  const name = (f.name ??
+    f.originalName ??
+    f.fileName ??
+    "document") as string;
+  const rawSize = f.size;
+  const size =
+    typeof rawSize === "number"
+      ? String(rawSize)
+      : typeof rawSize === "string" && rawSize
+        ? rawSize
+        : "0 Bytes";
+  const type = (f.type ??
+    f.mimeType ??
+    "application/octet-stream") as string;
+  const id = (f._id ?? f.id ?? url) as string;
+  return {
+    _id: id,
+    name,
+    url,
+    size,
+    type,
+    originalName: name,
+    fileName: name,
+  };
 };
 
 const STEP_TITLES = [
@@ -734,6 +773,23 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         : [],
     [awardedQuery.data?.data],
   );
+
+  // RFP documents of the currently-selected awarded solicitation, mapped into
+  // the Documents step shape. When present, they pre-populate step 7 so the CM
+  // can review and remove any before saving (the migration request).
+  const selectedAwarded = useWatch({ control, name: "awardedSolicitation" });
+  const awardedDocuments = React.useMemo(() => {
+    if (!selectedAwarded) return [];
+    const match = awardedQuery.data?.data?.find(
+      (a) => a._id === selectedAwarded,
+    );
+    return (match?.files ?? [])
+      .map(mapAwardedFileToDocument)
+      .filter(
+        (doc): doc is NonNullable<ReturnType<typeof mapAwardedFileToDocument>> =>
+          doc !== null,
+      );
+  }, [selectedAwarded, awardedQuery.data?.data]);
 
   const msaOptions = React.useMemo(() => {
     const contracts = msaQuery.data?.data?.contracts || [];
@@ -1259,7 +1315,9 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
               {step === 6 && <Step6ComplianceSecurity control={control} />}
 
-              {step === 7 && <Step4Form control={control} documents={[]} />}
+              {step === 7 && (
+                <Step4Form control={control} documents={awardedDocuments} />
+              )}
 
               {step === 8 && <Step7ApprovalLevel control={control} />}
 
