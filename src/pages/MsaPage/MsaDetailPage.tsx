@@ -914,6 +914,11 @@ const MsaDetailPage: React.FC = () => {
               files={msa?.files}
               isActive={activeTab === "documents"}
               status={msa?.status}
+              onNavigateToClauseLibrary={
+                visibleTabs.some((t) => t.key === "clause-library")
+                  ? () => setActiveTab("clause-library")
+                  : undefined
+              }
             />
 
             <Amendments

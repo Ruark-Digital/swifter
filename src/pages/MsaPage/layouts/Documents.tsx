@@ -20,6 +20,10 @@ type DocumentsProps = {
   /** MSA status — read-only documents for anything other than
    *  `pending_approval`. Comes from the parent `MsaDetailPage`. */
   status?: string;
+  /** Passed through to the document rows' "Analyze in Clause Library" action.
+   *  Provided by `MsaDetailPage` only when the Clause Library tab is visible;
+   *  invoked after a successful analysis to switch to that tab. */
+  onNavigateToClauseLibrary?: () => void;
 };
 
 type MsaDetailsApiResponse = {
@@ -37,6 +41,7 @@ const Documents: React.FC<DocumentsProps> = ({
   files,
   isActive,
   status,
+  onNavigateToClauseLibrary,
 }) => {
   const { isVendor, isProjectManager, isApprover, isViewOnly, isManager } =
     useUserRole();
@@ -134,6 +139,8 @@ const Documents: React.FC<DocumentsProps> = ({
         effectiveDate={effectiveDate}
         contractId={contractId}
         status={status ?? documentsResponse?.data?.status}
+        contractType="MsaContract"
+        onNavigateToClauseLibrary={onNavigateToClauseLibrary}
       />
     </TabsContent>
   );
