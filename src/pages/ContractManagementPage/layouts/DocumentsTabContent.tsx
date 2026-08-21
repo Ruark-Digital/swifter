@@ -23,9 +23,13 @@ type Props = {
    *  read-only for any other (terminal) status. */
   status?: string;
   actionsDisabled?: boolean;
+  /** Passed through to the document rows' "Analyze in Clause Library" action.
+   *  Provided by the detail page only when the Clause Library tab is visible;
+   *  invoked after a successful analysis to switch to that tab. */
+  onNavigateToClauseLibrary?: () => void;
 };
 
-const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, effectiveDate, status }) => {
+const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, effectiveDate, status, onNavigateToClauseLibrary }) => {
   const [editingContractId, setEditingContractId] = React.useState<string | null>(null);
   const { success } = useToastHandler();
   const qc = useQueryClient();
@@ -75,6 +79,8 @@ const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, ef
         effectiveDate={effectiveDate}
         contractId={contractId}
         status={status}
+        contractType="Contract"
+        onNavigateToClauseLibrary={onNavigateToClauseLibrary}
       />
 
       {/* Kept mounted while on the detail page (not conditionally rendered) so
