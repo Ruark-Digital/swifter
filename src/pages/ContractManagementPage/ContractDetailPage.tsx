@@ -786,6 +786,11 @@ const ContractDetailPage: React.FC = () => {
           effectiveDate={contract?.startDate}
           status={contract?.status}
           actionsDisabled={contract?.status === "publish" || isFrozenStatus}
+          onNavigateToClauseLibrary={
+            visibleTabs.some((t) => t.key === "clause-library")
+              ? () => setActiveTab("clause-library")
+              : undefined
+          }
         />
 
         <AmendmentsTabContent

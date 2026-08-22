@@ -9,6 +9,8 @@ import AIChatWidget from "./components/layouts/AIChatWidget";
 import { useAuthentication } from "@/hooks/useAuthentication";
 import { useToken, useUser } from "@/store/authSlice";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useToast } from "@/components/ui/use-toast";
+import { downloadBase64File } from "@/lib/utils";
 import { config } from "@/config";
 
 // Chat (MCP) origin tracks the active API environment (bug/staging/prod).
@@ -132,6 +134,7 @@ function App() {
   const isAuthenticated = useAuthentication();
   const token = useToken();
   const user = useUser();
+  const { toast } = useToast();
 
   const postChat = async (message: string, stream: boolean) => {
     const response = await fetch(CHAT_URL, {
@@ -162,7 +165,13 @@ function App() {
   const parseMcpStream = async (
     response: Response,
     onContent: (text: string) => void,
-    onTool?: (phase: 'start' | 'end', tool: string) => void
+    onTool?: (phase: 'start' | 'end', tool: string) => void,
+    onDocument?: (doc: {
+      filename: string;
+      contentType: string;
+      contentBase64: string;
+      size: number;
+    }) => void
   ) => {
     const reader = response.body?.getReader();
     if (!reader) {
@@ -206,6 +215,19 @@ function App() {
           case 'tool_error':
             if (p.tool) onTool?.('end', p.tool);
             break;
+          case 'document_ready':
+            // Binary export (PDF/DOCX) arrives inline as base64, ahead of the
+            // AI's text reply. Hand the whole payload to the caller to decode
+            // and deliver — the parser itself stays side-effect free.
+            if (typeof p.contentBase64 === 'string' && p.filename) {
+              onDocument?.({
+                filename: p.filename,
+                contentType: p.contentType,
+                contentBase64: p.contentBase64,
+                size: p.size,
+              });
+            }
+            break;
         }
       }
     }
@@ -229,7 +251,23 @@ function App() {
   ): Promise<void> => {
     try {
       const response = await postChat(message, true);
-      await parseMcpStream(response, onDelta, onTool);
+      await parseMcpStream(response, onDelta, onTool, (doc) => {
+        try {
+          downloadBase64File(doc.contentBase64, doc.filename, doc.contentType);
+          const sizeKb = Math.max(1, Math.round((doc.size || 0) / 1024));
+          toast({
+            title: 'Document ready',
+            description: `${doc.filename} (${sizeKb} KB) is downloading…`,
+          });
+        } catch (decodeError) {
+          console.error('Document download failed:', decodeError);
+          toast({
+            title: 'Document generation failed',
+            description: 'Please try again.',
+            variant: 'destructive',
+          });
+        }
+      });
     } catch (error) {
       console.error('AI Chat Stream Error:', error);
       throw new Error('Failed to stream AI response');

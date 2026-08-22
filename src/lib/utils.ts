@@ -116,6 +116,38 @@ export const downloadFile = async (fileUrl: string) => {
   document.body.removeChild(link);
 };
 
+/**
+ * Decode a base64 string and trigger a browser download.
+ *
+ * Used for binary payloads that arrive inline (not as a URL) — e.g. the MCP
+ * chat's `document_ready` SSE event, which streams an exported contract PDF/DOCX
+ * as base64. Decodes to raw bytes via `atob`, wraps them in a Blob, and clicks a
+ * temporary anchor. Throws if the base64 is malformed (caller surfaces the error).
+ */
+export const downloadBase64File = (
+  base64: string,
+  filename: string,
+  mimeType: string
+) => {
+  const byteChars = atob(base64);
+  const bytes = new Uint8Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) {
+    bytes[i] = byteChars.charCodeAt(i);
+  }
+  const blob = new Blob([bytes], { type: mimeType });
+  const downloadUrl = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = downloadUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  // Revoke after a tick so the download has started.
+  setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+};
+
 export const formatSecurityType = (raw: unknown): string => {
   if (typeof raw !== "string") return "-";
   const trimmed = raw.trim();

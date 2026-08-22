@@ -12,6 +12,8 @@ type Doc = {
   size: string;
   url?: string;
   icon: React.ReactNode;
+  /** Real Mongo ObjectId (when present) — used by the clause analyze action. */
+  fileId?: string;
 };
 
 type Props = {
@@ -24,9 +26,21 @@ type Props = {
    *  still being worked on — `draft` or `pending_approval`; once
    *  `publish`-ed (or any other terminal state) the list is read-only. */
   status?: string;
+  /** Which clause endpoint family to hit — `contracts` vs `msa-contracts`. */
+  contractType?: "Contract" | "MsaContract";
+  /** Passed to each row's analyze action. When provided (only when the Clause
+   *  Library tab is visible), rows show the "Analyze in Clause Library" button;
+   *  called after a successful analysis to switch to that tab. */
+  onNavigateToClauseLibrary?: () => void;
 };
 
-const DocumentsList: React.FC<Props> = ({ files, contractId, status }) => {
+const DocumentsList: React.FC<Props> = ({
+  files,
+  contractId,
+  status,
+  contractType = "Contract",
+  onNavigateToClauseLibrary,
+}) => {
   const navigate = useNavigate();
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [selectedDoc, setSelectedDoc] = React.useState<Doc | null>(null);
@@ -55,6 +69,7 @@ const DocumentsList: React.FC<Props> = ({ files, contractId, status }) => {
 
       return {
         id: file._id ?? `${file.name ?? "file"}-${index}`,
+        fileId: file._id,
         name: file.name ?? "Untitled",
         icon: getFileIcon(fileExtension),
         type: fileExtension?.toUpperCase() ?? "FILE",
@@ -90,7 +105,7 @@ const DocumentsList: React.FC<Props> = ({ files, contractId, status }) => {
       ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {docs.map((d) => (
-          <DocumentItem 
+          <DocumentItem
             key={d.id}
             d={d}
             contractId={contractId}
@@ -98,6 +113,8 @@ const DocumentsList: React.FC<Props> = ({ files, contractId, status }) => {
             navigate={navigate}
             handlePreview={handlePreview}
             handleDownload={handleDownload}
+            contractType={contractType}
+            onAnalyzed={onNavigateToClauseLibrary}
           />
         ))}
       </div>
