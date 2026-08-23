@@ -199,6 +199,36 @@ describe("DashboardDataTransformer", () => {
     );
   });
 
+  it("#194 renders Procurement General Updates in the actor's item-level timezone, not the solicitation's", () => {
+    const [item] = DashboardDataTransformer.transformProcurementGeneralUpdates([
+      {
+        _id: "gu-1",
+        createdAt: "2026-08-21T22:00:00.000Z",
+        timezone: "WAT", // actor's zone (correct source, as My Actions uses)
+        statusText: "Michael Duncan completed an evaluation on HVAC",
+        solicitation: { _id: "sol-1", name: "HVAC", timezone: "EST" }, // wrong zone
+      },
+    ]);
+
+    // WAT (UTC+1) = 11:00 PM. If it wrongly used the solicitation's EST it would
+    // render 6:00 PM EDT.
+    expect(item.date).toBe("Aug 21, 2026 11:00 PM WAT");
+  });
+
+  it("#194 renders Company Admin General Updates in the actor's item-level timezone, not the solicitation's", () => {
+    const [item] = DashboardDataTransformer.transformCompanyAdminGeneralUpdates([
+      {
+        _id: "au-1",
+        createdAt: "2026-08-21T22:00:00.000Z",
+        timezone: "WAT",
+        statusText: "Dennis Rose scored a proposal on Power Distribution",
+        solicitation: { _id: "sol-2", name: "Power", timezone: "EST" },
+      },
+    ]);
+
+    expect(item.date).toBe("Aug 21, 2026 11:00 PM WAT");
+  });
+
   describe("transformSubDistribution", () => {
     it("computes a real percentage per plan from counts", () => {
       const result = DashboardDataTransformer.transformSubDistribution({

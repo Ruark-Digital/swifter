@@ -2462,7 +2462,11 @@ export class DashboardDataTransformer {
           ? formatDateInZoneAbbrev(
               update.createdAt,
               "MMM d, yyyy h:mm a",
-              update?.solicitation?.timezone
+              // #194: render in the actor's zone. The item-level `timezone` is
+              // the actor's zone (correct — same field My Actions uses); the
+              // nested solicitation carries its own zone (e.g. "EST"), so only
+              // fall back to it when the item omits one.
+              update?.timezone ?? update?.solicitation?.timezone
             )
           : undefined,
         status: update?.status || "active",
@@ -2676,9 +2680,11 @@ export class DashboardDataTransformer {
             ? formatDateInZoneAbbrev(
                 update.updatedAt || update.date || update.createdAt,
                 "MMM d, yyyy h:mm a",
-                update.solicitation?.timezone
+                // #194: prefer the actor's item-level zone over the
+                // solicitation's own zone (see transformProcurementGeneralUpdates).
+                update?.timezone ?? update.solicitation?.timezone
               )
-            : formatDateTZ(new Date(), "MMM d, yyyy h:mm a 'GMT'xxx", update.solicitation?.timezone || ""),
+            : formatDateTZ(new Date(), "MMM d, yyyy h:mm a 'GMT'xxx", (update?.timezone ?? update.solicitation?.timezone) || ""),
         status: update?.status || "active",
       };
     });
