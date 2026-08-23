@@ -16,6 +16,7 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { useUserRole } from "@/hooks/useUserRole";
 import EditCompanyDialog from "./components/EditCompanyDialog";
+import { RenewSubscriptionDialog } from "./components/RenewSubscriptionDialog";
 import React, { useState } from "react";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { formatDateTZ } from "@/lib/utils";
@@ -892,9 +893,22 @@ const CompanyDetailPage = () => {
         </TabsContent>
 
         <TabsContent value="subscription">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">
-            Subscription Details
-          </h3>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Subscription Details
+            </h3>
+            {isSuperAdmin && companyData.subscription?._id ? (
+              <RenewSubscriptionDialog
+                subscriptionId={companyData.subscription._id}
+                companyId={id}
+                currentExpiry={companyData.subscription.expiryDate}
+              >
+                <Button type="button" variant="outline" className="gap-2">
+                  Renew Subscription
+                </Button>
+              </RenewSubscriptionDialog>
+            ) : null}
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-5">
             <div className="space-y-6">

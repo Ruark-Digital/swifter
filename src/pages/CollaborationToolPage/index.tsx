@@ -551,11 +551,21 @@ const CollaborationToolPage: React.FC = () => {
         if (status === "rejected") return "dismissed";
         return "pending";
       };
+      // #189: the persisted GET payload has no `kind`, so recover the real
+      // insertion/deletion classification from the live editor redlines
+      // (keyed by redlineId) instead of labelling every suggestion an
+      // insertion. Falls back to "insertion" only when the redline mark is
+      // no longer present in the document.
+      const kindById = new Map(
+        (editorAdapterRef.current?.extractRedlines() ?? []).map(
+          (r) => [r.redlineId, r.kind] as const,
+        ),
+      );
       setAiItems(
         persisted.suggestions.map((s) => ({
           redline: {
             redlineId: s.redlineId,
-            kind: "insertion" as const,
+            kind: kindById.get(s.redlineId) ?? ("insertion" as const),
             text: s.sourceText ?? "",
           },
           suggestion: s,

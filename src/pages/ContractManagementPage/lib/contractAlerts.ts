@@ -80,12 +80,12 @@ export const buildPendingApprovalLine = (
   return line;
 };
 
-/** "RFI 001 is overdue by 3 days" when overdue, else "RFI 001 is pending response". */
+/** "Response to RFI 001 is overdue by 3 days" when overdue, else "Response to RFI 001 is pending". */
 export const buildRfiAlertLine = (rfi: RfiAlert): string => {
   const number = extractAlertItemNumber(rfi?.rfiId);
   const ref = number ? `RFI ${number}` : "RFI";
   if (rfi?.isOverdue && typeof rfi.daysOverdue === "number") {
-    return `${ref} is overdue by ${rfi.daysOverdue} day${rfi.daysOverdue === 1 ? "" : "s"}`;
+    return `Response to ${ref} is overdue by ${rfi.daysOverdue} day${rfi.daysOverdue === 1 ? "" : "s"}`;
   }
-  return `${ref} is pending response`;
+  return `Response to ${ref} is pending`;
 };

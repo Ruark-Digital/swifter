@@ -283,7 +283,10 @@ export interface Creator {
   _id:   string;
   name:  string;
   email: string;
-  role: string
+  // The contract-detail payload returns `role` as a populated object
+  // ({ _id, name }); older/list payloads may return a plain string.
+  role: string | { _id?: string; name?: string };
+  phone?: string;
 }
 
 export interface File {

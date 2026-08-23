@@ -29,6 +29,7 @@ import { Solicitation } from "../SolicitationManagementPage/SolicitationDetailPa
 import { formatDateTZ } from "@/lib/utils";
 import { useToastHandler } from "@/hooks/useToaster";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
+import { useUserRole } from "@/hooks/useUserRole";
 
 type VendorSubmission = {
   _id: string;
@@ -483,9 +484,11 @@ const SubmissionsTab = ({
 const ProjectManagersTab = ({
   projectManagers,
   vendorId,
+  isCompanyAdmin,
 }: {
   projectManagers: VendorProjectManager[];
   vendorId?: string;
+  isCompanyAdmin: boolean;
 }) => {
   const toast = useToastHandler();
   const [pagination, setPagination] = useState<PaginationState>({
@@ -568,15 +571,17 @@ const ProjectManagersTab = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44 rounded-2xl">
-            <DropdownMenuItem
-              className="p-3"
-              onClick={() => {
-                setAccessTarget(row.original);
-                setAccessOpen(true);
-              }}
-            >
-              Manage Access
-            </DropdownMenuItem>
+            {isCompanyAdmin && (
+              <DropdownMenuItem
+                className="p-3"
+                onClick={() => {
+                  setAccessTarget(row.original);
+                  setAccessOpen(true);
+                }}
+              >
+                Manage Access
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               className="p-3"
               disabled={row.original.status === "active"}
@@ -667,6 +672,7 @@ const ProjectManagersTab = ({
 
 export const VendorDetailPage = () => {
   const { id } = useParams();
+  const { isCompanyAdmin } = useUserRole();
   const [activeTab, setActiveTab] = useState("overview");
 
   // Document viewer state
@@ -787,7 +793,7 @@ export const VendorDetailPage = () => {
                 {/* #84 — assign Vendor (Solicitation) and/or Vendor-PM (CLM)
                     access to this vendor's user account. Per-PM access lives in
                     each Project Manager row's dropdown (see ProjectManagersTab). */}
-                {vendor.user?._id && (
+                {vendor.user?._id && isCompanyAdmin && (
                   <ManageVendorAccessDialog
                     userId={vendor.user._id}
                     vendorName={vendor.name}
@@ -922,6 +928,7 @@ export const VendorDetailPage = () => {
               <ProjectManagersTab
                 projectManagers={projectManagers}
                 vendorId={id}
+                isCompanyAdmin={isCompanyAdmin}
               />
             </TabsContent>
           )}

@@ -32,12 +32,22 @@ import { LabelItem } from "../components/LabelItem";
  * | View Layout           | 3-Col  | 2-Col            | 3-Col    | 2-Col     | 3-Col         |
  */
 
+/** Contract Manager card data, normalized from `contract.creator` — `role`
+ *  flattened to a display string and `phone` surfaced for the contact popover. */
+type ManagerCard = {
+  _id?: string;
+  name: string;
+  email?: string;
+  role?: string;
+  phone?: string;
+};
+
 type ViewProps = {
   contract: ContractDetail;
   status: { label: string; className: string };
   projectName: string;
   vendorName: string;
-  contractManager: ContractDetail["creator"];
+  contractManager?: ManagerCard;
   internalTeam: NonNullable<ContractDetail["internalTeam"]>;
   vendorPersonnel: NonNullable<ContractDetail["vendorPersonnel"]>;
   relationshipLabel: string;
@@ -123,7 +133,7 @@ const ManagerView: React.FC<ViewProps> = ({
               name={contractManager.name || "N/A"}
               email={contractManager.email || "N/A"}
               jobTitle={contractManager.role || "N/A"}
-              phone="N/A"
+              phone={contractManager.phone || "N/A"}
             />
           ) : (
             <span className="text-slate-900 dark:text-slate-100">N/A</span>
@@ -150,7 +160,7 @@ const ManagerView: React.FC<ViewProps> = ({
               name={contractManager.name}
               email={contractManager.email || "N/A"}
               jobTitle={contractManager.role || "N/A"}
-              phone="N/A"
+              phone={contractManager.phone || "N/A"}
             />
           ) : (
             <span className="text-slate-900 dark:text-slate-100">N/A</span>
@@ -294,7 +304,7 @@ const VendorView: React.FC<ViewProps> = ({
               name={contractManager.name}
               email={contractManager.email || "N/A"}
               jobTitle={contractManager.role || "N/A"}
-              phone="N/A"
+              phone={contractManager.phone || "N/A"}
             />
           ) : (
             <span className="text-slate-900 dark:text-slate-100">N/A</span>
@@ -346,7 +356,7 @@ const VendorView: React.FC<ViewProps> = ({
               name={contractManager.name}
               email={contractManager.email || "N/A"}
               jobTitle={contractManager.role || "N/A"}
-              phone="N/A"
+              phone={contractManager.phone || "N/A"}
             />
           ) : (
             <span className="text-slate-900 dark:text-slate-100">N/A</span>
@@ -492,7 +502,7 @@ const ApproverView: React.FC<ViewProps> = ({
                     name={contractManager.name}
                     email={contractManager.email || "N/A"}
                     jobTitle={contractManager.role || "N/A"}
-                    phone="N/A"
+                    phone={contractManager.phone || "N/A"}
                   />
                 ) : (
                   <span className="text-slate-900 dark:text-slate-100">N/A</span>
@@ -529,7 +539,7 @@ const ApproverView: React.FC<ViewProps> = ({
                   name={contractManager.name}
                   email={contractManager.email || "N/A"}
                   jobTitle={contractManager.role || "N/A"}
-                  phone="N/A"
+                  phone={contractManager.phone || "N/A"}
                 />
               ) : (
                 <span className="text-slate-900 dark:text-slate-100">N/A</span>
@@ -654,7 +664,7 @@ const ApproverView: React.FC<ViewProps> = ({
                 name={contractManager.name}
                 email={contractManager.email || "N/A"}
                 jobTitle={contractManager.role || "N/A"}
-                phone="N/A"
+                phone={contractManager.phone || "N/A"}
               />
             ) : (
               <span className="text-slate-900 dark:text-slate-100">N/A</span>
@@ -710,7 +720,7 @@ const ApproverView: React.FC<ViewProps> = ({
                 name={contractManager.name}
                 email={contractManager.email || "N/A"}
                 jobTitle={contractManager.role || "N/A"}
-                phone="N/A"
+                phone={contractManager.phone || "N/A"}
               />
             ) : (
               <span className="text-slate-900 dark:text-slate-100">N/A</span>
@@ -811,7 +821,22 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
     typeof contract.vendor === "string"
       ? contract.vendor
       : contract.vendor?.name || "";
-  const contractManager = contract.creator;
+  // Normalize the creator into the Contract Manager card: the detail payload
+  // returns `role` as a populated object and includes `phone`, so flatten role
+  // to its name and pass the real phone through to the contact popover (#191).
+  const rawCreator = contract.creator;
+  const contractManager: ManagerCard | undefined = rawCreator
+    ? {
+        _id: rawCreator._id,
+        name: rawCreator.name,
+        email: rawCreator.email,
+        role:
+          typeof rawCreator.role === "string"
+            ? rawCreator.role
+            : rawCreator.role?.name,
+        phone: rawCreator.phone,
+      }
+    : undefined;
   const internalTeam = contract.internalTeam ?? [];
   const vendorPersonnel = contract.personnel ?? [];
   const relationshipLabel =
