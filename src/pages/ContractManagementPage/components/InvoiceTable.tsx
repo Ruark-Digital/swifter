@@ -484,6 +484,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
               <div className="flex gap-3 pt-6 justify-end">
                 <CreateInvoiceDialog
                   contractId={contractId}
+                  currency={currencyCode}
                   mode="edit"
                   isResubmit={invoice?.status === "rejected"}
                   invoiceId={invoiceId}
