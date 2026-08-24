@@ -1,3 +1,63 @@
+export type CurrencyOption = { label: string; value: string };
+
+/**
+ * Build a de-duplicated, sorted list of currency options for a select input.
+ * Uses `Intl.supportedValuesOf("currency")` when available (with a small
+ * fallback list) and resolves human-readable names via `Intl.DisplayNames`.
+ * Same logic used by the Create Contract wizard's currency picker.
+ */
+export const getCurrencyOptions = (): CurrencyOption[] => {
+  const supportedValuesOf = (Intl as any).supportedValuesOf as
+    | undefined
+    | ((type: string) => string[]);
+
+  const supportedCurrencies =
+    typeof supportedValuesOf === "function" ? supportedValuesOf("currency") : [];
+
+  const fallbackCurrencies = ["CAD", "USD", "EUR", "GBP"];
+
+  const codes =
+    supportedCurrencies.length > 0 ? supportedCurrencies : fallbackCurrencies;
+
+  const displayNames =
+    typeof (Intl as any).DisplayNames === "function"
+      ? new (Intl as any).DisplayNames(["en"], { type: "currency" })
+      : null;
+
+  const getCurrencyName = (code: string) => {
+    try {
+      const name = displayNames?.of(code);
+      if (typeof name === "string" && name.trim() && name !== code) return name;
+    } catch (err) {
+      void err;
+    }
+
+    try {
+      const parts = new Intl.NumberFormat("en", {
+        style: "currency",
+        currency: code,
+        currencyDisplay: "name",
+      }).formatToParts(0);
+      const name = parts.find((p) => p.type === "currency")?.value;
+      if (typeof name === "string" && name.trim() && name !== code) return name;
+    } catch (err) {
+      void err;
+    }
+
+    return "";
+  };
+
+  return Array.from(new Set(codes))
+    .map((code) => {
+      const name = getCurrencyName(code);
+      return {
+        value: code,
+        label: name ? `${code} — ${name}` : code,
+      };
+    })
+    .sort((a, b) => a.value.localeCompare(b.value));
+};
+
 const EXCHANGE_API_BASE = "https://api.exchangerate-api.com/v4/latest";
 
 type ExchangeRates = Record<string, number>;

@@ -10,12 +10,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { useFieldArray, ForgeControl, Forger } from "@adexdsamson/forge";
 import { TextInput } from "../../../components/layouts/FormInputs/TextInput";
+import { TextSelectWithSearch } from "../../../components/layouts/FormInputs/TextSelectWithSearch";
 import { CornerDownRight, Plus, Trash2 } from "lucide-react";
 import ProposalItemRow from "./ProposalItemRow";
 import { FormValues } from "./SubmitProposalPage";
 import { numberFieldTransform } from "./proposalFieldTransforms";
 import { useEffect, useMemo, useCallback, useState } from "react";
 import { formatCurrency } from "@/lib/utils";
+import { getCurrencyOptions } from "@/lib/currencyUtils";
+import { useUser } from "@/store/authSlice";
 import {
   UseFormSetValue,
   UseFormGetValues,
@@ -67,8 +70,18 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
   shouldUnregister = false,
   onComplete,
 }) => {
-  const currency = "USD";
   const toast = useToastHandler();
+  const user = useUser();
+  const currencyOptions = useMemo(() => getCurrencyOptions(), []);
+
+  // The proposal currency is a form field so it is submitted to the API
+  // (`currency` on the submit/edit payload). Vendors may price in a currency
+  // other than USD, so this must be selectable rather than hardcoded.
+  const selectedCurrency = useWatch({
+    control: control as any,
+    name: "currency",
+  }) as string | undefined;
+  const currency = selectedCurrency || user?.currency || "USD";
   // Bumped on failed validation to remount the field rows so their inline
   // errors surface immediately — Forge's field memo (MemorizeController) only
   // re-renders on isDirty/prop changes, not on errors set by trigger(), so
@@ -111,6 +124,14 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
       if (pa === undefined) {
         setValue("priceAction", [], { shouldDirty: false, shouldValidate: false });
       }
+      // Seed the currency so it is included in the payload even if the vendor
+      // leaves the default. Falls back to the user's company currency, then USD.
+      if (!(getValue() as any).currency) {
+        setValue("currency" as any, (user?.currency || "USD") as any, {
+          shouldDirty: false,
+          shouldValidate: false,
+        });
+      }
     }
 
     const items = watchedPriceAction || [];
@@ -135,7 +156,7 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
     });
 
     setValue("total", totalAmount as number, { shouldDirty: false, shouldValidate: false });
-  }, [open, watchedPriceAction, totalAmount, setValue, calculateItemSubtotal, getValue]);
+  }, [open, watchedPriceAction, totalAmount, setValue, calculateItemSubtotal, getValue, user]);
 
   const handleComplete = useCallback(async () => {
     // Every proposal item field is compulsory — validate the whole priceAction
@@ -262,12 +283,30 @@ const CompleteProposalDialog: React.FC<CompleteProposalDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto p-0">
         <DialogHeader className="p-6 pb-4">
-          <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            Complete Proposal
-          </DialogTitle>
-          <DialogDescription>
-            Add pricing details for your proposal items
-          </DialogDescription>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                Complete Proposal
+              </DialogTitle>
+              <DialogDescription>
+                Add pricing details for your proposal items
+              </DialogDescription>
+            </div>
+            {/* Vendors may price in a currency other than USD — let them pick it
+                here. Drives the Total formatting and is sent as `currency`. */}
+            <div className="w-48">
+              <Forger
+                name="currency"
+                label="Currency"
+                placeholder="Select currency"
+                searchPlaceholder="Search currency..."
+                emptyMessage="No currency found."
+                component={TextSelectWithSearch}
+                options={currencyOptions}
+                control={control as any}
+              />
+            </div>
+          </div>
         </DialogHeader>
 
         <div className="p-6">
