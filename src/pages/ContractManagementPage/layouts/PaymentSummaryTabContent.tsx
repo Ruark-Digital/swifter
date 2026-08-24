@@ -781,6 +781,12 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
     contract?.holdBack != null ? String(contract?.holdBack) : "-";
   const holdbackAmount =
     contract?.holdBackBank != null ? formatMoney(contract?.holdBackBank) : "-";
+  // #201 — a release only makes sense when a holdback percentage was set on the
+  // contract OR a holdback balance has actually accumulated. Gray out the
+  // "Apply for Holdback Release" button when neither is true.
+  const hasHoldbackPct = Number(contract?.holdBack) > 0;
+  const hasHoldbackAccrued = Number(contract?.holdBackBank) > 0;
+  const canApplyForHoldbackRelease = hasHoldbackPct || hasHoldbackAccrued;
   const contigency =
     formatMoney(Number(contract?.contingency ?? contract?.contigency)) ?? "-";
   const paymentStructure = contract?.paymentStructure ?? "-";
@@ -829,19 +835,30 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
               approver chain escalates from there. The manager no longer
               initiates the release directly for regular contracts (the BE has no
               manager create endpoint — only vendor submit + manager approve). */}
-          {isProjectManager && !isPendingApproval && (
-            <ReleaseHoldbackDialog
-              contractId={contractId}
-              trigger={
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center rounded-xl bg-[#2A4467] px-4 py-2 text-sm font-semibold text-white"
-                >
-                  Apply for Holdback Release
-                </button>
-              }
-            />
-          )}
+          {isProjectManager &&
+            !isPendingApproval &&
+            (canApplyForHoldbackRelease ? (
+              <ReleaseHoldbackDialog
+                contractId={contractId}
+                trigger={
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center rounded-xl bg-[#2A4467] px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    Apply for Holdback Release
+                  </button>
+                }
+              />
+            ) : (
+              <button
+                type="button"
+                disabled
+                title="No holdback was set on this contract and none has accumulated yet."
+                className="inline-flex cursor-not-allowed items-center justify-center rounded-xl bg-[#2A4467] px-4 py-2 text-sm font-semibold text-white opacity-50"
+              >
+                Apply for Holdback Release
+              </button>
+            ))}
         </div>
       </div>
 

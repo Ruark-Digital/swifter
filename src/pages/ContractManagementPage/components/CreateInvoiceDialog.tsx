@@ -39,6 +39,9 @@ import { useToastHandler } from "@/hooks/useToaster";
 type Props = {
   trigger: React.ReactElement;
   contractId: string;
+  /** Contract-level currency so the amount inputs render the right symbol
+   *  instead of defaulting to "$" (QA #202). */
+  currency?: string;
   createPath?: string;
   invalidateQueryKey?: readonly unknown[];
   mode?: "create" | "edit";
@@ -173,6 +176,7 @@ type InvoiceInputRowProps = {
   index: number;
   onRemoveRow: (index: number) => void;
   onAddRow: () => void;
+  currency?: string;
 };
 
 const InvoiceInputRow = ({
@@ -180,6 +184,7 @@ const InvoiceInputRow = ({
   index,
   onRemoveRow,
   onAddRow,
+  currency,
 }: InvoiceInputRowProps) => {
   return (
     <div
@@ -218,6 +223,7 @@ const InvoiceInputRow = ({
       <Forger
         name={`items.${index}.unitPrice`}
         component={TextCurrencyInput}
+        currency={currency}
         placeholder="Enter Value"
       />
       <Forger
@@ -256,10 +262,11 @@ type CompleteInvoiceDialogProps = {
   onOpenChange: (open: boolean) => void;
   trigger: React.ReactElement;
   onCompleteInvoice: () => void;
+  currency?: string;
 };
 
 const CompleteInvoiceDialog = React.memo(
-  ({ open, onOpenChange, trigger, onCompleteInvoice }: CompleteInvoiceDialogProps) => {
+  ({ open, onOpenChange, trigger, onCompleteInvoice, currency }: CompleteInvoiceDialogProps) => {
     const { control, unregister } = useFormContext<FormValues>();
     // The parent <Forge> wraps this dialog so `control` is in practice a
     // ForgeControl (useForge mutates it via Object.assign); the RHF type from
@@ -371,6 +378,7 @@ const CompleteInvoiceDialog = React.memo(
                     index={index}
                     onRemoveRow={handleRemoveRow}
                     onAddRow={handleAddRow}
+                    currency={currency}
                   />
                 ))}
               </div>
@@ -539,6 +547,7 @@ type InvoiceComponentProps = {
   handleCompleteOpenChange: (nextOpen: boolean) => void;
   invoiceCompleted: boolean;
   onInvoiceCompleted: () => void;
+  currency?: string;
 };
 
 const InvoiceComponent = ({
@@ -546,6 +555,7 @@ const InvoiceComponent = ({
   handleCompleteOpenChange,
   invoiceCompleted,
   onInvoiceCompleted,
+  currency,
 }: InvoiceComponentProps) => {
   const mode = useWatch({ name: "uploadMode" });
 
@@ -578,6 +588,7 @@ const InvoiceComponent = ({
       onOpenChange={handleCompleteOpenChange}
       onCompleteInvoice={onInvoiceCompleted}
       trigger={trigger}
+      currency={currency}
     />
   ) : (
     <Forger
@@ -607,6 +618,7 @@ const InvoiceComponent = ({
 const CreateInvoiceDialog: React.FC<Props> = ({
   trigger,
   contractId,
+  currency,
   createPath,
   invalidateQueryKey,
   mode = "create",
@@ -801,6 +813,19 @@ const CreateInvoiceDialog: React.FC<Props> = ({
           toastHandler.error(
             "Missing Tax Code",
             "Please select a tax code before submitting the invoice.",
+          );
+          return;
+        }
+
+        // #203 — the BE requires a tax value for the "Others" tax code; guard
+        // here so the user gets a clear prompt instead of a submit failure.
+        if (
+          taxCodeEnum === "Others" &&
+          !(values.otherTaxValue && values.otherTaxValue.trim())
+        ) {
+          toastHandler.error(
+            "Missing Tax Value",
+            "Please enter a tax value for the 'Others' tax code.",
           );
           return;
         }
@@ -1060,6 +1085,19 @@ const CreateInvoiceDialog: React.FC<Props> = ({
               options={TAX_CODES}
               component={TextSelect}
             />
+            {/* #203 — the "Others" tax code requires a manually-entered tax
+                value on the BE, but no field existed to capture it, so submit
+                always failed with "Tax value is required for 'Others' tax code".
+                Surface the input only when "Others" is selected. */}
+            {useWatch({ control, name: "taxCode" }) === "others" && (
+              <Forger
+                name="otherTaxValue"
+                label="Tax Value"
+                placeholder="Enter tax value"
+                type="number"
+                component={TextInput}
+              />
+            )}
             <Forger
               name="description"
               label="Description"
@@ -1076,6 +1114,7 @@ const CreateInvoiceDialog: React.FC<Props> = ({
                   label="Invoice Amount"
                   placeholder="Enter invoice amount"
                   component={TextCurrencyInput}
+                  currency={currency}
                 />
               )}
               <InvoiceComponent
@@ -1086,6 +1125,7 @@ const CreateInvoiceDialog: React.FC<Props> = ({
                 }}
                 invoiceCompleted={invoiceCompleted}
                 onInvoiceCompleted={() => setInvoiceCompleted(true)}
+                currency={currency}
               />
             </div>
 
