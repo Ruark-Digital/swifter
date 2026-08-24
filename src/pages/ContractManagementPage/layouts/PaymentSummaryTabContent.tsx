@@ -668,7 +668,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
   }, [savingsError]);
 
   // QA #157: Billed Till Date + Current Balance come straight from the
-  // contract-detail response (`billedAmount` / `currentBalance`).
+  // contract-detail response (`billPayment` / `currentBalance`).
   // QA #239: the reviewer asked for these on the Vendor PM "and other profiles"
   // too, not just CM/PL — show them to every payment-summary viewer. The values
   // read from the shared `contract` object (which every role's detail fetch
@@ -943,7 +943,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
                   Billed Till Date
                 </div>
                 <div className="text-base font-semibold leading-7 text-[#0F0F0F] dark:text-slate-100">
-                  {formatMoney(contract?.billedAmount)}
+                  {formatMoney(contract?.billPayment)}
                 </div>
               </div>
               <div className="flex flex-col justify-center gap-4">

@@ -57,6 +57,7 @@ const schema = yup.object().shape({
     .string()
     .oneOf(["submit", "draft"], "Status must be submit or draft")
     .required("Status is required"),
+  currency: yup.string().optional(),
   document: yup.array().of(
     yup.object().shape({
       requiredDocumentId: yup
