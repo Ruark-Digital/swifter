@@ -133,7 +133,11 @@ export const ClauseIntelligenceCard: React.FC<Props> = ({
             No negotiated clauses recorded yet.
           </p>
         ) : (
-        <ChartContainer config={{} as ChartConfig} className="flex-1 min-h-0">
+        // `min-h-[16rem]` (not `min-h-0`) gives the radar a height floor so it
+        // can't be squeezed to 0 by the tall High-Risk list sharing this
+        // scrollable flex column — that collapse hid the chart entirely, so
+        // "Most Negotiated Clauses" looked empty despite live data (QA #209).
+        <ChartContainer config={{} as ChartConfig} className="flex-1 min-h-[16rem]">
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart data={radarData}>
               <PolarGrid stroke="#E5E7EB" />

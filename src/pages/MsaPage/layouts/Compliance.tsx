@@ -415,8 +415,15 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled, ow
     if (activeTab !== "policy") return false;
     const status = String(getCategoryStatus(activeTab) || "").toLowerCase();
     if (!status) return !hasFiles;
-    return status === "pending" || status === "rejected";
+    // "approved" lets the Vendor PM upload a RENEWED COI after the original
+    // expires mid-contract; re-submitting re-enters CM approval (QA #200).
+    // Mirrors the contract-side ComplianceSecurityTab gate.
+    return status === "pending" || status === "rejected" || status === "approved";
   }, [activeTab, getCategoryStatus, hasFiles, isVendorOrProjectManager]);
+
+  const isPolicyRenewalUpload =
+    activeTab === "policy" &&
+    String(getCategoryStatus("policy") || "").toLowerCase() === "approved";
 
   const canManagerActOnActive = React.useMemo(() => {
     if (!isContractManager) return false;
@@ -493,14 +500,20 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled, ow
               type={activeTab}
               contractId={contractId}
               basePath={basePath}
-              title={`Submit ${activeTab === "policy" ? "Policies" : "Security"}`}
+              title={
+                isPolicyRenewalUpload
+                  ? "Upload New COI"
+                  : `Submit ${activeTab === "policy" ? "Policies" : "Security"}`
+              }
               onSuccess={() => queryClient.invalidateQueries({ queryKey })}
               trigger={
                 <Button
                   className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white hover:bg-[#1f3552]"
                   disabled={!!actionsDisabled}
                 >
-                  Submit {activeTab === "policy" ? "Policies" : "Security"}
+                  {isPolicyRenewalUpload
+                    ? "Upload New COI"
+                    : `Submit ${activeTab === "policy" ? "Policies" : "Security"}`}
                 </Button>
               }
             />

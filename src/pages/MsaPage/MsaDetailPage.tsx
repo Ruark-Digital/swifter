@@ -858,7 +858,11 @@ const MsaDetailPage: React.FC = () => {
                       <Button
                         variant="secondary"
                         className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
-                        disabled={msa?.status !== "draft"}
+                        disabled={
+                          !["draft", "pending_approval", "active", "publish"].includes(
+                            String(msa?.status ?? ""),
+                          )
+                        }
                       >
                         Edit MSA
                       </Button>

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Forge, Forger, useForge } from "@adexdsamson/forge";
-import { TextArea, TextFileUploader } from "@/components/layouts/FormInputs";
+import { TextArea, TextFileUploader, TextInput } from "@/components/layouts/FormInputs";
 import { CloudUpload, FileText, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { patchRequest, postRequest } from "@/lib/axiosInstance";
@@ -33,6 +33,10 @@ interface SubmitPolicyDialogProps {
 
 const schema = yup.object().shape({
   description: yup.string().required("Description is required"),
+  // Optional new expiry date for a policy (COI) renewal — the BE
+  // vendor-compliance PATCH accepts `expiryDate` and replaces the stored
+  // date (QA #200). Only surfaced/sent for policy submissions.
+  expiryDate: yup.string().optional(),
   // At-least-one file. `required()` alone doesn't catch []/null returned
   // by TextFileUploader after all files are removed; the .test explicitly
   // rejects empty arrays.
@@ -97,6 +101,7 @@ const SubmitPolicyDialog: React.FC<SubmitPolicyDialogProps> = ({
     resolver: yupResolver(schema),
     defaultValues: {
       description: "",
+      expiryDate: "",
       files: undefined,
     },
   });
@@ -179,6 +184,11 @@ const SubmitPolicyDialog: React.FC<SubmitPolicyDialogProps> = ({
     const payload = {
       description: data.description,
       type,
+      // Only policy renewals carry an expiry date (BE ignores it for security,
+      // which uses the per-item endpoint). Omit when blank.
+      ...(type === "policy" && data.expiryDate
+        ? { expiryDate: data.expiryDate }
+        : {}),
       files: filesPayload.length > 0 ? filesPayload : undefined,
     };
 
@@ -236,6 +246,21 @@ const SubmitPolicyDialog: React.FC<SubmitPolicyDialogProps> = ({
                 }
               />
             </div>
+
+            {type === "policy" && (
+              <div className="space-y-2">
+                <p className="text-sm font-light text-slate-900 dark:text-slate-100">
+                  New Expiry Date{" "}
+                  <span className="text-slate-400 dark:text-slate-500">(optional)</span>
+                </p>
+                <Forger
+                  name="expiryDate"
+                  component={TextInput}
+                  type="date"
+                  placeholder="Select new expiry date"
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <p className="text-sm font-light text-slate-900 dark:text-slate-100">Description</p>
