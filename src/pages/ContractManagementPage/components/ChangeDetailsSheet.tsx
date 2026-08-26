@@ -38,7 +38,6 @@ import {
   getApproveDraftCoUrl,
   getConvertDirectiveUrl,
   getManagerApproveChangeUrl,
-  isCrCpOriginDraftCo,
   isDraftChangeOrder,
   shouldShowChangeDecisionActions,
   toConvertDirectivePayload,
@@ -214,15 +213,19 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   // The BE 403s if the caller isn't the eligible originator, so gate on role
   // here for UX and let the server enforce ownership.
   const isDraftCo = !isClaim && isDraftChangeOrder({ type: changeType, status });
-  // A draft CO is finalized/edited only by its originator: the Vendor PM for a
-  // CR/CP-origin draft, the CM for a directive-origin (or legacy) draft. The CM
-  // must not see an approve action on a CR/CP-origin draft by default —
-  // it appears for the CM only once the Vendor PM edits + re-sends for approval
-  // (which flips the status out of "draft" into the normal decision flow). (QA #117)
-  const draftCoActor = isCrCpOriginDraftCo({ originalChangeType })
-    ? isProjectManager
-    : isManager;
-  const canActOnDraftCo = isDraftCo && draftCoActor;
+  // The draft-CO finalize action (approve-draft-co) must be visible to only ONE
+  // actor at a time — whoever's turn it currently is — never to every user who
+  // happens to hold the role (the QA "approve shown to CM and approvers at the
+  // same time" bug). The BE detail endpoint encodes this per user via
+  // `approverStatus`: it returns "pending" only when THIS user can act now and
+  // "N/A" otherwise, so gate on it and let the server drive the sequential
+  // CM → chain routing. Restricted to the roles that can actually call
+  // approve-draft-co (CM → manager, Vendor PM → vendor); plain approvers act
+  // through the separate /approve chain, not this button.
+  const canActOnDraftCo =
+    isDraftCo &&
+    (isManager || isProjectManager) &&
+    approverStatus === "pending";
 
   // #147 — a change directive (CD) needs no approval of itself; the assigned
   // Vendor PM responds by converting it into a Change Order or Change Proposal.
