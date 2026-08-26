@@ -833,6 +833,12 @@ export const SolicitationManagementPage = () => {
                     row.original.timezone
                   )}
                 </div>
+              ) : row.original.visibility === "public" &&
+                !row.original.invitedAt ? (
+                // Public solicitations are open to all vendors and carry no
+                // per-vendor invite record, so "Invited: N/A" is misleading —
+                // label them as open to all instead (QA #208).
+                <div className="font-medium">Public — open to all vendors</div>
               ) : (
                 <div className="font-medium">
                   Invited:{" "}
