@@ -111,8 +111,22 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
     const status = getSubmissionStatus(activeView);
     if (!status) return !hasFiles;
     const normalized = String(status).toLowerCase();
-    return normalized === "pending" || normalized === "rejected";
+    // "approved" is included so a Vendor PM can upload a RENEWED COI after the
+    // original expires mid-contract — re-submitting re-enters the CM approval
+    // flow (QA #200). (Revising the insurance expiry DATE is a separate,
+    // BE-blocked ask: no vendor endpoint accepts an expiry field yet.)
+    return (
+      normalized === "pending" ||
+      normalized === "rejected" ||
+      normalized === "approved"
+    );
   }, [activeView, hasFiles, isProjectManager, data?.details]);
+
+  // A previously-approved policy means this is a COI renewal, so label the
+  // action accordingly (QA #200).
+  const isPolicyRenewalUpload =
+    activeView === "policy" &&
+    String(getSubmissionStatus("policy") ?? "").toLowerCase() === "approved";
 
   const canManagerActOnActive = React.useMemo(() => {
     if (!isContractManager) return false;
@@ -492,13 +506,19 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
               type={activeView}
               contractId={contractId || ""}
               basePath={basePath}
-              title={`Submit ${activeView === "policy" ? "Policies" : "Security"}`}
+              title={
+                isPolicyRenewalUpload
+                  ? "Upload New COI"
+                  : `Submit ${activeView === "policy" ? "Policies" : "Security"}`
+              }
               trigger={
                 <Button
                   className="bg-[#2A4467] text-white hover:bg-[#1f3552]"
                   disabled={!!actionsDisabled}
                 >
-                  Submit {activeView === "policy" ? "Policies" : "Security"}
+                  {isPolicyRenewalUpload
+                    ? "Upload New COI"
+                    : `Submit ${activeView === "policy" ? "Policies" : "Security"}`}
                 </Button>
               }
             />
