@@ -14,6 +14,8 @@ import FileUploadDialog from "./FileUploadDialog";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useToastHandler } from "@/hooks/useToaster";
+import { useUser } from "@/store/authSlice";
+import { resolveConversionRate } from "@/lib/currencyUtils";
 import {
   getStatusLabel,
   getStatusColorClass,
@@ -56,6 +58,7 @@ const schema = yup.object().shape({
     .oneOf(["draft", "submit"], "Status must be draft or submit")
     .required("Status is required"),
   currency: yup.string().optional(),
+  rate: yup.number().optional(),
   document: yup.array().of(
     yup.object().shape({
       requiredDocumentId: yup
@@ -147,6 +150,7 @@ const SubmitProponentPage: React.FC<SubmitProposalPageProps> = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToastHandler();
+  const userCurrency = useUser()?.currency;
   const [type, setType] = useState("");
   const formRef = useRef<FormPropsRef>(null);
   const { id: solicitationId } = useParams<{ id: string }>();
@@ -438,6 +442,7 @@ const SubmitProponentPage: React.FC<SubmitProposalPageProps> = () => {
       const draftData = {
         ...formData,
         status: "draft" as const,
+        rate: await resolveConversionRate(userCurrency, formData.currency),
       };
 
       await submitProposal(draftData);
@@ -471,6 +476,7 @@ const SubmitProponentPage: React.FC<SubmitProposalPageProps> = () => {
       const draftData = {
         ...formData,
         status: "draft" as const,
+        rate: await resolveConversionRate(userCurrency, formData.currency),
       };
 
       await submitProposal(draftData);
@@ -495,8 +501,9 @@ const SubmitProponentPage: React.FC<SubmitProposalPageProps> = () => {
     try {
       const submissionData = {
         ...data,
-
         status: "submit" as const,
+        // Same rate resolution as Create Contract (QA #214).
+        rate: await resolveConversionRate(userCurrency, data.currency),
       };
 
       await submitProposal(submissionData);

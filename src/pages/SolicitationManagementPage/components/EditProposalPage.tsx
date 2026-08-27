@@ -14,6 +14,8 @@ import FileUploadDialog from "./FileUploadDialog";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useToastHandler } from "@/hooks/useToaster";
+import { useUser } from "@/store/authSlice";
+import { resolveConversionRate } from "@/lib/currencyUtils";
 import { SEOWrapper } from "@/components/SEO";
 import { getStatusLabel, getStatusColorClass } from "@/lib/solicitationStatusUtils";
 
@@ -58,6 +60,7 @@ const schema = yup.object().shape({
     .oneOf(["submit", "draft"], "Status must be submit or draft")
     .required("Status is required"),
   currency: yup.string().optional(),
+  rate: yup.number().optional(),
   document: yup.array().of(
     yup.object().shape({
       requiredDocumentId: yup
@@ -373,6 +376,7 @@ const ProposalForm = ({
   const [completedProposals, setCompletedProposals] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   const toast = useToastHandler();
+  const userCurrency = useUser()?.currency;
   const [type, setType] = useState("");
   const formRef = useRef<FormPropsRef>(null);
   const [shouldUnregister, setShouldUnregister] = useState(false);
@@ -520,6 +524,8 @@ const ProposalForm = ({
       const submissionData = {
         ...data,
         status: "submit" as const,
+        // Same rate resolution as Create Contract (QA #214).
+        rate: await resolveConversionRate(userCurrency, data.currency),
       };
 
       await updateProposal(submissionData);
@@ -541,6 +547,7 @@ const ProposalForm = ({
       const draftData: FormValues = {
         ...currentValues,
         status: "draft",
+        rate: await resolveConversionRate(userCurrency, currentValues.currency),
       };
       await saveDraftProposal(draftData);
       toast.success("Success", "Proposal saved as draft");
