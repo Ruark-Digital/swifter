@@ -20,7 +20,7 @@ import {
 
 import { Plus, Trash2, CornerDownRight } from "lucide-react";
 import { UseFormSetValue, UseFormGetValues, useWatch } from "react-hook-form";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRequest, putRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -132,6 +132,7 @@ const AmendProposalDialog: React.FC<AmendProposalDialogProps> = ({
 }) => {
   const [totalAmount, setTotalAmount] = useState("0.00");
   const toastHandlers = useToastHandler();
+  const queryClient = useQueryClient();
 
   // Initialize form with forge
   const forge = useForge<AmendProposalFormValues>({
@@ -277,6 +278,17 @@ const AmendProposalDialog: React.FC<AmendProposalDialogProps> = ({
     },
     onSuccess: () => {
       toastHandlers.success("Success", "Proposal pricing amended successfully");
+      // The saved pricing must be visible immediately on reopen. Without this
+      // the dialog's own breakdown query stays cached (and, within the 30s
+      // global staleTime, is not even refetched on reopen), so the vendor sees
+      // stale numbers until they leave the solicitation and come back. Invalidate
+      // this dialog's source query plus the proposal/amendment views that render
+      // pricing (prefix-matched — this dialog only knows proposalId).
+      queryClient.invalidateQueries({
+        queryKey: ["proposal-price-breakdown", proposalId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["vendor-proposal"] });
+      queryClient.invalidateQueries({ queryKey: ["amendments"] });
       onOpenChange(false);
       reset();
     },
