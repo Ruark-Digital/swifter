@@ -15,6 +15,10 @@ interface ProposalPriceAction {
   quantity: number;
   unitOfMeasurement: string;
   unitPrice: number;
+  // Currency the vendor submitted this pricing in — the BE now returns it on
+  // each price-action item. Used to render the breakdown in the correct
+  // currency instead of a hardcoded USD.
+  currency?: string;
   subtotal: number;
   subItems?: ProposalPriceAction[];
 }
@@ -42,7 +46,6 @@ export const ProposalPriceBreakdownSheet = ({
 }: ProposalPriceBreakdownSheetProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const toastHandlers = useToastHandler();
-  const currency = "USD";
 
   const {
     data: priceBreakdownData,
@@ -113,6 +116,9 @@ export const ProposalPriceBreakdownSheet = ({
   const priceBreakdownItems = Array.isArray(priceBreakdownData?.data)
     ? priceBreakdownData.data
     : [];
+  // All items in a proposal share the vendor's submitted currency; read it from
+  // the BE response (falls back to USD if a legacy payload omits it).
+  const currency = priceBreakdownItems[0]?.currency || "USD";
   const totalAmount = priceBreakdownItems.reduce(
     (sum, item) => sum + (item.subtotal || 0),
     0
