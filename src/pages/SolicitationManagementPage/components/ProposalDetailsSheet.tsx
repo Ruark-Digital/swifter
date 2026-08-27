@@ -19,6 +19,8 @@ type Action = {
   quantity?: number;
   unitOfMeasurement?: string;
   unitPrice?: number;
+  // Vendor's submitted currency — BE now returns it on each action item.
+  currency?: string;
   subtotal?: number;
   subItems?: Action[];
 };
@@ -76,7 +78,6 @@ const ProposalDetailsSheet: React.FC<ProposalDetailsSheetProps> = ({
   solicitationName,
   onClose,
 }) => {
-  const currency = "USD";
   // Document viewer state
   const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<{
@@ -97,6 +98,9 @@ const ProposalDetailsSheet: React.FC<ProposalDetailsSheetProps> = ({
   });
 
   const proposal = proposalData?.data;
+  // Read the vendor's submitted currency from the action items (all share it);
+  // fall back to USD for legacy payloads that omit it.
+  const currency = proposal?.data?.action?.[0]?.currency || "USD";
 
   // Handle document viewing
   const handleViewDocument = (file: {
@@ -418,7 +422,7 @@ const ProposalDetailsSheet: React.FC<ProposalDetailsSheetProps> = ({
                         {formatCurrency(
                           computeTotalFromActions(proposal?.data?.action || []),
                           "en-US",
-                          "USD"
+                          currency
                         )}
                       </p>
                     </div>

@@ -34,6 +34,8 @@ interface ProposalPriceAction {
   quantity: number;
   unitOfMeasurement: string;
   unitPrice: number;
+  // Vendor's submitted currency — BE now returns it on each price-action item.
+  currency?: string;
   subtotal: number;
   subItems?: ProposalPriceAction[];
 }
@@ -158,6 +160,11 @@ const AmendProposalDialog: React.FC<AmendProposalDialogProps> = ({
     enabled: open && !!proposalId,
   });
   const priceAction = priceBreakdownData?.data?.data;
+  // Vendor's submitted currency (all items share it) — drives the pricing
+  // display instead of a hardcoded USD (QA #214 / price-breakdown currency).
+  const currency =
+    (Array.isArray(priceAction) ? priceAction[0]?.currency : undefined) ||
+    "USD";
 
   // Initialize form with existing data when loaded
   useEffect(() => {
@@ -327,7 +334,7 @@ const AmendProposalDialog: React.FC<AmendProposalDialogProps> = ({
 
             {/* Pricing Table */}
             <PricingTable
-              {...{ control, totalAmount, setTotalAmount, setValue, getValues }}
+              {...{ control, totalAmount, setTotalAmount, setValue, getValues, currency }}
             />
 
             {/* Reason / Note */}
@@ -376,6 +383,7 @@ interface PricingTableProps {
   setTotalAmount: (amount: string) => void;
   setValue: UseFormSetValue<AmendProposalFormValues>;
   getValues: UseFormGetValues<AmendProposalFormValues>;
+  currency: string;
 }
 
 const PricingTable: React.FC<PricingTableProps> = ({
@@ -384,8 +392,8 @@ const PricingTable: React.FC<PricingTableProps> = ({
   setTotalAmount,
   setValue,
   getValues,
+  currency,
 }) => {
-  const currency = "USD";
   // Use field array for price actions
   const { fields, append, remove, update } = useFieldArray({
     control,
@@ -606,6 +614,7 @@ const PricingTable: React.FC<PricingTableProps> = ({
                 index={index}
                 control={control}
                 removeSubItem={removeSubItem}
+                currency={currency}
               />
             )}
           </div>
@@ -650,6 +659,7 @@ interface SubPriceTableProps {
   index: number;
   control: ForgeControl<AmendProposalFormValues>;
   removeSubItem: (itemIndex: number, subItemIndex: number) => void;
+  currency: string;
 }
 
 const SubPriceTable: React.FC<SubPriceTableProps> = ({
@@ -657,8 +667,8 @@ const SubPriceTable: React.FC<SubPriceTableProps> = ({
   index,
   control,
   removeSubItem,
+  currency,
 }) => {
-  const currency = "USD";
   return (
     <div className="ml-8 space-y-2">
       {subItems!.map((subItem: any, subIndex: any) => (

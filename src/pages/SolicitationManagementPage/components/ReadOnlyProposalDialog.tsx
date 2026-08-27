@@ -21,6 +21,8 @@ interface ProposalPriceAction {
   quantity: number;
   unitOfmeasurement: string;
   unitPrice: number;
+  // Vendor's submitted currency — BE now returns it on each price-action item.
+  currency?: string;
   subtotal: number;
   subItems?: ProposalPriceAction[];
 }
@@ -42,7 +44,6 @@ const ReadOnlyProposalDialog: React.FC<ReadOnlyProposalDialogProps> = ({
   onOpenChange,
   proposalId,
 }) => {
-  const currency = "USD";
   const toastHandlers = useToastHandler();
 
   const { data: priceBreakdownData, isLoading, error, isError } = useQuery({
@@ -63,6 +64,8 @@ const ReadOnlyProposalDialog: React.FC<ReadOnlyProposalDialogProps> = ({
 
   // Calculate total amount from price breakdown data
   const priceBreakdownItems = Array.isArray(priceBreakdownData?.data) ? priceBreakdownData.data : [];
+  // Read the vendor's submitted currency from the response (all items share it).
+  const currency = priceBreakdownItems[0]?.currency || "USD";
   const totalAmount = priceBreakdownItems.reduce((sum: number, item: ProposalPriceAction) => {
     const itemTotal = item.subtotal || 0;
     const subItemsTotal = (item.subItems || []).reduce((subSum: number, subItem: ProposalPriceAction) => subSum + (subItem.subtotal || 0), 0);
