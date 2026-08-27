@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
@@ -27,7 +27,11 @@ const ConfirmCompanyPage = () => {
   const location = useLocation();
   const isAuthenticated = useAuthentication();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get("token") ?? "";
+  // Capture the token once at mount. It never changes for the life of the page,
+  // so deriving it live from searchParams would only add coupling — and the
+  // success effect below strips it from the URL, which would otherwise blank a
+  // live value out from under the retry button / status logic.
+  const [token] = useState(() => searchParams.get("token") ?? "");
 
   // Confirming consumes a single-use token — a state-changing action, so this is
   // a mutation, not a query. Firing it once from an effect (guarded by a ref)
@@ -150,7 +154,10 @@ const ConfirmCompanyPage = () => {
               <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                 Invitation link problem
               </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p
+                className="text-sm text-gray-600 dark:text-gray-400"
+                role="alert"
+              >
                 {errorMessage}
               </p>
               {/* Retry recovers a transient PRE-server failure (token never
