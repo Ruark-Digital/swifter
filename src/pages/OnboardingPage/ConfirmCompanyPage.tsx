@@ -49,6 +49,7 @@ const ConfirmCompanyPage = () => {
   // the Referer header.
   const {
     mutate: confirmCompany,
+    isPending,
     isSuccess,
     isError,
     data,
@@ -82,6 +83,8 @@ const ConfirmCompanyPage = () => {
     // isSuccess wins first — the success effect above strips the token from the
     // URL, and this ordering keeps the success screen from flipping to "error".
     if (isSuccess) return "success";
+    // A retry re-enters the pending state; show loading, not the stale error.
+    if (isPending) return "loading";
     // A missing token can never confirm anything — treat it as an invalid link.
     if (!token || isError) return "error";
     return "loading";
@@ -177,9 +180,10 @@ const ConfirmCompanyPage = () => {
                 <Button
                   type="button"
                   onClick={() => confirmCompany(token)}
+                  disabled={isPending}
                   className="mt-2 w-full h-11 bg-[#2A4467] hover:bg-[#1e3147] text-white"
                 >
-                  Try again
+                  {isPending ? "Retrying…" : "Try again"}
                 </Button>
               )}
               <Button
