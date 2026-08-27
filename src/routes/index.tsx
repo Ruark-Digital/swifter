@@ -31,6 +31,7 @@ import CommunicationManagementPage from "@/pages/CommunicationManagementPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import VendorOnboardingPage from "@/pages/OnboardingPage/VendorOnboardingPage";
 import PmOnboardingPage from "@/pages/OnboardingPage/PmOnboardingPage";
+import ConfirmCompanyPage from "@/pages/OnboardingPage/ConfirmCompanyPage";
 import SubmitProposalPage from "@/pages/SolicitationManagementPage/components/SubmitProposalPage";
 import EditProposalPage from "@/pages/SolicitationManagementPage/components/EditProposalPage";
 import ProposalDetailsPage from "@/pages/SolicitationManagementPage/ProposalDetailsPage";
@@ -108,6 +109,14 @@ export const routes = [
             <PmOnboardingPage />
           </PublicRoute>
         ),
+      },
+      {
+        // Cross-company vendor invite confirmation. Deliberately NOT wrapped in
+        // <PublicRoute>: the invitee already has an account and may be logged
+        // in, and PublicRoute would redirect them away before the token is
+        // confirmed. The page reads ?token= from the query string.
+        path: "/vendor/confirm-company",
+        element: <ConfirmCompanyPage />,
       },
       {
         path: "/privacy-policy",
