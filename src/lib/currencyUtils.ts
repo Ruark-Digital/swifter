@@ -125,3 +125,22 @@ export const getExchangeRate = async (
 
   return rate;
 };
+
+/**
+ * Resolve the conversion rate to send with a submission (e.g. a vendor
+ * proposal). Mirrors the Create Contract wizard: no conversion (rate 1) when
+ * the two currencies match or either is missing, otherwise the live rate from
+ * `getExchangeRate(from, to)`. Falls back to 1 if the rate lookup fails so a
+ * submission is never blocked by the exchange-rate service being unavailable.
+ */
+export const resolveConversionRate = async (
+  fromCurrency?: string | null,
+  toCurrency?: string | null,
+): Promise<number> => {
+  if (!fromCurrency || !toCurrency || fromCurrency === toCurrency) return 1;
+  try {
+    return await getExchangeRate(fromCurrency, toCurrency);
+  } catch {
+    return 1;
+  }
+};
