@@ -194,7 +194,7 @@ export const ProposalPriceBreakdownSheet = ({
       header: "Unit Price",
       cell: ({ row }) => (
         <div className="text-right">
-          {row.original.unitPrice.toLocaleString("en-US", {
+          {(row.original.unitPrice ?? 0).toLocaleString("en-US", {
             style: "currency",
             currency,
           })}
@@ -206,7 +206,7 @@ export const ProposalPriceBreakdownSheet = ({
       header: "Total",
       cell: ({ row }) => (
         <div className="text-right font-medium">
-          {row.original.subtotal.toLocaleString("en-US", {
+          {(row.original.subtotal ?? 0).toLocaleString("en-US", {
             style: "currency",
             currency,
           })}
