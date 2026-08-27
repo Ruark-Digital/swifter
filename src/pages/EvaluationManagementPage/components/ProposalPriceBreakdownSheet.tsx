@@ -126,7 +126,7 @@ export const ProposalPriceBreakdownSheet = ({
 
   // Single formatter for every money value in the sheet so unit price,
   // subtotal, and grand total stay consistent in the vendor's currency.
-  const formatPrice = (value: number) =>
+  const formatPrice = (value: number | null | undefined) =>
     (value ?? 0).toLocaleString("en-US", {
       style: "currency",
       currency,
