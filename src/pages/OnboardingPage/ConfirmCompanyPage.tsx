@@ -1,8 +1,10 @@
+import { useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { getRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
+import { useAuthentication } from "@/hooks/useAuthentication";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import swiftproLogo from "@/assets/image9.png";
@@ -22,33 +24,43 @@ type ConfirmCompanyData = { message?: string };
 
 const ConfirmCompanyPage = () => {
   const navigate = useNavigate();
+  const isAuthenticated = useAuthentication();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
 
-  const { isSuccess, isError, data, error } = useQuery<
-    ApiResponse<ConfirmCompanyData>,
-    ApiResponseError
-  >({
-    queryKey: ["confirm-vendor-company", token],
-    queryFn: async () =>
+  // Confirming consumes a single-use token — a state-changing action, so this is
+  // a mutation, not a query. Firing it once from an effect (guarded by a ref)
+  // avoids React Query's read semantics: no refetch on remount/reconnect and no
+  // StrictMode double-fire, either of which would re-send the now-spent token
+  // and surface a spurious "expired" error on an invite that already succeeded.
+  const {
+    mutate: confirmCompany,
+    isSuccess,
+    isError,
+    data,
+    error,
+  } = useMutation<ApiResponse<ConfirmCompanyData>, ApiResponseError, string>({
+    mutationFn: async (inviteToken) =>
       await getRequest({
         url: "/auth/vendor/confirm-company",
-        config: { params: { token } },
+        config: { params: { token: inviteToken } },
       }),
-    // A missing token can never confirm anything, so don't fire the request —
-    // it's surfaced as an invalid link below instead.
-    enabled: Boolean(token),
-    retry: false,
-    refetchOnWindowFocus: false,
   });
 
-  const status: "loading" | "success" | "error" = !token
-    ? "error"
-    : isSuccess
-      ? "success"
-      : isError
-        ? "error"
-        : "loading";
+  const hasFired = useRef(false);
+  useEffect(() => {
+    if (hasFired.current || !token) return;
+    hasFired.current = true;
+    confirmCompany(token);
+  }, [token, confirmCompany]);
+
+  const getStatus = (): "loading" | "success" | "error" => {
+    // A missing token can never confirm anything — treat it as an invalid link.
+    if (!token || isError) return "error";
+    if (isSuccess) return "success";
+    return "loading";
+  };
+  const status = getStatus();
 
   const successMessage =
     data?.data?.data?.message ??
@@ -58,6 +70,11 @@ const ConfirmCompanyPage = () => {
     ? "This invitation link is invalid. Please open the link from your invitation email."
     : (error?.response?.data?.message ??
       "This invitation link is invalid or has expired. Please ask the company to resend your invitation.");
+
+  // The invitee often already has an account and may be logged in; since the
+  // CTA lands on "/" (which routes authenticated users to their dashboard and
+  // guests to login), label it for whichever the viewer actually is.
+  const ctaLabel = isAuthenticated ? "Go to Dashboard" : "Go to Login";
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-12 px-4 sm:px-6 lg:px-8 transition-colors">
@@ -97,7 +114,7 @@ const ConfirmCompanyPage = () => {
                 onClick={() => navigate("/")}
                 className="mt-2 w-full h-11 bg-[#2A4467] hover:bg-[#1e3147] text-white"
               >
-                Go to Login
+                {ctaLabel}
               </Button>
             </>
           )}
@@ -120,7 +137,7 @@ const ConfirmCompanyPage = () => {
                 onClick={() => navigate("/")}
                 className="mt-2 w-full h-11 border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
               >
-                Go to Login
+                {ctaLabel}
               </Button>
             </>
           )}
