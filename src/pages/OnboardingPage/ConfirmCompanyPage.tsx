@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { getRequest } from "@/lib/axiosInstance";
@@ -24,6 +24,7 @@ type ConfirmCompanyData = { message?: string };
 
 const ConfirmCompanyPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const isAuthenticated = useAuthentication();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
@@ -63,10 +64,22 @@ const ConfirmCompanyPage = () => {
     confirmCompany(token);
   }, [token, confirmCompany]);
 
+  // Once confirmed, drop the spent single-use token from the address bar so a
+  // bookmarked/shared URL doesn't later render a confusing "expired" error and
+  // the token stops lingering in history. getStatus() keys off isSuccess first,
+  // so clearing `token` here does NOT flip the success screen back to an error.
+  useEffect(() => {
+    if (isSuccess && location.search) {
+      navigate(location.pathname, { replace: true });
+    }
+  }, [isSuccess, location.pathname, location.search, navigate]);
+
   const getStatus = (): "loading" | "success" | "error" => {
+    // isSuccess wins first — the success effect above strips the token from the
+    // URL, and this ordering keeps the success screen from flipping to "error".
+    if (isSuccess) return "success";
     // A missing token can never confirm anything — treat it as an invalid link.
     if (!token || isError) return "error";
-    if (isSuccess) return "success";
     return "loading";
   };
   const status = getStatus();
@@ -140,10 +153,19 @@ const ConfirmCompanyPage = () => {
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 {errorMessage}
               </p>
-              {/* Only a real token can be retried; a missing token never will
-                  succeed, so it only gets the navigate-away CTA. A transient
-                  network failure otherwise leaves no way back without a full
-                  reload (which may then hit an already-spent token). */}
+              {/* Retry recovers a transient PRE-server failure (token never
+                  reached the BE, so still valid). But the token is single-use:
+                  if the first request already consumed it — including the case
+                  where it succeeded but the response was lost — a retry returns
+                  "expired". This note steers that case to sign-in instead of
+                  looking like a hard failure. A missing token can't be retried
+                  at all, so both the note and button are gated on `token`. */}
+              {token && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Already opened this link before? Your invitation may already be
+                  active — try signing in to check.
+                </p>
+              )}
               {token && (
                 <Button
                   type="button"
