@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
@@ -85,5 +85,32 @@ describe("ConfirmCompanyPage (cross-company vendor invite)", () => {
     await waitFor(() => {
       expect(screen.getByText(/invalid or expired token/i)).toBeInTheDocument();
     });
+  });
+
+  it("lets the user retry after a transient failure", async () => {
+    getRequestMock
+      .mockRejectedValueOnce({ response: { data: { message: "Network error" } } })
+      .mockResolvedValueOnce({
+        data: {
+          status: true,
+          message: "OK",
+          data: {
+            message: "You have successfully joined the company as a vendor",
+          },
+        },
+      });
+
+    renderAt("/vendor/confirm-company?token=abc123");
+
+    // First attempt failed -> error state offers a retry.
+    const retry = await screen.findByRole("button", { name: /try again/i });
+    fireEvent.click(retry);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/successfully joined the company/i),
+      ).toBeInTheDocument();
+    });
+    expect(getRequestMock).toHaveBeenCalledTimes(2);
   });
 });

@@ -33,6 +33,15 @@ const ConfirmCompanyPage = () => {
   // avoids React Query's read semantics: no refetch on remount/reconnect and no
   // StrictMode double-fire, either of which would re-send the now-spent token
   // and surface a spurious "expired" error on an invite that already succeeded.
+  //
+  // The endpoint is GET with the token in the query string per the BE contract
+  // (docs: GET /auth/vendor/confirm-company?token=). GET for a state-changing
+  // consume isn't ideal (prefetch/proxy caching, token in history/Referer), but
+  // the HTTP method is the BE's to change — a POST with the token in the body
+  // would be the proper fix (flagged for BE). Residual exposure is low: the
+  // token is single-use and server-decrypted, so it is inert once consumed, and
+  // referrerPolicy="no-referrer" on the outbound link below stops it leaking via
+  // the Referer header.
   const {
     mutate: confirmCompany,
     isSuccess,
@@ -131,6 +140,19 @@ const ConfirmCompanyPage = () => {
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 {errorMessage}
               </p>
+              {/* Only a real token can be retried; a missing token never will
+                  succeed, so it only gets the navigate-away CTA. A transient
+                  network failure otherwise leaves no way back without a full
+                  reload (which may then hit an already-spent token). */}
+              {token && (
+                <Button
+                  type="button"
+                  onClick={() => confirmCompany(token)}
+                  className="mt-2 w-full h-11 bg-[#2A4467] hover:bg-[#1e3147] text-white"
+                >
+                  Try again
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
@@ -151,6 +173,7 @@ const ConfirmCompanyPage = () => {
             href="https://aigproinc.ca/"
             target="_blank"
             rel="noopener noreferrer"
+            referrerPolicy="no-referrer"
             className="font-medium text-[#2A4467] dark:text-[#4A90E2] hover:underline cursor-pointer"
           >
             AIG Pro Inc
