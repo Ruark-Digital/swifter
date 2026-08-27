@@ -124,6 +124,14 @@ export const ProposalPriceBreakdownSheet = ({
     0
   );
 
+  // Single formatter for every money value in the sheet so unit price,
+  // subtotal, and grand total stay consistent in the vendor's currency.
+  const formatPrice = (value: number | null | undefined) =>
+    (value ?? 0).toLocaleString("en-US", {
+      style: "currency",
+      currency,
+    });
+
   // Flatten price breakdown items for table display
   const flattenPriceItems = (
     items: ProposalPriceAction[],
@@ -193,12 +201,7 @@ export const ProposalPriceBreakdownSheet = ({
       accessorKey: "unitPrice",
       header: "Unit Price",
       cell: ({ row }) => (
-        <div className="text-right">
-          {(row.original.unitPrice ?? 0).toLocaleString("en-US", {
-            style: "currency",
-            currency,
-          })}
-        </div>
+        <div className="text-right">{formatPrice(row.original.unitPrice)}</div>
       ),
     },
     {
@@ -206,10 +209,7 @@ export const ProposalPriceBreakdownSheet = ({
       header: "Total",
       cell: ({ row }) => (
         <div className="text-right font-medium">
-          {(row.original.subtotal ?? 0).toLocaleString("en-US", {
-            style: "currency",
-            currency,
-          })}
+          {formatPrice(row.original.subtotal)}
         </div>
       ),
     },
@@ -346,10 +346,7 @@ export const ProposalPriceBreakdownSheet = ({
                     Total
                   </span>
                   <span className="text-lg font-bold text-gray-900 dark:text-slate-200">
-                    {totalAmount.toLocaleString("en-US", {
-                      style: "currency",
-                      currency,
-                    })}
+                    {formatPrice(totalAmount)}
                   </span>
                 </div>
               </div>
