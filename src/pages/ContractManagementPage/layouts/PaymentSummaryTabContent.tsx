@@ -794,12 +794,12 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
 
   return (
     <TabsContent value="payment-summary" className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
           Payment Summary
         </h3>
 
-        <div className="flex items-center gap-6">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-6">
           <ExportReportSheet contractId={contractId} contractType="Contract">
             <button
               type="button"
