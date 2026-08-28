@@ -675,22 +675,22 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
   const holdbackRows = React.useMemo<HoldbackReleaseRow[]>(() => {
     const holdbacks = holdbacksResponse?.data ?? [];
     
-    return holdbacks.map((holdback) => ({
-      releaseId: holdback.holdBackId ?? `-`,
-      currency,
-      releasedType:
-        holdback.type === "full"
-          ? "Full"
-          : holdback.type === "partial"
-            ? "Partial"
-            : "-",
-      releasedAmount: formatMoney(holdback.amount),
-      status: holdback?.status ?? "-",
-      releaseDate: (() => {
-        const released = resolveHoldbackReleaseDate(holdback);
-        return released ? formatDateTZ(released, "MMM d, yyyy") : "-";
-      })(),
-    }));
+    return holdbacks.map((holdback) => {
+      const released = resolveHoldbackReleaseDate(holdback);
+      return {
+        releaseId: holdback.holdBackId ?? `-`,
+        currency,
+        releasedType:
+          holdback.type === "full"
+            ? "Full"
+            : holdback.type === "partial"
+              ? "Partial"
+              : "-",
+        releasedAmount: formatMoney(holdback.amount),
+        status: holdback?.status ?? "-",
+        releaseDate: released ? formatDateTZ(released, "MMM d, yyyy") : "-",
+      };
+    });
   }, [formatMoney, holdbacksResponse?.data, currency]);
 
   const savingsRows = React.useMemo<SavingsRealizedRow[]>(() => {

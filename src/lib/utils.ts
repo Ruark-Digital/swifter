@@ -103,10 +103,18 @@ export function formatDateTZ(
       const [fullDate, fullTime] = dateInput.split("T");
       const [year, month, day] = fullDate.split("-").map(Number);
 
-      const [timePart] = fullTime.split("."); // remove .000Z
-      const [hour, minute, second] = timePart.split(":").map(Number);
+      // Date-only strings (e.g. "2024-01-15") have no time part; default to midnight.
+      const [timePart] = (fullTime ?? "").split("."); // remove .000Z
+      const [hour, minute, second] = (timePart ?? "").split(":").map(Number);
 
-      date = new Date(year, month - 1, day, hour, minute, second || 0);
+      date = new Date(
+        year,
+        month - 1,
+        day,
+        hour || 0,
+        minute || 0,
+        second || 0
+      );
     } else {
       // For already-created Date objects
       date = new Date(

@@ -20,6 +20,21 @@ import {
   formatDateTZ,
   resolveHoldbackReleaseDate,
 } from "@/lib/utils";
+import type { ContractHoldBackDTO } from "../api/contractManagerApi";
+
+const GREEN_STATUS_STYLE = "bg-[#EAF7EE] text-[#16A34A] hover:bg-[#EAF7EE]";
+const RED_STATUS_STYLE = "bg-[#FEE2E2] text-[#DC2626] hover:bg-[#FEE2E2]";
+const PENDING_STATUS_STYLE = "bg-[#FEF9C3] text-[#CA8A04] hover:bg-[#FEF9C3]";
+
+// Any status that represents a released/settled holdback shares the "green" badge.
+const HOLDBACK_STATUS_STYLE_MAP: Record<string, string> = {
+  approved: GREEN_STATUS_STYLE,
+  released: GREEN_STATUS_STYLE,
+  complete: GREEN_STATUS_STYLE,
+  completed: GREEN_STATUS_STYLE,
+  paid: GREEN_STATUS_STYLE,
+  rejected: RED_STATUS_STYLE,
+};
 
 type Props = {
   trigger: React.ReactNode;
@@ -28,33 +43,8 @@ type Props = {
   currency?: string;
 };
 
-export interface HoldbackDetailDTO {
-  _id: string;
-  contract: string;
-  contractRefModel: string;
-  company: string;
-  amount: number;
-  holdBackId: string;
-  type: string;
-  status: string;
-  approvedBy: string;
-  description: string;
-  releasedDate?: string | Date | null;
-  releaseDate?: string | Date | null;
-  createdAt?: string | Date | null;
-  updatedAt?: string | Date | null;
-  files: File[];
-  __v: number;
-}
-
-export interface File {
-  name: string;
-  url: string;
-  type: string;
-  size: string;
-  _id: string;
-  uploadedAt: Date;
-}
+// Structurally identical to the API DTO; reuse it so the two never drift apart.
+export type HoldbackDetailDTO = ContractHoldBackDTO;
 
 const HoldbackDetailsSheet: React.FC<Props> = ({
   trigger,
@@ -111,11 +101,7 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
   const statusValue = detail?.status ?? "";
   const normalizedStatus = statusValue.toLowerCase();
   const statusStyles =
-    normalizedStatus === "approved"
-      ? "bg-[#EAF7EE] text-[#16A34A] hover:bg-[#EAF7EE]"
-      : normalizedStatus === "rejected"
-        ? "bg-[#FEE2E2] text-[#DC2626] hover:bg-[#FEE2E2]"
-        : "bg-[#FEF9C3] text-[#CA8A04] hover:bg-[#FEF9C3]";
+    HOLDBACK_STATUS_STYLE_MAP[normalizedStatus] ?? PENDING_STATUS_STYLE;
   const statusLabel = statusValue
     ? statusValue.charAt(0).toUpperCase() + statusValue.slice(1)
     : "Pending";

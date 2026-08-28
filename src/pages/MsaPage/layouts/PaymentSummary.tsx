@@ -59,10 +59,10 @@ type PaymentHoldbackApi = {
   type?: string;
   amount?: number;
   status?: string;
-  releasedDate?: string | Date;
-  releaseDate?: string | Date;
-  createdAt?: string | Date;
-  updatedAt?: string | Date;
+  releasedDate?: string | Date | null;
+  releaseDate?: string | Date | null;
+  createdAt?: string | Date | null;
+  updatedAt?: string | Date | null;
 };
 
 type PaymentSavingApi = {
