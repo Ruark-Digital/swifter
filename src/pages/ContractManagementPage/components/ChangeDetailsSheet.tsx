@@ -35,6 +35,7 @@ import {
   getSimpleFileExtension,
 } from "@/lib/fileUtils";
 import {
+  formatChangeOriginLabel,
   getApproveDraftCoUrl,
   getConvertDirectiveUrl,
   getManagerApproveChangeUrl,
@@ -187,14 +188,15 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const approverStatus = detail?.approverStatus ?? "";
   const value = detail?.value;
   const files = detail?.files;
-  // Auto-generated Change Orders (promoted from a Request/Proposal) carry a
-  // back-reference — surface it as "Reference - Change Request/Proposal number".
+  // Change Orders promoted from a Request/Proposal — and COs/CPs converted from a
+  // Change Directive (#86) — carry a back-reference to the origin change in
+  // `originalChangeRef`. We surface it as "Reference - Change {Request|Proposal|
+  // Directive} Number". The origin type comes from `formatChangeOriginLabel`, not
+  // `originalChangeType` directly (the BE emits the typo "Diective" and the
+  // detail DTO's enum omits directive) — see the helper for the derivation.
   const changeDisplayId = detail?.changeId ?? "";
   const originalChangeRef = detail?.originalChangeRef;
-  const originalChangeType = detail?.originalChangeType as
-    | "request"
-    | "proposal"
-    | undefined;
+  const originalChangeType = detail?.originalChangeType as string | undefined;
   const originalChangeRefId =
     typeof originalChangeRef === "string"
       ? originalChangeRef
@@ -728,12 +730,14 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     <LabelRow label="Change ID" value={changeDisplayId} />
                   )}
                   <LabelRow label={isClaim ? "Claim Type" : "Change Type"} value={formatSecurityType(changeType)} />
-                  {!isClaim && changeType === "order" && originalChangeRefId && (
-                    <LabelRow
-                      label={`Reference - Change ${originalChangeType === "proposal" ? "Proposal" : "Request"} Number`}
-                      value={originalChangeRefId}
-                    />
-                  )}
+                  {!isClaim &&
+                    (changeType === "order" || changeType === "proposal") &&
+                    originalChangeRefId && (
+                      <LabelRow
+                        label={`Reference - Change ${formatChangeOriginLabel({ changeType, originalChangeType })} Number`}
+                        value={originalChangeRefId}
+                      />
+                    )}
                   {isClaim && impact && (
                     <LabelRow label="Impact" value={impact.replace("_", " ")} highlight />
                   )}
