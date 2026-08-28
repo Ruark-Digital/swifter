@@ -15,8 +15,11 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
-import { formatDate } from "date-fns";
-import { formatCurrency } from "@/lib/utils";
+import {
+  formatCurrency,
+  formatDateTZ,
+  resolveHoldbackReleaseDate,
+} from "@/lib/utils";
 
 type Props = {
   trigger: React.ReactNode;
@@ -36,7 +39,10 @@ export interface HoldbackDetailDTO {
   status: string;
   approvedBy: string;
   description: string;
-  releasedDate: Date;
+  releasedDate?: string | Date | null;
+  releaseDate?: string | Date | null;
+  createdAt?: string | Date | null;
+  updatedAt?: string | Date | null;
   files: File[];
   __v: number;
 }
@@ -99,6 +105,20 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
   }, [error, isError, toast]);
 
   const detail = detailRes?.data;
+
+  const releasedDate = resolveHoldbackReleaseDate(detail);
+
+  const statusValue = detail?.status ?? "";
+  const normalizedStatus = statusValue.toLowerCase();
+  const statusStyles =
+    normalizedStatus === "approved"
+      ? "bg-[#EAF7EE] text-[#16A34A] hover:bg-[#EAF7EE]"
+      : normalizedStatus === "rejected"
+        ? "bg-[#FEE2E2] text-[#DC2626] hover:bg-[#FEE2E2]"
+        : "bg-[#FEF9C3] text-[#CA8A04] hover:bg-[#FEF9C3]";
+  const statusLabel = statusValue
+    ? statusValue.charAt(0).toUpperCase() + statusValue.slice(1)
+    : "Pending";
 
   const mappedDocs: DocType[] = (detail?.files ?? []).map((f) => {
     const extension = getFileExtension(f.name || "", f.type || "");
@@ -251,7 +271,9 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
                       Released Date
                     </div>
                     <div className="text-sm font-semibold text-[#0F0F0F]">
-                      {detail?.releasedDate ? formatDate(detail?.releasedDate, "MMMM d, yyyy") : "-"}
+                      {releasedDate
+                        ? formatDateTZ(releasedDate, "MMMM d, yyyy")
+                        : "-"}
                     </div>
                   </div>
 
@@ -259,8 +281,10 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
                     <div className="text-xs font-medium text-[#9CA3AF]">
                       Status
                     </div>
-                    <Badge className="w-fit rounded-full bg-[#FEF9C3] px-4 py-1 text-xs font-semibold text-[#CA8A04] hover:bg-[#FEF9C3]">
-                      Pending
+                    <Badge
+                      className={`w-fit rounded-full px-4 py-1 text-xs font-semibold ${statusStyles}`}
+                    >
+                      {statusLabel}
                     </Badge>
                   </div>
                 </div>

@@ -269,7 +269,10 @@ export interface ContractHoldBackDTO {
   status:           string;
   approvedBy:       string;
   description:      string;
-  releasedDate:     Date;
+  releasedDate?:    string | Date | null;
+  releaseDate?:     string | Date | null;
+  createdAt?:       string | Date | null;
+  updatedAt?:       string | Date | null;
   files:            File[];
   __v:              number;
 }

@@ -7,6 +7,7 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUserRole } from "@/hooks/useUserRole";
 import { getRequest } from "@/lib/axiosInstance";
+import { resolveHoldbackReleaseDate } from "@/lib/utils";
 import PaymentSummaryMilestonesTable, {
   type PaymentMilestoneRow,
 } from "@/pages/ContractManagementPage/components/PaymentSummaryMilestonesTable";
@@ -42,7 +43,7 @@ type HoldbackReleaseRow = {
   releasedType: string;
   releasedAmount: string;
   status: string;
-  dueDate: string;
+  releaseDate: string;
 };
 
 type SavingRealizedRow = {
@@ -59,6 +60,9 @@ type PaymentHoldbackApi = {
   amount?: number;
   status?: string;
   releasedDate?: string | Date;
+  releaseDate?: string | Date;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
 };
 
 type PaymentSavingApi = {
@@ -197,7 +201,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
             : holdback?.type || "-",
       releasedAmount: formatMoney(holdback?.amount),
       status: holdback?.status ?? "-",
-      dueDate: formatShortDate(holdback?.releasedDate),
+      releaseDate: formatShortDate(resolveHoldbackReleaseDate(holdback)),
     }));
   }, [formatMoney, holdbacksResponse?.data]);
 
@@ -231,8 +235,8 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
         ),
       },
       {
-        accessorKey: "dueDate",
-        header: () => <div className="text-center">Due Date</div>,
+        accessorKey: "releaseDate",
+        header: () => <div className="text-center">Release Date</div>,
         cell: ({ getValue }) => (
           <div className="text-center">{getValue<string>()}</div>
         ),
@@ -390,7 +394,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
               row.releasedType,
               row.releasedAmount,
               row.status,
-              row.dueDate,
+              row.releaseDate,
             ]}
           />
           {holdbackRows.length === 0 && (

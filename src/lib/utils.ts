@@ -125,6 +125,47 @@ export function formatDateTZ(
   }
 }
 
+// Statuses that indicate a holdback has actually been released/approved and
+// therefore has a meaningful release date.
+const RELEASED_HOLDBACK_STATUSES = new Set([
+  "approved",
+  "released",
+  "complete",
+  "completed",
+  "paid",
+]);
+
+/**
+ * Resolve the effective "release date" for a holdback record.
+ *
+ * The backend does not (yet) expose a dedicated release-date field on the
+ * holdback resource, so this prefers an explicit `releasedDate`/`releaseDate`
+ * when present and, for records that have already been released/approved,
+ * falls back to the record's last-updated (then created) timestamp. Pending
+ * holdbacks have no release date and resolve to `undefined`.
+ */
+export function resolveHoldbackReleaseDate(
+  holdback?: {
+    releasedDate?: string | Date | null;
+    releaseDate?: string | Date | null;
+    status?: string | null;
+    updatedAt?: string | Date | null;
+    createdAt?: string | Date | null;
+  } | null
+): string | Date | undefined {
+  if (!holdback) return undefined;
+
+  const explicit = holdback.releasedDate ?? holdback.releaseDate;
+  if (explicit) return explicit;
+
+  const status = (holdback.status ?? "").toString().toLowerCase();
+  if (RELEASED_HOLDBACK_STATUSES.has(status)) {
+    return holdback.updatedAt ?? holdback.createdAt ?? undefined;
+  }
+
+  return undefined;
+}
+
 // Internal helper: compute the timezone offset (in minutes) for a given UTC date and IANA timezone.
 function getTimeZoneOffset(dateUTC: Date, timeZone: string): number {
   // Ensure we use a UTC-based date for stable calculations

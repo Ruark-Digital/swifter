@@ -20,7 +20,7 @@ import type { ContractDetail } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { contractManagerApi } from "../api/contractManagerApi";
-import { formatDateTZ } from "@/lib/utils";
+import { formatDateTZ, resolveHoldbackReleaseDate } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useWatch } from "react-hook-form";
 import { formatFileSize, getSimpleFileExtension } from "@/lib/fileUtils";
@@ -37,7 +37,7 @@ type HoldbackReleaseRow = {
   releasedType: string;
   releasedAmount: string;
   status: string;
-  dueDate: string;
+  releaseDate: string;
 };
 
 type SavingsRealizedRow = {
@@ -101,8 +101,8 @@ const holdbackReleaseColumns: ColumnDef<HoldbackReleaseRow>[] = [
     },
   },
   {
-    accessorKey: "dueDate",
-    header: () => <div className="w-[120px] text-center">Due Date</div>,
+    accessorKey: "releaseDate",
+    header: () => <div className="w-[120px] text-center">Release Date</div>,
     cell: ({ getValue }) => (
       <div className="w-[120px] py-4 text-center text-sm font-medium text-[#374151]">
         {getValue<string>()}
@@ -686,7 +686,10 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
             : "-",
       releasedAmount: formatMoney(holdback.amount),
       status: holdback?.status ?? "-",
-      dueDate: formatDateTZ(holdback?.releasedDate, "MMM d, yyyy") ?? "-",
+      releaseDate: (() => {
+        const released = resolveHoldbackReleaseDate(holdback);
+        return released ? formatDateTZ(released, "MMM d, yyyy") : "-";
+      })(),
     }));
   }, [formatMoney, holdbacksResponse?.data, currency]);
 
@@ -916,7 +919,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
               row.releasedType,
               row.releasedAmount,
               row.status,
-              row.dueDate,
+              row.releaseDate,
             ]}
           />
           {!holdbacksLoading && isVendor && holdbackRows.length === 0 && (
