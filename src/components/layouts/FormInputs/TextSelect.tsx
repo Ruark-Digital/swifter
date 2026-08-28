@@ -84,19 +84,11 @@ export const TextSelect = (
     // The "Clear selection" row reports the sentinel; emit "" instead.
     const nextValue =
       selectedValue === CLEAR_SELECTION_VALUE ? "" : selectedValue;
-    if (onChange) {
-      // For Forge compatibility
-      if (typeof onChange === "function") {
-        onChange(nextValue);
-      } else {
-        // For react-hook-form compatibility
-        (
-          onChange as (event: {
-            target: { name: string; value: string };
-          }) => void
-        )({ target: { name: name ?? "", value: nextValue } });
-      }
-    }
+    // Callers (Forge slots, and RHF's field.onChange) accept the raw value.
+    // The former event-style branch was unreachable — both members of the
+    // onChange union are functions, so a runtime `typeof` check could never
+    // select it — so call the value-style signature directly.
+    (onChange as ((value: string) => void) | undefined)?.(nextValue);
   };
 
   return (
