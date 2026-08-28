@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Share2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -247,12 +246,7 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
       >
         <div className="space-y-6" data-testid="approver-change-details-sheet">
           <SheetHeader>
-            <div className="flex items-center justify-between">
-              <SheetTitle>Change Details</SheetTitle>
-              <Button variant="outline" size="sm">
-                <Share2 className="mr-2 h-4 w-4" /> Export
-              </Button>
-            </div>
+            <SheetTitle>Change Details</SheetTitle>
           </SheetHeader>
 
           <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
