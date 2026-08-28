@@ -313,17 +313,18 @@ const Step1BasicInfo: React.FC<Props> = ({
       />
 
       {/* Dynamic Fields based on Relationship */}
+      {/* Single field — render full-width (no 2-col grid) so it doesn't leave
+          an empty cell to its right. The msa / msa_project branches keep the
+          grid because they have 2+ fields to fill it. */}
       {relationship === "project" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Forger
-            name="project"
-            label="Select Project"
-            placeholder="Construction Services ..."
-            component={TextSelect}
-            options={projectOptions}
-            data-testid="select-project-select"
-          />
-        </div>
+        <Forger
+          name="project"
+          label="Select Project"
+          placeholder="Construction Services ..."
+          component={TextSelect}
+          options={projectOptions}
+          data-testid="select-project-select"
+        />
       )}
 
       {relationship === "msa" && (
