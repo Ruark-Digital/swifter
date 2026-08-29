@@ -17,7 +17,6 @@ import { ContractsTabView } from "./ContractsTabView";
 import { VendorContractsView } from "./VendorContractsView";
 import {
   useLandingTabs,
-  resolveLandingTabRole,
   type LandingTabId,
 } from "./useLandingTabs";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -251,7 +250,6 @@ export const RoleBasedDashboard: React.FC = () => {
   const {
     dashboardConfig: actualDashboardConfig,
     userRole: actualRole,
-    roles,
   } = useUserRole();
   // The PM portal mirrors the vendor dashboard exactly (PM is a vendor-side
   // project manager). Alias the role for the entire dashboard subtree so every
@@ -274,13 +272,14 @@ export const RoleBasedDashboard: React.FC = () => {
   const navigate = useNavigate();
 
   const isProjectManager = actualRole === "project_manager";
-  // QA #225 — a Vendor-PM (CLM) account with only project_manager access has no
-  // Solicitation surface. The dashboard otherwise aliases the PM to the vendor
-  // view (which carries the "Solicitation" landing tab), so resolve the
-  // landing-tab role from the full role set: the Solicitation toggle shows only
-  // when the account also holds the vendor (Solicitation) role.
-  const landingTabRole = resolveLandingTabRole(actualRole, roles);
-  const landingTabs = useLandingTabs(landingTabRole, modules);
+  // The PM (Vendor-PM / CLM) side shows only the Contracts dashboard — no
+  // Solicitation toggle — even when the account also holds the vendor
+  // (Solicitation) role. A user with both accounts switches between the vendor
+  // and PM accounts at the account level, so an in-dashboard Solicitation/
+  // Contract toggle is redundant. Landing tabs come from the ACTIVE role
+  // (`actualRole`): on the PM side that's project_manager (Contracts only),
+  // while the vendor account keeps its own Solicitation + Contracts tabs.
+  const landingTabs = useLandingTabs(actualRole, modules);
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab") as LandingTabId | null;
   const defaultLandingTab = landingTabs[0]?.id;
