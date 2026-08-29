@@ -786,7 +786,16 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
   // "Apply for Holdback Release" button when neither is true.
   const hasHoldbackPct = Number(contract?.holdBack) > 0;
   const hasHoldbackAccrued = Number(contract?.holdBackBank) > 0;
-  const canApplyForHoldbackRelease = hasHoldbackPct || hasHoldbackAccrued;
+  // A PM may only have one release application in flight — block a new one while
+  // an existing holdback is still pending approval.
+  const hasPendingHoldback = (holdbacksResponse?.data ?? []).some(
+    (h) => (h?.status ?? "").toLowerCase() === "pending",
+  );
+  const canApplyForHoldbackRelease =
+    (hasHoldbackPct || hasHoldbackAccrued) && !hasPendingHoldback;
+  const holdbackReleaseDisabledReason = hasPendingHoldback
+    ? "A holdback release application is already pending approval."
+    : "No holdback was set on this contract and none has accumulated yet.";
   const contigency =
     formatMoney(Number(contract?.contingency ?? contract?.contigency)) ?? "-";
   const paymentStructure = contract?.paymentStructure ?? "-";
@@ -853,7 +862,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
               <button
                 type="button"
                 disabled
-                title="No holdback was set on this contract and none has accumulated yet."
+                title={holdbackReleaseDisabledReason}
                 className="inline-flex cursor-not-allowed items-center justify-center rounded-xl bg-[#2A4467] px-4 py-2 text-sm font-semibold text-white opacity-50"
               >
                 Apply for Holdback Release
