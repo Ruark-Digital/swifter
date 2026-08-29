@@ -121,7 +121,7 @@ const INVOICE_TYPES = [
   { label: "Progress Draw", value: "progress draw" },
   { label: "Monthly Payment", value: "monthly payment" },
   { label: "Milestone Payment", value: "milestone payment" },
-  { label: "Holdback", value: "holdback" },
+  { label: "Holdback Release", value: "holdback" },
 ];
 
 const TAX_CODES = [

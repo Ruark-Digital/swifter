@@ -35,6 +35,19 @@ import { DocumentItem, type DocType } from "./DocumentItem";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import type { ApiResponseError } from "@/types";
 
+/** Display label for an invoice's `type`. The "holdback" type is shown as
+ *  "Holdback Release" (matching the create-invoice type selector); every other
+ *  type is title-cased word-by-word (e.g. "progress draw" -> "Progress Draw").
+ *  The stored value stays "holdback" — only the label changes. */
+const formatInvoiceType = (type?: string | null): string => {
+  if (typeof type !== "string" || !type.trim()) return "-";
+  if (type.trim().toLowerCase() === "holdback") return "Holdback Release";
+  return type
+    .split(" ")
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(" ");
+};
+
 export type InvoiceRow = {
   id: string;
   type: string;
@@ -236,13 +249,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
           : "bg-yellow-100 text-yellow-700";
 
   const invoiceIdLabel = invoice?.invoiceId ?? invoice?._id ?? invoiceId;
-  const typeLabel =
-    typeof invoice?.type === "string"
-      ? invoice.type
-          .split(" ")
-          .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
-          .join(" ")
-      : "-";
+  const typeLabel = formatInvoiceType(invoice?.type);
 
   return (
     <Sheet
@@ -710,10 +717,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
 
     return rows.map((inv) => {
       const id = inv.invoiceId ?? inv._id ?? "-";
-      const type = (inv.type ?? "-")
-        .split(" ")
-        .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
-        .join(" ");
+      const type = formatInvoiceType(inv.type);
       const billed =
         typeof inv.amount === "number" ? currencyFormatter.format(inv.amount) : "-";
 
