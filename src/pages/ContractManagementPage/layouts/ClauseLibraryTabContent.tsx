@@ -6,6 +6,7 @@ import { getRequest } from "@/lib/axiosInstance";
 import { useParams } from "react-router-dom";
 import { format } from "date-fns";
 import { useToastHandler } from "@/hooks/useToaster";
+import { useUserRole } from "@/hooks/useUserRole";
 import type { ApiResponseError } from "@/types";
 import { ContractStatusBadge, type Status } from "@/pages/ContractManagementPage/components/StatusBadge";
 
@@ -439,15 +440,20 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
 }) => {
   const { id = "" } = useParams<{ id: string }>();
   const toastHandler = useToastHandler();
+  const { isApprover } = useUserRole();
   const [search, setSearch] = React.useState("");
   const resourceSegment =
     contractType === "MsaContract" ? "msa-contracts" : "contracts";
+  // Approvers read the clause library via their own base path
+  // (/contract/approver/{seg}/{id}/clauses); managers (and admins) use the
+  // manager path. Both are exposed by the BE.
+  const roleSegment = isApprover ? "approver" : "manager";
 
   const { data, isLoading } = useQuery<ClauseLibraryResponse>({
-    queryKey: ["contract-clause-library", contractType, id],
+    queryKey: ["contract-clause-library", roleSegment, contractType, id],
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/${resourceSegment}/${id}/clauses`,
+        url: `/contract/${roleSegment}/${resourceSegment}/${id}/clauses`,
       });
       return res.data as ClauseLibraryResponse;
     },
@@ -465,10 +471,10 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
   // the file to the browser. The old client-side print-to-PDF never fired the
   // print dialog reliably, so the button appeared dead (QA #186).
   const exportMutation = useMutation({
-    mutationKey: ["clause-library", "export", contractType, id],
+    mutationKey: ["clause-library", "export", roleSegment, contractType, id],
     mutationFn: async () =>
       await getRequest({
-        url: `/contract/manager/${resourceSegment}/${id}/clauses/export`,
+        url: `/contract/${roleSegment}/${resourceSegment}/${id}/clauses/export`,
         config: { responseType: "blob", params: { format: "pdf" } },
       }),
     onSuccess: (res) => {

@@ -155,6 +155,8 @@ const ROLE_TAB_WHITELIST: Record<
     // /approver/contracts/{id}/ratesheets and RateSheetsTabContent already
     // resolves the approver base path.
     "rate-sheets",
+    // Approvers can view the Clause Library (parity with the manager view).
+    "clause-library",
   ],
   vendor: [
     "overview",
