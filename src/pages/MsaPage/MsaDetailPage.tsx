@@ -127,6 +127,8 @@ const ROLE_TAB_WHITELIST: Record<
     // /approver/msa-contracts/{id}/ratesheets and RateSheetsTabContent
     // resolves the approver base path for the msa-contracts segment.
     "rate-sheets",
+    // Approvers can view the Clause Library (parity with the manager view).
+    "clause-library",
   ],
   vendor: [
     "overview",
