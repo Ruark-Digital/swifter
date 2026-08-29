@@ -247,6 +247,8 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
     { key: "invoices", label: "Invoice" },
     { key: "lems", label: "LEM" },
     { key: "amendments", label: "Amendment" },
+    { key: "holdbacks", label: "Holdback" },
+    { key: "ratesheets", label: "Ratesheet" },
   ];
 
   type FlatApproverItem = ContractApproverItem & {

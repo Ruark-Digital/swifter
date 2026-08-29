@@ -596,6 +596,8 @@ export type ContractApproverItemsByCategory = {
   invoices?: ContractApproverItem[];
   lems?: ContractApproverItem[];
   amendments?: ContractApproverItem[];
+  holdbacks?: ContractApproverItem[];
+  ratesheets?: ContractApproverItem[];
 };
 
 export type ContractApproverModelSummary = {
