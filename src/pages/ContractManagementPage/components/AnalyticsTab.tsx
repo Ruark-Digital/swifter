@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import type { ContractDetail } from "@/types";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import {
+  buildExpiryWarningLine,
   buildPendingApprovalLine,
   buildRfiAlertLine,
   isApprovalDelayed,
@@ -411,12 +412,9 @@ const AnalyticsTab: React.FC<Props> = ({
     push(c.kpiAlert?.message);
     push(typeof c.expiryAlert === "string" ? c.expiryAlert : c.expiryAlert?.message);
 
-    (c.insuranceWarnings ?? []).forEach((w) => {
-      const label = (w.label ?? w.category ?? "policy").replace(/_/g, " ");
-      const days =
-        typeof w.daysToExpiry === "number" ? ` (expires in ${w.daysToExpiry} days)` : "";
-      push(`Insurance warning: ${label}${days}`);
-    });
+    // Only COI is an insurance warning; contract securities (letter of credit,
+    // bank guarantee, performance bond, …) render as "Security warning" instead.
+    (c.insuranceWarnings ?? []).forEach((w) => push(buildExpiryWarningLine(w)));
 
     const late = count(c.deliverableAlerts?.late);
     const missed = count(c.deliverableAlerts?.missed);

@@ -80,6 +80,51 @@ export const buildPendingApprovalLine = (
   return line;
 };
 
+export type ExpiryWarning = {
+  category?: string;
+  label?: string;
+  daysToExpiry?: number;
+};
+
+/**
+ * Only a Certificate of Insurance (COI) is an insurance policy. The other
+ * instruments tracked under Compliance & Security — letter of credit, bank
+ * guarantee, performance bond, labor/material bond, etc. — are contract
+ * *securities*, not insurance. The alerts payload lumps them all into
+ * `insuranceWarnings`, tagged by `category`: the BE ships `category: "COI"`
+ * for insurance and `category: "contractSecurity"` for securities, so the
+ * category is the authoritative discriminator (the label is only a fallback).
+ */
+export const isInsurancePolicyType = (raw?: string): boolean => {
+  const v = (raw ?? "").toLowerCase().replace(/[\s_-]+/g, " ").trim();
+  if (!v) return false;
+  // Contract securities (letter of credit, bonds, guarantees) carry the
+  // `contractSecurity` category and are never insurance.
+  if (v.includes("security")) return false;
+  return (
+    v === "coi" ||
+    v.includes("certificate of insurance") ||
+    v.includes("insurance")
+  );
+};
+
+/** Expiry alert line for a compliance instrument. COI reads as an insurance
+ *  warning; every other security (LOC, bonds, guarantees) reads as a security
+ *  warning — e.g. "Insurance warning: COI (expires in 18 days)" vs
+ *  "Security warning: letter of credit (expires in 2 days)". */
+export const buildExpiryWarningLine = (w: ExpiryWarning): string => {
+  const label = (w?.label ?? w?.category ?? "policy").replace(/_/g, " ");
+  const days =
+    typeof w?.daysToExpiry === "number"
+      ? ` (expires in ${w.daysToExpiry} days)`
+      : "";
+  // Prefer the authoritative `category`; fall back to the label only when the
+  // category is absent.
+  const isInsurance = isInsurancePolicyType(w?.category ?? w?.label);
+  const prefix = isInsurance ? "Insurance warning" : "Security warning";
+  return `${prefix}: ${label}${days}`;
+};
+
 /** "Response to RFI 001 is overdue by 3 days" when overdue, else "Response to RFI 001 is pending". */
 export const buildRfiAlertLine = (rfi: RfiAlert): string => {
   const number = extractAlertItemNumber(rfi?.rfiId);
