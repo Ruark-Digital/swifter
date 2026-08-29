@@ -102,28 +102,29 @@ test.describe("contractAlerts helpers (unit) — QA #141", () => {
     expect(
       buildExpiryWarningLine({ category: "COI", label: "COI", daysToExpiry: 18 })
     ).toBe("Insurance warning: COI (expires in 18 days)");
-    // Contract securities → security warning (never "Insurance warning").
+    // Contract securities → security warning (never "Insurance warning"), and
+    // they "require resubmission" rather than "expire" — only a COI expires.
     expect(
       buildExpiryWarningLine({
         category: "contractSecurity",
         label: "letter_of_credit",
         daysToExpiry: 2,
       })
-    ).toBe("Security warning: letter of credit (expires in 2 days)");
+    ).toBe("Security warning: letter of credit requires resubmission (2 days left)");
     expect(
       buildExpiryWarningLine({
         category: "contractSecurity",
         label: "bank_guarantee",
         daysToExpiry: 12,
       })
-    ).toBe("Security warning: bank guarantee (expires in 12 days)");
+    ).toBe("Security warning: bank guarantee requires resubmission (12 days left)");
     expect(
       buildExpiryWarningLine({
         category: "contractSecurity",
         label: "performance_bond",
         daysToExpiry: 25,
       })
-    ).toBe("Security warning: performance bond (expires in 25 days)");
+    ).toBe("Security warning: performance bond requires resubmission (25 days left)");
     // No expiry count → no trailing parens.
     expect(
       buildExpiryWarningLine({ category: "COI", label: "COI" })
