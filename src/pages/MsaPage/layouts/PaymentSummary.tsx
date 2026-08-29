@@ -192,13 +192,15 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
 
   const currency = resolveCurrency(msa?.currency, useUser()?.currency);
   const formatMoney = React.useCallback(
-    (value?: number) => {
+    (value?: number, withDecimals = false) => {
       if (value == null || !Number.isFinite(value)) return "-";
       try {
         return new Intl.NumberFormat("en-US", {
           style: "currency",
           currency,
-          maximumFractionDigits: 0,
+          ...(withDecimals
+            ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+            : { maximumFractionDigits: 0 }),
         }).format(value);
       } catch {
         return `${value}`;
@@ -421,9 +423,9 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
 
         <LabelItem label="Holdback" value={holdbackValue} />
 
-        <LabelItem label="Holdback Amount" value={formatMoney(msa?.holdBackBank)} />
+        <LabelItem label="Holdback Amount" value={formatMoney(msa?.holdBackBank, true)} />
 
-        <LabelItem label="Holdback Released" value={formatMoney(msa?.holdBackReleased)} />
+        <LabelItem label="Holdback Released" value={formatMoney(msa?.holdBackReleased, true)} />
 
         <LabelItem label="Savings Realized" value={formatMoney(msa?.savingAmount)} />
 
