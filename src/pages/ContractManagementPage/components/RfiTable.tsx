@@ -997,8 +997,8 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
 
-  // Coerce the current deadline to a Date so the (now editable) picker prefills
-  // it and a follow-up responder can pick a fresh one (QA #176).
+  // Coerce the current deadline to a Date so the read-only picker displays the
+  // deadline set for the responder (they cannot change it).
   const initialDeadline = React.useMemo(() => {
     if (!rfi?.deadline) return undefined;
     const d = new Date(rfi.deadline as any);
@@ -1049,22 +1049,13 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
     mutationKey: ["approver", "contractRfis", "respond", rfiId],
     mutationFn: async (data: {
       responseDescription: string;
-      responseDeadline?: Date | string | null;
       files: File[] | null;
     }) => {
       const uploaded = await uploadFiles(data.files);
-      // The BE response DTO accepts a per-message `deadline`, so a responder
-      // posing a follow-up can set a fresh deadline for the next turn instead of
-      // being frozen to the initial one (QA #176).
-      const deadline = data.responseDeadline
-        ? (() => {
-            const d = new Date(data.responseDeadline as any);
-            return Number.isFinite(d.getTime()) ? d.toISOString() : undefined;
-          })()
-        : undefined;
+      // Responders cannot set or change the RFI deadline — it is fixed by the
+      // raiser — so no `deadline` is sent from the response dialog.
       const payload = {
         description: data.responseDescription,
-        deadline,
         files:
           uploaded && uploaded.length > 0
             ? uploaded.map((f) => ({
@@ -1109,7 +1100,6 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
     try {
       await respondMutation.mutateAsync({
         responseDescription: data.responseDescription,
-        responseDeadline: data.responseDeadline,
         files: data.files,
       });
     } catch {
@@ -1180,6 +1170,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
                   label="Response Deadline"
                   placeholder="Enter Date"
                   component={TextDatePicker}
+                  disabled
                 />
                 <Forger
                   name="responseDescription"
