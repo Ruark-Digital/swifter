@@ -98,7 +98,9 @@ test.describe("ADE-79 ContractInvoiceDTO Phase 2 enum handling", () => {
     await expect(invoiceTab).toBeVisible();
     await invoiceTab.click();
 
-    await expect(page.getByRole("cell", { name: "Holdback" })).toBeVisible();
+    await expect(
+      page.getByRole("cell", { name: "Holdback Release", exact: true }),
+    ).toBeVisible();
     await expect(page.getByRole("cell", { name: "Active" })).toBeVisible();
   });
 });

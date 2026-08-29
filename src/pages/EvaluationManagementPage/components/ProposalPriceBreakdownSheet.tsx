@@ -15,6 +15,10 @@ interface ProposalPriceAction {
   quantity: number;
   unitOfMeasurement: string;
   unitPrice: number;
+  // Currency the vendor submitted this pricing in — the BE now returns it on
+  // each price-action item. Used to render the breakdown in the correct
+  // currency instead of a hardcoded USD.
+  currency?: string;
   subtotal: number;
   subItems?: ProposalPriceAction[];
 }
@@ -42,7 +46,6 @@ export const ProposalPriceBreakdownSheet = ({
 }: ProposalPriceBreakdownSheetProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const toastHandlers = useToastHandler();
-  const currency = "USD";
 
   const {
     data: priceBreakdownData,
@@ -113,10 +116,21 @@ export const ProposalPriceBreakdownSheet = ({
   const priceBreakdownItems = Array.isArray(priceBreakdownData?.data)
     ? priceBreakdownData.data
     : [];
+  // All items in a proposal share the vendor's submitted currency; read it from
+  // the BE response (falls back to USD if a legacy payload omits it).
+  const currency = priceBreakdownItems[0]?.currency || "USD";
   const totalAmount = priceBreakdownItems.reduce(
     (sum, item) => sum + (item.subtotal || 0),
     0
   );
+
+  // Single formatter for every money value in the sheet so unit price,
+  // subtotal, and grand total stay consistent in the vendor's currency.
+  const formatPrice = (value: number | null | undefined) =>
+    (value ?? 0).toLocaleString("en-US", {
+      style: "currency",
+      currency,
+    });
 
   // Flatten price breakdown items for table display
   const flattenPriceItems = (
@@ -187,12 +201,7 @@ export const ProposalPriceBreakdownSheet = ({
       accessorKey: "unitPrice",
       header: "Unit Price",
       cell: ({ row }) => (
-        <div className="text-right">
-          {row.original.unitPrice.toLocaleString("en-US", {
-            style: "currency",
-            currency,
-          })}
-        </div>
+        <div className="text-right">{formatPrice(row.original.unitPrice)}</div>
       ),
     },
     {
@@ -200,10 +209,7 @@ export const ProposalPriceBreakdownSheet = ({
       header: "Total",
       cell: ({ row }) => (
         <div className="text-right font-medium">
-          {row.original.subtotal.toLocaleString("en-US", {
-            style: "currency",
-            currency,
-          })}
+          {formatPrice(row.original.subtotal)}
         </div>
       ),
     },
@@ -340,10 +346,7 @@ export const ProposalPriceBreakdownSheet = ({
                     Total
                   </span>
                   <span className="text-lg font-bold text-gray-900 dark:text-slate-200">
-                    {totalAmount.toLocaleString("en-US", {
-                      style: "currency",
-                      currency,
-                    })}
+                    {formatPrice(totalAmount)}
                   </span>
                 </div>
               </div>

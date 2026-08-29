@@ -9,6 +9,11 @@ import {
 import MultipleSelector, { Option } from "@/components/ui/multiselect";
 import { ForgerSlotProps } from "@adexdsamson/forge";
 
+// Sentinel value for the opt-in "Clear selection" row. Radix Select can't
+// toggle a selected item off or use an empty-value item, so a deselectable
+// select emits this sentinel and we map it back to "" before calling onChange.
+const CLEAR_SELECTION_VALUE = "__clear_selection__";
+
 export type TextSelectProps = {
   name: string;
   label?: string | JSX.Element;
@@ -16,6 +21,10 @@ export type TextSelectProps = {
   error?: string;
   options: { label: string; value: string; disabled?: boolean }[];
   placeholder?: string;
+  /** When true, a "Clear selection" row lets the user reset the field to empty
+   *  (only shown while a value is selected). Off by default so required
+   *  single-selects stay non-clearable. */
+  deselectable?: boolean;
   onChange?:
     | ((value: string) => void)
     | ((event: { target: { name: string; value: string } }) => void);
@@ -64,6 +73,7 @@ export const TextSelect = (
     placeholder,
     name,
     value,
+    deselectable,
     onChange,
     onBlur,
     "data-testid": dataTestId,
@@ -71,19 +81,14 @@ export const TextSelect = (
   } = props;
 
   const handleValueChange = (selectedValue: string) => {
-    if (onChange) {
-      // For Forge compatibility
-      if (typeof onChange === "function") {
-        onChange(selectedValue);
-      } else {
-        // For react-hook-form compatibility
-        (
-          onChange as (event: {
-            target: { name: string; value: string };
-          }) => void
-        )({ target: { name: name ?? "", value: selectedValue } });
-      }
-    }
+    // The "Clear selection" row reports the sentinel; emit "" instead.
+    const nextValue =
+      selectedValue === CLEAR_SELECTION_VALUE ? "" : selectedValue;
+    // Callers (Forge slots, and RHF's field.onChange) accept the raw value.
+    // The former event-style branch was unreachable — both members of the
+    // onChange union are functions, so a runtime `typeof` check could never
+    // select it — so call the value-style signature directly.
+    (onChange as ((value: string) => void) | undefined)?.(nextValue);
   };
 
   return (
@@ -116,6 +121,14 @@ export const TextSelect = (
           />
         </SelectTrigger>
         <SelectContent className="max-h-60 dark:bg-gray-800 dark:border-gray-600">
+          {deselectable && value ? (
+            <SelectItem
+              value={CLEAR_SELECTION_VALUE}
+              className="py-3 text-gray-500 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:bg-gray-700"
+            >
+              Clear selection
+            </SelectItem>
+          ) : null}
           {options
             ?.filter((item) => item.value !== "")
             .map((item) => (

@@ -192,13 +192,15 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
 
   const currency = resolveCurrency(msa?.currency, useUser()?.currency);
   const formatMoney = React.useCallback(
-    (value?: number) => {
+    (value?: number, withDecimals = false) => {
       if (value == null || !Number.isFinite(value)) return "-";
       try {
         return new Intl.NumberFormat("en-US", {
           style: "currency",
           currency,
-          maximumFractionDigits: 0,
+          ...(withDecimals
+            ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+            : { maximumFractionDigits: 0 }),
         }).format(value);
       } catch {
         return `${value}`;
@@ -363,11 +365,11 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
 
   return (
     <TabsContent value="payment-summary" className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
           Payment Summary
         </h3>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <ExportReportSheet contractId={contractId} contractType="MsaContract">
             <button
               type="button"
@@ -421,9 +423,9 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
 
         <LabelItem label="Holdback" value={holdbackValue} />
 
-        <LabelItem label="Holdback Amount" value={formatMoney(msa?.holdBackBank)} />
+        <LabelItem label="Holdback Amount" value={formatMoney(msa?.holdBackBank, true)} />
 
-        <LabelItem label="Holdback Released" value={formatMoney(msa?.holdBackReleased)} />
+        <LabelItem label="Holdback Released" value={formatMoney(msa?.holdBackReleased, true)} />
 
         <LabelItem label="Savings Realized" value={formatMoney(msa?.savingAmount)} />
 

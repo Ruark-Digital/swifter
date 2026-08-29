@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   changeTabToApiType,
   extractLockHolderName,
+  formatChangeOriginLabel,
   formatChangeTypeLabel,
   getApproveDraftCoUrl,
   getChangeLockUrl,
@@ -160,6 +161,38 @@ test.describe("contractChanges helpers (unit)", () => {
       { value: "order", label: "Change Order" },
       { value: "proposal", label: "Change Proposal" },
     ]);
+  });
+
+  test("labels the change-origin reference, tolerating the BE 'Diective' typo (#86)", async () => {
+    // A converted change PROPOSAL can only originate from a directive.
+    expect(
+      formatChangeOriginLabel({ changeType: "proposal", originalChangeType: undefined })
+    ).toBe("Directive");
+    // Even if the BE sends a stray/typo'd type, a proposal origin is a directive.
+    expect(
+      formatChangeOriginLabel({ changeType: "proposal", originalChangeType: "Diective" })
+    ).toBe("Directive");
+
+    // Change ORDER converted from a directive — tolerate the "Diective" typo and
+    // the correctly-spelled value.
+    expect(
+      formatChangeOriginLabel({ changeType: "order", originalChangeType: "Diective" })
+    ).toBe("Directive");
+    expect(
+      formatChangeOriginLabel({ changeType: "order", originalChangeType: "directive" })
+    ).toBe("Directive");
+
+    // Auto-promoted draft COs keep their request/proposal origin label.
+    expect(
+      formatChangeOriginLabel({ changeType: "order", originalChangeType: "proposal" })
+    ).toBe("Proposal");
+    expect(
+      formatChangeOriginLabel({ changeType: "order", originalChangeType: "request" })
+    ).toBe("Request");
+    // Missing origin on an order defaults to Request (prior behavior).
+    expect(
+      formatChangeOriginLabel({ changeType: "order", originalChangeType: undefined })
+    ).toBe("Request");
   });
 
   test("hides decision actions for directive changes", async () => {

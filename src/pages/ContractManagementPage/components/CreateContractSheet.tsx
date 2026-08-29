@@ -488,7 +488,7 @@ const SendForApprovalDialog = React.memo(
             </div>
 
             <div className="border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
-              <div className="grid grid-cols-[1fr_160px_140px] bg-slate-50 dark:bg-slate-800/60 px-6 py-2 text-sm font-semibold text-[#2A4467] dark:text-blue-300">
+              <div className="grid grid-cols-[minmax(0,1fr)_92px_84px] sm:grid-cols-[1fr_160px_140px] bg-slate-50 dark:bg-slate-800/60 px-4 sm:px-6 py-2 text-sm font-semibold text-[#2A4467] dark:text-blue-300">
                 <p>Group</p>
                 <p className="text-center">Role</p>
                 <p className="text-center">Action</p>
@@ -532,14 +532,14 @@ const SendForApprovalDialog = React.memo(
                   return (
                     <div
                       key={approverId}
-                      className="grid grid-cols-[1fr_160px_140px] items-center px-6 py-4"
+                      className="grid grid-cols-[minmax(0,1fr)_92px_84px] sm:grid-cols-[1fr_160px_140px] items-center px-4 sm:px-6 py-4"
                     >
                       <div className="space-y-1">
                         <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                           {name}
                         </p>
                         {email && (
-                          <p className="text-xs text-blue-600 ">{email}</p>
+                          <p className="text-xs text-blue-600 break-all">{email}</p>
                         )}
                       </div>
                       <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
@@ -605,7 +605,7 @@ const SendForApprovalDialog = React.memo(
               </div>
             </div>
 
-            <div className="flex items-center gap-6 justify-end">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-6 [&>button]:w-full sm:[&>button]:w-auto">
               <Button
                 type="button"
                 variant="outline"

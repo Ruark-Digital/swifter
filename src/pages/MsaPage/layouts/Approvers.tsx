@@ -83,6 +83,8 @@ const APPROVAL_ITEM_LABELS: Record<string, string> = {
   invoices: "Invoices",
   lems: "LEMs",
   amendments: "Amendments",
+  holdbacks: "Holdbacks",
+  ratesheets: "Ratesheets",
 };
 
 const ApprovalItemsList = ({

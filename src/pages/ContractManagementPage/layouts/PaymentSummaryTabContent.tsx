@@ -680,13 +680,15 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
 
   const currency = resolveCurrency(contract?.currency, useUser()?.currency);
   const formatMoney = React.useCallback(
-    (value?: number) => {
+    (value?: number, withDecimals = false) => {
       if (value == null || !Number.isFinite(value)) return "-";
       try {
         return new Intl.NumberFormat("en-US", {
           style: "currency",
           currency,
-          maximumFractionDigits: 0,
+          ...(withDecimals
+            ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+            : { maximumFractionDigits: 0 }),
         }).format(value);
       } catch {
         return `${value}`;
@@ -775,18 +777,30 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
   }, [contract?.milestone, deliverableNameById, formatMoney]);
 
   const contractValue = formatMoney(contract?.contractValue);
-  const holdbackReleased = formatMoney(contract?.holdBackReleased);
+  // Holdback Amount + Holdback Released render to 2 decimal places.
+  const holdbackReleased = formatMoney(contract?.holdBackReleased, true);
   const savingAmount = formatMoney(contract?.savingAmount);
   const holdbackValue =
     contract?.holdBack != null ? String(contract?.holdBack) : "-";
   const holdbackAmount =
-    contract?.holdBackBank != null ? formatMoney(contract?.holdBackBank) : "-";
+    contract?.holdBackBank != null
+      ? formatMoney(contract?.holdBackBank, true)
+      : "-";
   // #201 — a release only makes sense when a holdback percentage was set on the
   // contract OR a holdback balance has actually accumulated. Gray out the
   // "Apply for Holdback Release" button when neither is true.
   const hasHoldbackPct = Number(contract?.holdBack) > 0;
   const hasHoldbackAccrued = Number(contract?.holdBackBank) > 0;
-  const canApplyForHoldbackRelease = hasHoldbackPct || hasHoldbackAccrued;
+  // A PM may only have one release application in flight — block a new one while
+  // an existing holdback is still pending approval.
+  const hasPendingHoldback = (holdbacksResponse?.data ?? []).some(
+    (h) => (h?.status ?? "").toLowerCase() === "pending",
+  );
+  const canApplyForHoldbackRelease =
+    (hasHoldbackPct || hasHoldbackAccrued) && !hasPendingHoldback;
+  const holdbackReleaseDisabledReason = hasPendingHoldback
+    ? "A holdback release application is already pending approval."
+    : "No holdback was set on this contract and none has accumulated yet.";
   const contigency =
     formatMoney(Number(contract?.contingency ?? contract?.contigency)) ?? "-";
   const paymentStructure = contract?.paymentStructure ?? "-";
@@ -794,12 +808,12 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
 
   return (
     <TabsContent value="payment-summary" className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
           Payment Summary
         </h3>
 
-        <div className="flex items-center gap-6">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-6">
           <ExportReportSheet contractId={contractId} contractType="Contract">
             <button
               type="button"
@@ -853,7 +867,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
               <button
                 type="button"
                 disabled
-                title="No holdback was set on this contract and none has accumulated yet."
+                title={holdbackReleaseDisabledReason}
                 className="inline-flex cursor-not-allowed items-center justify-center rounded-xl bg-[#2A4467] px-4 py-2 text-sm font-semibold text-white opacity-50"
               >
                 Apply for Holdback Release

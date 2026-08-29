@@ -80,6 +80,7 @@ const Step3ValuePayments: React.FC<Props> = ({
           placeholder="Select Deliverable"
           component={TextSelect}
           options={deliverableOptions}
+          deselectable
           containerClass="md:col-span-2"
         />
       )}
@@ -126,6 +127,7 @@ const Step3ValuePayments: React.FC<Props> = ({
                   placeholder="Select Deliverable"
                   component={TextSelect}
                   options={deliverableOptions}
+                  deselectable
                   containerClass="md:col-span-2"
                 />
               </div>

@@ -1,10 +1,12 @@
 import { test, expect } from "@playwright/test";
 import {
+  buildExpiryWarningLine,
   buildPendingApprovalLine,
   buildRfiAlertLine,
   extractAlertItemNumber,
   formatAlertEntityLabel,
   isApprovalDelayed,
+  isInsurancePolicyType,
 } from "../lib/contractAlerts";
 
 test.describe("contractAlerts helpers (unit) — QA #141", () => {
@@ -80,5 +82,52 @@ test.describe("contractAlerts helpers (unit) — QA #141", () => {
     expect(
       buildRfiAlertLine({ rfiId: "RFI-003", isOverdue: false, daysUntilDeadline: 2 })
     ).toBe("RFI 003 is pending response");
+  });
+
+  test("classifies only COI as an insurance policy — securities are not", async () => {
+    expect(isInsurancePolicyType("COI")).toBe(true);
+    expect(isInsurancePolicyType("coi")).toBe(true);
+    expect(isInsurancePolicyType("certificate_of_insurance")).toBe(true);
+    // Contract securities are never insurance.
+    expect(isInsurancePolicyType("contractSecurity")).toBe(false);
+    expect(isInsurancePolicyType("letter_of_credit")).toBe(false);
+    expect(isInsurancePolicyType("bank_guarantee")).toBe(false);
+    expect(isInsurancePolicyType("performance_bond")).toBe(false);
+    expect(isInsurancePolicyType("")).toBe(false);
+    expect(isInsurancePolicyType(undefined)).toBe(false);
+  });
+
+  test("prefixes expiry lines by category — COI is insurance, contractSecurity is security", async () => {
+    // COI → insurance warning.
+    expect(
+      buildExpiryWarningLine({ category: "COI", label: "COI", daysToExpiry: 18 })
+    ).toBe("Insurance warning: COI (expires in 18 days)");
+    // Contract securities → security warning (never "Insurance warning"), and
+    // they "require resubmission" rather than "expire" — only a COI expires.
+    expect(
+      buildExpiryWarningLine({
+        category: "contractSecurity",
+        label: "letter_of_credit",
+        daysToExpiry: 2,
+      })
+    ).toBe("Security warning: letter of credit requires resubmission (2 days left)");
+    expect(
+      buildExpiryWarningLine({
+        category: "contractSecurity",
+        label: "bank_guarantee",
+        daysToExpiry: 12,
+      })
+    ).toBe("Security warning: bank guarantee requires resubmission (12 days left)");
+    expect(
+      buildExpiryWarningLine({
+        category: "contractSecurity",
+        label: "performance_bond",
+        daysToExpiry: 25,
+      })
+    ).toBe("Security warning: performance bond requires resubmission (25 days left)");
+    // No expiry count → no trailing parens.
+    expect(
+      buildExpiryWarningLine({ category: "COI", label: "COI" })
+    ).toBe("Insurance warning: COI");
   });
 });

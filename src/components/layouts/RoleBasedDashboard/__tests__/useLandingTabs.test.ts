@@ -46,4 +46,14 @@ describe("computeLandingTabs", () => {
   it("contract_manager is unaffected (returns [])", () => {
     expect(computeLandingTabs("contract_manager", modulesOn)).toEqual([]);
   });
+
+  // The PM (Vendor-PM / CLM) side shows only the Contracts dashboard — no
+  // Solicitation toggle. Landing tabs come from the ACTIVE role, so a PM is
+  // always project_manager here (even when the account also holds vendor);
+  // the account-level vendor/PM switch replaces the in-dashboard toggle.
+  it("project_manager landing tabs are Contracts-only (no Solicitation toggle)", () => {
+    expect(computeLandingTabs("project_manager", modulesOn).map((t) => t.id)).toEqual([
+      "contracts",
+    ]);
+  });
 });

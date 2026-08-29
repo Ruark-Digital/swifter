@@ -20,7 +20,7 @@ import {
 
 import { Plus, Trash2, CornerDownRight } from "lucide-react";
 import { UseFormSetValue, UseFormGetValues, useWatch } from "react-hook-form";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRequest, putRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -34,6 +34,8 @@ interface ProposalPriceAction {
   quantity: number;
   unitOfMeasurement: string;
   unitPrice: number;
+  // Vendor's submitted currency — BE now returns it on each price-action item.
+  currency?: string;
   subtotal: number;
   subItems?: ProposalPriceAction[];
 }
@@ -130,6 +132,7 @@ const AmendProposalDialog: React.FC<AmendProposalDialogProps> = ({
 }) => {
   const [totalAmount, setTotalAmount] = useState("0.00");
   const toastHandlers = useToastHandler();
+  const queryClient = useQueryClient();
 
   // Initialize form with forge
   const forge = useForge<AmendProposalFormValues>({
@@ -158,6 +161,11 @@ const AmendProposalDialog: React.FC<AmendProposalDialogProps> = ({
     enabled: open && !!proposalId,
   });
   const priceAction = priceBreakdownData?.data?.data;
+  // Vendor's submitted currency (all items share it) — drives the pricing
+  // display instead of a hardcoded USD (QA #214 / price-breakdown currency).
+  const currency =
+    (Array.isArray(priceAction) ? priceAction[0]?.currency : undefined) ||
+    "USD";
 
   // Initialize form with existing data when loaded
   useEffect(() => {
@@ -270,6 +278,17 @@ const AmendProposalDialog: React.FC<AmendProposalDialogProps> = ({
     },
     onSuccess: () => {
       toastHandlers.success("Success", "Proposal pricing amended successfully");
+      // The saved pricing must be visible immediately on reopen. Without this
+      // the dialog's own breakdown query stays cached (and, within the 30s
+      // global staleTime, is not even refetched on reopen), so the vendor sees
+      // stale numbers until they leave the solicitation and come back. Invalidate
+      // this dialog's source query plus the proposal/amendment views that render
+      // pricing (prefix-matched — this dialog only knows proposalId).
+      queryClient.invalidateQueries({
+        queryKey: ["proposal-price-breakdown", proposalId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["vendor-proposal"] });
+      queryClient.invalidateQueries({ queryKey: ["amendments"] });
       onOpenChange(false);
       reset();
     },
@@ -327,7 +346,7 @@ const AmendProposalDialog: React.FC<AmendProposalDialogProps> = ({
 
             {/* Pricing Table */}
             <PricingTable
-              {...{ control, totalAmount, setTotalAmount, setValue, getValues }}
+              {...{ control, totalAmount, setTotalAmount, setValue, getValues, currency }}
             />
 
             {/* Reason / Note */}
@@ -376,6 +395,7 @@ interface PricingTableProps {
   setTotalAmount: (amount: string) => void;
   setValue: UseFormSetValue<AmendProposalFormValues>;
   getValues: UseFormGetValues<AmendProposalFormValues>;
+  currency: string;
 }
 
 const PricingTable: React.FC<PricingTableProps> = ({
@@ -384,8 +404,8 @@ const PricingTable: React.FC<PricingTableProps> = ({
   setTotalAmount,
   setValue,
   getValues,
+  currency,
 }) => {
-  const currency = "USD";
   // Use field array for price actions
   const { fields, append, remove, update } = useFieldArray({
     control,
@@ -606,6 +626,7 @@ const PricingTable: React.FC<PricingTableProps> = ({
                 index={index}
                 control={control}
                 removeSubItem={removeSubItem}
+                currency={currency}
               />
             )}
           </div>
@@ -650,6 +671,7 @@ interface SubPriceTableProps {
   index: number;
   control: ForgeControl<AmendProposalFormValues>;
   removeSubItem: (itemIndex: number, subItemIndex: number) => void;
+  currency: string;
 }
 
 const SubPriceTable: React.FC<SubPriceTableProps> = ({
@@ -657,8 +679,8 @@ const SubPriceTable: React.FC<SubPriceTableProps> = ({
   index,
   control,
   removeSubItem,
+  currency,
 }) => {
-  const currency = "USD";
   return (
     <div className="ml-8 space-y-2">
       {subItems!.map((subItem: any, subIndex: any) => (

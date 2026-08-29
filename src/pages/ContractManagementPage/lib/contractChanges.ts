@@ -186,6 +186,32 @@ export const isCrCpOriginDraftCo = (
   return origin === "request" || origin === "proposal";
 };
 
+// ── Change-origin reference label (#86) ──────────────────────────────
+// A change order or change proposal that was promoted/converted from an earlier
+// change carries `originalChangeRef` (the origin's `changeId`). The label naming
+// the origin must NOT be driven off `originalChangeType`: the BE emits the typo
+// `"Diective"` on the convert response and the GET-detail DTO's enum omits
+// directive entirely. Instead:
+//   - a change PROPOSAL can only carry an origin ref when it was converted from a
+//     directive (proposals are never auto-promoted from another change), so its
+//     reference is always the CD → "Directive";
+//   - a change ORDER may be an auto-promoted draft CO (request/proposal origin)
+//     or a directive→CO conversion, so normalize the origin type, tolerating the
+//     "Diective" typo, and default to "Request" (the prior behavior).
+export const formatChangeOriginLabel = ({
+  changeType,
+  originalChangeType,
+}: {
+  changeType?: string | null;
+  originalChangeType?: string | null;
+}): "Directive" | "Proposal" | "Request" => {
+  if ((changeType ?? "").toLowerCase() === "proposal") return "Directive";
+  const origin = (originalChangeType ?? "").toLowerCase();
+  if (origin === "directive" || origin === "diective") return "Directive";
+  if (origin === "proposal") return "Proposal";
+  return "Request";
+};
+
 /**
  * Build the `approve-draft-co` URL. Mirrors {@link getChangeLockUrl}'s
  * dual-path handling — preserves the incoming role prefix and the

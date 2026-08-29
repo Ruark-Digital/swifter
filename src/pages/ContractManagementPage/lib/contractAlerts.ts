@@ -80,6 +80,55 @@ export const buildPendingApprovalLine = (
   return line;
 };
 
+export type ExpiryWarning = {
+  category?: string;
+  label?: string;
+  daysToExpiry?: number;
+};
+
+/**
+ * Only a Certificate of Insurance (COI) is an insurance policy. The other
+ * instruments tracked under Compliance & Security — letter of credit, bank
+ * guarantee, performance bond, labor/material bond, etc. — are contract
+ * *securities*, not insurance. The alerts payload lumps them all into
+ * `insuranceWarnings`, tagged by `category`: the BE ships `category: "COI"`
+ * for insurance and `category: "contractSecurity"` for securities, so the
+ * category is the authoritative discriminator (the label is only a fallback).
+ */
+export const isInsurancePolicyType = (raw?: string): boolean => {
+  const v = (raw ?? "").toLowerCase().replace(/[\s_-]+/g, " ").trim();
+  if (!v) return false;
+  // Contract securities (letter of credit, bonds, guarantees) carry the
+  // `contractSecurity` category and are never insurance.
+  if (v.includes("security")) return false;
+  return (
+    v === "coi" ||
+    v.includes("certificate of insurance") ||
+    v.includes("insurance")
+  );
+};
+
+/** Expiry/resubmission alert line for a compliance instrument. Only a COI
+ *  "expires" (insurance is renewed before its expiry); every other security
+ *  (LOC, bonds, guarantees) instead "requires resubmission" — e.g.
+ *  "Insurance warning: COI (expires in 18 days)" vs
+ *  "Security warning: letter of credit requires resubmission (2 days left)". */
+export const buildExpiryWarningLine = (w: ExpiryWarning): string => {
+  const label = (w?.label ?? w?.category ?? "policy").replace(/_/g, " ");
+  const hasDays = typeof w?.daysToExpiry === "number";
+  // Prefer the authoritative `category`; fall back to the label only when the
+  // category is absent.
+  const isInsurance = isInsurancePolicyType(w?.category ?? w?.label);
+  if (isInsurance) {
+    const days = hasDays ? ` (expires in ${w.daysToExpiry} days)` : "";
+    return `Insurance warning: ${label}${days}`;
+  }
+  // Contract securities don't "expire" in the alert sense — they must be
+  // re-submitted. Any day count is the time left to resubmit.
+  const daysLeft = hasDays ? ` (${w.daysToExpiry} days left)` : "";
+  return `Security warning: ${label} requires resubmission${daysLeft}`;
+};
+
 /** "Response to RFI 001 is overdue by 3 days" when overdue, else "Response to RFI 001 is pending". */
 export const buildRfiAlertLine = (rfi: RfiAlert): string => {
   const number = extractAlertItemNumber(rfi?.rfiId);

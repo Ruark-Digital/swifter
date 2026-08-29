@@ -112,7 +112,20 @@ export const ChangeOrdersImpactCard: React.FC<Props> = ({
                 domain={[0, domainMax]}
                 tick={{ fill: "#344054", fontSize: 12, fontWeight: 700 }}
               />
-              <XAxis dataKey="month" tick={{ fill: "#6B7280", fontSize: 12 }} />
+              {/* interval={0} forces every month's tick to render (Recharts'
+                  default `preserveEnd` drops every other month on a dense series);
+                  angling keeps all 12-13 monthly labels legible instead of
+                  crushing them together. Mirrors the angled category axis on the
+                  sibling "Contract Value by Category" chart. */}
+              <XAxis
+                dataKey="month"
+                interval={0}
+                angle={-35}
+                textAnchor="end"
+                height={48}
+                tickMargin={8}
+                tick={{ fill: "#6B7280", fontSize: 12 }}
+              />
               <Tooltip />
               <Line
                 type="monotone"
