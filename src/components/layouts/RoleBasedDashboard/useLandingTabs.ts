@@ -56,25 +56,6 @@ export function computeLandingTabs(
   }
 }
 
-/**
- * QA #225 — pick the role whose landing tabs the dashboard should render for a
- * vendor-side account.
- *
- * The dashboard aliases a project_manager (Vendor-PM / CLM) to the vendor view,
- * which carries the "Solicitation" landing tab. But a Vendor-PM account that
- * holds ONLY project_manager access has no Solicitation surface, so its landing
- * tabs must come from the real project_manager role (Contracts only). The
- * Solicitation toggle returns only when the account also holds the vendor
- * (Solicitation) role.
- */
-export function resolveLandingTabRole(
-  activeRole: UserRole,
-  roles: UserRole[],
-): UserRole {
-  if (activeRole !== "project_manager") return activeRole;
-  return roles.includes("vendor") ? "vendor" : "project_manager";
-}
-
 export function useLandingTabs(role: UserRole, modules: Modules | undefined) {
   return useMemo(() => computeLandingTabs(role, modules), [role, modules]);
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeLandingTabs, resolveLandingTabRole } from "../useLandingTabs";
+import { computeLandingTabs } from "../useLandingTabs";
 import type { Modules } from "@/types";
 
 const modulesOn: Modules = {
@@ -46,45 +46,13 @@ describe("computeLandingTabs", () => {
   it("contract_manager is unaffected (returns [])", () => {
     expect(computeLandingTabs("contract_manager", modulesOn)).toEqual([]);
   });
-});
 
-describe("resolveLandingTabRole (QA #225)", () => {
-  it("PM-only account resolves to project_manager (no Solicitation surface)", () => {
-    expect(resolveLandingTabRole("project_manager", ["project_manager"])).toBe(
-      "project_manager",
-    );
-  });
-
-  it("PM + vendor account resolves to vendor (Solicitation returns)", () => {
-    expect(
-      resolveLandingTabRole("project_manager", ["project_manager", "vendor"]),
-    ).toBe("vendor");
-  });
-
-  it("non-PM active roles pass through unchanged", () => {
-    expect(resolveLandingTabRole("vendor", ["vendor"])).toBe("vendor");
-    expect(resolveLandingTabRole("company_admin", ["company_admin"])).toBe(
-      "company_admin",
-    );
-    expect(resolveLandingTabRole("procurement", ["procurement"])).toBe(
-      "procurement",
-    );
-  });
-
-  it("PM-only landing tabs omit the Solicitation toggle, leaving only Contracts", () => {
-    const role = resolveLandingTabRole("project_manager", ["project_manager"]);
-    expect(computeLandingTabs(role, modulesOn).map((t) => t.id)).toEqual([
-      "contracts",
-    ]);
-  });
-
-  it("PM + vendor landing tabs include the Solicitation toggle", () => {
-    const role = resolveLandingTabRole("project_manager", [
-      "project_manager",
-      "vendor",
-    ]);
-    expect(computeLandingTabs(role, modulesOn).map((t) => t.id)).toEqual([
-      "invitations",
+  // The PM (Vendor-PM / CLM) side shows only the Contracts dashboard — no
+  // Solicitation toggle. Landing tabs come from the ACTIVE role, so a PM is
+  // always project_manager here (even when the account also holds vendor);
+  // the account-level vendor/PM switch replaces the in-dashboard toggle.
+  it("project_manager landing tabs are Contracts-only (no Solicitation toggle)", () => {
+    expect(computeLandingTabs("project_manager", modulesOn).map((t) => t.id)).toEqual([
       "contracts",
     ]);
   });
