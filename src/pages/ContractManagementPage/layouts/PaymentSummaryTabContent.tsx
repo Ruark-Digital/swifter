@@ -680,13 +680,15 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
 
   const currency = resolveCurrency(contract?.currency, useUser()?.currency);
   const formatMoney = React.useCallback(
-    (value?: number) => {
+    (value?: number, withDecimals = false) => {
       if (value == null || !Number.isFinite(value)) return "-";
       try {
         return new Intl.NumberFormat("en-US", {
           style: "currency",
           currency,
-          maximumFractionDigits: 0,
+          ...(withDecimals
+            ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+            : { maximumFractionDigits: 0 }),
         }).format(value);
       } catch {
         return `${value}`;
@@ -775,12 +777,15 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
   }, [contract?.milestone, deliverableNameById, formatMoney]);
 
   const contractValue = formatMoney(contract?.contractValue);
-  const holdbackReleased = formatMoney(contract?.holdBackReleased);
+  // Holdback Amount + Holdback Released render to 2 decimal places.
+  const holdbackReleased = formatMoney(contract?.holdBackReleased, true);
   const savingAmount = formatMoney(contract?.savingAmount);
   const holdbackValue =
     contract?.holdBack != null ? String(contract?.holdBack) : "-";
   const holdbackAmount =
-    contract?.holdBackBank != null ? formatMoney(contract?.holdBackBank) : "-";
+    contract?.holdBackBank != null
+      ? formatMoney(contract?.holdBackBank, true)
+      : "-";
   // #201 — a release only makes sense when a holdback percentage was set on the
   // contract OR a holdback balance has actually accumulated. Gray out the
   // "Apply for Holdback Release" button when neither is true.
