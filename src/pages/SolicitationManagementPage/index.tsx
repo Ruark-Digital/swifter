@@ -129,6 +129,16 @@ type Solicitation = {
   createdAt: string;
   updatedAt: string;
   companyId: string;
+  // Issuing (buyer) company, appended per-response on the vendor solicitation
+  // list endpoints. Nullable per BE spec (2.3.0 procurement service).
+  company?: {
+    _id: string;
+    name: string;
+    logo?: string | null;
+    industry?: string | null;
+    location?: string | null;
+    website?: string | null;
+  } | null;
   createdBy: {
     _id: string;
     name: string;
@@ -468,6 +478,10 @@ export const SolicitationManagementPage = () => {
     page: 1,
     limit: 10,
   });
+  // Client-side company filter (vendor only). The BE exposes no company query
+  // param, so we filter the loaded rows client-side — consistent with the
+  // existing search box. "" means "all companies".
+  const [companyFilter, setCompanyFilter] = useState("");
 
   // Build Status filter options; hide "Under Evaluation" for vendor users
   const statusOptions = useMemo(
@@ -603,6 +617,8 @@ export const SolicitationManagementPage = () => {
       } else {
         setFilters((prev) => ({ ...prev, categoryId: value, page: 1 }));
       }
+    } else if (filterTitle === "Company") {
+      setCompanyFilter(value === "all" ? "" : value);
     }
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   };
@@ -745,10 +761,30 @@ export const SolicitationManagementPage = () => {
   // Get current loading state
   const isLoading = activeTab === "all" ? isLoadingAll : isLoadingMy;
 
-  // Filter data based on search query
+  // Distinct issuing companies present in the loaded rows, for the vendor
+  // company filter dropdown. Built from currentData so options track the data.
+  const companyOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const item of currentData) {
+      const company = item.company;
+      if (company?._id && !seen.has(company._id)) {
+        seen.set(company._id, company.name || "Unnamed company");
+      }
+    }
+    return [
+      { label: "All Companies", value: "all" },
+      ...Array.from(seen, ([value, label]) => ({ label, value })),
+    ];
+  }, [currentData]);
+
+  // Filter data based on search query and (vendor) company filter
   const filteredData = useMemo(() => {
-    if (!searchQuery) return currentData;
-    return currentData.filter(
+    let rows = currentData;
+    if (companyFilter) {
+      rows = rows.filter((item) => item.company?._id === companyFilter);
+    }
+    if (!searchQuery) return rows;
+    return rows.filter(
       (item) =>
         (item.name ?? "")
           .toLowerCase()
@@ -759,13 +795,16 @@ export const SolicitationManagementPage = () => {
         (item.solId ?? "")
           .toLowerCase()
           .includes((searchQuery ?? "").toLowerCase()) ||
+        (item.company?.name ?? "")
+          .toLowerCase()
+          .includes((searchQuery ?? "").toLowerCase()) ||
         (item.categories ?? []).some((cat) =>
           (cat.name ?? "")
             .toLowerCase()
             .includes((searchQuery ?? "").toLowerCase())
         )
     );
-  }, [currentData, searchQuery]);
+  }, [currentData, searchQuery, companyFilter]);
 
   // Get dashboard statistics from API
   const dashboardStats = useMemo(() => {
@@ -799,6 +838,28 @@ export const SolicitationManagementPage = () => {
               </span>
             </div>
           ),
+        },
+        {
+          accessorKey: "company",
+          header: "Company",
+          cell: ({ row }) => {
+            const company = row.original.company;
+            if (!company?.name) {
+              return <span className="text-muted-foreground">—</span>;
+            }
+            return (
+              <div className="flex items-center gap-2 max-w-[200px]">
+                {company.logo ? (
+                  <img
+                    src={company.logo}
+                    alt={company.name}
+                    className="h-6 w-6 rounded-full object-cover shrink-0"
+                  />
+                ) : null}
+                <span className="font-medium truncate">{company.name}</span>
+              </div>
+            );
+          },
         },
         {
           accessorKey: "visibility",
@@ -1384,6 +1445,15 @@ export const SolicitationManagementPage = () => {
         },
       ];
 
+  // Vendor-only company filter entry appended to the filter bar, plus the
+  // selected-value map so the trigger reflects the chosen company.
+  const companyFilterEntry = isVendor
+    ? [{ title: "Company", options: companyOptions }]
+    : [];
+  const filterSelectedValues = isVendor
+    ? { Company: companyFilter }
+    : undefined;
+
   return (
     <div className="p-6 min-h-full pb-10">
       {/* Header */}
@@ -1605,7 +1675,9 @@ export const SolicitationManagementPage = () => {
                           showIcon: true,
                           options: statusOptions,
                         },
+                        ...companyFilterEntry,
                       ]}
+                      selectedValues={filterSelectedValues}
                       onFilterChange={handleFilterChange}
                     />
                   </div>
@@ -1697,7 +1769,9 @@ export const SolicitationManagementPage = () => {
                         showIcon: true,
                         options: statusOptions,
                       },
+                      ...companyFilterEntry,
                     ]}
+                    selectedValues={filterSelectedValues}
                     onFilterChange={handleFilterChange}
                   />
                 </div>
