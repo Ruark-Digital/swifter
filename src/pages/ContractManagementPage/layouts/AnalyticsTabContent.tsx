@@ -126,20 +126,6 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
     retry: false,
   });
 
-  const vendorKpiQuery = useQuery({
-    queryKey: [`${roleNs}-dashboard`, "vendor-kpi", contractId],
-    queryFn: async () => {
-      const res = await getRequest({
-        url: `${baseUrl}/${contractId}/dashboard/vendor-kpi`,
-        config: { params: { type: DEFAULT_CONTRACT_TYPE } },
-      });
-      return res.data?.data;
-    },
-    enabled: !!contractId && !!isActive,
-    staleTime: 60000,
-    retry: false,
-  });
-
   const alertsQuery = useQuery({
     queryKey: [`${roleNs}-dashboard`, "alerts", contractId],
     queryFn: async () => {
@@ -186,7 +172,6 @@ const AnalyticsTabContent: React.FC<Props> = ({ isActive = false }) => {
         deliverySummaryRange={deliverySummaryRange}
         onDeliverySummaryRangeChange={setDeliverySummaryRange}
         attachments={attachmentsQuery.data}
-        vendorKpi={vendorKpiQuery.data}
         alerts={alertsQuery.data}
         clauseLegalAnalysis={clauseLegalAnalysisQuery.data}
       />

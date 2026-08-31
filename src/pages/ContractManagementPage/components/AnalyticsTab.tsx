@@ -95,6 +95,10 @@ type DeliverySummaryData = {
      *  which never matched the payload so the "Late" tile always rendered 0. */
     late?: number;
   };
+  /** The delivery-summary response bundles the vendor KPI array. This is the
+   *  SOLE source for the Vendor KPI panel — the standalone `/dashboard/vendor-kpi`
+   *  endpoint returns an empty array and is intentionally no longer called. */
+  vendorKpi?: VendorKpiItem[];
 };
 
 type AttachmentSummary = { amendment?: number; policy?: number };
@@ -151,8 +155,26 @@ type ClauseLegalAnalysisData = {
   }>;
 };
 
-type VendorKpiData = Array<{ score?: number }>;
+type VendorKpiItem = {
+  key?: string;
+  label?: string;
+  value?: number | null;
+  displayValue?: string;
+};
 type AnalyticsRange = "YTD" | 90 | 60 | 7;
+
+// Progress bars rendered in the Vendor KPI panel, in order, keyed to the
+// backend `key` so each bar reflects its own value/displayValue.
+const VENDOR_KPI_ROWS: Array<{
+  key: string;
+  label: string;
+  variant?: "success";
+}> = [
+  { key: "avgResponseTime", label: "Avg. Response Time", variant: "success" },
+  { key: "qualityScore", label: "Quality Score" },
+  { key: "onTimeDelivery", label: "On-Time Delivery" },
+  { key: "customerSatisfaction", label: "Customer Satisfaction", variant: "success" },
+];
 
 export const ACTIVITY_SERIES = [
   { key: "change", name: "Changes", stroke: "#3B82F6", legendClassName: "bg-blue-500" },
@@ -177,7 +199,6 @@ type Props = {
   attachments?: AttachmentSummary;
   alerts?: AlertsData;
   clauseLegalAnalysis?: ClauseLegalAnalysisData;
-  vendorKpi?: VendorKpiData;
 };
 
 const toTitleCase = (value: string) => {
@@ -249,14 +270,6 @@ const formatIsoDate = (value?: string) => {
   return d.toISOString().slice(0, 10);
 };
 
-const average = (values: number[]) => {
-  if (!values.length) return undefined;
-  const sum = values.reduce((acc, v) => acc + v, 0);
-  const avg = sum / values.length;
-  if (!Number.isFinite(avg)) return undefined;
-  return avg;
-};
-
 const AnalyticsTab: React.FC<Props> = ({
   contract,
   overview,
@@ -271,7 +284,6 @@ const AnalyticsTab: React.FC<Props> = ({
   attachments,
   alerts,
   clauseLegalAnalysis,
-  vendorKpi,
 }) => {
   const activitiesRanges: Array<{ label: string; value: AnalyticsRange }> = [
     { label: "YTD", value: "YTD" },
@@ -524,12 +536,19 @@ const AnalyticsTab: React.FC<Props> = ({
     lateMissed: formatNumber(deliverySummary?.summary?.late),
   };
 
-  const vendorScores = (vendorKpi ?? [])
-    .map((v) => v.score)
-    .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-  const vendorAvg = average(vendorScores);
-  const vendorAvgPercent =
-    typeof vendorAvg === "number" ? Math.round(vendorAvg) : undefined;
+  // Vendor KPI is sourced solely from the delivery-summary response
+  // (`data.vendorKpi`). The standalone `/dashboard/vendor-kpi` endpoint returns
+  // an empty array and is intentionally ignored.
+  const vendorKpiItems: VendorKpiItem[] = Array.isArray(deliverySummary?.vendorKpi)
+    ? deliverySummary.vendorKpi
+    : [];
+  const vendorKpiByKey = new Map(
+    vendorKpiItems
+      .filter((item): item is VendorKpiItem & { key: string } =>
+        typeof item?.key === "string",
+      )
+      .map((item) => [item.key, item]),
+  );
 
   const contractStatus = contract?.status ? toTitleCase(contract.status) : "--";
   const contractOwner =
@@ -904,36 +923,31 @@ const AnalyticsTab: React.FC<Props> = ({
           <div>
             <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-4">Vendor KPI</h3>
             <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="font-medium text-slate-700 dark:text-slate-300">Avg. Response Time</span>
-                  <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">--</span>
-                </div>
-                <Progress value={0} className="h-1.5" variant="success" />
-              </div>
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="font-medium text-slate-700 dark:text-slate-300">Quality Score</span>
-                  <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">
-                    {typeof vendorAvgPercent === "number" ? `${vendorAvgPercent}%` : "--"}
-                  </span>
-                </div>
-                <Progress value={vendorAvgPercent ?? 0} className="h-1.5" />
-              </div>
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="font-medium text-slate-700 dark:text-slate-300">On-Time Delivery</span>
-                  <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">--</span>
-                </div>
-                <Progress value={0} className="h-1.5" />
-              </div>
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="font-medium text-slate-700 dark:text-slate-300">Customer Satisfaction</span>
-                  <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">--</span>
-                </div>
-                <Progress value={0} className="h-1.5" variant="success" />
-              </div>
+              {VENDOR_KPI_ROWS.map((row) => {
+                const item = vendorKpiByKey.get(row.key);
+                const numeric =
+                  typeof item?.value === "number" && Number.isFinite(item.value)
+                    ? item.value
+                    : null;
+                const barValue =
+                  numeric === null ? 0 : Math.min(100, Math.max(0, numeric));
+                const display =
+                  item?.displayValue ??
+                  (numeric === null ? "--" : String(numeric));
+                return (
+                  <div key={row.key}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="font-medium text-slate-700 dark:text-slate-300">
+                        {item?.label ?? row.label}
+                      </span>
+                      <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">
+                        {display}
+                      </span>
+                    </div>
+                    <Progress value={barValue} className="h-1.5" variant={row.variant} />
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
