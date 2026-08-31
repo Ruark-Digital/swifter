@@ -542,13 +542,21 @@ const AnalyticsTab: React.FC<Props> = ({
     lateMissed: formatNumber(deliverySummary?.summary?.late),
   };
 
-  const vendorKpiItems: VendorKpiItem[] = Array.isArray(vendorKpi)
+  // Prefer whichever source actually has rows. The standalone
+  // `/dashboard/vendor-kpi` query comes back as an EMPTY array (a valid array,
+  // so it would short-circuit any `Array.isArray` check and never fall through),
+  // while the same KPIs are bundled in the delivery-summary response. So read
+  // both and use the delivery-summary copy whenever the standalone one is empty.
+  const standaloneKpi: VendorKpiItem[] = Array.isArray(vendorKpi)
     ? vendorKpi
     : Array.isArray(vendorKpi?.vendorKpi)
       ? vendorKpi.vendorKpi
-      : Array.isArray(deliverySummary?.vendorKpi)
-        ? deliverySummary.vendorKpi
-        : [];
+      : [];
+  const deliveryKpi: VendorKpiItem[] = Array.isArray(deliverySummary?.vendorKpi)
+    ? deliverySummary.vendorKpi
+    : [];
+  const vendorKpiItems: VendorKpiItem[] =
+    standaloneKpi.length > 0 ? standaloneKpi : deliveryKpi;
   const vendorKpiByKey = new Map(
     vendorKpiItems
       .filter((item): item is VendorKpiItem & { key: string } =>
