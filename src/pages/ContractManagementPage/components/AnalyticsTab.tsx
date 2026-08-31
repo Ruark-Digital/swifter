@@ -95,9 +95,9 @@ type DeliverySummaryData = {
      *  which never matched the payload so the "Late" tile always rendered 0. */
     late?: number;
   };
-  /** The delivery-summary response also bundles the vendor KPI array. The
-   *  standalone `/dashboard/vendor-kpi` endpoint can come back empty, so the
-   *  Vendor KPI panel falls back to this. */
+  /** The delivery-summary response bundles the vendor KPI array. This is the
+   *  SOLE source for the Vendor KPI panel — the standalone `/dashboard/vendor-kpi`
+   *  endpoint returns an empty array and is intentionally no longer called. */
   vendorKpi?: VendorKpiItem[];
 };
 
@@ -161,10 +161,6 @@ type VendorKpiItem = {
   value?: number | null;
   displayValue?: string;
 };
-// The vendor-kpi widget arrives either as a bare array or wrapped under a
-// `vendorKpi` key (it's also bundled into the delivery-summary response),
-// so accept both shapes and normalize at consumption.
-type VendorKpiData = VendorKpiItem[] | { vendorKpi?: VendorKpiItem[] };
 type AnalyticsRange = "YTD" | 90 | 60 | 7;
 
 // Progress bars rendered in the Vendor KPI panel, in order, keyed to the
@@ -203,7 +199,6 @@ type Props = {
   attachments?: AttachmentSummary;
   alerts?: AlertsData;
   clauseLegalAnalysis?: ClauseLegalAnalysisData;
-  vendorKpi?: VendorKpiData;
 };
 
 const toTitleCase = (value: string) => {
@@ -289,7 +284,6 @@ const AnalyticsTab: React.FC<Props> = ({
   attachments,
   alerts,
   clauseLegalAnalysis,
-  vendorKpi,
 }) => {
   const activitiesRanges: Array<{ label: string; value: AnalyticsRange }> = [
     { label: "YTD", value: "YTD" },
@@ -542,13 +536,12 @@ const AnalyticsTab: React.FC<Props> = ({
     lateMissed: formatNumber(deliverySummary?.summary?.late),
   };
 
-  const vendorKpiItems: VendorKpiItem[] = Array.isArray(vendorKpi)
-    ? vendorKpi
-    : Array.isArray(vendorKpi?.vendorKpi)
-      ? vendorKpi.vendorKpi
-      : Array.isArray(deliverySummary?.vendorKpi)
-        ? deliverySummary.vendorKpi
-        : [];
+  // Vendor KPI is sourced solely from the delivery-summary response
+  // (`data.vendorKpi`). The standalone `/dashboard/vendor-kpi` endpoint returns
+  // an empty array and is intentionally ignored.
+  const vendorKpiItems: VendorKpiItem[] = Array.isArray(deliverySummary?.vendorKpi)
+    ? deliverySummary.vendorKpi
+    : [];
   const vendorKpiByKey = new Map(
     vendorKpiItems
       .filter((item): item is VendorKpiItem & { key: string } =>
