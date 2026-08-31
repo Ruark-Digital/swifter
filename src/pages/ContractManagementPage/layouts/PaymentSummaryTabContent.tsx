@@ -79,6 +79,7 @@ type HoldbackReleaseRow = {
   releasedAmount: string;
   status: string;
   dueDate: string;
+  currency: string;
 };
 
 type SavingsRealizedRow = {
@@ -87,6 +88,7 @@ type SavingsRealizedRow = {
   category: string;
   amount: string;
   dateSubmitted: string;
+  currency: string;
 };
 
 const buildHoldbackReleaseColumns = (
@@ -152,7 +154,7 @@ const buildHoldbackReleaseColumns = (
     cell: ({ row }) => (
       <HoldbackDetailsSheet
         holdBackId={row.getValue<string>("releaseId")}
-        currency={row.getValue<string>("currency")}
+        currency={row.original.currency}
         contractId={contractId}
         contractType={contractType}
         trigger={
@@ -224,7 +226,7 @@ const buildSavingsRealizedColumns = (
         <SavingsDetailsSheet
           savingId={row.getValue<string>("savingsId")}
           contractId={contractId}
-          currency={row.getValue<string>("currency")}
+          currency={row.original.currency}
           trigger={
             <button
               type="button"

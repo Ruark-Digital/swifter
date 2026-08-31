@@ -38,9 +38,16 @@ export const ChangeOrdersImpactCard: React.FC<Props> = ({
     data?.chartData && data.chartData.length > 0 ? data.chartData : []
   ).map((d) => {
     const parsed = new Date(d.date);
+    // Format in UTC: BE sends date-only strings (e.g. "2026-08-01") which parse
+    // as UTC midnight. Formatting in local time shifts them a day back in
+    // UTC-negative zones, so "2026-08-01" renders as "Jul" and August drops off
+    // the axis. Pinning the formatter to UTC keeps each point on its real month.
     const label = Number.isNaN(parsed.getTime())
       ? d.date
-      : new Intl.DateTimeFormat(undefined, { month: "short" }).format(parsed);
+      : new Intl.DateTimeFormat(undefined, {
+          month: "short",
+          timeZone: "UTC",
+        }).format(parsed);
     return {
       month: label,
       Original: d.original / 1_000_000,
@@ -126,7 +133,11 @@ export const ChangeOrdersImpactCard: React.FC<Props> = ({
                 tickMargin={8}
                 tick={{ fill: "#6B7280", fontSize: 12 }}
               />
-              <Tooltip />
+              {/* Values are already scaled to millions; format the tooltip so
+                  it shows "$53.6M" instead of the raw 53.63158659275845. */}
+              <Tooltip
+                formatter={(value) => `$${Number(value).toFixed(1)}M`}
+              />
               <Line
                 type="monotone"
                 dataKey="Original"

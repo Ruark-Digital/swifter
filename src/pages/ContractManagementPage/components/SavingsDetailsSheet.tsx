@@ -45,15 +45,19 @@ const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, contractId, b
   // Swagger exposes savings detail for manager + approver only.
   // Vendor/PM/view-only have no documented savings route — match the list
   // gating in `PaymentSummaryTabContent` so the URL maps stay consistent.
-  // Manager path is contract-scoped; approver path is intentionally not
-  // (swagger has `/approver/contracts/payment-savings/{savingId}` flat).
+  // Both manager AND approver detail routes are contract-scoped. The swagger
+  // documents the approver route flat (`/approver/contracts/payment-savings/{savingId}`),
+  // but that 404s — the live BE scopes it by parent contract like the LIST
+  // endpoint and every sibling (manager/vendor) detail route.
   const rolePrefix = React.useMemo(() => {
     if (basePath) return basePath;
+    if (!contractId) return null;
     if (isManager) {
-      if (!contractId) return null;
       return `/contract/manager/contracts/${contractId}/payment-savings`;
     }
-    if (isApprover) return `/contract/approver/contracts/payment-savings`;
+    if (isApprover) {
+      return `/contract/approver/contracts/${contractId}/payment-savings`;
+    }
     return null;
   }, [basePath, contractId, isApprover, isManager]);
 
