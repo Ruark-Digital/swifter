@@ -145,6 +145,9 @@ const UploadDocumentsDialog: React.FC<UploadDocumentsDialogProps> = ({
             url: firstUploaded.url,
             type: firstUploaded.type || file.type,
             size: firstUploaded.size || file.size.toString(),
+            // Forward comments extracted from the document (e.g. Word tracked
+            // comments) so the documents endpoint persists them.
+            comments: firstUploaded.comments ?? [],
           };
         }),
       );
