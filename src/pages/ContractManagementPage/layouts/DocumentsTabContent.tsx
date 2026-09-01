@@ -37,20 +37,20 @@ const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, ef
 
   return (
     <TabsContent value="documents" className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-base font-semibold text-gray-600">Documents</h3>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <ExportReportSheet contractId={contractId ?? ""} contractType="Contract">
-            <Button variant="outline">
+            <Button variant="outline" className="w-full sm:w-auto">
               <Share2 className="mr-2 h-4 w-4" /> Export Report
             </Button>
           </ExportReportSheet>
-          
+
           {isManager && contractId && (
             <UploadDocumentsDialog
               contractId={contractId}
               trigger={
-                <Button variant="outline">
+                <Button variant="outline" className="w-full sm:w-auto">
                   <Upload className="mr-2 h-4 w-4" /> Upload Documents
                 </Button>
               }
@@ -59,6 +59,7 @@ const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, ef
 
           {isManager && (
             <Button
+              className="w-full sm:w-auto"
               onClick={() => {
                 if (contractId) {
                   setEditingContractId(contractId);
