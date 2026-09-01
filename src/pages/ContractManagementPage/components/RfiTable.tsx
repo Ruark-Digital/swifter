@@ -413,7 +413,15 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     onSuccess: async (res) => {
       toastHandler.success("RFI", res?.message ?? "RFI closed");
       setCloseRfiOpen(false);
-      await queryClient.invalidateQueries({ queryKey });
+      // Refresh every RFI-scoped query so the closed status renders everywhere:
+      // the list/stats use a bare ["contractRfis", ...] key, while this detail
+      // query is user-scoped ([userId, roleNs, "contractRfis", "detail", ...]).
+      // Invalidating only the detail key left the table row showing "open" until
+      // a manual refetch. A predicate match catches both — mirroring the respond
+      // mutation — so the table re-renders the updated status immediately.
+      await queryClient.invalidateQueries({
+        predicate: (q) => q.queryKey.some((k) => k === "contractRfis"),
+      });
     },
     onError: (error) => {
       toastHandler.error("Close RFI", error);
