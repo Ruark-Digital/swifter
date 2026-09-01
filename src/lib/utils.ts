@@ -245,6 +245,35 @@ export function formatDateTZ(
   }
 }
 
+/**
+ * Coerce a possibly-naive datetime STRING to an absolute instant by assuming
+ * UTC when it carries no timezone designator.
+ *
+ * `formatDateTZ` renders a real instant (a `…Z`/offset string, or a `Date`) in
+ * the viewer's timezone, but a naive datetime string with no offset is a backend
+ * contract gap it cannot recover — the JS engine reads it as local time and it
+ * shows unconverted. When a field is known to be stored in UTC yet may serialize
+ * without the `Z` (e.g. the proposal pricing timestamp, which arrives naive while
+ * sibling file `uploadedAt` values carry the `Z`), pass it through here first so
+ * it converts to the viewer's zone consistently with those siblings.
+ *
+ * Values that already carry a `Z`/±offset, date-only strings (`YYYY-MM-DD`), and
+ * non-strings (already-parsed `Date`s) are returned unchanged.
+ */
+export const ensureUtcInstant = (
+  value: string | Date | undefined | null
+): string | Date | undefined | null => {
+  if (typeof value !== "string") return value;
+  const v = value.trim();
+  // Date-only — no time component to anchor; leave to formatDateTZ's handling.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  // Already an absolute instant (trailing Z or ±HH:MM / ±HHMM offset).
+  if (/([zZ]|[+-]\d{2}:?\d{2})$/.test(v)) return v;
+  // Datetime lacking an offset — treat as UTC (normalize the space form too).
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(v)) return `${v.replace(" ", "T")}Z`;
+  return v;
+};
+
 // Fixed UTC offsets (minutes east of UTC) for the timezone abbreviations in
 // `src/assets/timezones.json` — the same labels the app's timezone pickers store
 // and the BE returns on the dashboard activity feeds. Used only for zones that
