@@ -146,10 +146,10 @@ const DeliverablesTabContent: React.FC = () => {
 
   return (
     <TabsContent value="deliverables" className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Deliverable</h3>
         <ExportReportSheet contractId={contractId ?? ""} contractType="Contract">
-          <Button variant="outline" className="h-10 rounded-xl px-4">
+          <Button variant="outline" className="h-10 w-full rounded-xl px-4 sm:w-auto">
             <Share2 className="mr-2 h-4 w-4" /> Export Report
           </Button>
         </ExportReportSheet>

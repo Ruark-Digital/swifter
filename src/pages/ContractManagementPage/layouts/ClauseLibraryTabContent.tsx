@@ -83,13 +83,13 @@ function RatesTable({
           className={`flex justify-center border-b ${idx === rows.length - 1 ? "border-b-0" : ""}`}
           style={{ borderColor }}
         >
-          <div className="flex w-[460px] px-1 py-2 text-sm leading-5 text-[#374151] dark:text-slate-300">
+          <div className="flex min-w-0 flex-1 px-1 py-2 text-sm leading-5 text-[#374151] dark:text-slate-300">
             {r.left}
           </div>
-          <div className="flex w-[229px] justify-end px-1 py-2 text-sm font-semibold leading-5 text-[#14532D]">
+          <div className="flex shrink-0 justify-end px-1 py-2 text-sm font-semibold leading-5 text-[#14532D]">
             {r.middle}
           </div>
-          <div className="flex w-[345px] justify-end px-1 py-2 text-sm leading-5 text-[#4B5563] dark:text-slate-400">
+          <div className="flex min-w-0 flex-1 justify-end px-1 py-2 text-sm leading-5 text-[#4B5563] dark:text-slate-400">
             {r.right}
           </div>
         </div>
@@ -534,7 +534,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
   return (
     <TabsContent value="clause-library" className="space-y-6 pb-8">
       <div className="flex max-w-[1152px] flex-col gap-4 bg-white dark:bg-slate-900 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-1">
             <div className="text-2xl font-bold leading-8 text-[#2563EB] dark:text-blue-400">
               Clause Library
@@ -547,7 +547,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
             type="button"
             onClick={handleExportPdf}
             disabled={isLoading || !data || exportMutation.isPending}
-            className="inline-flex items-center rounded-lg bg-[#2563EB] px-4 py-2 hover:bg-[#1D4ED8] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex w-full items-center justify-center rounded-lg bg-[#2563EB] px-4 py-2 hover:bg-[#1D4ED8] disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
           >
             <img
               src="/assets/contract-management/clause-library/export-pdf.svg"
@@ -560,8 +560,8 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
           </button>
         </div>
 
-        <div className="flex items-center justify-between rounded-lg border border-[#BFDBFE] dark:border-slate-700 bg-[linear-gradient(90deg,#EFF6FF_0%,#FAF5FF_100%)] dark:bg-none dark:bg-slate-800/60 p-[15px]">
-          <div className="inline-flex items-center">
+        <div className="flex flex-col gap-3 rounded-lg border border-[#BFDBFE] dark:border-slate-700 bg-[linear-gradient(90deg,#EFF6FF_0%,#FAF5FF_100%)] dark:bg-none dark:bg-slate-800/60 p-[15px] sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-1 flex-wrap items-center gap-y-3">
             <div className="inline-flex flex-col">
               <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">
                 Contract ID
@@ -570,7 +570,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
                 {contract?.contractId || "—"}
               </div>
             </div>
-            <div className="flex flex-col pl-6">
+            <div className="hidden flex-col pl-6 sm:flex">
               <div className="h-8 w-px bg-[#D1D5DB] dark:bg-slate-700" />
             </div>
             <div className="inline-flex flex-col pl-6">
@@ -581,7 +581,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
                 {contract?.contractName || contract?.title || "—"}
               </div>
             </div>
-            <div className="flex flex-col pl-6">
+            <div className="hidden flex-col pl-6 sm:flex">
               <div className="h-8 w-px bg-[#D1D5DB] dark:bg-slate-700" />
             </div>
             <div className="inline-flex flex-col pl-6">
@@ -590,7 +590,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
                 {vendorName || contract?.vendor || "—"}
               </div>
             </div>
-            <div className="flex flex-col pl-6">
+            <div className="hidden flex-col pl-6 sm:flex">
               <div className="h-8 w-px bg-[#D1D5DB] dark:bg-slate-700" />
             </div>
             <div className="inline-flex flex-col pl-6">
@@ -599,7 +599,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
                 {formatCurrency(contract?.value, contract?.currency)}
               </div>
             </div>
-            <div className="flex flex-col pl-6">
+            <div className="hidden flex-col pl-6 sm:flex">
               <div className="h-8 w-px bg-[#D1D5DB] dark:bg-slate-700" />
             </div>
             <div className="inline-flex flex-col pl-6">
@@ -614,7 +614,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
         </div>
       </div>
 
-      <div className="relative h-[50px] w-[1152px] overflow-hidden rounded-lg border border-[#D1D5DB] dark:border-slate-700 bg-white dark:bg-slate-900 px-[15px] py-[12px] pl-[47px]">
+      <div className="relative h-[50px] w-full max-w-[1152px] overflow-hidden rounded-lg border border-[#D1D5DB] dark:border-slate-700 bg-white dark:bg-slate-900 px-[15px] py-[12px] pl-[47px]">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -628,7 +628,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
         />
       </div>
 
-      <div className="flex w-[1152px] flex-col gap-6 pb-8">
+      <div className="flex w-full max-w-[1152px] flex-col gap-6 pb-8">
         <div className="flex w-full flex-col gap-4">
           {isLoading ? (
             <div className="rounded-lg border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-sm text-[#4B5563] dark:text-slate-400">
