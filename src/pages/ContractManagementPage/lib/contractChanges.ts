@@ -260,6 +260,9 @@ export type UploadURLs = {
   url: string;
   name: string;
   download: string;
+  // Comments extracted from the uploaded document (e.g. Word tracked comments).
+  // Returned by /upload and forwarded to the documents endpoint verbatim.
+  comments?: Array<{ author?: string; text?: string; [key: string]: unknown }>;
 };
 
 export const toContractChangeFileItem = (
