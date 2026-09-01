@@ -58,6 +58,9 @@ type AmendmentDetailsSheetProps = {
   contractId: string;
   currency?: string;
   basePath: string;
+  /** Is the logged-in user the contract's owner/manager — gates manager
+   *  approval-routing / resubmit actions on the amendment. */
+  owner?: boolean;
   amendmentId: string;
   summary: Pick<
     AmendmentRow,
@@ -596,6 +599,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   contractId,
   currency,
   basePath,
+  owner,
   amendmentId,
   summary,
   listInvalidateQueryKey,
@@ -1031,6 +1035,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
               </div>
 
               {isManager &&
+                Boolean(owner) &&
                 !isStatusFinalized &&
                 requiresManagerApprovalRouting &&
                 vendorAccepted &&
@@ -1106,6 +1111,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
         )}
 
         {isManager &&
+          Boolean(owner) &&
           detail &&
           (vendorRejected || normalizedStatus === "rejected") &&
           renderManagerRejectedAction && (
@@ -1229,6 +1235,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
             `assignApprover: true` even when the `approvers[]` array
             isn't populated in the response, so check both. */}
         {isManager &&
+          Boolean(owner) &&
           !isStatusFinalized &&
           !detail?.assignApprover &&
           !hasApprovals &&
@@ -1280,6 +1287,9 @@ type Props = {
   contractId: string;
   currency?: string;
   basePath: string;
+  /** Is the logged-in user the contract's owner/manager — threaded to the
+   *  row detail sheet to gate manager approval-routing / resubmit actions. */
+  owner?: boolean;
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
   approverPoolPath?: string;
@@ -1296,6 +1306,7 @@ const AmendmentsTable: React.FC<Props> = ({
   contractId,
   currency,
   basePath,
+  owner,
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
   approverPoolPath,
@@ -1363,6 +1374,7 @@ const AmendmentsTable: React.FC<Props> = ({
               contractId={contractId}
               currency={currency}
               basePath={basePath}
+              owner={owner}
               amendmentId={row.original.id}
               summary={{
                 amendmentTitle: row.original.amendmentTitle,
@@ -1391,6 +1403,7 @@ const AmendmentsTable: React.FC<Props> = ({
       contractId,
       currency,
       basePath,
+      owner,
       listInvalidateQueryKey,
       statsInvalidateQueryKey,
       approverPoolPath,
