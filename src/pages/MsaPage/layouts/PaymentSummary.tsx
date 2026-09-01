@@ -300,6 +300,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
               contractId={contractId}
               contractType="MsaContract"
               currency={currency}
+              owner={(msa as { owner?: boolean } | undefined)?.owner}
               trigger={
                 <button
                   type="button"
@@ -313,7 +314,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
         ),
       },
     ],
-    [contractId, currency],
+    [contractId, currency, msa],
   );
 
   const savingsColumns = React.useMemo<ColumnDef<SavingRealizedRow>[]>(

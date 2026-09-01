@@ -775,6 +775,7 @@ const ContractDetailPage: React.FC = () => {
           currency={displayCurrency}
           isActive={activeTab === "rfi"}
           actionsDisabled={actionsDisabled}
+          owner={contract?.owner}
         />
 
         <NcrLogTabContent

@@ -41,6 +41,7 @@ function ClaimActionsCell({
         statsInvalidateQueryKey?: readonly unknown[];
         claimAssignUrlBuilder?: (claimId: string) => string;
         currency?: string;
+        owner?: boolean;
       }
     | undefined;
   const contractId = meta?.contractId ?? "";
@@ -56,6 +57,7 @@ function ClaimActionsCell({
         contractId={contractId}
         basePath={basePath}
         currency={meta?.currency}
+        owner={meta?.owner}
         listInvalidateQueryKey={meta?.listInvalidateQueryKey}
         statsInvalidateQueryKey={meta?.statsInvalidateQueryKey}
         claimAssignUrl={claimAssignUrl}
@@ -168,6 +170,9 @@ type ClaimsTableProps = {
   claimAssignUrlBuilder?: (claimId: string) => string;
   /** Contract-level currency; falls back to USD when the API omits it. */
   currency?: string;
+  /** Is the logged-in user the contract's owner/manager — threaded to the
+   *  claim detail sheet to gate the manager decision actions. */
+  owner?: boolean;
 };
 
 const ClaimsTable: React.FC<ClaimsTableProps> = ({
@@ -182,6 +187,7 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
   statsInvalidateQueryKey,
   claimAssignUrlBuilder,
   currency,
+  owner,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -244,6 +250,7 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
             statsInvalidateQueryKey,
             claimAssignUrlBuilder,
             currency,
+            owner,
           },
         }}
       />

@@ -94,6 +94,7 @@ type SavingsRealizedRow = {
 const buildHoldbackReleaseColumns = (
   contractId: string,
   contractType: "Contract" | "MsaContract" = "Contract",
+  owner?: boolean,
 ): ColumnDef<HoldbackReleaseRow>[] => [
   {
     accessorKey: "releaseId",
@@ -157,6 +158,7 @@ const buildHoldbackReleaseColumns = (
         currency={row.original.currency}
         contractId={contractId}
         contractType={contractType}
+        owner={owner}
         trigger={
           <button
             type="button"
@@ -730,8 +732,8 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
   }, [formatMoney, savingsResponse?.data, currency]);
 
   const holdbackReleaseColumns = React.useMemo(
-    () => buildHoldbackReleaseColumns(contractId, "Contract"),
-    [contractId],
+    () => buildHoldbackReleaseColumns(contractId, "Contract", contract?.owner),
+    [contractId, contract?.owner],
   );
 
   const savingsRealizedColumns = React.useMemo(

@@ -272,6 +272,7 @@ const ChangeTabContent: React.FC<Props> = ({
             pagination={pagination}
             setPagination={setPagination}
             currency={currency}
+            owner={owner}
             {...tableInvalidationProps}
           />
         </TabsContent>
@@ -286,6 +287,7 @@ const ChangeTabContent: React.FC<Props> = ({
             pagination={pagination}
             setPagination={setPagination}
             currency={currency}
+            owner={owner}
             {...tableInvalidationProps}
           />
         </TabsContent>
@@ -300,6 +302,7 @@ const ChangeTabContent: React.FC<Props> = ({
             pagination={pagination}
             setPagination={setPagination}
             currency={currency}
+            owner={owner}
             {...tableInvalidationProps}
           />
         </TabsContent>
@@ -313,6 +316,7 @@ const ChangeTabContent: React.FC<Props> = ({
             pagination={pagination}
             setPagination={setPagination}
             currency={currency}
+            owner={owner}
             {...tableInvalidationProps}
           />
         </TabsContent>
@@ -327,6 +331,7 @@ const ChangeTabContent: React.FC<Props> = ({
             pagination={pagination}
             setPagination={setPagination}
             currency={currency}
+            owner={owner}
             {...tableInvalidationProps}
           />
         </TabsContent>
