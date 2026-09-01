@@ -71,6 +71,11 @@ type Props = {
   claimAssignUrl?: string;
   /** Contract-level currency; falls back to USD when the API omits it. */
   currency?: string;
+  /** BE-computed flag: is the logged-in user the contract's owner/manager.
+   *  Gates the manager (CM) decision actions (approve/reject a change,
+   *  finalize a draft CO, decide a claim) — a manager who doesn't own the
+   *  contract can view but not act. Approver/PM decisions are unaffected. */
+  owner?: boolean;
 };
 
 const LabelRow = ({
@@ -106,6 +111,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   statsInvalidateQueryKey,
   claimAssignUrl,
   currency,
+  owner,
 }) => {
   const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const toast = useToastHandler();
@@ -207,7 +213,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const time = detail?.time;
   const cost = detail?.cost;
 
-  const canApprove = isManager;
+  const canApprove = isManager && Boolean(owner);
 
   // #79 — a draft change order (auto-created from an approved request/proposal,
   // or from a directive) awaits its originator's finalization. Vendor PMs
@@ -226,7 +232,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   // through the separate /approve chain, not this button.
   const canActOnDraftCo =
     isDraftCo &&
-    (isManager || isProjectManager) &&
+    ((isManager && Boolean(owner)) || isProjectManager) &&
     approverStatus === "pending";
 
   // #147 — a change directive (CD) needs no approval of itself; the assigned
@@ -323,7 +329,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   // Manager Send-for-Approval is only relevant for time-impact claims, where
   // the manager auto-approves and then routes to approvers.
   const canManagerActOnClaim =
-    isClaim && isManager && isTimeImpact && !isClaimFinalized;
+    isClaim && isManager && Boolean(owner) && isTimeImpact && !isClaimFinalized;
   const isClaimOrChangeManagerSendForApprovalStatus =
     isClaim ? "pending" : "approved";
   const sendForApprovalEnabled =
@@ -336,6 +342,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const canManagerDecideOnCostClaim =
     isClaim &&
     isManager &&
+    Boolean(owner) &&
     (impact === "cost" || impact === "time_cost") &&
     approverStatus === "pending" &&
     !isClaimFinalized;

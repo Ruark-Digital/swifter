@@ -131,6 +131,7 @@ const ClaimsTabContent: React.FC<Props> = ({
         pagination={pagination}
         setPagination={setPagination}
         currency={currency}
+        owner={owner}
       />
     </TabsContent>
   );
