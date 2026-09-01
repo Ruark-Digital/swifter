@@ -581,6 +581,20 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
   const isContractVendorLike = isVendor || isProjectManager;
   const isPendingApproval = contract?.status === "pending_approval";
 
+  // Update Savings is an owner-only action: any CM can view this tab, but only
+  // the CM who owns/manages this contract may record savings. Use the BE
+  // `owner` flag when present, otherwise fall back to matching the creator id
+  // (mirrors OverviewTab's edit gate).
+  const currentUser = useUser();
+  const isContractOwner =
+    typeof contract?.owner === "boolean"
+      ? contract.owner
+      : Boolean(
+          currentUser?._id &&
+            contract?.creator?._id &&
+            currentUser._id === contract.creator._id,
+        );
+
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ holdbacks?: unknown; savings?: unknown }>(
@@ -832,7 +846,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
             </button>
           </ExportReportSheet>
 
-          {isManager && !isPendingApproval && (
+          {isManager && isContractOwner && !isPendingApproval && (
             <div className="inline-flex items-start gap-6">
               <UpdateSavingsDialog
                 contractId={contractId}

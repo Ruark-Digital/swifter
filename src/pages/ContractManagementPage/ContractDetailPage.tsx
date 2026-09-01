@@ -792,6 +792,7 @@ const ContractDetailPage: React.FC = () => {
           contractId={contract?._id ?? ""}
           effectiveDate={contract?.startDate}
           status={contract?.status}
+          owner={isContractOwner}
           actionsDisabled={contract?.status === "publish" || isFrozenStatus}
           onNavigateToClauseLibrary={
             visibleTabs.some((t) => t.key === "clause-library")
