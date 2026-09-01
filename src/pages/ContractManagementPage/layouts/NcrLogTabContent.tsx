@@ -17,9 +17,13 @@ type Props = {
   contract: ContractDetail
   isActive?: boolean;
   actionsDisabled?: boolean;
+  /** BE-computed flag: is the logged-in user the contract's owner/manager.
+   *  Gates the manager (CM) create action — a manager who doesn't own the
+   *  contract can view but not act on it (they'd need to take it over). */
+  owner?: boolean;
 };
 
-const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, actionsDisabled }) => {
+const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, actionsDisabled, owner }) => {
   const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
@@ -95,7 +99,7 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, act
         <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
           Non-Compliance Report
         </h3>
-        {(isApprover || isProjectManager || isManager) && (
+        {(isApprover || isProjectManager || (isManager && Boolean(owner))) && (
           <CreateNcrDialog
             contractId={contractId}
             contract={contract}

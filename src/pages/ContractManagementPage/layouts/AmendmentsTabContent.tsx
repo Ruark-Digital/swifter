@@ -848,6 +848,11 @@ type Props = {
   currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
+  /** BE-computed flag: is the logged-in user the contract's owner/manager.
+   *  Gates the manager (CM) create/approve actions — a manager who doesn't
+   *  own the contract can view but not act on it (they'd need to take it
+   *  over). Company admins keep their expired-contract amendment override. */
+  owner?: boolean;
 };
 
 const AmendmentsTabContent: React.FC<Props> = ({
@@ -855,6 +860,7 @@ const AmendmentsTabContent: React.FC<Props> = ({
   currency,
   isActive,
   actionsDisabled,
+  owner,
 }) => {
   const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isCompanyAdmin, isViewOnly } =
     useUserRole();
@@ -964,7 +970,7 @@ const AmendmentsTabContent: React.FC<Props> = ({
             </Button>
           </ExportReportSheet>
 
-          {(isManager || isCompanyAdmin) && (
+          {((isManager && Boolean(owner)) || isCompanyAdmin) && (
             <CreateAmendmentDialog
               contractId={contractId}
               trigger={
@@ -992,6 +998,7 @@ const AmendmentsTabContent: React.FC<Props> = ({
         isLoading={isAmendmentsLoading}
         contractId={contractId}
         currency={currency}
+        owner={owner}
         basePath={basePath}
         listInvalidateQueryKey={amendmentsQueryKey}
         statsInvalidateQueryKey={statsQueryKey}

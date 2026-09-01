@@ -57,6 +57,10 @@ type Props = {
    *  "Contract" — MSA's Rate Sheets tab reuses this component as-is. */
   contractType?: "Contract" | "MsaContract";
   actionsDisabled?: boolean;
+  /** BE-computed flag: is the logged-in user the contract's owner/manager.
+   *  Gates the manager (CM) approve action — a manager who doesn't own the
+   *  contract can view but not approve rate sheets on it. */
+  owner?: boolean;
 };
 
 type RateSheetRow = {
@@ -832,7 +836,10 @@ const RateSheetDetailsSheet: React.FC<{
   contractId: string;
   row: RateSheetRow;
   basePath: string;
-}> = ({ trigger, contractId, row, basePath }) => {
+  /** Is the logged-in user the contract's owner/manager — gates the manager
+   *  approve action. */
+  owner?: boolean;
+}> = ({ trigger, contractId, row, basePath, owner }) => {
   const [open, setOpen] = React.useState(false);
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
@@ -887,7 +894,8 @@ const RateSheetDetailsSheet: React.FC<{
   const files = sheet?.files ?? [];
   const summary = sheet?.summary ?? EMPTY_RATE_SHEET_SUMMARY;
 
-  const canApprove = isManager && sheet?.approverStatus === "pending";
+  const canApprove =
+    isManager && Boolean(owner) && sheet?.approverStatus === "pending";
   // Vendor/PM edits a rate sheet via PUT {basePath}/{rateSheetId} — labelled
   // "Edit" while pending approval and "Resubmit" once rejected (same endpoint).
   const rsStatus = (sheet?.status || row.status || "").toLowerCase();
@@ -1130,6 +1138,7 @@ const RateSheetsTabContent: React.FC<Props> = ({
   isActive,
   contractType = "Contract",
   actionsDisabled,
+  owner,
 }) => {
   const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const [search, setSearch] = React.useState("");
@@ -1236,6 +1245,7 @@ const RateSheetsTabContent: React.FC<Props> = ({
                 basePath={basePath}
                 contractId={contractId}
                 row={rs}
+                owner={owner}
                 trigger={
                   <button
                     type="button"
@@ -1250,7 +1260,7 @@ const RateSheetsTabContent: React.FC<Props> = ({
         },
       },
     ],
-    [basePath, contractId],
+    [basePath, contractId, owner],
   );
 
   return (

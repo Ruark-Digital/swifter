@@ -14,9 +14,13 @@ type Props = {
   currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
+  /** BE-computed flag: is the logged-in user the contract's owner/manager.
+   *  Gates the manager (CM) approve/reject action on a LEM — a manager who
+   *  doesn't own the contract can view but not act on it. */
+  owner?: boolean;
 };
 
-const LemTabContent: React.FC<Props> = ({ contractId, currency, isActive, actionsDisabled }) => {
+const LemTabContent: React.FC<Props> = ({ contractId, currency, isActive, actionsDisabled, owner }) => {
   const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const { isApprover, isManager, isVendor, isProjectManager, isAdmin, isViewOnly } =
     useUserRole();
@@ -106,6 +110,7 @@ const LemTabContent: React.FC<Props> = ({ contractId, currency, isActive, action
         onSearchChange={(v) => setSearch(v)}
         basePath={basePath}
         currency={currencyCode}
+        owner={owner}
       />
     </TabsContent>
   );

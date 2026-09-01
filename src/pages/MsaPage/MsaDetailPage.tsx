@@ -1018,6 +1018,7 @@ const MsaDetailPage: React.FC = () => {
               contractType="MsaContract"
               isActive={activeTab === "rate-sheets"}
               actionsDisabled={publishGatedActionsDisabled}
+              owner={isMsaOwner}
             />
 
             <ClauseLibraryTabContent
