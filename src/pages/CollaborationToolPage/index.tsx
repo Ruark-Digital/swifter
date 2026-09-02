@@ -1,6 +1,8 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { SEOWrapper } from "@/components/SEO";
 import SidebarPanel from "./components/SidebarPanel";
+import type { CommentsFeedItem } from "./components/CommentsTab";
+import { scrollToCommentAnchor } from "./commentScroll";
 import "@/pages/CollaborationToolPage/collaboration.css";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -26,7 +28,12 @@ type SidebarFeed = {
   message: string;
   showDot?: boolean;
   attachment?: SidebarAttachment | null;
+  anchorId?: string;
 };
+
+/** Document anchor for a comment, once the backend supplies one (else undefined). */
+const commentAnchorId = (comment: ContractCommentDTO): string | undefined =>
+  comment.anchor?.superdocId || comment.anchor?.blockId || undefined;
 
 type CommentTarget = "change" | "rfi" | "claim";
 
@@ -72,6 +79,7 @@ const mapCommentsToFeed = (comments: ContractCommentDTO[]): SidebarFeed[] =>
     timestamp: toTimestamp(comment.createdAt),
     message: comment.content || "",
     attachment: toAttachment(comment.files),
+    anchorId: commentAnchorId(comment),
   }));
 
 const mapLogsToFeed = (logs: unknown[]): SidebarFeed[] =>
@@ -117,7 +125,14 @@ const CollaborationToolPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const [commentInput, setCommentInput] = useState("");
-  
+  const [activeCommentId, setActiveCommentId] = useState<string | undefined>(undefined);
+
+  const handleCommentSelect = useCallback((comment: CommentsFeedItem) => {
+    if (!comment.anchorId) return;
+    setActiveCommentId(comment.anchorId);
+    scrollToCommentAnchor(comment.anchorId);
+  }, []);
+
   const activeTab = useCollaborationStore((state) => state.activeTab);
   const hasVisitedLog = useCollaborationStore((state) => state.hasVisitedLog);
   const presenceActive = useCollaborationStore((state) => state.presenceActive);
@@ -382,6 +397,8 @@ const CollaborationToolPage: React.FC = () => {
           canWriteComment={canWriteComment}
           isSubmittingComment={addCommentMutation.isPending}
           useFallbackFeed={shouldUseFallbackFeed}
+          onCommentSelect={handleCommentSelect}
+          activeCommentId={activeCommentId}
         />
       </div>
     </>

@@ -1,4 +1,7 @@
-/* Dotted grid background and pixel-perfect panel styles */
+/* Collaboration tool — editor canvas + comments/activity sidebar.
+   Design tokens are scoped to the sidebar so the panel reads as one system:
+   a single desaturated navy accent over neutral greys, Geist throughout. */
+
 .ct-editor-panel {
   display: flex;
   flex-direction: column;
@@ -29,6 +32,10 @@
   border-radius: 80px;
   background: #e5e7eb;
   padding: 6px;
+  transition: background 0.18s ease;
+}
+.ct-dismiss-pill:hover {
+  background: #d8dce3;
 }
 .ct-editor-canvas {
   flex: 1;
@@ -39,14 +46,27 @@
   overflow-y: auto;
 }
 
+/* ---- Sidebar shell ------------------------------------------------------- */
 .ct-sidebar-panel {
+  --ct-accent: #2a4467;
+  --ct-accent-weak: rgba(42, 68, 103, 0.08);
+  --ct-accent-ring: rgba(42, 68, 103, 0.22);
+  --ct-ink: #0f0f0f;
+  --ct-ink-soft: #3f4756;
+  --ct-muted: #6b7280;
+  --ct-line: #eceef1;
+  --ct-surface: #ffffff;
+  --ct-surface-2: #f7f8fa;
+
   display: flex;
   flex-direction: column;
   min-width: 420px;
   width: 420px;
-  background: #ffffff;
+  background: var(--ct-surface);
   height: 100vh;
   overflow: hidden;
+  font-family: Geist, Arial, Helvetica, sans-serif;
+  border-left: 1px solid var(--ct-line);
 }
 .ct-topbar {
   display: flex;
@@ -55,8 +75,7 @@
   padding: 48px 32px 0 32px;
 }
 .ct-topbar-left {
-  color: #272727;
-  font-family: Geist, Arial, Helvetica, sans-serif;
+  color: var(--ct-ink);
   font-size: 16px;
   font-weight: 600;
   line-height: 24px;
@@ -67,80 +86,149 @@
   background: #e5e7eb;
   border-radius: 50%;
 }
+
+/* ---- Segmented tab switcher --------------------------------------------- */
 .ct-segment {
   display: inline-flex;
-  margin: 19px 23px 0 23px;
+  margin: 20px 23px 4px 23px;
   padding: 4px;
   border-radius: 100px;
-  background: #f3f4f6;
+  background: var(--ct-surface-2);
+  border: 1px solid var(--ct-line);
   gap: 4px;
 }
 .ct-segment-btn {
-  padding: 8px 20px;
-  color: #6b6b6b;
-  font-family: Quicksand, Arial, Helvetica, sans-serif;
+  padding: 7px 20px;
+  color: var(--ct-muted);
   font-size: 14px;
   font-weight: 600;
-  line-height: 24px;
+  line-height: 20px;
   border-radius: 100px;
+  transition: color 0.18s ease, background 0.18s ease;
 }
-.ct-segment-btn-active {
-  background: #2a4467;
+.ct-segment-btn:hover {
+  color: var(--ct-ink-soft);
+}
+.ct-segment-btn-active,
+.ct-segment-btn-active:hover {
+  background: var(--ct-accent);
   color: #ffffff;
-  padding: 8px 24px;
+  box-shadow: 0 1px 2px rgba(42, 68, 103, 0.28);
 }
 
+/* ---- Comments view ------------------------------------------------------- */
+.ct-comments-view,
+.ct-log-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  padding-top: 16px;
+}
 .ct-section-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 23px;
+  gap: 10px;
+  padding: 0 23px 14px 23px;
 }
 .ct-section-title {
-  color: #0f0f0f;
-  font-family: Inter, Arial, Helvetica, sans-serif;
-  font-size: 18px;
+  color: var(--ct-ink);
+  font-size: 17px;
   font-weight: 600;
-  line-height: 28px;
+  line-height: 24px;
+  letter-spacing: -0.01em;
 }
-.ct-avatars-cluster {
+.ct-count-pill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 100px;
+  background: var(--ct-accent-weak);
+  color: var(--ct-accent);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
-.ct-avatar-cluster-item {
-  width: 32px;
-  height: 32px;
-  border-radius: 67px;
-  padding: 8px;
-}
-.ct-avatar-cluster-item.second {
-  margin-left: -12px;
+.ct-log-view .ct-log-title {
+  color: var(--ct-ink);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+  padding: 0 23px 14px 23px;
 }
 
+/* ---- Compose box --------------------------------------------------------- */
 .ct-write-comment {
   display: flex;
   align-items: center;
-  margin: 0 23px;
-  border: 1px solid rgba(229, 231, 235, 0.5);
-  border-radius: 12px;
-  background: #ffffff;
-  height: 56px;
-  padding: 0 16px;
+  gap: 10px;
+  margin: 0 23px 8px 23px;
+  border: 1px solid var(--ct-line);
+  border-radius: 14px;
+  background: var(--ct-surface);
+  padding: 0 10px 0 14px;
+  box-shadow: 0 1px 2px rgba(15, 15, 15, 0.03);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.ct-write-comment:focus-within {
+  border-color: var(--ct-accent-ring);
+  box-shadow: 0 0 0 3px var(--ct-accent-weak);
+}
+.ct-write-comment.is-disabled {
+  background: var(--ct-surface-2);
+  box-shadow: none;
+}
+.ct-write-lead {
+  display: inline-flex;
+  color: var(--ct-muted);
 }
 .ct-input {
   width: 100%;
   background: transparent;
-  color: #181818;
-  font-family: "DM Sans", Arial, Helvetica, sans-serif;
-  font-size: 16px;
-  line-height: 21px;
+  color: var(--ct-ink);
+  font-family: Geist, Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+}
+.ct-write-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 10px;
+  background: var(--ct-accent);
+  color: #ffffff;
+  transition: transform 0.12s ease, opacity 0.18s ease, background 0.18s ease;
+}
+.ct-write-send:hover:not(:disabled) {
+  background: #223a58;
+}
+.ct-write-send:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.ct-write-send:disabled {
+  background: #d5d9e0;
+  color: #f7f8fa;
+  cursor: not-allowed;
+}
+.ct-spin {
+  animation: ct-spin 0.8s linear infinite;
+}
+@keyframes ct-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
+/* ---- Feed ---------------------------------------------------------------- */
 .ct-feed {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  padding: 0 23px 24px 23px;
+  padding: 4px 16px 24px 16px;
   flex: 1;
   overflow-y: auto;
 }
@@ -148,100 +236,235 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  text-align: left;
+  background: transparent;
+}
+.ct-feed-item--interactive {
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.12s ease;
+}
+.ct-feed-item--interactive:hover {
+  background: var(--ct-surface-2);
+  border-color: var(--ct-line);
+}
+.ct-feed-item--interactive:active {
+  transform: translateY(1px);
+}
+.ct-feed-item--interactive:focus-visible {
+  outline: none;
+  border-color: var(--ct-accent-ring);
+  box-shadow: 0 0 0 3px var(--ct-accent-weak);
+}
+.ct-feed-item.is-active {
+  background: var(--ct-accent-weak);
+  border-color: var(--ct-accent-ring);
 }
 .ct-avatar-wrap {
   display: inline-flex;
-  flex-direction: column;
-  align-items: center;
+  flex: none;
 }
 .ct-avatar {
+  width: 34px;
+  height: 34px;
   border-radius: 200px;
   overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(15, 15, 15, 0.06);
 }
 .ct-feed-content {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
 }
 .ct-feed-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
-  position: relative;
-}
-.ct-status-dot {
-  width: 8px;
-  height: 8px;
-  background: #12b76a;
-  border-radius: 50%;
-  position: absolute;
-  right: 0;
-  top: 1px;
+  gap: 6px;
 }
 .ct-feed-name {
-  color: #3f4756;
-  font-family: Geist, Arial, Helvetica, sans-serif;
-  font-size: 14px;
-  line-height: 24px;
+  color: var(--ct-ink-soft);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.ct-feed-dot-sep {
+  color: #c4c8d0;
+  font-size: 12px;
+  line-height: 1;
 }
 .ct-feed-time {
-  color: #626262;
-  font-family: Geist, Arial, Helvetica, sans-serif;
+  color: var(--ct-muted);
   font-size: 12px;
   line-height: 16px;
+  white-space: nowrap;
+}
+.ct-status-dot {
+  width: 7px;
+  height: 7px;
+  margin-left: 2px;
+  background: #12b76a;
+  border-radius: 50%;
+  flex: none;
 }
 .ct-feed-message {
-  color: #0f0f0f;
-  font-family: Geist, Arial, Helvetica, sans-serif;
-  font-size: 14px;
-  line-height: 24px;
-  width: 322px;
+  color: var(--ct-ink);
+  font-size: 13.5px;
+  line-height: 20px;
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  word-break: break-word;
 }
-.ct-attachment {
-  display: flex;
+.ct-feed-message--tight {
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+.ct-feed-locate {
+  display: inline-flex;
   align-items: center;
-  height: 40px;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  margin-top: 4px;
+  border-radius: 8px;
+  color: var(--ct-accent);
+  background: transparent;
+  opacity: 0;
+  transform: translateX(-2px);
+  transition: opacity 0.16s ease, transform 0.16s ease, background 0.16s ease;
+}
+.ct-feed-item--interactive:hover .ct-feed-locate,
+.ct-feed-item.is-active .ct-feed-locate {
+  opacity: 1;
+  transform: translateX(0);
+  background: var(--ct-accent-weak);
+}
+
+/* ---- Attachment chip ----------------------------------------------------- */
+.ct-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  padding: 4px 10px 4px 6px;
+  border: 1px solid var(--ct-line);
+  border-radius: 8px;
+  background: var(--ct-surface-2);
+  max-width: 100%;
+  align-self: flex-start;
 }
 .ct-attachment-icon {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  border-radius: 28px;
-  padding: 8px;
-  background: #f4ebff;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 6px;
+  background: var(--ct-accent-weak);
+  color: var(--ct-accent);
 }
 .ct-attachment-text {
-  display: flex;
-  flex-direction: column;
-  margin-left: 10px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
 }
 .ct-attachment-name {
-  color: #344054;
-  font-family: Inter, Arial, Helvetica, sans-serif;
-  font-size: 14px;
+  color: var(--ct-ink-soft);
+  font-size: 12.5px;
   font-weight: 500;
-  line-height: 20px;
+  line-height: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ct-attachment-size {
-  color: #475467;
-  font-family: Inter, Arial, Helvetica, sans-serif;
-  font-size: 14px;
-  line-height: 20px;
+  color: var(--ct-muted);
+  font-size: 11.5px;
+  line-height: 18px;
+  white-space: nowrap;
+  flex: none;
 }
 
-.ct-log-view .ct-log-title {
-  color: #0f0f0f;
-  font-family: Inter, Arial, Helvetica, sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 28px;
-  padding: 0 23px;
-}
-
-.ct-comments-view,
-.ct-log-view {
+/* ---- Empty state --------------------------------------------------------- */
+.ct-empty {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  overflow: hidden;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  margin: 24px 23px;
+  padding: 32px 24px;
+  border: 1px dashed var(--ct-line);
+  border-radius: 16px;
+  background: var(--ct-surface-2);
+}
+.ct-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 4px;
+  border-radius: 12px;
+  background: var(--ct-accent-weak);
+  color: var(--ct-accent);
+}
+.ct-empty-title {
+  color: var(--ct-ink);
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+.ct-empty-hint {
+  color: var(--ct-muted);
+  font-size: 12.5px;
+  line-height: 18px;
+  max-width: 240px;
+  margin: 0;
 }
 
+/* ---- Locate flash (in-page editor target) -------------------------------- */
+.ct-anchor-flash {
+  animation: ct-anchor-flash 1.6s ease;
+  border-radius: 4px;
+}
+@keyframes ct-anchor-flash {
+  0%,
+  100% {
+    background: transparent;
+    box-shadow: none;
+  }
+  15% {
+    background: var(--ct-accent-weak, rgba(42, 68, 103, 0.08));
+    box-shadow: 0 0 0 4px var(--ct-accent-weak, rgba(42, 68, 103, 0.08));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ct-feed-item--interactive,
+  .ct-feed-locate,
+  .ct-write-send,
+  .ct-dismiss-pill {
+    transition: none;
+  }
+  .ct-spin {
+    animation: none;
+  }
+  .ct-anchor-flash {
+    animation-duration: 0.01ms;
+  }
+}

@@ -1,4 +1,5 @@
 import React, { useCallback } from "react";
+import { MessagesSquare } from "lucide-react";
 import FeedItem from "./FeedItem";
 import WriteComment from "./WriteComment";
 import VirtualizedFeedList from "./VirtualizedFeedList";
@@ -15,6 +16,8 @@ export type CommentsFeedItem = {
   message: string;
   showDot?: boolean;
   attachment?: FeedAttachment | null;
+  /** Document anchor id. When present, the row locates the comment on click. */
+  anchorId?: string;
 };
 
 type CommentsTabProps = {
@@ -25,7 +28,13 @@ type CommentsTabProps = {
   onCommentSubmit?: () => void;
   canWriteComment?: boolean;
   isSubmittingComment?: boolean;
+  /** Fired when a comment row is activated; carries the row's document anchor. */
+  onCommentSelect?: (comment: CommentsFeedItem) => void;
+  /** Id of the comment currently focused in the document. */
+  activeCommentId?: string;
 };
+
+const ROW_HEIGHT = 104;
 
 const areCommentFeedsEqual = (prev: CommentsFeedItem[], next: CommentsFeedItem[]) => {
   if (prev === next) return true;
@@ -39,6 +48,7 @@ const areCommentFeedsEqual = (prev: CommentsFeedItem[], next: CommentsFeedItem[]
       p.timestamp !== n.timestamp ||
       p.message !== n.message ||
       p.showDot !== n.showDot ||
+      p.anchorId !== n.anchorId ||
       p.attachment?.filename !== n.attachment?.filename ||
       p.attachment?.size !== n.attachment?.size
     ) {
@@ -48,6 +58,16 @@ const areCommentFeedsEqual = (prev: CommentsFeedItem[], next: CommentsFeedItem[]
   return true;
 };
 
+const CommentsEmptyState: React.FC = () => (
+  <div className="ct-empty">
+    <span className="ct-empty-icon">
+      <MessagesSquare size={20} strokeWidth={1.75} />
+    </span>
+    <p className="ct-empty-title">No comments yet</p>
+    <p className="ct-empty-hint">Start the thread — mention a teammate with @ to loop them in.</p>
+  </div>
+);
+
 const CommentsTab: React.FC<CommentsTabProps> = ({
   avatarPublic,
   comments,
@@ -56,6 +76,8 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
   onCommentSubmit,
   canWriteComment = false,
   isSubmittingComment = false,
+  onCommentSelect,
+  activeCommentId,
 }) => {
   const renderCommentItem = useCallback(
     (comment: CommentsFeedItem) => (
@@ -66,20 +88,21 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
         message={comment.message}
         attachment={comment.attachment}
         showDot={comment.showDot}
+        interactive={Boolean(comment.anchorId)}
+        isActive={Boolean(comment.anchorId) && comment.anchorId === activeCommentId}
+        onSelect={comment.anchorId ? () => onCommentSelect?.(comment) : undefined}
       />
     ),
-    [avatarPublic],
+    [avatarPublic, activeCommentId, onCommentSelect],
   );
 
   return (
-    <div className="ct-comments-view my-5">
+    <div className="ct-comments-view">
       <div className="ct-section-header">
         <span className="ct-section-title">Comments and activity</span>
-        <div className="ct-avatars-cluster">
-          <img src={avatarPublic} alt="Kate" className="ct-avatar-cluster-item" />
-          <img src={avatarPublic} alt="Kate" className="ct-avatar-cluster-item second" />
-          <img src={avatarPublic} alt="Kate" className="ct-avatar-cluster-item second" />
-        </div>
+        {comments.length > 0 && (
+          <span className="ct-count-pill">{comments.length}</span>
+        )}
       </div>
 
       <WriteComment
@@ -90,13 +113,17 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
         isSubmitting={isSubmittingComment}
       />
 
-      <VirtualizedFeedList
-        className="ct-feed mt-5"
-        items={comments}
-        itemHeight={96}
-        getItemKey={(item) => item.id}
-        renderItem={renderCommentItem}
-      />
+      {comments.length === 0 ? (
+        <CommentsEmptyState />
+      ) : (
+        <VirtualizedFeedList
+          className="ct-feed"
+          items={comments}
+          itemHeight={ROW_HEIGHT}
+          getItemKey={(item) => item.id}
+          renderItem={renderCommentItem}
+        />
+      )}
     </div>
   );
 };
@@ -108,6 +135,8 @@ const arePropsEqual = (prev: CommentsTabProps, next: CommentsTabProps) =>
   prev.isSubmittingComment === next.isSubmittingComment &&
   prev.onCommentChange === next.onCommentChange &&
   prev.onCommentSubmit === next.onCommentSubmit &&
+  prev.onCommentSelect === next.onCommentSelect &&
+  prev.activeCommentId === next.activeCommentId &&
   areCommentFeedsEqual(prev.comments, next.comments);
 
 export default React.memo(CommentsTab, arePropsEqual);

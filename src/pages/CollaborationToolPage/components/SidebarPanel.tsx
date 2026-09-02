@@ -7,19 +7,7 @@ import type { CommentsFeedItem } from "./CommentsTab";
 const CommentsTab = lazy(() => import("./CommentsTab"));
 const LogTab = lazy(() => import("./LogTab"));
 
-type FeedAttachment = {
-  filename: string;
-  size: string;
-};
-
-type Feed = {
-  id: string;
-  name: string;
-  timestamp: string;
-  message: string;
-  showDot?: boolean;
-  attachment?: FeedAttachment | null;
-};
+type Feed = CommentsFeedItem;
 
 interface SidebarPanelProps {
   className?: string;
@@ -34,6 +22,8 @@ interface SidebarPanelProps {
   canWriteComment?: boolean;
   isSubmittingComment?: boolean;
   useFallbackFeed?: boolean;
+  onCommentSelect?: (comment: CommentsFeedItem) => void;
+  activeCommentId?: string;
 }
 
 const fallbackComments: Feed[] = [
@@ -89,6 +79,8 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   canWriteComment = false,
   isSubmittingComment = false,
   useFallbackFeed = false,
+  onCommentSelect,
+  activeCommentId,
 }) => {
   const avatarPublic = "/assets/collaboration/avatar-user.png";
   const commentsFeed: CommentsFeedItem[] = useFallbackFeed ? fallbackComments : comments;
@@ -150,6 +142,8 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
                 onCommentSubmit={onCommentSubmit}
                 canWriteComment={canWriteComment}
                 isSubmittingComment={isSubmittingComment}
+                onCommentSelect={onCommentSelect}
+                activeCommentId={activeCommentId}
               />
             </Suspense>
           </div>
@@ -178,6 +172,8 @@ const arePropsEqual = (prev: SidebarPanelProps, next: SidebarPanelProps) =>
   prev.canWriteComment === next.canWriteComment &&
   prev.isSubmittingComment === next.isSubmittingComment &&
   prev.useFallbackFeed === next.useFallbackFeed &&
+  prev.onCommentSelect === next.onCommentSelect &&
+  prev.activeCommentId === next.activeCommentId &&
   prev.comments === next.comments &&
   prev.logs === next.logs;
 

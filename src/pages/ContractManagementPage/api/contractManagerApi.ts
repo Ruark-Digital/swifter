@@ -403,6 +403,17 @@ export type ContractCommentDTO = {
     uploadedAt?: string;
   }>;
   children?: ContractCommentDTO[];
+  /**
+   * Where this comment is anchored in the collaborative document. Optional and
+   * populated by the backend once document-level anchoring lands; the
+   * collaboration sidebar uses it to scroll/highlight the source on click.
+   */
+  anchor?: {
+    /** SuperDoc comment id (drives the iframe `superdoc:focus-comment` bridge). */
+    superdocId?: string;
+    /** In-page editor block id (drives DOM scroll-to via `data-comment-anchor`). */
+    blockId?: string;
+  };
   createdAt?: string;
   updatedAt?: string;
 };
