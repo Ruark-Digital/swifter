@@ -582,6 +582,7 @@ const ContractManagementPage: React.FC = () => {
                   setPagination={setPmAllPagination}
                   statusFilter={statusFilter}
                   onStatusFilterChange={setStatusFilter}
+                  enableCompanyFilter
                   enableTakeOver
                   onRequestTakeOver={(id) => takeOverMutation.mutate(id)}
                   isRequestingTakeOver={takeOverMutation.isPending}
@@ -597,6 +598,7 @@ const ContractManagementPage: React.FC = () => {
                   setPagination={setVendorPagination}
                   statusFilter={statusFilter}
                   onStatusFilterChange={setStatusFilter}
+                  enableCompanyFilter
                 />
               </TabsContent>
             </Tabs>

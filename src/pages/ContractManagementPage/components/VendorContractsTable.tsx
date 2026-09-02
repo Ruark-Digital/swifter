@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import VendorEmptyState from "./VendorEmptyState";
 import { Link } from "react-router-dom";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
+import { applyVendorContractFilters } from "../lib/vendorContractFilters";
 
 export type VendorContractRow = {
   id: string;
@@ -208,6 +209,7 @@ type VendorContractsTableProps = {
   setPagination?: React.Dispatch<React.SetStateAction<PaginationState>>;
   statusFilter?: string;
   onStatusFilterChange?: (status: string) => void;
+  enableCompanyFilter?: boolean;
   enableTakeOver?: boolean;
   onRequestTakeOver?: (contractId: string) => void;
   isRequestingTakeOver?: boolean;
@@ -222,11 +224,13 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
   setPagination: setPaginationProp,
   statusFilter,
   onStatusFilterChange,
+  enableCompanyFilter,
   enableTakeOver,
   onRequestTakeOver,
   isRequestingTakeOver,
 }) => {
   const [search, setSearch] = React.useState("");
+  const [companyFilter, setCompanyFilter] = React.useState("all");
   const [openMenuRowId, setOpenMenuRowId] = React.useState<string | null>(null);
   const [takeOverId, setTakeOverId] = React.useState<string | null>(null);
   const [localPagination, setLocalPagination] = React.useState<PaginationState>({
@@ -260,35 +264,38 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
     );
   }, [isReadOnly, openMenuRowId, enableTakeOver]);
 
-  const filteredRows = React.useMemo(() => {
-    let result = rows;
+  const filteredRows = React.useMemo(
+    () =>
+      applyVendorContractFilters(rows, {
+        search,
+        statusFilter,
+        companyFilter,
+        enableCompanyFilter,
+      }),
+    [rows, search, statusFilter, companyFilter, enableCompanyFilter],
+  );
 
-    if (search) {
-      const query = search.toLowerCase();
-      result = result.filter((row) => {
-        return (
-          row.title.toLowerCase().includes(query) ||
-          row.code.toLowerCase().includes(query)
-        );
-      });
-    }
+  // Distinct companies present on the current page, for the PM's Company
+  // filter dropdown. Scoped to the current page like the search/status filters.
+  const companyOptions = React.useMemo(() => {
+    const distinct = Array.from(
+      new Set(rows.map((row) => row.company).filter((c) => c && c !== "-")),
+    ).sort((a, b) => a.localeCompare(b));
+    return [
+      { label: "All", value: "all" },
+      ...distinct.map((c) => ({ label: c, value: c })),
+    ];
+  }, [rows]);
 
-    if (statusFilter && statusFilter !== "all") {
-      result = result.filter((row) => {
-        if (statusFilter === "closed") {
-          return ["Closed", "Expired", "Cancelled"].includes(row.status);
-        }
-        return row.status.toLowerCase() === statusFilter.toLowerCase();
-      });
-    }
-
-    return result;
-  }, [rows, search, statusFilter]);
-
-  const handleFilterChange = (filters: any) => {
-    const status = filters.find((f: any) => f.title === "Status")?.value;
-    if (status && onStatusFilterChange) {
-      onStatusFilterChange(status);
+  // DropdownFilters emits (filterTitle, value) scalars — route each to the
+  // matching filter state and reset to the first page as the result set changes.
+  const handleFilterChange = (filterTitle: string, value: string) => {
+    if (filterTitle === "Status") {
+      onStatusFilterChange?.(value);
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    } else if (filterTitle === "Company") {
+      setCompanyFilter(value);
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
     }
   };
 
@@ -353,6 +360,15 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
                         { label: "Terminated", value: "terminated" },
                       ],
                     },
+                    ...(enableCompanyFilter
+                      ? [
+                          {
+                            title: "Company",
+                            showIcon: true,
+                            options: companyOptions,
+                          },
+                        ]
+                      : []),
                     {
                       title: "Category",
                       options: [
