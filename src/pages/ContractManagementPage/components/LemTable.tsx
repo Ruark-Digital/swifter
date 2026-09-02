@@ -690,7 +690,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                     variant="outline"
                     className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   >
-                    Reject Change
+                    Reject LEM
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md rounded-2xl">
