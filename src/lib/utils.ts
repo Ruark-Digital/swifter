@@ -182,6 +182,15 @@ export const formatModuleLabel = (raw: unknown): string => {
     .join(" ");
 };
 
+/**
+ * Upper-case the acronym "COI" (Certificate of Insurance) for display in
+ * free-text activity / general-update lines. The backend authors those strings
+ * and sometimes emits it lower- or title-cased ("coi" / "Coi"). Whole-word only
+ * (`\bcoi\b`), so ordinary words are never touched (QA #266).
+ */
+export const capitalizeCoi = (text: string): string =>
+  typeof text === "string" ? text.replace(/\bcoi\b/gi, "COI") : text;
+
 export const createFormData = (body: Record<string, any>) => {
   const formData = new FormData();
 

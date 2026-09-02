@@ -13,7 +13,7 @@ import {
 } from "@/hooks/useDashboardData";
 import { DashboardConfig } from "@/config/dashboardConfig";
 import { applyConsistentColors } from "./chartColorUtils";
-import { formatDateTZ, formatDateInZoneAbbrev } from "./utils";
+import { capitalizeCoi, formatDateTZ, formatDateInZoneAbbrev } from "./utils";
 
 // Dynamic link generation utility
 type UserRole = "procurement" | "evaluator" | "vendor";
@@ -2498,8 +2498,9 @@ export class DashboardDataTransformer {
     };
 
     return data.map((item: any, index: number) => {
-      const statusText: string = item?.statusText ?? "";
-      const actionText: string = item?.actionText ?? "";
+      // BE-authored copy sometimes emits "coi"/"Coi" — display it as "COI" (#266).
+      const statusText: string = capitalizeCoi(item?.statusText ?? "");
+      const actionText: string = capitalizeCoi(item?.actionText ?? "");
       const activityName = String(item?.name ?? item?.action ?? "");
       // Activity kind. Projects carry type/entityType "Project"; contracts/MSAs
       // carry contractDef.
