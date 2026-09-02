@@ -314,7 +314,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
       <DataTable<ContractChangeDTO>
         header={() => (
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
               <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
                 Changes
               </span>
@@ -322,7 +322,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
                 placeholder="Search changes"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-10 w-[260px]"
+                className="h-10 w-full sm:w-[260px]"
                 data-testid="search-changes-input"
               />
             </div>
