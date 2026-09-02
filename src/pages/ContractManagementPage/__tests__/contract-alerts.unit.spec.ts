@@ -70,7 +70,7 @@ test.describe("contractAlerts helpers (unit) — QA #141", () => {
     ).toBe("Invoice 002 is pending approval");
   });
 
-  test("builds RFI lines — overdue vs pending response", async () => {
+  test("builds RFI lines — overdue vs still open", async () => {
     expect(
       buildRfiAlertLine({ rfiId: "RFI-001", isOverdue: true, daysOverdue: 3 })
     ).toBe("RFI 001 is overdue by 3 days");
@@ -78,10 +78,11 @@ test.describe("contractAlerts helpers (unit) — QA #141", () => {
     expect(
       buildRfiAlertLine({ rfiId: "RFI-002", isOverdue: true, daysOverdue: 1 })
     ).toBe("RFI 002 is overdue by 1 day");
-    // Not overdue → pending response.
+    // Not overdue → the RFI is still open (a response may already have been
+    // provided; it stays open until the initiator closes it — QA #264).
     expect(
       buildRfiAlertLine({ rfiId: "RFI-003", isOverdue: false, daysUntilDeadline: 2 })
-    ).toBe("RFI 003 is pending response");
+    ).toBe("RFI 003 is still open");
   });
 
   test("classifies only COI as an insurance policy — securities are not", async () => {
