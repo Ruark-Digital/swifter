@@ -848,6 +848,11 @@ type Props = {
   currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
+  /** BE-computed flag: is the logged-in user the contract's owner/manager.
+   *  Gates the manager (CM) create/approve actions — a manager who doesn't
+   *  own the contract can view but not act on it (they'd need to take it
+   *  over). Company admins keep their expired-contract amendment override. */
+  owner?: boolean;
 };
 
 const AmendmentsTabContent: React.FC<Props> = ({
@@ -855,6 +860,7 @@ const AmendmentsTabContent: React.FC<Props> = ({
   currency,
   isActive,
   actionsDisabled,
+  owner,
 }) => {
   const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isCompanyAdmin, isViewOnly } =
     useUserRole();
@@ -947,13 +953,13 @@ const AmendmentsTabContent: React.FC<Props> = ({
 
   return (
     <TabsContent value="amendments" className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">Amendments</h3>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
           <ExportReportSheet contractId={contractId} contractType="Contract">
             <Button
               variant="outline"
-              className="rounded-xl border-[#E5E7EB] dark:border-slate-700 px-4 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
+              className="w-full rounded-xl border-[#E5E7EB] px-4 text-base font-semibold text-[#0F0F0F] sm:w-auto dark:border-slate-700 dark:text-slate-100"
             >
               <img
                 src="/assets/contract-management/amendments/share.svg"
@@ -964,12 +970,12 @@ const AmendmentsTabContent: React.FC<Props> = ({
             </Button>
           </ExportReportSheet>
 
-          {(isManager || isCompanyAdmin) && (
+          {((isManager && Boolean(owner)) || isCompanyAdmin) && (
             <CreateAmendmentDialog
               contractId={contractId}
               trigger={
                 <Button
-                  className="rounded-xl bg-[#2A4467] px-4 text-base font-semibold text-white hover:bg-[#2A4467]/90"
+                  className="w-full rounded-xl bg-[#2A4467] px-4 text-base font-semibold text-white hover:bg-[#2A4467]/90 sm:w-auto"
                   disabled={!!actionsDisabled}
                 >
                   <img
@@ -992,6 +998,7 @@ const AmendmentsTabContent: React.FC<Props> = ({
         isLoading={isAmendmentsLoading}
         contractId={contractId}
         currency={currency}
+        owner={owner}
         basePath={basePath}
         listInvalidateQueryKey={amendmentsQueryKey}
         statsInvalidateQueryKey={statsQueryKey}

@@ -17,6 +17,10 @@ type Props = {
   currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
+  /** BE-computed flag: is the logged-in user the contract's owner/manager.
+   *  Gates the manager (CM) create action — a manager who doesn't own the
+   *  contract can view but not act on it (they'd need to take it over). */
+  owner?: boolean;
 };
 
 const ClaimsTabContent: React.FC<Props> = ({
@@ -24,6 +28,7 @@ const ClaimsTabContent: React.FC<Props> = ({
   currency,
   isActive,
   actionsDisabled,
+  owner,
 }) => {
   const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
     useUserRole();
@@ -98,7 +103,7 @@ const ClaimsTabContent: React.FC<Props> = ({
             </Button>
           </ExportReportSheet>
 
-          {(isProjectManager || isManager) && (
+          {(isProjectManager || (isManager && Boolean(owner))) && (
             <RequestClaimDialog
               createPath={basePath}
               invalidateQueryKey={["contractClaims"]}
@@ -126,6 +131,7 @@ const ClaimsTabContent: React.FC<Props> = ({
         pagination={pagination}
         setPagination={setPagination}
         currency={currency}
+        owner={owner}
       />
     </TabsContent>
   );

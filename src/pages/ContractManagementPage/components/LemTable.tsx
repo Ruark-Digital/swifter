@@ -79,6 +79,9 @@ export interface LemDetailsSheetProps {
   basePath: string;
   /** Contract-level currency; falls back to USD when the API omits it. */
   currency?: string;
+  /** Is the logged-in user the contract's owner/manager — gates the manager
+   *  approve/reject action on the LEM. */
+  owner?: boolean;
 }
 
 const LabelRow = ({
@@ -291,6 +294,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   lemId,
   basePath,
   currency,
+  owner,
 }) => {
   const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } =
@@ -402,7 +406,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   };
 
   const canApproveOrReject =
-    (isApprover || isManager) &&
+    (isApprover || (isManager && Boolean(owner))) &&
     !isAdmin &&
     !isViewOnly &&
     !isVendor &&
@@ -686,7 +690,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                     variant="outline"
                     className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   >
-                    Reject Change
+                    Reject LEM
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md rounded-2xl">
@@ -747,6 +751,7 @@ const createColumns = (
   contractId: string,
   basePath: string,
   currency?: string,
+  owner?: boolean,
 ): ColumnDef<LemRow>[] => [
   { accessorKey: "id", header: "LEM ID" },
   {
@@ -802,6 +807,7 @@ const createColumns = (
             lemId={row.original.id}
             basePath={basePath}
             currency={currency}
+            owner={owner}
             trigger={
               <button
                 type="button"
@@ -826,6 +832,9 @@ const LemTable: React.FC<{
   basePath: string;
   /** Contract-level currency; falls back to USD when the API omits it. */
   currency?: string;
+  /** Is the logged-in user the contract's owner/manager — threaded to the
+   *  row detail sheet to gate the manager approve/reject action. */
+  owner?: boolean;
 }> = ({
   contractId,
   rows,
@@ -834,6 +843,7 @@ const LemTable: React.FC<{
   onSearchChange,
   basePath,
   currency,
+  owner,
 }) => {
   const filteredRows = React.useMemo(() => {
     const source = rows || [];
@@ -848,7 +858,7 @@ const LemTable: React.FC<{
     <div className="space-y-4" data-testid="lem-table">
       <DataTable<LemRow>
         data={filteredRows}
-        columns={createColumns(contractId, basePath, currency)}
+        columns={createColumns(contractId, basePath, currency, owner)}
         header={() => (
           <div className="flex items-center gap-3 border-b w-full border-[#E5E7EB] dark:border-slate-800 px-5 py-4">
             <span className="text-sm font-medium text-slate-900 dark:text-slate-100">LEM</span>

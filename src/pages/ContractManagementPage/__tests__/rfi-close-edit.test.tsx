@@ -181,6 +181,39 @@ describe("Contract RfiTable — close/edit gating and URL wiring", () => {
     expect(calledUrl).not.toMatch(/\/rfis\//);
   });
 
+  // Regression: closing must refetch the RFI LIST so the table row flips to
+  // "closed" without a manual refresh. The list/stats use a bare
+  // ["contractRfis", ...] key while the detail query is user-scoped, so a
+  // detail-only invalidation left the table showing "open". The close mutation
+  // must invalidate via a predicate that matches the bare list/stats keys.
+  test("closing an RFI invalidates the list/stats queries via a predicate", async () => {
+    mockedCurrentUser.value = { _id: ISSUER_ID };
+    const queryClient = renderTable([buildRfi({ status: "open" })]);
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    const trigger = screen.getByTestId("close-rfi-trigger");
+    const confirmButtons = screen
+      .getAllByRole("button", { name: "Close RFI" })
+      .filter((el) => el !== trigger);
+    fireEvent.click(confirmButtons[0]);
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalled();
+    });
+
+    const predicate = invalidateSpy.mock.calls
+      .map(
+        ([arg]) =>
+          (arg as { predicate?: (q: { queryKey: unknown[] }) => boolean })
+            ?.predicate,
+      )
+      .find(Boolean);
+    expect(predicate).toBeTypeOf("function");
+    // Bare list key and stats key — the table's queries — must both match.
+    expect(predicate!({ queryKey: ["contractRfis", CONTRACT_ID, 0, 10, "base"] })).toBe(true);
+    expect(predicate!({ queryKey: ["contractRfis", "stats", CONTRACT_ID, "base"] })).toBe(true);
+  });
+
   test("non-issuer: close button is absent", () => {
     mockedCurrentUser.value = { _id: "someone-else" };
     renderTable([buildRfi({ status: "open" })]);

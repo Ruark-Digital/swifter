@@ -94,6 +94,7 @@ type SavingsRealizedRow = {
 const buildHoldbackReleaseColumns = (
   contractId: string,
   contractType: "Contract" | "MsaContract" = "Contract",
+  owner?: boolean,
 ): ColumnDef<HoldbackReleaseRow>[] => [
   {
     accessorKey: "releaseId",
@@ -157,6 +158,7 @@ const buildHoldbackReleaseColumns = (
         currency={row.original.currency}
         contractId={contractId}
         contractType={contractType}
+        owner={owner}
         trigger={
           <button
             type="button"
@@ -579,6 +581,20 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
   const isContractVendorLike = isVendor || isProjectManager;
   const isPendingApproval = contract?.status === "pending_approval";
 
+  // Update Savings is an owner-only action: any CM can view this tab, but only
+  // the CM who owns/manages this contract may record savings. Use the BE
+  // `owner` flag when present, otherwise fall back to matching the creator id
+  // (mirrors OverviewTab's edit gate).
+  const currentUser = useUser();
+  const isContractOwner =
+    typeof contract?.owner === "boolean"
+      ? contract.owner
+      : Boolean(
+          currentUser?._id &&
+            contract?.creator?._id &&
+            currentUser._id === contract.creator._id,
+        );
+
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ holdbacks?: unknown; savings?: unknown }>(
@@ -730,8 +746,8 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
   }, [formatMoney, savingsResponse?.data, currency]);
 
   const holdbackReleaseColumns = React.useMemo(
-    () => buildHoldbackReleaseColumns(contractId, "Contract"),
-    [contractId],
+    () => buildHoldbackReleaseColumns(contractId, "Contract", contract?.owner),
+    [contractId, contract?.owner],
   );
 
   const savingsRealizedColumns = React.useMemo(
@@ -830,7 +846,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
             </button>
           </ExportReportSheet>
 
-          {isManager && !isPendingApproval && (
+          {isManager && isContractOwner && !isPendingApproval && (
             <div className="inline-flex items-start gap-6">
               <UpdateSavingsDialog
                 contractId={contractId}
@@ -885,7 +901,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
       )}
 
       <div className="space-y-6">
-        <div className="grid grid-cols-3 gap-x-6 gap-y-6">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3">
           <div className="flex flex-col justify-center gap-4">
             <div className="text-sm leading-7 text-[#6B6B6B] dark:text-slate-400">
               Contract Value
@@ -979,17 +995,17 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
         defaultValue="milestones"
         className="w-full bg-transparent space-y-8"
       >
-        <TabsList className="bg-[#F3F4F6] dark:bg-slate-800 p-2 h-fit rounded-full w-fit">
+        <TabsList className="bg-[#F3F4F6] dark:bg-slate-800 p-2 h-fit rounded-full w-fit max-w-full overflow-x-auto">
           <TabsTrigger
             value="milestones"
-            className="rounded-full px-6 py-1.5 text-base font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="rounded-full px-6 py-1.5 shrink-0 whitespace-nowrap text-base font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             MileStones
           </TabsTrigger>
           {!isViewOnly && (
             <TabsTrigger
               value="holdback-release"
-              className="rounded-full px-5 py-1.5 text-base font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+              className="rounded-full px-5 py-1.5 shrink-0 whitespace-nowrap text-base font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
             >
               Holdback Release
             </TabsTrigger>
@@ -997,7 +1013,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
           {(isManager || isApprover) && (
             <TabsTrigger
               value="saving-realized"
-              className="rounded-full px-5 py-1.5 text-base font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+              className="rounded-full px-5 py-1.5 shrink-0 whitespace-nowrap text-base font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
             >
               Savings Realized
             </TabsTrigger>

@@ -129,12 +129,16 @@ export const buildExpiryWarningLine = (w: ExpiryWarning): string => {
   return `Security warning: ${label} requires resubmission${daysLeft}`;
 };
 
-/** "Response to RFI 001 is overdue by 3 days" when overdue, else "Response to RFI 001 is pending". */
+/** "RFI 001 is overdue by 3 days" when overdue, else "RFI 001 is still open".
+ *  The alerts endpoint only surfaces OPEN RFIs, so the non-overdue line is a
+ *  state nudge ("still open") rather than "response pending": the RFI is a
+ *  two-way thread, so a response may already have been provided while it stays
+ *  open until the initiator closes it (QA #264). */
 export const buildRfiAlertLine = (rfi: RfiAlert): string => {
   const number = extractAlertItemNumber(rfi?.rfiId);
   const ref = number ? `RFI ${number}` : "RFI";
   if (rfi?.isOverdue && typeof rfi.daysOverdue === "number") {
-    return `Response to ${ref} is overdue by ${rfi.daysOverdue} day${rfi.daysOverdue === 1 ? "" : "s"}`;
+    return `${ref} is overdue by ${rfi.daysOverdue} day${rfi.daysOverdue === 1 ? "" : "s"}`;
   }
-  return `Response to ${ref} is pending`;
+  return `${ref} is still open`;
 };

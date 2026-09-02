@@ -38,6 +38,9 @@ type ChangeTableProps = {
   statsInvalidateQueryKey?: readonly unknown[];
   /** Contract-level currency; falls back to USD when the API omits it. */
   currency?: string;
+  /** Is the logged-in user the contract's owner/manager — threaded to the
+   *  detail sheet to gate the manager decision actions. */
+  owner?: boolean;
 };
 
 type ManagerActionsCellProps = CellContext<ContractChangeDTO, unknown> & {
@@ -59,6 +62,7 @@ function ManagerActionsCell({
     | {
         listInvalidateQueryKey?: readonly unknown[];
         statsInvalidateQueryKey?: readonly unknown[];
+        owner?: boolean;
       }
     | undefined;
   return (
@@ -68,6 +72,7 @@ function ManagerActionsCell({
         changeId={changeId}
         basePath={basePath}
         currency={currency}
+        owner={meta?.owner}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         listInvalidateQueryKey={meta?.listInvalidateQueryKey}
@@ -101,6 +106,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
   currency,
+  owner,
 }) => {
   const [search, setSearch] = React.useState("");
   const currencyCode = resolveCurrency(currency, useUser()?.currency);
@@ -308,7 +314,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
       <DataTable<ContractChangeDTO>
         header={() => (
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
               <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
                 Changes
               </span>
@@ -316,7 +322,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
                 placeholder="Search changes"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-10 w-[260px]"
+                className="h-10 w-full sm:w-[260px]"
                 data-testid="search-changes-input"
               />
             </div>
@@ -349,7 +355,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
           manualPagination: true,
           pagination,
           setPagination,
-          meta: { listInvalidateQueryKey, statsInvalidateQueryKey },
+          meta: { listInvalidateQueryKey, statsInvalidateQueryKey, owner },
         }}
       />
     </div>

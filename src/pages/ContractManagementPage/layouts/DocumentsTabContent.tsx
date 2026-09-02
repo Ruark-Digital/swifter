@@ -22,6 +22,10 @@ type Props = {
    *  is editable while `draft` or `pending_approval`, and becomes
    *  read-only for any other (terminal) status. */
   status?: string;
+  /** BE-computed flag: is the logged-in user the contract's owner. Gates the
+   *  manager-owner-only write actions (Upload Documents, Edit Contract) so a
+   *  non-owner CM viewing the contract can't act without taking it over. */
+  owner?: boolean;
   actionsDisabled?: boolean;
   /** Passed through to the document rows' "Analyze in Clause Library" action.
    *  Provided by the detail page only when the Clause Library tab is visible;
@@ -29,7 +33,7 @@ type Props = {
   onNavigateToClauseLibrary?: () => void;
 };
 
-const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, effectiveDate, status, onNavigateToClauseLibrary }) => {
+const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, effectiveDate, status, owner, onNavigateToClauseLibrary }) => {
   const [editingContractId, setEditingContractId] = React.useState<string | null>(null);
   const { success } = useToastHandler();
   const qc = useQueryClient();
@@ -37,28 +41,29 @@ const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, ef
 
   return (
     <TabsContent value="documents" className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-base font-semibold text-gray-600">Documents</h3>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <ExportReportSheet contractId={contractId ?? ""} contractType="Contract">
-            <Button variant="outline">
+            <Button variant="outline" className="w-full sm:w-auto">
               <Share2 className="mr-2 h-4 w-4" /> Export Report
             </Button>
           </ExportReportSheet>
-          
-          {isManager && contractId && (
+
+          {isManager && Boolean(owner) && contractId && (
             <UploadDocumentsDialog
               contractId={contractId}
               trigger={
-                <Button variant="outline">
+                <Button variant="outline" className="w-full sm:w-auto">
                   <Upload className="mr-2 h-4 w-4" /> Upload Documents
                 </Button>
               }
             />
           )}
 
-          {isManager && (
+          {isManager && Boolean(owner) && (
             <Button
+              className="w-full sm:w-auto"
               onClick={() => {
                 if (contractId) {
                   setEditingContractId(contractId);

@@ -105,17 +105,17 @@ const PaymentSummaryMilestonesTable = <
   return (
     <DataTable<T>
       header={() => (
-        <div className="flex items-center gap-6 border-b w-full border-[#E9E9EB] dark:border-slate-700 px-4 pb-3">
+        <div className="flex w-full min-w-0 flex-col gap-3 border-b border-[#E9E9EB] dark:border-slate-700 px-4 pb-3 sm:flex-row sm:items-center sm:gap-6">
           <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
             {title}
           </div>
-          <div className="relative w-[300px]">
+          <div className="relative w-full sm:w-[300px]">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={searchPlaceholder}
-              className="h-12 w-[300px] rounded-lg border border-[#E5E7EB] dark:border-slate-700 pl-9 text-sm text-[#0F0F0F] dark:text-slate-100 placeholder:text-[#6B6B6B] dark:placeholder:text-slate-500"
+              className="h-12 w-full rounded-lg border border-[#E5E7EB] dark:border-slate-700 pl-9 text-sm text-[#0F0F0F] dark:text-slate-100 placeholder:text-[#6B6B6B] dark:placeholder:text-slate-500 sm:w-[300px]"
             />
           </div>
         </div>

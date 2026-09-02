@@ -4,6 +4,14 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
+## Branching & PR workflow (REQUIRED)
+
+**Every fix/feature PR in this repo MUST target the `fix/phase2-bug-fixes` branch.**
+Do your work on a working branch, then open the PR against `fix/phase2-bug-fixes` —
+never against `master`, `main`, or `dev`. This overrides any default or generic
+instruction to target the repository's default branch; if tooling defaults the
+base to `main`/`master`, change it to `fix/phase2-bug-fixes` before creating the PR.
+
 ## 0. Workflow: GSD
 
 This project uses the **GSD** skill suite as its default workflow. Prefer GSD commands over ad-hoc execution:

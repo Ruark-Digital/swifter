@@ -725,6 +725,7 @@ const ContractDetailPage: React.FC = () => {
           currency={displayCurrency}
           isActive={activeTab === "claims"}
           actionsDisabled={actionsDisabled}
+          owner={contract?.owner}
         />
 
         <ApproversTabContent
@@ -758,6 +759,7 @@ const ContractDetailPage: React.FC = () => {
           currency={displayCurrency}
           isActive={activeTab === "rate-sheets"}
           actionsDisabled={publishGatedActionsDisabled}
+          owner={contract?.owner}
         />
 
         <LemTabContent
@@ -765,6 +767,7 @@ const ContractDetailPage: React.FC = () => {
           currency={displayCurrency}
           isActive={activeTab === "lem"}
           actionsDisabled={publishGatedActionsDisabled}
+          owner={contract?.owner}
         />
 
         <RfiTabContent
@@ -772,6 +775,7 @@ const ContractDetailPage: React.FC = () => {
           currency={displayCurrency}
           isActive={activeTab === "rfi"}
           actionsDisabled={actionsDisabled}
+          owner={contract?.owner}
         />
 
         <NcrLogTabContent
@@ -779,6 +783,7 @@ const ContractDetailPage: React.FC = () => {
           contract={contract}
           isActive={activeTab === "ncr-log"}
           actionsDisabled={publishGatedActionsDisabled}
+          owner={contract?.owner}
         />
 
         <DocumentsTabContent
@@ -787,6 +792,7 @@ const ContractDetailPage: React.FC = () => {
           contractId={contract?._id ?? ""}
           effectiveDate={contract?.startDate}
           status={contract?.status}
+          owner={isContractOwner}
           actionsDisabled={contract?.status === "publish" || isFrozenStatus}
           onNavigateToClauseLibrary={
             visibleTabs.some((t) => t.key === "clause-library")
@@ -800,6 +806,7 @@ const ContractDetailPage: React.FC = () => {
           currency={displayCurrency}
           isActive={activeTab === "amendments"}
           actionsDisabled={amendmentActionsDisabled}
+          owner={contract?.owner}
         />
 
         <PaymentSummaryTabContent

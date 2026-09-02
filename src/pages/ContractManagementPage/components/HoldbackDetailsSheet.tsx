@@ -37,6 +37,11 @@ type Props = {
   contractType?: "Contract" | "MsaContract";
   basePath?: string;
   currency?: string;
+  /** BE-computed flag: is the logged-in user the contract's owner/manager.
+   *  Gates the manager (CM) accept/reject decision on a holdback-release
+   *  application — a manager who doesn't own the contract can view but not
+   *  decide. Approver escalation is unaffected. */
+  owner?: boolean;
 };
 
 export interface HoldbackDetailDTO {
@@ -75,6 +80,7 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
   contractType = "Contract",
   basePath,
   currency = "USD",
+  owner,
 }) => {
   const toast = useToastHandler();
   const [open, setOpen] = React.useState(false);
@@ -247,7 +253,7 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
         });
         return res.data as { message?: string };
       }
-      if (isManager && managerDecideUrl) {
+      if (isManager && Boolean(owner) && managerDecideUrl) {
         const res = await putRequest({
           url: managerDecideUrl,
           payload: { action, comment },
@@ -456,6 +462,7 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
               CM has acted (manager.status flips even though the top-level status
               stays "pending" for the approver escalation that follows). */}
           {isManager &&
+            Boolean(owner) &&
             (detail?.status ?? "").toLowerCase() === "pending" &&
             !managerHasDecided && (
             <div className="flex items-center justify-between gap-6 border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 px-8 py-6">

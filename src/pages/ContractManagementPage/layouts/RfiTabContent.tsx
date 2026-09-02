@@ -490,12 +490,18 @@ type Props = {
   currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
+  /** BE-computed flag: is the logged-in user the contract's owner/manager.
+   *  Gates the manager (CM) "Issue RFI" action — a manager who doesn't own
+   *  the contract can view but not issue RFIs on it (they'd need to take it
+   *  over). Approvers, project managers and admins are unaffected. */
+  owner?: boolean;
 };
 
 const RfiTabContent: React.FC<Props> = ({
   contractId,
   isActive,
   actionsDisabled,
+  owner,
 }) => {
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -581,7 +587,7 @@ const RfiTabContent: React.FC<Props> = ({
               <Share2 className="mr-2 h-4 w-4" /> Export Report
             </Button>
           </ExportReportSheet>
-          {!isViewOnly && !isVendor && (
+          {!isViewOnly && !isVendor && !(isManager && !owner) && (
             <IssueRfiDialog
               contractId={contractId}
               basePath={basePath}

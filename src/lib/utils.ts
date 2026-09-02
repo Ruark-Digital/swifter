@@ -182,6 +182,15 @@ export const formatModuleLabel = (raw: unknown): string => {
     .join(" ");
 };
 
+/**
+ * Upper-case the acronym "COI" (Certificate of Insurance) for display in
+ * free-text activity / general-update lines. The backend authors those strings
+ * and sometimes emits it lower- or title-cased ("coi" / "Coi"). Whole-word only
+ * (`\bcoi\b`), so ordinary words are never touched (QA #266).
+ */
+export const capitalizeCoi = (text: string): string =>
+  typeof text === "string" ? text.replace(/\bcoi\b/gi, "COI") : text;
+
 export const createFormData = (body: Record<string, any>) => {
   const formData = new FormData();
 
@@ -244,6 +253,35 @@ export function formatDateTZ(
     return "N/A";
   }
 }
+
+/**
+ * Coerce a possibly-naive datetime STRING to an absolute instant by assuming
+ * UTC when it carries no timezone designator.
+ *
+ * `formatDateTZ` renders a real instant (a `…Z`/offset string, or a `Date`) in
+ * the viewer's timezone, but a naive datetime string with no offset is a backend
+ * contract gap it cannot recover — the JS engine reads it as local time and it
+ * shows unconverted. When a field is known to be stored in UTC yet may serialize
+ * without the `Z` (e.g. the proposal pricing timestamp, which arrives naive while
+ * sibling file `uploadedAt` values carry the `Z`), pass it through here first so
+ * it converts to the viewer's zone consistently with those siblings.
+ *
+ * Values that already carry a `Z`/±offset, date-only strings (`YYYY-MM-DD`), and
+ * non-strings (already-parsed `Date`s) are returned unchanged.
+ */
+export const ensureUtcInstant = (
+  value: string | Date | undefined | null
+): string | Date | undefined | null => {
+  if (typeof value !== "string") return value;
+  const v = value.trim();
+  // Date-only — no time component to anchor; leave to formatDateTZ's handling.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  // Already an absolute instant (trailing Z or ±HH:MM / ±HHMM offset).
+  if (/([zZ]|[+-]\d{2}:?\d{2})$/.test(v)) return v;
+  // Datetime lacking an offset — treat as UTC (normalize the space form too).
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(v)) return `${v.replace(" ", "T")}Z`;
+  return v;
+};
 
 // Fixed UTC offsets (minutes east of UTC) for the timezone abbreviations in
 // `src/assets/timezones.json` — the same labels the app's timezone pickers store
@@ -319,7 +357,22 @@ export function formatDateInZoneAbbrev(
   if (!dateInput) return "N/A";
   const abbr = (zoneAbbrev ?? "").trim();
 
-  const instant = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+  // A naive datetime string (no Z/offset) is stored by the BE as UTC; append a
+  // `Z` so it parses as the correct instant instead of the viewer's local wall
+  // clock. Date-only and already-zoned strings pass through unchanged.
+  let normalizedInput: string | Date = dateInput;
+  if (typeof dateInput === "string") {
+    const s = dateInput.trim();
+    const naive =
+      !/^\d{4}-\d{2}-\d{2}$/.test(s) &&
+      !/([zZ]|[+-]\d{2}:?\d{2})$/.test(s) &&
+      /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(s);
+    normalizedInput = naive ? `${s.replace(" ", "T")}Z` : s;
+  }
+  const instant =
+    typeof normalizedInput === "string"
+      ? new Date(normalizedInput)
+      : normalizedInput;
   if (!(instant instanceof Date) || isNaN(instant.getTime())) return "N/A";
 
   // Prefer a real IANA zone for DST-observing abbreviations: resolve the offset
