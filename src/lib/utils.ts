@@ -357,7 +357,22 @@ export function formatDateInZoneAbbrev(
   if (!dateInput) return "N/A";
   const abbr = (zoneAbbrev ?? "").trim();
 
-  const instant = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+  // A naive datetime string (no Z/offset) is stored by the BE as UTC; append a
+  // `Z` so it parses as the correct instant instead of the viewer's local wall
+  // clock. Date-only and already-zoned strings pass through unchanged.
+  let normalizedInput: string | Date = dateInput;
+  if (typeof dateInput === "string") {
+    const s = dateInput.trim();
+    const naive =
+      !/^\d{4}-\d{2}-\d{2}$/.test(s) &&
+      !/([zZ]|[+-]\d{2}:?\d{2})$/.test(s) &&
+      /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(s);
+    normalizedInput = naive ? `${s.replace(" ", "T")}Z` : s;
+  }
+  const instant =
+    typeof normalizedInput === "string"
+      ? new Date(normalizedInput)
+      : normalizedInput;
   if (!(instant instanceof Date) || isNaN(instant.getTime())) return "N/A";
 
   // Prefer a real IANA zone for DST-observing abbreviations: resolve the offset
