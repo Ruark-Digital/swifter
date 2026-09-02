@@ -31,7 +31,7 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useState } from "react";
 import { isAfter, parseISO, isValid } from "date-fns";
-import { formatCurrency, formatDateTZ } from "@/lib/utils";
+import { ensureUtcInstant, formatCurrency, formatDateTZ } from "@/lib/utils";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { getFileExtension, isViewableFile } from "@/lib/fileUtils.tsx";
 import EvaluationScorecardSheet from "@/pages/EvaluationManagementPage/components/EvaluationScorecardSheet";
@@ -573,7 +573,10 @@ const ProposalDetailsPage: React.FC = () => {
         return (
           <div className="text-sm text-gray-600 dark:text-gray-300">
             {document.uploadedAt
-              ? formatDateTZ(document.uploadedAt, "MMM d, yyyy h:mm a")
+              ? formatDateTZ(
+                  ensureUtcInstant(document.uploadedAt),
+                  "MMM d, yyyy h:mm a"
+                )
               : "N/A"}
           </div>
         );
