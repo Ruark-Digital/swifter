@@ -461,11 +461,20 @@ const AnalyticsTab: React.FC<Props> = ({
     return lines.map((text) => ({ text, urgent: true }));
   })();
 
+  // Rank clauses by risk level (high → medium → low) and surface the top 10
+  // (QA #262). Ties keep the BE's `order` so equal-risk clauses stay stable.
+  const RISK_RANK: Record<string, number> = { high: 3, medium: 2, low: 1 };
   const clauseRows =
     clauseLegalAnalysis?.clauses?.length
       ? clauseLegalAnalysis.clauses
           .slice()
-          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+          .sort((a, b) => {
+            const rankDiff =
+              (RISK_RANK[(b.risk ?? "").toLowerCase()] ?? 0) -
+              (RISK_RANK[(a.risk ?? "").toLowerCase()] ?? 0);
+            return rankDiff !== 0 ? rankDiff : (a.order ?? 0) - (b.order ?? 0);
+          })
+          .slice(0, 10)
           .map((c) => {
             const risk = (c.risk ?? "").toLowerCase();
             const color = risk === "high" ? "red" : risk === "low" ? "green" : "yellow";
