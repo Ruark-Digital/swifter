@@ -156,6 +156,35 @@ const useSubmittedDocuments = (
   });
 };
 
+// The submitted-document / criteria endpoints don't carry the vendor's name,
+// so the scoring page can't say who is being scored (QA #271). Reuse the
+// evaluation group's vendor list (same query key as the assigned-evaluation
+// page, so it's usually already cached) and resolve the name by vendor id.
+type EvaluationGroupVendorsResponse = {
+  vendors?: Array<{ vendorId: string; name: string }>;
+};
+
+const useEvaluationGroupVendorName = (
+  evaluationId: string,
+  evaluationGroupId: string,
+  vendorId: string
+) => {
+  const { data } = useQuery<
+    ApiResponse<EvaluationGroupVendorsResponse>,
+    ApiResponseError
+  >({
+    queryKey: ["evaluation-group-vendors", evaluationId, evaluationGroupId],
+    queryFn: async () =>
+      getRequest({
+        url: `/evaluator/${evaluationId}/evaluation-group/${evaluationGroupId}`,
+      }),
+    enabled: !!evaluationId && !!evaluationGroupId,
+  });
+  return (
+    data?.data?.data?.vendors?.find((v) => v.vendorId === vendorId)?.name ?? ""
+  );
+};
+
 type EvaluationCriteriaResponse = {
   criteria: EvaluatorCriteria[];
   info: EvaluatorEvaluationDetail;
@@ -277,6 +306,12 @@ const SubmittedDocumentPage: React.FC = () => {
     isLoading: documentsLoading,
     error: documentsError,
   } = useSubmittedDocuments(id || "", groupId || "", vendorId || "", user?._id || "");
+
+  const vendorName = useEvaluationGroupVendorName(
+    id || "",
+    groupId || "",
+    vendorId || ""
+  );
 
   const {
     data: criteriaData,
@@ -678,12 +713,19 @@ const SubmittedDocumentPage: React.FC = () => {
               "Loading..."}
           </h1>
         </div>
-        <Badge
-          variant="secondary"
-          className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-200 dark:border-green-700"
-        >
-          {evaluationInfo?.status || criteriaEvaluationInfo?.status || "Active"}
-        </Badge>
+        <div className="flex flex-col items-end gap-2">
+          {vendorName && (
+            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {vendorName}
+            </span>
+          )}
+          <Badge
+            variant="secondary"
+            className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-200 dark:border-green-700"
+          >
+            {evaluationInfo?.status || criteriaEvaluationInfo?.status || "Active"}
+          </Badge>
+        </div>
       </div>
 
       {/* Evaluation ID and Type */}
