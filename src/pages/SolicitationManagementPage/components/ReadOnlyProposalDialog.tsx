@@ -77,27 +77,27 @@ const ReadOnlyProposalDialog: React.FC<ReadOnlyProposalDialogProps> = ({
       <div key={index} className={`space-y-2 ${isSubItem ? 'ml-8' : ''}`}>
         {/* Main Item Row */}
         <div className="grid grid-cols-12 gap-4 py-3 px-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <div className="col-span-1 flex items-center justify-end">
+          <div className="col-span-1 flex items-center">
             {isSubItem && <CornerDownRight className="text-gray-400 h-4 w-4" />}
             {!isSubItem && <span className="font-medium">{index + 1}</span>}
           </div>
           <div className="col-span-2 min-w-0">
-            <div className="font-medium text-gray-900 dark:text-gray-100 break-words text-right">
+            <div className="font-medium text-gray-900 dark:text-gray-100 break-words">
               {item.component}
             </div>
           </div>
           <div className="col-span-2 min-w-0">
-            <div className="text-gray-600 dark:text-gray-400 break-words text-right">
+            <div className="text-gray-600 dark:text-gray-400 break-words">
               {item.description || "-"}
             </div>
           </div>
           <div className="col-span-1">
-            <div className="text-right text-gray-900 dark:text-gray-100">
+            <div className="text-center text-gray-900 dark:text-gray-100">
               {item.quantity}
             </div>
           </div>
           <div className="col-span-2 min-w-0">
-            <div className="text-gray-900 dark:text-gray-100 break-words text-right">
+            <div className="text-gray-900 dark:text-gray-100 break-words">
               {item.unitOfmeasurement}
             </div>
           </div>
@@ -154,13 +154,13 @@ const ReadOnlyProposalDialog: React.FC<ReadOnlyProposalDialogProps> = ({
             <div className="space-y-4">
               {/* Table Header */}
               <div className="grid grid-cols-12 gap-4 py-3 px-4 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300">
-                <div className="col-span-1 text-right">#</div>
-                <div className="col-span-2 text-right">Item/Component</div>
-                <div className="col-span-2 text-right">Description</div>
-                <div className="col-span-1 text-right">Quantity</div>
-                <div className="col-span-2 text-right">Unit of Measurement</div>
-                <div className="col-span-2 text-right">Unit Price</div>
-                <div className="col-span-2 text-right">Subtotal</div>
+                <div className="col-span-1">#</div>
+                <div className="col-span-2">Item/Component</div>
+                <div className="col-span-2">Description</div>
+                <div className="col-span-1">Quantity</div>
+                <div className="col-span-2">Unit of Measurement</div>
+                <div className="col-span-2">Unit Price</div>
+                <div className="col-span-2">Subtotal</div>
               </div>
 
               {/* Items */}
