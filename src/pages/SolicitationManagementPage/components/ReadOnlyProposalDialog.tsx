@@ -101,12 +101,12 @@ const ReadOnlyProposalDialog: React.FC<ReadOnlyProposalDialogProps> = ({
               {item.unitOfmeasurement}
             </div>
           </div>
-          <div className="col-span-1">
+          <div className="col-span-2">
             <div className="text-right text-gray-900 dark:text-gray-100">
               {formatCurrency(item.unitPrice, "en-US", currency)}
             </div>
           </div>
-          <div className="col-span-1">
+          <div className="col-span-2">
             <div className="text-right font-medium text-gray-900 dark:text-gray-100">
               {formatCurrency(item.subtotal, "en-US", currency)}
             </div>
@@ -159,8 +159,8 @@ const ReadOnlyProposalDialog: React.FC<ReadOnlyProposalDialogProps> = ({
                 <div className="col-span-2">Description</div>
                 <div className="col-span-1">Quantity</div>
                 <div className="col-span-2">Unit of Measurement</div>
-                <div className="col-span-1">Unit Price</div>
-                <div className="col-span-1">Subtotal</div>
+                <div className="col-span-2">Unit Price</div>
+                <div className="col-span-2">Subtotal</div>
               </div>
 
               {/* Items */}
