@@ -35,3 +35,28 @@ export const config = {
   chatBaseUrl: deriveChatBaseUrl(baseUrl),
   env: deriveEnv(baseUrl),
 };
+
+// A stored file URL (e.g. a contract document's `url`) bakes in whatever API
+// host/base was active when the file was uploaded, so it does NOT follow
+// `VITE_API_BASE_URL` when the environment changes — unlike every axios call.
+// Re-home such URLs onto the env-configured base so the file is always fetched
+// from the current environment. Only the path after the API base (e.g.
+// `/upload/...`) is intrinsic to the file; the base comes from `baseUrl`.
+// Absolute API URLs only — relative, non-http, and genuinely external URLs
+// (whose path doesn't sit under the API base) are returned unchanged.
+export const resolveEnvFileUrl = (rawUrl: string): string => {
+  if (!rawUrl) return rawUrl;
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return rawUrl;
+    const base = new URL(baseUrl);
+    const basePath = base.pathname.replace(/\/+$/, ""); // e.g. "/api/v1/dev"
+    if (basePath && url.pathname.startsWith(basePath)) {
+      const rest = url.pathname.slice(basePath.length); // e.g. "/upload/..."
+      return `${base.origin}${basePath}${rest}${url.search}${url.hash}`;
+    }
+    return rawUrl;
+  } catch {
+    return rawUrl;
+  }
+};

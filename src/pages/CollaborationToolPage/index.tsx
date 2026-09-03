@@ -1,5 +1,6 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
+import { resolveEnvFileUrl } from "@/config";
 import { SEOWrapper } from "@/components/SEO";
 import SidebarPanel from "./components/SidebarPanel";
 import "@/pages/CollaborationToolPage/collaboration.css";
@@ -197,7 +198,10 @@ const CollaborationToolPage: React.FC = () => {
   const [aiNoRedlines, setAiNoRedlines] = useState(false);
   const [aiProgress, setAiProgress] = useState<SuggestionProgress>({});
 
-  const sourceUrl = searchParams.get("sourceUrl") || "";
+  // The stored document URL carries the API host baked in at upload time, so on
+  // its own it doesn't follow VITE_API_BASE_URL. Re-home it onto the env base so
+  // the document is fetched from the current environment like every other call.
+  const sourceUrl = resolveEnvFileUrl(searchParams.get("sourceUrl") || "");
   const fileName = searchParams.get("fileName") || "";
   const fileType = searchParams.get("fileType") || "";
   const contractId = searchParams.get("contractId") || "";
