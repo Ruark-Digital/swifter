@@ -1063,12 +1063,18 @@ const EditContract: React.FC<Props> = ({
       let payload = fullPayload;
       const baseline = baselineValuesRef.current;
       if (baseline) {
-        // `status` drives the approval transition and `timezone` interprets the
-        // date fields — the BE needs both on every update regardless of change.
-        payload = diffChangedPayload(fullPayload, buildPayload(baseline, effectiveStatus) as any, [
-          "status",
-          "timezone",
-        ]);
+        // Diff every field against the baseline; nothing is force-included, so
+        // untouched control fields are not sent. `timezone` is recomputed
+        // identically for both sides here, so it naturally drops out unless it
+        // actually changes.
+        payload = diffChangedPayload(fullPayload, buildPayload(baseline, effectiveStatus) as any);
+        // `status` can't be diffed through the builder (both sides carry the
+        // target `effectiveStatus`), so decide it explicitly: send it only when
+        // this save transitions the contract's status — a draft or a live
+        // contract (re-)entering approval. An unchanged status is left out.
+        if (effectiveStatus !== currentContractStatus) {
+          payload.status = effectiveStatus;
+        }
         // `duration` is a read-only field fully derived from the effective/end
         // dates — Step4Timeline recomputes it on load, which can drift from the
         // stored value and surface as a phantom change. Only send it when one of
