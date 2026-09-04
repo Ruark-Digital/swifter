@@ -1003,14 +1003,15 @@ const EditContract: React.FC<Props> = ({
         vendor,
         projectManager: data.projectManager || undefined,
         personnel,
+        // Build from the live `internalTeam` field so an edited selection is
+        // actually saved. `internalTeamMeta` is only seeded from the loaded
+        // contract and never re-synced when the user changes the tags, so
+        // preferring it here dropped the updated selection on edit. Tag ids
+        // resolve the same for loaded, autocomplete-selected, and typed entries.
         internalTeam:
-          (data.internalTeamMeta && data.internalTeamMeta.length > 0
-            ? (data.internalTeamMeta ?? [])
-                .map((p: any) => toIdStringOrUndefined(p))
-                .filter(Boolean)
-            : (data.internalTeam ?? [])
-                .map((t: any) => toIdStringOrUndefined(t?.value ?? t))
-                .filter(Boolean)) ?? undefined,
+          (data.internalTeam ?? [])
+            .map((t: any) => toIdStringOrUndefined(t?.value ?? t))
+            .filter(Boolean) ?? undefined,
         signatories:
           signatories && signatories.length > 0 ? signatories : undefined,
       };
