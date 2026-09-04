@@ -1055,29 +1055,6 @@ const EditContract: React.FC<Props> = ({
           : status;
       const fullPayload = buildPayload(data, effectiveStatus) as any;
 
-      const baseCurrency = currentUser?.currency;
-      const selectedCurrency = fullPayload?.currency;
-      if (
-        typeof baseCurrency === "string" &&
-        typeof selectedCurrency === "string" &&
-        baseCurrency &&
-        selectedCurrency &&
-        baseCurrency !== selectedCurrency
-      ) {
-        try {
-          fullPayload.currencyRate = await getExchangeRate(
-            baseCurrency,
-            selectedCurrency,
-          );
-        } catch (err) {
-          error(
-            "Failed to update contract",
-            err instanceof Error ? err.message : "Unable to fetch currency rate",
-          );
-          return;
-        }
-      }
-
       // Send the BE only the fields the user actually changed. Diff the full
       // payload against a baseline built from the originally-loaded values via
       // the SAME builder, so derived/nested fields compare uniformly. Fall back
@@ -1092,6 +1069,13 @@ const EditContract: React.FC<Props> = ({
           "status",
           "timezone",
         ]);
+        // `duration` is a read-only field fully derived from the effective/end
+        // dates — Step4Timeline recomputes it on load, which can drift from the
+        // stored value and surface as a phantom change. Only send it when one of
+        // those dates actually changed.
+        if (!("startDate" in payload) && !("endDate" in payload)) {
+          delete payload.duration;
+        }
         // `files` and `signatories` come from state outside the form, so the
         // baseline builder can't see their changes — include them explicitly.
         const filesChanged =
@@ -1101,6 +1085,33 @@ const EditContract: React.FC<Props> = ({
         else delete payload.files;
         if (signatories.length > 0) payload.signatories = signatories;
         else delete payload.signatories;
+      }
+
+      // `currencyRate` is derived from `currency`; only fetch and send a fresh
+      // rate when the currency itself changed (no baseline → treat as changed).
+      const currencyChanged = !baseline || "currency" in payload;
+      const baseCurrency = currentUser?.currency;
+      const selectedCurrency = fullPayload?.currency;
+      if (
+        currencyChanged &&
+        typeof baseCurrency === "string" &&
+        typeof selectedCurrency === "string" &&
+        baseCurrency &&
+        selectedCurrency &&
+        baseCurrency !== selectedCurrency
+      ) {
+        try {
+          payload.currencyRate = await getExchangeRate(
+            baseCurrency,
+            selectedCurrency,
+          );
+        } catch (err) {
+          error(
+            "Failed to update contract",
+            err instanceof Error ? err.message : "Unable to fetch currency rate",
+          );
+          return;
+        }
       }
 
       setLastPayload(payload);
