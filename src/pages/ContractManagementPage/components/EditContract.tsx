@@ -33,6 +33,7 @@ import { format } from "date-fns";
 import { X, FileText } from "lucide-react";
 import { useClearSession } from "@/store/solicitationFileSlice";
 import {
+  diffChangedPayload,
   isEmailLike,
   isObjectIdLike,
   toApproverUserKeyOrUndefined,
@@ -267,6 +268,11 @@ const EditContract: React.FC<Props> = ({
   const [lastPayload, setLastPayload] = React.useState<any | null>(null);
   const [signatories, setSignatories] = React.useState<string[]>([]);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
+  // Snapshot of the originally-loaded form values, captured at `reset` time.
+  // Used at submit to send the BE only the fields the user actually changed.
+  const baselineValuesRef = React.useRef<yup.InferType<
+    typeof createSchema
+  > | null>(null);
 
   const clearSession = useClearSession();
   // Existing BE files are tracked outside the form's `documents` field so the
@@ -675,6 +681,7 @@ const EditContract: React.FC<Props> = ({
       rating: contract.rating ?? 5,
     };
 
+    baselineValuesRef.current = payload as yup.InferType<typeof createSchema>;
     reset(payload, { keepDirtyValues: true });
   }, [
     contractRes?.data?.data,
@@ -1046,11 +1053,53 @@ const EditContract: React.FC<Props> = ({
         status === "draft"
           ? resolveContractSaveStatus(currentContractStatus)
           : status;
-      const payload = buildPayload(data, effectiveStatus) as any;
+      const fullPayload = buildPayload(data, effectiveStatus) as any;
 
+      // Send the BE only the fields the user actually changed. Diff the full
+      // payload against a baseline built from the originally-loaded values via
+      // the SAME builder, so derived/nested fields compare uniformly. Fall back
+      // to the full payload if no baseline was captured (shouldn't happen once
+      // the contract has loaded).
+      let payload = fullPayload;
+      const baseline = baselineValuesRef.current;
+      if (baseline) {
+        // Diff every field against the baseline; nothing is force-included, so
+        // untouched control fields are not sent. `timezone` is recomputed
+        // identically for both sides here, so it naturally drops out unless it
+        // actually changes.
+        payload = diffChangedPayload(fullPayload, buildPayload(baseline, effectiveStatus) as any);
+        // `status` can't be diffed through the builder (both sides carry the
+        // target `effectiveStatus`), so decide it explicitly: send it only when
+        // this save transitions the contract's status — a draft or a live
+        // contract (re-)entering approval. An unchanged status is left out.
+        if (effectiveStatus !== currentContractStatus) {
+          payload.status = effectiveStatus;
+        }
+        // `duration` is a read-only field fully derived from the effective/end
+        // dates — Step4Timeline recomputes it on load, which can drift from the
+        // stored value and surface as a phantom change. Only send it when one of
+        // those dates actually changed.
+        if (!("startDate" in payload) && !("endDate" in payload)) {
+          delete payload.duration;
+        }
+        // `files` and `signatories` come from state outside the form, so the
+        // baseline builder can't see their changes — include them explicitly.
+        const filesChanged =
+          removedFileKeys.size > 0 ||
+          (Array.isArray(data.documents) && data.documents.length > 0);
+        if (filesChanged) payload.files = fullPayload.files;
+        else delete payload.files;
+        if (signatories.length > 0) payload.signatories = signatories;
+        else delete payload.signatories;
+      }
+
+      // `currencyRate` is derived from `currency`; only fetch and send a fresh
+      // rate when the currency itself changed (no baseline → treat as changed).
+      const currencyChanged = !baseline || "currency" in payload;
       const baseCurrency = currentUser?.currency;
-      const selectedCurrency = payload?.currency;
+      const selectedCurrency = fullPayload?.currency;
       if (
+        currencyChanged &&
         typeof baseCurrency === "string" &&
         typeof selectedCurrency === "string" &&
         baseCurrency &&
@@ -1074,7 +1123,15 @@ const EditContract: React.FC<Props> = ({
       setLastPayload(payload);
       mutation.mutate(payload);
     },
-    [buildPayload, currentContractStatus, currentUser?.currency, error, mutation],
+    [
+      buildPayload,
+      currentContractStatus,
+      currentUser?.currency,
+      error,
+      mutation,
+      removedFileKeys,
+      signatories,
+    ],
   );
 
   const STEP_FIELDS: Record<
