@@ -43,6 +43,8 @@ import {
   type RedlineBatchItem,
 } from "./collab/useRedlineTurn";
 import TurnBanner from "./components/TurnBanner";
+import PresenceAvatars from "./components/PresenceAvatars";
+import type { PresenceUser } from "./collab/superdocBridge";
 import type { ApiResponseError } from "@/types";
 import type { Version } from "./components/VersionHistoryModal";
 
@@ -224,6 +226,9 @@ const CollaborationToolPage: React.FC = () => {
   // SuperDoc iframe. While set, the next submitted comment anchors to the
   // document selection. Dismissible (the X on the chip).
   const [pendingAnchor, setPendingAnchor] = useState<{ excerpt: string } | null>(null);
+  // Room peers (self excluded by the iframe relay) — rendered as avatars in the
+  // header beside the Download button. Empty until collaboration connects.
+  const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([]);
 
   const { data: mentionables = [] } = useContractMentionables(contractId);
 
@@ -984,23 +989,28 @@ const CollaborationToolPage: React.FC = () => {
           <h1 className="truncate text-sm font-semibold text-slate-900 dark:text-white">
             {fileName || "Document Editor"}
           </h1>
-          {docName && (
-            <button
-              type="button"
-              onClick={handleDownloadLatestVersion}
-              disabled={downloadLatestMutation.isPending}
-              className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-              aria-label="Download latest version"
-              title="Download the latest saved snapshot as a .yjs file"
-            >
-              {downloadLatestMutation.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Download className="h-3.5 w-3.5" />
-              )}
-              {downloadLatestMutation.isPending ? "Downloading…" : "Download"}
-            </button>
-          )}
+          <div className="ml-auto flex shrink-0 items-center gap-3">
+            {/* Live presence — peers only (self excluded); nothing renders when
+                you're alone. Sits to the left of Download in the header. */}
+            <PresenceAvatars users={presenceUsers} />
+            {docName && (
+              <button
+                type="button"
+                onClick={handleDownloadLatestVersion}
+                disabled={downloadLatestMutation.isPending}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                aria-label="Download latest version"
+                title="Download the latest saved snapshot as a .yjs file"
+              >
+                {downloadLatestMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5" />
+                )}
+                {downloadLatestMutation.isPending ? "Downloading…" : "Download"}
+              </button>
+            )}
+          </div>
         </header>
         <div className="flex min-h-0 flex-1">
           <div className="flex-1 max-w-7xl overflow-auto">
@@ -1032,6 +1042,7 @@ const CollaborationToolPage: React.FC = () => {
                   importMeta={importMeta}
                   collabMeta={collabMeta}
                   onEditorReady={handleEditorReady}
+                  onPresenceChange={setPresenceUsers}
                 />
               );
             })()}

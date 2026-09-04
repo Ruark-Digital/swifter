@@ -5,7 +5,6 @@ import type { EditorAdapter } from "../collab/editorAdapter";
 import type { RedlineSpan } from "../collab/redlineScan";
 import EditorLoadingSkeleton from "./EditorLoadingSkeleton";
 import type { EditorLoadPhase as Phase } from "./EditorLoadingSkeleton";
-import IframePresenceBar from "./IframePresenceBar";
 import {
   SUPERDOC_APP_URL,
   superdocOrigin,
@@ -39,6 +38,10 @@ type Props = {
   /** Called when the iframe fails to load / the document can't be fetched,
    *  so a host can fall back to another renderer. */
   onError?: () => void;
+  /** Relays the room's peer presence (self excluded) up to the host so it can
+   *  render the avatars in the page header. Emits `[]` until collaboration is
+   *  connected and the editor is ready, and again on error/reset. */
+  onPresenceChange?: (users: PresenceUser[]) => void;
 };
 
 // Handshake phases, surfaced in the overlay so a stuck load is self-diagnosing:
@@ -71,6 +74,7 @@ const IframeEditorPane: React.FC<Props> = ({
   onEditorReady,
   documentMode = "editing",
   onError,
+  onPresenceChange,
 }) => {
   const user = useUser();
   const toastHandler = useToastHandler();
@@ -88,6 +92,13 @@ const IframeEditorPane: React.FC<Props> = ({
   // collaboration actually connected (document-only fallback → no bar).
   const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([]);
   const [presenceReady, setPresenceReady] = useState(false);
+
+  // Relay peer presence up to the page header (avatars sit beside Download).
+  // Mirror the old in-pane gate: only surface peers once collaboration is
+  // connected and the editor is ready; emit `[]` otherwise.
+  useEffect(() => {
+    onPresenceChange?.(presenceReady && phase === "ready" ? presenceUsers : []);
+  }, [onPresenceChange, presenceReady, phase, presenceUsers]);
 
   // Watchdog for the `rendering` phase, armed once the bytes are posted and
   // disarmed by `superdoc:editor-ready`, an error, unmount, or a retry.
@@ -374,9 +385,6 @@ const IframeEditorPane: React.FC<Props> = ({
   // scrollbar. We fill the column (h-full) and let the iframe scroll inside.
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-white dark:bg-slate-950">
-      {presenceReady && phase === "ready" && (
-        <IframePresenceBar users={presenceUsers} />
-      )}
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {phase !== "ready" && (
           <div
