@@ -1,3 +1,5 @@
+import { isEqual } from "lodash";
+
 export const isEmailLike = (value: string) => /.+@.+\..+/.test(value);
 
 export const isObjectIdLike = (value: string) => /^[a-f\d]{24}$/i.test(value);
@@ -177,4 +179,28 @@ export const toFileMetaOrUndefined = (value: unknown) => {
     ...(size ? { size } : {}),
     ...(comments && comments.length > 0 ? { comments } : {}),
   };
+};
+
+/**
+ * Reduce a fully-built update payload to just the fields the user actually
+ * changed, so Edit Contract sends a diff to the BE instead of the whole
+ * contract. `full` and `base` must be produced by the SAME builder from the
+ * current form values and the originally-loaded values respectively, so
+ * derived/nested fields (dates, insurance, approvers, …) compare uniformly.
+ * Keys in `alwaysInclude` are kept whenever present in `full` (e.g. control
+ * fields the BE needs regardless, like `status`/`timezone`).
+ */
+export const diffChangedPayload = (
+  full: Record<string, unknown>,
+  base: Record<string, unknown>,
+  alwaysInclude: string[] = [],
+): Record<string, unknown> => {
+  const changed: Record<string, unknown> = {};
+  for (const key of Object.keys(full)) {
+    if (!isEqual(full[key], base[key])) changed[key] = full[key];
+  }
+  for (const key of alwaysInclude) {
+    if (key in full) changed[key] = full[key];
+  }
+  return changed;
 };
