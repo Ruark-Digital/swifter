@@ -33,6 +33,7 @@ import { format } from "date-fns";
 import { X, FileText } from "lucide-react";
 import { useClearSession } from "@/store/solicitationFileSlice";
 import {
+  diffChangedPayload,
   isEmailLike,
   isObjectIdLike,
   toApproverUserKeyOrUndefined,
@@ -267,6 +268,11 @@ const EditContract: React.FC<Props> = ({
   const [lastPayload, setLastPayload] = React.useState<any | null>(null);
   const [signatories, setSignatories] = React.useState<string[]>([]);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
+  // Snapshot of the originally-loaded form values, captured at `reset` time.
+  // Used at submit to send the BE only the fields the user actually changed.
+  const baselineValuesRef = React.useRef<yup.InferType<
+    typeof createSchema
+  > | null>(null);
 
   const clearSession = useClearSession();
   // Existing BE files are tracked outside the form's `documents` field so the
@@ -675,6 +681,7 @@ const EditContract: React.FC<Props> = ({
       rating: contract.rating ?? 5,
     };
 
+    baselineValuesRef.current = payload as yup.InferType<typeof createSchema>;
     reset(payload, { keepDirtyValues: true });
   }, [
     contractRes?.data?.data,
@@ -1046,10 +1053,10 @@ const EditContract: React.FC<Props> = ({
         status === "draft"
           ? resolveContractSaveStatus(currentContractStatus)
           : status;
-      const payload = buildPayload(data, effectiveStatus) as any;
+      const fullPayload = buildPayload(data, effectiveStatus) as any;
 
       const baseCurrency = currentUser?.currency;
-      const selectedCurrency = payload?.currency;
+      const selectedCurrency = fullPayload?.currency;
       if (
         typeof baseCurrency === "string" &&
         typeof selectedCurrency === "string" &&
@@ -1058,7 +1065,7 @@ const EditContract: React.FC<Props> = ({
         baseCurrency !== selectedCurrency
       ) {
         try {
-          payload.currencyRate = await getExchangeRate(
+          fullPayload.currencyRate = await getExchangeRate(
             baseCurrency,
             selectedCurrency,
           );
@@ -1071,10 +1078,43 @@ const EditContract: React.FC<Props> = ({
         }
       }
 
+      // Send the BE only the fields the user actually changed. Diff the full
+      // payload against a baseline built from the originally-loaded values via
+      // the SAME builder, so derived/nested fields compare uniformly. Fall back
+      // to the full payload if no baseline was captured (shouldn't happen once
+      // the contract has loaded).
+      let payload = fullPayload;
+      const baseline = baselineValuesRef.current;
+      if (baseline) {
+        // `status` drives the approval transition and `timezone` interprets the
+        // date fields — the BE needs both on every update regardless of change.
+        payload = diffChangedPayload(fullPayload, buildPayload(baseline, effectiveStatus) as any, [
+          "status",
+          "timezone",
+        ]);
+        // `files` and `signatories` come from state outside the form, so the
+        // baseline builder can't see their changes — include them explicitly.
+        const filesChanged =
+          removedFileKeys.size > 0 ||
+          (Array.isArray(data.documents) && data.documents.length > 0);
+        if (filesChanged) payload.files = fullPayload.files;
+        else delete payload.files;
+        if (signatories.length > 0) payload.signatories = signatories;
+        else delete payload.signatories;
+      }
+
       setLastPayload(payload);
       mutation.mutate(payload);
     },
-    [buildPayload, currentContractStatus, currentUser?.currency, error, mutation],
+    [
+      buildPayload,
+      currentContractStatus,
+      currentUser?.currency,
+      error,
+      mutation,
+      removedFileKeys,
+      signatories,
+    ],
   );
 
   const STEP_FIELDS: Record<
