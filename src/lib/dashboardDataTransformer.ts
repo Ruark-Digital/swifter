@@ -2439,8 +2439,14 @@ export class DashboardDataTransformer {
         };
       }
 
-      const sol = update?.solicitation ?? null;
-      const evaluation = update?.solicitation?.evaluation ?? null;
+      // A group-release update carries the solicitation either at the top level
+      // or nested under `evaluation` (evaluation.solicitation). Resolve from both
+      // shapes so every release row links its solicitation name — not just the
+      // ones with a top-level solicitation (QA #257).
+      const sol =
+        update?.solicitation ?? update?.evaluation?.solicitation ?? null;
+      const evaluation =
+        update?.solicitation?.evaluation ?? update?.evaluation ?? null;
 
       const title = sol?.name ?? evaluation?.name ?? "Unknown";
       const entityName = sol?.name ?? evaluation?.name ?? "Unknown";
@@ -2657,8 +2663,13 @@ export class DashboardDataTransformer {
         };
       }
 
-      const sol = update?.solicitation ?? null;
-      const evaluation = update?.evaluation ?? null;
+      // See transformProcurementGeneralUpdates: resolve the solicitation from
+      // the top-level field or the one nested under `evaluation`, so every
+      // group-release update is linked consistently (QA #257).
+      const sol =
+        update?.solicitation ?? update?.evaluation?.solicitation ?? null;
+      const evaluation =
+        update?.evaluation ?? update?.solicitation?.evaluation ?? null;
 
       const title = sol?.name ?? evaluation?.name ?? "Unknown";
       const entityName = sol?.name ?? evaluation?.name ?? "Unknown";
