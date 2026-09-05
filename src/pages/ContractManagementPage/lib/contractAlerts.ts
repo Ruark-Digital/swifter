@@ -108,25 +108,36 @@ export const isInsurancePolicyType = (raw?: string): boolean => {
   );
 };
 
-/** Expiry/resubmission alert line for a compliance instrument. Only a COI
- *  "expires" (insurance is renewed before its expiry); every other security
- *  (LOC, bonds, guarantees) instead "requires resubmission" — e.g.
- *  "Insurance warning: COI (expires in 18 days)" vs
- *  "Security warning: letter of credit requires resubmission (2 days left)". */
+/** Expiry/submission alert line for a compliance instrument.
+ *  - A COI is insurance: it "expires" and is renewed —
+ *    "Insurance warning: COI (expires in 18 days)".
+ *  - Every other security (LOC, bonds, guarantees) has a submission deadline.
+ *    While there's time left it's "due soon", and once the deadline has passed
+ *    (a negative `daysToExpiry`) it's "overdue" — for every security type (QA
+ *    #276): "Performance bond submission is due soon (7 days left)" /
+ *    "Performance bond submission is overdue (3 days overdue)". */
 export const buildExpiryWarningLine = (w: ExpiryWarning): string => {
-  const label = (w?.label ?? w?.category ?? "policy").replace(/_/g, " ");
+  const rawLabel = (w?.label ?? w?.category ?? "policy").replace(/_/g, " ");
   const hasDays = typeof w?.daysToExpiry === "number";
   // Prefer the authoritative `category`; fall back to the label only when the
   // category is absent.
   const isInsurance = isInsurancePolicyType(w?.category ?? w?.label);
   if (isInsurance) {
     const days = hasDays ? ` (expires in ${w.daysToExpiry} days)` : "";
-    return `Insurance warning: ${label}${days}`;
+    return `Insurance warning: ${rawLabel}${days}`;
   }
-  // Contract securities don't "expire" in the alert sense — they must be
-  // re-submitted. Any day count is the time left to resubmit.
-  const daysLeft = hasDays ? ` (${w.daysToExpiry} days left)` : "";
-  return `Security warning: ${label} requires resubmission${daysLeft}`;
+  // Contract securities are tracked by their submission deadline. Sentence-case
+  // the instrument name so the line reads as a statement about the submission.
+  const label = rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1);
+  const days = w?.daysToExpiry as number;
+  if (hasDays && days < 0) {
+    const overdue = Math.abs(days);
+    return `${label} submission is overdue (${overdue} day${overdue === 1 ? "" : "s"} overdue)`;
+  }
+  if (hasDays) {
+    return `${label} submission is due soon (${days} day${days === 1 ? "" : "s"} left)`;
+  }
+  return `${label} submission is due soon`;
 };
 
 /** "RFI 001 is overdue by 3 days" when overdue, else "RFI 001 is still open".

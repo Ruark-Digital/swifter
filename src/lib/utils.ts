@@ -255,6 +255,29 @@ export function formatDateTZ(
 }
 
 /**
+ * Render a stored value as a calendar date, immune to timezone shifting.
+ *
+ * A contract's effective/end dates are calendar dates, not instants, but the BE
+ * serializes them as midnight-ish ISO datetimes (often `…T00:00:00.000Z`).
+ * Formatting that instant in the viewer's own zone rolls the day back for
+ * viewers west of UTC — e.g. `2026-09-03T00:00:00Z` shows as "02 Sep 2026" in
+ * the Americas (QA #277). Take the date portion (`YYYY-MM-DD`) and render that
+ * via `formatDateTZ`'s date-only path (local midnight), so the day never shifts.
+ * Non-ISO strings and `Date` inputs fall back to `formatDateTZ` unchanged.
+ */
+export function formatCalendarDate(
+  dateInput: string | Date | undefined | null,
+  formatStr = "dd MMM yyyy"
+): string {
+  if (!dateInput) return "N/A";
+  if (typeof dateInput === "string") {
+    const match = dateInput.trim().match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match) return formatDateTZ(match[1], formatStr);
+  }
+  return formatDateTZ(dateInput, formatStr);
+}
+
+/**
  * Coerce a possibly-naive datetime STRING to an absolute instant by assuming
  * UTC when it carries no timezone designator.
  *

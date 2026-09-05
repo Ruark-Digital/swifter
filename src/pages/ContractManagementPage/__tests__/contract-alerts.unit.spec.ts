@@ -103,29 +103,60 @@ test.describe("contractAlerts helpers (unit) — QA #141", () => {
     expect(
       buildExpiryWarningLine({ category: "COI", label: "COI", daysToExpiry: 18 })
     ).toBe("Insurance warning: COI (expires in 18 days)");
-    // Contract securities → security warning (never "Insurance warning"), and
-    // they "require resubmission" rather than "expire" — only a COI expires.
+    // Contract securities → a submission-deadline line (never "Insurance
+    // warning"), "due soon" while there's time left, for every security type
+    // (QA #276). The instrument name is sentence-cased.
     expect(
       buildExpiryWarningLine({
         category: "contractSecurity",
         label: "letter_of_credit",
         daysToExpiry: 2,
       })
-    ).toBe("Security warning: letter of credit requires resubmission (2 days left)");
+    ).toBe("Letter of credit submission is due soon (2 days left)");
     expect(
       buildExpiryWarningLine({
         category: "contractSecurity",
         label: "bank_guarantee",
         daysToExpiry: 12,
       })
-    ).toBe("Security warning: bank guarantee requires resubmission (12 days left)");
+    ).toBe("Bank guarantee submission is due soon (12 days left)");
     expect(
       buildExpiryWarningLine({
         category: "contractSecurity",
         label: "performance_bond",
         daysToExpiry: 25,
       })
-    ).toBe("Security warning: performance bond requires resubmission (25 days left)");
+    ).toBe("Performance bond submission is due soon (25 days left)");
+    // Singular day count.
+    expect(
+      buildExpiryWarningLine({
+        category: "contractSecurity",
+        label: "performance_bond",
+        daysToExpiry: 1,
+      })
+    ).toBe("Performance bond submission is due soon (1 day left)");
+    // Past the deadline (negative days) → overdue.
+    expect(
+      buildExpiryWarningLine({
+        category: "contractSecurity",
+        label: "performance_bond",
+        daysToExpiry: -3,
+      })
+    ).toBe("Performance bond submission is overdue (3 days overdue)");
+    expect(
+      buildExpiryWarningLine({
+        category: "contractSecurity",
+        label: "performance_bond",
+        daysToExpiry: -1,
+      })
+    ).toBe("Performance bond submission is overdue (1 day overdue)");
+    // No day count → no trailing parens.
+    expect(
+      buildExpiryWarningLine({
+        category: "contractSecurity",
+        label: "performance_bond",
+      })
+    ).toBe("Performance bond submission is due soon");
     // No expiry count → no trailing parens.
     expect(
       buildExpiryWarningLine({ category: "COI", label: "COI" })
