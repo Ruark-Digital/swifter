@@ -1072,7 +1072,19 @@ const EditContract: React.FC<Props> = ({
         // target `effectiveStatus`), so decide it explicitly: send it only when
         // this save transitions the contract's status — a draft or a live
         // contract (re-)entering approval. An unchanged status is left out.
-        if (effectiveStatus !== currentContractStatus) {
+        //
+        // The BE reports the "awaiting approval" state under either spelling
+        // (`pending_approval` or `pending`, as normalized elsewhere e.g.
+        // AnalyticsTab), while the save always targets `pending_approval`. Treat
+        // those as the same state so re-saving a contract that is already
+        // awaiting approval doesn't resend an unchanged `status`.
+        const isAwaitingApproval = (s?: string) =>
+          s === "pending_approval" || s === "pending";
+        const statusUnchanged =
+          effectiveStatus === currentContractStatus ||
+          (isAwaitingApproval(effectiveStatus) &&
+            isAwaitingApproval(currentContractStatus));
+        if (!statusUnchanged) {
           payload.status = effectiveStatus;
         }
         // `duration` is a read-only field fully derived from the effective/end
