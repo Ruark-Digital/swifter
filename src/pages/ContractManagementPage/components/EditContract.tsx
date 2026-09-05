@@ -1069,22 +1069,17 @@ const EditContract: React.FC<Props> = ({
         // actually changes.
         payload = diffChangedPayload(fullPayload, buildPayload(baseline, effectiveStatus) as any);
         // `status` can't be diffed through the builder (both sides carry the
-        // target `effectiveStatus`), so decide it explicitly: send it only when
-        // this save transitions the contract's status — a draft or a live
-        // contract (re-)entering approval. An unchanged status is left out.
-        //
-        // The BE reports the "awaiting approval" state under either spelling
-        // (`pending_approval` or `pending`, as normalized elsewhere e.g.
-        // AnalyticsTab), while the save always targets `pending_approval`. Treat
-        // those as the same state so re-saving a contract that is already
-        // awaiting approval doesn't resend an unchanged `status`.
-        const isAwaitingApproval = (s?: string) =>
-          s === "pending_approval" || s === "pending";
-        const statusUnchanged =
-          effectiveStatus === currentContractStatus ||
-          (isAwaitingApproval(effectiveStatus) &&
-            isAwaitingApproval(currentContractStatus));
-        if (!statusUnchanged) {
+        // target `effectiveStatus`), so decide it explicitly. It changes on
+        // exactly one edit path: a *draft* being sent for publish, which moves
+        // the contract into approval. Once the contract has left draft — it is
+        // already awaiting approval or published — editing it does not change
+        // the status, so it must not be resent. (The write value the BE accepts
+        // and the status it reports back differ, so this is decided from the
+        // contract's current state, not by comparing the two enums.)
+        // `effectiveStatus` is "draft" for a Save-as-Draft, which is never a
+        // transition.
+        const isDraftNow = (currentContractStatus ?? "draft") === "draft";
+        if (isDraftNow && effectiveStatus !== "draft") {
           payload.status = effectiveStatus;
         }
         // `duration` is a read-only field fully derived from the effective/end
