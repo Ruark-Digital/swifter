@@ -229,6 +229,42 @@ describe("DashboardDataTransformer", () => {
     expect(item.date).toBe("Aug 21, 2026 11:00 PM WAT");
   });
 
+  it("#257 links a Procurement group-release update whose solicitation is nested under evaluation", () => {
+    const [item] = DashboardDataTransformer.transformProcurementGeneralUpdates([
+      {
+        _id: "gu-release-1",
+        evaluation: {
+          _id: "evaluation-777",
+          solicitation: { _id: "sol-777", name: "Utility Transformer" },
+        },
+        statusText: "Commercial group for Utility Transformer has been released",
+        createdAt: "2026-08-28T19:49:00.000Z",
+      },
+    ]);
+
+    expect(item.text).toContain(
+      '<a href="/dashboard/solicitation/sol-777" class="underline underline-offset-4 text-blue-600">Utility Transformer</a>'
+    );
+  });
+
+  it("#257 links a Company Admin group-release update whose solicitation is nested under evaluation", () => {
+    const [item] = DashboardDataTransformer.transformCompanyAdminGeneralUpdates([
+      {
+        _id: "au-release-1",
+        evaluation: {
+          _id: "evaluation-888",
+          solicitation: { _id: "sol-888", name: "Utility Transformer" },
+        },
+        statusText: "Quality group for Utility Transformer has been released",
+        createdAt: "2026-08-28T19:49:00.000Z",
+      },
+    ]);
+
+    expect(item.text).toContain(
+      '<a href="/dashboard/solicitation/sol-888" class="underline underline-offset-4 text-blue-600">Utility Transformer</a>'
+    );
+  });
+
   describe("transformSubDistribution", () => {
     it("computes a real percentage per plan from counts", () => {
       const result = DashboardDataTransformer.transformSubDistribution({
