@@ -28,6 +28,28 @@ type FileCommentWire = {
   text: string;
   date: string;
   _id?: string;
+  /**
+   * Where the comment is anchored in the document, as SuperDoc records it —
+   * e.g. `"comment:111"` for a native document comment. Present on comments
+   * created in the editor (not the sentinel-JSON rich comments this client
+   * writes). We derive the click-to-scroll anchor from it.
+   */
+  location?: string;
+};
+
+/**
+ * Extract the SuperDoc comment entity id from a wire `location`. Only
+ * `comment:<id>` locations yield an anchor (the id `navigateTo` scrolls to);
+ * anything else (or absent) → null.
+ */
+export const anchorCommentIdFromLocation = (
+  location: unknown,
+): string | null => {
+  if (typeof location !== "string") return null;
+  const prefix = "comment:";
+  if (!location.startsWith(prefix)) return null;
+  const id = location.slice(prefix.length);
+  return id.length > 0 ? id : null;
 };
 
 /**
@@ -59,11 +81,15 @@ const decodeWireToRich = (
   // refetches; fall back to the sentinel-embedded `id` (set client-side
   // for optimistic updates), then to a synthetic key.
   const fallbackId = wire._id || `${wire.date}-${index}`;
+  // Editor-created comments carry their anchor in `location` (e.g. "comment:111")
+  // rather than the sentinel JSON, so derive the click-to-scroll anchor from it.
+  const locationAnchor = anchorCommentIdFromLocation(wire.location);
   const base: FileCommentRich = {
     id: fallbackId,
     author: wire.author || "Unknown User",
     createdAt: wire.date || new Date().toISOString(),
     content: wire.text ?? "",
+    anchorCommentId: locationAnchor,
   };
 
   if (typeof wire.text !== "string" || !wire.text.startsWith("{")) return base;
@@ -85,7 +111,9 @@ const decodeWireToRich = (
           ? parsed.redlineKind
           : null,
       anchorCommentId:
-        typeof parsed.anchorCommentId === "string" ? parsed.anchorCommentId : null,
+        typeof parsed.anchorCommentId === "string"
+          ? parsed.anchorCommentId
+          : locationAnchor,
       mentions: Array.isArray(parsed.mentions) ? parsed.mentions : undefined,
     };
   } catch {
