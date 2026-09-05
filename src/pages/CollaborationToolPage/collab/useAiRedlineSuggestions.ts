@@ -322,7 +322,40 @@ export type SuggestionProgress = {
   resolvedCount?: number;
   resolvedByManager?: number;
   resolvedByVendor?: number;
+  /** Suggestions accepted by the contract manager (company side). */
+  cm_accept?: number;
+  /** Suggestions accepted by the vendor PM. */
+  pm_accept?: number;
+  /** Both-accepted total. The GET also sends `resolvedCount`; either works. */
+  resolved?: number;
 };
+
+/**
+ * Per-side counts for the AI Polish header. Each side's "addressed" total is
+ * shown independently — who has accepted a recommendation — and "resolved" is
+ * the both-accepted total. All three are computed by the backend
+ * (`cm_accept` / `pm_accept` / `resolved`); we only surface them.
+ */
+export type ProgressCounts = {
+  cmAddressed?: number;
+  pmAddressed?: number;
+  resolved?: number;
+};
+
+export const deriveProgressCounts = (
+  progress?: SuggestionProgress,
+): ProgressCounts => ({
+  cmAddressed:
+    typeof progress?.cm_accept === "number" ? progress.cm_accept : undefined,
+  pmAddressed:
+    typeof progress?.pm_accept === "number" ? progress.pm_accept : undefined,
+  resolved:
+    typeof progress?.resolvedCount === "number"
+      ? progress.resolvedCount
+      : typeof progress?.resolved === "number"
+        ? progress.resolved
+        : undefined,
+});
 
 export type PersistedSuggestionsResponse = {
   suggestions: PersistedSuggestion[];
