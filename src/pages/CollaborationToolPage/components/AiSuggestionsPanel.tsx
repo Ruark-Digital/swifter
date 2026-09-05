@@ -3,6 +3,7 @@ import { Sparkles, X, Check, RotateCw, Play, ChevronDown, ChevronUp } from "luci
 import { cn } from "@/lib/utils";
 import type { RedlineSpan } from "../collab/redlineScan";
 import {
+  deriveProgressCounts,
   redlineStageLabel,
   type AiRedlineSuggestion,
   type AiAlternativeLanguage,
@@ -437,16 +438,14 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
   if (!open) return null;
 
   const remaining = items.filter((i) => i.state === "pending").length;
-  const resolved = progress?.resolvedCount;
-  // "Resolved" = accepted by both sides; "Addressed" = accepted by exactly one.
-  // The BE's `addressedCount` counts every suggestion with a persisted action
-  // (both-accepted included), so subtract the resolved (both-accepted) ones to
-  // show one-sided progress.
-  const addressed =
-    typeof progress?.addressedCount === "number"
-      ? Math.max(0, progress.addressedCount - (resolved ?? 0))
-      : undefined;
-  const hasProgress = typeof addressed === "number" || typeof resolved === "number";
+  // Per-side "addressed" — who has accepted a recommendation, shown for the
+  // contract manager (CM) and the vendor PM independently — plus the
+  // both-accepted "resolved" total. All three come from the BE progress.
+  const { cmAddressed, pmAddressed, resolved } = deriveProgressCounts(progress);
+  const hasProgress =
+    typeof cmAddressed === "number" ||
+    typeof pmAddressed === "number" ||
+    typeof resolved === "number";
   const isInline = variant === "inline";
 
   return (
@@ -481,14 +480,28 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
                       : "Professional rephrases for your redlines"}
             </div>
             {status === "ready" && hasProgress && (
-              <div className="mt-0.5 flex gap-3 text-[11px]">
-                {typeof addressed === "number" && (
-                  <span className="text-amber-600 dark:text-amber-400">
-                    {addressed} addressed
+              <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
+                {typeof cmAddressed === "number" && (
+                  <span
+                    className="text-amber-600 dark:text-amber-400"
+                    title="Recommendations addressed by the contract manager"
+                  >
+                    CM addressed: {cmAddressed}
+                  </span>
+                )}
+                {typeof pmAddressed === "number" && (
+                  <span
+                    className="text-amber-600 dark:text-amber-400"
+                    title="Recommendations addressed by the vendor PM"
+                  >
+                    PM addressed: {pmAddressed}
                   </span>
                 )}
                 {typeof resolved === "number" && (
-                  <span className="text-emerald-600 dark:text-emerald-400">
+                  <span
+                    className="text-emerald-600 dark:text-emerald-400"
+                    title="Accepted by both the contract manager and the vendor PM"
+                  >
                     {resolved} resolved
                   </span>
                 )}
