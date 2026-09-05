@@ -66,11 +66,14 @@ const ReadOnlyProposalDialog: React.FC<ReadOnlyProposalDialogProps> = ({
   const priceBreakdownItems = Array.isArray(priceBreakdownData?.data) ? priceBreakdownData.data : [];
   // Read the vendor's submitted currency from the response (all items share it).
   const currency = priceBreakdownItems[0]?.currency || "USD";
-  const totalAmount = priceBreakdownItems.reduce((sum: number, item: ProposalPriceAction) => {
-    const itemTotal = item.subtotal || 0;
-    const subItemsTotal = (item.subItems || []).reduce((subSum: number, subItem: ProposalPriceAction) => subSum + (subItem.subtotal || 0), 0);
-    return sum + itemTotal + subItemsTotal;
-  }, 0);
+  // A top-level item's `subtotal` already rolls in its sub-items (the submission
+  // form and BE compute the parent subtotal as its own qty×price plus every
+  // sub-item's qty×price). Summing the sub-item subtotals again here double-
+  // counted them, inflating the total — so sum only the top-level subtotals.
+  const totalAmount = priceBreakdownItems.reduce(
+    (sum: number, item: ProposalPriceAction) => sum + (item.subtotal || 0),
+    0,
+  );
 
   const renderPriceItem = (item: ProposalPriceAction, index: number, isSubItem = false) => {
     return (

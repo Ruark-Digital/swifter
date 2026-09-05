@@ -162,18 +162,17 @@ const ProposalDetailsSheet: React.FC<ProposalDetailsSheetProps> = ({
     </div>
   );
 
-  // Helper: compute total from action items when proposal.total is not present
+  // Helper: compute total from action items when proposal.total is not present.
+  // A top-level item's `subtotal` already rolls in its sub-items (the parent
+  // subtotal is its own qty×price plus every sub-item's qty×price), so the total
+  // is the sum of the top-level subtotals. Recursing into subItems double-counted
+  // them and inflated the total.
   const computeTotalFromActions = (items: any[]): number => {
     if (!Array.isArray(items)) return 0;
-    const sumWithChildren = (arr: any[]): number =>
-      arr.reduce((sum, itm) => {
-        const own = typeof itm?.subtotal === "number" ? itm.subtotal : 0;
-        const children = Array.isArray(itm?.subItems)
-          ? sumWithChildren(itm.subItems)
-          : 0;
-        return sum + own + children;
-      }, 0);
-    return sumWithChildren(items);
+    return items.reduce(
+      (sum, itm) => sum + (typeof itm?.subtotal === "number" ? itm.subtotal : 0),
+      0,
+    );
   };
 
   // Flatten items to display nested subItems in a single table with indenting
