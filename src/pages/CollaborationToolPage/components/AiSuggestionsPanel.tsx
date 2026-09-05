@@ -437,8 +437,15 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
   if (!open) return null;
 
   const remaining = items.filter((i) => i.state === "pending").length;
-  const addressed = progress?.addressedCount;
   const resolved = progress?.resolvedCount;
+  // "Resolved" = accepted by both sides; "Addressed" = accepted by exactly one.
+  // The BE's `addressedCount` counts every suggestion with a persisted action
+  // (both-accepted included), so subtract the resolved (both-accepted) ones to
+  // show one-sided progress.
+  const addressed =
+    typeof progress?.addressedCount === "number"
+      ? Math.max(0, progress.addressedCount - (resolved ?? 0))
+      : undefined;
   const hasProgress = typeof addressed === "number" || typeof resolved === "number";
   const isInline = variant === "inline";
 
