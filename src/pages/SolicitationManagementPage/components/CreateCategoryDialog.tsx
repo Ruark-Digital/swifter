@@ -91,8 +91,15 @@ const CreateCategoryDialog: React.FC<CreateCategoryDialogProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <Forge control={control} onSubmit={onSubmit}>
-          <div className="p-6 space-y-4">
+        {/* This dialog is a React descendant of the Create/Edit Solicitation
+            <Forge> form. React bubbles the inner form's submit up the React
+            tree (portals don't stop React event propagation), which fired the
+            parent form's onSubmit and threw "Invalid time value" on its empty
+            deadline dates. Stop the submit here so only this dialog's form
+            handles it. */}
+        <div onSubmit={(e) => e.stopPropagation()}>
+          <Forge control={control} onSubmit={onSubmit}>
+            <div className="p-6 space-y-4">
             <Forger
               component={TextInput}
               name="name"
@@ -119,7 +126,8 @@ const CreateCategoryDialog: React.FC<CreateCategoryDialogProps> = ({
               {isPending ? "Creating..." : "Create Category"}
             </Button>
           </div>
-        </Forge>
+          </Forge>
+        </div>
       </DialogContent>
     </Dialog>
   );

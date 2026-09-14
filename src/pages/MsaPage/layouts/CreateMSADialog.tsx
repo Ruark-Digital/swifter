@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import {
   Dialog,
   DialogContent,
@@ -1301,7 +1302,7 @@ const Step7Body: React.FC<{
                     <div className="min-w-0 flex-1">
                       {file.url ? (
                         <a
-                          href={file.url}
+                          href={resolveEnvFileUrl(file.url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm font-medium text-foreground hover:underline truncate block"

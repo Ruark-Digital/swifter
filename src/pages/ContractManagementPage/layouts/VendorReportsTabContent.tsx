@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { resolveEnvFileUrl } from "@/config";
 import { useQuery } from "@tanstack/react-query";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -131,7 +132,7 @@ const ReportDetailsSheet: React.FC<{
       return;
     }
     const a = window.document.createElement("a");
-    a.href = file.url;
+    a.href = resolveEnvFileUrl(file.url);
     a.download = file.name;
     window.document.body.appendChild(a);
     a.click();

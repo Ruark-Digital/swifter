@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import {
   Sheet,
   SheetTrigger,
@@ -616,13 +617,13 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   }, [files]);
 
   const handlePreview = React.useCallback((d: DocType) => {
-    window.open(d.url || "#", "_blank");
+    window.open(d.url ? resolveEnvFileUrl(d.url) : "#", "_blank");
   }, []);
 
   const handleDownload = React.useCallback((d: DocType) => {
     if (!d.url) return;
     const link = document.createElement("a");
-    link.href = d.url;
+    link.href = resolveEnvFileUrl(d.url);
     link.download = d.name;
     document.body.appendChild(link);
     link.click();

@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ import MessageComposer from "@/pages/SolicitationManagementPage/components/Messa
 import type {
   ContractCommentDTO,
   ContractChangeCommentDTO,
+  ContractLemDTO,
 } from "../api/contractManagerApi";
 
 const formatDateValue = (value: unknown) => {
@@ -103,7 +105,7 @@ type LemSummarySheet = {
   rows?: Array<Record<string, unknown>>;
 };
 type LemSummary = {
-  files?: Array<{ name?: string; sheets?: LemSummarySheet[] }>;
+  files?: Array<{ name?: string; sheets?: LemSummarySheet[]; error?: string }>;
   comparison?: {
     total?: number | null;
     rateSheetTotal?: number | null;
@@ -158,11 +160,17 @@ const LemSummaryContent: React.FC<{
     [summary],
   );
   const comparison = summary?.comparison;
+  // Attachments the BE couldn't parse (spreadsheet errors) — surfaced so the
+  // user knows why a sheet is missing rather than seeing an empty summary.
+  const parseErrors = React.useMemo(
+    () => (summary?.files ?? []).filter((f) => !!f.error),
+    [summary],
+  );
 
   const money = (v?: number | null) =>
     typeof v === "number" ? formatCurrency(v, "en-US", currencyCode) : "—";
 
-  if (!sheets.length && !comparison) {
+  if (!sheets.length && !comparison && parseErrors.length === 0) {
     return (
       <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
         No summary available.
@@ -172,6 +180,23 @@ const LemSummaryContent: React.FC<{
 
   return (
     <div className="space-y-5">
+      {parseErrors.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-900/20">
+          <div className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+            {parseErrors.length === 1
+              ? "An attachment couldn't be parsed"
+              : "Some attachments couldn't be parsed"}
+          </div>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs text-amber-700 dark:text-amber-400">
+            {parseErrors.map((f, i) => (
+              <li key={`${f.name ?? "file"}-${i}`}>
+                {f.name ? `${f.name}: ` : ""}
+                {f.error}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {sheets.length > 0 && (
         <Tabs
           defaultValue={sheets[0]?.sheetName ?? "sheet-0"}
@@ -301,13 +326,13 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
     useUserRole();
   const user = useUser();
   const queryClient = useQueryClient();
-  const { data: lemDetail, isLoading: detailLoading } = useQuery({
+  const { data: lemDetail, isLoading: detailLoading } = useQuery<ContractLemDTO>({
     queryKey: useUserQueryKey(["lem-detail", contractId, lemId, basePath]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${basePath}/${lemId}`,
       });
-      return (res)?.data?.data as any;
+      return (res)?.data?.data as ContractLemDTO;
     },
     enabled: !!contractId && !!lemId,
   });
@@ -398,7 +423,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
       return;
     }
     const a = window.document.createElement("a");
-    a.href = doc.url;
+    a.href = resolveEnvFileUrl(doc.url);
     a.download = doc.name;
     window.document.body.appendChild(a);
     a.click();
@@ -411,14 +436,16 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
     !isViewOnly &&
     !isVendor &&
     !isProjectManager;
-  const approverStatus = (lemDetail as any)?.approverStatus;
+  const approverStatus = lemDetail?.approverStatus;
   const showApprovalActions =
     canApproveOrReject && approverStatus === "pending";
 
   const summary = lemDetail?.summary as LemSummary | undefined;
+  const rateSheet = lemDetail?.rateSheet;
   const hasSummary = !!(
     summary &&
-    ((summary.files?.some((f) => f.sheets && f.sheets.length) ?? false) ||
+    ((summary.files?.some((f) => (f.sheets && f.sheets.length) || f.error) ??
+      false) ||
       !!summary.comparison)
   );
 
@@ -544,6 +571,46 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                     }
                   />
                 </div>
+
+                {rateSheet && (
+                  <div className="space-y-3 rounded-xl border border-[#E5E7EB] p-4 dark:border-slate-700">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+                        Rate Sheet Compliance
+                      </div>
+                      {rateSheet.status && (
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
+                            rateSheet.status === "Compliance"
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                              : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300",
+                          )}
+                        >
+                          {rateSheet.status}
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid gap-6 sm:grid-cols-2">
+                      <LabelRow
+                        label="Rate Sheet Total"
+                        value={
+                          typeof rateSheet.total === "number"
+                            ? formatCurrency(rateSheet.total, "en-US", currencyCode)
+                            : "—"
+                        }
+                      />
+                      <LabelRow
+                        label="Variance"
+                        value={
+                          typeof rateSheet.variance === "number"
+                            ? formatCurrency(rateSheet.variance, "en-US", currencyCode)
+                            : "—"
+                        }
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
