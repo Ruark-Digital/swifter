@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
@@ -212,7 +213,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
 
   const handleDownload = React.useCallback((d: DocType) => {
     if (!d.url) return;
-    window.open(d.url, "_blank", "noopener,noreferrer");
+    window.open(d.url ? resolveEnvFileUrl(d.url) : "#", "_blank", "noopener,noreferrer");
   }, []);
 
   const files: DocType[] =

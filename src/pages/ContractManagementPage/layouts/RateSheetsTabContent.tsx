@@ -28,6 +28,7 @@ import {
   getSimpleFileExtension,
 } from "@/lib/fileUtils";
 import { cn, formatCurrency, resolveCurrency } from "@/lib/utils";
+import { resolveEnvFileUrl } from "@/config";
 import { useUser } from "@/store/authSlice";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Forge, Forger, useForge } from "@adexdsamson/forge";
@@ -1025,12 +1026,19 @@ const RateSheetDetailsSheet: React.FC<{
                               key={d.id}
                               d={d}
                               handlePreview={() => {
-                                window.open(d.url || "#", "_blank");
+                                // Re-home the stored URL onto the env-configured
+                                // API base so preview/download always hit the
+                                // current environment (the URL bakes in whatever
+                                // host was active at upload).
+                                window.open(
+                                  d.url ? resolveEnvFileUrl(d.url) : "#",
+                                  "_blank",
+                                );
                               }}
                               handleDownload={() => {
                                 if (!d.url) return;
                                 const link = document.createElement("a");
-                                link.href = d.url;
+                                link.href = resolveEnvFileUrl(d.url);
                                 link.download = d.name;
                                 document.body.appendChild(link);
                                 link.click();

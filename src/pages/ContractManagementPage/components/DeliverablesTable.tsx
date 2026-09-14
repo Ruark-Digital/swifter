@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
@@ -836,7 +837,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                       handleDownload={(doc) => {
                         if (!doc.url) return;
                         const a = window.document.createElement("a");
-                        a.href = doc.url;
+                        a.href = resolveEnvFileUrl(doc.url);
                         a.download = doc.name;
                         window.document.body.appendChild(a);
                         a.click();

@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { TabsContent } from "@/components/ui/tabs";
@@ -355,7 +356,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
                       }}
                       handleDownload={(nextDoc) => {
                         if (!nextDoc.url) return;
-                        window.open(nextDoc.url, "_blank", "noopener,noreferrer");
+                        window.open(nextDoc.url ? resolveEnvFileUrl(nextDoc.url) : "#", "_blank", "noopener,noreferrer");
                       }}
                     />
                   ))}

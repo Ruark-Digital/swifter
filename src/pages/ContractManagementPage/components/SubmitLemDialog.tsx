@@ -68,7 +68,7 @@ const UploadElement = () => {
           Drag &amp; Drop or Click to choose files
         </div>
         <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
-          Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
+          Supported formats: XLS, XLSX
         </div>
       </div>
     </div>
@@ -306,16 +306,10 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
                 List={FilesListItem}
                 accept={
                   {
-                    "application/pdf": [".pdf"],
-                    "application/msword": [".doc"],
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-                      [".docx"],
+                    // LEM submissions are Excel schedules only.
                     "application/vnd.ms-excel": [".xls"],
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
                       [".xlsx"],
-                    "application/zip": [".zip"],
-                    "image/png": [".png"],
-                    "image/jpeg": [".jpeg", ".jpg"],
                   } as any
                 }
               />

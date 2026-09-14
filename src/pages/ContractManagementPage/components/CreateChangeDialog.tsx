@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import {
   Dialog,
   DialogClose,
@@ -418,7 +419,7 @@ const CreateChangeDialog: React.FC<Props> = ({
                     {initialChange.files.map((f, i) => (
                       <li key={f.url || f.name || i}>
                         <a
-                          href={f.url}
+                          href={resolveEnvFileUrl(f.url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm text-[#2A4467] dark:text-blue-300 underline underline-offset-2 break-all"

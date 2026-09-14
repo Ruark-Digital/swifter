@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Forge, useForge } from "@adexdsamson/forge";
@@ -1317,7 +1318,7 @@ const EditContract: React.FC<Props> = ({
                               className="flex items-center justify-between rounded-lg border border-border bg-secondary p-3"
                             >
                               <a
-                                href={f.url}
+                                href={resolveEnvFileUrl(f.url)}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="flex min-w-0 items-center gap-3"
