@@ -517,6 +517,12 @@ export const SolicitationManagementPage = () => {
     useState<string | null>(null);
   // Keep a single action menu open across all solicitation rows.
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+  // Id of the solicitation whose Edit dialog is open. Kept OUTSIDE the row's
+  // dropdown menu so the menu closing (e.g. when the file picker steals focus)
+  // never unmounts the open editor.
+  const [editSolicitationId, setEditSolicitationId] = useState<string | null>(
+    null,
+  );
   // const [activeTab, setActiveTab] = useState<string>("all");
 
   // Initialize filters from URL parameters
@@ -1205,73 +1211,94 @@ export const SolicitationManagementPage = () => {
               );
             }
             return (
-              <DropdownMenu
-                open={openActionMenuId === row.original._id}
-                onOpenChange={(open) =>
-                  setOpenActionMenuId(open ? row.original._id : null)
-                }
-              >
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-8 w-8 p-0">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    className="py-3 px-4"
-                    onClick={() =>
-                      navigate(`/dashboard/solicitation/${row.original._id}`)
-                    }
-                  >
-                    View Details
-                  </DropdownMenuItem>
-                  {activeTab === "all" &&
-                    isProcurement &&
-                    !row.original.owner && (
-                      <ConfirmAlert
-                        type="alert"
-                        title="Manage Solicitation"
-                        text="Are you sure you want to add this solicitation to your managed list?"
-                        primaryButtonText="Confirm"
-                        secondaryButtonText="Cancel"
-                        showSecondaryButton
-                        primaryButtonLoading={isManagingSolicitation}
-                        trigger={
-                          <Button
-                            className={cn(
-                              "flex items-center gap-2 bg-gray-300 text-gray-800 hover:bg-gray-400",
-                              {
-                                "!bg-transparent !text-gray-600": true,
-                              }
-                            )}
-                            disabled={isManagingSolicitation}
-                          >
-                            {isManagingSolicitation
-                              ? "Adding..."
-                              : "Manage Solicitation"}
-                          </Button>
-                        }
-                        onPrimaryAction={() =>
-                          manageSolicitationMutation.mutate(row.original._id)
-                        }
-                      />
+              <>
+                <DropdownMenu
+                  open={openActionMenuId === row.original._id}
+                  onOpenChange={(open) =>
+                    setOpenActionMenuId(open ? row.original._id : null)
+                  }
+                >
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      className="py-3 px-4"
+                      onClick={() =>
+                        navigate(`/dashboard/solicitation/${row.original._id}`)
+                      }
+                    >
+                      View Details
+                    </DropdownMenuItem>
+                    {activeTab === "all" &&
+                      isProcurement &&
+                      !row.original.owner && (
+                        <ConfirmAlert
+                          type="alert"
+                          title="Manage Solicitation"
+                          text="Are you sure you want to add this solicitation to your managed list?"
+                          primaryButtonText="Confirm"
+                          secondaryButtonText="Cancel"
+                          showSecondaryButton
+                          primaryButtonLoading={isManagingSolicitation}
+                          trigger={
+                            <Button
+                              className={cn(
+                                "flex items-center gap-2 bg-gray-300 text-gray-800 hover:bg-gray-400",
+                                {
+                                  "!bg-transparent !text-gray-600": true,
+                                }
+                              )}
+                              disabled={isManagingSolicitation}
+                            >
+                              {isManagingSolicitation
+                                ? "Adding..."
+                                : "Manage Solicitation"}
+                            </Button>
+                          }
+                          onPrimaryAction={() =>
+                            manageSolicitationMutation.mutate(row.original._id)
+                          }
+                        />
+                      )}
+
+                    {row.original.status === "draft" && (
+                      <DropdownMenuItem
+                        className="py-3 px-4"
+                        onSelect={(e) => {
+                          // Open the editor as a sibling of this menu (below), not
+                          // inside it — so the menu closing can't unmount it.
+                          e.preventDefault();
+                          setOpenActionMenuId(null);
+                          setEditSolicitationId(row.original._id);
+                        }}
+                      >
+                        Edit Solicitation
+                      </DropdownMenuItem>
                     )}
 
-                  {row.original.status === "draft" && (
-                    <EditSolicitationDialog
-                      solicitation={row.original as any}
-                      isLink
-                    />
-                  )}
-                  
-                  <DropdownMenuItem
-                    className="py-3 px-4 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    onClick={() => handleDeleteClick(row.original._id)}
-                  >
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <DropdownMenuItem
+                      className="py-3 px-4 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      onClick={() => handleDeleteClick(row.original._id)}
+                    >
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {row.original.status === "draft" && (
+                  <EditSolicitationDialog
+                    solicitation={row.original as any}
+                    showTrigger={false}
+                    open={editSolicitationId === row.original._id}
+                    onOpenChange={(o) =>
+                      setEditSolicitationId(o ? row.original._id : null)
+                    }
+                  />
+                )}
+              </>
             );
           },
         },
