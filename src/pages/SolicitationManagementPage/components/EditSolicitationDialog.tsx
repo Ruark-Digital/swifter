@@ -6,7 +6,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Edit } from "lucide-react";
+import { Edit, X } from "lucide-react";
 import { Forge, useForge } from "@adexdsamson/forge";
 import * as yup from "yup";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -179,11 +179,23 @@ type Solicitation = {
 interface EditSolicitationDialogProps {
   solicitation: Solicitation;
   isLink?: boolean;
+  /** Controlled open state. When provided (with `onOpenChange`), the dialog is
+   *  driven by the parent — used to render it OUTSIDE a dropdown menu so the
+   *  menu closing (e.g. when the native file picker steals focus) can't unmount
+   *  it. Omit for the self-contained, trigger-driven usage. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Render the built-in "Edit Solicitation" trigger button. Default true; set
+   *  false when the parent opens the dialog itself (controlled mode). */
+  showTrigger?: boolean;
 }
 
 const EditSolicitationDialog = ({
   solicitation,
   isLink,
+  open,
+  onOpenChange,
+  showTrigger,
 }: EditSolicitationDialogProps) => {
   const { isCompanyAdmin } = useUserRole();
 
@@ -195,17 +207,33 @@ const EditSolicitationDialog = ({
     return null;
   }
   return (
-    <EditSolicitationDialogContent solicitation={solicitation} isLink={isLink} />
+    <EditSolicitationDialogContent
+      solicitation={solicitation}
+      isLink={isLink}
+      open={open}
+      onOpenChange={onOpenChange}
+      showTrigger={showTrigger}
+    />
   );
 };
 
 const EditSolicitationDialogContent = ({
   solicitation,
   isLink,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  showTrigger = true,
 }: EditSolicitationDialogProps) => {
   const toast = useToastHandler();
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  // Support both self-contained (internal state) and parent-controlled open.
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (value: boolean) => {
+    if (!isControlled) setInternalOpen(value);
+    controlledOnOpenChange?.(value);
+  };
   const [currentStep, setCurrentStep] = useState(1);
   const clearSession = useClearSession();
 
@@ -363,6 +391,23 @@ const EditSolicitationDialogContent = ({
     forge.reset(getDefaultValues());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveSolicitation, open]);
+
+  // While the multi-step editor is open, neutralise the browser's default
+  // file-drop behaviour for drops that miss the dropzone. Without this, a file
+  // dropped on the header, padding, or backdrop makes the browser navigate away
+  // to open that file — unloading the SPA, so the dialog appears to "close"
+  // whenever the user drags a file in. The Step 4 dropzone stops propagation on
+  // its own drops, so a real upload is unaffected.
+  useEffect(() => {
+    if (!open) return;
+    const prevent = (e: DragEvent) => e.preventDefault();
+    window.addEventListener("dragover", prevent);
+    window.addEventListener("drop", prevent);
+    return () => {
+      window.removeEventListener("dragover", prevent);
+      window.removeEventListener("drop", prevent);
+    };
+  }, [open]);
 
   // File upload mutation
   const { mutateAsync: uploadFiles } = useMutation<
@@ -858,31 +903,53 @@ const EditSolicitationDialogContent = ({
     }
   };
 
+  // Explicit close — the only way this editor dismisses. Clears the file
+  // session and resets to step 1.
+  const handleClose = () => {
+    clearSession();
+    setOpen(false);
+    setCurrentStep(1);
+  };
+
+  // Radix asks to close on outside clicks, Escape, AND — the actual bug here —
+  // when the native file picker opens (Chrome fires a focus/pointer change that
+  // Radix reads as a dismiss), which made the whole multi-step editor vanish
+  // the moment the user clicked "choose file". Ignore every auto-close request
+  // and only honour an explicit open. Closing is driven solely by the header ✕,
+  // Escape, or the footer actions — none of which involve the file dialog.
   const handleDialogOpenChange = (isOpen: boolean) => {
-    if (!isOpen) {
-      // Clear file session when dialog is closed (user exits)
-      clearSession();
-    }
-    setOpen(isOpen);
+    if (isOpen) setOpen(true);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogTrigger asChild>
-        <Button
-          // variant={isLink ? "link" : "default"}
-          className={cn(
-            "flex items-center gap-2 bg-gray-300 text-gray-800 hover:bg-gray-400",
-            {
-              "!bg-transparent !text-gray-600": isLink,
-            }
-          )}
-        >
-          {!isLink && <Edit className="h-4 w-4" />}
-          Edit Solicitation
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+      {showTrigger && (
+        <DialogTrigger asChild>
+          <Button
+            // variant={isLink ? "link" : "default"}
+            className={cn(
+              "flex items-center gap-2 bg-gray-300 text-gray-800 hover:bg-gray-400",
+              {
+                "!bg-transparent !text-gray-600": isLink,
+              }
+            )}
+          >
+            {!isLink && <Edit className="h-4 w-4" />}
+            Edit Solicitation
+          </Button>
+        </DialogTrigger>
+      )}
+      <DialogContent
+        className="max-w-2xl max-h-[90vh] overflow-y-auto p-0"
+        // Since onOpenChange ignores auto-close, the built-in close button
+        // (which routes through it) would be inert — render our own ✕ below and
+        // keep Escape working via an explicit handler.
+        showCloseButton={false}
+        onEscapeKeyDown={(e) => {
+          e.preventDefault();
+          handleClose();
+        }}
+      >
         {/* Custom Header with Close Button */}
         <div className="flex items-center justify-between p-6">
           <div>
@@ -891,6 +958,14 @@ const EditSolicitationDialogContent = ({
             </DialogTitle>
             <p className="text-sm text-gray-500 mt-1">{getStepTitle()}</p>
           </div>
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="Close"
+            className="rounded-sm p-1 text-gray-500 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         {/* Form Content */}
