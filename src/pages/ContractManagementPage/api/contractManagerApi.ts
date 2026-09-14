@@ -512,16 +512,59 @@ export type ContractInvoiceStatsDTO = {
   rejected?: number;
 };
 
+export type ContractLemSummarySheet = {
+  sheetName?: string;
+  headers?: string[];
+  rows?: Array<Record<string, unknown>>;
+  tables?: Array<Record<string, unknown>>;
+};
+
+export type ContractLemSummaryFile = {
+  name?: string;
+  sheets?: ContractLemSummarySheet[];
+  /** Present when the BE failed to parse this attachment. */
+  error?: string;
+};
+
+/** Parsed LEM attachment contents and rate-sheet comparison. */
+export type ContractLemSummary = {
+  files?: ContractLemSummaryFile[];
+  comparison?: {
+    total?: number;
+    rateSheetTotal?: number | null;
+    totalVariance?: number | null;
+    complianceStatus?: "Fully Compliant" | "Non-Compliant" | null;
+  };
+};
+
+/** Comparison of the LEM amount with the linked rate sheet. */
+export type ContractLemRateSheet = {
+  total?: number;
+  variance?: number;
+  status?: "Compliance" | "Non-Compliance";
+};
+
 export type ContractLemDTO = {
+  _id?: string;
+  lemId?: string;
   title?: string;
   description?: string;
   amount?: number;
+  status?: "pending" | "approved" | "rejected";
+  sheetId?: string;
   files?: Array<{
     name?: string;
     url?: string;
     type?: string;
     size?: string;
   }>;
+  summary?: ContractLemSummary;
+  rateSheet?: ContractLemRateSheet;
+  approverStatus?: string;
+  // Present on the detail response though not in the published schema; the
+  // detail view relies on them.
+  submittedBy?: { name?: string; email?: string };
+  createdAt?: string;
 };
 
 export type ManagerListLemsQuery = {

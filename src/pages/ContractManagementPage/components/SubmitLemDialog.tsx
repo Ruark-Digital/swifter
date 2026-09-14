@@ -55,7 +55,9 @@ type SubmitLemDialogProps = {
     title?: string;
     amount?: number;
     description?: string;
-    files?: { name: string; url: string; type: string; size: number }[];
+    // Pre-uploaded attachments come straight from the LEM response, whose file
+    // objects have optional fields and a string `size` (ContractLemDTO['files']).
+    files?: { name?: string; url?: string; type?: string; size?: string | number }[];
   };
 };
 
