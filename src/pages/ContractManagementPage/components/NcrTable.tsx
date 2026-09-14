@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import { DataTable } from "@/components/layouts/DataTable";
 import type {
   ColumnDef,
@@ -322,7 +323,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
   const handleDownload = (doc: DocType) => {
     if (!doc.url) return;
     const a = window.document.createElement("a");
-    a.href = doc.url;
+    a.href = resolveEnvFileUrl(doc.url);
     a.download = doc.name;
     window.document.body.appendChild(a);
     a.click();

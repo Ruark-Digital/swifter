@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import { ArrowLeft, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
@@ -95,12 +96,12 @@ const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, contractId, b
 
   const handlePreview = (doc: DocType) => {
     if (!doc.url) return;
-    window.open(doc.url, "_blank", "noopener,noreferrer");
+    window.open(doc.url ? resolveEnvFileUrl(doc.url) : "#", "_blank", "noopener,noreferrer");
   };
   const handleDownload = (doc: DocType) => {
     if (!doc.url) return;
     const a = window.document.createElement("a");
-    a.href = doc.url;
+    a.href = resolveEnvFileUrl(doc.url);
     a.download = doc.name;
     window.document.body.appendChild(a);
     a.click();

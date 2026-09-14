@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { TabsContent } from "@/components/ui/tabs";
@@ -960,12 +961,12 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                             key={d.id}
                             d={d}
                             handlePreview={() => {
-                              window.open(d.url || "#", "_blank");
+                              window.open(d.url ? resolveEnvFileUrl(d.url) : "#", "_blank");
                             }}
                             handleDownload={() => {
                               if (!d.url) return;
                               const link = document.createElement("a");
-                              link.href = d.url;
+                              link.href = resolveEnvFileUrl(d.url);
                               link.download = d.name;
                               document.body.appendChild(link);
                               link.click();
@@ -1164,12 +1165,12 @@ const RfiResponseContent: React.FC<{
                 key={d.id}
                 d={d}
                 handlePreview={() => {
-                  window.open(d.url || "#", "_blank");
+                  window.open(d.url ? resolveEnvFileUrl(d.url) : "#", "_blank");
                 }}
                 handleDownload={() => {
                   if (!d.url) return;
                   const link = document.createElement("a");
-                  link.href = d.url;
+                  link.href = resolveEnvFileUrl(d.url);
                   link.download = d.name;
                   document.body.appendChild(link);
                   link.click();
