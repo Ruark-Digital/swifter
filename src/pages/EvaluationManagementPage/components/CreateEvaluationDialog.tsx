@@ -533,9 +533,9 @@ const CreateEvaluationDialog = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-[#2A4467] hover:bg-[#1e3147] text-white px-6 py-2 rounded-lg flex items-center gap-2">
+        <Button className="bg-[#2A4467] hover:bg-[#1e3147] text-white px-4 sm:px-6 py-2 rounded-lg flex items-center gap-2 shrink-0">
           <Plus className="h-4 w-4" />
-          Create Evaluation
+          <span className="hidden sm:inline">Create Evaluation</span>
         </Button>
       </DialogTrigger>
       <DialogContent

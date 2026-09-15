@@ -57,6 +57,12 @@ type DataTableOptions<T = unknown> = {
   onExpandedChange?: OnChangeFn<ExpandedState>;
   // Optional: per-row className customization
   getRowClassName?: (row: Row<T>) => string;
+  // Opt-in: below the `sm` breakpoint, render each row as a stacked card
+  // (first column as the card title, remaining columns as labelled fields,
+  // an "actions" column as a full-width footer) instead of a horizontally
+  // scrolling table row. The desktop table is unchanged. Cells are rendered
+  // with the same column defs via flexRender, so badges/links/buttons work.
+  mobileCards?: boolean;
 };
 
 type ClassNames = {
@@ -247,6 +253,103 @@ export function DataTable<T = unknown>({
     </Table>
   );
 
+  // Mobile card list (opt-in via options.mobileCards). Each row renders as a
+  // self-contained card so a wide table never runs past a phone's viewport:
+  // the first column is the card title, an "actions" column becomes a footer,
+  // and every other column is a labelled field.
+  const renderMobileCards = (
+    <div className="flex flex-col gap-3 py-2">
+      {table.getRowModel().rows.map((row) => {
+        const cells = row.getVisibleCells();
+        const [titleCell, ...restCells] = cells;
+        const fieldCells = restCells.filter((c) => c.column.id !== "actions");
+        const actionCells = restCells.filter((c) => c.column.id === "actions");
+        return (
+          <React.Fragment key={row.id}>
+            <div
+              className={cn(
+                "rounded-xl border border-gray-200 dark:border-slate-700 p-4 flex flex-col gap-3",
+                options?.getRowClassName?.(row)
+              )}
+            >
+              {titleCell && (
+                <div className="min-w-0">
+                  {flexRender(
+                    titleCell.column.columnDef.cell,
+                    titleCell.getContext()
+                  )}
+                </div>
+              )}
+              {fieldCells.length > 0 && (
+                <dl className="flex flex-col gap-2">
+                  {fieldCells.map((cell) => {
+                    const header = cell.column.columnDef.header;
+                    const label =
+                      typeof header === "string" ? header : null;
+                    return (
+                      <div
+                        key={cell.id}
+                        className="flex items-start justify-between gap-3"
+                      >
+                        {label && (
+                          <dt className="shrink-0 pt-0.5 text-xs font-medium text-muted-foreground">
+                            {label}
+                          </dt>
+                        )}
+                        <dd className="ml-auto min-w-0 text-right text-sm">
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </dd>
+                      </div>
+                    );
+                  })}
+                </dl>
+              )}
+              {actionCells.length > 0 && (
+                <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-3 dark:border-slate-800">
+                  {actionCells.map((cell) => (
+                    <React.Fragment key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </React.Fragment>
+                  ))}
+                </div>
+              )}
+            </div>
+            {row.getIsExpanded() && options?.renderSubComponent && (
+              <div
+                className={cn(
+                  "overflow-x-auto rounded-xl border border-gray-200 p-2 dark:border-slate-700",
+                  classNames?.expandedCell
+                )}
+              >
+                {options.renderSubComponent({ row })}
+              </div>
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+
+  const renderMobileLoading = (
+    <div className="flex flex-col gap-3 py-2">
+      {[1, 2, 3, 4].map((_, index) => (
+        <div
+          key={index}
+          className="rounded-xl border border-gray-200 p-4 dark:border-slate-700"
+        >
+          <Skeleton className="h-6 w-2/3 bg-slate-300" />
+          <Skeleton className="mt-3 h-4 w-full bg-slate-300" />
+          <Skeleton className="mt-2 h-4 w-1/2 bg-slate-300" />
+        </div>
+      ))}
+    </div>
+  );
+
+  const hasRows = data.length > 0 && !options?.isLoading;
+
   return (
     <div className={cn("w-full min-w-0", classNames?.container ?? "")}>
       <div className="">
@@ -254,11 +357,30 @@ export function DataTable<T = unknown>({
           <div className={cn("flex items-center py-4", classNames?.header)}>{header?.(table)}</div>
         )}
 
-        {data.length > 0 && !options?.isLoading
-          ? renderTable
-          : options?.isLoading
-          ? renderLoadingTable
-          : emptyPlaceholder}
+        {options?.mobileCards ? (
+          <>
+            <div className="hidden sm:block">
+              {hasRows
+                ? renderTable
+                : options?.isLoading
+                ? renderLoadingTable
+                : emptyPlaceholder}
+            </div>
+            <div className="sm:hidden">
+              {hasRows
+                ? renderMobileCards
+                : options?.isLoading
+                ? renderMobileLoading
+                : emptyPlaceholder}
+            </div>
+          </>
+        ) : hasRows ? (
+          renderTable
+        ) : options?.isLoading ? (
+          renderLoadingTable
+        ) : (
+          emptyPlaceholder
+        )}
       </div>
       <div className="flex flex-col gap-3 py-4 px-3 sm:grid sm:grid-cols-2 sm:gap-0">
         {!options?.disableSelection ? (
