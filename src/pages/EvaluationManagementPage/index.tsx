@@ -9,7 +9,7 @@ import {
   toDate,
 } from "date-fns";
 import { useState, useMemo, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import CreateEvaluationDialog from "./components/CreateEvaluationDialog";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -531,7 +531,13 @@ export const EvaluationManagementPage = () => {
       header: "Solicitation Name",
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="font-medium">{row.original.name}</span>
+          <Link
+            to={`/dashboard/evaluation/${row.original.id}`}
+            title={row.original.name}
+            className="font-medium underline-offset-2 hover:underline"
+          >
+            {row.original.name}
+          </Link>
           <span className="text-sm text-gray-500 dark:text-gray-400">
             {row.original.solId} • {row.original.type}
           </span>
@@ -671,7 +677,13 @@ export const EvaluationManagementPage = () => {
       header: "Solicitation Name",
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="font-medium">{row.original.name}</span>
+          <Link
+            to={`/dashboard/evaluation/${row.original.id}`}
+            title={row.original.name}
+            className="font-medium underline-offset-2 hover:underline"
+          >
+            {row.original.name}
+          </Link>
           <span className="text-sm text-gray-500 dark:text-gray-400">
             {row.original.solId} • {row.original.type}
           </span>

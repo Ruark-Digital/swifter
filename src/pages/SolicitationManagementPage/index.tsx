@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { useState, useMemo, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getRequest, deleteRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
@@ -838,7 +838,13 @@ export const SolicitationManagementPage = () => {
           header: "Solicitation Name",
           cell: ({ row }) => (
             <div className="flex flex-col max-w-sm">
-              <span className="font-medium ">{row.original.name}</span>
+              <Link
+                to={`/dashboard/solicitation/${row.original._id}`}
+                title={row.original.name}
+                className="font-medium underline-offset-2 hover:underline"
+              >
+                {row.original.name}
+              </Link>
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 {row.original.solId}
               </span>
@@ -1082,9 +1088,13 @@ export const SolicitationManagementPage = () => {
           header: "Solicitation Name",
           cell: ({ row }) => (
             <div className="flex flex-col max-w-sm">
-              <span className="font-medium ">
+              <Link
+                to={`/dashboard/solicitation/${row.original._id}`}
+                title={row.original.name}
+                className="font-medium underline-offset-2 hover:underline"
+              >
                 {truncate(row.original.name, { length: 50 })}
-              </span>
+              </Link>
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 {row.original.solId} •{" "}
                 {row.original.typeId?.name.split("-")?.[0]}
@@ -1309,9 +1319,13 @@ export const SolicitationManagementPage = () => {
           header: "Solicitation Name",
           cell: ({ row }) => (
             <div className="flex flex-col max-w-sm">
-              <span className="font-medium ">
+              <Link
+                to={`/dashboard/solicitation/${row.original._id}`}
+                title={row.original.name}
+                className="font-medium underline-offset-2 hover:underline"
+              >
                 {truncate(row.original.name, { length: 50 })}
-              </span>
+              </Link>
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 {row.original.solId} •{" "}
                 {row.original.typeId?.name.split("-")?.[0]}
