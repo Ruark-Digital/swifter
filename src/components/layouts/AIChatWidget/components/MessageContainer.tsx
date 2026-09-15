@@ -4,7 +4,7 @@ import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import rehypeRaw from "rehype-raw";
 import { cn } from "@/lib/utils";
-import { Bot, User, CheckCircle2, Quote } from "lucide-react";
+import { Bot, User, CheckCircle2, Quote, Paperclip } from "lucide-react";
 import "@/assets/highlight-github.css";
 
 export interface ReferencedMessage {
@@ -14,14 +14,31 @@ export interface ReferencedMessage {
   timestamp: Date;
 }
 
+export interface MessageAttachment {
+  name: string;
+  type: string;
+  size: number;
+}
+
 export interface MessageContainerProps {
   id: string;
   content: string;
   sender: "user" | "ai";
   timestamp: Date;
   referencedMessage?: ReferencedMessage;
+  attachments?: MessageAttachment[];
   className?: string;
 }
+
+const formatAttachmentSize = (bytes: number) => {
+  if (!bytes) return "";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.min(
+    units.length - 1,
+    Math.floor(Math.log(bytes) / Math.log(1024))
+  );
+  return `${parseFloat((bytes / Math.pow(1024, i)).toFixed(1))} ${units[i]}`;
+};
 
 const formatTime = (date: Date) => {
   return date.toLocaleTimeString("en-US", {
@@ -36,6 +53,7 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
   sender,
   timestamp,
   referencedMessage,
+  attachments,
   className,
 }) => {
   const isUser = sender === "user";
@@ -243,8 +261,33 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
         {/* Referenced message */}
         {renderReferencedMessage()}
 
+        {/* Attachments sent with this message */}
+        {attachments && attachments.length > 0 && (
+          <div className={cn("flex flex-wrap gap-2", content ? "mb-2" : "")}>
+            {attachments.map((file) => (
+              <span
+                key={`${file.name}-${file.size}`}
+                className={cn(
+                  "inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs",
+                  isUser
+                    ? "border-white/20 bg-white/10 text-white"
+                    : "border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                )}
+              >
+                <Paperclip className="h-3.5 w-3.5 flex-shrink-0" />
+                <span className="truncate font-medium">{file.name}</span>
+                {file.size > 0 && (
+                  <span className="flex-shrink-0 opacity-70">
+                    {formatAttachmentSize(file.size)}
+                  </span>
+                )}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Main message content with markdown support */}
-        <div 
+        {content && <div
           className={cn(
             "prose prose-sm max-w-none whitespace-normal leading-relaxed",
             isUser ? "prose-invert" : ""
@@ -257,7 +300,7 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
           >
             {content}
           </ReactMarkdown>
-        </div>
+        </div>}
 
         {/* Message metadata */}
         <div

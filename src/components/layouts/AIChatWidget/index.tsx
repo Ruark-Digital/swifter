@@ -44,10 +44,23 @@ interface FileAttachment {
   file: File;
 }
 
+// Outbound attachment payload sent to the chat backend. The bytes travel
+// inline as base64 in the JSON request body (see App.tsx `postChat`).
+export interface ChatAttachment {
+  name: string;
+  type: string;
+  contentBase64: string;
+  size: number;
+}
+
 interface AIChatWidgetProps {
-  onSendMessage?: (message: string) => Promise<string>;
+  onSendMessage?: (
+    message: string,
+    attachments?: ChatAttachment[]
+  ) => Promise<string>;
   onStreamMessage?: (
     message: string,
+    attachments: ChatAttachment[] | undefined,
     onDelta: (partial: string) => void,
     onTool?: (phase: "start" | "end", tool: string) => void
   ) => Promise<void>;
@@ -88,6 +101,20 @@ const createWelcomeMessage = (content: string): Message => ({
   sender: "ai",
   timestamp: new Date(),
 });
+
+// Read a File into base64 (without the `data:...;base64,` prefix) for the
+// chat backend's inline `attachments` payload.
+const fileToBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const commaIndex = result.indexOf(",");
+      resolve(commaIndex >= 0 ? result.slice(commaIndex + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 
 const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   onSendMessage,
@@ -342,9 +369,28 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
     if ((!baseText.trim() && attachedFiles.length === 0) || isLoading) return;
 
     const messageContent = baseText.trim();
-    // const filesToSend = [...attachedFiles];
+    const filesToSend = [...attachedFiles];
     if (overrideText === undefined) setInputValue("");
     setAttachedFiles([]);
+
+    // Lightweight metadata shown on the user's message bubble; the raw bytes
+    // are encoded lazily below, only for the outbound request.
+    const attachmentMeta = filesToSend.map((f) => ({
+      name: f.name,
+      type: f.type,
+      size: f.size,
+    }));
+    const encodeAttachments = async (): Promise<ChatAttachment[] | undefined> =>
+      filesToSend.length
+        ? Promise.all(
+            filesToSend.map(async (f) => ({
+              name: f.name,
+              type: f.type,
+              size: f.size,
+              contentBase64: await fileToBase64(f.file),
+            }))
+          )
+        : undefined;
 
     try {
       if (onStreamMessage) {
@@ -354,6 +400,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
           content: messageContent,
           sender: "user" as const,
           timestamp: new Date(),
+          attachments: attachmentMeta.length ? attachmentMeta : undefined,
         };
 
         setCustomMessages((prev) => [...prev, userMessage]);
@@ -372,8 +419,10 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
         ]);
 
         try {
+          const attachments = await encodeAttachments();
           await onStreamMessage(
             messageContent,
+            attachments,
             (partial) => {
               setCustomMessages((prev) =>
                 prev.map((m) =>
@@ -416,6 +465,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
           content: messageContent,
           sender: "user" as const,
           timestamp: new Date(),
+          attachments: attachmentMeta.length ? attachmentMeta : undefined,
         };
 
         setCustomMessages((prev) => [...prev, userMessage]);
@@ -423,7 +473,8 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
 
         try {
           // Get AI response using custom handler
-          const aiResponse = await onSendMessage(messageContent);
+          const attachments = await encodeAttachments();
+          const aiResponse = await onSendMessage(messageContent, attachments);
 
           // Add AI response to custom state
           if (aiResponse) {
@@ -534,6 +585,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
         sender={message.sender}
         timestamp={message.timestamp}
         referencedMessage={message.referencedMessage}
+        attachments={message.attachments}
       />
     );
   }, []);
@@ -719,7 +771,12 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                   <ScrollArea className="flex-1 p-4">
                     <div className="space-y-6 h-[10rem]">
                       {messages
-                        .filter(message => !isLoading || message.content.trim() !== '')
+                        .filter(
+                          (message) =>
+                            !isLoading ||
+                            message.content.trim() !== '' ||
+                            (message.attachments?.length ?? 0) > 0
+                        )
                         .map(renderMessage)}
                       {isLoading && (
                         <div className="flex items-start gap-3 animate-in slide-in-from-bottom-2 duration-300">
@@ -857,6 +914,25 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                   )}
 
                   <div className="flex gap-3 items-end">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isLoading}
+                          aria-label="Attach a file"
+                          className="h-11 w-11 shrink-0 rounded-xl border border-slate-300 text-slate-500 hover:border-[#07004D]/40 hover:bg-[#07004D]/5 hover:text-[#07004D] dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-violet-300 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Paperclip className="h-5 w-5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Attach a file</p>
+                      </TooltipContent>
+                    </Tooltip>
+
                     <div className="flex-1 relative">
                       <textarea
                         ref={inputRef}
@@ -909,7 +985,11 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                     type="file"
                     multiple
                     accept={allowedFileTypes.join(",")}
-                    onChange={(e) => handleFileSelect(e.target.files)}
+                    onChange={(e) => {
+                      handleFileSelect(e.target.files);
+                      // Reset so re-selecting the same file still fires onChange.
+                      e.target.value = "";
+                    }}
                     className="hidden"
                   />
                 </div>

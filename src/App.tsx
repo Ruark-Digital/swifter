@@ -5,7 +5,9 @@ import { ErrorFallback } from "./components/layouts/Error";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { Toaster } from "./components/ui/toaster";
 import Loading from "@/components/ui/Spinner";
-import AIChatWidget from "./components/layouts/AIChatWidget";
+import AIChatWidget, {
+  type ChatAttachment,
+} from "./components/layouts/AIChatWidget";
 import { useAuthentication } from "@/hooks/useAuthentication";
 import { useToken, useUser } from "@/store/authSlice";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -107,9 +109,13 @@ const queryClient = new QueryClient({
 // so it can read the active role via useUserRole (which fetches the role
 // catalog through react-query) from inside the QueryClientProvider.
 const AssistantWidget: React.FC<{
-  onSendMessage: (message: string) => Promise<string>;
+  onSendMessage: (
+    message: string,
+    attachments?: ChatAttachment[]
+  ) => Promise<string>;
   onStreamMessage: (
     message: string,
+    attachments: ChatAttachment[] | undefined,
     onDelta: (partial: string) => void,
     onTool?: (phase: "start" | "end", tool: string) => void,
   ) => Promise<void>;
@@ -136,7 +142,11 @@ function App() {
   const user = useUser();
   const { toast } = useToast();
 
-  const postChat = async (message: string, stream: boolean) => {
+  const postChat = async (
+    message: string,
+    stream: boolean,
+    attachments?: ChatAttachment[]
+  ) => {
     const response = await fetch(CHAT_URL, {
       method: 'POST',
       headers: {
@@ -147,6 +157,9 @@ function App() {
         userToken: token,
         stream,
         messages: [{ role: 'user', content: message }],
+        // Files ride inline as base64 in the request body; omit the key
+        // entirely when there are none so unchanged calls stay identical.
+        ...(attachments && attachments.length ? { attachments } : {}),
       }),
     });
 
@@ -233,9 +246,12 @@ function App() {
     }
   };
 
-  const handleAIChatMessage = async (message: string): Promise<string> => {
+  const handleAIChatMessage = async (
+    message: string,
+    attachments?: ChatAttachment[]
+  ): Promise<string> => {
     try {
-      const response = await postChat(message, false);
+      const response = await postChat(message, false, attachments);
       const data = await response.json();
       return data?.choices?.[0]?.message?.content || 'No response received from AI';
     } catch (error) {
@@ -246,11 +262,12 @@ function App() {
 
   const handleAIChatMessageStream = async (
     message: string,
+    attachments: ChatAttachment[] | undefined,
     onDelta: (partial: string) => void,
     onTool?: (phase: 'start' | 'end', tool: string) => void
   ): Promise<void> => {
     try {
-      const response = await postChat(message, true);
+      const response = await postChat(message, true, attachments);
       await parseMcpStream(response, onDelta, onTool, (doc) => {
         try {
           downloadBase64File(doc.contentBase64, doc.filename, doc.contentType);
