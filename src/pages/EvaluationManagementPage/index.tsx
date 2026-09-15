@@ -960,6 +960,7 @@ export const EvaluationManagementPage = () => {
                 columns={columns}
                 options={{
                   disableSelection: true,
+                  mobileCards: true,
                   isLoading: isEvaluationsLoading,
                   totalCounts: evaluationsResponse?.data?.total || 0,
                   manualPagination: true,
@@ -1000,6 +1001,7 @@ export const EvaluationManagementPage = () => {
               columns={myEvaluationColumns as any}
               options={{
                 disableSelection: true,
+                mobileCards: true,
                 isLoading: isMyEvaluationsLoading,
                 totalCounts: myEvaluationsResponse?.data?.total || 0,
                 manualPagination: true,
@@ -1040,6 +1042,7 @@ export const EvaluationManagementPage = () => {
               columns={assignedEvaluationColumns}
               options={{
                 disableSelection: true,
+                mobileCards: true,
                 isLoading: isAssignedEvaluationsLoading,
                 totalCounts: 0,
                 manualPagination: true,
