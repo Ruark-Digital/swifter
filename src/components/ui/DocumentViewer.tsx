@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
 import { getFileExtension } from '../../lib/fileUtils';
 import { useTheme } from '../../contexts/ThemeContext';
+import { resolveEnvFileUrl } from '@/config';
 
 // Lazy so the SuperDoc bridge (which resolves VITE_SUPERDOC_APP_URL at module
 // load and throws in prod when unset) only evaluates when a Word preview is
@@ -56,6 +57,14 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const extension = getFileExtension(fileName, fileType || '');
   const isWord = extension === 'DOC' || extension === 'DOCX';
 
+  // Stored file URLs bake in whatever API host was active at upload time, which
+  // may differ from the current environment (bug/staging/prod) and be
+  // CORS-blocked for a cross-fetch/preview. Re-home the URL onto the active
+  // environment's API base so `fetch`, react-pdf, and the SuperDoc iframe all
+  // hit a reachable, same-environment host. `resolveEnvFileUrl` is a no-op for
+  // relative/blob/already-current/external URLs, so every caller is safe.
+  const resolvedUrl = resolveEnvFileUrl(fileUrl);
+
   useEffect(() => {
     if (isOpen && fileUrl) {
       setSuperdocFailed(false);
@@ -94,7 +103,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   };
 
   const loadExcelFile = async () => {
-    const response = await fetch(fileUrl);
+    const response = await fetch(resolvedUrl);
     const arrayBuffer = await response.arrayBuffer();
     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
     
@@ -112,7 +121,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   };
 
   const loadWordFile = async () => {
-    const response = await fetch(fileUrl);
+    const response = await fetch(resolvedUrl);
     const arrayBuffer = await response.arrayBuffer();
     const result = await mammoth.convertToHtml({ arrayBuffer });
     setDocxContent(result.value);
@@ -140,7 +149,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   const handleDownload = () => {
     const link = document.createElement('a');
-    link.href = fileUrl;
+    link.href = resolvedUrl;
     link.download = fileName;
     document.body.appendChild(link);
     link.click();
@@ -192,7 +201,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       <div className={`flex-1 overflow-auto p-4 ${actualTheme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}`}>
         <div className="flex justify-center dark:text-gray-400">
           <Document
-            file={fileUrl}
+            file={resolvedUrl}
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={onDocumentLoadError}
             loading={<Loader2 className="h-8 w-8 animate-spin text-foreground" />}
@@ -269,7 +278,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
             }
           >
             <IframeEditorPane
-              importMeta={{ sourceUrl: fileUrl, fileName, fileType: fileType || '' }}
+              importMeta={{ sourceUrl: resolvedUrl, fileName, fileType: fileType || '' }}
               collabMeta={{
                 wsUrl: '',
                 roomId: '',
