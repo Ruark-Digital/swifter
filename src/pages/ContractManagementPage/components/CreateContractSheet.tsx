@@ -28,18 +28,20 @@ import { useProjectsList } from "@/pages/ProjectManagementPage/services/useProje
 import { useToastHandler } from "@/hooks/useToaster";
 import { useWatch } from "react-hook-form";
 import { Checkbox } from "@/components/ui/checkbox";
-import { X } from "lucide-react";
+import { X, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { useClearSession } from "@/store/solicitationFileSlice";
 import { useUser } from "@/store/authSlice";
 import { pruneEmptyValuesDeep } from "@/lib/pruneEmptyValuesDeep";
 import { getExchangeRate } from "@/lib/currencyUtils";
+import { resolveEnvFileUrl } from "@/config";
 import {
+  composeContractFiles,
+  fileKey,
   isEmailLike,
   isObjectIdLike,
   toApproverUserKeyOrUndefined,
   toIdStringOrUndefined,
-  toFileMetaOrUndefined,
   toPersonnelOrUndefined,
 } from "@/lib/contractFormValues";
 
@@ -660,6 +662,14 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
   const [open, setOpen] = React.useState(false);
   const [signatories, setSignatories] = React.useState<string[]>([]);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
+  // RFP documents migrated from the awarded solicitation that the CM removed in
+  // step 7. Tracked here (independent of the shared Step4Form's `documents`
+  // field) so removals stick across re-renders and, crucially, survive a draft
+  // save/reload instead of being nulled out by the step's hydrate/sync race
+  // (QA #25/#26). Keyed by `fileKey`.
+  const [removedAwardedKeys, setRemovedAwardedKeys] = React.useState<Set<string>>(
+    () => new Set(),
+  );
 
   const totalSteps = STEP_TITLES.length;
   const handleSendForApproval = React.useCallback((sigs: string[]) => {
@@ -790,6 +800,18 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
           doc !== null,
       );
   }, [selectedAwarded, awardedQuery.data?.data]);
+
+  // Migrated RFP documents still shown in step 7 (those the CM hasn't removed).
+  const visibleAwardedDocuments = React.useMemo(
+    () => awardedDocuments.filter((f) => !removedAwardedKeys.has(fileKey(f))),
+    [awardedDocuments, removedAwardedKeys],
+  );
+
+  // Switching to a different awarded solicitation brings in a fresh document
+  // set, so prior removals no longer apply — reset them.
+  React.useEffect(() => {
+    setRemovedAwardedKeys(new Set());
+  }, [selectedAwarded]);
 
   const msaOptions = React.useMemo(() => {
     const contracts = msaQuery.data?.data?.contracts || [];
@@ -1027,10 +1049,15 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         (t) => t._id === data.termType,
       )?.name;
 
-      const files =
-        (data.documents ?? [])
-          .map((f: any) => toFileMetaOrUndefined(f))
-          .filter(Boolean) ?? [];
+      // Compose the contract's files from the migrated RFP docs (minus any the
+      // CM removed in step 7) plus any newly-uploaded documents. Tracking the
+      // migrated docs independently of the shared Documents step keeps them from
+      // vanishing on a draft save/reload (QA #25/#26).
+      const files = composeContractFiles(
+        awardedDocuments,
+        removedAwardedKeys,
+        data.documents as any[] | null | undefined,
+      );
 
       const awardedMatch = awardedQuery.data?.data?.find(
         (a) => a._id === data.awardedSolicitation,
@@ -1316,7 +1343,62 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
               {step === 6 && <Step6ComplianceSecurity control={control} />}
 
               {step === 7 && (
-                <Step4Form control={control} documents={awardedDocuments} />
+                <div className="space-y-4">
+                  {visibleAwardedDocuments.length > 0 && (
+                    <div className="px-6">
+                      <p className="mb-2 text-sm font-medium text-foreground">
+                        Migrated from awarded solicitation
+                      </p>
+                      <div className="space-y-2">
+                        {visibleAwardedDocuments.map((f) => {
+                          const key = fileKey(f);
+                          return (
+                            <div
+                              key={key}
+                              className="flex items-center justify-between rounded-lg border border-border bg-secondary p-3"
+                            >
+                              <a
+                                href={resolveEnvFileUrl(f.url)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex min-w-0 items-center gap-3"
+                              >
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-blue-100 dark:bg-blue-900/30">
+                                  <FileText className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                                </span>
+                                <span className="min-w-0">
+                                  <span className="block truncate text-sm font-medium text-foreground">
+                                    {f.name || "Document"}
+                                  </span>
+                                  {f.size && (
+                                    <span className="block text-xs text-muted-foreground">
+                                      {f.size}
+                                    </span>
+                                  )}
+                                </span>
+                              </a>
+                              <button
+                                type="button"
+                                aria-label={`Remove ${f.name || "document"}`}
+                                onClick={() =>
+                                  setRemovedAwardedKeys((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(key);
+                                    return next;
+                                  })
+                                }
+                                className="ml-3 shrink-0 text-muted-foreground transition-colors hover:text-red-500"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  <Step4Form control={control} documents={[]} />
+                </div>
               )}
 
               {step === 8 && <Step7ApprovalLevel control={control} />}

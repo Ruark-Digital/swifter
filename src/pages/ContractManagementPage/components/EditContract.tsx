@@ -34,11 +34,12 @@ import { format } from "date-fns";
 import { X, FileText } from "lucide-react";
 import { useClearSession } from "@/store/solicitationFileSlice";
 import {
+  composeContractFiles,
   diffChangedPayload,
+  fileKey,
   isEmailLike,
   isObjectIdLike,
   toApproverUserKeyOrUndefined,
-  toFileMetaOrUndefined,
   toIdStringOrUndefined,
   toPersonnelOrUndefined,
 } from "@/lib/contractFormValues";
@@ -143,44 +144,6 @@ export const resolveContractSaveStatus = (
   currentStatus: unknown,
 ): "draft" | "pending_approval" => {
   return currentStatus === "draft" ? "draft" : "pending_approval";
-};
-
-// Stable key for an attached file. URL is the authoritative identity (the BE
-// echoes it back), with the document `_id` and finally the file name as
-// fallbacks for entries that predate a URL.
-export const fileKey = (file: unknown): string => {
-  const f = file as any;
-  return (
-    (typeof f?.url === "string" && f.url) ||
-    (typeof f?._id === "string" && f._id) ||
-    (typeof f?.name === "string" && f.name) ||
-    ""
-  );
-};
-
-// Compose the final `files` payload for a contract edit from three sources:
-// the contract's existing BE files, the set of files the user removed in the
-// UI, and any newly-uploaded documents. Existing files are tracked
-// independently of the form's `documents` field so the shared Step4Form's
-// hydrate/sync race can no longer null them out (QA #127). Deduped by url||name.
-export const composeContractFiles = (
-  existingFiles: unknown[] | undefined,
-  removedKeys: Set<string>,
-  newDocuments: unknown[] | null | undefined,
-) => {
-  const kept = (existingFiles ?? []).filter((f) => !removedKeys.has(fileKey(f)));
-  const merged = [...kept, ...(newDocuments ?? [])]
-    .map((f) => toFileMetaOrUndefined(f))
-    .filter(Boolean) as Array<NonNullable<ReturnType<typeof toFileMetaOrUndefined>>>;
-
-  const seen = new Set<string>();
-  return merged.filter((f) => {
-    const key = f.url || f.name;
-    if (!key) return true;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
 };
 
 export type AwardedOption = {

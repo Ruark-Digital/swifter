@@ -2,11 +2,13 @@ import { describe, it, expect } from "vitest";
 import {
   buildAwardedOptions,
   buildContractApproversPayload,
-  composeContractFiles,
-  fileKey,
   resolveContractSaveStatus,
 } from "../components/EditContract";
-import { toPersonnelOrUndefined } from "../../../lib/contractFormValues";
+import {
+  composeContractFiles,
+  fileKey,
+  toPersonnelOrUndefined,
+} from "../../../lib/contractFormValues";
 
 describe("EditContract payload helpers", () => {
   it("filters out empty approval groups", () => {
