@@ -47,6 +47,7 @@ import {
   getStatusColorClass,
 } from "@/lib/solicitationStatusUtils";
 import { formatDateTZ } from "@/lib/utils";
+import { formatEventType } from "@/lib/solicitationEventUtils";
 
 // Vendor proposal type definition
 type VendorProposal = {
@@ -120,11 +121,14 @@ type Category = {
   name: string;
 };
 
+// Matches the shape the BE returns (and the Edit dialog reads back), not the
+// form-state shape. Events are created in the "Create Event" wizard step.
 type SolicitationEvent = {
   _id: string;
-  name: string;
-  date: string;
-  description?: string;
+  eventType: string;
+  eventLocation?: string;
+  eventDate: string;
+  eventDescription?: string;
 };
 
 type SolicitationFile = {
@@ -1181,6 +1185,69 @@ export const SolicitationDetailPage = () => {
                 </p>
               </div>
             </div>
+
+            {/* Events (e.g. Pre-bid Meeting) — shown to both PL and vendors so
+                everyone can see scheduled events like a compulsory site visit
+                (QA #22). */}
+            {Array.isArray(solicitation.events) &&
+              solicitation.events.length > 0 && (
+                <>
+                  <h5 className="text-lg font-semibold text-gray-900 dark:text-gray-200">
+                    Events
+                  </h5>
+                  <div className="space-y-4">
+                    {solicitation.events.map((event) => (
+                      <div
+                        key={event._id}
+                        className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3"
+                      >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-gray-500 mb-1 block">
+                              Event
+                            </label>
+                            <p className="text-gray-900 dark:text-gray-200 font-medium">
+                              {formatEventType(event.eventType)}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-500 mb-1 block">
+                              Location
+                            </label>
+                            <p className="text-gray-900 dark:text-gray-200 font-medium">
+                              {event.eventLocation || "N/A"}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-500 mb-1 block">
+                              Date & Time
+                            </label>
+                            <p className="text-gray-900 dark:text-gray-200 font-medium">
+                              {event.eventDate
+                                ? formatDateTZ(
+                                    event.eventDate,
+                                    "MMMM dd, yyyy KK:mm a",
+                                    solicitation.timezone,
+                                  )
+                                : "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                        {event.eventDescription && (
+                          <div>
+                            <label className="text-sm font-medium text-gray-500 mb-1 block">
+                              Note
+                            </label>
+                            <p className="text-gray-700 dark:text-gray-200 leading-relaxed">
+                              {event.eventDescription}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
 
             {/* Timeline & Bid Details */}
             {!isVendor && (
