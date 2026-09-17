@@ -181,6 +181,45 @@ export const toFileMetaOrUndefined = (value: unknown) => {
   };
 };
 
+// Stable key for an attached file. URL is the authoritative identity (the BE
+// echoes it back), with the document `_id` and finally the file name as
+// fallbacks for entries that predate a URL.
+export const fileKey = (file: unknown): string => {
+  const f = file as any;
+  return (
+    (typeof f?.url === "string" && f.url) ||
+    (typeof f?._id === "string" && f._id) ||
+    (typeof f?.name === "string" && f.name) ||
+    ""
+  );
+};
+
+// Compose a contract's final `files` payload from three sources: the files
+// already attached (existing BE files, or RFP docs migrated from an awarded
+// solicitation), the set the user removed in the UI, and any newly-uploaded
+// documents. Tracking the attached files independently of the shared
+// Step4Form's `documents` field is what keeps them from vanishing on a draft
+// re-save when that field's hydrate/sync races (QA #127). Deduped by url||name.
+export const composeContractFiles = (
+  existingFiles: unknown[] | undefined,
+  removedKeys: Set<string>,
+  newDocuments: unknown[] | null | undefined,
+) => {
+  const kept = (existingFiles ?? []).filter((f) => !removedKeys.has(fileKey(f)));
+  const merged = [...kept, ...(newDocuments ?? [])]
+    .map((f) => toFileMetaOrUndefined(f))
+    .filter(Boolean) as Array<NonNullable<ReturnType<typeof toFileMetaOrUndefined>>>;
+
+  const seen = new Set<string>();
+  return merged.filter((f) => {
+    const key = f.url || f.name;
+    if (!key) return true;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 /**
  * Reduce a fully-built update payload to just the fields the user actually
  * changed, so Edit Contract sends a diff to the BE instead of the whole
