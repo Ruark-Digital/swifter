@@ -441,7 +441,11 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
     canApproveOrReject && approverStatus === "pending";
 
   const summary = lemDetail?.summary as LemSummary | undefined;
-  const rateSheet = lemDetail?.rateSheet;
+  // Overview "Rate Sheet Compliance" reads the rate-sheet comparison the
+  // detail endpoint returns under `summary.comparison` (rateSheetTotal /
+  // totalVariance / complianceStatus). The top-level `rateSheet` object it
+  // used to read has no total/variance/status keys, so those rendered "—".
+  const rateSheetComparison = summary?.comparison;
   const hasSummary = !!(
     summary &&
     ((summary.files?.some((f) => (f.sheets && f.sheets.length) || f.error) ??
@@ -572,22 +576,20 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   />
                 </div>
 
-                {rateSheet && (
+                {rateSheetComparison && (
                   <div className="space-y-3 rounded-xl border border-[#E5E7EB] p-4 dark:border-slate-700">
                     <div className="flex items-center justify-between">
                       <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
                         Rate Sheet Compliance
                       </div>
-                      {rateSheet.status && (
+                      {rateSheetComparison.complianceStatus && (
                         <span
                           className={cn(
                             "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
-                            rateSheet.status === "Compliance"
-                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                              : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300",
+                            complianceBadgeColor(rateSheetComparison.complianceStatus),
                           )}
                         >
-                          {rateSheet.status}
+                          {rateSheetComparison.complianceStatus}
                         </span>
                       )}
                     </div>
@@ -595,16 +597,24 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                       <LabelRow
                         label="Rate Sheet Total"
                         value={
-                          typeof rateSheet.total === "number"
-                            ? formatCurrency(rateSheet.total, "en-US", currencyCode)
+                          typeof rateSheetComparison.rateSheetTotal === "number"
+                            ? formatCurrency(
+                                rateSheetComparison.rateSheetTotal,
+                                "en-US",
+                                currencyCode,
+                              )
                             : "—"
                         }
                       />
                       <LabelRow
                         label="Variance"
                         value={
-                          typeof rateSheet.variance === "number"
-                            ? formatCurrency(rateSheet.variance, "en-US", currencyCode)
+                          typeof rateSheetComparison.totalVariance === "number"
+                            ? formatCurrency(
+                                rateSheetComparison.totalVariance,
+                                "en-US",
+                                currencyCode,
+                              )
                             : "—"
                         }
                       />
