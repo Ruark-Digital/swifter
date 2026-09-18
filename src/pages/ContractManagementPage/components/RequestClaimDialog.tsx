@@ -300,6 +300,10 @@ const RequestClaimDialog: React.FC<Props> = ({
                   label: "Vendor-caused Delay",
                   value: "vendor_delay",
                 },
+                {
+                  label: "Company-caused Delay",
+                  value: "company_delay",
+                },
                 { label: "Scope Change", value: "scope_change" },
                 {
                   label: "Weather Conditions",
@@ -402,7 +406,7 @@ const RequestClaimDialog: React.FC<Props> = ({
                   <Forger
                     name="timeImpact"
                     label="Time"
-                    placeholder="Enter Date"
+                    placeholder="Enter no. of days"
                     component={TextInput}
                   />
                   <Forger
