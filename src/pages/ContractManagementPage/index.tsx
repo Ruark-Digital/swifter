@@ -4,7 +4,8 @@ import type { PaginationState } from "@tanstack/react-table";
 import { SEOWrapper } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Share2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
+import { ExportContractsButton } from "@/components/layouts/ExportContractsButton";
 import StatsCards from "./components/StatsCards";
 import ContractsTable, { ContractRow } from "./components/ContractsTable";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -630,9 +631,15 @@ const ContractManagementPage: React.FC = () => {
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:gap-4">
               {!isViewOnly && (
-                <Button variant="outline" className="rounded-xl">
-                  <Share2 className="mr-2 h-4 w-4" /> Export
-                </Button>
+                <ExportContractsButton
+                  endpoint={
+                    isApprover
+                      ? "/contract/approver/contracts/export"
+                      : "/contract/manager/contracts/export"
+                  }
+                  status={statusFilter}
+                  filenameBase="contracts-export"
+                />
               )}
               {!isApprover && !isViewOnly && !isCompanyAdmin && (
                 <CreateContractSheet
