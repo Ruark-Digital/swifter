@@ -537,11 +537,28 @@ export type ContractLemSummary = {
   };
 };
 
-/** Comparison of the LEM amount with the linked rate sheet. */
+/** Per-item comparison of a LEM rate against the linked rate sheet. */
+export type ContractLemRateSheetItem = {
+  item?: string;
+  rateSheetRate?: number | null;
+  lemRate?: number | null;
+  variance?: number | null;
+  compliant?: boolean;
+};
+
+/** Comparison of the LEM against the linked rate sheet. The detail endpoint
+ *  returns the populated comparison here (summary.comparison's totals are
+ *  frequently null), so the Overview "Rate Sheet Compliance" card reads from
+ *  this object as a fallback. */
 export type ContractLemRateSheet = {
-  total?: number;
-  variance?: number;
-  status?: "Compliance" | "Non-Compliance";
+  sheetId?: string;
+  title?: string;
+  items?: ContractLemRateSheetItem[];
+  /** Sum of the matched rate-sheet rates. */
+  rateSheetTotal?: number | null;
+  /** Count of items whose LEM rate varies from the rate sheet. */
+  totalVarianceCount?: number | null;
+  compliant?: boolean;
 };
 
 export type ContractLemDTO = {

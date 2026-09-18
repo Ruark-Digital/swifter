@@ -441,11 +441,56 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
     canApproveOrReject && approverStatus === "pending";
 
   const summary = lemDetail?.summary as LemSummary | undefined;
-  // Overview "Rate Sheet Compliance" reads the rate-sheet comparison the
-  // detail endpoint returns under `summary.comparison` (rateSheetTotal /
-  // totalVariance / complianceStatus). The top-level `rateSheet` object it
-  // used to read has no total/variance/status keys, so those rendered "—".
-  const rateSheetComparison = summary?.comparison;
+  // Overview "Rate Sheet Compliance" and the LEM Summary tab show the
+  // rate-sheet totals. The detail endpoint frequently returns
+  // `summary.comparison` with null rateSheetTotal / totalVariance /
+  // complianceStatus, while the real values live in the sibling top-level
+  // `rateSheet` object (rateSheetTotal, per-item variance, compliant). Merge
+  // the two, preferring populated comparison fields and falling back to
+  // `rateSheet`, so the values stop rendering "—".
+  const rateSheetComparison = React.useMemo(() => {
+    const comparison = summary?.comparison;
+    const rateSheet = lemDetail?.rateSheet;
+
+    const itemVariances = (rateSheet?.items ?? [])
+      .map((it) => it?.variance)
+      .filter((v): v is number => typeof v === "number");
+    const summedVariance = itemVariances.length
+      ? itemVariances.reduce((a, b) => a + b, 0)
+      : null;
+
+    const rateSheetTotal =
+      typeof comparison?.rateSheetTotal === "number"
+        ? comparison.rateSheetTotal
+        : typeof rateSheet?.rateSheetTotal === "number"
+          ? rateSheet.rateSheetTotal
+          : null;
+    const totalVariance =
+      typeof comparison?.totalVariance === "number"
+        ? comparison.totalVariance
+        : summedVariance;
+    const complianceStatus =
+      comparison?.complianceStatus ??
+      (typeof rateSheet?.compliant === "boolean"
+        ? rateSheet.compliant
+          ? "Fully Compliant"
+          : "Non-Compliant"
+        : null);
+
+    const hasData =
+      !!comparison ||
+      rateSheetTotal !== null ||
+      totalVariance !== null ||
+      !!complianceStatus;
+    if (!hasData) return undefined;
+
+    return {
+      total: comparison?.total ?? null,
+      rateSheetTotal,
+      totalVariance,
+      complianceStatus,
+    };
+  }, [summary?.comparison, lemDetail?.rateSheet]);
   const hasSummary = !!(
     summary &&
     ((summary.files?.some((f) => (f.sheets && f.sheets.length) || f.error) ??
@@ -663,7 +708,15 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
 
               <TabsContent value="summary" className="space-y-4">
                 <LemSummaryContent
-                  summary={summary}
+                  summary={
+                    summary
+                      ? {
+                          ...summary,
+                          comparison:
+                            rateSheetComparison ?? summary.comparison,
+                        }
+                      : summary
+                  }
                   currencyCode={currencyCode}
                 />
               </TabsContent>
