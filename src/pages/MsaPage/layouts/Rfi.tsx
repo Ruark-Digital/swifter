@@ -32,8 +32,8 @@ import {
   TextSelect,
 } from "@/components/layouts/FormInputs";
 import type { Option } from "@/components/ui/multiselect";
-import { FileUploaderItem } from "@/components/ui/file-upload";
-import { Check, CloudUpload, Search, Share2, X } from "lucide-react";
+import { FileUploaderItem, useFileUpload } from "@/components/ui/file-upload";
+import { Check, CloudUpload, Search, Share2, Trash2, X } from "lucide-react";
 import { useWatch } from "react-hook-form";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
@@ -212,6 +212,9 @@ const getResponderName = (raw: any): string => {
   return "-";
 };
 
+// Renders a to-be-uploaded file. The remove control sits on its own line below
+// the name/description (not crammed beside it) so it's clearly separated
+// (QA #12). Removal goes through the uploader context by index.
 function IssueFileListItem({
   file,
   index,
@@ -219,24 +222,32 @@ function IssueFileListItem({
   file: File;
   index?: number;
 }) {
+  const { removeFileFromSet } = useFileUpload();
   const extension = getSimpleFileExtension(file.name).toUpperCase();
   return (
-    <FileUploaderItem
-      index={index ?? 0}
-      className="h-auto w-full rounded-xl border border-slate-200 bg-slate-50 p-3"
-    >
+    <div className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3">
       <div className="flex items-center gap-3 w-full min-w-0">
-        <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
+        <div className="h-10 w-10 shrink-0 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
           {getFileIcon(extension)}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{file.name}</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {extension || "FILE"} • {formatFileSize(file.size)}
           </p>
         </div>
       </div>
-    </FileUploaderItem>
+      <div className="mt-2 flex justify-end border-t border-slate-200 dark:border-slate-700 pt-2">
+        <button
+          type="button"
+          onClick={() => removeFileFromSet(index ?? 0)}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-700"
+        >
+          <Trash2 className="h-4 w-4" />
+          Remove
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -277,6 +288,11 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
     },
   });
   const [isSuccess, setIsSuccess] = React.useState(false);
+  // Previously-attached files the user removed in the edit dialog, keyed by
+  // url||name — see the contract IssueRfiDialog (QA #13).
+  const [removedExistingKeys, setRemovedExistingKeys] = React.useState<
+    Set<string>
+  >(() => new Set());
 
   React.useEffect(() => {
     if (!open) return;
@@ -287,10 +303,20 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
       files: null,
       responder: initialRfi?.responder ?? "",
     });
+    setRemovedExistingKeys(new Set());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const files = useWatch({ control, name: "files" }) as File[] | null;
+
+  const existingFiles = React.useMemo(
+    () => initialRfi?.files ?? [],
+    [initialRfi?.files],
+  );
+  const visibleExistingFiles = React.useMemo(
+    () => existingFiles.filter((f) => !removedExistingKeys.has(f.url || f.name)),
+    [existingFiles, removedExistingKeys],
+  );
 
   // Personnel endpoint is role-scoped. MSA has its own per-role personnel
   // routes under /msa-contracts/{id}/personnel for all four roles per the
@@ -429,6 +455,12 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
       deadline: data.responseDeadline ? data.responseDeadline.toISOString() : undefined,
     };
 
+    let uploadedFiles: Array<{
+      name: string;
+      url: string;
+      type: string;
+      size: string;
+    }> = [];
     if (data.files?.length) {
       try {
         const uploadedItems = await Promise.all(
@@ -445,23 +477,35 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
           }),
         );
 
-        const filesPayload = uploadedItems.filter(
+        uploadedFiles = uploadedItems.filter(
           (
             item,
           ): item is { name: string; url: string; type: string; size: string } =>
             Boolean(item),
         );
-        if (filesPayload.length) payload.files = filesPayload;
       } catch (error) {
         toastHandler.error("Upload Failed", error as ApiResponseError);
         return;
       }
     }
 
-    // On edit, if no new files were uploaded, preserve the existing ones —
-    // a PATCH with an omitted files array can be treated by BE as "clear".
-    if (isEdit && !payload.files?.length && initialRfi?.files?.length) {
-      payload.files = initialRfi.files;
+    if (isEdit) {
+      // Merge the previously-attached files the user kept with any new uploads
+      // (deduped by url||name), so editing never silently drops existing
+      // attachments whether or not new files were added (QA #13).
+      const kept = existingFiles.filter(
+        (f) => !removedExistingKeys.has(f.url || f.name),
+      );
+      const seen = new Set<string>();
+      payload.files = [...kept, ...uploadedFiles].filter((f) => {
+        const key = f.url || f.name;
+        if (!key) return true;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    } else if (uploadedFiles.length) {
+      payload.files = uploadedFiles;
     }
 
     try {
@@ -546,6 +590,59 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                   component={TextSelect}
                   options={personnelOptions}
                 />
+                {isEdit && visibleExistingFiles.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-[#374151] dark:text-slate-200">
+                      Previously attached
+                    </p>
+                    <div className="space-y-2">
+                      {visibleExistingFiles.map((file) => {
+                        const key = file.url || file.name;
+                        const extension = getSimpleFileExtension(
+                          file.name,
+                        ).toUpperCase();
+                        return (
+                          <div
+                            key={key}
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3"
+                          >
+                            <div className="flex items-center gap-3 w-full min-w-0">
+                              <div className="h-10 w-10 shrink-0 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                                {getFileIcon(extension)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+                                  {file.name}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                  {extension || "FILE"}
+                                  {file.size ? ` • ${file.size}` : ""}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="mt-2 flex justify-end border-t border-slate-200 dark:border-slate-700 pt-2">
+                              <button
+                                type="button"
+                                aria-label={`Remove ${file.name}`}
+                                onClick={() =>
+                                  setRemovedExistingKeys((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(key);
+                                    return next;
+                                  })
+                                }
+                                className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Forger
                     name="files"
