@@ -7,6 +7,7 @@ import EmptyState from "./components/EmptyState";
 import MsaTable from "./components/MsaTable";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import CreateMSADialog from "./layouts/CreateMSADialog";
+import { ExportContractsButton } from "@/components/layouts/ExportContractsButton";
 import { useQuery } from "@tanstack/react-query";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
@@ -230,6 +231,13 @@ const MsaPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">MSA</h2>
         <div className="flex items-center gap-4">
+          {isManager && (
+            <ExportContractsButton
+              endpoint="/contract/manager/msa-contracts/export"
+              status={statusFilter}
+              filenameBase="msa-contracts-export"
+            />
+          )}
           {isManager && (
             <CreateMSADialog
               trigger={
