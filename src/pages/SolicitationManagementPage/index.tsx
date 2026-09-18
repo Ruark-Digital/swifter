@@ -53,14 +53,17 @@ const safeFormatDate = (
   return date;
 };
 
-// Helper: format date as YYYY/MM/DD for API query
-const formatDateSlash = (dateInput: Date | string): string => {
+// Helper: format date as ISO yyyy-MM-dd for the API `date=start-end` filter.
+// The rest of the app (Admin/Vendor/Project pages) sends ISO dashes and the
+// backend parses that; the previous YYYY/MM/DD slash format was silently
+// ignored, so the date filter did nothing (QA #23).
+const formatDateISO = (dateInput: Date | string): string => {
   const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
   if (!(d instanceof Date) || isNaN(d.getTime())) return "";
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
-  return `${y}/${m}/${day}`;
+  return `${y}-${m}-${day}`;
 };
 
 // Types based on API documentation
@@ -520,7 +523,13 @@ export const SolicitationManagementPage = () => {
   // Id of the solicitation whose Edit dialog is open. Kept OUTSIDE the row's
   // dropdown menu so the menu closing (e.g. when the file picker steals focus)
   // never unmounts the open editor.
-  const [editSolicitationId, setEditSolicitationId] = useState<string | null>(
+  // Holds the draft solicitation currently being edited. The editor is
+  // rendered ONCE at page level (below) from this state — never inside a table
+  // cell — so a page re-render (e.g. the react-query refetch that fires when
+  // the file picker steals and returns focus) can't remount it and snap the
+  // wizard back to step 1, which made the Documents upload panel "disappear"
+  // on drafts (QA #1).
+  const [editSolicitation, setEditSolicitation] = useState<Solicitation | null>(
     null,
   );
   // const [activeTab, setActiveTab] = useState<string>("all");
@@ -670,11 +679,11 @@ export const SolicitationManagementPage = () => {
     ...filters,
     startDate:
       filters.date && dateRange.startDate
-        ? formatDateSlash(dateRange.startDate)
+        ? formatDateISO(dateRange.startDate)
         : undefined,
     endDate:
       filters.date && dateRange.endDate
-        ? formatDateSlash(dateRange.endDate)
+        ? formatDateISO(dateRange.endDate)
         : undefined,
   };
   const vendorAllSolicitations = useVendorAllSolicitations(queryArgs, {
@@ -1282,7 +1291,7 @@ export const SolicitationManagementPage = () => {
                           // inside it — so the menu closing can't unmount it.
                           e.preventDefault();
                           setOpenActionMenuId(null);
-                          setEditSolicitationId(row.original._id);
+                          setEditSolicitation(row.original);
                         }}
                       >
                         Edit Solicitation
@@ -1297,17 +1306,6 @@ export const SolicitationManagementPage = () => {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-
-                {row.original.status === "draft" && (
-                  <EditSolicitationDialog
-                    solicitation={row.original as any}
-                    showTrigger={false}
-                    open={editSolicitationId === row.original._id}
-                    onOpenChange={(o) =>
-                      setEditSolicitationId(o ? row.original._id : null)
-                    }
-                  />
-                )}
               </>
             );
           },
@@ -1892,6 +1890,20 @@ export const SolicitationManagementPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Draft solicitation editor — mounted once here, not inside a table
+          cell, so table/page re-renders can't remount it and reset the wizard
+          step (QA #1). */}
+      {editSolicitation && (
+        <EditSolicitationDialog
+          solicitation={editSolicitation as any}
+          showTrigger={false}
+          open={Boolean(editSolicitation)}
+          onOpenChange={(o) => {
+            if (!o) setEditSolicitation(null);
+          }}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmAlert

@@ -118,6 +118,12 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
   const isEdit = mode === "edit" && !!lemId;
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  // Previously-attached files the user removed while resubmitting, keyed by
+  // url||name. Lets the resubmit keep the prior attachment by default while
+  // still allowing removal (QA #6).
+  const [removedExistingKeys, setRemovedExistingKeys] = React.useState<
+    Set<string>
+  >(() => new Set());
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
 
@@ -133,6 +139,18 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
       files: null,
     },
   });
+
+  const existingFiles = React.useMemo(
+    () => initialLem?.files ?? [],
+    [initialLem?.files],
+  );
+  const visibleExistingFiles = React.useMemo(
+    () =>
+      existingFiles.filter(
+        (f) => !removedExistingKeys.has(f.url || f.name || ""),
+      ),
+    [existingFiles, removedExistingKeys],
+  );
 
   const { mutateAsync: uploadFile } = useMutation<
     ApiResponse<UploadURLs[]>,
@@ -171,6 +189,7 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
     onSuccess: async () => {
       setOpen(false);
       reset();
+      setRemovedExistingKeys(new Set());
       await queryClient.invalidateQueries({
         queryKey: ["contractLems", "contractInvoices", contractId],
       });
@@ -236,15 +255,28 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
           .filter(Boolean) as any;
       }
 
+      // Keep the previously-attached files the user didn't remove, plus any new
+      // uploads (deduped by url||name), so resubmitting never silently wipes the
+      // prior attachment — while still letting the user drop it (QA #6).
+      const keptExisting = existingFiles.filter(
+        (f) => !removedExistingKeys.has(f.url || f.name || ""),
+      );
+      const seen = new Set<string>();
+      const mergedFiles = [...keptExisting, ...uploadedFiles].filter((f) => {
+        const key = (f as { url?: string; name?: string }).url ||
+          (f as { url?: string; name?: string }).name ||
+          "";
+        if (!key) return true;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
       const payload = {
         title: data.title,
         amount: Number(data.amount),
         description: data.description,
-        // Editing without re-uploading shouldn't wipe the existing attachment.
-        files:
-          uploadedFiles.length > 0
-            ? uploadedFiles
-            : (initialLem?.files ?? []),
+        files: mergedFiles,
       };
 
       await createMutation.mutateAsync(payload);
@@ -262,7 +294,10 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
       onOpenChange={(nextOpen) => {
         if (!isSubmitting) {
           setOpen(nextOpen);
-          if (!nextOpen) reset();
+          if (!nextOpen) {
+            reset();
+            setRemovedExistingKeys(new Set());
+          }
         }
       }}
     >
@@ -298,6 +333,58 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
               placeholder="Enter Description"
               rows={6} // Design shows a large text area
             />
+
+            {isEdit && visibleExistingFiles.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <label className="text-base font-normal text-[#0F0F0F] dark:text-slate-100">
+                  Previously attached
+                </label>
+                <div className="flex flex-col gap-2">
+                  {visibleExistingFiles.map((file) => {
+                    const key = file.url || file.name || "";
+                    const name = file.name || "Document";
+                    return (
+                      <div
+                        key={key}
+                        className="rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
+                            <FileText className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
+                              {name}
+                            </div>
+                            <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+                              {getSimpleFileExtension(name).toUpperCase()}
+                              {file.size != null ? ` • ${file.size}` : ""}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex justify-end border-t border-[#E5E7EB] dark:border-slate-700 pt-2">
+                          <button
+                            type="button"
+                            aria-label={`Remove ${name}`}
+                            onClick={() =>
+                              setRemovedExistingKeys((prev) => {
+                                const next = new Set(prev);
+                                next.add(key);
+                                return next;
+                              })
+                            }
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4" />
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-col gap-3">
               <label className="text-base font-normal text-[#0F0F0F] dark:text-slate-100">Upload Files</label>

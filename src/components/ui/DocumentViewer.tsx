@@ -44,7 +44,6 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [numPages, setNumPages] = useState<number | null>(null);
-  const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.0);
   const [excelData, setExcelData] = useState<ExcelData | null>(null);
   const [activeSheet, setActiveSheet] = useState<string>('');
@@ -160,25 +159,11 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPageNumber(Math.max(1, pageNumber - 1))}
-            disabled={pageNumber <= 1}
-          >
-            Previous
-          </Button>
           <span className="text-sm text-foreground">
-            Page {pageNumber} of {numPages || '?'}
+            {numPages
+              ? `${numPages} page${numPages === 1 ? '' : 's'}`
+              : 'Loading…'}
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPageNumber(Math.min(numPages || 1, pageNumber + 1))}
-            disabled={pageNumber >= (numPages || 1)}
-          >
-            Next
-          </Button>
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -199,19 +184,25 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         </div>
       </div>
       <div className={`flex-1 overflow-auto p-4 ${actualTheme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}`}>
-        <div className="flex justify-center dark:text-gray-400">
+        {/* All pages stacked so the viewer scrolls continuously rather than
+            paging with Previous/Next (QA #17). */}
+        <div className="flex flex-col items-center gap-4 dark:text-gray-400">
           <Document
             file={resolvedUrl}
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={onDocumentLoadError}
             loading={<Loader2 className="h-8 w-8 animate-spin text-foreground" />}
           >
-            <Page
-              pageNumber={pageNumber}
-              scale={scale}
-              renderTextLayer={false}
-              renderAnnotationLayer={false}
-            />
+            {Array.from({ length: numPages ?? 0 }, (_, i) => (
+              <div key={i + 1} className="shadow-sm">
+                <Page
+                  pageNumber={i + 1}
+                  scale={scale}
+                  renderTextLayer={false}
+                  renderAnnotationLayer={false}
+                />
+              </div>
+            ))}
           </Document>
         </div>
       </div>
