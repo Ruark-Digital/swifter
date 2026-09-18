@@ -149,6 +149,20 @@ const ReleaseHoldbackDialog: React.FC<ReleaseHoldbackDialogProps> = ({ trigger, 
       await queryClient.invalidateQueries({
         queryKey: ["contract-payment-holdbacks", contractId],
       });
+      // The PM "My Actions" / general-updates feeds are cached with
+      // refetchOnMount:false and a 60s staleTime, so submitting a holdback
+      // application left the corresponding action item on the PM dashboard
+      // until a manual refresh. Invalidate those feeds so the action item
+      // clears immediately (QA #18). The keys carry a user-id prefix, so match
+      // by name via a predicate; a no-op for non-PM roles.
+      await queryClient.invalidateQueries({
+        predicate: (q) =>
+          q.queryKey.some(
+            (k) =>
+              k === "pm-contract-dashboard-my-actions" ||
+              k === "pm-contract-dashboard-general-updates",
+          ),
+      });
       toastHandler.success(
         "Success",
         "Holdback release application submitted",
