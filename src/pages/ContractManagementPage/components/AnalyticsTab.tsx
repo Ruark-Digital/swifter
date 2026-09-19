@@ -558,7 +558,16 @@ const AnalyticsTab: React.FC<Props> = ({
       .map((item) => [item.key, item]),
   );
 
-  const contractStatus = contract?.status ? toTitleCase(contract.status) : "--";
+  // QA #43: a published contract's raw status is "publish"; render it as the
+  // "Published" display label (matching the app-wide status→label map) instead
+  // of letting toTitleCase produce "Publish". Other statuses keep title-casing.
+  const STATUS_LABELS: Record<string, string> = {
+    publish: "Published",
+    published: "Published",
+  };
+  const contractStatus = contract?.status
+    ? STATUS_LABELS[contract.status.toLowerCase()] ?? toTitleCase(contract.status)
+    : "--";
   const contractOwner =
     typeof (contract as any)?.creator === "string"
       ? (contract as any).creator
