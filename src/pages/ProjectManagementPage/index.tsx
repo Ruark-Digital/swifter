@@ -47,6 +47,12 @@ const ProjectManagementPage: React.FC = () => {
   const handleCreateClick = () => setIsCreateOpen(true);
   const handleSuccess = () => setIsSuccessOpen(true);
 
+  // QA #41: a search/filter that returns zero rows must not unmount the table
+  // (and its filter controls) — otherwise the user is left on the onboarding
+  // empty state with no way to clear the filter except leaving the module.
+  const hasActiveFilters =
+    Boolean(searchQuery) || Boolean(statusFilter) || dateFilter !== "all";
+
   const formatAmount = (value: number) =>
     new Intl.NumberFormat(undefined, {
       style: "currency",
@@ -129,7 +135,7 @@ const ProjectManagementPage: React.FC = () => {
 
       {isListLoading ? (
         <div className="p-10 text-center text-slate-600 dark:text-slate-400">Loading projects…</div>
-      ) : rows.length > 0 ? (
+      ) : rows.length > 0 || hasActiveFilters ? (
         <ProjectsTable
           projects={rows}
           searchQuery={searchQuery}
