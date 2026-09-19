@@ -579,7 +579,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
               <TabsContent value="overview" className="space-y-4">
                 <div className="grid gap-6 sm:grid-cols-2">
                   <LabelRow
-                    label="Deliverable Title"
+                    label="Title"
                     value={
                       detailLoading ? "Loading..." : lemDetail?.title || "—"
                     }
