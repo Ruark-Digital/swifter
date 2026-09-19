@@ -271,7 +271,72 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   // response (whose `contract` array is not populated) — QA #136.
   const { data: contractsRes, isLoading: isContractsLoading } =
     useProjectContracts(projectId);
-  const linkedContracts = contractsRes?.data?.data ?? [];
+  const linkedContracts = React.useMemo(
+    () => contractsRes?.data?.data ?? [],
+    [contractsRes]
+  );
+
+  // QA #42: the Date and Status dropdowns were captured in state but never
+  // applied — only the search box filtered. Apply all three here, then map to
+  // display rows. Filtering runs on the raw contracts so real date/status
+  // fields are available.
+  const linkedRows = React.useMemo<ContractRow[]>(() => {
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    const dateFloor =
+      dateFilter === "today"
+        ? startOfToday
+        : dateFilter === "last7days"
+          ? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          : dateFilter === "last30days"
+            ? new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+            : null;
+
+    return linkedContracts
+      .filter((c) =>
+        searchQuery
+          ? c.title?.toLowerCase?.().includes(searchQuery.toLowerCase())
+          : true
+      )
+      .filter((c) =>
+        statusFilter
+          ? String(c.status ?? "").toLowerCase() ===
+            statusFilter.toLowerCase()
+          : true
+      )
+      .filter((c) => {
+        // "all"/"custom" don't constrain — there's no custom-range picker yet.
+        if (!dateFloor) return true;
+        const raw = c.startDate ?? c.createdAt;
+        if (!raw) return false;
+        const d = new Date(raw);
+        return !Number.isNaN(d.getTime()) && d >= dateFloor;
+      })
+      .map((c) => ({
+        id: c._id,
+        title: c.title,
+        code: "",
+        vendor: c.vendor?.name ?? "-",
+        value:
+          c.contractValue != null
+            ? new Intl.NumberFormat(undefined, {
+                style: "currency",
+                currency: resolveCurrency(c.currency, profileCurrency),
+                maximumFractionDigits: 0,
+              }).format(c.contractValue)
+            : undefined,
+        owner: c.creator?.name ?? "-",
+        published: c.startDate
+          ? formatDateTZ(c.startDate, "MMM d, yyyy")
+          : undefined,
+        endDate: c.endDate ? formatDateTZ(c.endDate, "MMM d, yyyy") : undefined,
+        status: c.status,
+      }));
+  }, [linkedContracts, searchQuery, statusFilter, dateFilter, profileCurrency]);
 
   const completeMutation = useCompleteProject(projectId);
   const updateMutation = useUpdateProject(projectId);
@@ -646,36 +711,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                   container:
                     "bg-white dark:bg-slate-950 rounded-xl px-3 border border-gray-300 dark:border-slate-600",
                 }}
-                data={linkedContracts
-                  .filter((c) =>
-                    searchQuery
-                      ? c.title
-                          ?.toLowerCase?.()
-                          .includes(searchQuery.toLowerCase())
-                      : true
-                  )
-                  .map((c) => ({
-                    id: c._id,
-                    title: c.title,
-                    code: "",
-                    vendor: c.vendor?.name ?? "-",
-                    value:
-                      c.contractValue != null
-                        ? new Intl.NumberFormat(undefined, {
-                            style: "currency",
-                            currency: resolveCurrency(c.currency, profileCurrency),
-                            maximumFractionDigits: 0,
-                          }).format(c.contractValue)
-                        : undefined,
-                    owner: c.creator?.name ?? "-",
-                    published: c.startDate
-                      ? formatDateTZ(c.startDate, "MMM d, yyyy")
-                      : undefined,
-                    endDate: c.endDate
-                      ? formatDateTZ(c.endDate, "MMM d, yyyy")
-                      : undefined,
-                    status: c.status,
-                  }))}
+                data={linkedRows}
                 columns={linkedColumns}
                 options={{
                   disableSelection: true,
