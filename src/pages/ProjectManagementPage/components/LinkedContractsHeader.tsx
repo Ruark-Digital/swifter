@@ -56,9 +56,16 @@ const LinkedContractsHeader: React.FC<HeaderProps> = ({
             {
               title: "Status",
               showIcon: true,
+              // QA #42: cover the real contract statuses (incl. Published,
+              // whose raw value is "publish") and an "All" option so a status
+              // selection can be cleared back to unfiltered.
               options: [
-                { label: "Active", value: "active" },
+                { label: "All", value: "" },
                 { label: "Draft", value: "draft" },
+                { label: "Published", value: "publish" },
+                { label: "Active", value: "active" },
+                { label: "Completed", value: "completed" },
+                { label: "Cancelled", value: "cancelled" },
                 { label: "Expired", value: "expired" },
               ],
             },
