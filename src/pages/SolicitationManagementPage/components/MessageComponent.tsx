@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Question } from "./QuestionsTab";
 import { useUserRole } from "@/hooks/useUserRole";
+import { formatDateTZ } from "@/lib/utils";
 
 type User = Question["user"];
 
@@ -30,11 +31,14 @@ interface MessageComponentProps {
 
 // Helper function to format date and time
 const formatDateTime = (dateString: string) => {
-  // const date = new Date(dateString);
-  // const formattedDate = date.toISOString().split("T")[0];
-  const formattedDate = dateString?.split("T")?.[0] || "";
-  const formattedTime = dateString?.split("T")?.[1]?.split(".")?.[0] || "N/A";
-  return { date: formattedDate, time: formattedTime };
+  // Render in the viewer's timezone with a 12-hour clock. The old version
+  // string-split the raw ISO value, so a reply stored as UTC (e.g.
+  // `…T02:58:00.000Z`) showed as "02:58" instead of the local "10:58 PM"
+  // (QA #54). formatDateTZ parses the instant and formats in local time.
+  return {
+    date: formatDateTZ(dateString, "MMM dd, yyyy"),
+    time: formatDateTZ(dateString, "h:mm a"),
+  };
 };
 
 // Helper function to get initials from name
