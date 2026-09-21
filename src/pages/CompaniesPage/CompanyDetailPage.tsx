@@ -152,7 +152,10 @@ const CompanyDetailPage = () => {
     string
   >({
     mutationFn: async (adminId) => {
-      return await deleteRequest({ url: `/delete/${adminId}` });
+      // Admin removal endpoint is `/admins/{id}` (same as Admin Management and
+      // the admin details sheet). The old `/delete/{id}` path 404'd — "not found
+      // on this server" — so Remove never worked here (QA #51 / image report).
+      return await deleteRequest({ url: `/admins/${adminId}` });
     },
     onSuccess: () => {
       toast.success("Admin Removal", "Admin removed successfully");
