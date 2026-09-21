@@ -226,28 +226,51 @@ const CompanyDetailPage = () => {
       },
     });
 
-  // Export company data (super admin only). BE runs this asynchronously:
-  //   1. GET .../export        starts the job and returns { jobId, ... }.
-  //   2. GET .../export/{jobId} returns 202 while generating, then 200 with the
-  //      ZIP (protected multi-sheet XLSX + all files linked to the company).
-  // We start the job, poll the jobId endpoint until it yields the ZIP, then
-  // trigger a download.
+  // Export company data (super admin only). The BE may either stream the file
+  // synchronously (like the contracts export) or return a JSON job descriptor
+  // to poll:
+  //   1. GET .../export        → the ZIP directly, OR { jobId, ... } as JSON.
+  //   2. GET .../export/{jobId} → 202 while generating, then 200 with the ZIP.
+  // The previous version assumed (2) only and requested JSON, so a synchronous
+  // file response was parsed as JSON, yielded no jobId, and always failed
+  // (QA #52). We now request a blob and branch on the response content-type so
+  // both shapes work.
   const { mutate: exportCompanyData, isPending: isExporting } = useMutation<
     Blob,
     ApiResponseError
   >({
     mutationFn: async () => {
-      // 1. Start the export job.
+      const isJsonResponse = (res: { headers?: Record<string, unknown> }) =>
+        String(res.headers?.["content-type"] ?? "").includes(
+          "application/json"
+        );
+
+      // Start the export. Request a blob so a synchronous file isn't corrupted
+      // by JSON parsing.
       const startRes = await getRequest({
         url: `/admins/companies/${id}/export`,
+        config: { responseType: "blob" },
       });
-      const startBody = startRes.data?.data ?? startRes.data;
-      const jobId: string | undefined = startBody?.jobId;
+
+      // (a) Synchronous export — the file came back directly.
+      if (startRes.status === 200 && !isJsonResponse(startRes)) {
+        return startRes.data as Blob;
+      }
+
+      // (b) Async job — the JSON body carries a jobId to poll.
+      let jobId: string | undefined;
+      try {
+        const text = await (startRes.data as Blob).text();
+        const parsed = JSON.parse(text);
+        jobId = (parsed?.data ?? parsed)?.jobId;
+      } catch {
+        jobId = undefined;
+      }
       if (!jobId) {
         throw new Error("Export did not return a job id");
       }
 
-      // 2. Poll until the ZIP is ready (202 = still generating, 200 = done).
+      // Poll until the ZIP is ready (202 = still generating, 200 = done).
       const POLL_INTERVAL_MS = 2500;
       const MAX_ATTEMPTS = 48; // ~2 minutes
       for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
@@ -255,7 +278,7 @@ const CompanyDetailPage = () => {
           url: `/admins/companies/${id}/export/${jobId}`,
           config: { responseType: "blob" },
         });
-        if (pollRes.status === 200) {
+        if (pollRes.status === 200 && !isJsonResponse(pollRes)) {
           return pollRes.data as Blob;
         }
         await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
