@@ -14,7 +14,7 @@ import { contractManagerApi, LogModule } from "../api/contractManagerApi";
 import { format } from "date-fns";
 import ActionLogDetailsSheet from "../components/ActionLogDetailsSheet";
 import { useUserRole } from "@/hooks/useUserRole";
-import { formatDateTZ, formatModuleLabel } from "@/lib/utils";
+import { formatDateInZoneAbbrev, formatModuleLabel } from "@/lib/utils";
 
 type Props = { isActive?: boolean };
 
@@ -100,8 +100,14 @@ const ActionLogTabContent: React.FC<Props> = () => {
         actorName: userName,
         actorRole: roleName,
         reference: refStr,
-        dateLine1: formatDateTZ(sourceDate, "dd MMM yyyy"),
-        dateLine2: formatDateTZ(sourceDate, "hh:mm a"),
+        // Render in the record's own timezone (with the zone label on the
+        // time), matching the General Updates feed. The old viewer-local
+        // formatDateTZ showed a different clock time than General Updates for
+        // the same event when the viewer's browser zone differed from the
+        // actor's (QA #60). Falls back to viewer-local when the log carries no
+        // timezone.
+        dateLine1: formatDateInZoneAbbrev(sourceDate, "dd MMM yyyy", log.timezone),
+        dateLine2: formatDateInZoneAbbrev(sourceDate, "hh:mm a", log.timezone),
         rawDate: date,
         rawReference: log.reference,
       };
