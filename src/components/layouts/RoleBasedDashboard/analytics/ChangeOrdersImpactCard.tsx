@@ -72,10 +72,7 @@ export const ChangeOrdersImpactCard: React.FC<Props> = ({
           <CardTitle className="text-[16px] font-semibold text-[#030712] dark:text-slate-100">
             Change Orders Impact
           </CardTitle>
-          <div className="inline-flex items-center gap-2 border border-[#E5E7EB] dark:border-slate-700 rounded-lg px-3 py-2">
-            <span className="text-xs font-medium text-[#6B6B6B] dark:text-slate-400">Top 10</span>
-            <span className="inline-block w-3 h-3 rounded-sm bg-[#E5E7EB] dark:bg-slate-700" />
-          </div>
+          {/* Decorative "Top 10" badge removed — not required here (QA #59). */}
         </div>
         <Tabs
           value={selectedRange}

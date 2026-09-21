@@ -306,4 +306,32 @@ describe("DashboardDataTransformer", () => {
       ]);
     });
   });
+
+  describe("role distribution percentages total 100% (QA #48)", () => {
+    it("apportions super-admin role distribution to exactly 100", () => {
+      const result = DashboardDataTransformer.transformRoleDistribution([
+        { roleName: "procurement", count: "1" },
+        { roleName: "vendor", count: "1" },
+        { roleName: "approver", count: "1" },
+      ] as any);
+
+      // Without apportionment the legend showed raw counts (1/1/1) as "%".
+      expect(
+        result.reduce((sum, slice: any) => sum + slice.percentage, 0)
+      ).toBe(100);
+      expect(result.map((slice: any) => slice.percentage)).toEqual([34, 33, 33]);
+    });
+
+    it("apportions company-admin role distribution to exactly 100", () => {
+      const result = DashboardDataTransformer.transformCompanyRoleDistribution([
+        { roleName: "company_admin", count: 1 },
+        { roleName: "procurement", count: 1 },
+        { roleName: "evaluator", count: 1 },
+      ]);
+
+      expect(
+        result.reduce((sum: number, slice: any) => sum + slice.percentage, 0)
+      ).toBe(100);
+    });
+  });
 });

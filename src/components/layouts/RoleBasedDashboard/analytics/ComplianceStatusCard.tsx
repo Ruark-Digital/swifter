@@ -37,8 +37,11 @@ export const ComplianceStatusCard: React.FC<Props> = ({
     !!data &&
     ((data.insuranceActive?.total ?? 0) > 0 ||
       (data.securitySubmission?.total ?? 0) > 0 ||
-      (data.missedApprovals ?? 0) > 0 ||
       (data.ncrs ?? 0) > 0);
+  // "Missed Approvals" removed (QA #46): the BE value never changed (static),
+  // and there is no portfolio-wide "pending approvals" figure in the FE to
+  // repurpose it into, so — per the client's explicit fallback — the row is
+  // dropped rather than shown with a stale/misleading count.
   const rows: Row[] = [
     {
       label: "Active Insurance",
@@ -51,12 +54,6 @@ export const ComplianceStatusCard: React.FC<Props> = ({
       right: `${data?.securitySubmission?.current ?? 0} / ${data?.securitySubmission?.total ?? 0}`,
       valuePct: data?.securitySubmission?.percentage ?? 0,
       color: "#10b981",
-    },
-    {
-      label: "Missed Approvals",
-      right: `${data?.missedApprovals ?? 0}`,
-      valuePct: data?.missedApprovals ?? 0,
-      color: "#ef4444",
     },
     {
       label: "NCRs",
