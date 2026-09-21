@@ -61,6 +61,10 @@ const ProjectsHeader: React.FC<HeaderProps> = ({
               title: "Status",
               showIcon: true,
               options: [
+                // QA #41: "All" clears the status filter back to unfiltered
+                // (empty value → treated as no filter). Without it there was
+                // no way to remove a status selection once made.
+                { label: "All", value: "" },
                 { label: "Active", value: "active" },
                 { label: "Completed", value: "completed" },
                 { label: "Cancelled", value: "cancelled" },

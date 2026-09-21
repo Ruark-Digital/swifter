@@ -1269,10 +1269,19 @@ export class DashboardDataTransformer {
       approver: "Approver",
     };
 
-    const chartData = data.map((item) => ({
+    // Attach percentages via largest-remainder apportionment so the donut
+    // legend sums to exactly 100% instead of showing raw counts as "%" (QA
+    // #48). The legend renders `percentage ?? value`, so without this the
+    // super-admin role distribution never totalled 100.
+    const counts = data.map((item) => parseInt(item.count) || 0);
+    const total = counts.reduce((sum, value) => sum + value, 0);
+    const percentages = this.apportionPercentages(counts, total);
+
+    const chartData = data.map((item, index) => ({
       name:
         roleTitle[item.roleName as keyof typeof roleTitle] || "Unknown Role",
-      value: parseInt(item.count) || 0,
+      value: counts[index],
+      percentage: percentages[index],
     }));
 
     return applyConsistentColors(chartData);
@@ -1642,10 +1651,17 @@ export class DashboardDataTransformer {
       company_admin: "Admin",
     };
 
-    return data.map((item: any) => ({
+    // Largest-remainder apportionment keeps the legend at exactly 100%;
+    // rounding each share independently drifts off (33+33+33=99) (QA #48).
+    const percentages = this.apportionPercentages(
+      data.map((item: any) => item.count || 0),
+      total
+    );
+
+    return data.map((item: any, index: number) => ({
       name: roleNameMap[item.roleName] || item.roleName || "Unknown",
       value: item.count || 0,
-      percentage: total > 0 ? Math.round((item.count / total) * 100) : 0,
+      percentage: percentages[index],
     }));
   }
 

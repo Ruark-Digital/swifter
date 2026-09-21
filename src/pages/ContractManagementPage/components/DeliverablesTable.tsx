@@ -264,6 +264,10 @@ const SubmitDeliverableDialog: React.FC<{
   listInvalidateQueryKey?: readonly unknown[];
   statsInvalidateQueryKey?: readonly unknown[];
   personnelPath?: string;
+  /** Files already attached to the deliverable (i.e. from the prior, rejected
+   *  submission). Shown as "Previously attached" so a resubmission retains them
+   *  unless the user explicitly removes them (QA #37). */
+  existingFiles?: Array<{ name?: string; url?: string; type?: string; size?: string }>;
 }> = ({
   trigger,
   contractId,
@@ -272,11 +276,31 @@ const SubmitDeliverableDialog: React.FC<{
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
   personnelPath,
+  existingFiles,
 }) => {
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const toast = useToastHandler();
   const queryClient = useQueryClient();
+
+  // Previously-attached files the user removed in this dialog, keyed by
+  // url||name. Tracked separately from the upload field so existing
+  // attachments are retained (and only dropped when explicitly removed) on a
+  // resubmission that also adds new files (QA #37).
+  const [removedExistingKeys, setRemovedExistingKeys] = React.useState<
+    Set<string>
+  >(() => new Set());
+  const priorFiles = React.useMemo(
+    () => (existingFiles ?? []).filter((f) => f?.url || f?.name),
+    [existingFiles],
+  );
+  const visibleExistingFiles = React.useMemo(
+    () =>
+      priorFiles.filter(
+        (f) => !removedExistingKeys.has((f.url || f.name) as string),
+      ),
+    [priorFiles, removedExistingKeys],
+  );
 
   const { data: personnelData } = useQuery({
     queryKey: ["deliverable-personnel", contractId, personnelPath ?? "default"],
@@ -341,11 +365,31 @@ const SubmitDeliverableDialog: React.FC<{
         uploadedFiles = await Promise.all(uploadPromises);
       }
 
+      // Retain the previously-attached files the user kept, merged with any
+      // new uploads and deduped by url||name, so a resubmission never silently
+      // drops the earlier attachments (QA #37).
+      const keptExisting = priorFiles
+        .filter((f) => !removedExistingKeys.has((f.url || f.name) as string))
+        .map((f) => ({
+          name: f.name || "",
+          url: f.url || "",
+          type: f.type || "application/octet-stream",
+          size: f.size || "",
+        }));
+      const seen = new Set<string>();
+      const files = [...keptExisting, ...uploadedFiles].filter((f) => {
+        const key = f.url || f.name;
+        if (!key) return true;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
       return postRequest({
         url: `${basePath}/${deliverableId}/submit`,
         payload: {
           description: data.description,
-          files: uploadedFiles,
+          files,
           responders: data.responders.map((r) => r.value),
         },
       });
@@ -395,7 +439,10 @@ const SubmitDeliverableDialog: React.FC<{
       onOpenChange={(next) => {
         if (!isSubmitting) {
           setOpen(next);
-          if (!next) reset();
+          if (!next) {
+            reset();
+            setRemovedExistingKeys(new Set());
+          }
         }
       }}
     >
@@ -410,6 +457,55 @@ const SubmitDeliverableDialog: React.FC<{
         </DialogHeader>
 
         <Forge control={control} onSubmit={onSubmit} className="space-y-6">
+          {visibleExistingFiles.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-[#374151] dark:text-slate-200">
+                Previously attached
+              </p>
+              <div className="space-y-2">
+                {visibleExistingFiles.map((file) => {
+                  const key = (file.url || file.name) as string;
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center justify-between rounded-lg border border-[#E5E7EB] px-3 py-2"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#EAF1FB]">
+                          <FileText className="h-5 w-5 text-[#1F3B63]" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100 truncate">
+                            {file.name}
+                          </p>
+                          <p className="text-xs text-[#9CA3AF]">
+                            {getSimpleFileExtension(
+                              file.name ?? "",
+                            ).toUpperCase() || "FILE"}
+                            {file.size ? ` • ${file.size}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${file.name}`}
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[#EF4444]"
+                        onClick={() =>
+                          setRemovedExistingKeys((prev) => {
+                            const nextSet = new Set(prev);
+                            nextSet.add(key);
+                            return nextSet;
+                          })
+                        }
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="">
             <Forger
               name="files"
@@ -943,6 +1039,9 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                 listInvalidateQueryKey={listInvalidateQueryKey}
                 statsInvalidateQueryKey={statsInvalidateQueryKey}
                 personnelPath={personnelPath}
+                existingFiles={
+                  isDeliverableRejected ? (detail?.files ?? []) : []
+                }
                 trigger={
                   <Button className="h-11 w-64 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
                     {isDeliverableRejected ? "Resubmit" : "Submit"}
