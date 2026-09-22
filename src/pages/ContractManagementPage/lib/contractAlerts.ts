@@ -3,15 +3,24 @@
 // expanded into one detailed line each (replacing the old aggregate
 // "N items pending approval" summary). Approval lines use the `pendingWith`
 // ROLE — the payload ships `responsibleUsers` as raw ObjectIds, not names, so
-// the exact "{Name}'s approval" wording is pending a BE change to populate
-// names. Only approvals delayed 24h+ (daysWaiting >= 1) are surfaced.
+// the exact "{Name}'s approval" wording now uses the payload's `pendingWith`
+// name (with `pendingWithRole` present). Every pending approval is surfaced as
+// soon as it exists (no 24h delay gate) — a submission awaiting approval is
+// actionable immediately.
 
 export type PendingApproval = {
   entity?: string;
   id?: string;
+  title?: string;
   status?: string;
   daysWaiting?: number;
+  /** New payload: the responsible person's NAME. Legacy payload: a role slug. */
   pendingWith?: string;
+  /** New payload: the responsible person's ROLE (e.g. "approver"). Its presence
+   *  is what tells us `pendingWith` is a name rather than a role. */
+  pendingWithRole?: string;
+  /** BE-authored one-line summary, when present. */
+  message?: string;
   amount?: number;
 };
 
@@ -61,8 +70,13 @@ export const extractAlertItemNumber = (id?: string): string => {
 export const isApprovalDelayed = (item?: { daysWaiting?: number }): boolean =>
   typeof item?.daysWaiting === "number" && item.daysWaiting >= 1;
 
-/** "Change Order 004 is pending manager approval ($5,000,000)". `formatAmount`
- *  is optional — when given and the amount is > 0 it's appended in parens. */
+/** "Change Order 004 is pending {who} approval ($5,000,000)". `formatAmount`
+ *  is optional — when given and the amount is > 0 it's appended in parens.
+ *
+ *  `pendingWith` is a person's NAME in the current payload (with a separate
+ *  `pendingWithRole`) and a role slug in the legacy payload. When a role is
+ *  present we read `pendingWith` as a name → "pending {Name}'s approval";
+ *  otherwise we keep the legacy "pending {role} approval". */
 export const buildPendingApprovalLine = (
   item: PendingApproval,
   formatAmount?: (amount: number) => string,
@@ -70,10 +84,17 @@ export const buildPendingApprovalLine = (
   const label = formatAlertEntityLabel(item?.entity);
   const number = extractAlertItemNumber(item?.id);
   const ref = number ? `${label} ${number}` : label;
-  const role = item?.pendingWith ? String(item.pendingWith).trim().toLowerCase() : "";
-  const line = role
-    ? `${ref} is pending ${role} approval`
-    : `${ref} is pending approval`;
+  const who = (item?.pendingWith ?? "").replace(/\s+/g, " ").trim();
+  let line: string;
+  if (item?.pendingWithRole && who) {
+    // `pendingWith` is a name → possessive "{Name}'s approval".
+    line = `${ref} is pending ${who}'s approval`;
+  } else if (who) {
+    // Legacy: `pendingWith` is a role slug.
+    line = `${ref} is pending ${who.toLowerCase()} approval`;
+  } else {
+    line = `${ref} is pending approval`;
+  }
   if (formatAmount && typeof item?.amount === "number" && item.amount > 0) {
     return `${line} (${formatAmount(item.amount)})`;
   }

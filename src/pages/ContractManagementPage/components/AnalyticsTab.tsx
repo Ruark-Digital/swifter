@@ -22,7 +22,6 @@ import {
   buildExpiryWarningLine,
   buildPendingApprovalLine,
   buildRfiAlertLine,
-  isApprovalDelayed,
   type PendingApproval,
   type RfiAlert,
 } from "../lib/contractAlerts";
@@ -435,19 +434,19 @@ const AnalyticsTab: React.FC<Props> = ({
     if (upcoming) push(`${upcoming} upcoming deliverable${upcoming > 1 ? "s" : ""} due soon`);
 
     // #141 — expand RFI + pending-approval alerts into one detailed line each
-    // (replacing the old aggregate "N items pending approval"). Approvals are
-    // gated to items delayed 24h+; the line uses the `pendingWith` role until
-    // the BE populates responsibleUsers with names.
+    // (replacing the old aggregate "N items pending approval"). Every pending
+    // approval is surfaced as soon as it exists — an item awaiting approval is
+    // actionable immediately, so no 24h delay gate (image report: a 0-day
+    // invoice approval never appeared). The line uses the payload's
+    // `pendingWith` name.
     const alertsCurrency =
       financialStatement?.currency ?? (contract as any)?.currency;
     (c.rfiAlerts ?? []).forEach((r) => push(buildRfiAlertLine(r)));
     const ncr = count(c.ncrAlerts);
     if (ncr) push(`${ncr} NCR${ncr > 1 ? "s" : ""} require action`);
-    (c.pendingApprovals ?? [])
-      .filter(isApprovalDelayed)
-      .forEach((a) =>
-        push(buildPendingApprovalLine(a, (amount) => formatMoney(amount, alertsCurrency))),
-      );
+    (c.pendingApprovals ?? []).forEach((a) =>
+      push(buildPendingApprovalLine(a, (amount) => formatMoney(amount, alertsCurrency))),
+    );
 
     (c.overdueItems ?? []).forEach((o) => {
       push(
