@@ -138,6 +138,35 @@ export const getChangeLockUrl = ({
   return `/contract/${role}/${resource}/${contractId}/changes/${changeId}/lock`;
 };
 
+/**
+ * Build the Vendor-PM change approve URL (#57). The BE exposes
+ * `/contract/vendor/{contracts|msa-contracts}/{contractId}/changes/{changeId}/pm-approve`
+ * for the assigned PM's first decision on a CM-created change order. Mirrors
+ * {@link getChangeLockUrl}'s dual-path + resource handling; always vendor-scoped
+ * and always the `changes` entity (claims have no PM step).
+ */
+export const getPmApproveChangeUrl = ({
+  roleBasePath,
+  contractId,
+  changeId,
+}: {
+  roleBasePath: string;
+  contractId: string;
+  changeId: string;
+}): string => {
+  // Case 1: roleBasePath already ends with /{contractId}/changes — use as-is.
+  if (roleBasePath.endsWith(`/${contractId}/changes`)) {
+    return `${roleBasePath}/${changeId}/pm-approve`;
+  }
+  // Case 2: rebuild from the resource segment (contracts vs msa-contracts);
+  // the endpoint is vendor-only, so the role segment is always "vendor".
+  const match = roleBasePath.match(
+    /^\/contract\/(?:manager|approver|vendor|user)\/(contracts|msa-contracts)/,
+  );
+  const resource = match?.[1] ?? "contracts";
+  return `/contract/vendor/${resource}/${contractId}/changes/${changeId}/pm-approve`;
+};
+
 /** True when an error is the lock's 409 Conflict (another user holds it). */
 export const isLockConflict = (error: unknown): boolean =>
   (error as { response?: { status?: number } })?.response?.status ===
