@@ -40,6 +40,7 @@ import {
   getApproveDraftCoUrl,
   getConvertDirectiveUrl,
   getManagerApproveChangeUrl,
+  getPmApproveChangeUrl,
   isDraftChangeOrder,
   shouldShowChangeDecisionActions,
   toConvertDirectivePayload,
@@ -348,11 +349,29 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     approverStatus === "pending" &&
     !isClaimFinalized;
 
+  // #57 — a change order a CM creates on the Vendor PM's behalf is routed to
+  // that PM for the FIRST decision, before the approver chain. The change's
+  // `manager` slot holds the assigned PM (`manager.user`) and their decision
+  // status; while it is still "pending" and the logged-in PM is that user, they
+  // get Reject + Approve, which POST the vendor `pm-approve` endpoint. The BE
+  // 403s any other caller, so this is a UX gate.
+  const pmDecisionSlot = (detail as any)?.manager as
+    | { user?: string; status?: string }
+    | undefined;
+  const canPmDecide =
+    !isClaim &&
+    !isDraftCo &&
+    isProjectManager &&
+    !!currentUserId &&
+    pmDecisionSlot?.user === currentUserId &&
+    pmDecisionSlot?.status === "pending";
+
   const showDecisionActions =
     showChangeDecisionActions ||
     canApproverDecideOnClaim ||
     canManagerActOnClaim ||
-    canManagerDecideOnCostClaim;
+    canManagerDecideOnCostClaim ||
+    canPmDecide;
 
   // Approve / reject opens a comment dialog first. `pendingAction` drives
   // both the dialog visibility and which variant (Approve vs Reject) we
@@ -429,6 +448,15 @@ const ChangeDetailsSheet: React.FC<Props> = ({
       action: "approved" | "rejected";
       comment: string;
     }) => {
+      // Vendor-PM first decision on a CM-created CO (#57) → the vendor
+      // `pm-approve` endpoint. roleBasePath already carries the contract vs
+      // msa-contract prefix, so this handles both.
+      if (canPmDecide) {
+        return await postRequest({
+          url: getPmApproveChangeUrl({ roleBasePath, contractId, changeId }),
+          payload: { action, comment },
+        });
+      }
       const canApprovePath =
         roleBasePath.includes("/manager/") ||
         roleBasePath.includes("/approver/");
@@ -1033,8 +1061,9 @@ const ChangeDetailsSheet: React.FC<Props> = ({
           {showDecisionActions && activeTab === "overview" && (
             <SheetFooter>
               {/* Change flow (unchanged): manager gets Reject+Approve;
-                  non-manager gets Reject (disabled) + Send for Approval. */}
-              {showChangeDecisionActions && (
+                  non-manager gets Reject (disabled) + Send for Approval. The
+                  PM-first-decision block (#57) renders separately below. */}
+              {showChangeDecisionActions && !canPmDecide && (
                 <div className="flex w-full gap-3 pt-2">
                   <Button
                     variant="outline"
@@ -1075,6 +1104,28 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                       }
                     />
                   )}
+                </div>
+              )}
+
+              {/* Change flow — Vendor PM first decision on a CM-created CO
+                  (#57): Reject + Approve via the same comment-dialog flow. */}
+              {canPmDecide && (
+                <div className="flex w-full gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 h-12 rounded-xl"
+                    disabled={isApproving}
+                    onClick={() => handleOpenDecision("rejected")}
+                  >
+                    Reject Change
+                  </Button>
+                  <Button
+                    className="flex-1 h-12 rounded-xl"
+                    disabled={isApproving}
+                    onClick={() => handleOpenDecision("approved")}
+                  >
+                    Approve
+                  </Button>
                 </div>
               )}
 
