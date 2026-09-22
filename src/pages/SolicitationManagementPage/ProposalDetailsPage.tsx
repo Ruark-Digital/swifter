@@ -712,10 +712,12 @@ const ProposalDetailsPage: React.FC = () => {
       header: "Amended Doc.",
       cell: ({ row }) => {
         const amendment = row.original;
-        const fileName = amendment.newFiles?.[0]?.name || "N/A";
+        // Document amendments carry the amended file; pricing amendments have
+        // no file, so label them "Pricing" instead of showing "N/A".
+        const label = amendment.newFiles?.[0]?.name || "Pricing";
         return (
           <div className="font-medium text-gray-900 dark:text-gray-100">
-            {fileName}
+            {label}
           </div>
         );
       },
