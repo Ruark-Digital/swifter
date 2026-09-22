@@ -1374,9 +1374,11 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
                 enableExpanding: true,
                 getRowCanExpand: () => true,
                 renderSubComponent: ({ row }) => (
-                  <div className="pl-16 py-4 text-sm text-gray-700 dark:text-gray-300">
+                  <div className="sticky left-0 pl-16 pr-6 py-4 text-sm text-gray-700 dark:text-gray-300 w-[calc(100vw-20rem)] max-w-4xl">
                     <div className="font-medium mb-1">Description</div>
-                    <div>{row.original.description || "-"}</div>
+                    <div className="whitespace-normal break-words">
+                      {row.original.description || "-"}
+                    </div>
                   </div>
                 ),
               }}

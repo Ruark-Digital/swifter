@@ -301,7 +301,7 @@ const BusinessDivisionsPageContent = () => {
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search contract"
+                  placeholder="Search Business Division"
                   className="h-10 border-0 p-0 text-sm text-[#6B6B6B] dark:text-slate-400 placeholder:opacity-50 focus-visible:ring-0 focus-visible:ring-offset-0"
                 />
               </div>
