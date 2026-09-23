@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetClose,
@@ -9,8 +10,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, X } from "lucide-react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useDebounceValue } from "usehooks-ts";
+import { ArrowLeft, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { cn, formatDateTZ } from "@/lib/utils";
 import {
   ContractStatusBadge,
@@ -20,8 +22,11 @@ import {
   businessDivisionApi,
   type BusinessDivision,
   type BusinessDivisionContract,
+  type BusinessDivisionPage,
   type BusinessDivisionProject,
 } from "../api/businessDivisionApi";
+
+const TAB_PAGE_SIZE = 10;
 
 type Props = {
   open: boolean;
@@ -84,6 +89,86 @@ const ProjectStatusPill = ({ status }: { status?: string }) => {
     >
       {label.replace(/_/g, " ")}
     </span>
+  );
+};
+
+/** Normalises a tab's list field: the API now sends `{ docs, totalDocs, ... }`,
+ *  older payloads sent a plain array. */
+const toPage = <T,>(value?: BusinessDivisionPage<T> | T[]) => {
+  if (Array.isArray(value)) {
+    return { docs: value, totalDocs: value.length, page: 1, totalPages: 1 };
+  }
+  const docs = value?.docs ?? [];
+  return {
+    docs,
+    totalDocs: value?.totalDocs ?? docs.length,
+    page: value?.page ?? 1,
+    totalPages: Math.max(value?.totalPages ?? 1, 1),
+  };
+};
+
+/** Search box shown above each tab's list. */
+const TabSearch = ({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) => (
+  <div className="mb-3 flex h-10 items-center gap-2 rounded-lg border border-[#E5E7EB] px-3 font-quicksand dark:border-slate-700">
+    <Search className="h-4 w-4 shrink-0 text-[#6B6B6B] dark:text-slate-400" strokeWidth={1.67} />
+    <Input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="h-9 border-0 p-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
+    />
+  </div>
+);
+
+/** Prev / next controls under a tab's list; hidden when there's one page. */
+const TabPager = ({
+  page,
+  totalPages,
+  disabled,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  disabled: boolean;
+  onPageChange: (page: number) => void;
+}) => {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="mt-3 flex items-center justify-between font-quicksand">
+      <p className="text-xs text-[#6B7280] dark:text-slate-400">
+        Page {page} of {totalPages}
+      </p>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-label="Previous page"
+          disabled={disabled || page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-label="Next page"
+          disabled={disabled || page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
   );
 };
 
@@ -203,15 +288,46 @@ const BusinessDivisionDetailsSheet = ({
   divisionId,
   onEditDivision,
 }: Props) => {
-  const { data: detailRes, isLoading } = useQuery({
-    queryKey: ["businessDivisions", "detail", divisionId],
-    queryFn: async () => await businessDivisionApi.getDivisionById(String(divisionId)),
+  const [projectSearch, setProjectSearch] = useState("");
+  const [contractSearch, setContractSearch] = useState("");
+  const [projectPage, setProjectPage] = useState(1);
+  const [contractPage, setContractPage] = useState(1);
+  const [debouncedProjectSearch] = useDebounceValue(projectSearch.trim(), 300);
+  const [debouncedContractSearch] = useDebounceValue(contractSearch.trim(), 300);
+
+  // Start each division on a clean slate.
+  useEffect(() => {
+    setProjectSearch("");
+    setContractSearch("");
+    setProjectPage(1);
+    setContractPage(1);
+  }, [divisionId]);
+
+  // A new search term always starts from the first page.
+  useEffect(() => setProjectPage(1), [debouncedProjectSearch]);
+  useEffect(() => setContractPage(1), [debouncedContractSearch]);
+
+  const detailQuery = {
+    projectQuery: debouncedProjectSearch || undefined,
+    projectPage,
+    projectLimit: TAB_PAGE_SIZE,
+    contractQuery: debouncedContractSearch || undefined,
+    contractPage,
+    contractLimit: TAB_PAGE_SIZE,
+  };
+
+  const { data: detailRes, isLoading, isFetching } = useQuery({
+    queryKey: ["businessDivisions", "detail", divisionId, detailQuery],
+    queryFn: async () =>
+      await businessDivisionApi.getDivisionById(String(divisionId), detailQuery),
     enabled: open && Boolean(divisionId),
+    // Keep the current rows on screen while the next page / search loads.
+    placeholderData: keepPreviousData,
   });
 
   const division: BusinessDivision | undefined = detailRes?.data;
-  const projects = division?.projects ?? [];
-  const contracts = division?.contracts ?? [];
+  const projects = toPage(division?.projects);
+  const contracts = toPage(division?.contracts);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -300,33 +416,57 @@ const BusinessDivisionDetailsSheet = ({
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="projects" className="gap-2">
                     Projects
-                    <CountChip isLoading={isLoading} count={projects.length} />
+                    <CountChip isLoading={isLoading} count={projects.totalDocs} />
                   </TabsTrigger>
                   <TabsTrigger value="contracts" className="gap-2">
                     Contracts
-                    <CountChip isLoading={isLoading} count={contracts.length} />
+                    <CountChip isLoading={isLoading} count={contracts.totalDocs} />
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="projects">
+                  <TabSearch
+                    value={projectSearch}
+                    onChange={setProjectSearch}
+                    placeholder="Search projects by name"
+                  />
                   <TabListShell
                     isLoading={isLoading}
-                    count={projects.length}
-                    emptyLabel="No projects linked to this division yet."
+                    count={projects.docs.length}
+                    emptyLabel={
+                      debouncedProjectSearch
+                        ? "No projects match your search."
+                        : "No projects linked to this division yet."
+                    }
                   >
-                    {projects.map((project) => (
+                    {projects.docs.map((project) => (
                       <ProjectRow key={project._id} project={project} />
                     ))}
                   </TabListShell>
+                  <TabPager
+                    page={projects.page}
+                    totalPages={projects.totalPages}
+                    disabled={isFetching}
+                    onPageChange={setProjectPage}
+                  />
                 </TabsContent>
 
                 <TabsContent value="contracts">
+                  <TabSearch
+                    value={contractSearch}
+                    onChange={setContractSearch}
+                    placeholder="Search contracts by title or ID"
+                  />
                   <TabListShell
                     isLoading={isLoading}
-                    count={contracts.length}
-                    emptyLabel="No contracts linked to this division yet."
+                    count={contracts.docs.length}
+                    emptyLabel={
+                      debouncedContractSearch
+                        ? "No contracts match your search."
+                        : "No contracts linked to this division yet."
+                    }
                   >
-                    {contracts.map((contract) => (
+                    {contracts.docs.map((contract) => (
                       <ContractRow
                         key={contract._id}
                         contract={contract}
@@ -334,6 +474,12 @@ const BusinessDivisionDetailsSheet = ({
                       />
                     ))}
                   </TabListShell>
+                  <TabPager
+                    page={contracts.page}
+                    totalPages={contracts.totalPages}
+                    disabled={isFetching}
+                    onPageChange={setContractPage}
+                  />
                 </TabsContent>
               </Tabs>
             </div>
