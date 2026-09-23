@@ -41,6 +41,8 @@ interface AdminDetails {
     status: string;
     createdAt: string;
   }>;
+  /** Human-readable user ID (e.g. "usr-SA-A4D0AD"), returned beside `details`. */
+  displayId?: string;
 }
 
 interface AdminDetailsSheetProps {
@@ -80,6 +82,9 @@ const AdminDetailsSheet: React.FC<AdminDetailsSheetProps> = ({
   
   // Use fetched data or fallback to passed admin prop
   const adminData = adminDetailsResponse?.data?.data?.details;
+  // QA #51: show the display ID, never the raw Mongo `_id`.
+  const displayId =
+    adminDetailsResponse?.data?.data?.displayId || adminData?.userId || "-";
   const [_, setIsActive] = useState(adminData?.status === "active");
   
   const deleteMutation = useMutation<
@@ -229,7 +234,7 @@ const AdminDetailsSheet: React.FC<AdminDetailsSheetProps> = ({
                     {adminData.name}
                   </h1>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {adminData.userId || adminData._id || adminData._id}
+                    {displayId}
                   </p>
                 </div>
               </div>
@@ -308,7 +313,7 @@ const AdminDetailsSheet: React.FC<AdminDetailsSheetProps> = ({
                   User ID
                 </label>
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {adminData.userId || adminData._id}
+                  {displayId}
                 </p>
               </div>
               <div>
