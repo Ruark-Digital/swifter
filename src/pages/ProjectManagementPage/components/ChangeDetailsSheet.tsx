@@ -20,7 +20,9 @@ import {
 import { ArrowLeft, Share2, Eye, Download, Pencil, Loader2 } from "lucide-react";
 import { formatFileSize, getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { DataTable } from "@/components/layouts/DataTable";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, PaginationState } from "@tanstack/react-table";
+import { format, subDays } from "date-fns";
+import { useDebounceValue } from "usehooks-ts";
 import LinkedContractsHeader from "./LinkedContractsHeader";
 import {
   useProjectDetail,
@@ -241,6 +243,22 @@ const linkedColumns: ColumnDef<ContractRow>[] = [
   },
 ];
 
+/** Maps the Date dropdown to the API's `yyyy/MM/dd-yyyy/MM/dd` range param.
+ *  "all"/"custom" don't constrain — there's no custom-range picker yet. */
+const toDateRangeParam = (dateFilter: string) => {
+  const days =
+    dateFilter === "today"
+      ? 0
+      : dateFilter === "last7days"
+        ? 7
+        : dateFilter === "last30days"
+          ? 30
+          : null;
+  if (days === null) return undefined;
+  const now = new Date();
+  return `${format(subDays(now, days), "yyyy/MM/dd")}-${format(now, "yyyy/MM/dd")}`;
+};
+
 const ChangeDetailsSheet: React.FC<Props> = ({
   trigger,
   projectId,
@@ -269,54 +287,40 @@ const ChangeDetailsSheet: React.FC<Props> = ({
 
   // Linked contracts come from the dedicated endpoint, not the project-detail
   // response (whose `contract` array is not populated) — QA #136.
+  // QA #42: search, Date and Status all filter. The endpoint is paginated, so
+  // they're sent as query params rather than applied to the current page.
+  const [debouncedSearch] = useDebounceValue(searchQuery.trim(), 300);
+  const [contractsPagination, setContractsPagination] =
+    React.useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
+
+  // Any filter change starts again from the first page.
+  React.useEffect(() => {
+    setContractsPagination((p) => ({ ...p, pageIndex: 0 }));
+  }, [debouncedSearch, statusFilter, dateFilter, projectId]);
+
   const { data: contractsRes, isLoading: isContractsLoading } =
-    useProjectContracts(projectId);
+    useProjectContracts(projectId, {
+      title: debouncedSearch || undefined,
+      status: statusFilter || undefined,
+      date: toDateRangeParam(dateFilter),
+      page: contractsPagination.pageIndex + 1,
+      limit: contractsPagination.pageSize,
+    });
+  const contractsData = contractsRes?.data?.data;
   const linkedContracts = React.useMemo(
-    () => contractsRes?.data?.data ?? [],
-    [contractsRes]
+    () =>
+      Array.isArray(contractsData)
+        ? contractsData
+        : (contractsData?.contracts ?? []),
+    [contractsData]
   );
+  const totalLinkedContracts = Array.isArray(contractsData)
+    ? contractsData.length
+    : (contractsData?.totalContracts ?? linkedContracts.length);
 
-  // QA #42: the Date and Status dropdowns were captured in state but never
-  // applied — only the search box filtered. Apply all three here, then map to
-  // display rows. Filtering runs on the raw contracts so real date/status
-  // fields are available.
-  const linkedRows = React.useMemo<ContractRow[]>(() => {
-    const now = new Date();
-    const startOfToday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    );
-    const dateFloor =
-      dateFilter === "today"
-        ? startOfToday
-        : dateFilter === "last7days"
-          ? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-          : dateFilter === "last30days"
-            ? new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-            : null;
-
-    return linkedContracts
-      .filter((c) =>
-        searchQuery
-          ? c.title?.toLowerCase?.().includes(searchQuery.toLowerCase())
-          : true
-      )
-      .filter((c) =>
-        statusFilter
-          ? String(c.status ?? "").toLowerCase() ===
-            statusFilter.toLowerCase()
-          : true
-      )
-      .filter((c) => {
-        // "all"/"custom" don't constrain — there's no custom-range picker yet.
-        if (!dateFloor) return true;
-        const raw = c.startDate ?? c.createdAt;
-        if (!raw) return false;
-        const d = new Date(raw);
-        return !Number.isNaN(d.getTime()) && d >= dateFloor;
-      })
-      .map((c) => ({
+  const linkedRows = React.useMemo<ContractRow[]>(
+    () =>
+      linkedContracts.map((c) => ({
         id: c._id,
         title: c.title,
         code: "",
@@ -335,8 +339,9 @@ const ChangeDetailsSheet: React.FC<Props> = ({
           : undefined,
         endDate: c.endDate ? formatDateTZ(c.endDate, "MMM d, yyyy") : undefined,
         status: c.status,
-      }));
-  }, [linkedContracts, searchQuery, statusFilter, dateFilter, profileCurrency]);
+      })),
+    [linkedContracts, profileCurrency]
+  );
 
   const completeMutation = useCompleteProject(projectId);
   const updateMutation = useUpdateProject(projectId);
@@ -715,7 +720,11 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                 columns={linkedColumns}
                 options={{
                   disableSelection: true,
-                  disablePagination: true,
+                  disablePagination: totalLinkedContracts <= contractsPagination.pageSize,
+                  manualPagination: true,
+                  pagination: contractsPagination,
+                  setPagination: setContractsPagination,
+                  totalCounts: totalLinkedContracts,
                   isLoading: isContractsLoading,
                 }}
                 emptyPlaceholder={
