@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { getRequest, patchRequest, postRequest } from "@/lib/axiosInstance";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { ApiResponse, ApiResponseError } from "@/types";
@@ -83,12 +88,38 @@ export const useProjectDetail = (projectId?: string) => {
   });
 };
 
-export const useProjectContracts = (projectId?: string) => {
-  return useQuery<ApiResponse<Contract[]>, ApiResponseError>({
-    queryKey: useUserQueryKey(["project-contracts", projectId]),
+export type ProjectContractsQuery = {
+  title?: string;
+  /** `yyyy/MM/dd-yyyy/MM/dd` range. */
+  date?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+};
+
+/** Paginated payload of `/projects/:id/contracts`. Older payloads sent a
+ *  plain array, which callers still tolerate. */
+export type ProjectContractsPage = {
+  contracts?: Contract[];
+  totalContracts?: number;
+  page?: number;
+  limit?: number;
+};
+
+export const useProjectContracts = (
+  projectId?: string,
+  query?: ProjectContractsQuery
+) => {
+  return useQuery<ApiResponse<ProjectContractsPage | Contract[]>, ApiResponseError>({
+    queryKey: useUserQueryKey(["project-contracts", projectId, query]),
     queryFn: async () =>
-      await getRequest({ url: `/contract/manager/projects/${projectId}/contracts` }),
+      await getRequest({
+        url: `/contract/manager/projects/${projectId}/contracts`,
+        config: { params: query },
+      }),
     enabled: !!projectId,
+    // Keep the current rows on screen while the next page / filter loads.
+    placeholderData: keepPreviousData,
   });
 };
 
