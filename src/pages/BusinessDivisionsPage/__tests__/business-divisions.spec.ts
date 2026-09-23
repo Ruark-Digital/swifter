@@ -82,7 +82,8 @@ test.describe("Business Divisions", () => {
       });
     });
 
-    await page.route("**/contract/manager/business-division/div-1", async (route) => {
+    // Trailing ** also matches the detail GET's pagination/search query params.
+    await page.route("**/contract/manager/business-division/div-1**", async (route) => {
       if (route.request().method() === "PUT") {
         await route.fulfill({
           status: 200,
@@ -161,7 +162,7 @@ test.describe("Business Divisions", () => {
       });
     });
 
-    await page.route("**/contract/manager/business-division/div-1", async (route) => {
+    await page.route("**/contract/manager/business-division/div-1?**", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -177,26 +178,39 @@ test.describe("Business Divisions", () => {
             totalProjectValue: 1200000,
             totalContractValue: 900000,
             createdAt: "2025-01-15T10:00:00.000Z",
-            projects: [
-              {
-                _id: "proj-1",
-                projectId: "PRJ-001",
-                // The API returns the project's display name as `name`.
-                name: "North Plant Upgrade",
-                budget: 1200000,
-                status: "active",
-              },
-            ],
-            contracts: [
-              {
-                _id: "con-1",
-                contractId: "CON-001",
-                title: "Electrical Works Contract",
-                contractValue: 900000,
-                currency: "USD",
-                status: "publish",
-              },
-            ],
+            // The API returns each list as a paginated object.
+            projects: {
+              docs: [
+                {
+                  _id: "proj-1",
+                  projectId: "PRJ-001",
+                  // The API returns the project's display name as `name`.
+                  name: "North Plant Upgrade",
+                  budget: 1200000,
+                  status: "active",
+                },
+              ],
+              totalDocs: 1,
+              page: 1,
+              limit: 10,
+              totalPages: 1,
+            },
+            contracts: {
+              docs: [
+                {
+                  _id: "con-1",
+                  contractId: "CON-001",
+                  title: "Electrical Works Contract",
+                  contractValue: 900000,
+                  currency: "USD",
+                  status: "publish",
+                },
+              ],
+              totalDocs: 1,
+              page: 1,
+              limit: 10,
+              totalPages: 1,
+            },
           },
         }),
       });
@@ -228,5 +242,100 @@ test.describe("Business Divisions", () => {
       "href",
       "/dashboard/contract-management/con-1",
     );
+  });
+
+  test("searches and pages division projects/contracts via query params", async ({ page }) => {
+    await seedAuth(page);
+
+    await page.route("**/contract/manager/business-division/stats", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ message: "ok", data: { totalDivisions: 1 } }),
+      });
+    });
+
+    await page.route("**/contract/manager/business-division?page=1&limit=10**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          message: "ok",
+          data: {
+            docs: [{ _id: "div-1", name: "Ontario Operations", location: "Toronto" }],
+            totalDocs: 1,
+            page: 1,
+            limit: 10,
+            totalPages: 1,
+          },
+        }),
+      });
+    });
+
+    const detailParams: URLSearchParams[] = [];
+    await page.route("**/contract/manager/business-division/div-1?**", async (route) => {
+      const params = new URL(route.request().url()).searchParams;
+      detailParams.push(params);
+      const projectPage = Number(params.get("projectPage") ?? 1);
+      const contractQuery = params.get("contractQuery");
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          message: "ok",
+          data: {
+            _id: "div-1",
+            name: "Ontario Operations",
+            location: "Toronto",
+            totalProjects: 12,
+            totalContracts: 2,
+            projects: {
+              docs: [
+                {
+                  _id: `proj-${projectPage}`,
+                  projectId: `PRJ-P${projectPage}`,
+                  name: `Project on page ${projectPage}`,
+                  status: "active",
+                },
+              ],
+              totalDocs: 12,
+              page: projectPage,
+              limit: 10,
+              totalPages: 2,
+            },
+            contracts: {
+              docs: contractQuery
+                ? [{ _id: "con-2", contractId: "CON-002", title: "Roofing Contract" }]
+                : [
+                    { _id: "con-1", contractId: "CON-001", title: "Electrical Works Contract" },
+                    { _id: "con-2", contractId: "CON-002", title: "Roofing Contract" },
+                  ],
+              totalDocs: contractQuery ? 1 : 2,
+              page: 1,
+              limit: 10,
+              totalPages: 1,
+            },
+          },
+        }),
+      });
+    });
+
+    await page.goto("/dashboard/business-divisions");
+    await page.getByRole("button", { name: "View" }).first().click();
+
+    await expect(page.getByText("Project on page 1")).toBeVisible();
+    await expect(page.getByText("Page 1 of 2")).toBeVisible();
+
+    await page.getByRole("button", { name: "Next page" }).click();
+    await expect(page.getByText("Project on page 2")).toBeVisible();
+    expect(detailParams.at(-1)?.get("projectPage")).toBe("2");
+
+    await page.getByRole("tab", { name: /Contracts/ }).click();
+    await expect(page.getByText("Electrical Works Contract")).toBeVisible();
+    await page.getByPlaceholder("Search contracts by title or ID").fill("roof");
+    await expect(page.getByText("Electrical Works Contract")).toBeHidden();
+    await expect(page.getByText("Roofing Contract")).toBeVisible();
+    expect(detailParams.at(-1)?.get("contractQuery")).toBe("roof");
+    expect(detailParams.at(-1)?.get("contractPage")).toBe("1");
   });
 });
