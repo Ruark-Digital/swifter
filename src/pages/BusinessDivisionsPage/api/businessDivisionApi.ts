@@ -20,6 +20,16 @@ export type BusinessDivisionContract = {
   status?: string;
 };
 
+/** Paginated list shape the division-detail endpoint returns for its
+ *  `projects` / `contracts` fields. */
+export type BusinessDivisionPage<T> = {
+  docs?: T[];
+  totalDocs?: number;
+  page?: number;
+  limit?: number;
+  totalPages?: number;
+};
+
 export type BusinessDivision = {
   _id: string;
   businessId?: string;
@@ -30,8 +40,9 @@ export type BusinessDivision = {
   totalProjectValue?: number;
   totalContractValue?: number;
   company?: string;
-  projects?: BusinessDivisionProject[];
-  contracts?: BusinessDivisionContract[];
+  /** Older payloads sent plain arrays; the current API sends a paginated object. */
+  projects?: BusinessDivisionPage<BusinessDivisionProject> | BusinessDivisionProject[];
+  contracts?: BusinessDivisionPage<BusinessDivisionContract> | BusinessDivisionContract[];
   createdAt?: string;
   updatedAt?: string;
 };
@@ -40,6 +51,15 @@ export type ListBusinessDivisionsQuery = {
   page: number;
   limit: number;
   search?: string;
+};
+
+export type BusinessDivisionDetailQuery = {
+  projectQuery?: string;
+  projectPage?: number;
+  projectLimit?: number;
+  contractQuery?: string;
+  contractPage?: number;
+  contractLimit?: number;
 };
 
 export type BusinessDivisionList = {
@@ -83,9 +103,10 @@ export const businessDivisionApi = {
     });
     return res.data as { message?: string; data?: BusinessDivisionList };
   },
-  getDivisionById: async (divisionId: string) => {
+  getDivisionById: async (divisionId: string, query?: BusinessDivisionDetailQuery) => {
     const res = await getRequest({
       url: `/contract/manager/business-division/${encodeURIComponent(divisionId)}`,
+      config: { params: query },
     });
     return res.data as { message?: string; data?: BusinessDivision };
   },
