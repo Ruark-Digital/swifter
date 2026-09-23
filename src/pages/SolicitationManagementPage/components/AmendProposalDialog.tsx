@@ -32,7 +32,8 @@ interface ProposalPriceAction {
   component: string;
   description?: string;
   quantity: number;
-  unitOfMeasurement: string;
+  // BE spells it with a lowercase "m" (unitOfmeasurement).
+  unitOfmeasurement: string;
   unitPrice: number;
   // Vendor's submitted currency — BE now returns it on each price-action item.
   currency?: string;
@@ -175,7 +176,7 @@ const AmendProposalDialog: React.FC<AmendProposalDialogProps> = ({
           component: action.component || "",
           description: action.description || "",
           quantity: action.quantity || 0,
-          unitOfmeasurement: action.unitOfMeasurement || "",
+          unitOfmeasurement: action.unitOfmeasurement || "",
           unitPrice: action.unitPrice || 0,
           subtotal:
             action.subtotal || (action.quantity || 0) * (action.unitPrice || 0),
