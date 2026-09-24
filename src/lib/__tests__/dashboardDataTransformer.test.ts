@@ -334,4 +334,55 @@ describe("DashboardDataTransformer", () => {
       ).toBe(100);
     });
   });
+
+  describe("transformWeeklyActivities (QA #69)", () => {
+    const now = new Date(2026, 8, 24, 12); // Sep 24, 2026
+
+    it("buckets items by month over the selected month range", () => {
+      const result = DashboardDataTransformer.transformWeeklyActivities(
+        {
+          solicitations: [
+            { createdAt: new Date(2026, 8, 3).toISOString() },
+            { createdAt: new Date(2026, 6, 10).toISOString() },
+          ],
+          evaluations: [{ createdAt: new Date(2026, 8, 20).toISOString() }],
+        },
+        "3months",
+        now
+      );
+      expect(result).toEqual([
+        { day: "Jul", activities: 1 },
+        { day: "Aug", activities: 0 },
+        { day: "Sep", activities: 2 },
+      ]);
+    });
+
+    it("buckets items by day for day ranges and ignores out-of-range items", () => {
+      const result = DashboardDataTransformer.transformWeeklyActivities(
+        {
+          solicitations: [
+            { createdAt: new Date(2026, 8, 24, 9).toISOString() },
+            { createdAt: new Date(2026, 8, 1).toISOString() },
+          ],
+          evaluations: [{ createdAt: new Date(2026, 8, 18).toISOString() }],
+        },
+        "7days",
+        now
+      );
+      expect(result).toHaveLength(7);
+      expect(result[0]).toEqual({ day: "Sep 18", activities: 1 });
+      expect(result[6]).toEqual({ day: "Sep 24", activities: 1 });
+      expect(result.reduce((n, b) => n + b.activities, 0)).toBe(2);
+    });
+
+    it("returns an empty series of the right length when there is no data", () => {
+      const result = DashboardDataTransformer.transformWeeklyActivities(
+        undefined,
+        "12months",
+        now
+      );
+      expect(result).toHaveLength(12);
+      expect(result.every((b) => b.activities === 0)).toBe(true);
+    });
+  });
 });
