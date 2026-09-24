@@ -1358,7 +1358,8 @@ export const useDashboardData = (
         );
       case "weekly-activities":
         return DashboardDataTransformer.transformWeeklyActivities(
-          weeklyActivities?.data?.data
+          weeklyActivities?.data?.data,
+          getFilterForChart("weekly-activities")
         );
       case "sub-distribution":
         return DashboardDataTransformer.transformSubDistribution(

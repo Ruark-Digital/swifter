@@ -1073,27 +1073,49 @@ export class DashboardDataTransformer {
   /**
    * Transform weekly activities data for area chart
    */
-  static transformWeeklyActivities(data: WeeklyActivities | undefined) {
-    if (!data || (!data.solicitations && !data.evaluations)) {
-      // Return default data structure
-      return Array.from({ length: 7 }, (_, i) => ({
-        day: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i],
+  static transformWeeklyActivities(
+    data: WeeklyActivities | undefined,
+    range: string = "12months",
+    now: Date = new Date()
+  ) {
+    // QA #69: bucket each solicitation/evaluation by its own date over the
+    // selected range (days for "7days"/"30days", months otherwise) instead of
+    // spreading the total evenly over a fixed Mon–Sun axis.
+    const match = /^(\d+)(days|months)$/.exec(range);
+    const count = match ? parseInt(match[1], 10) : 12;
+    const byDay = match?.[2] === "days";
+
+    const bucketKey = (d: Date) =>
+      byDay
+        ? `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+        : `${d.getFullYear()}-${d.getMonth()}`;
+
+    const buckets = Array.from({ length: count }, (_, i) => {
+      const offset = count - 1 - i;
+      const d = byDay
+        ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset)
+        : new Date(now.getFullYear(), now.getMonth() - offset, 1);
+      return {
+        key: bucketKey(d),
+        day: byDay
+          ? d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+          : d.toLocaleDateString("en-US", { month: "short" }),
         activities: 0,
-      }));
+      };
+    });
+    const index = new Map(buckets.map((b, i) => [b.key, i]));
+
+    const items = [...(data?.solicitations ?? []), ...(data?.evaluations ?? [])];
+    for (const item of items) {
+      const raw = item?.createdAt ?? item?.updatedAt ?? item?.date;
+      if (!raw) continue;
+      const d = new Date(raw);
+      if (isNaN(d.getTime())) continue;
+      const i = index.get(bucketKey(d));
+      if (i !== undefined) buckets[i].activities += 1;
     }
 
-    // Transform API data to chart format
-    // Combine solicitations and evaluations data
-    const totalActivities =
-      (data.solicitations?.length || 0) + (data.evaluations?.length || 0);
-
-    // For now, distribute activities across the week
-    // This can be enhanced based on actual date data from the API
-    return Array.from({ length: 7 }, (_, i) => ({
-      day: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i],
-      activities:
-        Math.floor(totalActivities / 7) + (i < totalActivities % 7 ? 1 : 0),
-    }));
+    return buckets.map(({ day, activities }) => ({ day, activities }));
   }
 
   /**

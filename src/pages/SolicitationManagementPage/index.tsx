@@ -495,6 +495,7 @@ export const SolicitationManagementPage = () => {
       ...(!isVendor
         ? [{ label: "Under Evaluation", value: "under_evaluation" },  { label: "Draft", value: "draft" },]
         : []),
+      { label: "Awarded", value: "awarded" },
       { label: "Closed", value: "closed" },
     ],
     [isVendor]
