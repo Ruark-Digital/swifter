@@ -23,12 +23,14 @@ export type RedlineSpan = {
   text: string;
   author?: string;
   createdAt?: string;
+  /** Offset of the redline in the source document (see redlineScan.ts). */
+  documentPosition?: number;
 };
 
 /** Walk the doc and collect all redlined spans, de-duped by redlineId. */
 export function extractRedlinesFromEditor(editor: Editor): RedlineSpan[] {
   const out = new Map<string, RedlineSpan>();
-  editor.state.doc.descendants((node) => {
+  editor.state.doc.descendants((node, pos) => {
     if (!node.isText) return true;
     for (const mark of node.marks) {
       if (mark.type.name !== "insertion" && mark.type.name !== "deletion") {
@@ -50,6 +52,7 @@ export function extractRedlinesFromEditor(editor: Editor): RedlineSpan[] {
         author: (mark.attrs.author as string | undefined) ?? undefined,
         createdAt:
           (mark.attrs.createdAt as string | undefined) ?? undefined,
+        documentPosition: pos,
       });
     }
     return true;

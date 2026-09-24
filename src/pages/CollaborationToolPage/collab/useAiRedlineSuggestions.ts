@@ -159,6 +159,19 @@ const chunkRedlines = (redlines: RedlineSpan[], size: number): RedlineSpan[][] =
   return batches;
 };
 
+/**
+ * Ensure every redline carries a `documentPosition` so the BE can return the
+ * persisted GET list in document order. Editors that know the real offset set
+ * it on the span; otherwise fall back to the span's index — `extractRedlines`
+ * returns spans in document order, so the index preserves that order. Must run
+ * before chunking so positions stay global across batches.
+ */
+export const withDocumentPositions = (redlines: RedlineSpan[]): RedlineSpan[] =>
+  redlines.map((r, index) => ({
+    ...r,
+    documentPosition: r.documentPosition ?? index,
+  }));
+
 /** Parse one BE response body into an `AiRedlineAnalysis`. */
 const parseAnalysisBody = (body: ApiResponseBody): AiRedlineAnalysis => {
   const data = body?.data ?? {};
@@ -239,7 +252,8 @@ const mergeAnalyses = (parts: AiRedlineAnalysis[]): AiRedlineAnalysis => {
  * resolves url=null for them, which the mutationFn null-url guard below
  * turns into a benign no-op result.
  *
- * Body:     { redlines: RedlineSpan[] }  (≤ BATCH_SIZE spans per request)
+ * Body:     { documentId, redlines: RedlineSpan[] }  (≤ BATCH_SIZE spans per
+ *           request; each span carries `documentPosition`)
  * 200 data: { summary, riskLevel, overallSuggestion, redlineAnalysis: [...] }
  */
 export function useAiRedlineSuggestions({
@@ -275,7 +289,10 @@ export function useAiRedlineSuggestions({
       // RedlineAnalysisDTO is `.strict()` and requires the document (file) id in
       // the body — send exactly { documentId, redlines }.
       const parts: AiRedlineAnalysis[] = [];
-      for (const batch of chunkRedlines(redlines, BATCH_SIZE)) {
+      for (const batch of chunkRedlines(
+        withDocumentPositions(redlines),
+        BATCH_SIZE,
+      )) {
         const res = await postRequest({
           url,
           payload: { documentId: fileId, redlines: batch },
