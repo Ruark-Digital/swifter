@@ -622,7 +622,7 @@ const AnalyticsTab: React.FC<Props> = ({
         </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
           <div>
-            <p className="text-blue-200 text-xs mb-1">Contract Value</p>
+            <p className="text-blue-200 text-xs mb-1">Current Contract Value</p>
             <p className="text-2xl font-bold">{contractValue}</p>
           </div>
           <div>

@@ -1249,6 +1249,10 @@ const Header = ({
               showIcon: true,
               options: [
                 {
+                  label: "All",
+                  value: "all",
+                },
+                {
                   label: "Active",
                   value: "active",
                 },
@@ -1275,7 +1279,7 @@ const Header = ({
             if (filterTitle === "Date") {
               onDateFilterChange(value);
             } else if (filterTitle === "Status") {
-              onStatusFilterChange(value);
+              onStatusFilterChange(value === "all" ? "" : value);
             }
           }}
           selectedValues={{
