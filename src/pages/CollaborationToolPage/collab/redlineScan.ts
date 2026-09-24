@@ -16,6 +16,9 @@ export type RedlineSpan = {
   text: string;
   author?: string;
   createdAt?: string;
+  /** Offset of the redline in the source document. The BE orders the
+   *  persisted GET list by it (swagger: RedlineAnalysisItem.documentPosition). */
+  documentPosition?: number;
 };
 
 type Leaf = {
