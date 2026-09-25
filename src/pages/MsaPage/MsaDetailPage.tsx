@@ -104,6 +104,21 @@ const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "action-log", label: "Action Log" },
 ];
 
+// #82 — modules to disable on MSA across ALL profiles. The client asked to
+// disable the LINKS to these features (not remove the code), so we drop their
+// tab triggers from the MSA detail nav; the layouts/TabsContent stay in place
+// and can be re-enabled by removing a key here. Applied after role filtering so
+// it holds for every role.
+const MSA_DISABLED_TABS: ReadonlySet<TabKey> = new Set<TabKey>([
+  "deliverables",
+  "lem",
+  "claims",
+  "rfi",
+  "ncr-log",
+  "reports",
+  "invoice",
+]);
+
 const ROLE_TAB_WHITELIST: Record<
   "approver" | "vendor" | "manager" | "view only",
   TabKey[]
@@ -460,6 +475,8 @@ const MsaDetailPage: React.FC = () => {
       tabs = ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
     else tabs = ALL_TABS;
     if (isDraftMsa) tabs = tabs.filter((t) => t.key !== "clause-library");
+    // #82 — disable the MSA module links for every profile.
+    tabs = tabs.filter((t) => !MSA_DISABLED_TABS.has(t.key));
     return tabs;
   }, [isApprover, isVendor, isProjectManager, isViewOnly, isManager, isDraftMsa]);
 
