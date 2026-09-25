@@ -90,6 +90,14 @@ const formatShortDate = (value?: string | Date) => {
   });
 };
 
+// #82 — Holdback (amount/released/release action + tab) and Payment Structure
+// are disabled on MSA payment summary across all profiles. Kept as flags rather
+// than deleted so they can be switched back on without re-implementing.
+const SHOW_MSA_HOLDBACK = false;
+const SHOW_MSA_PAYMENT_STRUCTURE = false;
+// #82 — Milestones tab is also disabled on MSA payment summary.
+const SHOW_MSA_MILESTONES = false;
+
 const PaymentSummary: React.FC<PaymentSummaryProps> = ({
   contractId,
   msa,
@@ -393,17 +401,20 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
                   </button>
                 }
               />
-              <MsaReleaseHoldbackDialog
-                contractId={contractId}
-                trigger={
-                  <button
-                    type="button"
-                    className="inline-flex h-10 items-center rounded-xl text-sm bg-[#2A4467] px-4 font-semibold text-white"
-                  >
-                    Release Holdback
-                  </button>
-                }
-              />
+              {/* #82 — Release Holdback disabled on MSA (SHOW_MSA_HOLDBACK). */}
+              {SHOW_MSA_HOLDBACK && (
+                <MsaReleaseHoldbackDialog
+                  contractId={contractId}
+                  trigger={
+                    <button
+                      type="button"
+                      className="inline-flex h-10 items-center rounded-xl text-sm bg-[#2A4467] px-4 font-semibold text-white"
+                    >
+                      Release Holdback
+                    </button>
+                  }
+                />
+              )}
             </>
           )}
         </div>
@@ -422,33 +433,50 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
 
         <LabelItem label="Contigency" value={contigencyValue} />
 
-        <LabelItem label="Holdback" value={holdbackValue} />
+        {/* #82 — Holdback and Payment Structure disabled on MSA. Flip
+            SHOW_MSA_HOLDBACK / SHOW_MSA_PAYMENT_STRUCTURE to re-enable. */}
+        {SHOW_MSA_HOLDBACK && (
+          <>
+            <LabelItem label="Holdback" value={holdbackValue} />
 
-        <LabelItem label="Holdback Amount" value={formatMoney(msa?.holdBackBank, true)} />
+            <LabelItem label="Holdback Amount" value={formatMoney(msa?.holdBackBank, true)} />
 
-        <LabelItem label="Holdback Released" value={formatMoney(msa?.holdBackReleased, true)} />
+            <LabelItem label="Holdback Released" value={formatMoney(msa?.holdBackReleased, true)} />
+          </>
+        )}
 
         <LabelItem label="Savings Realized" value={formatMoney(msa?.savingAmount)} />
 
-        <LabelItem label="Payment Structure" value={msa?.paymentStructure || "-"} />
+        {SHOW_MSA_PAYMENT_STRUCTURE && (
+          <LabelItem label="Payment Structure" value={msa?.paymentStructure || "-"} />
+        )}
 
         <LabelItem label="Payment Term" value={paymentTermValue} />
       </div>
 
-      <Tabs defaultValue="milestones" className="w-full space-y-6">
+      <Tabs
+        defaultValue={SHOW_MSA_MILESTONES ? "milestones" : "saving-realized"}
+        className="w-full space-y-6"
+      >
         <TabsList className="h-auto rounded-full bg-[#F3F4F6] dark:bg-slate-800 p-2">
-          <TabsTrigger
-            value="milestones"
-            className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
-          >
-            MileStones
-          </TabsTrigger>
-          <TabsTrigger
-            value="holdback-release"
-            className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
-          >
-            Holdback Release
-          </TabsTrigger>
+          {/* #82 — Milestones tab disabled on MSA (SHOW_MSA_MILESTONES). */}
+          {SHOW_MSA_MILESTONES && (
+            <TabsTrigger
+              value="milestones"
+              className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            >
+              MileStones
+            </TabsTrigger>
+          )}
+          {/* #82 — Holdback Release tab disabled on MSA (SHOW_MSA_HOLDBACK). */}
+          {SHOW_MSA_HOLDBACK && (
+            <TabsTrigger
+              value="holdback-release"
+              className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            >
+              Holdback Release
+            </TabsTrigger>
+          )}
           {!isVendorLike && (
             <TabsTrigger
               value="saving-realized"
@@ -459,43 +487,49 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
           )}
         </TabsList>
 
-        <TabsContent value="milestones">
-          <PaymentSummaryMilestonesTable
-            rows={milestoneRows}
-            getRowSearchValues={(row) => [
-              row.milestoneId,
-              row.milestoneTitle,
-              row.deliverable,
-              row.amount,
-              row.dueDate,
-            ]}
-          />
-          {milestoneRows.length === 0 && (
-            <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-[#F9FAFB] dark:bg-slate-800 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
-              No milestones found.
-            </div>
-          )}
-        </TabsContent>
+        {/* #82 — Milestones content disabled on MSA (SHOW_MSA_MILESTONES). */}
+        {SHOW_MSA_MILESTONES && (
+          <TabsContent value="milestones">
+            <PaymentSummaryMilestonesTable
+              rows={milestoneRows}
+              getRowSearchValues={(row) => [
+                row.milestoneId,
+                row.milestoneTitle,
+                row.deliverable,
+                row.amount,
+                row.dueDate,
+              ]}
+            />
+            {milestoneRows.length === 0 && (
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-[#F9FAFB] dark:bg-slate-800 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
+                No milestones found.
+              </div>
+            )}
+          </TabsContent>
+        )}
 
-        <TabsContent value="holdback-release">
-          <PaymentSummaryMilestonesTable<HoldbackReleaseRow>
-            title="Holdback Release"
-            rows={holdbackRows}
-            columns={holdbackColumns}
-            getRowSearchValues={(row) => [
-              row.releaseId,
-              row.releasedType,
-              row.releasedAmount,
-              row.status,
-              row.dueDate,
-            ]}
-          />
-          {holdbackRows.length === 0 && (
-            <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-[#F9FAFB] dark:bg-slate-800 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
-              No holdback releases available.
-            </div>
-          )}
-        </TabsContent>
+        {/* #82 — Holdback Release content disabled on MSA (SHOW_MSA_HOLDBACK). */}
+        {SHOW_MSA_HOLDBACK && (
+          <TabsContent value="holdback-release">
+            <PaymentSummaryMilestonesTable<HoldbackReleaseRow>
+              title="Holdback Release"
+              rows={holdbackRows}
+              columns={holdbackColumns}
+              getRowSearchValues={(row) => [
+                row.releaseId,
+                row.releasedType,
+                row.releasedAmount,
+                row.status,
+                row.dueDate,
+              ]}
+            />
+            {holdbackRows.length === 0 && (
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-[#F9FAFB] dark:bg-slate-800 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
+                No holdback releases available.
+              </div>
+            )}
+          </TabsContent>
+        )}
 
         {!isVendorLike && (
           <TabsContent value="saving-realized">

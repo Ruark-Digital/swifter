@@ -197,6 +197,9 @@ type Props = {
   attachments?: AttachmentSummary;
   alerts?: AlertsData;
   clauseLegalAnalysis?: ClauseLegalAnalysisData;
+  /** #82 — hide the deliverable analytics (Status pie + Summary block) on MSA,
+   *  where Deliverables is disabled. Vendor KPI and everything else stay. */
+  hideDeliverables?: boolean;
 };
 
 const toTitleCase = (value: string) => {
@@ -282,6 +285,7 @@ const AnalyticsTab: React.FC<Props> = ({
   attachments,
   alerts,
   clauseLegalAnalysis,
+  hideDeliverables = false,
 }) => {
   const activitiesRanges: Array<{ label: string; value: AnalyticsRange }> = [
     { label: "YTD", value: "YTD" },
@@ -792,7 +796,8 @@ const AnalyticsTab: React.FC<Props> = ({
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 items-start lg:grid-cols-3 gap-6">
-        {/* Deliverable Status */}
+        {/* Deliverable Status — hidden on MSA (#82). */}
+        {!hideDeliverables && (
         <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm flex flex-col">
           <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-6">Deliverable Status</h3>
           <div className="relative h-[260px]">
@@ -829,6 +834,7 @@ const AnalyticsTab: React.FC<Props> = ({
             ))}
           </div>
         </div>
+        )}
 
         {/* Activities */}
         <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm flex flex-col">
@@ -895,6 +901,8 @@ const AnalyticsTab: React.FC<Props> = ({
 
         {/* Deliverable Summary & Vendor KPI */}
         <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm space-y-6">
+          {/* Deliverable Summary — hidden on MSA (#82); Vendor KPI stays. */}
+          {!hideDeliverables && (
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-slate-800 dark:text-slate-100">Deliverable Summary</h3>
@@ -935,6 +943,7 @@ const AnalyticsTab: React.FC<Props> = ({
               </div>
             </div>
           </div>
+          )}
 
           <div>
             <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-4">Vendor KPI</h3>

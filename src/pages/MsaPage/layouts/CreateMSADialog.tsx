@@ -1200,7 +1200,7 @@ const CreateMSADialog: React.FC<Props> = ({
                   type="button"
                   variant="outline"
                   className="h-12 px-10 rounded-xl bg-slate-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-600"
-                  onClick={() => setStep(step - 1)}
+                  onClick={() => setStep(step === 5 ? 3 : step - 1)}
                 >
                   Back
                 </Button>
@@ -1214,7 +1214,9 @@ const CreateMSADialog: React.FC<Props> = ({
                       setIsApprovalDialogOpen(true);
                       return;
                     }
-                    setStep(step + 1);
+                    // #82 — Deliverables (step 4) is disabled on MSA creation:
+                    // skip straight from Timeline (3) to Value & Payments (5).
+                    setStep(step === 3 ? 5 : step + 1);
                   }}
                   className="h-12 px-10 rounded-xl"
                   disabled={createMutation.isPending}
