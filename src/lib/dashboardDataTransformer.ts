@@ -194,6 +194,18 @@ function generateDynamicLink(
   // "create evaluation" action maps to the SOLICITATION (no evaluation exists
   // yet), so it must use solId even though the action mentions "evaluation".
   const isEvaluation = basePath.includes("/evaluation");
+
+  // Evaluators score through the ASSIGNED evaluation route, which needs both the
+  // evaluation id and the group id. The generic /dashboard/evaluation/{id} route
+  // is the PL/manager detail view and returns an error page for an evaluator
+  // (#92). Fall back to the evaluation list when the group id is missing, rather
+  // than a broken detail link.
+  if (isEvaluation && userRole === "evaluator") {
+    return data.evaId && data.evaGroupId
+      ? `/dashboard/evaluation/assigned/${data.evaId}/${data.evaGroupId}`
+      : "/dashboard/evaluation";
+  }
+
   const targetId = isEvaluation ? data.evaId : data.solId;
 
   return targetId ? `${basePath}/${targetId}` : null;
@@ -281,9 +293,15 @@ function applyDynamicStatusTextReplacement(
   }
 
   if (userRole === "evaluator") {
+    // Evaluators score via the assigned route (needs both ids); fall back to the
+    // evaluation list instead of a malformed /assigned/{id}/ URL (#92).
+    const evaluatorHref =
+      data.evaId && data.evaGroupId
+        ? `/dashboard/evaluation/assigned/${data.evaId}/${data.evaGroupId}`
+        : "/dashboard/evaluation";
     return statusText.replace(
       data.name,
-      `<a href="/dashboard/evaluation/assigned/${data.evaId ?? ""}/${data.evaGroupId ?? ""}" class="underline underline-offset-4 text-blue-600">${data.name}</a>`
+      `<a href="${evaluatorHref}" class="underline underline-offset-4 text-blue-600">${data.name}</a>`
     );
   }
 
