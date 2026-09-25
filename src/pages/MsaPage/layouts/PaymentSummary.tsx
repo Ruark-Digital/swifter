@@ -95,6 +95,8 @@ const formatShortDate = (value?: string | Date) => {
 // than deleted so they can be switched back on without re-implementing.
 const SHOW_MSA_HOLDBACK = false;
 const SHOW_MSA_PAYMENT_STRUCTURE = false;
+// #82 — Milestones tab is also disabled on MSA payment summary.
+const SHOW_MSA_MILESTONES = false;
 
 const PaymentSummary: React.FC<PaymentSummaryProps> = ({
   contractId,
@@ -452,14 +454,20 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
         <LabelItem label="Payment Term" value={paymentTermValue} />
       </div>
 
-      <Tabs defaultValue="milestones" className="w-full space-y-6">
+      <Tabs
+        defaultValue={SHOW_MSA_MILESTONES ? "milestones" : "saving-realized"}
+        className="w-full space-y-6"
+      >
         <TabsList className="h-auto rounded-full bg-[#F3F4F6] dark:bg-slate-800 p-2">
-          <TabsTrigger
-            value="milestones"
-            className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
-          >
-            MileStones
-          </TabsTrigger>
+          {/* #82 — Milestones tab disabled on MSA (SHOW_MSA_MILESTONES). */}
+          {SHOW_MSA_MILESTONES && (
+            <TabsTrigger
+              value="milestones"
+              className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            >
+              MileStones
+            </TabsTrigger>
+          )}
           {/* #82 — Holdback Release tab disabled on MSA (SHOW_MSA_HOLDBACK). */}
           {SHOW_MSA_HOLDBACK && (
             <TabsTrigger
@@ -479,23 +487,26 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
           )}
         </TabsList>
 
-        <TabsContent value="milestones">
-          <PaymentSummaryMilestonesTable
-            rows={milestoneRows}
-            getRowSearchValues={(row) => [
-              row.milestoneId,
-              row.milestoneTitle,
-              row.deliverable,
-              row.amount,
-              row.dueDate,
-            ]}
-          />
-          {milestoneRows.length === 0 && (
-            <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-[#F9FAFB] dark:bg-slate-800 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
-              No milestones found.
-            </div>
-          )}
-        </TabsContent>
+        {/* #82 — Milestones content disabled on MSA (SHOW_MSA_MILESTONES). */}
+        {SHOW_MSA_MILESTONES && (
+          <TabsContent value="milestones">
+            <PaymentSummaryMilestonesTable
+              rows={milestoneRows}
+              getRowSearchValues={(row) => [
+                row.milestoneId,
+                row.milestoneTitle,
+                row.deliverable,
+                row.amount,
+                row.dueDate,
+              ]}
+            />
+            {milestoneRows.length === 0 && (
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-[#F9FAFB] dark:bg-slate-800 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
+                No milestones found.
+              </div>
+            )}
+          </TabsContent>
+        )}
 
         {/* #82 — Holdback Release content disabled on MSA (SHOW_MSA_HOLDBACK). */}
         {SHOW_MSA_HOLDBACK && (
