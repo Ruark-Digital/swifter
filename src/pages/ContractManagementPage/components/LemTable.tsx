@@ -47,6 +47,7 @@ import type {
   ContractChangeCommentDTO,
   ContractLemDTO,
 } from "../api/contractManagerApi";
+import { deriveLemRateSheetComparison } from "../api/contractManagerApi";
 
 const formatDateValue = (value: unknown) => {
   if (!value) return "—";
@@ -445,52 +446,19 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   // rate-sheet totals. The detail endpoint frequently returns
   // `summary.comparison` with null rateSheetTotal / totalVariance /
   // complianceStatus, while the real values live in the sibling top-level
-  // `rateSheet` object (rateSheetTotal, per-item variance, compliant). Merge
-  // the two, preferring populated comparison fields and falling back to
-  // `rateSheet`, so the values stop rendering "—".
-  const rateSheetComparison = React.useMemo(() => {
-    const comparison = summary?.comparison;
-    const rateSheet = lemDetail?.rateSheet;
-
-    const itemVariances = (rateSheet?.items ?? [])
-      .map((it) => it?.variance)
-      .filter((v): v is number => typeof v === "number");
-    const summedVariance = itemVariances.length
-      ? itemVariances.reduce((a, b) => a + b, 0)
-      : null;
-
-    const rateSheetTotal =
-      typeof comparison?.rateSheetTotal === "number"
-        ? comparison.rateSheetTotal
-        : typeof rateSheet?.rateSheetTotal === "number"
-          ? rateSheet.rateSheetTotal
-          : null;
-    const totalVariance =
-      typeof comparison?.totalVariance === "number"
-        ? comparison.totalVariance
-        : summedVariance;
-    const complianceStatus =
-      comparison?.complianceStatus ??
-      (typeof rateSheet?.compliant === "boolean"
-        ? rateSheet.compliant
-          ? "Fully Compliant"
-          : "Non-Compliant"
-        : null);
-
-    const hasData =
-      !!comparison ||
-      rateSheetTotal !== null ||
-      totalVariance !== null ||
-      !!complianceStatus;
-    if (!hasData) return undefined;
-
-    return {
-      total: comparison?.total ?? null,
-      rateSheetTotal,
-      totalVariance,
-      complianceStatus,
-    };
-  }, [summary?.comparison, lemDetail?.rateSheet]);
+  // `rateSheet` object. Its current BE shape (docs v2.3.0) is
+  // `{ total, variance, status: "Compliance" | "Non-Compliance" }` — reading the
+  // stale `rateSheetTotal` / `items[]` / `compliant` keys (which no longer
+  // exist) made the fallback contribute nothing, so the compliance indicator
+  // showed "—" / an absent status even when the rate-sheet data was present
+  // (client: "doesn't look accurate"). Read the current fields, keep the legacy
+  // ones as a secondary fallback, and map the rateSheet `status` enum onto the
+  // comparison's "Fully Compliant" / "Non-Compliant" labels so the badge colour
+  // resolves.
+  const rateSheetComparison = React.useMemo(
+    () => deriveLemRateSheetComparison(summary?.comparison, lemDetail?.rateSheet),
+    [summary?.comparison, lemDetail?.rateSheet],
+  );
   const hasSummary = !!(
     summary &&
     ((summary.files?.some((f) => (f.sheets && f.sheets.length) || f.error) ??

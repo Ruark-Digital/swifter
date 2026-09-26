@@ -549,12 +549,23 @@ export type ContractLemRateSheetItem = {
 /** Comparison of the LEM against the linked rate sheet. The detail endpoint
  *  returns the populated comparison here (summary.comparison's totals are
  *  frequently null), so the Overview "Rate Sheet Compliance" card reads from
- *  this object as a fallback. */
+ *  this object as a fallback.
+ *
+ *  Current BE shape (docs v2.3.0): `{ total, variance, status }`, where
+ *  `variance` is the LEM amount minus the rate-sheet amount and `status` is
+ *  "Compliance" | "Non-Compliance". The older `rateSheetTotal` / `items[]` /
+ *  `compliant` fields are kept optional so either shape is handled. */
 export type ContractLemRateSheet = {
   sheetId?: string;
   title?: string;
+  /** Rate-sheet amount. */
+  total?: number | null;
+  /** LEM amount minus the rate-sheet amount. */
+  variance?: number | null;
+  /** Compliance verdict from the BE. */
+  status?: "Compliance" | "Non-Compliance" | string;
   items?: ContractLemRateSheetItem[];
-  /** Sum of the matched rate-sheet rates. */
+  /** Sum of the matched rate-sheet rates (legacy shape). */
   rateSheetTotal?: number | null;
   /** Count of items whose LEM rate varies from the rate sheet. */
   totalVarianceCount?: number | null;
@@ -583,6 +594,89 @@ export type ContractLemDTO = {
   submittedBy?: { name?: string; email?: string };
   createdAt?: string;
 };
+
+/** Merged rate-sheet compliance shown on the LEM Overview card. */
+export type LemRateSheetComparison = {
+  total: number | null;
+  rateSheetTotal: number | null;
+  totalVariance: number | null;
+  complianceStatus: string | null;
+};
+
+/**
+ * Derive the LEM "Rate Sheet Compliance" values shown on the Overview.
+ *
+ * `summary.comparison` is authoritative but its totals are frequently null, so
+ * the sibling top-level `rateSheet` object is the fallback. Its current BE shape
+ * is `{ total, variance, status: "Compliance" | "Non-Compliance" }`; the older
+ * `rateSheetTotal` / `items[].variance` / `compliant` fields are also accepted.
+ * The rateSheet `status` enum is mapped onto the comparison's
+ * "Fully Compliant" / "Non-Compliant" labels so the badge colour resolves and
+ * the badge never disagrees with the shown variance because of a stale key.
+ */
+export function deriveLemRateSheetComparison(
+  comparison:
+    | {
+        total?: number | null;
+        rateSheetTotal?: number | null;
+        totalVariance?: number | null;
+        complianceStatus?: string | null;
+      }
+    | null
+    | undefined,
+  rateSheet: ContractLemRateSheet | null | undefined,
+): LemRateSheetComparison | undefined {
+  const itemVariances = (rateSheet?.items ?? [])
+    .map((it) => it?.variance)
+    .filter((v): v is number => typeof v === "number");
+  const summedVariance = itemVariances.length
+    ? itemVariances.reduce((a, b) => a + b, 0)
+    : null;
+
+  const rateSheetTotal =
+    typeof comparison?.rateSheetTotal === "number"
+      ? comparison.rateSheetTotal
+      : typeof rateSheet?.total === "number"
+        ? rateSheet.total
+        : typeof rateSheet?.rateSheetTotal === "number"
+          ? rateSheet.rateSheetTotal
+          : null;
+  const totalVariance =
+    typeof comparison?.totalVariance === "number"
+      ? comparison.totalVariance
+      : typeof rateSheet?.variance === "number"
+        ? rateSheet.variance
+        : summedVariance;
+
+  const mapRateSheetStatus = (status?: string): string | null => {
+    const s = status?.toLowerCase();
+    if (s === "compliance") return "Fully Compliant";
+    if (s === "non-compliance") return "Non-Compliant";
+    return status ?? null;
+  };
+  const complianceStatus =
+    comparison?.complianceStatus ??
+    mapRateSheetStatus(rateSheet?.status) ??
+    (typeof rateSheet?.compliant === "boolean"
+      ? rateSheet.compliant
+        ? "Fully Compliant"
+        : "Non-Compliant"
+      : null);
+
+  const hasData =
+    !!comparison ||
+    rateSheetTotal !== null ||
+    totalVariance !== null ||
+    !!complianceStatus;
+  if (!hasData) return undefined;
+
+  return {
+    total: comparison?.total ?? null,
+    rateSheetTotal,
+    totalVariance,
+    complianceStatus,
+  };
+}
 
 export type ManagerListLemsQuery = {
   lemId?: string;
