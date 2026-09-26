@@ -1374,7 +1374,11 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
                 enableExpanding: true,
                 getRowCanExpand: () => true,
                 renderSubComponent: ({ row }) => (
-                  <div className="sticky left-0 pl-16 pr-6 py-4 text-sm text-gray-700 dark:text-gray-300 w-[calc(100vw-20rem)] max-w-4xl">
+                  // #65 — width is container-relative (was a hardcoded
+                  // 100vw-20rem, which could exceed the table area and force
+                  // horizontal scroll to read a long description). The text
+                  // wraps within the card instead.
+                  <div className="sticky left-0 pl-16 pr-6 py-4 text-sm text-gray-700 dark:text-gray-300 w-full max-w-4xl">
                     <div className="font-medium mb-1">Description</div>
                     <div className="whitespace-normal break-words">
                       {row.original.description || "-"}

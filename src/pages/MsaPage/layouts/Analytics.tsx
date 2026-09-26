@@ -173,6 +173,7 @@ const Analytics: React.FC<Props> = ({ contractId, isActive = false }) => {
         attachments={attachmentsQuery.data}
         alerts={alertsQuery.data}
         clauseLegalAnalysis={clauseLegalAnalysisQuery.data}
+        hideDeliverables
       />
     </TabsContent>
   );
