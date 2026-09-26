@@ -141,7 +141,11 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
       });
       return res.data as { message?: string; data?: PaymentHoldbackApi[] };
     },
-    enabled: Boolean(contractId) && !!isActive && !isViewOnly,
+    // #82 — holdbacks are disabled on MSA (the payment-holdbacks endpoint was
+    // removed on the backend and now 404s). Gate the query on the same flag
+    // that hides the holdback UI so it isn't called and no error toast fires.
+    enabled:
+      Boolean(contractId) && !!isActive && !isViewOnly && SHOW_MSA_HOLDBACK,
     staleTime: 60000,
     retry: false,
   });
