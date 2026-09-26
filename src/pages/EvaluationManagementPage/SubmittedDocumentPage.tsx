@@ -1051,7 +1051,9 @@ const SubmittedDocumentPage: React.FC = () => {
                           <h4 className="text-sm font-medium text-gray-700 mb-2 dark:text-slate-200">
                             Description
                           </h4>
-                          <p className="text-sm text-gray-600 dark:text-slate-200">
+                          {/* #65 — wrap long criteria descriptions instead of
+                              overflowing to the right. */}
+                          <p className="text-sm text-gray-600 dark:text-slate-200 whitespace-normal break-words">
                             {criteriaItem.description}
                           </p>
                         </div>
