@@ -197,9 +197,12 @@ type Props = {
   attachments?: AttachmentSummary;
   alerts?: AlertsData;
   clauseLegalAnalysis?: ClauseLegalAnalysisData;
-  /** #82 — hide the deliverable analytics (Status pie + Summary block) on MSA,
-   *  where Deliverables is disabled. Vendor KPI and everything else stay. */
-  hideDeliverables?: boolean;
+  /** MSA analytics restrictions. On MSA the client asked to drop several
+   *  modules from Analytics: the Deliverable Status pie + Summary block (#82),
+   *  the Holdback Amount financial row (#96), and every Activities series
+   *  except Changes — Claims/Invoices/RFI/NCR/Deliverables (#97). Vendor KPI and
+   *  everything else stay. */
+  isMsaAnalytics?: boolean;
 };
 
 const toTitleCase = (value: string) => {
@@ -285,7 +288,7 @@ const AnalyticsTab: React.FC<Props> = ({
   attachments,
   alerts,
   clauseLegalAnalysis,
-  hideDeliverables = false,
+  isMsaAnalytics = false,
 }) => {
   const activitiesRanges: Array<{ label: string; value: AnalyticsRange }> = [
     { label: "YTD", value: "YTD" },
@@ -342,7 +345,7 @@ const AnalyticsTab: React.FC<Props> = ({
     },
   ];
 
-  const financialRows = [
+  const financialRows: Array<{ label: string; value: string; color?: string }> = [
     {
       label: "Original Contract Value",
       value: formatMoney(
@@ -401,7 +404,14 @@ const AnalyticsTab: React.FC<Props> = ({
       ),
       color: "text-purple-600",
     },
-  ];
+    // #96 — Holdback Amount is removed from the MSA Financial Overview.
+  ].filter((row) => !(isMsaAnalytics && row.label === "Holdback Amount"));
+
+  // #97 — on MSA the Activities chart keeps only "Changes"; Claims, Invoices,
+  // RFI, NCR and Deliverables are removed.
+  const activitySeries = isMsaAnalytics
+    ? ACTIVITY_SERIES.filter((series) => series.key === "change")
+    : ACTIVITY_SERIES;
 
   // The BE returns two divergent per-contract alert shapes: the swagger/prod
   // shape ships a ready-made `recommendedActions: string[]`, while the live
@@ -797,7 +807,7 @@ const AnalyticsTab: React.FC<Props> = ({
       {/* Charts Section */}
       <div className="grid grid-cols-1 items-start lg:grid-cols-3 gap-6">
         {/* Deliverable Status — hidden on MSA (#82). */}
-        {!hideDeliverables && (
+        {!isMsaAnalytics && (
         <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm flex flex-col">
           <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-6">Deliverable Status</h3>
           <div className="relative h-[260px]">
@@ -873,7 +883,7 @@ const AnalyticsTab: React.FC<Props> = ({
                   width={32}
                 />
                 <Tooltip />
-                {ACTIVITY_SERIES.map((series) => (
+                {activitySeries.map((series) => (
                   <Line
                     key={series.key}
                     type="monotone"
@@ -888,7 +898,7 @@ const AnalyticsTab: React.FC<Props> = ({
             </ResponsiveContainer>
           </div>
           <div className="flex flex-wrap gap-3 mt-4 justify-center">
-            {ACTIVITY_SERIES.map((series) => (
+            {activitySeries.map((series) => (
               <div key={series.key} className="flex items-center gap-1.5">
                 <div className={cn("w-2 h-2 rounded-full", series.legendClassName)} />
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 dark:text-slate-500">
@@ -902,7 +912,7 @@ const AnalyticsTab: React.FC<Props> = ({
         {/* Deliverable Summary & Vendor KPI */}
         <div className="bg-white dark:bg-slate-900 dark:border-slate-800 p-6 rounded-xl border shadow-sm space-y-6">
           {/* Deliverable Summary — hidden on MSA (#82); Vendor KPI stays. */}
-          {!hideDeliverables && (
+          {!isMsaAnalytics && (
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-slate-800 dark:text-slate-100">Deliverable Summary</h3>
