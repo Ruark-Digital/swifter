@@ -117,11 +117,24 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
       {
         accessorKey: "title",
         header: "Contracts",
+        // #98 — make the contract name a link through to the contract detail,
+        // like the contract / MSA / solicitation lists. Falls back to plain
+        // text when the row carries no id to route to.
         cell: ({ row }) => (
           <div className="flex flex-col">
-            <span className="font-medium text-slate-900 dark:text-slate-100">
-              {row.original.title}
-            </span>
+            {row.original.id ? (
+              <Link
+                to={`/dashboard/contract-management/${row.original.id}`}
+                title={row.original.title}
+                className="font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
+              >
+                {row.original.title}
+              </Link>
+            ) : (
+              <span className="font-medium text-slate-900 dark:text-slate-100">
+                {row.original.title}
+              </span>
+            )}
             <span className="text-xs text-slate-500 dark:text-slate-400">{row.original.code}</span>
           </div>
         ),
