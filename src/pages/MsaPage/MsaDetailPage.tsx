@@ -730,11 +730,20 @@ const MsaDetailPage: React.FC = () => {
     approval: stageRange(stages?.approval),
     execution: stageRange(stages?.execution),
   };
-  const contractManagerName =
-    (msa as any)?.contractManager?.name ||
-    (msa as any)?.manager?.name ||
-    msa?.creator?.name ||
-    "";
+  const contractManagerSource =
+    (msa as any)?.contractManager ||
+    (msa as any)?.manager ||
+    msa?.creator ||
+    undefined;
+  const contractManagerName = contractManagerSource?.name || "";
+  const contractManagerContact = contractManagerSource
+    ? {
+        name: contractManagerSource?.name,
+        email: contractManagerSource?.email,
+        role: contractManagerSource?.role,
+        phone: contractManagerSource?.phone,
+      }
+    : undefined;
 
   const internalTeam = Array.isArray(msa?.internalTeam)
     ? msa!.internalTeam
@@ -921,6 +930,7 @@ const MsaDetailPage: React.FC = () => {
                 formationStages={formationStages}
                 status={status}
                 contractManager={contractManagerName}
+                contractManagerContact={contractManagerContact}
                 vendorName={(msa?.vendor as any)?.name}
                 internalTeam={internalTeam}
                 vendorPersonnel={vendorPersonnel}
