@@ -37,6 +37,12 @@ type Props = {
   };
   status: { label?: Status; className?: string };
   contractManager?: string;
+  contractManagerContact?: {
+    name?: string;
+    email?: string;
+    role?: string;
+    phone?: string;
+  };
   vendorName?: string;
   internalTeam: InternalMember[];
   vendorPersonnel: VendorPerson[];
@@ -60,6 +66,7 @@ const Overview: React.FC<Props> = ({
   formationStages,
   status,
   contractManager,
+  contractManagerContact,
   vendorName,
   internalTeam,
   vendorPersonnel,
@@ -122,7 +129,21 @@ const Overview: React.FC<Props> = ({
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           <LabelItem
             label="Contract Manager"
-            value={contractManager || "N/A"}
+            children={
+              contractManager ? (
+                // #99 — make the CM name clickable to reveal contact info,
+                // mirroring the Contract Team members below.
+                <EmployeeCardPopover
+                  triggerLabel={contractManager}
+                  name={contractManagerContact?.name || contractManager}
+                  email={contractManagerContact?.email || "N/A"}
+                  jobTitle={contractManagerContact?.role || "N/A"}
+                  phone={contractManagerContact?.phone || "N/A"}
+                />
+              ) : (
+                <span className="text-slate-900 dark:text-slate-100">N/A</span>
+              )
+            }
           />
           <LabelItem
             label="Status"
