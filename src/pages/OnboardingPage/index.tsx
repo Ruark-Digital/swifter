@@ -229,7 +229,13 @@ const OnboardingPage = () => {
         );
       }
     },
-    [mutateAsync, setUser, setToken, toast, navigate]
+    // `token` MUST stay in this dependency list: it starts as "" and is only
+    // populated after the invite link is decrypted in the effect above. Omitting
+    // it freezes onSubmit on the initial token="" (mutateAsync and the other deps
+    // are stable, so the callback is never recreated), which submits an empty
+    // token and the backend rejects it with 400 "Invalid or expired invite
+    // token" — the "unable to complete registration" failure (QA #89).
+    [mutateAsync, setUser, setToken, toast, navigate, token]
   );
 
   // Memoize password toggle handlers to prevent recreation
