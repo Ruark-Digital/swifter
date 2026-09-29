@@ -25,6 +25,6 @@ test.describe("viewOnlyApi (unit)", () => {
     });
 
     await api.getContract("c1");
-    expect(getSpy.calls[0]).toEqual({ url: "/user/contract/c1" });
+    expect(getSpy.calls[0]).toEqual({ url: "/contract/user/contracts/c1" });
   });
 });
