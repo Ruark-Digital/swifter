@@ -27,7 +27,7 @@ import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { getRequest } from "@/lib/axiosInstance";
+import { getRequest, putRequest } from "@/lib/axiosInstance";
 import EvaluationScorecardSheet from "./components/EvaluationScorecardSheet";
 import { ProposalPriceBreakdownSheet } from "./components/ProposalPriceBreakdownSheet";
 import CriteriaScorecardSheet from "./components/CriteriaScorecardSheet";
@@ -197,6 +197,24 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
   const releaseGroupMutation = useReleaseEvaluationGroup();
   const withholdGroupMutation = useWithholdEvaluationGroup();
   const deleteGroupMutation = useDeleteEvaluationGroup();
+
+  // QA #40: restore the "send reminder to evaluator" action on this page.
+  // Reuses the same endpoint the solicitation Evaluators tab uses, keyed by the
+  // evaluation's underlying solicitation id.
+  const remindEvaluatorMutation = useMutation<unknown, ApiResponseError, string>(
+    {
+      mutationFn: (evaluatorId: string) =>
+        putRequest({
+          url: `/procurement/solicitations/${evaluation?.solicitation?._id}/remind-evaluator/${evaluatorId}`,
+        }),
+      onSuccess: () => {
+        toastHandlers.success("Remind Evaluator", "Reminder sent successfully");
+      },
+      onError: (error) => {
+        toastHandlers.error("Remind Evaluator", error);
+      },
+    }
+  );
   // const deleteCriteriaMutation = useDeleteEvaluationCriteria();
 
   // Export bid comparison mutation
@@ -792,16 +810,43 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
       cell({ row }) {
         const p = row.original.progress;
         const progressNum = typeof p === "number" ? p : Number(p) || 0;
-        if (progressNum !== 100)
-          return <span className="text-muted-foreground">-</span>;
+        // Completed evaluators (100%) expose their scorecard to view; anyone
+        // still pending gets a "Remind" action to nudge them (QA #40).
+        if (progressNum === 100) {
+          return (
+            <div className="flex items-center gap-2">
+              <EvaluationScorecardSheet
+                evaluatorId={row.original._id}
+                solicitationId={evaluation?.solicitation?._id || ""}
+                timezone={evaluation?.timezone}
+              />
+            </div>
+          );
+        }
         return (
-          <div className="flex items-center gap-2">
-            <EvaluationScorecardSheet
-              evaluatorId={row.original._id}
-              solicitationId={evaluation?.solicitation?._id || ""}
-              timezone={evaluation?.timezone}
-            />
-          </div>
+          <ConfirmAlert
+            type="info"
+            title="Send Reminder"
+            text={`Are you sure you want to send a reminder to ${row.original.name}?`}
+            primaryButtonText="Send Reminder"
+            secondaryButtonText="Cancel"
+            isLoading={remindEvaluatorMutation.isPending}
+            onPrimaryAction={() =>
+              remindEvaluatorMutation.mutate(row.original._id)
+            }
+            trigger={
+              <Button
+                variant="link"
+                className="h-auto p-0 text-blue-600"
+                disabled={
+                  remindEvaluatorMutation.isPending ||
+                  !evaluation?.solicitation?._id
+                }
+              >
+                {remindEvaluatorMutation.isPending ? "Sending..." : "Remind"}
+              </Button>
+            }
+          />
         );
       },
     },
