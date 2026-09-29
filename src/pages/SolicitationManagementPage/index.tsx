@@ -41,6 +41,7 @@ import {
   normalizeStatus,
 } from "@/lib/solicitationStatusUtils";
 import { cn, formatDateTZ } from "@/lib/utils";
+import { applySolicitationCompanyFilter } from "./lib/solicitationCompanyFilter";
 // import ExportReportSheet from "@/components/layouts/ExportReportSheet";
 
 // Safe date formatting utility
@@ -793,34 +794,18 @@ export const SolicitationManagementPage = () => {
     ];
   }, [currentData]);
 
-  // Filter data based on search query and (vendor) company filter
-  const filteredData = useMemo(() => {
-    let rows = currentData;
-    if (companyFilter) {
-      rows = rows.filter((item) => item.company?._id === companyFilter);
-    }
-    if (!searchQuery) return rows;
-    return rows.filter(
-      (item) =>
-        (item.name ?? "")
-          .toLowerCase()
-          .includes((searchQuery ?? "").toLowerCase()) ||
-        (item.contact ?? "")
-          .toLowerCase()
-          .includes((searchQuery ?? "").toLowerCase()) ||
-        (item.solId ?? "")
-          .toLowerCase()
-          .includes((searchQuery ?? "").toLowerCase()) ||
-        (item.company?.name ?? "")
-          .toLowerCase()
-          .includes((searchQuery ?? "").toLowerCase()) ||
-        (item.categories ?? []).some((cat) =>
-          (cat.name ?? "")
-            .toLowerCase()
-            .includes((searchQuery ?? "").toLowerCase())
-        )
-    );
-  }, [currentData, searchQuery, companyFilter]);
+  // Filter data based on search query and (vendor) company filter. The company
+  // filter is vendor-only, so it's gated on isVendor — internal roles never see
+  // the Company dropdown and their companyFilter stays "".
+  const filteredData = useMemo(
+    () =>
+      applySolicitationCompanyFilter(currentData, {
+        search: searchQuery,
+        companyFilter,
+        enableCompanyFilter: isVendor,
+      }),
+    [currentData, searchQuery, companyFilter, isVendor],
+  );
 
   // Get dashboard statistics from API
   const dashboardStats = useMemo(() => {

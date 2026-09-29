@@ -52,7 +52,7 @@ export const createViewOnlyApi = (
 ) => ({
   getContract: async (contractId: string) => {
     const res = (await client.get({
-      url: `/user/contract/${contractId}`,
+      url: `/contract/user/contracts/${contractId}`,
     })) as ApiResponse<ViewOnlyContractDTO>;
     return {
       ...res,
@@ -64,7 +64,7 @@ export const createViewOnlyApi = (
   },
   listRfis: async (contractId: string, query?: ManagerListRfisQuery) => {
     const res = await client.get({
-      url: `/user/contracts/${contractId}/rfi`,
+      url: `/contract/user/contracts/${contractId}/rfi`,
       config: query ? { params: query } : undefined,
     });
     return res as ApiResponse<{
