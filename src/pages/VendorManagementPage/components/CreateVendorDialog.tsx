@@ -41,7 +41,7 @@ type CreateVendorPayload = {
   name: string;
   categoryId: string;
   primaryEmail: string;
-  vendorId: string;
+  vendorId?: string;
   secondaryEmails?: string[];
 };
 
@@ -79,7 +79,7 @@ const vendorSchema = yup.object({
       })
     )
     .optional(),
-  vendorId: yup.string().required("Vendor ID is required"),
+  vendorId: yup.string().optional(),
 });
 
 type VendorFormData = yup.InferType<typeof vendorSchema>;
@@ -230,7 +230,7 @@ const CreateVendorDialog: React.FC<CreateVendorDialogProps> = ({
         primaryEmail: data.primaryEmail,
         secondaryEmails:
           data.secondaryEmails?.map((contact) => contact.text) || [],
-        vendorId: data.vendorId,
+        ...(data.vendorId ? { vendorId: data.vendorId } : {}),
       };
 
       await createVendor(payload);
