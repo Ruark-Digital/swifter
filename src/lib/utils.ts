@@ -324,6 +324,63 @@ export const ensureUtcInstant = (
   return v;
 };
 
+/**
+ * Render a datetime as the wall-clock time it was entered in, plus its zone
+ * label — never shifted into the viewer's own timezone.
+ *
+ * Solicitation datetimes are wall-clock times in the solicitation's declared
+ * `timezone` (the picker stores abbreviations like "EST"). The BE serializes
+ * them as that same wall clock stamped UTC — e.g. 1 PM EST arrives as
+ * `2026-10-05T13:00:00.000Z`. `formatDateTZ` reads that instant with local
+ * getters and so shifts it into the viewer's zone (QA: a 1 PM EST event showed
+ * as 3 PM for a UTC+2 viewer, and its `_timezone` arg was ignored). Echo the
+ * stored wall-clock digits (via UTC getters) and append the zone label, so
+ * every viewer sees the time exactly as it was entered.
+ */
+export function formatWallClockWithZone(
+  dateInput: string | Date | undefined | null,
+  formatStr?: string,
+  zoneAbbrev?: string
+): string {
+  if (!dateInput) return "N/A";
+  const pattern = formatStr || "MMM dd, yyyy hh:mm a";
+  const label = (zoneAbbrev ?? "").trim();
+  const suffix = label ? ` ${label}` : "";
+
+  try {
+    // Date-only strings carry no time; render the calendar date as-is.
+    if (
+      typeof dateInput === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(dateInput.trim())
+    ) {
+      const [y, m, d] = dateInput.trim().split("-").map(Number);
+      return `${format(new Date(y, m - 1, d), pattern)}${suffix}`;
+    }
+
+    // Coerce to a UTC instant: naive datetimes (no Z/offset) are stored as UTC
+    // by the BE, so treat them as such; Z/offset strings already are one.
+    const normalized =
+      typeof dateInput === "string" ? ensureUtcInstant(dateInput) : dateInput;
+    const instant =
+      typeof normalized === "string" ? new Date(normalized) : normalized;
+    if (!(instant instanceof Date) || isNaN(instant.getTime())) return "N/A";
+
+    // Rebuild a local Date from the instant's UTC fields, so date-fns `format`
+    // echoes the stored wall-clock digits regardless of the viewer's zone.
+    const local = new Date(
+      instant.getUTCFullYear(),
+      instant.getUTCMonth(),
+      instant.getUTCDate(),
+      instant.getUTCHours(),
+      instant.getUTCMinutes(),
+      instant.getUTCSeconds()
+    );
+    return `${format(local, pattern)}${suffix}`;
+  } catch {
+    return "N/A";
+  }
+}
+
 // Fixed UTC offsets (minutes east of UTC) for the timezone abbreviations in
 // `src/assets/timezones.json` — the same labels the app's timezone pickers store
 // and the BE returns on the dashboard activity feeds. Used only for zones that
