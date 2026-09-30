@@ -46,7 +46,7 @@ import {
   getStatusLabel,
   getStatusColorClass,
 } from "@/lib/solicitationStatusUtils";
-import { formatDateTZ } from "@/lib/utils";
+import { formatDateTZ, formatWallClockWithZone } from "@/lib/utils";
 import { formatEventType } from "@/lib/solicitationEventUtils";
 
 // Vendor proposal type definition
@@ -1224,9 +1224,9 @@ export const SolicitationDetailPage = () => {
                             </label>
                             <p className="text-gray-900 dark:text-gray-200 font-medium">
                               {event.eventDate
-                                ? formatDateTZ(
+                                ? formatWallClockWithZone(
                                     event.eventDate,
-                                    "MMMM dd, yyyy KK:mm a",
+                                    "MMMM dd, yyyy hh:mm a",
                                     solicitation.timezone,
                                   )
                                 : "N/A"}
@@ -1262,12 +1262,12 @@ export const SolicitationDetailPage = () => {
                         Published Date
                       </label>
                       <p className="text-gray-900 dark:text-gray-200 font-medium">
-                        {formatDateTZ(
+                        {formatWallClockWithZone(
                           // Show the actual publish date; fall back to
                           // createdAt only when the solicitation has not been
                           // published yet (no datePublished from the BE).
                           solicitation.datePublished ?? solicitation.createdAt,
-                          "MMMM dd, yyyy KK:mm a",
+                          "MMMM dd, yyyy hh:mm a",
                           solicitation.timezone
                         )}
                       </p>
@@ -1277,9 +1277,9 @@ export const SolicitationDetailPage = () => {
                         Submission Deadline
                       </label>
                       <p className="text-gray-900 dark:text-gray-200 font-medium">
-                        {formatDateTZ(
+                        {formatWallClockWithZone(
                           solicitation.submissionDeadline,
-                          "MMMM dd, yyyy KK:mm a",
+                          "MMMM dd, yyyy hh:mm a",
                           solicitation.timezone
                         )}
                       </p>
@@ -1292,9 +1292,9 @@ export const SolicitationDetailPage = () => {
                             Old Submission Deadline
                           </label>
                           <p className="text-gray-900 dark:text-gray-200 font-medium">
-                            {formatDateTZ(
+                            {formatWallClockWithZone(
                               solicitation.deadlineUpdate[0].submissionDeadline,
-                              "MMMM dd, yyyy KK:mm a",
+                              "MMMM dd, yyyy hh:mm a",
                               solicitation.timezone
                             )}
                           </p>
@@ -1314,9 +1314,9 @@ export const SolicitationDetailPage = () => {
                           Question Acceptance Deadline
                         </label>
                         <p className="text-gray-900 dark:text-gray-200 font-medium">
-                          {formatDateTZ(
+                          {formatWallClockWithZone(
                             solicitation.questionDeadline,
-                            "MMMM dd, yyyy KK:mm a",
+                            "MMMM dd, yyyy hh:mm a",
                             solicitation.timezone
                           )}
                         </p>
@@ -1338,9 +1338,9 @@ export const SolicitationDetailPage = () => {
                           Bid Intent Deadline
                         </label>
                         <p className="text-gray-900 dark:text-gray-200 font-medium">
-                          {formatDateTZ(
+                          {formatWallClockWithZone(
                             solicitation.bidIntentDeadline,
-                            "MMMM dd, yyyy KK:mm a",
+                            "MMMM dd, yyyy hh:mm a",
                             solicitation.timezone
                           )}
                         </p>
@@ -1508,7 +1508,7 @@ export const SolicitationDetailPage = () => {
                     Submission Deadline
                   </label>
                   <p className="text-gray-900 dark:text-gray-200 font-medium">
-                    {formatDateTZ(
+                    {formatWallClockWithZone(
                       solicitation.submissionDeadline,
                       "yyyy-MM-dd HH:mm",
                       solicitation.timezone
@@ -1524,7 +1524,7 @@ export const SolicitationDetailPage = () => {
                         Old Submission Deadline
                       </label>
                       <p className="text-gray-900 dark:text-gray-200 font-medium">
-                        {formatDateTZ(
+                        {formatWallClockWithZone(
                           solicitation.deadlineUpdate[0].submissionDeadline,
                           "yyyy-MM-dd HH:mm",
                           solicitation.timezone
@@ -1539,7 +1539,7 @@ export const SolicitationDetailPage = () => {
                       Questions Acceptance Deadline
                     </label>
                     <p className="text-gray-900 dark:text-gray-200 font-medium">
-                      {formatDateTZ(
+                      {formatWallClockWithZone(
                         solicitation.questionDeadline,
                         "MMM d, yyyy hh:mm aaa",
                         solicitation.timezone
