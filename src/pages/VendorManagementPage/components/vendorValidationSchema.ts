@@ -17,7 +17,7 @@ export const vendorSchema = yup.object({
       })
     )
     .optional(),
-  vendorId: yup.string().required("Vendor ID is required"),
+  vendorId: yup.string().optional(),
 });
 
 // Infer the TypeScript type from the schema
