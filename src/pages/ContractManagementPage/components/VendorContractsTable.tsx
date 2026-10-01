@@ -210,6 +210,8 @@ type VendorContractsTableProps = {
   statusFilter?: string;
   onStatusFilterChange?: (status: string) => void;
   enableCompanyFilter?: boolean;
+  onCompanyFilterChange?: (company: string) => void;
+  companyOptions?: { label: string; value: string }[];
   enableTakeOver?: boolean;
   onRequestTakeOver?: (contractId: string) => void;
   isRequestingTakeOver?: boolean;
@@ -225,12 +227,13 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
   statusFilter,
   onStatusFilterChange,
   enableCompanyFilter,
+  onCompanyFilterChange,
+  companyOptions = [{ label: "All", value: "all" }],
   enableTakeOver,
   onRequestTakeOver,
   isRequestingTakeOver,
 }) => {
   const [search, setSearch] = React.useState("");
-  const [companyFilter, setCompanyFilter] = React.useState("all");
   const [openMenuRowId, setOpenMenuRowId] = React.useState<string | null>(null);
   const [takeOverId, setTakeOverId] = React.useState<string | null>(null);
   const [localPagination, setLocalPagination] = React.useState<PaginationState>({
@@ -264,28 +267,17 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
     );
   }, [isReadOnly, openMenuRowId, enableTakeOver]);
 
+  // Search + status stay client-side (current page), as before. Company is now
+  // filtered server-side via the `company` query param (QA #129), so it is not
+  // applied here.
   const filteredRows = React.useMemo(
     () =>
       applyVendorContractFilters(rows, {
         search,
         statusFilter,
-        companyFilter,
-        enableCompanyFilter,
       }),
-    [rows, search, statusFilter, companyFilter, enableCompanyFilter],
+    [rows, search, statusFilter],
   );
-
-  // Distinct companies present on the current page, for the PM's Company
-  // filter dropdown. Scoped to the current page like the search/status filters.
-  const companyOptions = React.useMemo(() => {
-    const distinct = Array.from(
-      new Set(rows.map((row) => row.company).filter((c) => c && c !== "-")),
-    ).sort((a, b) => a.localeCompare(b));
-    return [
-      { label: "All", value: "all" },
-      ...distinct.map((c) => ({ label: c, value: c })),
-    ];
-  }, [rows]);
 
   // DropdownFilters emits (filterTitle, value) scalars — route each to the
   // matching filter state and reset to the first page as the result set changes.
@@ -294,7 +286,7 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
       onStatusFilterChange?.(value);
       setPagination((prev) => ({ ...prev, pageIndex: 0 }));
     } else if (filterTitle === "Company") {
-      setCompanyFilter(value);
+      onCompanyFilterChange?.(value);
       setPagination((prev) => ({ ...prev, pageIndex: 0 }));
     }
   };
