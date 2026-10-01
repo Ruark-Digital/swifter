@@ -875,7 +875,7 @@ const AnalyticsTab: React.FC<Props> = ({
                 margin={{ top: 4, right: 8, left: 4, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} interval={0} />
                 <YAxis
                   axisLine={false}
                   tickLine={false}

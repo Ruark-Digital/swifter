@@ -151,6 +151,13 @@ type VendorContractListResponse = {
   data: { contracts: VendorContractApi[]; totalContracts: number };
 };
 
+type VendorCompany = { _id: string; name: string };
+
+type VendorCompaniesResponse = {
+  message: string;
+  data: VendorCompany[];
+};
+
 const useContractsStats = (enabled = true) => {
   const queryKey = useUserQueryKey(["contracts-stats"]);
   return useQuery<ContractStatsResponse, ApiResponseError>({
@@ -273,11 +280,13 @@ const useVendorContracts = (
   pagination: PaginationState,
   enabled = true,
   asPM = false,
+  company = "all",
 ) => {
   const queryKey = useUserQueryKey([
     asPM ? "pm-contracts" : "vendor-contracts",
     pagination.pageIndex,
     pagination.pageSize,
+    company,
   ]);
   const url = asPM
     ? "/contract/vendor/contracts/me"
@@ -291,10 +300,30 @@ const useVendorContracts = (
           params: {
             page: pagination.pageIndex + 1,
             limit: pagination.pageSize,
+            // BE-backed company filter (QA #129): send the selected company's
+            // ObjectId so results are scoped across all pages, not just the
+            // current one. Omitted when "all" is selected.
+            ...(company && company !== "all" ? { company } : {}),
           },
         },
       });
       return res.data as VendorContractListResponse;
+    },
+    enabled,
+    staleTime: 60000,
+  });
+};
+
+// Companies the authenticated vendor/PM can access, used to populate the
+// Company filter dropdown with the full list (not just companies on the
+// current page). Feeds the `company` query param above.
+const useVendorCompanies = (enabled = true) => {
+  const queryKey = useUserQueryKey(["vendor-companies"]);
+  return useQuery<VendorCompaniesResponse, ApiResponseError>({
+    queryKey,
+    queryFn: async () => {
+      const res = await getRequest({ url: "/contract/vendor/companies" });
+      return res.data as VendorCompaniesResponse;
     },
     enabled,
     staleTime: 60000,
@@ -433,6 +462,9 @@ const ContractManagementPage: React.FC = () => {
       pageSize: 10,
     });
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
+  // Selected company filter (QA #129), shared across the vendor/PM tabs and
+  // reset on tab switch like statusFilter. Holds a company ObjectId or "all".
+  const [companyFilter, setCompanyFilter] = React.useState<string>("all");
 
   const { data: statsData } = useContractsStats(managerQueriesEnabled);
   const { data: allContractsData, isLoading: isAllContractsLoading } =
@@ -451,9 +483,24 @@ const ContractManagementPage: React.FC = () => {
       vendorPagination,
       isContractVendorLike,
       isProjectManager,
+      companyFilter,
     );
   const { data: pmAllContractsData, isLoading: isPmAllContractsLoading } =
-    useVendorContracts(pmAllPagination, isProjectManager, false);
+    useVendorContracts(pmAllPagination, isProjectManager, false, companyFilter);
+  const { data: vendorCompaniesData } =
+    useVendorCompanies(isContractVendorLike);
+
+  // Full company list for the filter dropdown; value is the ObjectId the BE
+  // expects on the `company` query param.
+  const companyOptions = React.useMemo(() => {
+    const list = vendorCompaniesData?.data ?? [];
+    return [
+      { label: "All", value: "all" },
+      ...list
+        .filter((c) => c?.name)
+        .map((c) => ({ label: c.name, value: c._id })),
+    ];
+  }, [vendorCompaniesData]);
 
   const stats = isApprover ? approverStatsData?.data : statsData?.data;
   const statsCounts = stats
@@ -556,7 +603,10 @@ const ContractManagementPage: React.FC = () => {
             <Tabs
               defaultValue="all"
               className="w-full bg-transparent space-y-4"
-              onValueChange={() => setStatusFilter("all")}
+              onValueChange={() => {
+                setStatusFilter("all");
+                setCompanyFilter("all");
+              }}
             >
               <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
                 <TabsTrigger
@@ -584,6 +634,8 @@ const ContractManagementPage: React.FC = () => {
                   statusFilter={statusFilter}
                   onStatusFilterChange={setStatusFilter}
                   enableCompanyFilter
+                  onCompanyFilterChange={setCompanyFilter}
+                  companyOptions={companyOptions}
                   enableTakeOver
                   onRequestTakeOver={(id) => takeOverMutation.mutate(id)}
                   isRequestingTakeOver={takeOverMutation.isPending}
@@ -600,6 +652,8 @@ const ContractManagementPage: React.FC = () => {
                   statusFilter={statusFilter}
                   onStatusFilterChange={setStatusFilter}
                   enableCompanyFilter
+                  onCompanyFilterChange={setCompanyFilter}
+                  companyOptions={companyOptions}
                 />
               </TabsContent>
             </Tabs>
@@ -613,6 +667,9 @@ const ContractManagementPage: React.FC = () => {
               setPagination={setVendorPagination}
               statusFilter={statusFilter}
               onStatusFilterChange={setStatusFilter}
+              enableCompanyFilter
+              onCompanyFilterChange={setCompanyFilter}
+              companyOptions={companyOptions}
             />
           )}
         </>
