@@ -76,6 +76,9 @@ type BidComparison = {
   score: number;
   rank: number;
   rankType: "first" | "second" | "third" | "other";
+  currency: string;
+  companyCurrency: string;
+  rate: number | null;
 };
 
 type Document = {
@@ -501,6 +504,9 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
             : item.rank === 3
             ? ("third" as const)
             : ("other" as const),
+        currency: item.currency || "USD",
+        companyCurrency: item.companyCurrency || "USD",
+        rate: item.rate ?? null,
       })
     );
   }, [bidComparisonData]);
@@ -699,9 +705,34 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
       header: "Total Price",
       cell: ({ row }) => (
         <span className="font-medium">
-          ${row.original.totalPrice.toLocaleString()}
+          {row.original.totalPrice.toLocaleString("en-US", {
+            style: "currency",
+            currency: row.original.currency,
+          })}
         </span>
       ),
+    },
+    {
+      accessorKey: "currency",
+      header: "Proposal Currency",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.currency}</span>
+      ),
+    },
+    {
+      accessorKey: "rate",
+      header: "Exchange Rate",
+      cell: ({ row }) => {
+        const { rate, companyCurrency, currency } = row.original;
+        if (rate == null || currency === companyCurrency) {
+          return <span className="text-muted-foreground">-</span>;
+        }
+        return (
+          <span className="text-muted-foreground">
+            1 {companyCurrency} = {rate.toLocaleString()} {currency}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "submissionDate",

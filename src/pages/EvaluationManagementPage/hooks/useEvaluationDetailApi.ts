@@ -218,6 +218,12 @@ export type BidComparisonItem = {
   score: number | null;
   submission: string | null; // ISO date string
   rank: number | null;
+  // Currency the vendor submitted their proposal in (e.g. "NGN").
+  currency?: string | null;
+  // The buying company's base currency (e.g. "CAD").
+  companyCurrency?: string | null;
+  // Conversion rate from the company currency to the proposal currency.
+  rate?: number | null;
 };
 
 export const useEvaluationBidComparison = (evaluationId: string) => {
