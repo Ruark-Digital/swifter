@@ -276,17 +276,36 @@ const useVendorContractsStats = (enabled = true) => {
   });
 };
 
+// Status values the BE `status` query param accepts. The vendor Status
+// dropdown is aligned to this enum so a selection maps 1:1 to the API; the
+// stats-card "closed" aggregate has no BE equivalent and stays client-side.
+const VENDOR_BE_STATUSES = [
+  "active",
+  "completed",
+  "suspended",
+  "terminated",
+  "expired",
+] as const;
+
 const useVendorContracts = (
   pagination: PaginationState,
   enabled = true,
   asPM = false,
   company = "all",
+  status = "all",
+  date = "",
 ) => {
+  // Only forward a status the BE understands; "all"/"closed"/etc. are omitted.
+  const beStatus = (VENDOR_BE_STATUSES as readonly string[]).includes(status)
+    ? status
+    : "";
   const queryKey = useUserQueryKey([
     asPM ? "pm-contracts" : "vendor-contracts",
     pagination.pageIndex,
     pagination.pageSize,
     company,
+    beStatus,
+    date,
   ]);
   const url = asPM
     ? "/contract/vendor/contracts/me"
@@ -304,6 +323,10 @@ const useVendorContracts = (
             // ObjectId so results are scoped across all pages, not just the
             // current one. Omitted when "all" is selected.
             ...(company && company !== "all" ? { company } : {}),
+            // BE-backed status + date filters: scoped server-side across all
+            // pages. date is a single day (YYYY-MM-DD) per the API.
+            ...(beStatus ? { status: beStatus } : {}),
+            ...(date ? { date } : {}),
           },
         },
       });
@@ -465,6 +488,9 @@ const ContractManagementPage: React.FC = () => {
   // Selected company filter (QA #129), shared across the vendor/PM tabs and
   // reset on tab switch like statusFilter. Holds a company ObjectId or "all".
   const [companyFilter, setCompanyFilter] = React.useState<string>("all");
+  // Selected date filter for the vendor/PM lists — a single day (YYYY-MM-DD)
+  // sent to the BE `date` param, or "" for no date filter. Reset on tab switch.
+  const [dateFilter, setDateFilter] = React.useState<string>("");
 
   const { data: statsData } = useContractsStats(managerQueriesEnabled);
   const { data: allContractsData, isLoading: isAllContractsLoading } =
@@ -484,9 +510,18 @@ const ContractManagementPage: React.FC = () => {
       isContractVendorLike,
       isProjectManager,
       companyFilter,
+      statusFilter,
+      dateFilter,
     );
   const { data: pmAllContractsData, isLoading: isPmAllContractsLoading } =
-    useVendorContracts(pmAllPagination, isProjectManager, false, companyFilter);
+    useVendorContracts(
+      pmAllPagination,
+      isProjectManager,
+      false,
+      companyFilter,
+      statusFilter,
+      dateFilter,
+    );
   const { data: vendorCompaniesData } =
     useVendorCompanies(isContractVendorLike);
 
@@ -606,6 +641,7 @@ const ContractManagementPage: React.FC = () => {
               onValueChange={() => {
                 setStatusFilter("all");
                 setCompanyFilter("all");
+                setDateFilter("");
               }}
             >
               <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
@@ -636,6 +672,8 @@ const ContractManagementPage: React.FC = () => {
                   enableCompanyFilter
                   onCompanyFilterChange={setCompanyFilter}
                   companyOptions={companyOptions}
+                  dateFilter={dateFilter}
+                  onDateFilterChange={setDateFilter}
                   enableTakeOver
                   onRequestTakeOver={(id) => takeOverMutation.mutate(id)}
                   isRequestingTakeOver={takeOverMutation.isPending}
@@ -654,6 +692,8 @@ const ContractManagementPage: React.FC = () => {
                   enableCompanyFilter
                   onCompanyFilterChange={setCompanyFilter}
                   companyOptions={companyOptions}
+                  dateFilter={dateFilter}
+                  onDateFilterChange={setDateFilter}
                 />
               </TabsContent>
             </Tabs>
@@ -670,6 +710,8 @@ const ContractManagementPage: React.FC = () => {
               enableCompanyFilter
               onCompanyFilterChange={setCompanyFilter}
               companyOptions={companyOptions}
+              dateFilter={dateFilter}
+              onDateFilterChange={setDateFilter}
             />
           )}
         </>

@@ -526,29 +526,21 @@ const AnalyticsTab: React.FC<Props> = ({
 
   const labels = activities?.current?.labels ?? [];
   const series = activities?.current?.series;
-  // Aggregate by month to avoid duplicate X-axis labels when API returns weekly data
-  const activityChartData = (() => {
-    const monthMap = new Map<string, {
-      change: number; claims: number; invoice: number; rfi: number; ncr: number; deliverables: number;
-    }>();
-    // Preserve insertion order for correct month ordering
-    labels.forEach((label, idx) => {
-      const d = new Date(label);
-      const monthKey = Number.isNaN(d.getTime())
-        ? String(label)
-        : new Intl.DateTimeFormat(undefined, { month: "short" }).format(d);
-      const existing = monthMap.get(monthKey) ?? { change: 0, claims: 0, invoice: 0, rfi: 0, ncr: 0, deliverables: 0 };
-      monthMap.set(monthKey, {
-        change: existing.change + (series?.change?.[idx] ?? 0),
-        claims: existing.claims + (series?.claims?.[idx] ?? 0),
-        invoice: existing.invoice + (series?.invoice?.[idx] ?? 0),
-        rfi: existing.rfi + (series?.rfi?.[idx] ?? 0),
-        ncr: existing.ncr + (series?.ncr?.[idx] ?? 0),
-        deliverables: existing.deliverables + (series?.deliverables?.[idx] ?? 0),
-      });
-    });
-    return Array.from(monthMap.entries()).map(([day, values]) => ({ day, ...values }));
-  })();
+  // Render the BE labels directly, one point per label paired with its series
+  // value by index. The BE already returns range-appropriate, display-ready
+  // labels for YTD / 90 / 60 / 7 days, so re-bucketing by month here broke the
+  // range filters (daily ranges collapsed into a handful of month bars) and
+  // mangled the axis (`new Date(label)` shifted Jan into "Dec" across time
+  // zones). Mirrors the dashboard transformer's labels→points mapping.
+  const activityChartData = labels.map((label, idx) => ({
+    day: label,
+    change: series?.change?.[idx] ?? 0,
+    claims: series?.claims?.[idx] ?? 0,
+    invoice: series?.invoice?.[idx] ?? 0,
+    rfi: series?.rfi?.[idx] ?? 0,
+    ncr: series?.ncr?.[idx] ?? 0,
+    deliverables: series?.deliverables?.[idx] ?? 0,
+  }));
 
   const deliverySummaryTotals = {
     total: formatNumber(deliverySummary?.summary?.total),
@@ -875,7 +867,16 @@ const AnalyticsTab: React.FC<Props> = ({
                 margin={{ top: 4, right: 8, left: 4, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} interval={0} />
+                <XAxis
+                  dataKey="day"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10 }}
+                  // Show every label for sparse ranges (e.g. YTD months) so none
+                  // are skipped; let Recharts thin dense ranges (e.g. daily) to
+                  // keep the axis readable.
+                  interval={activityChartData.length > 12 ? "preserveStartEnd" : 0}
+                />
                 <YAxis
                   axisLine={false}
                   tickLine={false}

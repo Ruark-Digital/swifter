@@ -83,6 +83,8 @@ const formatContractStatus = (status?: ContractDetail["status"]) => {
     return { label: "Terminated", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" };
   if (status === "suspended")
     return { label: "Suspended", className: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" };
+  if (status === "rejection")
+    return { label: "Rejected", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" };
   return { label: "Unknown", className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" };
 };
 
@@ -501,7 +503,8 @@ const ContractDetailPage: React.FC = () => {
   const isFrozenStatus =
     contract?.status === "terminated" ||
     contract?.status === "suspended" ||
-    contract?.status === "expired";
+    contract?.status === "expired" ||
+    contract?.status === "rejection";
   const actionsDisabled =
     contract?.status === "pending_approval" || isFrozenStatus;
   // QA #112: a company admin may amend an EXPIRED contract (Amendments tab only)
