@@ -70,12 +70,18 @@ const DocumentsTabContent: React.FC<Props> = ({ files, contractId, onUpdated, ef
                 }
               }}
               // Owners may edit any non-terminal contract; live (non-draft)
-              // edits re-enter the approval chain via EditContract (QA #118).
-              // Terminal states stay locked. Mirrors the Overview tab gate.
+              // edits re-enter the approval chain via EditContract (QA #118). A
+              // rejected contract is editable by the managing CM so they can
+              // revise and reopen it. Terminal states stay locked. Mirrors the
+              // Overview tab gate.
               disabled={
-                !["draft", "pending_approval", "active", "publish"].includes(
-                  String(status ?? ""),
-                )
+                ![
+                  "draft",
+                  "pending_approval",
+                  "active",
+                  "publish",
+                  "rejection",
+                ].includes(String(status ?? ""))
               }
             >
               Edit Contract
