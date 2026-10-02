@@ -500,11 +500,16 @@ const ContractDetailPage: React.FC = () => {
   // Freeze mutating tab actions once the contract enters an end-state
   // (terminated / suspended / expired) — page stays browsable for audit, but
   // writes stop.
+  // A rejected contract is an end-state for everyone EXCEPT the managing CM
+  // (contract manager / procurement owner), who can edit and reopen it (sending
+  // it back through the approval chain). Vendor/PM, approvers and view-only stay
+  // frozen.
+  const isRejected = contract?.status === "rejection";
   const isFrozenStatus =
     contract?.status === "terminated" ||
     contract?.status === "suspended" ||
     contract?.status === "expired" ||
-    contract?.status === "rejection";
+    (isRejected && !(isManager && isContractOwner));
   const actionsDisabled =
     contract?.status === "pending_approval" || isFrozenStatus;
   // QA #112: a company admin may amend an EXPIRED contract (Amendments tab only)
