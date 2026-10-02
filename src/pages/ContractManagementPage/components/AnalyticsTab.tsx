@@ -526,21 +526,41 @@ const AnalyticsTab: React.FC<Props> = ({
 
   const labels = activities?.current?.labels ?? [];
   const series = activities?.current?.series;
-  // Render the BE labels directly, one point per label paired with its series
-  // value by index. The BE already returns range-appropriate, display-ready
-  // labels for YTD / 90 / 60 / 7 days, so re-bucketing by month here broke the
-  // range filters (daily ranges collapsed into a handful of month bars) and
-  // mangled the axis (`new Date(label)` shifted Jan into "Dec" across time
-  // zones). Mirrors the dashboard transformer's labels→points mapping.
-  const activityChartData = labels.map((label, idx) => ({
-    day: label,
-    change: series?.change?.[idx] ?? 0,
-    claims: series?.claims?.[idx] ?? 0,
-    invoice: series?.invoice?.[idx] ?? 0,
-    rfi: series?.rfi?.[idx] ?? 0,
-    ncr: series?.ncr?.[idx] ?? 0,
-    deliverables: series?.deliverables?.[idx] ?? 0,
-  }));
+  // Aggregate the BE's (sub-monthly) labels into month buckets so the X-axis
+  // reads "Jan, Feb, Mar, …" instead of raw YYYY-MM-DD dates. Each selected
+  // range still produces a distinct set of months (YTD spans the year, 90/60/7
+  // days fewer months), so the range filters stay meaningful. The month key is
+  // derived from the date parts directly (not `new Date(label)`) to avoid the
+  // timezone shift that previously turned January into a stray "Dec".
+  const monthShort = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+  const activityChartData = (() => {
+    type Bucket = {
+      change: number; claims: number; invoice: number;
+      rfi: number; ncr: number; deliverables: number;
+    };
+    const order: string[] = [];
+    const byMonth = new Map<string, Bucket>();
+    labels.forEach((label, idx) => {
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(label);
+      const key = m ? monthShort[Number(m[2]) - 1] ?? label : label;
+      let bucket = byMonth.get(key);
+      if (!bucket) {
+        bucket = { change: 0, claims: 0, invoice: 0, rfi: 0, ncr: 0, deliverables: 0 };
+        byMonth.set(key, bucket);
+        order.push(key);
+      }
+      bucket.change += series?.change?.[idx] ?? 0;
+      bucket.claims += series?.claims?.[idx] ?? 0;
+      bucket.invoice += series?.invoice?.[idx] ?? 0;
+      bucket.rfi += series?.rfi?.[idx] ?? 0;
+      bucket.ncr += series?.ncr?.[idx] ?? 0;
+      bucket.deliverables += series?.deliverables?.[idx] ?? 0;
+    });
+    return order.map((day) => ({ day, ...byMonth.get(day)! }));
+  })();
 
   const deliverySummaryTotals = {
     total: formatNumber(deliverySummary?.summary?.total),
