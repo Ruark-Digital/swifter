@@ -10,6 +10,14 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 import VendorEmptyState from "./VendorEmptyState";
 import { Link } from "react-router-dom";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
@@ -212,6 +220,8 @@ type VendorContractsTableProps = {
   enableCompanyFilter?: boolean;
   onCompanyFilterChange?: (company: string) => void;
   companyOptions?: { label: string; value: string }[];
+  dateFilter?: string;
+  onDateFilterChange?: (date: string) => void;
   enableTakeOver?: boolean;
   onRequestTakeOver?: (contractId: string) => void;
   isRequestingTakeOver?: boolean;
@@ -229,6 +239,8 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
   enableCompanyFilter,
   onCompanyFilterChange,
   companyOptions = [{ label: "All", value: "all" }],
+  dateFilter,
+  onDateFilterChange,
   enableTakeOver,
   onRequestTakeOver,
   isRequestingTakeOver,
@@ -321,35 +333,64 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
                 }
                 aria-disabled={isReadOnly}
               >
+                {/* Single-date filter (BE `date` param is a single YYYY-MM-DD
+                    day, so a date picker rather than a range dropdown). */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      data-testid="vendor-date-filter"
+                      disabled={isReadOnly}
+                    >
+                      <CalendarIcon className="h-4 w-4 mr-2" />
+                      {dateFilter
+                        ? format(new Date(`${dateFilter}T00:00:00`), "dd MMM yyyy")
+                        : "Date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="single"
+                      selected={
+                        dateFilter
+                          ? new Date(`${dateFilter}T00:00:00`)
+                          : undefined
+                      }
+                      onSelect={(d) => {
+                        onDateFilterChange?.(d ? format(d, "yyyy-MM-dd") : "");
+                        setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                      }}
+                    />
+                    {dateFilter && (
+                      <div className="border-t p-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full"
+                          data-testid="vendor-date-filter-clear"
+                          onClick={() => {
+                            onDateFilterChange?.("");
+                            setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                          }}
+                        >
+                          Clear date
+                        </Button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
                 <DropdownFilters
                   filters={[
-                    {
-                      title: "Date",
-                      showIcon: true,
-                      options: [
-                        {
-                          hasOptions: true,
-                          value: "date",
-                          label: "Date Created",
-                          subOptions: [
-                            { title: "All", value: "all" },
-                            { title: "Today", value: "today" },
-                            { title: "Last 7 Days", value: "last7days" },
-                            { title: "Last 30 Days", value: "last30days" },
-                            { title: "Custom", value: "custom" },
-                          ],
-                        },
-                      ],
-                    },
                     {
                       title: "Status",
                       showIcon: true,
                       options: [
                         { label: "All", value: "all" },
                         { label: "Active", value: "active" },
+                        { label: "Completed", value: "completed" },
                         { label: "Suspended", value: "suspended" },
-                        { label: "Closed", value: "closed" },
                         { label: "Terminated", value: "terminated" },
+                        { label: "Expired", value: "expired" },
                       ],
                     },
                     ...(enableCompanyFilter
