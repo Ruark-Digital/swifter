@@ -699,11 +699,13 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   const statusLabel = detail?.status
     ? `${detail.status.charAt(0).toUpperCase()}${detail.status.slice(1)}`
     : summary.status;
-  // Once the amendment status is terminal, the approval lifecycle is over,
-  // so the manager time-impact routing step (Assign Approval) no longer applies.
+  // An amendment is only *finalized* once it's approved. A "rejected" top-level
+  // status is NOT terminal — the CM can modify & resubmit, and the vendor can
+  // re-accept, after which the manager approval-routing step (Assign Approval)
+  // must still appear. (The BE can also leave `status` stale at "rejected" after
+  // a modify→re-accept cycle, so treating it as finalized wrongly hid routing.)
   const normalizedStatus = (detail?.status ?? "").toString().toLowerCase();
-  const isStatusFinalized =
-    normalizedStatus === "approved" || normalizedStatus === "rejected";
+  const isStatusFinalized = normalizedStatus === "approved";
 
   const timeChange = detail?.changes?.find((c) =>
     ["time", "endDate", "newExpiryDate"].includes(c.field),
@@ -1159,7 +1161,11 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
         {isManager &&
           Boolean(owner) &&
           detail &&
-          (vendorRejected || normalizedStatus === "rejected") &&
+          // Only a *genuine* rejection (vendor rejected, or an assigned approver
+          // rejected) offers Modify & Resubmit. Don't key off the top-level
+          // "rejected" status, which can be stale after the vendor re-accepts —
+          // that case belongs to the Assign Approval step, not resubmission.
+          (vendorRejected || approverStatusValue === "rejected") &&
           renderManagerRejectedAction && (
             <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 p-6">
               <div className="flex justify-end">
