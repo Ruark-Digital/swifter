@@ -77,6 +77,7 @@ type BidComparison = {
   rank: number;
   rankType: "first" | "second" | "third" | "other";
   currency: string;
+  companyCurrency: string;
 };
 
 type Document = {
@@ -503,6 +504,7 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
             ? ("third" as const)
             : ("other" as const),
         currency: item.currency || "USD",
+        companyCurrency: item.companyCurrency || item.currency || "USD",
       })
     );
   }, [bidComparisonData]);
@@ -699,11 +701,14 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
     {
       accessorKey: "totalPrice",
       header: "Total Price",
+      // Total is converted to the buying company's base currency, so it is
+      // shown with the company currency — not each vendor's proposal currency
+      // (that is surfaced separately in the Proposal Currency column).
       cell: ({ row }) => (
         <span className="font-medium">
           {row.original.totalPrice.toLocaleString("en-US", {
             style: "currency",
-            currency: row.original.currency,
+            currency: row.original.companyCurrency,
           })}
         </span>
       ),
