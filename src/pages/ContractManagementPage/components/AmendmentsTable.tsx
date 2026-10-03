@@ -656,10 +656,24 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   const isOtherCombination =
     normalizedImpact === "others" || normalizedImpact === "other combination";
   const requiresManagerApprovalRouting = isTimeImpact || isOtherCombination;
-  // The BE moved the per-party decisions onto `vendorAction`/`managerAction`
-  // objects (approverStatus stays flat). Read the new shape and fall back to the
-  // legacy flat `vendorStatus` so older payloads keep working.
-  const vendorStatusValue = (
+  // Two distinct signals the BE exposes for the vendor:
+  //  - flat `vendorStatus` is the CURRENT review gate — whose turn it is. It
+  //    flips back to "pending" whenever the amendment is returned to the vendor
+  //    (a CM modification after a rejection, or an approver rejection re-opening
+  //    it), even though the vendor's last recorded decision still reads
+  //    "accepted".
+  //  - `vendorAction.status` is the vendor's LAST decision, used only for the
+  //    display label.
+  // (`approverStatus` is flat; `managerAction` carries the manager/approver-side
+  // decision.) Each read falls back to the other shape so older payloads work.
+  const vendorGate = (
+    detail?.vendorStatus ??
+    (detail as any)?.vendorAction?.status ??
+    ""
+  )
+    .toString()
+    .toLowerCase();
+  const vendorLastAction = (
     (detail as any)?.vendorAction?.status ??
     detail?.vendorStatus ??
     ""
@@ -669,22 +683,15 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   const approverStatusValue = (detail?.approverStatus ?? "")
     .toString()
     .toLowerCase();
-  const managerStatusValue = (
-    (detail as any)?.managerAction?.status ?? ""
-  )
-    .toString()
-    .toLowerCase();
-  const vendorRejected = vendorStatusValue === "rejected";
-  const vendorAccepted =
-    vendorStatusValue === "accepted" || vendorStatusValue === "approved";
-  // When the CM modifies a rejected amendment, the manager/approver action
-  // resets to "pending" while the vendor's prior rejection remains. Surface that
-  // to the vendor as a modification that needs re-review (QA).
-  const amendmentModifiedForVendor =
-    vendorRejected &&
-    (managerStatusValue === "pending" || approverStatusValue === "pending");
-  const vendorCanReview =
-    vendorStatusValue === "pending" || amendmentModifiedForVendor;
+  // The current gate drives whose action is required next.
+  const vendorCanReview = vendorGate === "pending";
+  const vendorAccepted = vendorGate === "accepted" || vendorGate === "approved";
+  const vendorRejected = vendorGate === "rejected";
+  // The amendment has been returned to the vendor for a *fresh* decision (as
+  // opposed to a brand-new amendment they've never seen) — show a heads-up.
+  const amendmentReturnedToVendor =
+    vendorCanReview &&
+    (vendorLastAction === "accepted" || vendorLastAction === "rejected");
   const vendorReason =
     // prefer explicit vendor reason fields if available, otherwise fallback
     (detail as any)?.vendorReason ||
@@ -693,8 +700,8 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
     (detail as any)?.rejectReason ||
     (detail as any)?.reason ||
     undefined;
-  const vendorLabel = vendorStatusValue
-    ? `${vendorStatusValue.charAt(0).toUpperCase()}${vendorStatusValue.slice(1)}`
+  const vendorLabel = vendorLastAction
+    ? `${vendorLastAction.charAt(0).toUpperCase()}${vendorLastAction.slice(1)}`
     : summary.vendorStatus;
   const statusLabel = detail?.status
     ? `${detail.status.charAt(0).toUpperCase()}${detail.status.slice(1)}`
@@ -889,22 +896,21 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
             </TabsList>
 
             <TabsContent value="overview" className="space-y-5">
-              {/* After a vendor rejection, a CM modification re-opens the
-                  amendment for the vendor — tell them it changed and needs a
-                  fresh decision. */}
-              {isProjectManager && amendmentModifiedForVendor && (
+              {/* The amendment has been returned to the vendor for a fresh
+                  decision — after a CM modification or an approver rejection
+                  re-opened it. Tell them it changed and needs a new response. */}
+              {isProjectManager && amendmentReturnedToVendor && (
                 <div className="flex items-start gap-3 rounded-2xl border border-[#2A44671A] bg-[#F8F8F8] p-4 dark:border-slate-700 dark:bg-slate-800">
                   <div className="flex h-8 w-10 items-center justify-center rounded-full border border-[#2A4467] text-[#2A4467] dark:text-slate-100">
                     <AlertTriangle className="h-4 w-4" />
                   </div>
                   <div className="space-y-1">
                     <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
-                      Amendment modified
+                      Amendment returned for review
                     </div>
                     <div className="text-sm text-[#626262] dark:text-slate-400">
-                      The Contract Manager updated this amendment after your
-                      rejection. Please review the changes and accept or reject
-                      again.
+                      This amendment has been updated and returned to you. Please
+                      review the changes and accept or reject again.
                     </div>
                   </div>
                 </div>
@@ -1161,11 +1167,13 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
         {isManager &&
           Boolean(owner) &&
           detail &&
-          // Only a *genuine* rejection (vendor rejected, or an assigned approver
-          // rejected) offers Modify & Resubmit. Don't key off the top-level
-          // "rejected" status, which can be stale after the vendor re-accepts —
-          // that case belongs to the Assign Approval step, not resubmission.
-          (vendorRejected || approverStatusValue === "rejected") &&
+          // Modify & Resubmit is the CM's action only while the amendment is
+          // currently sitting as a VENDOR rejection (vendorGate === "rejected").
+          // An approver rejection returns the amendment to the vendor
+          // (vendorGate flips back to "pending"), so that case is the vendor's
+          // re-review, not the CM's resubmission — and the stale top-level
+          // "rejected" status is ignored here for the same reason.
+          vendorRejected &&
           renderManagerRejectedAction && (
             <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 p-6">
               <div className="flex justify-end">
@@ -1187,7 +1195,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
             </div>
           )}
 
-        {isApprover && detail?.approverStatus === "pending" && (
+        {isApprover && approverStatusValue === "pending" && vendorAccepted && (
           <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 p-6">
             <div className="flex gap-6">
               <button
