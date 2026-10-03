@@ -656,20 +656,45 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   const isOtherCombination =
     normalizedImpact === "others" || normalizedImpact === "other combination";
   const requiresManagerApprovalRouting = isTimeImpact || isOtherCombination;
-  const vendorRejected =
-    (detail?.vendorStatus ?? "").toString().toLowerCase() === "rejected";
+  // The BE moved the per-party decisions onto `vendorAction`/`managerAction`
+  // objects (approverStatus stays flat). Read the new shape and fall back to the
+  // legacy flat `vendorStatus` so older payloads keep working.
+  const vendorStatusValue = (
+    (detail as any)?.vendorAction?.status ??
+    detail?.vendorStatus ??
+    ""
+  )
+    .toString()
+    .toLowerCase();
+  const approverStatusValue = (detail?.approverStatus ?? "")
+    .toString()
+    .toLowerCase();
+  const managerStatusValue = (
+    (detail as any)?.managerAction?.status ?? ""
+  )
+    .toString()
+    .toLowerCase();
+  const vendorRejected = vendorStatusValue === "rejected";
   const vendorAccepted =
-    (detail?.vendorStatus ?? "").toString().toLowerCase() === "accepted" ||
-    (detail?.vendorStatus ?? "").toString().toLowerCase() === "approved";
+    vendorStatusValue === "accepted" || vendorStatusValue === "approved";
+  // When the CM modifies a rejected amendment, the manager/approver action
+  // resets to "pending" while the vendor's prior rejection remains. Surface that
+  // to the vendor as a modification that needs re-review (QA).
+  const amendmentModifiedForVendor =
+    vendorRejected &&
+    (managerStatusValue === "pending" || approverStatusValue === "pending");
+  const vendorCanReview =
+    vendorStatusValue === "pending" || amendmentModifiedForVendor;
   const vendorReason =
     // prefer explicit vendor reason fields if available, otherwise fallback
     (detail as any)?.vendorReason ||
+    (detail as any)?.vendorComment ||
     detail?.comments ||
     (detail as any)?.rejectReason ||
     (detail as any)?.reason ||
     undefined;
-  const vendorLabel = detail?.vendorStatus
-    ? `${detail.vendorStatus.charAt(0).toUpperCase()}${detail.vendorStatus.slice(1)}`
+  const vendorLabel = vendorStatusValue
+    ? `${vendorStatusValue.charAt(0).toUpperCase()}${vendorStatusValue.slice(1)}`
     : summary.vendorStatus;
   const statusLabel = detail?.status
     ? `${detail.status.charAt(0).toUpperCase()}${detail.status.slice(1)}`
@@ -862,6 +887,26 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
             </TabsList>
 
             <TabsContent value="overview" className="space-y-5">
+              {/* After a vendor rejection, a CM modification re-opens the
+                  amendment for the vendor — tell them it changed and needs a
+                  fresh decision. */}
+              {isProjectManager && amendmentModifiedForVendor && (
+                <div className="flex items-start gap-3 rounded-2xl border border-[#2A44671A] bg-[#F8F8F8] p-4 dark:border-slate-700 dark:bg-slate-800">
+                  <div className="flex h-8 w-10 items-center justify-center rounded-full border border-[#2A4467] text-[#2A4467] dark:text-slate-100">
+                    <AlertTriangle className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+                      Amendment modified
+                    </div>
+                    <div className="text-sm text-[#626262] dark:text-slate-400">
+                      The Contract Manager updated this amendment after your
+                      rejection. Please review the changes and accept or reject
+                      again.
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* Top overview grid (varies by impact) */}
               {isTimeImpact && (
                 <div className="grid gap-6 sm:grid-cols-2">
@@ -1067,7 +1112,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
           </Tabs>
         </div>
 
-        {isProjectManager && detail?.vendorStatus === "pending" && (
+        {isProjectManager && vendorCanReview && (
           <div className="sticky bottom-0 w-full border-t border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-950 p-6">
             <div className="flex gap-6">
               <VendorRejectDialog
