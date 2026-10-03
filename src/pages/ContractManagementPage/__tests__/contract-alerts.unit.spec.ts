@@ -55,14 +55,16 @@ test.describe("contractAlerts helpers (unit) — QA #141", () => {
       )
     ).toBe("Change Order 004 is pending manager approval ($5,000,000)");
 
-    // Approver role, no amount formatter → no trailing parens.
+    // A change directive awaits the vendor's response, not approval — the
+    // pendingWith (even a manager's name) is never framed as the approver.
     expect(
       buildPendingApprovalLine({
         entity: "change_directive",
         id: "CD-001",
-        pendingWith: "approver",
+        pendingWith: "Brandon Rivermore",
+        pendingWithRole: "contract_manager",
       })
-    ).toBe("Change Directive 001 is pending approver approval");
+    ).toBe("Change Directive 001 is awaiting the vendor's response");
 
     // Missing pendingWith → generic "is pending approval". Zero amount omitted.
     expect(

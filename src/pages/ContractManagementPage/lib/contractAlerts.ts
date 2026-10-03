@@ -85,8 +85,16 @@ export const buildPendingApprovalLine = (
   const number = extractAlertItemNumber(item?.id);
   const ref = number ? `${label} ${number}` : label;
   const who = (item?.pendingWith ?? "").replace(/\s+/g, " ").trim();
+  const isDirective = (item?.entity ?? "")
+    .toLowerCase()
+    .includes("directive");
   let line: string;
-  if (item?.pendingWithRole && who) {
+  if (isDirective) {
+    // A change directive is issued by the contract manager and does not require
+    // approval — it awaits the vendor/vendor PM's response, not anyone's
+    // approval. Never frame it as "pending {manager}'s approval".
+    line = `${ref} is awaiting the vendor's response`;
+  } else if (item?.pendingWithRole && who) {
     // `pendingWith` is a name → possessive "{Name}'s approval".
     line = `${ref} is pending ${who}'s approval`;
   } else if (who) {
