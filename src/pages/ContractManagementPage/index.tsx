@@ -17,6 +17,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
 import { useToastHandler } from "@/hooks/useToaster";
 import { vendorApi } from "./api/vendorApi";
+import { viewOnlyApi } from "./api/viewOnlyApi";
 import VendorStatsCards from "./components/VendorStatsCards";
 import VendorContractsTable, {
   VendorContractRow,
@@ -217,6 +218,42 @@ const useMyContracts = (pagination: PaginationState, enabled = true) => {
         },
       });
       return res.data as ContractListResponse;
+    },
+    enabled,
+    staleTime: 60000,
+  });
+};
+
+// View Only contract list + stats. Hits the read-only `/contract/user/contracts`
+// surface (QA #102/#103) — the manager endpoints 403 for this role and there is
+// no `/me` variant, so there is no "My Contracts" tab for view-only.
+const useViewOnlyContracts = (pagination: PaginationState, enabled = true) => {
+  const queryKey = useUserQueryKey([
+    "contracts-view-only",
+    pagination.pageIndex,
+    pagination.pageSize,
+  ]);
+  return useQuery<ContractListResponse, ApiResponseError>({
+    queryKey,
+    queryFn: async () => {
+      const res = await viewOnlyApi.listContracts({
+        page: pagination.pageIndex + 1,
+        limit: pagination.pageSize,
+      });
+      return (res as { data: ContractListResponse }).data;
+    },
+    enabled,
+    staleTime: 60000,
+  });
+};
+
+const useViewOnlyContractsStats = (enabled = true) => {
+  const queryKey = useUserQueryKey(["contracts-view-only-stats"]);
+  return useQuery<ContractStatsResponse, ApiResponseError>({
+    queryKey,
+    queryFn: async () => {
+      const res = await viewOnlyApi.getStats();
+      return (res as { data: ContractStatsResponse }).data;
     },
     enabled,
     staleTime: 60000,
@@ -458,8 +495,12 @@ const ContractManagementPage: React.FC = () => {
   const { isVendor, isProjectManager, isApprover, isViewOnly, isCompanyAdmin } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
-  const managerQueriesEnabled = !isContractVendorLike && !isApprover;
+  // View-only uses the read-only `/user/contracts` surface, not the manager one
+  // (QA #102/#103), so keep the manager queries off for this role.
+  const managerQueriesEnabled =
+    !isContractVendorLike && !isApprover && !isViewOnly;
   const approverQueriesEnabled = isApprover;
+  const viewOnlyQueriesEnabled = isViewOnly;
 
   const [allPagination, setAllPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -524,6 +565,10 @@ const ContractManagementPage: React.FC = () => {
     );
   const { data: vendorCompaniesData } =
     useVendorCompanies(isContractVendorLike);
+  const { data: viewOnlyStatsData } =
+    useViewOnlyContractsStats(viewOnlyQueriesEnabled);
+  const { data: viewOnlyContractsData, isLoading: isViewOnlyContractsLoading } =
+    useViewOnlyContracts(allPagination, viewOnlyQueriesEnabled);
 
   // Full company list for the filter dropdown; value is the ObjectId the BE
   // expects on the `company` query param.
@@ -537,7 +582,11 @@ const ContractManagementPage: React.FC = () => {
     ];
   }, [vendorCompaniesData]);
 
-  const stats = isApprover ? approverStatsData?.data : statsData?.data;
+  const stats = isApprover
+    ? approverStatsData?.data
+    : isViewOnly
+      ? viewOnlyStatsData?.data
+      : statsData?.data;
   const statsCounts = stats
     ? {
         all: stats.all,
@@ -554,6 +603,10 @@ const ContractManagementPage: React.FC = () => {
   const profileCurrency = user?.currency;
   const allContractsRows = mapContractsToRows(allContractsData?.data.contracts, profileCurrency);
   const myContractsRows = mapContractsToRows(myContractsData?.data.contracts, profileCurrency);
+  const viewOnlyContractsRows = mapContractsToRows(
+    viewOnlyContractsData?.data.contracts,
+    profileCurrency,
+  );
   const approverContractsRows = mapContractsToRows(
     approverContractsData?.data.contracts,
     profileCurrency,
@@ -772,6 +825,36 @@ const ContractManagementPage: React.FC = () => {
               // isReadOnly={true}
               // disableActions={isApprover}
             />
+          ) : isViewOnly ? (
+            // View-only: read-only, All Contracts only — no "My Contracts"
+            // (no `/user/contracts/me` endpoint). QA #102/#103.
+            <Tabs
+              defaultValue="all"
+              className="w-full bg-transparent space-y-4"
+              onValueChange={() => setStatusFilter("all")}
+            >
+              <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
+                <TabsTrigger
+                  value="all"
+                  className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                >
+                  All Contracts
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="all">
+                <ContractsTable
+                  rows={viewOnlyContractsRows}
+                  isLoading={isViewOnlyContractsLoading}
+                  totalCount={viewOnlyContractsData?.data.totalContracts}
+                  isReadOnly
+                  pagination={allPagination}
+                  setPagination={setAllPagination}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
+                />
+              </TabsContent>
+            </Tabs>
           ) : isCompanyAdmin ? (
             <Tabs
               defaultValue="all"
