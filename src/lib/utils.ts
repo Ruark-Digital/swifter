@@ -486,7 +486,12 @@ export function formatDateInZoneAbbrev(
   } else {
     offsetMin = ZONE_ABBREV_OFFSET_MINUTES[abbr];
   }
-  if (offsetMin === undefined) return formatDateTZ(dateInput, formatStr);
+  // Fall back to viewer-local, but pass the NORMALIZED input: a naive datetime
+  // (BE stores it as UTC) must keep its `Z` suffix here, otherwise formatDateTZ
+  // reparses it as the viewer's local wall clock and echoes the raw UTC digits
+  // instead of converting the real instant to local time (action-log times
+  // showed UTC, e.g. 03:15 instead of the actor's local 08:15).
+  if (offsetMin === undefined) return formatDateTZ(normalizedInput, formatStr);
 
   // Shift the instant so its UTC fields equal the target zone's wall clock, then
   // rebuild via the local `Date` constructor — `format` reads local getters, so
