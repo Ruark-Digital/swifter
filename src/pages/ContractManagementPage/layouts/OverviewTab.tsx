@@ -940,12 +940,17 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
                 // Primary owners may edit any non-terminal contract; edits to a
                 // live (non-draft) contract re-enter the approval chain via
                 // EditContract (QA #118). "publish" is a live status too (see
-                // formatContractStatus). Terminal states (completed/cancelled/
-                // expired/terminated) stay locked.
+                // formatContractStatus). A rejected contract is editable by the
+                // managing CM so they can revise and reopen it. Terminal states
+                // (completed/cancelled/expired/terminated) stay locked.
                 disabled={
-                  !["draft", "pending_approval", "active", "publish"].includes(
-                    String(contract?.status ?? ""),
-                  )
+                  ![
+                    "draft",
+                    "pending_approval",
+                    "active",
+                    "publish",
+                    "rejection",
+                  ].includes(String(contract?.status ?? ""))
                 }
               >
                 Edit Contract

@@ -208,7 +208,8 @@ type MsaStatus =
   | "cancelled"
   | "expired"
   | "terminated"
-  | "pending_approval";
+  | "pending_approval"
+  | "rejection";
 
 const toMsaStatus = (value?: string): MsaStatus | undefined => {
   switch (value) {
@@ -220,6 +221,7 @@ const toMsaStatus = (value?: string): MsaStatus | undefined => {
     case "expired":
     case "terminated":
     case "pending_approval":
+    case "rejection":
       return value;
     default:
       return undefined;
@@ -251,6 +253,8 @@ const formatMsaStatus = (
     return { label: "expired", className: "bg-orange-100 text-orange-700" };
   if (status === "terminated")
     return { label: "terminated", className: "bg-red-100 text-red-700" };
+  if (status === "rejection")
+    return { label: "rejected", className: "bg-red-100 text-red-700" };
   return { label: "draft", className: "bg-slate-100 text-slate-700" };
 };
 
@@ -590,10 +594,14 @@ const MsaDetailPage: React.FC = () => {
   // Freeze mutating tab actions once the MSA enters an end-state
   // (terminated / suspended / expired) — page stays browsable for audit, but
   // writes stop.
+  // A rejected MSA is an end-state for everyone EXCEPT the managing CM
+  // (contract manager / procurement owner), who can edit and reopen it. Vendor/
+  // PM, approvers and view-only stay frozen.
   const isMsaFrozenStatus =
     msa?.status === "terminated" ||
     msa?.status === "suspended" ||
-    msa?.status === "expired";
+    msa?.status === "expired" ||
+    (msa?.status === "rejection" && !(isManager && isMsaOwner));
   const tabActionsDisabled =
     msa?.status === "pending_approval" || isMsaFrozenStatus;
   // QA #112: company admin may amend an EXPIRED MSA (Amendments tab only) to
@@ -887,9 +895,13 @@ const MsaDetailPage: React.FC = () => {
                         variant="secondary"
                         className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
                         disabled={
-                          !["draft", "pending_approval", "active", "publish"].includes(
-                            String(msa?.status ?? ""),
-                          )
+                          ![
+                            "draft",
+                            "pending_approval",
+                            "active",
+                            "publish",
+                            "rejection",
+                          ].includes(String(msa?.status ?? ""))
                         }
                       >
                         Edit MSA
