@@ -541,6 +541,8 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   const [convertAmount, setConvertAmount] = React.useState("");
   const [convertUrgency, setConvertUrgency] = React.useState("");
   const [convertFiles, setConvertFiles] = React.useState<File[]>([]);
+  // Drag-over highlight for the supporting-documents drop zone (QA #152).
+  const [convertDragActive, setConvertDragActive] = React.useState(false);
 
   const openConvertDialog = React.useCallback(() => {
     setConvertType("order");
@@ -549,6 +551,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     setConvertAmount(value != null ? String(value) : "");
     setConvertUrgency((detail?.urgency as string) ?? "");
     setConvertFiles([]);
+    setConvertDragActive(false);
     setConvertOpen(true);
   }, [title, description, value, detail]);
 
@@ -1466,10 +1469,33 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                 </label>
                 <label
                   htmlFor="convert-directive-files"
-                  className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-white p-3 text-sm text-slate-500 transition-colors hover:border-[#2A4467] hover:text-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
+                  data-testid="convert-directive-dropzone"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (!isConverting) setConvertDragActive(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    setConvertDragActive(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setConvertDragActive(false);
+                    if (isConverting) return;
+                    const dropped = Array.from(e.dataTransfer.files ?? []);
+                    if (dropped.length) {
+                      setConvertFiles((prev) => [...prev, ...dropped]);
+                    }
+                  }}
+                  className={cn(
+                    "flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed p-3 text-sm transition-colors hover:border-[#2A4467] hover:text-[#2A4467] dark:bg-slate-900",
+                    convertDragActive
+                      ? "border-[#2A4467] text-[#2A4467] bg-[#2A4467]/5 dark:border-[#2A4467]"
+                      : "border-slate-300 bg-white text-slate-500 dark:border-slate-700 dark:text-slate-400",
+                  )}
                 >
                   <Upload className="h-4 w-4" />
-                  <span>Click to attach documents (sent with the {convertType === "order" ? "change order" : "change proposal"})</span>
+                  <span>Click or drag documents to attach (sent with the {convertType === "order" ? "change order" : "change proposal"})</span>
                 </label>
                 <input
                   id="convert-directive-files"
