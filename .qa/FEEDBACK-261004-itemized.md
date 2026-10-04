@@ -54,11 +54,6 @@ Legend:
 |---|------|------------------------------|
 | 90 | Eval start/end time not updated when evaluation edited | EvaluationManagementPage edit form — date/time field not re-submitting |
 | 93 | Consensus indicator: 3-point rule should be 30% of scale, not 3 raw points | `EvaluationDetailPage.tsx` consensus calc |
-| 103 | Remove "My Contract"/"My MSA" for view-only | `src/lib/navigation.ts` / `dashboardConfig.ts` gating |
-| 104 | Add Projects + Business Division (read-only) for view-only | navigation + route gating |
-| 105 | Linked contracts under MSA missing for view-only | MSA linked-contracts query for view-only role |
-| 106 | Add missing MSA tabs for view-only (Analytics, KPI, Compliance, Payment Summary, Rate Sheets, Key Personnel, Clause Library, Action Log) | MsaPage tab gating by role |
-| 108 | Red flag opening Approvers tab as view-only | Approvers tab query/endpoint for view-only role |
 | 107 | "Export report" for MSA doesn't work | wire `GET /manager/msa-contracts/export` (BE-FIXED→FE) |
 | 110 | Awarded-solicitation docs no longer migrate to contract (with include/remove option) | contract-from-awarded-solicitation doc list |
 | 111 | Allow any combination of contract types under "Combination" (except Combination itself) — (=#33) | contract-type dropdown |
@@ -73,7 +68,21 @@ Legend:
 
 **Day-count family (#120/#122/#125/#143/#146):** one shared root cause (days-remaining / days-late rounding + timezone). Fix once, closes five items.
 
-**View-only family (#103/#104/#105/#106/#108):** all role-gating in navigation/dashboardConfig/tab config + a couple of endpoint-routing bugs. One coherent sub-batch.
+## C2. View-only family — DONE + BE-blocked split (implemented 2026-10-04)
+
+Branch `claude/view-only-family-b79014`. BE reality verified against `docs.json` v2.3.0
+(`/user/*` = the view-only API surface):
+
+| # | Item | Outcome |
+|---|------|---------|
+| 102 | View-only sees no contracts | **DONE** `ab8b4c67b` — list ran `/manager/contracts` (403 for view-only → 0 rows); routed to `/user/contracts`. e2e: 0 → 55 contracts. |
+| 103 | Remove My Contract / My MSA for view-only | **DONE** `ab8b4c67b` (contracts) + `2dcd5d0bf` (MSA) — no `/user/.../me` endpoint exists; render All-only. |
+| 108 | Red flag on Approvers tab (view-only MSA) | **DONE** `1413b7d87` — `/user/msa-contracts/{id}/approvers` 404s; removed the tab. e2e: 404 toast → tab gone. |
+| 104 | Add Projects + Business Division for view-only | **BE-BLOCKED** — only `/manager/projects*` and `/manager/business-division*` exist; no `/user/*` variants. |
+| 105 | Linked contracts under MSA for view-only | **BE-BLOCKED** — only `/manager/msa-contracts/{id}/linked-contract`; no `/user` variant. |
+| 106 | Add 8 MSA tabs for view-only | **MOSTLY BE-BLOCKED** — Analytics, KPI, Compliance, Payment Summary, Rate Sheets, Clause Library, Action Log have no `/user/msa-contracts` endpoints. Only **Vendor Key Personnel** (`/user/msa-contracts/{id}/personnel`) is possible, but needs a read-only rework of the shared `VendorPersonnelTabContent` — deferred as its own task. |
+
+**BE ticket needed** for #104/#105/#106: add `/user/*` read endpoints for projects, business-division, MSA linked-contracts, and MSA dashboard/compliance/payment/ratesheets/clauses/logs — otherwise these tabs 404 for view-only.
 
 ## D. BE — backend-owned (general-updates, alerts, emails, aggregations); NOT "already fixed"
 
@@ -104,7 +113,6 @@ Legend:
 
 | # | Item | Needed |
 |---|------|--------|
-| 102 | View-only has no contracts/dashboard | partly `19706d72a`; confirm whether remaining symptom is data or gating |
 | 115 | Super-admin company-activity chart empty (#69 not fully fixed) | repro which filter/range |
 | 119 | Clause library picking up amendment content — status question | product status, not a bug report |
 | 121 | (=#181 tab2) no reminder to vendor PM | reminder is BE; confirm trigger exists |
