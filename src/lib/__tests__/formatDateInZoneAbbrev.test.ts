@@ -50,4 +50,16 @@ describe("formatDateInZoneAbbrev — DST-aware abbreviations", () => {
   it("returns N/A for empty input", () => {
     expect(formatDateInZoneAbbrev(null, FMT, "EST")).toBe("N/A");
   });
+
+  it("normalizes a naive datetime before the viewer-local fallback (no zone)", () => {
+    // With no recognized zone, output falls back to viewer-local. A naive
+    // datetime is stored by the BE as UTC, so it must render identically to the
+    // same instant written with an explicit `Z` — proving the UTC instant is
+    // converted to local time, not echoed as raw digits (action-log bug: 03:15
+    // UTC showed as 03:15 instead of the actor's local 08:15).
+    const naive = formatDateInZoneAbbrev("2026-10-03T03:15:00", FMT, "");
+    const withZ = formatDateInZoneAbbrev("2026-10-03T03:15:00Z", FMT, "");
+    expect(naive).toBe(withZ);
+    expect(naive).not.toBe("N/A");
+  });
 });
