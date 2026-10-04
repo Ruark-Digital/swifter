@@ -10,8 +10,8 @@ import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
-import { cn, formatSecurityType } from "@/lib/utils";
-import { format, differenceInDays } from "date-fns";
+import { cn, formatSecurityType, daysUntilCalendar } from "@/lib/utils";
+import { format } from "date-fns";
 import { Check, Search, Share2, X } from "lucide-react";
 import type { ApiResponseError } from "@/types";
 import type { ContractComplianceDTO } from "@/pages/ContractManagementPage/api/contractManagerApi";
@@ -172,11 +172,8 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled, ow
           : "-";
         let dueIn = "-";
         if (security.dueDate) {
-          const days = differenceInDays(
-            new Date(security.dueDate),
-            new Date(),
-          );
-          if (days > 0) dueIn = `${days} days`;
+          const days = daysUntilCalendar(security.dueDate) ?? 0;
+          if (days > 0) dueIn = `${days} day${days === 1 ? "" : "s"}`;
           else if (days === 0) dueIn = "Today";
           else dueIn = "Overdue";
         }
