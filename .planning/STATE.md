@@ -2,7 +2,7 @@
 
 **Milestone:** v1.0 — Phase-2 QA + BE-Gap Remediation
 **Current phase:** Phase 3 (FE Cleanup & Hardening) — Phases 1 & 2 largely shipped incrementally
-Last activity: 2026-07-25 - Completed quick task 260725-eb2: Fix 4 QA bugs (registration password toggle, company modules yup errors, solicitation/evaluation auto-submit, user management route crash)
+Last activity: 2026-10-05 - Completed quick task 261005-pe7: QA #135 full contract action-log export (shipped); QA #115/#116 super-admin dashboard charts investigated, blocked on a BE payload sample
 
 ## Status
 
@@ -32,3 +32,4 @@ Brownfield app under incremental remediation. Much of Phase 1 (BE-unblocked FE g
 | 260724-fast | Hide My Actions on Company Admin Contracts tab (permanently empty for this role), expand General Updates to full width | 2026-07-24 | ee4d69628 | (gsd-fast, no quick-task directory) |
 | 260725-d4e | Fix Create New Company dialog: cap height with internal scroll, fix Subscription Duration select not persisting its value | 2026-07-25 | 918ff66e7, 04e5e59ae | [260725-d4e-create-company-dialog-fix](./quick/260725-d4e-create-company-dialog-fix/) |
 | 260725-eb2 | Fix 4 QA bugs: registration password-visibility toggle (Forger memo froze inline closure), Company Modules tab raw yup errors (boolean coercion), Solicitation/Evaluation forms auto-submitting (multiselect.tsx buttons missing type="button"), User Management Role/Status filter crash (navigated to unregistered /dashboard/users route) | 2026-07-25 | 34a1367fc, 5a3484769, 2fce7a055, dff1430f3 | [260725-eb2-fix-4-qa-bugs-registration-password-togg](./quick/260725-eb2-fix-4-qa-bugs-registration-password-togg/) |
+| 261005-pe7 | QA #135 full contract action-log export (fetch all pages, not just the current page). QA #115/#116 (super-admin company-activity + module-usage charts) investigated — FE wiring correct; blocked on a BE payload sample (super-admin /companies/dashboard/* endpoints undocumented in docs.json). | 2026-10-05 | 21625f39b | [261005-pe7-fix-qa-115-116-135-super-admin-company-a](./quick/261005-pe7-fix-qa-115-116-135-super-admin-company-a/) |
