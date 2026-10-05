@@ -104,5 +104,12 @@ export const ROLE_TAB_WHITELIST: Record<
     // "approvers" intentionally omitted — there is no view-only approvers
     // endpoint, so showing the tab red-flagged on open (QA #108).
     "reports",
+    // QA #106: read-only tabs the BE exposes under /user/msa-contracts/{id}/…
+    // (ratesheets, vendor-personnel, logs, clauses). Analytics/KPI/Compliance/
+    // Payment Summary stay omitted — no view-only endpoints for those yet.
+    "rate-sheets",
+    "vendor-personnel",
+    "action-log",
+    "clause-library",
   ],
 };

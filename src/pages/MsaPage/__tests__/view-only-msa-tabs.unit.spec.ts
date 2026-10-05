@@ -11,4 +11,26 @@ describe("MSA view-only tab whitelist (QA #108)", () => {
       expect(ROLE_TAB_WHITELIST["view only"]).toContain(tab);
     }
   });
+
+  it("exposes the /user-backed read tabs (QA #106)", () => {
+    for (const tab of [
+      "rate-sheets",
+      "vendor-personnel",
+      "action-log",
+      "clause-library",
+    ] as const) {
+      expect(ROLE_TAB_WHITELIST["view only"]).toContain(tab);
+    }
+  });
+
+  it("still omits the BE-blocked tabs (no view-only endpoints)", () => {
+    for (const tab of [
+      "analytics",
+      "kpi",
+      "compliance",
+      "payment-summary",
+    ] as const) {
+      expect(ROLE_TAB_WHITELIST["view only"]).not.toContain(tab);
+    }
+  });
 });
