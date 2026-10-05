@@ -24,7 +24,18 @@ feature; #104 and part of #106 are BE-blocked.
   the company-admin view.
 - Refactor: extracted the per-role tab whitelist to `src/pages/MsaPage/msaTabWhitelist.ts`
   so it's unit-testable without importing the page (which pulls react-pdf/pdfjs,
-  unavailable under jsdom). Test: `view-only-msa-tabs.unit.spec.ts` (2 cases).
+  unavailable under jsdom). Test: `view-only-msa-tabs.unit.spec.ts`.
+- **#106 (read tabs)** — added Rate Sheets, Vendor Key Personnel, Action Log and
+  Clause Library to the view-only MSA whitelist and pointed each tab-content at the
+  `/user/msa-contracts/{id}/…` base path (commit 8cf2dfa2a):
+  - Rate Sheets: `RateSheetsTabContent` already resolved the view-only `/user` path.
+  - Vendor Key Personnel: GET now `/contract/user/...`; edits stay gated behind
+    `canManage` (manager/CM + owner) → read-only for view-only.
+  - Clause Library: read via `/user`; Export button hidden for view-only (no
+    `/user/.../clauses/export` endpoint — only manager/approver have it).
+  - Action Log (MSA): list reads `/contract/user/msa-contracts/{id}/logs`; export
+    is client-side.
+  - Analytics / KPI / Compliance / Payment Summary still omitted (BE-blocked).
 
 Verification: vitest 2/2 ✓ · `tsc -b` exit 0 (Vercel gate) ✓ · eslint on changed
 lines clean (one PRE-EXISTING `formatMoney` exhaustive-deps warning in
@@ -39,7 +50,7 @@ MsaDetailPage left untouched — surgical-changes rule; it is on the base branch
 | #108 (approvers red flag) | yes | ✅ shipped |
 | #102 (view-only contracts + dashboard) | yes but **feature-sized** | ⏭ deferred |
 | #103 (My Contracts) | tied to #102 | ⏭ deferred |
-| #106 (MSA tabs: Rate Sheets / Clause Library / Action Log / Vendor Key Personnel) | yes — endpoints exist | ⏭ deferred (needs per-tab content to resolve the /user msa base path) |
+| #106 (MSA tabs: Rate Sheets / Clause Library / Action Log / Vendor Key Personnel) | yes — endpoints exist | ✅ shipped (8cf2dfa2a) |
 | #106 (MSA tabs: Analytics / KPI / Compliance / Payment Summary) | no | ⛔ BE-blocked (no `/user/msa-contracts/{id}/analytics|kpi|compliance|payment-summary`) |
 | #104 (Projects + Business Division) | no | ⛔ BE-blocked (no `/user/projects`, `/user/business-division`) |
 | #107 (MSA Export report) | separate, all-profiles | ⏭ out of scope (export endpoint hardcoded to /manager) |
