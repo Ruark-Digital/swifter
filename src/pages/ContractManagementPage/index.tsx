@@ -223,6 +223,47 @@ const useMyContracts = (pagination: PaginationState, enabled = true) => {
   });
 };
 
+// QA #102: view-only users read contracts through the dedicated /user surface.
+// Without these they fell into the manager queries below (which 403 for them),
+// so the Contracts list showed nothing.
+const useViewOnlyContractsStats = (enabled = true) => {
+  const queryKey = useUserQueryKey(["contracts-user-stats"]);
+  return useQuery<ContractStatsResponse, ApiResponseError>({
+    queryKey,
+    queryFn: async () => {
+      const res = await getRequest({ url: "/contract/user/contracts/stats" });
+      return res.data as ContractStatsResponse;
+    },
+    enabled,
+    staleTime: 60000,
+  });
+};
+
+const useViewOnlyContracts = (pagination: PaginationState, enabled = true) => {
+  const queryKey = useUserQueryKey([
+    "contracts-user",
+    pagination.pageIndex,
+    pagination.pageSize,
+  ]);
+  return useQuery<ContractListResponse, ApiResponseError>({
+    queryKey,
+    queryFn: async () => {
+      const res = await getRequest({
+        url: "/contract/user/contracts",
+        config: {
+          params: {
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+          },
+        },
+      });
+      return res.data as ContractListResponse;
+    },
+    enabled,
+    staleTime: 60000,
+  });
+};
+
 const useApproverContractsStats = (enabled = true) => {
   const queryKey = useUserQueryKey(["approver-contracts-stats"]);
   return useQuery<ContractStatsResponse, ApiResponseError>({
@@ -458,7 +499,10 @@ const ContractManagementPage: React.FC = () => {
   const { isVendor, isProjectManager, isApprover, isViewOnly, isCompanyAdmin } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
-  const managerQueriesEnabled = !isContractVendorLike && !isApprover;
+  // View-only reads through /user/contracts (see below), so it must NOT run the
+  // manager queries — those 403 for view-only and left the list empty (QA #102).
+  const managerQueriesEnabled =
+    !isContractVendorLike && !isApprover && !isViewOnly;
   const approverQueriesEnabled = isApprover;
 
   const [allPagination, setAllPagination] = React.useState<PaginationState>({
@@ -497,6 +541,9 @@ const ContractManagementPage: React.FC = () => {
     useAllContracts(allPagination, managerQueriesEnabled);
   const { data: myContractsData, isLoading: isMyContractsLoading } =
     useMyContracts(myPagination, managerQueriesEnabled);
+  const { data: viewOnlyStatsData } = useViewOnlyContractsStats(isViewOnly);
+  const { data: viewOnlyContractsData, isLoading: isViewOnlyContractsLoading } =
+    useViewOnlyContracts(allPagination, isViewOnly);
   const { data: approverStatsData } = useApproverContractsStats(
     approverQueriesEnabled,
   );
@@ -537,7 +584,11 @@ const ContractManagementPage: React.FC = () => {
     ];
   }, [vendorCompaniesData]);
 
-  const stats = isApprover ? approverStatsData?.data : statsData?.data;
+  const stats = isApprover
+    ? approverStatsData?.data
+    : isViewOnly
+      ? viewOnlyStatsData?.data
+      : statsData?.data;
   const statsCounts = stats
     ? {
         all: stats.all,
@@ -553,6 +604,10 @@ const ContractManagementPage: React.FC = () => {
   const user = useUser();
   const profileCurrency = user?.currency;
   const allContractsRows = mapContractsToRows(allContractsData?.data.contracts, profileCurrency);
+  const viewOnlyContractsRows = mapContractsToRows(
+    viewOnlyContractsData?.data.contracts,
+    profileCurrency,
+  );
   const myContractsRows = mapContractsToRows(myContractsData?.data.contracts, profileCurrency);
   const approverContractsRows = mapContractsToRows(
     approverContractsData?.data.contracts,
@@ -772,7 +827,10 @@ const ContractManagementPage: React.FC = () => {
               // isReadOnly={true}
               // disableActions={isApprover}
             />
-          ) : isCompanyAdmin ? (
+          ) : isCompanyAdmin || isViewOnly ? (
+            // Company admins and view-only users get a single read-only "All
+            // Contracts" list — no "My Contracts" tab (they don't own
+            // contracts). View-only reads from /user/contracts (QA #102/#103).
             <Tabs
               defaultValue="all"
               className="w-full bg-transparent space-y-4"
@@ -789,9 +847,15 @@ const ContractManagementPage: React.FC = () => {
 
               <TabsContent value="all">
                 <ContractsTable
-                  rows={allContractsRows}
-                  isLoading={isAllContractsLoading}
-                  totalCount={allContractsData?.data.totalContracts}
+                  rows={isViewOnly ? viewOnlyContractsRows : allContractsRows}
+                  isLoading={
+                    isViewOnly ? isViewOnlyContractsLoading : isAllContractsLoading
+                  }
+                  totalCount={
+                    isViewOnly
+                      ? viewOnlyContractsData?.data.totalContracts
+                      : allContractsData?.data.totalContracts
+                  }
                   isReadOnly={isViewOnly}
                   pagination={allPagination}
                   setPagination={setAllPagination}
