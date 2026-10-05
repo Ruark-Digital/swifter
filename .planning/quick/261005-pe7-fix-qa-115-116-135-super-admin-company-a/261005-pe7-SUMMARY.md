@@ -25,28 +25,37 @@ Verification: vitest 1/1 ✓ · `tsc -b` exit 0 ✓ · eslint `--max-warnings 0`
 
 Commit: `21625f39b`.
 
-## #115 / #116 — ⛔ Blocked on a BE payload sample (not shipped)
+## #115 — Super-admin "Company Activity" chart empty ✅ (shipped)
 
-Investigated end-to-end; the FE wiring is correct:
-- Chart ids map in `getChartData` (#115 `weekly-activities` → `transformWeeklyActivities`;
-  #116 `module-usage` → `transformModuleUsage`).
-- Filter labels `"30 days"` / `"7 days"` are normalised to `30days` / `7days`
-  (`RoleBasedDashboard` `filter.replace(/\s+/g, "")`) and sent as `range`.
-- `transformModuleUsage` already consumes both the legacy counts and the new
-  labels/datasets shapes; `transformWeeklyActivities` buckets `solicitations` /
-  `evaluations` items by `createdAt` within the selected window.
+Live payloads (DevTools) resolved this. The BE returns `weekly-activities` as
+`{ labels: string[], datasets: [{ name, values: number[] }] }` (7 series:
+Solicitations, Evaluations, Vendors, Addendums, Contracts, Projects, MSA
+Contracts) — NOT the legacy `{ solicitations[], evaluations[] }` item arrays
+`transformWeeklyActivities` read. So it bucketed zero items → empty chart.
 
-**Why blocked:** docs.json v2.3.0 does NOT document the `/companies/dashboard/*`
-super-admin endpoints, so the live response shape (#115) and the daily-granularity
-param BE expects (#116, "not making daily request") can't be verified from the
-repo. These are "empty chart" bugs — shipping a speculative change we can't verify
-would risk a wrong fix. Deferred pending a sample payload.
+Fix (`lib/dashboardDataTransformer.ts`): detect the `{labels,datasets}` shape and
+sum every dataset per label into the single `activities` series the "Company
+Activity" area chart plots (`ChartCard` derives area series from the data keys).
+Legacy item-array bucketing kept as a fallback. Test:
+`lib/__tests__/weeklyActivities.unit.spec.ts` (3 cases).
 
-**To unblock (one ask to BE):**
-- #115: a sample `GET /companies/dashboard/weekly-activities?range=12months` response
-  (do the items carry `createdAt`? or is it `{labels,datasets}` / aggregated counts?).
-- #116: what request yields daily module-usage for `range=30days`/`7days` — is it a
-  separate param (e.g. `granularity=daily`) or a different `range` value?
+Verification: vitest 3/3 ✓ · `tsc -b` exit 0 ✓ · eslint clean ✓. Commit `9ec9d5dcf`.
+
+## #116 — Module usage empty on 30/7-day filters → BE-side (no FE change)
+
+Live payloads show the FE is already correct:
+- It requests `module-usage?range=30days` (filter label normalised correctly).
+- BE returns the `{labels,datasets}` shape with **daily** labels ("Sep 06"…),
+  which `transformModuleUsage` → `transformStackedBarData` already consumes, and
+  `ChartCard`'s bar path renders a series per data key (not filtered by the
+  config `selectors`). The 12-month view renders with real data.
+- The 30-day payload's dataset **values are all zero** (DevTools screenshot), so
+  the chart renders but every bar is zero-height → "shows nothing."
+
+Conclusion: no FE bug found — the empty 30/7-day view is the BE returning
+zero-valued daily buckets. **Ask BE** to confirm the daily module-usage
+aggregation for `range=30days`/`7days` (the monthly series clearly has recent
+activity, so all-zero daily buckets look like a BE aggregation gap).
 
 ## Out of scope
 
