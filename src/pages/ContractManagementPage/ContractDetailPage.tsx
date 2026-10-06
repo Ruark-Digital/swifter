@@ -24,6 +24,7 @@ import { contractManagerApi } from "./api/contractManagerApi";
 import { approverApi } from "./api/approverApi";
 import { viewOnlyApi } from "./api/viewOnlyApi";
 import { companyAdminApi } from "./api/companyAdminApi";
+import { resolvePendingPmTakeover } from "./pmTakeover";
 import AnalyticsTabContent from "./layouts/AnalyticsTabContent";
 import ApproversTabContent from "./layouts/ApproversTabContent";
 import VendorPersonnelTabContent from "./layouts/VendorPersonnelTabContent";
@@ -302,14 +303,15 @@ const ContractDetailPage: React.FC = () => {
     contractData?.status === "active" || contractData?.status === "publish";
 
   // Take-over approval is distinct from the PM-accepts-contract flow: it applies
-  // to a pending projectManager assignment on an already-live (publish/active)
-  // contract, not a freshly created one, and only a CM/PL approves it.
-  const takeOverPending =
-    contractData?.projectManager?.status === "pending" && isLiveContract;
+  // to a pending PM assignment on an already-live (publish/active) contract, not
+  // a freshly created one, and only a CM/PL approves it. The deployed BE (docs
+  // v2.3.0 / PM-assignment guide) returns the pending request in
+  // `pendingProjectManager` with `projectManager` null until approval; the
+  // legacy shape put it in `projectManager.status === "pending"`. Read either.
+  const pendingPmTakeover = resolvePendingPmTakeover(contractData);
+  const takeOverPending = pendingPmTakeover.pending && isLiveContract;
   const canApproveTakeOver = isManager && isContractOwner && takeOverPending;
-  const takeOverRequesterName =
-    (contractData?.projectManager?.user as { user?: { name?: string } })
-      ?.user?.name ?? contractData?.projectManager?.user?.name;
+  const takeOverRequesterName = pendingPmTakeover.requesterName;
 
   const canAssignPm =
     ((isManager && isContractOwner) || isCompanyAdmin) &&
