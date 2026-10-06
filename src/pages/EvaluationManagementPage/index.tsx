@@ -6,7 +6,6 @@ import {
   endOfDay,
   subDays,
   differenceInDays,
-  toDate,
 } from "date-fns";
 import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -53,7 +52,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDateTZ } from "@/lib/utils";
+import { formatDateTZ, daysUntilCalendar } from "@/lib/utils";
 import { useUser } from "@/store/authSlice";
 
 // Evaluation type definition
@@ -106,16 +105,12 @@ const safeFormatDate = (
   return v;
 };
 
-// Helper function to calculate days left (negative values indicate overdue)
-const calculateDaysLeft = (deadline: string): number => {
-  if (!deadline) return 0;
-
-  const deadlineDate = toDate(deadline);
-  if (isNaN(deadlineDate.getTime())) return 0;
-
-  const today = new Date();
-  return differenceInDays(deadlineDate, today);
-};
+// Helper function to calculate days left (negative values indicate overdue).
+// Uses calendar days, not full-24h periods: a deadline on the 30th while today
+// is the 28th is 2 days left, not 1 (differenceInDays truncates the partial
+// day). QA #120/#30/#39.
+const calculateDaysLeft = (deadline: string): number =>
+  daysUntilCalendar(deadline) ?? 0;
 
 // Transform API data to component format
 const transformEvaluationData = (

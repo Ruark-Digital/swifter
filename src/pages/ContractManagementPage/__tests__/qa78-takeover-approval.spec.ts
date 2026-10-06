@@ -57,6 +57,7 @@ async function seedAuth(page: Page, role: SeedRole) {
 
 const CONTRACT_ID = "c-takeover-1";
 
+// Legacy response shape: the pending take-over lives in `projectManager`.
 function contractDetailPayload() {
   return {
     status: 200,
@@ -70,6 +71,35 @@ function contractDetailPayload() {
       currency: "CAD",
       projectManager: {
         status: "pending",
+        user: {
+          name: "requester@swiftpro.com",
+          user: {
+            name: "Requesting PM",
+          },
+        },
+      },
+    },
+  };
+}
+
+// Deployed response shape (docs v2.3.0 / PM-assignment guide): the pending
+// take-over lives in `pendingProjectManager`, with `projectManager` null until
+// the CM approves.
+function contractDetailPayloadPendingShape() {
+  return {
+    status: 200,
+    message: "ok",
+    data: {
+      _id: CONTRACT_ID,
+      contractId: "CT-TAKEOVER-1",
+      title: "Takeover Contract",
+      status: "publish",
+      owner: true,
+      currency: "CAD",
+      projectManager: null,
+      pendingProjectManager: {
+        status: "pending",
+        actionedAt: null,
         user: {
           name: "requester@swiftpro.com",
           user: {
@@ -149,6 +179,46 @@ test.describe("QA #78 Increment 2 - CM/PL take-over approval", () => {
 
     await approveButton.click();
     // Approve path in this flow submits directly (no reason required).
+    await expect.poll(() => approvalPayload).not.toBeNull();
+    expect(approvalPayload).toMatchObject({ action: "approved" });
+  });
+
+  test("renders the take-over card from the deployed pendingProjectManager shape", async ({
+    page,
+  }) => {
+    await seedAuth(page, "contract_manager");
+
+    await page.route(
+      `**/contract/manager/contracts/${CONTRACT_ID}`,
+      (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(contractDetailPayloadPendingShape()),
+        }),
+    );
+
+    let approvalPayload: unknown = null;
+    await page.route("**/project-manager/approval", (route) => {
+      approvalPayload = route.request().postDataJSON();
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ message: "ok", data: {} }),
+      });
+    });
+
+    await page.goto(`/dashboard/contract-management/${CONTRACT_ID}`, {
+      waitUntil: "commit",
+    });
+
+    // Card still renders even though `projectManager` is null — the detection
+    // reads `pendingProjectManager` for the deployed shape.
+    await expect(
+      page.getByText(/Take-over request from Requesting PM/i),
+    ).toBeVisible({ timeout: 30000 });
+
+    await page.getByRole("button", { name: /^Approve$/i }).click();
     await expect.poll(() => approvalPayload).not.toBeNull();
     expect(approvalPayload).toMatchObject({ action: "approved" });
   });
