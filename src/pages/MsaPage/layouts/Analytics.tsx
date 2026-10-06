@@ -11,8 +11,8 @@ const DEFAULT_CONTRACT_TYPE = "MsaContract" as const;
 type AnalyticsRange = "YTD" | 90 | 60 | 7;
 
 const Analytics: React.FC<Props> = ({ contractId, isActive = false }) => {
-  const { isApprover } = useUserRole();
-  const roleSegment = isApprover ? "approver" : "manager";
+  const { isApprover, isViewOnly } = useUserRole();
+  const roleSegment = isApprover ? "approver" : isViewOnly ? "user" : "manager";
   const roleNs = `msa-contract-${roleSegment}`;
   const baseUrl = `/contract/${roleSegment}/msa-contracts`;
   const [activitiesRange, setActivitiesRange] =
@@ -21,6 +21,12 @@ const Analytics: React.FC<Props> = ({ contractId, isActive = false }) => {
     React.useState<AnalyticsRange>("YTD");
 
   const enabled = Boolean(contractId) && Boolean(isActive);
+  // The /user MSA dashboard surface omits deliverable-status and
+  // deliverable-summary (docs.json v2.3.0). Both sections are already hidden for
+  // MSA analytics (isMsaAnalytics), so gate the fetches off for view-only to
+  // avoid 404s — the only visible casualty is the Vendor KPI block, which the BE
+  // sources from deliverable-summary and does not expose to view-only.
+  const deliverableEnabled = enabled && !isViewOnly;
 
   const contractQuery = useQuery({
     queryKey: [roleNs, "contract", contractId],
@@ -86,7 +92,7 @@ const Analytics: React.FC<Props> = ({ contractId, isActive = false }) => {
       });
       return res.data?.data;
     },
-    enabled,
+    enabled: deliverableEnabled,
     staleTime: 60000,
     retry: false,
   });
@@ -109,7 +115,7 @@ const Analytics: React.FC<Props> = ({ contractId, isActive = false }) => {
       });
       return res.data?.data;
     },
-    enabled,
+    enabled: deliverableEnabled,
     staleTime: 60000,
     retry: false,
   });

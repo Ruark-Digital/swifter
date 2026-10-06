@@ -41,6 +41,7 @@ import Invoice from "./layouts/Invoice";
 import Rfi from "./layouts/Rfi";
 import Lem from "./layouts/Lem";
 import Approvers from "./layouts/Approvers";
+import { ROLE_TAB_WHITELIST, type MsaTabKey } from "./msaTabWhitelist";
 import VendorPersonnelTabContent from "@/pages/ContractManagementPage/layouts/VendorPersonnelTabContent";
 import Deliverables from "./layouts/Deliverables";
 import Reports from "./layouts/Reports";
@@ -60,27 +61,7 @@ import {
   type LifecycleAction,
 } from "@/pages/ContractManagementPage/components/contractLifecycle";
 
-type TabKey =
-  | "overview"
-  | "analytics"
-  | "kpi"
-  | "compliance"
-  | "documents"
-  | "amendments"
-  | "deliverables"
-  | "payment-summary"
-  | "rate-sheets"
-  | "lem"
-  | "invoice"
-  | "change"
-  | "claims"
-  | "rfi"
-  | "ncr-log"
-  | "approvers"
-  | "vendor-personnel"
-  | "reports"
-  | "action-log"
-  | "clause-library";
+type TabKey = MsaTabKey;
 
 const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "overview", label: "Overview" },
@@ -119,89 +100,6 @@ const MSA_DISABLED_TABS: ReadonlySet<TabKey> = new Set<TabKey>([
   "reports",
   "invoice",
 ]);
-
-const ROLE_TAB_WHITELIST: Record<
-  "approver" | "vendor" | "manager" | "view only",
-  TabKey[]
-> = {
-  approver: [
-    "overview",
-    "analytics",
-    "documents",
-    "amendments",
-    "lem",
-    "invoice",
-    "change",
-    "claims",
-    "rfi",
-    "deliverables",
-    "ncr-log",
-    // "approvers" intentionally omitted — approvers can't see the Approvers tab
-    "reports",
-    "payment-summary",
-    // Approvers get a read/approve view of rate sheets (QA #35). BE exposes
-    // /approver/msa-contracts/{id}/ratesheets and RateSheetsTabContent
-    // resolves the approver base path for the msa-contracts segment.
-    "rate-sheets",
-    // Approvers can view the Clause Library (parity with the manager view).
-    "clause-library",
-  ],
-  vendor: [
-    "overview",
-    "compliance",
-    "documents",
-    "amendments",
-    "lem",
-    "invoice",
-    "change",
-    "claims",
-    "rfi",
-    "deliverables",
-    "ncr-log",
-    // "approvers" intentionally omitted — vendors and project managers can't see the Approvers tab
-    "reports",
-    "payment-summary",
-    "rate-sheets",
-  ],
-  manager: [
-    "overview",
-    "analytics",
-    "kpi",
-    "compliance",
-    "documents",
-    "amendments",
-    "lem",
-    "invoice",
-    "change",
-    "claims",
-    "rfi",
-    "deliverables",
-    "ncr-log",
-    "approvers",
-    "vendor-personnel",
-    "reports",
-    "payment-summary",
-    "action-log",
-    "rate-sheets",
-    "clause-library",
-  ],
-  "view only": [
-    "overview",
-    "documents",
-    "amendments",
-    "lem",
-    "invoice",
-    "change",
-    "claims",
-    "rfi",
-    "deliverables",
-    "ncr-log",
-    // "approvers" intentionally omitted — there is no `/user/msa-contracts/{id}`
-    // approvers endpoint, so the tab 404'd and showed a red flag for view-only
-    // users (QA #108). View-only has no reason to manage approvers.
-    "reports",
-  ],
-};
 
 type MsaStatus =
   | "draft"
@@ -495,15 +393,19 @@ const MsaDetailPage: React.FC = () => {
   // the right currency instead of a hardcoded USD (QA #59a).
   const displayCurrency = resolveCurrency(msa?.currency, user?.currency);
 
-  const canFetchLinkedContracts = (isManager || isCompanyAdmin) && Boolean(id);
+  // QA #105: view-only users must also see the MSA's linked contracts. The BE
+  // exposes /contract/user/msa-contracts/{id}/linked-contract for them.
+  const canFetchLinkedContracts =
+    (isManager || isCompanyAdmin || isViewOnly) && Boolean(id);
   const linkedContractsQueryKey = useUserQueryKey(["msa-linked-contract", id]);
 
   const { data: linkedContractsResponse, isLoading: isLinkedContractsLoading } =
     useQuery({
       queryKey: linkedContractsQueryKey,
       queryFn: async () => {
+        const base = isViewOnly ? "/contract/user" : "/contract/manager";
         return getRequest({
-          url: `/contract/manager/msa-contracts/${id ?? ""}/linked-contract`,
+          url: `${base}/msa-contracts/${id ?? ""}/linked-contract`,
         });
       },
       enabled: canFetchLinkedContracts && topTab === "linked",

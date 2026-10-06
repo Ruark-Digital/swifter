@@ -440,14 +440,18 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
 }) => {
   const { id = "" } = useParams<{ id: string }>();
   const toastHandler = useToastHandler();
-  const { isApprover } = useUserRole();
+  const { isApprover, isViewOnly } = useUserRole();
   const [search, setSearch] = React.useState("");
   const resourceSegment =
     contractType === "MsaContract" ? "msa-contracts" : "contracts";
   // Approvers read the clause library via their own base path
-  // (/contract/approver/{seg}/{id}/clauses); managers (and admins) use the
-  // manager path. Both are exposed by the BE.
-  const roleSegment = isApprover ? "approver" : "manager";
+  // (/contract/approver/{seg}/{id}/clauses); view-only via /user; managers (and
+  // admins) use the manager path. All are exposed by the BE — except the export
+  // endpoint, which has no /user variant (see canExport below). (QA #106)
+  const roleSegment = isApprover ? "approver" : isViewOnly ? "user" : "manager";
+  // The BE exposes /{approver,manager}/…/clauses/export but no /user variant,
+  // so hide Export for view-only rather than fire a request that 404s.
+  const canExport = !isViewOnly;
 
   const { data, isLoading } = useQuery<ClauseLibraryResponse>({
     queryKey: ["contract-clause-library", roleSegment, contractType, id],
@@ -543,21 +547,23 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
               Contract Cheat Sheet - Quick Reference Guide
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleExportPdf}
-            disabled={isLoading || !data || exportMutation.isPending}
-            className="inline-flex w-full items-center justify-center rounded-lg bg-[#2563EB] px-4 py-2 hover:bg-[#1D4ED8] disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
-          >
-            <img
-              src="/assets/contract-management/clause-library/export-pdf.svg"
-              className="h-[18px] w-[18px]"
-              alt=""
-            />
-            <span className="pl-2 text-base leading-6 text-white">
-              {exportMutation.isPending ? "Exporting..." : "Export PDF"}
-            </span>
-          </button>
+          {canExport && (
+            <button
+              type="button"
+              onClick={handleExportPdf}
+              disabled={isLoading || !data || exportMutation.isPending}
+              className="inline-flex w-full items-center justify-center rounded-lg bg-[#2563EB] px-4 py-2 hover:bg-[#1D4ED8] disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
+            >
+              <img
+                src="/assets/contract-management/clause-library/export-pdf.svg"
+                className="h-[18px] w-[18px]"
+                alt=""
+              />
+              <span className="pl-2 text-base leading-6 text-white">
+                {exportMutation.isPending ? "Exporting..." : "Export PDF"}
+              </span>
+            </button>
+          )}
         </div>
 
         <div className="flex flex-col gap-3 rounded-lg border border-[#BFDBFE] dark:border-slate-700 bg-[linear-gradient(90deg,#EFF6FF_0%,#FAF5FF_100%)] dark:bg-none dark:bg-slate-800/60 p-[15px] sm:flex-row sm:items-center sm:justify-between">
