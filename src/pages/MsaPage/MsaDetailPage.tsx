@@ -49,6 +49,7 @@ import RateSheetsTabContent from "@/pages/ContractManagementPage/layouts/RateShe
 import ClauseLibraryTabContent from "@/pages/ContractManagementPage/layouts/ClauseLibraryTabContent";
 import NcrLog from "./layouts/NcrLog";
 import { Share2 } from "lucide-react";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import { Status, StatusBadge } from "./components/StatusBadge";
 import { useUser } from "@/store/authSlice";
 import { resolveCurrency } from "@/lib/utils";
@@ -195,7 +196,9 @@ const ROLE_TAB_WHITELIST: Record<
     "rfi",
     "deliverables",
     "ncr-log",
-    "approvers",
+    // "approvers" intentionally omitted — there is no `/user/msa-contracts/{id}`
+    // approvers endpoint, so the tab 404'd and showed a red flag for view-only
+    // users (QA #108). View-only has no reason to manage approvers.
     "reports",
   ],
 };
@@ -882,12 +885,18 @@ const MsaDetailPage: React.FC = () => {
 
             <TabsContent value="overview">
               <div className="flex items-center justify-end w-full gap-3 pb-3">
-                <Button
-                  variant="outline"
-                  className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
-                >
-                  <Share2 className="mr-2 h-4 w-4" /> Export Report
-                </Button>
+                {/* QA #107 — this button was never wired to the export sheet, so
+                    "Export Report" did nothing for MSAs. Wrap it in the shared
+                    ExportReportSheet with contractType="MsaContract" (the sheet
+                    already targets /contract-export/{id}?type=MsaContract). */}
+                <ExportReportSheet contractId={id ?? ""} contractType="MsaContract">
+                  <Button
+                    variant="outline"
+                    className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
+                  >
+                    <Share2 className="mr-2 h-4 w-4" /> Export Report
+                  </Button>
+                </ExportReportSheet>
                 {isManager && isMsaOwner && (
                   <CreateMSADialog
                     trigger={

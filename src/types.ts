@@ -144,6 +144,16 @@ export interface ProjectManager {
   status: string;
 }
 
+/** Pending PM take-over request (PM-assignment guide / docs v2.3.0). The BE
+ *  returns this separately from `projectManager` and keeps `projectManager`
+ *  null until the CM approves. `user` may be a populated object or a bare
+ *  ObjectId string depending on the endpoint. */
+export interface PendingProjectManager {
+  user?: string | { _id?: string; name?: string; user?: { name?: string } };
+  status?: string;
+  actionedAt?: string | null;
+}
+
 export interface ContractDetail {
   contractFormationStage: ContractFormationStage;
   _id:                    string;
@@ -185,6 +195,9 @@ export interface ContractDetail {
   holdBackBank:           number;
   paymentTerms:           Company;
   projectManager:         ProjectManager;
+  /** Pending take-over request; present (with `projectManager` null) while a
+   *  vendor-requested PM assignment awaits CM approval (docs v2.3.0). */
+  pendingProjectManager?: PendingProjectManager;
   paymentStructure:       string;
   deliverables:           ContractDeliverable[];
   insurance:              ContractInsurance;
