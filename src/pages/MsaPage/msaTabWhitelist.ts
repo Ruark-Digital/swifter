@@ -105,11 +105,18 @@ export const ROLE_TAB_WHITELIST: Record<
     // endpoint, so showing the tab red-flagged on open (QA #108).
     "reports",
     // QA #106: read-only tabs the BE exposes under /user/msa-contracts/{id}/…
-    // (ratesheets, vendor-personnel, logs, clauses). Analytics/KPI/Compliance/
-    // Payment Summary stay omitted — no view-only endpoints for those yet.
+    // (ratesheets, vendor-personnel, logs, clauses).
     "rate-sheets",
     "vendor-personnel",
     "action-log",
     "clause-library",
+    // QA #106 (rest): now BE-unblocked in docs.json v2.3.0 —
+    // /user/msa-contracts/{id}/{kpis,compliance,payment-savings,dashboard/*}.
+    // Each tab-content resolves the /user base path and gates its write actions
+    // behind manager/vendor roles, so view-only gets a read-only view.
+    "analytics",
+    "kpi",
+    "compliance",
+    "payment-summary",
   ],
 };

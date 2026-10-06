@@ -23,14 +23,14 @@ describe("MSA view-only tab whitelist (QA #108)", () => {
     }
   });
 
-  it("still omits the BE-blocked tabs (no view-only endpoints)", () => {
+  it("exposes the analytics/kpi/compliance/payment-summary tabs now BE-unblocked (QA #106)", () => {
     for (const tab of [
       "analytics",
       "kpi",
       "compliance",
       "payment-summary",
     ] as const) {
-      expect(ROLE_TAB_WHITELIST["view only"]).not.toContain(tab);
+      expect(ROLE_TAB_WHITELIST["view only"]).toContain(tab);
     }
   });
 });
