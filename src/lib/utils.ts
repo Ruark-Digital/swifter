@@ -1,9 +1,24 @@
 import { type ClassValue, clsx } from "clsx";
-import { format } from "date-fns";
+import { differenceInCalendarDays, format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+/**
+ * Whole calendar days from now until `due` (negative once `due` has passed).
+ *
+ * Uses `differenceInCalendarDays`, NOT `differenceInDays`: the latter counts
+ * full 24h periods and truncates the partial day, so "due on the 30th" while
+ * today is the 28th reads as 1 day left instead of 2 (QA #120/#30/#39). Calendar
+ * days compare the local date components, matching how the due date is displayed.
+ */
+export function daysUntilCalendar(due?: string | Date | null): number | null {
+  if (!due) return null;
+  const dueDate = due instanceof Date ? due : new Date(due);
+  if (Number.isNaN(dueDate.getTime())) return null;
+  return differenceInCalendarDays(dueDate, new Date());
 }
 
 /**

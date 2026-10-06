@@ -472,7 +472,7 @@ const UpdateVendorPerformanceDialog: React.FC<{
   );
 };
 
-const KpiTable: React.FC<Props> = ({
+const KpiTableBase: React.FC<Props> = ({
   rows,
   contractId,
   basePath,
@@ -645,5 +645,13 @@ const KpiTable: React.FC<Props> = ({
     </div>
   );
 };
+
+// Memoized so a parent re-render (ContractDetailPage/MsaDetailPage subscribe to
+// the toast store, and the KPI submit fires a toast) does not rebuild the table
+// subtree. Rebuilding remounted the uncontrolled detail Sheet + update Dialog
+// rendered per row, which is why the "KPI update page kept disappearing" on
+// submit (QA #147). Callers pass a memoized `rows`, so the shallow prop compare
+// holds across those re-renders.
+const KpiTable = React.memo(KpiTableBase);
 
 export default KpiTable;

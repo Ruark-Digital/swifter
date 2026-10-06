@@ -5,10 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Share2, Search, Check, X } from "lucide-react";
-import { cn, formatSecurityType } from "@/lib/utils";
+import { cn, formatSecurityType, daysUntilCalendar } from "@/lib/utils";
 import { ContractComplianceDTO } from "../api/contractManagerApi";
 import { useUserRole } from "@/hooks/useUserRole";
-import { format, differenceInDays } from "date-fns";
+import { format } from "date-fns";
 import ComplianceDetailsSheet from "./ComplianceDetailsSheet";
 import SubmitPolicyDialog from "./SubmitPolicyDialog";
 import { useParams } from "react-router-dom";
@@ -428,8 +428,8 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
       );
       let dueIn = "-";
       if (s.dueDate && !settled) {
-        const days = differenceInDays(new Date(s.dueDate), new Date());
-        if (days > 0) dueIn = `${days} days`;
+        const days = daysUntilCalendar(s.dueDate) ?? 0;
+        if (days > 0) dueIn = `${days} day${days === 1 ? "" : "s"}`;
         else if (days === 0) dueIn = "Today";
         else dueIn = "Overdue";
       }
