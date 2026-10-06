@@ -2,7 +2,7 @@
 
 **Milestone:** v1.0 — Phase-2 QA + BE-Gap Remediation
 **Current phase:** Phase 3 (FE Cleanup & Hardening) — Phases 1 & 2 largely shipped incrementally
-Last activity: 2026-10-05 - Completed quick tasks 261005-sig (view-only MSA fixes #108/#105/#103 + #106 read tabs), 261005-pe7 (QA #135 action-log export + #115 Company Activity chart), and 261005-opo (Contract PM take-over detection reconciled to pendingProjectManager shape, QA #78 unblocked)
+Last activity: 2026-10-06 - Completed quick task 261006-vot: wired the view-only MSA Analytics/KPI/Compliance/Payment Summary tabs (now BE-unblocked in docs.json v2.3.0). #102 view-only Contracts list was already on base (ab8b4c67b); #104 projects/business-division still BE-blocked.
 
 ## Status
 
@@ -35,4 +35,5 @@ Brownfield app under incremental remediation. Much of Phase 1 (BE-unblocked FE g
 | 261005-opo | Reconcile Contract PM take-over detection to the deployed `pendingProjectManager` response shape (dual-read helper + legacy `projectManager.status==="pending"` fallback; requester-name resolution incl. bare ObjectId). QA #78 PM-assignment unblocked by BE (FE_IMPLEMENTATION_GUIDE_PM_ASSIGNMENT.md). | 2026-10-05 | 8bb6528da | [261005-opo-reconcile-contract-pm-take-over-detectio](./quick/261005-opo-reconcile-contract-pm-take-over-detectio/) |
 | 261005-pe7 | QA #135 full contract action-log export (fetch all pages) + QA #115 Company Activity chart now reads the BE `{labels,datasets}` shape (was empty). QA #116 module-usage: FE verified correct from live payloads — BE returns zero-valued daily buckets for 30/7-day ranges (BE-side). | 2026-10-05 | 21625f39b, 9ec9d5dcf | [261005-pe7-fix-qa-115-116-135-super-admin-company-a](./quick/261005-pe7-fix-qa-115-116-135-super-admin-company-a/) |
 | 261005-sig | View-only batch MSA-side: QA #108 hide approvers tab, #105 MSA linked contracts (/user), #103 hide "My MSA", #106 add read tabs (rate sheets, vendor key personnel, action log, clause library) wired to /user base paths. Extracted msaTabWhitelist.ts. #106 analytics/kpi/compliance/payment-summary + #104 remain BE-blocked. | 2026-10-05 | cd0c45c35, 8cf2dfa2a | [261005-sig-qa-103-105-108-view-only-msa-fixes-hide](./quick/261005-sig-qa-103-105-108-view-only-msa-fixes-hide/) |
+| 261006-vot | View-only MSA tabs now BE-unblocked (docs.json v2.3.0): wired Analytics/KPI/Compliance/Payment Summary to `/user/msa-contracts/{id}/…` (read-only; write actions stay role-gated) and whitelisted them. Analytics gates off deliverable-status/summary (no `/user` endpoint → Vendor KPI shows "--"). #102 contracts list already on base (ab8b4c67b); #104 projects/business-division still BE-blocked. | 2026-10-06 | 4f179af0e | [261006-vot-view-only-msa-tabs-be-unblocked](./quick/261006-vot-view-only-msa-tabs-be-unblocked/) |
 
