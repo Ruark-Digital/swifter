@@ -2,7 +2,7 @@
 
 **Milestone:** v1.0 — Phase-2 QA + BE-Gap Remediation
 **Current phase:** Phase 3 (FE Cleanup & Hardening) — Phases 1 & 2 largely shipped incrementally
-Last activity: 2026-10-05 - Completed quick task 261005-opo: Reconcile Contract PM take-over detection to the deployed pendingProjectManager response shape (dual-read, QA #78 unblocked)
+Last activity: 2026-10-05 - Completed quick task 261005-pe7: QA #135 full action-log export + QA #115 Company Activity chart (both shipped); QA #116 module-usage determined BE-side (FE correct, BE returns zero daily buckets). Also completed quick task 261005-opo: Reconcile Contract PM take-over detection to the deployed pendingProjectManager response shape (dual-read, QA #78 unblocked)
 
 ## Status
 
@@ -33,3 +33,4 @@ Brownfield app under incremental remediation. Much of Phase 1 (BE-unblocked FE g
 | 260725-d4e | Fix Create New Company dialog: cap height with internal scroll, fix Subscription Duration select not persisting its value | 2026-07-25 | 918ff66e7, 04e5e59ae | [260725-d4e-create-company-dialog-fix](./quick/260725-d4e-create-company-dialog-fix/) |
 | 260725-eb2 | Fix 4 QA bugs: registration password-visibility toggle (Forger memo froze inline closure), Company Modules tab raw yup errors (boolean coercion), Solicitation/Evaluation forms auto-submitting (multiselect.tsx buttons missing type="button"), User Management Role/Status filter crash (navigated to unregistered /dashboard/users route) | 2026-07-25 | 34a1367fc, 5a3484769, 2fce7a055, dff1430f3 | [260725-eb2-fix-4-qa-bugs-registration-password-togg](./quick/260725-eb2-fix-4-qa-bugs-registration-password-togg/) |
 | 261005-opo | Reconcile Contract PM take-over detection to the deployed `pendingProjectManager` response shape (dual-read helper + legacy `projectManager.status==="pending"` fallback; requester-name resolution incl. bare ObjectId). QA #78 PM-assignment unblocked by BE (FE_IMPLEMENTATION_GUIDE_PM_ASSIGNMENT.md). | 2026-10-05 | 8bb6528da | [261005-opo-reconcile-contract-pm-take-over-detectio](./quick/261005-opo-reconcile-contract-pm-take-over-detectio/) |
+| 261005-pe7 | QA #135 full contract action-log export (fetch all pages) + QA #115 Company Activity chart now reads the BE `{labels,datasets}` shape (was empty). QA #116 module-usage: FE verified correct from live payloads — BE returns zero-valued daily buckets for 30/7-day ranges (BE-side). | 2026-10-05 | 21625f39b, 9ec9d5dcf | [261005-pe7-fix-qa-115-116-135-super-admin-company-a](./quick/261005-pe7-fix-qa-115-116-135-super-admin-company-a/) |

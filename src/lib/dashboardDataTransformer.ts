@@ -1096,6 +1096,31 @@ export class DashboardDataTransformer {
     range: string = "12months",
     now: Date = new Date()
   ) {
+    // QA #115: the BE returns this endpoint pre-bucketed as
+    // `{ labels: string[], datasets: [{ name, values: number[] }] }` (the same
+    // shape as the other activity charts), so the per-item bucketing below —
+    // which only reads `solicitations`/`evaluations` item arrays — produced an
+    // all-zero (empty) "Company Activity" chart. Sum every activity dataset per
+    // label into a single "activities" series the area chart can plot.
+    const preBucketed = data as unknown as {
+      labels?: unknown;
+      datasets?: Array<{ name?: string; values?: unknown }>;
+    };
+    if (
+      Array.isArray(preBucketed?.labels) &&
+      Array.isArray(preBucketed?.datasets)
+    ) {
+      return (preBucketed.labels as unknown[]).map((label, i) => {
+        const activities = (preBucketed.datasets ?? []).reduce((sum, ds) => {
+          const value = Array.isArray(ds?.values)
+            ? Number((ds.values as unknown[])[i])
+            : 0;
+          return sum + (Number.isFinite(value) ? value : 0);
+        }, 0);
+        return { day: String(label), activities };
+      });
+    }
+
     // QA #69: bucket each solicitation/evaluation by its own date over the
     // selected range (days for "7days"/"30days", months otherwise) instead of
     // spreading the total evenly over a fixed Mon–Sun axis.
