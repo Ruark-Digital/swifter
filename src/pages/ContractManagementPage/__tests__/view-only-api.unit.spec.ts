@@ -27,4 +27,33 @@ test.describe("viewOnlyApi (unit)", () => {
     await api.getContract("c1");
     expect(getSpy.calls[0]).toEqual({ url: "/contract/user/contracts/c1" });
   });
+
+  // QA #102/#103 — the list + stats must hit the read-only `/user/contracts`
+  // surface (the manager endpoints 403 for view-only, and there is no `/me`).
+  test("listContracts hits /contract/user/contracts with pagination", async () => {
+    const getSpy = createAsyncSpy<{ url: string; config?: unknown }>();
+    const api = createViewOnlyApi({ get: getSpy.fn as any });
+
+    await api.listContracts({ page: 2, limit: 10 });
+    expect(getSpy.calls[0]).toEqual({
+      url: "/contract/user/contracts",
+      config: { params: { page: 2, limit: 10 } },
+    });
+  });
+
+  test("listContracts omits config when no query is given", async () => {
+    const getSpy = createAsyncSpy<{ url: string; config?: unknown }>();
+    const api = createViewOnlyApi({ get: getSpy.fn as any });
+
+    await api.listContracts();
+    expect(getSpy.calls[0]).toEqual({ url: "/contract/user/contracts" });
+  });
+
+  test("getStats hits /contract/user/contracts/stats", async () => {
+    const getSpy = createAsyncSpy<{ url: string; config?: unknown }>();
+    const api = createViewOnlyApi({ get: getSpy.fn as any });
+
+    await api.getStats();
+    expect(getSpy.calls[0]).toEqual({ url: "/contract/user/contracts/stats" });
+  });
 });

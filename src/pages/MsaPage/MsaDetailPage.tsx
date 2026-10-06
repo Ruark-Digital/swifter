@@ -195,7 +195,9 @@ const ROLE_TAB_WHITELIST: Record<
     "rfi",
     "deliverables",
     "ncr-log",
-    "approvers",
+    // "approvers" intentionally omitted — there is no `/user/msa-contracts/{id}`
+    // approvers endpoint, so the tab 404'd and showed a red flag for view-only
+    // users (QA #108). View-only has no reason to manage approvers.
     "reports",
   ],
 };

@@ -76,6 +76,7 @@ const MsaPage: React.FC = () => {
     isProjectManager,
     isCompanyAdmin,
     isSuperAdmin,
+    isViewOnly,
   } = useUserRole();
   const isManagerLike = isManager || isCompanyAdmin || isSuperAdmin;
   const isVendorLike = isVendor || isProjectManager;
@@ -258,7 +259,9 @@ const MsaPage: React.FC = () => {
       />
 
       {hasData ? (
-        isCompanyAdmin ? (
+        // View-only has no "My MSA" (no `/user/msa-contracts/me` endpoint), so
+        // show All MSA only, same as Company Admin. QA #103.
+        isCompanyAdmin || isViewOnly ? (
           <Tabs defaultValue="all" className="w-full bg-transparent space-y-4">
             <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
               <TabsTrigger
