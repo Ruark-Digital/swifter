@@ -41,6 +41,7 @@ import Invoice from "./layouts/Invoice";
 import Rfi from "./layouts/Rfi";
 import Lem from "./layouts/Lem";
 import Approvers from "./layouts/Approvers";
+import { ROLE_TAB_WHITELIST, type MsaTabKey } from "./msaTabWhitelist";
 import VendorPersonnelTabContent from "@/pages/ContractManagementPage/layouts/VendorPersonnelTabContent";
 import Deliverables from "./layouts/Deliverables";
 import Reports from "./layouts/Reports";
@@ -49,6 +50,7 @@ import RateSheetsTabContent from "@/pages/ContractManagementPage/layouts/RateShe
 import ClauseLibraryTabContent from "@/pages/ContractManagementPage/layouts/ClauseLibraryTabContent";
 import NcrLog from "./layouts/NcrLog";
 import { Share2 } from "lucide-react";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import { Status, StatusBadge } from "./components/StatusBadge";
 import { useUser } from "@/store/authSlice";
 import { resolveCurrency } from "@/lib/utils";
@@ -59,27 +61,7 @@ import {
   type LifecycleAction,
 } from "@/pages/ContractManagementPage/components/contractLifecycle";
 
-type TabKey =
-  | "overview"
-  | "analytics"
-  | "kpi"
-  | "compliance"
-  | "documents"
-  | "amendments"
-  | "deliverables"
-  | "payment-summary"
-  | "rate-sheets"
-  | "lem"
-  | "invoice"
-  | "change"
-  | "claims"
-  | "rfi"
-  | "ncr-log"
-  | "approvers"
-  | "vendor-personnel"
-  | "reports"
-  | "action-log"
-  | "clause-library";
+type TabKey = MsaTabKey;
 
 const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "overview", label: "Overview" },
@@ -118,87 +100,6 @@ const MSA_DISABLED_TABS: ReadonlySet<TabKey> = new Set<TabKey>([
   "reports",
   "invoice",
 ]);
-
-const ROLE_TAB_WHITELIST: Record<
-  "approver" | "vendor" | "manager" | "view only",
-  TabKey[]
-> = {
-  approver: [
-    "overview",
-    "analytics",
-    "documents",
-    "amendments",
-    "lem",
-    "invoice",
-    "change",
-    "claims",
-    "rfi",
-    "deliverables",
-    "ncr-log",
-    // "approvers" intentionally omitted — approvers can't see the Approvers tab
-    "reports",
-    "payment-summary",
-    // Approvers get a read/approve view of rate sheets (QA #35). BE exposes
-    // /approver/msa-contracts/{id}/ratesheets and RateSheetsTabContent
-    // resolves the approver base path for the msa-contracts segment.
-    "rate-sheets",
-    // Approvers can view the Clause Library (parity with the manager view).
-    "clause-library",
-  ],
-  vendor: [
-    "overview",
-    "compliance",
-    "documents",
-    "amendments",
-    "lem",
-    "invoice",
-    "change",
-    "claims",
-    "rfi",
-    "deliverables",
-    "ncr-log",
-    // "approvers" intentionally omitted — vendors and project managers can't see the Approvers tab
-    "reports",
-    "payment-summary",
-    "rate-sheets",
-  ],
-  manager: [
-    "overview",
-    "analytics",
-    "kpi",
-    "compliance",
-    "documents",
-    "amendments",
-    "lem",
-    "invoice",
-    "change",
-    "claims",
-    "rfi",
-    "deliverables",
-    "ncr-log",
-    "approvers",
-    "vendor-personnel",
-    "reports",
-    "payment-summary",
-    "action-log",
-    "rate-sheets",
-    "clause-library",
-  ],
-  "view only": [
-    "overview",
-    "documents",
-    "amendments",
-    "lem",
-    "invoice",
-    "change",
-    "claims",
-    "rfi",
-    "deliverables",
-    "ncr-log",
-    "approvers",
-    "reports",
-  ],
-};
 
 type MsaStatus =
   | "draft"
@@ -492,15 +393,19 @@ const MsaDetailPage: React.FC = () => {
   // the right currency instead of a hardcoded USD (QA #59a).
   const displayCurrency = resolveCurrency(msa?.currency, user?.currency);
 
-  const canFetchLinkedContracts = (isManager || isCompanyAdmin) && Boolean(id);
+  // QA #105: view-only users must also see the MSA's linked contracts. The BE
+  // exposes /contract/user/msa-contracts/{id}/linked-contract for them.
+  const canFetchLinkedContracts =
+    (isManager || isCompanyAdmin || isViewOnly) && Boolean(id);
   const linkedContractsQueryKey = useUserQueryKey(["msa-linked-contract", id]);
 
   const { data: linkedContractsResponse, isLoading: isLinkedContractsLoading } =
     useQuery({
       queryKey: linkedContractsQueryKey,
       queryFn: async () => {
+        const base = isViewOnly ? "/contract/user" : "/contract/manager";
         return getRequest({
-          url: `/contract/manager/msa-contracts/${id ?? ""}/linked-contract`,
+          url: `${base}/msa-contracts/${id ?? ""}/linked-contract`,
         });
       },
       enabled: canFetchLinkedContracts && topTab === "linked",
@@ -882,12 +787,18 @@ const MsaDetailPage: React.FC = () => {
 
             <TabsContent value="overview">
               <div className="flex items-center justify-end w-full gap-3 pb-3">
-                <Button
-                  variant="outline"
-                  className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
-                >
-                  <Share2 className="mr-2 h-4 w-4" /> Export Report
-                </Button>
+                {/* QA #107 — this button was never wired to the export sheet, so
+                    "Export Report" did nothing for MSAs. Wrap it in the shared
+                    ExportReportSheet with contractType="MsaContract" (the sheet
+                    already targets /contract-export/{id}?type=MsaContract). */}
+                <ExportReportSheet contractId={id ?? ""} contractType="MsaContract">
+                  <Button
+                    variant="outline"
+                    className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
+                  >
+                    <Share2 className="mr-2 h-4 w-4" /> Export Report
+                  </Button>
+                </ExportReportSheet>
                 {isManager && isMsaOwner && (
                   <CreateMSADialog
                     trigger={

@@ -49,9 +49,10 @@ const VendorPersonnelTabContent: React.FC<Props> = ({
   contractType = "Contract",
   invalidateQueryKey,
 }) => {
-  const { isManager, isCompanyAdmin } = useUserRole();
+  const { isManager, isCompanyAdmin, isViewOnly } = useUserRole();
   // Tab is visible to the owning CM/PL, but add/edit/remove is only allowed
-  // once the contract is active/published (per product rule).
+  // once the contract is active/published (per product rule). View-only users
+  // never satisfy canManage, so the tab stays read-only for them.
   const isActionableStatus = status === "active" || status === "publish";
   const canManage =
     (isManager || isCompanyAdmin) && Boolean(owner) && isActionableStatus;
@@ -59,7 +60,10 @@ const VendorPersonnelTabContent: React.FC<Props> = ({
   const qc = useQueryClient();
 
   const segment = contractType === "MsaContract" ? "msa-contracts" : "contracts";
-  const basePath = `/contract/manager/${segment}/${contractId}/vendor-personnel`;
+  // QA #106: view-only reads personnel through /user; everyone else uses the
+  // manager path (the save PUT is gated behind canManage, which excludes view-only).
+  const roleBase = isViewOnly ? "user" : "manager";
+  const basePath = `/contract/${roleBase}/${segment}/${contractId}/vendor-personnel`;
   const queryKey = useUserQueryKey([
     "vendor-personnel",
     contractType,

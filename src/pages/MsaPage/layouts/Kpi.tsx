@@ -15,14 +15,18 @@ type Props = {
 };
 
 const Kpi: React.FC<Props> = ({ contractId, isActive }) => {
-  const { isManager, isAdmin } = useUserRole();
+  const { isManager, isAdmin, isViewOnly } = useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
   const canManageKpi = isManager || isAdmin;
+  // View-only reads the same KPI list from /user (QA #106); canManageKpi stays
+  // false so the Update/View row actions stay hidden.
   const basePath = canManageKpi
     ? `/contract/manager/msa-contracts/${contractId}/kpis`
-    : undefined;
+    : isViewOnly
+      ? `/contract/user/msa-contracts/${contractId}/kpis`
+      : undefined;
   const queryKey = useUserQueryKey(["msa-kpis", contractId, basePath || "none"]);
 
   const { data, isLoading, error } = useQuery({

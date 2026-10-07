@@ -31,42 +31,11 @@ type ActionLogRow = {
   rawReference?: any;
 };
 
-const ActionLogTabContent: React.FC<Props> = () => {
-  const { id: contractId } = useParams<{ id: string }>();
-  const [selectedAction, setSelectedAction] = useState<ActionLogRow | null>(null);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [pagination, setPagination] = React.useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 20,
-  });
-  const { isManager, isProcurement, isAdmin } = useUserRole()
-
-  const listQuery = React.useMemo(() => {
-    const query = searchQuery.trim();
-    const isLogIdQuery = /^ACT-\d+/i.test(query);
-
-    return {
-      page: pagination.pageIndex + 1,
-      limit: pagination.pageSize,
-      logId: query && isLogIdQuery ? query : undefined,
-      module: query && !isLogIdQuery ? query : undefined,
-    };
-  }, [pagination, searchQuery]);
-
-  // 1. Fetch action logs
-  const { data: logsData, isLoading } = useQuery({
-    queryKey: ["contractLogs", contractId, listQuery],
-    queryFn: () => contractManagerApi.listLogs(contractId!, listQuery),
-    // QA #298: company/super admins are manager-equivalent readers, so they
-    // must fetch the (manager) action log too — otherwise the tab is empty.
-    enabled: !!contractId && (isManager || isProcurement || isAdmin),
-  });
-
-  const rows = useMemo(() => {
-    if (!logsData?.data?.logs) return [];
-
-    return logsData.data.logs.map((log: any) => {
+// Map raw BE logs to table rows (newest first). Shared by the paginated table
+// and the Export handler so the exported sheet matches the on-screen columns.
+const mapLogsToRows = (logs: any[]): ActionLogRow[] => {
+  return (logs ?? [])
+    .map((log: any) => {
       const sourceDate = log.date ?? new Date().toISOString();
       const date = new Date(sourceDate);
       let refStr = "Unknown";
@@ -111,32 +80,96 @@ const ActionLogTabContent: React.FC<Props> = () => {
         rawDate: date,
         rawReference: log.reference,
       };
-    }).sort((a: any, b: any) => b.rawDate.getTime() - a.rawDate.getTime());
-  }, [logsData]);
+    })
+    .sort((a: any, b: any) => b.rawDate.getTime() - a.rawDate.getTime());
+};
+
+const toExportRow = (r: ActionLogRow) => ({
+  "Action ID": r.actionId,
+  Module: formatModuleLabel(r.module),
+  Description: r.description,
+  User: r.actorName,
+  Role: r.actorRole ?? "",
+  Reference: r.reference,
+  Date: r.dateLine1,
+  Time: r.dateLine2,
+});
+
+const ActionLogTabContent: React.FC<Props> = () => {
+  const { id: contractId } = useParams<{ id: string }>();
+  const [selectedAction, setSelectedAction] = useState<ActionLogRow | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 20,
+  });
+  const { isManager, isProcurement, isAdmin } = useUserRole()
+
+  const listQuery = React.useMemo(() => {
+    const query = searchQuery.trim();
+    const isLogIdQuery = /^ACT-\d+/i.test(query);
+
+    return {
+      page: pagination.pageIndex + 1,
+      limit: pagination.pageSize,
+      logId: query && isLogIdQuery ? query : undefined,
+      module: query && !isLogIdQuery ? query : undefined,
+    };
+  }, [pagination, searchQuery]);
+
+  // 1. Fetch action logs
+  const { data: logsData, isLoading } = useQuery({
+    queryKey: ["contractLogs", contractId, listQuery],
+    queryFn: () => contractManagerApi.listLogs(contractId!, listQuery),
+    // QA #298: company/super admins are manager-equivalent readers, so they
+    // must fetch the (manager) action log too — otherwise the tab is empty.
+    enabled: !!contractId && (isManager || isProcurement || isAdmin),
+  });
+
+  const rows = useMemo(
+    () => mapLogsToRows(logsData?.data?.logs ?? []),
+    [logsData],
+  );
 
   const totalCount = logsData?.data?.total ?? rows.length;
+  const [isExporting, setIsExporting] = useState(false);
 
-  const handleExport = React.useCallback(() => {
-    if (!rows.length) return;
-    const exportRows = rows.map((r) => ({
-      "Action ID": r.actionId,
-      Module: formatModuleLabel(r.module),
-      Description: r.description,
-      User: r.actorName,
-      Role: r.actorRole ?? "",
-      Reference: r.reference,
-      Date: r.dateLine1,
-      Time: r.dateLine2,
-    }));
-    const worksheet = XLSX.utils.json_to_sheet(exportRows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Action Log");
-    const filename = `action-log-${contractId ?? "contract"}-${format(
-      new Date(),
-      "yyyy-MM-dd",
-    )}.xlsx`;
-    XLSX.writeFile(workbook, filename);
-  }, [contractId, rows]);
+  const writeLogsWorkbook = React.useCallback(
+    (exportRows: ActionLogRow[]) => {
+      const worksheet = XLSX.utils.json_to_sheet(exportRows.map(toExportRow));
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Action Log");
+      const filename = `action-log-${contractId ?? "contract"}-${format(
+        new Date(),
+        "yyyy-MM-dd",
+      )}.xlsx`;
+      XLSX.writeFile(workbook, filename);
+    },
+    [contractId],
+  );
+
+  // QA #135: the table is paginated, so exporting `rows` only wrote the current
+  // page. Pull the full set in one request (BE: "call the api with the total
+  // limit") honouring the active search filter, then export all of it. If the
+  // full fetch fails, fall back to the current page so Export never dead-ends.
+  const handleExport = React.useCallback(async () => {
+    if (!contractId || !rows.length || isExporting) return;
+    setIsExporting(true);
+    try {
+      const res = await contractManagerApi.listLogs(contractId, {
+        ...listQuery,
+        page: 1,
+        limit: totalCount > 0 ? totalCount : rows.length,
+      });
+      const allRows = mapLogsToRows(res?.data?.logs ?? []);
+      writeLogsWorkbook(allRows.length ? allRows : rows);
+    } catch {
+      writeLogsWorkbook(rows);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [contractId, rows, isExporting, listQuery, totalCount, writeLogsWorkbook]);
 
   const columns: ColumnDef<ActionLogRow>[] = [
     {
@@ -235,11 +268,11 @@ const ActionLogTabContent: React.FC<Props> = () => {
               variant="outline"
               size="sm"
               onClick={handleExport}
-              disabled={!rows.length}
+              disabled={!rows.length || isExporting}
               data-testid="action-log-export"
             >
               <Download className="mr-2 h-4 w-4" />
-              Export
+              {isExporting ? "Exporting..." : "Export"}
             </Button>
           </div>
         </div>

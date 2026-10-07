@@ -76,6 +76,20 @@ export const createViewOnlyApi = (
       };
     }>;
   },
+  // Contract list + stats for the View Only role. The manager list endpoints
+  // (`/contract/manager/contracts`, `/me`) 403 for a view-only user — which is
+  // why they saw no contracts (QA #102) — and there is no `/user/contracts/me`
+  // (view-only has no "My Contracts" concept, QA #103). Use the read-only
+  // `/contract/user/contracts` surface instead.
+  listContracts: async (query?: { page?: number; limit?: number }) => {
+    return client.get({
+      url: `/contract/user/contracts`,
+      config: query ? { params: query } : undefined,
+    });
+  },
+  getStats: async () => {
+    return client.get({ url: `/contract/user/contracts/stats` });
+  },
 });
 
 export const viewOnlyApi = createViewOnlyApi();

@@ -8,6 +8,7 @@ import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import { useUserRole } from "@/hooks/useUserRole";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
@@ -79,6 +80,10 @@ const ActionLogDetailSheet = ({
 );
 
 const ActionLogTabContent: React.FC<Props> = ({ contractId, isActive }) => {
+  // QA #106: view-only reads the MSA action log via /user; everyone else uses
+  // the manager path.
+  const { isViewOnly } = useUserRole();
+  const logsBase = isViewOnly ? "user" : "manager";
   const [selectedAction, setSelectedAction] = React.useState<ActionLogRow | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [pagination, setPagination] = React.useState<PaginationState>({
@@ -97,13 +102,18 @@ const ActionLogTabContent: React.FC<Props> = ({ contractId, isActive }) => {
     };
   }, [pagination, searchQuery]);
 
-  const queryKey = useUserQueryKey(["msa-contract-logs", contractId, listQuery]);
+  const queryKey = useUserQueryKey([
+    "msa-contract-logs",
+    logsBase,
+    contractId,
+    listQuery,
+  ]);
 
   const { data: logsData, isLoading } = useQuery({
     queryKey,
     queryFn: async () => {
       const res = await getRequest({
-        url: `/contract/manager/msa-contracts/${contractId}/logs`,
+        url: `/contract/${logsBase}/msa-contracts/${contractId}/logs`,
         config: { params: listQuery },
       });
       return res.data as {
