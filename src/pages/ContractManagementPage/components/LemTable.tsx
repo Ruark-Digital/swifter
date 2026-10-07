@@ -589,52 +589,6 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   />
                 </div>
 
-                {rateSheetComparison && (
-                  <div className="space-y-3 rounded-xl border border-[#E5E7EB] p-4 dark:border-slate-700">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
-                        Rate Sheet Compliance
-                      </div>
-                      {rateSheetComparison.complianceStatus && (
-                        <span
-                          className={cn(
-                            "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
-                            complianceBadgeColor(rateSheetComparison.complianceStatus),
-                          )}
-                        >
-                          {rateSheetComparison.complianceStatus}
-                        </span>
-                      )}
-                    </div>
-                    <div className="grid gap-6 sm:grid-cols-2">
-                      <LabelRow
-                        label="Rate Sheet Total"
-                        value={
-                          typeof rateSheetComparison.rateSheetTotal === "number"
-                            ? formatCurrency(
-                                rateSheetComparison.rateSheetTotal,
-                                "en-US",
-                                currencyCode,
-                              )
-                            : "—"
-                        }
-                      />
-                      <LabelRow
-                        label="Variance"
-                        value={
-                          typeof rateSheetComparison.totalVariance === "number"
-                            ? formatCurrency(
-                                rateSheetComparison.totalVariance,
-                                "en-US",
-                                currencyCode,
-                              )
-                            : "—"
-                        }
-                      />
-                    </div>
-                  </div>
-                )}
-
                 <div className="space-y-2">
                   <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                     Description
