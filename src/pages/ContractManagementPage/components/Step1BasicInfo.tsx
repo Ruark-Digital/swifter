@@ -3,6 +3,7 @@ import { Forger } from "@adexdsamson/forge";
 import {
   TextInput,
   TextSelect,
+  TextMultiSelect,
   TextSelectWithSearch,
   TextArea,
 } from "@/components/layouts/FormInputs";
@@ -143,6 +144,28 @@ const Step1BasicInfo: React.FC<Props> = ({
   // categoryOptions are keyed (value === name).
   const { setValue } = useFormContext();
   const awardedSolicitation = useWatch({ name: "awardedSolicitation" });
+
+  // #33: "Combination" is a BE-provided contract-type option. When it's chosen,
+  // reveal a multi-select of all the OTHER types (never Combination itself); the
+  // parent submits the picks as a comma-separated id string in `contractType`.
+  const typeValue = useWatch({ name: "type" });
+  const combinationTypeId = React.useMemo(
+    () =>
+      typeOptions.find((o) => o.label?.trim().toLowerCase() === "combination")
+        ?.value,
+    [typeOptions],
+  );
+  const isCombination = !!combinationTypeId && typeValue === combinationTypeId;
+  const combinationSubOptions = React.useMemo(
+    () => typeOptions.filter((o) => o.value !== combinationTypeId),
+    [typeOptions, combinationTypeId],
+  );
+
+  // Clear the sub-type picks when switching away from Combination so a stale
+  // list isn't submitted.
+  React.useEffect(() => {
+    if (!isCombination) setValue("combinationTypes", []);
+  }, [isCombination, setValue]);
 
   React.useEffect(() => {
     if (!selectedCurrency && userCurrency) {
@@ -405,6 +428,17 @@ const Step1BasicInfo: React.FC<Props> = ({
           data-testid="contract-category-select"
         />
       </div>
+
+      {isCombination && (
+        <Forger
+          name="combinationTypes"
+          label="Combination Types"
+          placeholder="Select the contract types to combine"
+          component={TextMultiSelect}
+          options={combinationSubOptions}
+          data-testid="contract-combination-types-select"
+        />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Forger
