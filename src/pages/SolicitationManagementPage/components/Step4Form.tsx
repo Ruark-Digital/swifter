@@ -313,6 +313,8 @@ const FileListItem = ({
         <button
           type="button"
           onClick={onRemove}
+          aria-label="Remove file"
+          title="Remove file"
           className="text-gray-400 hover:text-red-500 transition-colors p-1"
           disabled={fileState.status === "uploading"}
         >
@@ -483,14 +485,18 @@ export const FileUploadManager = ({
     window.addEventListener("beforeunload", handleBeforeUnload);
     window.addEventListener("unload", handleUnload);
 
-    // Cleanup function for component unmount
+    // Cleanup function
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       window.removeEventListener("unload", handleUnload);
-
-      // Clear the initialized flag when component unmounts to allow proper re-initialization
-      setInitializedFor(null);
     };
+    // NOTE: do NOT reset `initializedFor` here. This effect re-runs on every
+    // `filesWithState.length` change, so its cleanup fires whenever a file is
+    // added/removed — resetting the init flag mid-session made the "initialize
+    // existing documents" effect re-add a just-removed document from the still-
+    // populated `documents` prop, so the remove button appeared to do nothing.
+    // Component state resets on real unmount anyway, so re-initialization on
+    // remount still works without touching it here.
   }, [filesWithState.length, clearSession]);
 
   const formatFileSize = (bytes: number) => {
