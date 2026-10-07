@@ -13,6 +13,10 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { cn } from "@/lib/utils";
 import Step1BasicInfo from "./Step1BasicInfo";
+import {
+  findCombinationTypeId,
+  resolveContractTypePayload,
+} from "../lib/contractType";
 import Step2ContractTeam from "./Step2ContractTeam";
 import Step3ValuePayments from "./Step3ValuePayments";
 import Step4Timeline from "./Step4Timeline";
@@ -55,6 +59,11 @@ export const schema = yup.object({
   project: yup.string().optional(),
   awardedSolicitation: yup.string().optional(),
   type: yup.string().required("Contract type is required"),
+  // When the "Combination" contract type is selected, the user picks a
+  // combination of the other contract types here. On submit these are sent as a
+  // comma-separated id string in `contractType` (BE convention — #33). Each item
+  // is a { label, value } option from the type dropdown.
+  combinationTypes: yup.array().optional(),
   category: yup.string().required("Category is required"),
   currency: yup.string().required("Currency is required"),
   manager: yup.string().optional(),
@@ -200,6 +209,7 @@ export const defaultValues = {
   project: "",
   awardedSolicitation: "",
   type: "",
+  combinationTypes: [],
   category: "",
   currency: "",
   manager: "",
@@ -915,6 +925,23 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       if (!fields.length) return true;
       const ok = await formTrigger(fields as any, { shouldFocus: true });
       if (!ok) return false;
+      if (currentStep === 1) {
+        // #33: a "Combination" contract type must name at least two sub-types.
+        const values = getValues();
+        const combinationTypeId = findCombinationTypeId(typeOptions);
+        if (combinationTypeId && values.type === combinationTypeId) {
+          const picked = Array.isArray(values.combinationTypes)
+            ? values.combinationTypes
+            : [];
+          if (picked.length < 2) {
+            setError("combinationTypes" as any, {
+              type: "required",
+              message: "Select at least two contract types for a combination.",
+            });
+            return false;
+          }
+        }
+      }
       if (currentStep === 8) {
         const approvalGroups = getValues().approvalGroups ?? [];
         const seenApprovers = new Set<string>();
@@ -965,7 +992,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       });
       return allValid;
     },
-    [error, formTrigger, getValues, setError],
+    [error, formTrigger, getValues, setError, typeOptions],
   );
 
   const buildPayload = React.useCallback(
@@ -1141,7 +1168,11 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         description: data.description,
         category: data.category,
         timezone: tz,
-        contractType: data.type,
+        contractType: resolveContractTypePayload(
+          data.type,
+          findCombinationTypeId(typeOptions),
+          data.combinationTypes,
+        ),
         contractRelationship: relationship,
         businessDivision: data.businessDivision,
         currency: data.currency,

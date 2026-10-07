@@ -30,6 +30,10 @@ import {
   schema as createSchema,
   defaultValues as createDefaults,
 } from "@/pages/ContractManagementPage/components/CreateContractSheet";
+import {
+  findCombinationTypeId,
+  resolveContractTypePayload,
+} from "@/pages/ContractManagementPage/lib/contractType";
 import { format } from "date-fns";
 import { X, FileText } from "lucide-react";
 import { useClearSession } from "@/store/solicitationFileSlice";
@@ -215,6 +219,7 @@ const EditContract: React.FC<Props> = ({
     control,
     reset,
     getValues,
+    setValue,
     trigger: formTrigger,
   } = useForge<yup.InferType<typeof createSchema>>({
     resolver: yupResolver(createSchema),
@@ -683,6 +688,43 @@ const EditContract: React.FC<Props> = ({
         : [],
     [typesQuery.data?.data],
   );
+
+  // #33: re-hydrate a saved "Combination" contract type. The BE stores it as a
+  // comma-separated id string in `contractType`, so the main reset above (which
+  // reads `contractType?._id`) leaves `type` empty for it. Once the type list is
+  // loaded, detect the combination and set the dropdown to "Combination" plus
+  // the sub-type multi-select. Runs after reset; guarded so it doesn't clobber
+  // user edits (keyed on the raw stored value).
+  const combinationHydratedRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    const contract = contractRes?.data?.data;
+    if (!contract) return;
+    const combinationTypeId = findCombinationTypeId(typeOptions);
+    if (!combinationTypeId) return; // type list not loaded yet
+    const rawType = (contract as { contractType?: unknown }).contractType;
+    let ids: string[] = [];
+    if (typeof rawType === "string" && rawType.includes(",")) {
+      ids = rawType.split(",").map((s) => s.trim()).filter(Boolean);
+    } else if (Array.isArray(rawType)) {
+      ids = rawType
+        .map((t) => (typeof t === "string" ? t : (t as { _id?: string })?._id))
+        .filter((v): v is string => typeof v === "string" && !!v);
+    }
+    if (ids.length < 2) return; // not a combination
+    const key = ids.join(",");
+    if (combinationHydratedRef.current === key) return;
+    combinationHydratedRef.current = key;
+    setValue("type", combinationTypeId, { shouldValidate: false });
+    setValue(
+      "combinationTypes" as never,
+      ids.map((id) => ({
+        value: id,
+        label: typeOptions.find((o) => o.value === id)?.label ?? id,
+      })) as never,
+      { shouldValidate: false },
+    );
+  }, [contractRes?.data?.data, typeOptions, setValue]);
+
   const paymentTermOptions = React.useMemo(
     () =>
       Array.isArray(paymentTermsQuery.data?.data)
@@ -927,7 +969,11 @@ const EditContract: React.FC<Props> = ({
             ? data.category
             : ((data.category as any)?.name ?? ""),
         timezone: tz,
-        contractType: data.type,
+        contractType: resolveContractTypePayload(
+          data.type,
+          findCombinationTypeId(typeOptions),
+          data.combinationTypes,
+        ),
         contractRelationship: relationship,
         businessDivision: data.businessDivision,
         projectId:
@@ -1001,6 +1047,7 @@ const EditContract: React.FC<Props> = ({
       termTypesQuery.data?.data,
       existingFiles,
       removedFileKeys,
+      typeOptions,
     ],
   );
 
