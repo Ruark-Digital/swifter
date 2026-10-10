@@ -571,7 +571,6 @@ const EditContract: React.FC<Props> = ({
           : (contract.businessDivision?._id ?? ""),
       contractId: contract.contractId ?? "",
       description: contract.description ?? "",
-      visibility: contract.visibility ?? "",
       // The /edit response carries `currency` and `projectManager` which
       // the previous mapping ignored — the form's Currency select was
       // stuck on "Select currency" and the PM select was unfilled even
@@ -991,7 +990,6 @@ const EditContract: React.FC<Props> = ({
         solicitationId: data.awardedSolicitation || undefined,
         contractId: data.contractId || undefined,
         jobTitle: data.jobTitle || undefined,
-        visibility: data.visibility || "private",
         contractAmount:
           typeof data.contractValue === "number"
             ? Number.isFinite(data.contractValue)
@@ -1177,7 +1175,6 @@ const EditContract: React.FC<Props> = ({
       "vendor",
       "personnel",
       "internalTeam",
-      "visibility",
     ],
     3: [
       "effectiveDate",
