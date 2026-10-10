@@ -308,8 +308,10 @@ export const VendorManagementPage = () => {
 
         // If we calculated a date range, format and add it to params
         if (startDate && endDate) {
+          // Mixed `YYYY-MM-DD-YYYY/MM/DD` form (start dashes, end slashes) so
+          // the backend can split the range; all-dashes is ambiguous and 500s.
           const formattedStartDate = format(startDate, "yyyy-MM-dd");
-          const formattedEndDate = format(endDate, "yyyy-MM-dd");
+          const formattedEndDate = format(endDate, "yyyy/MM/dd");
           params.date = `${formattedStartDate}-${formattedEndDate}`;
         }
       }
@@ -507,8 +509,10 @@ export const VendorManagementPage = () => {
   // Confirm and cancel handlers for custom date range
   const handleDateRangeConfirm = () => {
     if (tempDateRange?.from && tempDateRange?.to) {
+      // Mixed `YYYY-MM-DD-YYYY/MM/DD` form (start dashes, end slashes) so the
+      // backend can split the range; all-dashes is ambiguous and 500s.
       const start = format(startOfDay(tempDateRange.from), "yyyy-MM-dd");
-      const end = format(endOfDay(tempDateRange.to), "yyyy-MM-dd");
+      const end = format(endOfDay(tempDateRange.to), "yyyy/MM/dd");
       setFilters((prev) => ({ ...prev, datePublished: `${start}-${end}` }));
       setPagination((prev) => ({ ...prev, pageIndex: 0 }));
     }
