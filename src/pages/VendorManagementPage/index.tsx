@@ -278,10 +278,13 @@ export const VendorManagementPage = () => {
             endDate = endOfYear(today);
             break;
           default:
-            // For custom date ranges, try to parse as date range format
+            // For custom date ranges, parse the stored `start-end` string
+            // (two ISO dates, each 10 chars) into separate params.
             if (filters.datePublished.includes('-')) {
-              // If it's already in start_date-end_date format, use it directly
-              params.date = filters.datePublished;
+              const s = filters.datePublished.slice(0, 10);
+              const e = filters.datePublished.slice(11);
+              if (s) params.startDate = s;
+              if (e) params.endDate = e;
             } else {
               // For other predefined options like "7_days", convert to proper date range
               switch (filters.datePublished) {
@@ -297,22 +300,18 @@ export const VendorManagementPage = () => {
                   startDate = startOfDay(subDays(today, 29));
                   endDate = endOfDay(today);
                   break;
-                default:
-                  // Fallback: use the original value if we can't parse it
-                  params.date = filters.datePublished;
-                  break;
+                // Unrecognized value: no date filter.
               }
             }
             break;
         }
 
-        // If we calculated a date range, format and add it to params
+        // If we calculated a date range, add separate startDate/endDate params.
+        // The backend expects these two params; a combined `date=start-end`
+        // string crashes the endpoint with a 500 (verified empirically).
         if (startDate && endDate) {
-          // Mixed `YYYY-MM-DD-YYYY/MM/DD` form (start dashes, end slashes) so
-          // the backend can split the range; all-dashes is ambiguous and 500s.
-          const formattedStartDate = format(startDate, "yyyy-MM-dd");
-          const formattedEndDate = format(endDate, "yyyy/MM/dd");
-          params.date = `${formattedStartDate}-${formattedEndDate}`;
+          params.startDate = format(startDate, "yyyy-MM-dd");
+          params.endDate = format(endDate, "yyyy-MM-dd");
         }
       }
 
@@ -509,10 +508,11 @@ export const VendorManagementPage = () => {
   // Confirm and cancel handlers for custom date range
   const handleDateRangeConfirm = () => {
     if (tempDateRange?.from && tempDateRange?.to) {
-      // Mixed `YYYY-MM-DD-YYYY/MM/DD` form (start dashes, end slashes) so the
-      // backend can split the range; all-dashes is ambiguous and 500s.
+      // Store the custom range as two ISO dates joined by `-`
+      // (`YYYY-MM-DD-YYYY-MM-DD`); the query builder splits it back into the
+      // separate startDate/endDate params the backend expects.
       const start = format(startOfDay(tempDateRange.from), "yyyy-MM-dd");
-      const end = format(endOfDay(tempDateRange.to), "yyyy/MM/dd");
+      const end = format(endOfDay(tempDateRange.to), "yyyy-MM-dd");
       setFilters((prev) => ({ ...prev, datePublished: `${start}-${end}` }));
       setPagination((prev) => ({ ...prev, pageIndex: 0 }));
     }
