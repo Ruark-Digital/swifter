@@ -32,16 +32,18 @@ const BusinessDivisionsPage = () => {
   // manager bundle) also get access — they need the business-division info
   // (all project & contract data) — but as a read-only view: create/edit
   // actions stay company-admin only (gated below).
-  const { isCompanyAdmin, isManager } = useUserRole();
-  if (!isCompanyAdmin && !isManager) {
+  const { isCompanyAdmin, isManager, isViewOnly } = useUserRole();
+  if (!isCompanyAdmin && !isManager && !isViewOnly) {
     return <Navigate to="/dashboard" replace />;
   }
   return <BusinessDivisionsPageContent />;
 };
 
 const BusinessDivisionsPageContent = () => {
-  // Only company admins may create/edit divisions; managers get a read-only view.
-  const { isCompanyAdmin } = useUserRole();
+  // Only company admins may create/edit divisions; managers and view-only get a
+  // read-only view. View-only reads through the `/user` endpoints.
+  const { isCompanyAdmin, isViewOnly } = useUserRole();
+  const roleBase = isViewOnly ? "user" : "manager";
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -57,24 +59,28 @@ const BusinessDivisionsPageContent = () => {
   );
 
   const { data: statsRes } = useQuery({
-    queryKey: ["businessDivisions", "stats"],
-    queryFn: async () => await businessDivisionApi.getDivisionStats(),
+    queryKey: ["businessDivisions", "stats", roleBase],
+    queryFn: async () => await businessDivisionApi.getDivisionStats(roleBase),
   });
 
   const { data: listRes, isLoading: isListLoading } = useQuery({
     queryKey: [
       "businessDivisions",
       "list",
+      roleBase,
       pagination.pageIndex,
       pagination.pageSize,
       searchQuery,
     ],
     queryFn: async () =>
-      await businessDivisionApi.listDivisions({
-        page: pagination.pageIndex + 1,
-        limit: pagination.pageSize,
-        search: searchQuery || undefined,
-      }),
+      await businessDivisionApi.listDivisions(
+        {
+          page: pagination.pageIndex + 1,
+          limit: pagination.pageSize,
+          search: searchQuery || undefined,
+        },
+        roleBase,
+      ),
   });
 
   const totalDivisions = statsRes?.data?.totalDivisions ?? 0;

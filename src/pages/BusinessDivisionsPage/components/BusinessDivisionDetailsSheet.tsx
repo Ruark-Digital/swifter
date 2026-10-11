@@ -14,6 +14,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useDebounceValue } from "usehooks-ts";
 import { ArrowLeft, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { cn, formatDateTZ } from "@/lib/utils";
+import { useUserRole } from "@/hooks/useUserRole";
 import {
   ContractStatusBadge,
   type Status as ContractStatus,
@@ -288,6 +289,8 @@ const BusinessDivisionDetailsSheet = ({
   divisionId,
   onEditDivision,
 }: Props) => {
+  const { isViewOnly } = useUserRole();
+  const roleBase = isViewOnly ? "user" : "manager";
   const [projectSearch, setProjectSearch] = useState("");
   const [contractSearch, setContractSearch] = useState("");
   const [projectPage, setProjectPage] = useState(1);
@@ -317,9 +320,13 @@ const BusinessDivisionDetailsSheet = ({
   };
 
   const { data: detailRes, isLoading, isFetching } = useQuery({
-    queryKey: ["businessDivisions", "detail", divisionId, detailQuery],
+    queryKey: ["businessDivisions", "detail", roleBase, divisionId, detailQuery],
     queryFn: async () =>
-      await businessDivisionApi.getDivisionById(String(divisionId), detailQuery),
+      await businessDivisionApi.getDivisionById(
+        String(divisionId),
+        detailQuery,
+        roleBase,
+      ),
     enabled: open && Boolean(divisionId),
     // Keep the current rows on screen while the next page / search loads.
     placeholderData: keepPreviousData,

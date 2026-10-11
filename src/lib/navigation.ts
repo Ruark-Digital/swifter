@@ -263,6 +263,14 @@ export const getNavigationForRole = (
     view_only: [
       isModuleEnabled(modules?.contractManagement)
         ? {
+            icon: Folder,
+            title: "Projects",
+            to: "/dashboard/project-management",
+            active: currentPath.startsWith("/dashboard/project-management"),
+          }
+        : undefined,
+      isModuleEnabled(modules?.contractManagement)
+        ? {
             icon: FileText,
             title: "Contract Management",
             to: "/dashboard/contract-management",
@@ -285,6 +293,12 @@ export const getNavigationForRole = (
             ],
           }
         : undefined,
+      {
+        icon: Building2,
+        title: "Business Divisions",
+        to: "/dashboard/business-divisions",
+        active: currentPath.startsWith("/dashboard/business-divisions"),
+      },
       {
         icon: User2,
         title: "Profile",

@@ -91,21 +91,34 @@ export type CreateBusinessDivisionResponse = {
   company?: string;
 };
 
+/** Read endpoints are role-scoped: view-only reads through `/user`, everyone
+ *  else through `/manager` (the BE enabled view-only on the GET APIs). */
+export type DivisionRoleBase = "manager" | "user";
+const readBase = (roleBase: DivisionRoleBase = "manager") =>
+  `/contract/${roleBase}/business-division`;
+
 export const businessDivisionApi = {
-  getDivisionStats: async () => {
-    const res = await getRequest({ url: "/contract/manager/business-division/stats" });
+  getDivisionStats: async (roleBase: DivisionRoleBase = "manager") => {
+    const res = await getRequest({ url: `${readBase(roleBase)}/stats` });
     return res.data as { message?: string; data?: BusinessDivisionStats };
   },
-  listDivisions: async (query: ListBusinessDivisionsQuery) => {
+  listDivisions: async (
+    query: ListBusinessDivisionsQuery,
+    roleBase: DivisionRoleBase = "manager",
+  ) => {
     const res = await getRequest({
-      url: "/contract/manager/business-division",
+      url: readBase(roleBase),
       config: { params: query },
     });
     return res.data as { message?: string; data?: BusinessDivisionList };
   },
-  getDivisionById: async (divisionId: string, query?: BusinessDivisionDetailQuery) => {
+  getDivisionById: async (
+    divisionId: string,
+    query?: BusinessDivisionDetailQuery,
+    roleBase: DivisionRoleBase = "manager",
+  ) => {
     const res = await getRequest({
-      url: `/contract/manager/business-division/${encodeURIComponent(divisionId)}`,
+      url: `${readBase(roleBase)}/${encodeURIComponent(divisionId)}`,
       config: { params: query },
     });
     return res.data as { message?: string; data?: BusinessDivision };
