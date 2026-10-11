@@ -270,13 +270,16 @@ const AdminManagementPage = () => {
         params.role = filters.Role;
       }
 
-      // Add date range if selected. The backend expects separate startDate/
-      // endDate params; a combined `date=start-end` string returns no results.
-      if (dateRange.startDate) {
-        params.startDate = formatDate(dateRange.startDate, "yyyy-MM-dd");
-      }
-      if (dateRange.endDate) {
-        params.endDate = formatDate(dateRange.endDate, "yyyy-MM-dd");
+      // Add date range if selected. The backend expects the combined
+      // `date=yyyy/MM/dd-yyyy/MM/dd` range param (both halves in slashes).
+      const start = dateRange.startDate
+        ? formatDate(dateRange.startDate, "yyyy/MM/dd")
+        : undefined;
+      const end = dateRange.endDate
+        ? formatDate(dateRange.endDate, "yyyy/MM/dd")
+        : undefined;
+      if (start || end) {
+        params.date = `${start ?? ""}-${end ?? ""}`;
       }
 
       return await getRequest({

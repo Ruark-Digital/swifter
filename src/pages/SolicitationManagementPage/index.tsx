@@ -54,16 +54,16 @@ const safeFormatDate = (
   return date;
 };
 
-// Format a date as ISO yyyy-MM-dd. The backend date filter takes separate
-// `startDate` and `endDate` query params (not a combined `date=start-end`
-// string, which crashes the endpoint with a 500 — verified empirically).
-const formatDateISO = (dateInput: Date | string): string => {
+// Format a date as yyyy/MM/dd for the backend `date=start-end` range filter.
+// The BE expects the combined form `date=yyyy/MM/dd-yyyy/MM/dd` (both halves in
+// slashes, joined by `-`); it splits on `-` and parses each half by its slashes.
+const formatDateSlash = (dateInput: Date | string): string => {
   const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
   if (!(d instanceof Date) || isNaN(d.getTime())) return "";
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return `${y}/${m}/${day}`;
 };
 
 // Types based on API documentation
@@ -189,9 +189,10 @@ const useAllSolicitations = (
   if (params?.limit) queryParams.append("limit", params.limit.toString());
   if (params?.status) queryParams.append("status", params.status);
   if (params?.categoryId) queryParams.append("categoryId", params.categoryId);
-  // Backend expects separate startDate/endDate params (combined date= 500s)
-  if (params?.startDate) queryParams.append("startDate", params.startDate);
-  if (params?.endDate) queryParams.append("endDate", params.endDate);
+  // Backend expects the combined `date=yyyy/MM/dd-yyyy/MM/dd` range param.
+  if (params?.startDate && params?.endDate) {
+    queryParams.append("date", `${params.startDate}-${params.endDate}`);
+  }
 
   const queryString = queryParams.toString();
   const url = `/procurement/solicitations${
@@ -214,8 +215,9 @@ const useMySolicitations = (
   if (params?.limit) queryParams.append("limit", params.limit.toString());
   if (params?.status) queryParams.append("status", params.status);
   if (params?.categoryId) queryParams.append("categoryId", params.categoryId);
-  if (params?.startDate) queryParams.append("startDate", params.startDate);
-  if (params?.endDate) queryParams.append("endDate", params.endDate);
+  if (params?.startDate && params?.endDate) {
+    queryParams.append("date", `${params.startDate}-${params.endDate}`);
+  }
 
   const queryString = queryParams.toString();
   const url = `/procurement/solicitations/me${
@@ -240,8 +242,9 @@ const useVendorAllSolicitations = (
   if (params?.status) queryParams.append("status", params.status);
   if (params?.categoryId) queryParams.append("categoryId", params.categoryId);
   // Ensure date filter passes actual date range to API
-  if (params?.startDate) queryParams.append("startDate", params.startDate);
-  if (params?.endDate) queryParams.append("endDate", params.endDate);
+  if (params?.startDate && params?.endDate) {
+    queryParams.append("date", `${params.startDate}-${params.endDate}`);
+  }
 
   const queryString = queryParams.toString();
   const url = `/vendor/solicitations${queryString ? `?${queryString}` : ""}`;
@@ -263,8 +266,9 @@ const useVendorMySolicitations = (
   if (params?.status) queryParams.append("status", params.status);
   if (params?.categoryId) queryParams.append("categoryId", params.categoryId);
   // Ensure date filter passes actual date range to API
-  if (params?.startDate) queryParams.append("startDate", params.startDate);
-  if (params?.endDate) queryParams.append("endDate", params.endDate);
+  if (params?.startDate && params?.endDate) {
+    queryParams.append("date", `${params.startDate}-${params.endDate}`);
+  }
 
   const queryString = queryParams.toString();
   const url = `/vendor/solicitations/me${queryString ? `?${queryString}` : ""}`;
@@ -676,11 +680,11 @@ export const SolicitationManagementPage = () => {
     ...filters,
     startDate:
       filters.date && dateRange.startDate
-        ? formatDateISO(dateRange.startDate)
+        ? formatDateSlash(dateRange.startDate)
         : undefined,
     endDate:
       filters.date && dateRange.endDate
-        ? formatDateISO(dateRange.endDate)
+        ? formatDateSlash(dateRange.endDate)
         : undefined,
   };
   const vendorAllSolicitations = useVendorAllSolicitations(queryArgs, {
