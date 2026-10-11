@@ -653,7 +653,13 @@ const MsaDetailPage: React.FC = () => {
     ? {
         name: contractManagerSource?.name,
         email: contractManagerSource?.email,
-        role: contractManagerSource?.role,
+        // The detail payload returns `role` as a populated object
+        // ({ name }); flatten it to its name so the contact popover renders a
+        // string instead of an object (#99, mirrors the contract card #191).
+        role:
+          typeof contractManagerSource?.role === "string"
+            ? contractManagerSource.role
+            : contractManagerSource?.role?.name,
         phone: contractManagerSource?.phone,
       }
     : undefined;
