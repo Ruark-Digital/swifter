@@ -551,14 +551,35 @@ export const SolicitationDetailPage = () => {
     {
       accessorKey: "id.name",
       header: "Vendor",
-      cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="font-medium">
-            {row.original.id?.name || row.original?.id?.invite?.email}
-          </span>
-          <span className="text-sm text-blue-500">{row.original.email}</span>
-        </div>
-      ),
+      cell: ({ row }) => {
+        // QA #136: receipt indicator. The vendor status is `invited` until the
+        // vendor engages (confirms/declines/etc.); any other value means they
+        // have received and acted on the invitation. Gray = awaiting, green =
+        // received. Tolerant of any future "viewed"/"opened" status the BE adds.
+        const vendorStatus = String(row.original.status || "").toLowerCase();
+        const received =
+          vendorStatus !== "" &&
+          vendorStatus !== "invited" &&
+          vendorStatus !== "pending";
+        return (
+          <div className="flex items-center gap-2">
+            <span
+              data-testid="vendor-receipt-indicator"
+              aria-label={received ? "Invitation received" : "Awaiting receipt"}
+              title={received ? "Invitation received" : "Awaiting receipt"}
+              className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                received ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"
+              }`}
+            />
+            <div className="flex flex-col">
+              <span className="font-medium">
+                {row.original.id?.name || row.original?.id?.invite?.email}
+              </span>
+              <span className="text-sm text-blue-500">{row.original.email}</span>
+            </div>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "status",
