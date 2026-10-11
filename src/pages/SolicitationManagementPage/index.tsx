@@ -54,10 +54,9 @@ const safeFormatDate = (
   return date;
 };
 
-// Helper: format date as ISO yyyy-MM-dd for the API `date=start-end` filter.
-// The rest of the app (Admin/Vendor/Project pages) sends ISO dashes and the
-// backend parses that; the previous YYYY/MM/DD slash format was silently
-// ignored, so the date filter did nothing (QA #23).
+// Format a date as ISO yyyy-MM-dd. The backend date filter takes separate
+// `startDate` and `endDate` query params (not a combined `date=start-end`
+// string, which crashes the endpoint with a 500 — verified empirically).
 const formatDateISO = (dateInput: Date | string): string => {
   const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
   if (!(d instanceof Date) || isNaN(d.getTime())) return "";
@@ -190,10 +189,9 @@ const useAllSolicitations = (
   if (params?.limit) queryParams.append("limit", params.limit.toString());
   if (params?.status) queryParams.append("status", params.status);
   if (params?.categoryId) queryParams.append("categoryId", params.categoryId);
-  // Ensure date filter passes actual date range to API (YYYY/MM/DD-YYYY/MM/DD)
-  if (params?.startDate && params?.endDate) {
-    queryParams.append("date", `${params.startDate}-${params.endDate}`);
-  }
+  // Backend expects separate startDate/endDate params (combined date= 500s)
+  if (params?.startDate) queryParams.append("startDate", params.startDate);
+  if (params?.endDate) queryParams.append("endDate", params.endDate);
 
   const queryString = queryParams.toString();
   const url = `/procurement/solicitations${
@@ -216,9 +214,8 @@ const useMySolicitations = (
   if (params?.limit) queryParams.append("limit", params.limit.toString());
   if (params?.status) queryParams.append("status", params.status);
   if (params?.categoryId) queryParams.append("categoryId", params.categoryId);
-  if (params?.startDate && params?.endDate) {
-    queryParams.append("date", `${params.startDate}-${params.endDate}`);
-  }
+  if (params?.startDate) queryParams.append("startDate", params.startDate);
+  if (params?.endDate) queryParams.append("endDate", params.endDate);
 
   const queryString = queryParams.toString();
   const url = `/procurement/solicitations/me${
@@ -243,9 +240,8 @@ const useVendorAllSolicitations = (
   if (params?.status) queryParams.append("status", params.status);
   if (params?.categoryId) queryParams.append("categoryId", params.categoryId);
   // Ensure date filter passes actual date range to API
-  if (params?.startDate && params?.endDate) {
-    queryParams.append("date", `${params.startDate}-${params.endDate}`);
-  }
+  if (params?.startDate) queryParams.append("startDate", params.startDate);
+  if (params?.endDate) queryParams.append("endDate", params.endDate);
 
   const queryString = queryParams.toString();
   const url = `/vendor/solicitations${queryString ? `?${queryString}` : ""}`;
@@ -267,9 +263,8 @@ const useVendorMySolicitations = (
   if (params?.status) queryParams.append("status", params.status);
   if (params?.categoryId) queryParams.append("categoryId", params.categoryId);
   // Ensure date filter passes actual date range to API
-  if (params?.startDate && params?.endDate) {
-    queryParams.append("date", `${params.startDate}-${params.endDate}`);
-  }
+  if (params?.startDate) queryParams.append("startDate", params.startDate);
+  if (params?.endDate) queryParams.append("endDate", params.endDate);
 
   const queryString = queryParams.toString();
   const url = `/vendor/solicitations/me${queryString ? `?${queryString}` : ""}`;

@@ -70,6 +70,29 @@ export const extractAlertItemNumber = (id?: string): string => {
 export const isApprovalDelayed = (item?: { daysWaiting?: number }): boolean =>
   typeof item?.daysWaiting === "number" && item.daysWaiting >= 1;
 
+/** Capitalize the first letter of each name part so a person's name always
+ *  reads title-cased in alerts & recommended actions, regardless of how the
+ *  backend casing arrives ("eric mobley" -> "Eric Mobley") (QA #9). Only the
+ *  first letter of each token is forced upper — the rest is preserved, so
+ *  intentional casing like "McDonald" or "Ap1" is left intact. Hyphenated names
+ *  ("mary-jane") capitalize each part. */
+export const titleCaseName = (raw?: string): string => {
+  if (!raw) return "";
+  return raw
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .map((word) =>
+      word
+        .split("-")
+        .map((part) =>
+          part ? part.charAt(0).toUpperCase() + part.slice(1) : part,
+        )
+        .join("-"),
+    )
+    .join(" ");
+};
+
 /** "Change Order 004 is pending {who} approval ($5,000,000)". `formatAmount`
  *  is optional — when given and the amount is > 0 it's appended in parens.
  *
@@ -95,8 +118,9 @@ export const buildPendingApprovalLine = (
     // approval. Never frame it as "pending {manager}'s approval".
     line = `${ref} is awaiting the vendor's response`;
   } else if (item?.pendingWithRole && who) {
-    // `pendingWith` is a name → possessive "{Name}'s approval".
-    line = `${ref} is pending ${who}'s approval`;
+    // `pendingWith` is a name → possessive "{Name}'s approval", title-cased so
+    // the person's first/last names always read capitalized (QA #9).
+    line = `${ref} is pending ${titleCaseName(who)}'s approval`;
   } else if (who) {
     // Legacy: `pendingWith` is a role slug.
     line = `${ref} is pending ${who.toLowerCase()} approval`;

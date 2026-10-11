@@ -112,7 +112,6 @@ export const schema = yup.object({
       }),
     )
     .optional(),
-  visibility: yup.string().optional(),
   contractValue: yup.mixed().optional(),
   contingency: yup.string().optional(),
   holdback: yup.string().optional(),
@@ -225,7 +224,6 @@ export const defaultValues = {
   internalTeam: [],
   personnelMeta: [],
   internalTeamMeta: [],
-  visibility: "",
   contractValue: "",
   contingency: "",
   holdback: "",
@@ -881,7 +879,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       "description",
       "businessDivision",
     ],
-    2: ["manager", "projectManager", "jobTitle", "vendor", "personnel", "internalTeam", "visibility"],
+    2: ["manager", "projectManager", "jobTitle", "vendor", "personnel", "internalTeam"],
     3: [
       "effectiveDate",
       "endDate",
@@ -1209,7 +1207,6 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
             : (data.internalTeam ?? [])
                 .map((t: any) => toIdStringOrUndefined(t?.value ?? t))
                 .filter(Boolean)) ?? undefined,
-        visibility: data.visibility || "private",
         contractAmount:
           typeof data.contractValue === "number"
             ? Number.isFinite(data.contractValue)
