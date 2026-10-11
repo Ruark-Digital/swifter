@@ -56,6 +56,7 @@ import { useUser } from "@/store/authSlice";
 import { resolveCurrency } from "@/lib/utils";
 import type { ApiResponseError } from "@/types";
 import ContractLifecycleDialog from "@/pages/ContractManagementPage/components/ContractLifecycleDialog";
+import { resolvePendingPmTakeover } from "@/pages/ContractManagementPage/pmTakeover";
 import {
   availableLifecycleActions,
   type LifecycleAction,
@@ -326,6 +327,11 @@ const MsaDetailPage: React.FC = () => {
   const [lifecycleAction, setLifecycleAction] =
     React.useState<LifecycleAction | null>(null);
   const [comment, setComment] = React.useState("");
+  const [takeOverDialogOpen, setTakeOverDialogOpen] = React.useState(false);
+  const [takeOverAction, setTakeOverAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [takeOverComment, setTakeOverComment] = React.useState("");
 
   const {
     data: msaResponse,
@@ -573,6 +579,65 @@ const MsaDetailPage: React.FC = () => {
     if (approvalAction) approvalMutation.mutate(approvalAction);
   };
 
+  // PM take-over approval: a pending PM assignment on an already-live
+  // (publish/active) MSA, approved only by the owning Contract Manager. Distinct
+  // from the PM-accepts-MSA flow above (which applies while pending_approval).
+  const isLiveMsa = msa?.status === "active" || msa?.status === "publish";
+  const pendingPmTakeover = resolvePendingPmTakeover(
+    msa as Parameters<typeof resolvePendingPmTakeover>[0],
+  );
+  const takeOverPending = pendingPmTakeover.pending && isLiveMsa;
+  const canApproveTakeOver = isManager && isMsaOwner && takeOverPending;
+  const takeOverRequesterName = pendingPmTakeover.requesterName;
+
+  const takeOverApprovalMutation = useMutation({
+    mutationFn: async ({
+      action,
+      reason,
+    }: {
+      action: "approved" | "rejected";
+      reason?: string;
+    }) => {
+      const res = await postRequest({
+        url: `/contract/manager/msa-contracts/${msa?._id ?? ""}/project-manager/approval`,
+        payload: { action, reason },
+      });
+      return res.data as { message?: string };
+    },
+    onSuccess: (res, { action }) => {
+      toastHandler.success(
+        `Take-over request ${action === "approved" ? "approved" : "rejected"} successfully`,
+        res?.message ?? "Success",
+      );
+      queryClient.invalidateQueries({ queryKey });
+      setTakeOverDialogOpen(false);
+      setTakeOverAction(null);
+      setTakeOverComment("");
+    },
+    onError: (err: ApiResponseError) => {
+      toastHandler.error("Failed to update take-over request", err);
+    },
+  });
+
+  const handleTakeOverAction = (action: "approved" | "rejected") => {
+    if (action === "approved") {
+      takeOverApprovalMutation.mutate({ action: "approved" });
+      return;
+    }
+    setTakeOverAction(action);
+    setTakeOverDialogOpen(true);
+  };
+
+  const submitTakeOverApproval = () => {
+    if (takeOverAction === "rejected" && !takeOverComment.trim()) return;
+    if (takeOverAction) {
+      takeOverApprovalMutation.mutate({
+        action: takeOverAction,
+        reason: takeOverComment.trim() || undefined,
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <PageLoader
@@ -739,6 +804,32 @@ const MsaDetailPage: React.FC = () => {
           >
             Reject Contract
           </Button>
+        </div>
+      )}
+
+      {canApproveTakeOver && (
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+            {`Take-over request from ${takeOverRequesterName ?? "a project manager"}`}
+          </p>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="default"
+              className="bg-[#2A4467] hover:bg-[#2A4467]/90"
+              disabled={takeOverApprovalMutation.isPending}
+              onClick={() => handleTakeOverAction("approved")}
+            >
+              Approve
+            </Button>
+            <Button
+              variant="outline"
+              className="bg-[#F3F4F6] border-[#E5E7EB]"
+              disabled={takeOverApprovalMutation.isPending}
+              onClick={() => handleTakeOverAction("rejected")}
+            >
+              Reject
+            </Button>
+          </div>
         </div>
       )}
 
@@ -1041,6 +1132,44 @@ const MsaDetailPage: React.FC = () => {
                 : approvalAction === "approved"
                   ? "Approve"
                   : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={takeOverDialogOpen} onOpenChange={setTakeOverDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Take-over Request</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this take-over request.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <Textarea
+              placeholder="Reason for rejection"
+              value={takeOverComment}
+              onChange={(e) => setTakeOverComment(e.target.value)}
+              className="resize-none text-slate-900 dark:text-slate-100"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setTakeOverDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={submitTakeOverApproval}
+              disabled={
+                takeOverApprovalMutation.isPending || !takeOverComment.trim()
+              }
+              variant="destructive"
+            >
+              {takeOverApprovalMutation.isPending ? "Processing..." : "Reject"}
             </Button>
           </DialogFooter>
         </DialogContent>
