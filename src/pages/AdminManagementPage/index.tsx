@@ -270,18 +270,13 @@ const AdminManagementPage = () => {
         params.role = filters.Role;
       }
 
-      // Add date range if selected
-      const start = dateRange.startDate
-        ? formatDate(dateRange.startDate, "yyyy-MM-dd")
-        : undefined;
-      // End of the range uses slashes: the backend date-range filter expects
-      // the mixed form `YYYY-MM-DD-YYYY/MM/DD` so it can find the boundary
-      // between the two dates (all-dashes is ambiguous and 500s).
-      const end = dateRange.endDate
-        ? formatDate(dateRange.endDate, "yyyy/MM/dd")
-        : undefined;
-      if (start || end) {
-        params.date = `${start ?? ""}-${end ?? ""}`;
+      // Add date range if selected. The backend expects separate startDate/
+      // endDate params; a combined `date=start-end` string returns no results.
+      if (dateRange.startDate) {
+        params.startDate = formatDate(dateRange.startDate, "yyyy-MM-dd");
+      }
+      if (dateRange.endDate) {
+        params.endDate = formatDate(dateRange.endDate, "yyyy-MM-dd");
       }
 
       return await getRequest({
