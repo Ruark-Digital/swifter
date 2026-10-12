@@ -278,13 +278,10 @@ export const VendorManagementPage = () => {
             endDate = endOfYear(today);
             break;
           default:
-            // For custom date ranges, parse the stored `start-end` string
-            // (two ISO dates, each 10 chars) into separate params.
+            // Custom range: datePublished is already the combined
+            // `yyyy/MM/dd-yyyy/MM/dd` string — pass it straight through.
             if (filters.datePublished.includes('-')) {
-              const s = filters.datePublished.slice(0, 10);
-              const e = filters.datePublished.slice(11);
-              if (s) params.startDate = s;
-              if (e) params.endDate = e;
+              params.date = filters.datePublished;
             } else {
               // For other predefined options like "7_days", convert to proper date range
               switch (filters.datePublished) {
@@ -306,12 +303,10 @@ export const VendorManagementPage = () => {
             break;
         }
 
-        // If we calculated a date range, add separate startDate/endDate params.
-        // The backend expects these two params; a combined `date=start-end`
-        // string crashes the endpoint with a 500 (verified empirically).
+        // If we calculated a date range, add the combined
+        // `date=yyyy/MM/dd-yyyy/MM/dd` range param the backend expects.
         if (startDate && endDate) {
-          params.startDate = format(startDate, "yyyy-MM-dd");
-          params.endDate = format(endDate, "yyyy-MM-dd");
+          params.date = `${format(startDate, "yyyy/MM/dd")}-${format(endDate, "yyyy/MM/dd")}`;
         }
       }
 
@@ -508,11 +503,10 @@ export const VendorManagementPage = () => {
   // Confirm and cancel handlers for custom date range
   const handleDateRangeConfirm = () => {
     if (tempDateRange?.from && tempDateRange?.to) {
-      // Store the custom range as two ISO dates joined by `-`
-      // (`YYYY-MM-DD-YYYY-MM-DD`); the query builder splits it back into the
-      // separate startDate/endDate params the backend expects.
-      const start = format(startOfDay(tempDateRange.from), "yyyy-MM-dd");
-      const end = format(endOfDay(tempDateRange.to), "yyyy-MM-dd");
+      // Store the custom range as the combined `yyyy/MM/dd-yyyy/MM/dd` string
+      // the backend's `date=` filter expects; the query builder passes it through.
+      const start = format(startOfDay(tempDateRange.from), "yyyy/MM/dd");
+      const end = format(endOfDay(tempDateRange.to), "yyyy/MM/dd");
       setFilters((prev) => ({ ...prev, datePublished: `${start}-${end}` }));
       setPagination((prev) => ({ ...prev, pageIndex: 0 }));
     }
