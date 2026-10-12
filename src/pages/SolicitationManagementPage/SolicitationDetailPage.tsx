@@ -146,6 +146,11 @@ export interface SolicitationVendor {
   _id: string;
   uploads: number;
   email: string;
+  /** BE receipt flag (QA #136): true once the vendor has received/opened the
+   *  invitation. Absent on older payloads — then we fall back to `status`. */
+  indicator?: boolean;
+  invitedAt?: string;
+  assignedAt?: string;
 }
 
 export interface ID {
@@ -552,15 +557,18 @@ export const SolicitationDetailPage = () => {
       accessorKey: "id.name",
       header: "Vendor",
       cell: ({ row }) => {
-        // QA #136: receipt indicator. The vendor status is `invited` until the
-        // vendor engages (confirms/declines/etc.); any other value means they
-        // have received and acted on the invitation. Gray = awaiting, green =
-        // received. Tolerant of any future "viewed"/"opened" status the BE adds.
+        // QA #136: receipt indicator. Prefer the BE `indicator` boolean (true
+        // once the vendor has received/opened the invitation). Fall back to the
+        // status heuristic on older payloads that don't include `indicator`:
+        // `invited`/`pending` = awaiting, anything else = engaged. Gray =
+        // awaiting, green = received.
         const vendorStatus = String(row.original.status || "").toLowerCase();
         const received =
-          vendorStatus !== "" &&
-          vendorStatus !== "invited" &&
-          vendorStatus !== "pending";
+          typeof row.original.indicator === "boolean"
+            ? row.original.indicator
+            : vendorStatus !== "" &&
+              vendorStatus !== "invited" &&
+              vendorStatus !== "pending";
         return (
           <div className="flex items-center gap-2">
             <span
