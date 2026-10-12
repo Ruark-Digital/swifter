@@ -8,10 +8,13 @@ import MsaTable from "./components/MsaTable";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import CreateMSADialog from "./layouts/CreateMSADialog";
 import { ExportContractsButton } from "@/components/layouts/ExportContractsButton";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { getRequest } from "@/lib/axiosInstance";
+import { useUser } from "@/store/authSlice";
+import { useToastHandler } from "@/hooks/useToaster";
+import { vendorApi } from "@/pages/ContractManagementPage/api/vendorApi";
 import type { MsaRow } from "./components/MsaTable";
 import { ApiResponse, ApiResponseError } from "@/types";
 import type { PaginationState } from "@tanstack/react-table";
@@ -154,6 +157,29 @@ const MsaPage: React.FC = () => {
     enabled: Boolean(myListUrl),
   });
 
+  const user = useUser();
+  const toastHandler = useToastHandler();
+  const queryClient = useQueryClient();
+
+  // Project managers can request to take over an MSA they don't own; a Contract
+  // Manager must approve. Mirrors the contract take-over flow.
+  const takeOverMutation = useMutation({
+    mutationFn: (msaId: string) =>
+      vendorApi.requestMsaTakeOver(msaId, user?.projectmanagerId ?? ""),
+    onSuccess: () => {
+      toastHandler.success(
+        "Request sent",
+        "Take-over request sent for approval",
+      );
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === "msa",
+      });
+    },
+    onError: (err: ApiResponseError) => {
+      toastHandler.error("Failed to request take-over", err);
+    },
+  });
+
   const toRows = (items: Contract[]): MsaRow[] =>
     items.map((it: Contract) => ({
       // The MSA list endpoint returns each contract keyed by `id` (not
@@ -285,6 +311,9 @@ const MsaPage: React.FC = () => {
                 onCategoryFilterChange={setCategoryFilter}
                 dateFilter={dateFilter}
                 onDateFilterChange={setDateFilter}
+                enableTakeOver={isProjectManager}
+                onRequestTakeOver={(id) => takeOverMutation.mutate(id)}
+                isRequestingTakeOver={takeOverMutation.isPending}
               />
             </TabsContent>
           </Tabs>
@@ -317,6 +346,9 @@ const MsaPage: React.FC = () => {
                 onCategoryFilterChange={setCategoryFilter}
                 dateFilter={dateFilter}
                 onDateFilterChange={setDateFilter}
+                enableTakeOver={isProjectManager}
+                onRequestTakeOver={(id) => takeOverMutation.mutate(id)}
+                isRequestingTakeOver={takeOverMutation.isPending}
               />
             </TabsContent>
             <TabsContent value="mine">
@@ -332,6 +364,9 @@ const MsaPage: React.FC = () => {
                 onCategoryFilterChange={setCategoryFilter}
                 dateFilter={dateFilter}
                 onDateFilterChange={setDateFilter}
+                enableTakeOver={isProjectManager}
+                onRequestTakeOver={(id) => takeOverMutation.mutate(id)}
+                isRequestingTakeOver={takeOverMutation.isPending}
               />
             </TabsContent>
           </Tabs>

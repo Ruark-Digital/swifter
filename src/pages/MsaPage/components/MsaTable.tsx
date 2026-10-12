@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { Link } from "react-router-dom";
 import {
   format,
@@ -56,7 +57,9 @@ const MsaActionsCell: React.FC<{
   row: MsaRow;
   menuOpen: boolean;
   onMenuOpenChange: (open: boolean) => void;
-}> = ({ row, menuOpen, onMenuOpenChange }) => {
+  enableTakeOver?: boolean;
+  onOpenTakeOver?: (id: string) => void;
+}> = ({ row, menuOpen, onMenuOpenChange, enableTakeOver, onOpenTakeOver }) => {
   const { isManager } = useUserRole();
   const currentUserId = useUser()?._id;
   const [editOpen, setEditOpen] = React.useState(false);
@@ -68,6 +71,10 @@ const MsaActionsCell: React.FC<{
     typeof row.isOwner === "boolean"
       ? row.isOwner
       : !!currentUserId && !!row.ownerId && currentUserId === row.ownerId;
+  // Take-over requests only apply to a live MSA (active/published). Status is
+  // stored raw (lowercase) on the row despite the capitalized display union.
+  const rawStatus = String(row.status).toLowerCase();
+  const isLiveMsa = rawStatus === "active" || rawStatus === "publish";
   const lifecycleActions = availableLifecycleActions(row.status);
   const canEdit = isManager && isOwner && hasId && isEditableStatus(row.status);
   const canManage = isManager && !isOwner && hasId;
@@ -101,6 +108,18 @@ const MsaActionsCell: React.FC<{
           ) : (
             <DropdownMenuItem disabled data-testid="msa-view-details">
               View MSA
+            </DropdownMenuItem>
+          )}
+          {enableTakeOver && hasId && row.isOwner === false && isLiveMsa && (
+            <DropdownMenuItem
+              data-testid="msa-request-takeover"
+              onSelect={(e) => {
+                e.preventDefault();
+                onMenuOpenChange(false);
+                onOpenTakeOver?.(row.id);
+              }}
+            >
+              Request take-over
             </DropdownMenuItem>
           )}
           {canManage && (
@@ -302,6 +321,10 @@ type MsaTableProps = {
   onCategoryFilterChange?: (category: string) => void;
   dateFilter?: string;
   onDateFilterChange?: (date: string) => void;
+  /** Enables the "Request take-over" row action (project managers only). */
+  enableTakeOver?: boolean;
+  onRequestTakeOver?: (msaId: string) => void;
+  isRequestingTakeOver?: boolean;
 };
 
 const MsaTable: React.FC<MsaTableProps> = ({
@@ -316,9 +339,23 @@ const MsaTable: React.FC<MsaTableProps> = ({
   onCategoryFilterChange,
   dateFilter,
   onDateFilterChange,
+  enableTakeOver,
+  onRequestTakeOver,
+  isRequestingTakeOver,
 }) => {
   const [search, setSearch] = React.useState("");
   const [openMenuRowId, setOpenMenuRowId] = React.useState<string | null>(null);
+  const [takeOverId, setTakeOverId] = React.useState<string | null>(null);
+
+  // Close the take-over dialog once the parent's mutation settles (loading
+  // flips back to false), mirroring VendorContractsTable.
+  const wasRequestingTakeOverRef = React.useRef(false);
+  React.useEffect(() => {
+    if (wasRequestingTakeOverRef.current && !isRequestingTakeOver) {
+      setTakeOverId(null);
+    }
+    wasRequestingTakeOverRef.current = Boolean(isRequestingTakeOver);
+  }, [isRequestingTakeOver]);
   const [localPagination, setLocalPagination] = React.useState<PaginationState>(
     {
       pageIndex: 0,
@@ -344,11 +381,13 @@ const MsaTable: React.FC<MsaTableProps> = ({
               onMenuOpenChange={(open) => {
                 setOpenMenuRowId(open ? row.original.id : null);
               }}
+              enableTakeOver={enableTakeOver}
+              onOpenTakeOver={setTakeOverId}
             />
           ),
         } as ColumnDef<MsaRow>;
       }),
-    [openMenuRowId],
+    [openMenuRowId, enableTakeOver],
   );
 
   const normalizeStatus = React.useCallback((value?: string) => {
@@ -537,6 +576,21 @@ const MsaTable: React.FC<MsaTableProps> = ({
           tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400",
           tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
         }}
+      />
+
+      <ConfirmAlert
+        open={Boolean(takeOverId)}
+        onClose={(o) => !o && setTakeOverId(null)}
+        type="info"
+        title="Request take-over"
+        text="Request to take over this MSA? A Contract Manager must approve before it becomes yours."
+        primaryButtonText="Request"
+        secondaryButtonText="Cancel"
+        primaryButtonLoading={isRequestingTakeOver}
+        onPrimaryAction={() => {
+          if (takeOverId) onRequestTakeOver?.(takeOverId);
+        }}
+        onSecondaryAction={() => setTakeOverId(null)}
       />
     </div>
   );
