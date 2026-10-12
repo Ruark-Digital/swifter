@@ -337,7 +337,10 @@ const EditSolicitationDialogContent = ({
     const categoryId = categories.length > 0 ? categories[0]._id : "";
     const vendors =
       s.vendors?.map((vendor: any) => ({
-        value: vendor._id,
+        // Use the real vendor id (`vendor.id._id`), not the solicitation-vendor
+        // row `_id`, so the selected tags match the vendor dropdown options
+        // (whose value is the vendor id) and the correct id is submitted.
+        value: vendor?.id?._id,
         label: vendor?.id?.name || vendor.email || vendor?.id?.invite?.email,
         name: vendor?.id?.name || vendor.email || vendor?.id?.invite?.email,
       })) || [];
@@ -783,7 +786,8 @@ const EditSolicitationDialogContent = ({
           formData.vendor && formData.vendor.length > 0
             ? formData.vendor.map((item: any) => ({ id: item.value }))
             : effectiveSolicitation.vendors?.map((vendor: any) => ({
-                id: vendor._id,
+                // Real vendor id, not the solicitation-vendor row `_id`.
+                id: vendor?.id?._id,
               })),
       };
 
