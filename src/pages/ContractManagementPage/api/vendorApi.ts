@@ -322,6 +322,14 @@ export const createVendorApi = (
     });
     return res as ApiResponse<any>;
   },
+  requestMsaTakeOver: async (msaId: string, projectManagerId: string) => {
+    const post = client.post ?? ((params: PostParams) => postRequest(params));
+    const res = await post({
+      url: `/contract/vendor/msa-contracts/${msaId}/project-managers/${projectManagerId}/assign`,
+      payload: undefined,
+    });
+    return res as ApiResponse<any>;
+  },
 });
 
 export const vendorApi = createVendorApi();
