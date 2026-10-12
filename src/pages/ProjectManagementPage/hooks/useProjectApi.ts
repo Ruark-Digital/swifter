@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { getRequest, patchRequest, postRequest } from "@/lib/axiosInstance";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import { useProjectsBasePath } from "../services/useProjectApi";
 import { ApiResponse, ApiResponseError } from "@/types";
 
 export type ProjectExportType = "pdf" | "docx";
@@ -80,10 +81,10 @@ type Contract = {
 };
 
 export const useProjectDetail = (projectId?: string) => {
+  const base = useProjectsBasePath();
   return useQuery<ApiResponse<Project>, ApiResponseError>({
     queryKey: useUserQueryKey(["project-detail", projectId]),
-    queryFn: async () =>
-      await getRequest({ url: `/contract/manager/projects/${projectId}` }),
+    queryFn: async () => await getRequest({ url: `${base}/${projectId}` }),
     enabled: !!projectId,
   });
 };
@@ -110,11 +111,12 @@ export const useProjectContracts = (
   projectId?: string,
   query?: ProjectContractsQuery
 ) => {
+  const base = useProjectsBasePath();
   return useQuery<ApiResponse<ProjectContractsPage | Contract[]>, ApiResponseError>({
     queryKey: useUserQueryKey(["project-contracts", projectId, query]),
     queryFn: async () =>
       await getRequest({
-        url: `/contract/manager/projects/${projectId}/contracts`,
+        url: `${base}/${projectId}/contracts`,
         config: { params: query },
       }),
     enabled: !!projectId,

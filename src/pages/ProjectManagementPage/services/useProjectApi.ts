@@ -1,6 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getRequest, postRequest, patchRequest } from "@/lib/axiosInstance";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import { useUserRole } from "@/hooks/useUserRole";
+
+// Read endpoints are role-scoped: view-only users read through `/user`, everyone
+// else through `/manager` (the BE enabled the view-only role on the GET APIs).
+export const useProjectsBasePath = () => {
+  const { isViewOnly } = useUserRole();
+  return isViewOnly ? "/contract/user/projects" : "/contract/manager/projects";
+};
 
 export type ProjectApi = {
   _id: string;
@@ -67,6 +75,7 @@ export const useProjectsList = (params?: {
   limit?: number;
   page?: number;
 }) => {
+  const base = useProjectsBasePath();
   return useQuery<ProjectsListResponse>({
     queryKey: useUserQueryKey(["projects-list", params]),
     queryFn: async () => {
@@ -77,7 +86,7 @@ export const useProjectsList = (params?: {
       if (params?.limit) search.append("limit", String(params.limit));
       if (params?.page) search.append("page", String(params.page));
 
-      const res = await getRequest({ url: `/contract/manager/projects?${search.toString()}` });
+      const res = await getRequest({ url: `${base}?${search.toString()}` });
       return res.data;
     },
     staleTime: 60_000,
@@ -85,10 +94,11 @@ export const useProjectsList = (params?: {
 };
 
 export const useProjectsStats = () => {
+  const base = useProjectsBasePath();
   return useQuery<{ status: number; message: string; data: ProjectStats }>({
     queryKey: useUserQueryKey(["projects-stats"]),
     queryFn: async () => {
-      const res = await getRequest({ url: "/contract/manager/projects/stats" });
+      const res = await getRequest({ url: `${base}/stats` });
       return res.data;
     },
     staleTime: 60_000,

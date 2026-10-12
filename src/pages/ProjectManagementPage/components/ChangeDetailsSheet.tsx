@@ -34,6 +34,7 @@ import {
   type ProjectExportType,
 } from "../hooks/useProjectApi";
 import { useToastHandler } from "@/hooks/useToaster";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState as GenericEmptyState } from "@/components/ui/empty-state";
 import { ApiResponseError } from "@/types";
@@ -266,6 +267,8 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   onOpenChange,
 }) => {
   const profileCurrency = useUser()?.currency;
+  // View-only users get a read-only sheet: no export/edit/complete/EAC actions.
+  const { isViewOnly } = useUserRole();
   const toast = useToastHandler();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [dateFilter, setDateFilter] = React.useState("all");
@@ -455,33 +458,35 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                   Project Details
                 </SheetTitle>
               </div>
-              <div className="flex items-center gap-2 mr-10">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      aria-label="Export project"
-                      disabled={!projectId || exportMutation.isPending}
-                    >
-                      {exportMutation.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Share2 className="mr-2 h-4 w-4" />
-                      )}{" "}
-                      Export
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => handleExport("pdf")}>
-                      Export as PDF
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleExport("docx")}>
-                      Export as Word (DOCX)
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              {!isViewOnly && (
+                <div className="flex items-center gap-2 mr-10">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label="Export project"
+                        disabled={!projectId || exportMutation.isPending}
+                      >
+                        {exportMutation.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Share2 className="mr-2 h-4 w-4" />
+                        )}{" "}
+                        Export
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={() => handleExport("pdf")}>
+                        Export as PDF
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleExport("docx")}>
+                        Export as Word (DOCX)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
             </div>
           </SheetHeader>
 
@@ -610,7 +615,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                                     }).format(project.eac)
                                   : "Not set"}
                               </span>
-                              {!isCompleted && projectId ? (
+                              {!isViewOnly && !isCompleted && projectId ? (
                                 <button
                                   type="button"
                                   aria-label="Update EAC"
@@ -758,6 +763,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             />
           )}
 
+          {!isViewOnly && (
           <SheetFooter>
             <div className="flex w-full gap-3 pt-2">
               <Button
@@ -805,6 +811,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
               />
             </div>
           </SheetFooter>
+          )}
 
           <UpdateEacDialog
             open={eacDialogOpen}

@@ -15,8 +15,10 @@ import {
 } from "./services/useProjectApi";
 import { formatDateTZ, resolveCurrency } from "@/lib/utils";
 import { useUser } from "@/store/authSlice";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const ProjectManagementPage: React.FC = () => {
+  const { isViewOnly } = useUserRole();
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -114,14 +116,16 @@ const ProjectManagementPage: React.FC = () => {
           >
             <Share2 className="mr-2 h-4 w-4" /> Export
           </Button>
-          <Button
-            data-testid="create-project-button"
-            aria-label="Create Project"
-            className="flex-1 sm:flex-none rounded-xl"
-            onClick={handleCreateClick}
-          >
-            <Plus className="mr-2 h-4 w-4" /> Create Project
-          </Button>
+          {!isViewOnly && (
+            <Button
+              data-testid="create-project-button"
+              aria-label="Create Project"
+              className="flex-1 sm:flex-none rounded-xl"
+              onClick={handleCreateClick}
+            >
+              <Plus className="mr-2 h-4 w-4" /> Create Project
+            </Button>
+          )}
         </div>
       </div>
 
