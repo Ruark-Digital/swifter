@@ -146,6 +146,11 @@ export interface SolicitationVendor {
   _id: string;
   uploads: number;
   email: string;
+  /** BE receipt flag (QA #136): true once the vendor has received/opened the
+   *  invitation. Absent on older payloads — then we fall back to `status`. */
+  indicator?: boolean;
+  invitedAt?: string;
+  assignedAt?: string;
 }
 
 export interface ID {
@@ -551,14 +556,38 @@ export const SolicitationDetailPage = () => {
     {
       accessorKey: "id.name",
       header: "Vendor",
-      cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="font-medium">
-            {row.original.id?.name || row.original?.id?.invite?.email}
-          </span>
-          <span className="text-sm text-blue-500">{row.original.email}</span>
-        </div>
-      ),
+      cell: ({ row }) => {
+        // QA #136: receipt indicator. Prefer the BE `indicator` boolean (true
+        // once the vendor has received/opened the invitation). Fall back to the
+        // status heuristic on older payloads that don't include `indicator`:
+        // `invited`/`pending` = awaiting, anything else = engaged. Gray =
+        // awaiting, green = received.
+        const vendorStatus = String(row.original.status || "").toLowerCase();
+        const received =
+          typeof row.original.indicator === "boolean"
+            ? row.original.indicator
+            : vendorStatus !== "" &&
+              vendorStatus !== "invited" &&
+              vendorStatus !== "pending";
+        return (
+          <div className="flex items-center gap-2">
+            <span
+              data-testid="vendor-receipt-indicator"
+              aria-label={received ? "Invitation received" : "Awaiting receipt"}
+              title={received ? "Invitation received" : "Awaiting receipt"}
+              className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                received ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"
+              }`}
+            />
+            <div className="flex flex-col">
+              <span className="font-medium">
+                {row.original.id?.name || row.original?.id?.invite?.email}
+              </span>
+              <span className="text-sm text-blue-500">{row.original.email}</span>
+            </div>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "status",
