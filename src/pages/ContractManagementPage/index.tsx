@@ -421,7 +421,7 @@ const mapContractsToRows = (contracts?: ContractApi[], profileCurrency?: string)
       id: c._id,
       contractId: c.contractId,
       title: c.title,
-      code: c._id,
+      code: c.contractId,
       vendor: c.vendor?.name ?? c.projectManager?.name ?? "-",
       value,
       owner: c.creator?.name ?? "-",
