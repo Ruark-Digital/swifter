@@ -155,6 +155,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
     return rows.filter((row) => {
       return (
         row.title.toLowerCase().includes(query) ||
+        row.contractId.toLowerCase().includes(query) ||
         row.code.toLowerCase().includes(query)
       );
     });
