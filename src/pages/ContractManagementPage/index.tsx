@@ -174,11 +174,16 @@ const useContractsStats = (enabled = true) => {
   });
 };
 
-const useAllContracts = (pagination: PaginationState, enabled = true) => {
+const useAllContracts = (
+  pagination: PaginationState,
+  enabled = true,
+  search = "",
+) => {
   const queryKey = useUserQueryKey([
     "contracts-all",
     pagination.pageIndex,
     pagination.pageSize,
+    search,
   ]);
   return useQuery<ContractListResponse, ApiResponseError>({
     queryKey,
@@ -189,6 +194,7 @@ const useAllContracts = (pagination: PaginationState, enabled = true) => {
           params: {
             page: pagination.pageIndex + 1,
             limit: pagination.pageSize,
+            ...(search ? { search } : {}),
           },
         },
       });
@@ -199,11 +205,16 @@ const useAllContracts = (pagination: PaginationState, enabled = true) => {
   });
 };
 
-const useMyContracts = (pagination: PaginationState, enabled = true) => {
+const useMyContracts = (
+  pagination: PaginationState,
+  enabled = true,
+  search = "",
+) => {
   const queryKey = useUserQueryKey([
     "contracts-me",
     pagination.pageIndex,
     pagination.pageSize,
+    search,
   ]);
   return useQuery<ContractListResponse, ApiResponseError>({
     queryKey,
@@ -214,6 +225,7 @@ const useMyContracts = (pagination: PaginationState, enabled = true) => {
           params: {
             page: pagination.pageIndex + 1,
             limit: pagination.pageSize,
+            ...(search ? { search } : {}),
           },
         },
       });
@@ -275,11 +287,16 @@ const useApproverContractsStats = (enabled = true) => {
   });
 };
 
-const useApproverContracts = (pagination: PaginationState, enabled = true) => {
+const useApproverContracts = (
+  pagination: PaginationState,
+  enabled = true,
+  search = "",
+) => {
   const queryKey = useUserQueryKey([
     "approver-contracts",
     pagination.pageIndex,
     pagination.pageSize,
+    search,
   ]);
   return useQuery<ApproverContractListResponse, ApiResponseError>({
     queryKey,
@@ -290,6 +307,7 @@ const useApproverContracts = (pagination: PaginationState, enabled = true) => {
           params: {
             page: pagination.pageIndex + 1,
             limit: pagination.pageSize,
+            ...(search ? { search } : {}),
           },
         },
       });
@@ -533,16 +551,25 @@ const ContractManagementPage: React.FC = () => {
   // sent to the BE `date` param, or "" for no date filter. Reset on tab switch.
   const [dateFilter, setDateFilter] = React.useState<string>("");
 
+  // Contract search is sent to the BE as the raw `search` param, one per list.
+  const [allSearch, setAllSearch] = React.useState("");
+  const [mySearch, setMySearch] = React.useState("");
+  const [approverSearch, setApproverSearch] = React.useState("");
+
   const { data: statsData } = useContractsStats(managerQueriesEnabled);
   const { data: allContractsData, isLoading: isAllContractsLoading } =
-    useAllContracts(allPagination, managerQueriesEnabled);
+    useAllContracts(allPagination, managerQueriesEnabled, allSearch);
   const { data: myContractsData, isLoading: isMyContractsLoading } =
-    useMyContracts(myPagination, managerQueriesEnabled);
+    useMyContracts(myPagination, managerQueriesEnabled, mySearch);
   const { data: approverStatsData } = useApproverContractsStats(
     approverQueriesEnabled,
   );
   const { data: approverContractsData, isLoading: isApproverContractsLoading } =
-    useApproverContracts(approverPagination, approverQueriesEnabled);
+    useApproverContracts(
+      approverPagination,
+      approverQueriesEnabled,
+      approverSearch,
+    );
   const { data: vendorStatsData } =
     useVendorContractsStats(isContractVendorLike);
   const { data: vendorContractsData, isLoading: isVendorContractsLoading } =
@@ -820,6 +847,8 @@ const ContractManagementPage: React.FC = () => {
               totalCount={approverContractsData?.data.totalContracts}
               pagination={approverPagination}
               setPagination={setApproverPagination}
+              search={approverSearch}
+              onSearchChange={setApproverSearch}
               statusFilter={statusFilter}
               onStatusFilterChange={setStatusFilter}
               // isReadOnly={true}
@@ -878,6 +907,8 @@ const ContractManagementPage: React.FC = () => {
                   isReadOnly={isViewOnly}
                   pagination={allPagination}
                   setPagination={setAllPagination}
+                  search={allSearch}
+                  onSearchChange={setAllSearch}
                   statusFilter={statusFilter}
                   onStatusFilterChange={setStatusFilter}
                 />
@@ -912,6 +943,8 @@ const ContractManagementPage: React.FC = () => {
                   isReadOnly={isViewOnly}
                   pagination={allPagination}
                   setPagination={setAllPagination}
+                  search={allSearch}
+                  onSearchChange={setAllSearch}
                   statusFilter={statusFilter}
                   onStatusFilterChange={setStatusFilter}
                   // disableActions={isCompanyAdmin}
@@ -925,6 +958,8 @@ const ContractManagementPage: React.FC = () => {
                   isReadOnly={isViewOnly}
                   pagination={myPagination}
                   setPagination={setMyPagination}
+                  search={mySearch}
+                  onSearchChange={setMySearch}
                   statusFilter={statusFilter}
                   onStatusFilterChange={setStatusFilter}
                   // disableActions={isCompanyAdmin}
