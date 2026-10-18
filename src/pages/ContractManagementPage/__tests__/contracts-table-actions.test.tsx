@@ -206,3 +206,48 @@ describe("ContractsTable actions menu", () => {
     expect(screen.getByText("Terminate Contract")).toBeInTheDocument();
   });
 });
+
+describe("ContractsTable search", () => {
+  const row = {
+    id: "65f0c0ffee0000000000abcd",
+    contractId: "CONMC6338",
+    title: "Civil and Foundations Installation",
+    code: "CONMC6338",
+    vendor: "Madison Construction Ltd.",
+    owner: "Owner A",
+    status: "Published",
+    isOwner: false,
+  };
+
+  test("matches by contract number and by name", () => {
+    render(<ContractsTable rows={[row]} />);
+    const input = screen.getByTestId("search-input");
+
+    fireEvent.change(input, { target: { value: "CONMC6338" } });
+    expect(screen.getByText("Civil and Foundations Installation")).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "Civil and" } });
+    expect(screen.getByText("Civil and Foundations Installation")).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "CONMC9999" } });
+    expect(screen.queryByText("Civil and Foundations Installation")).not.toBeInTheDocument();
+  });
+
+  test("passes the raw input to the parent and does not filter locally when search is server-driven", () => {
+    const onSearchChange = vi.fn();
+    render(
+      <ContractsTable
+        rows={[row]}
+        search=""
+        onSearchChange={onSearchChange}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId("search-input"), {
+      target: { value: "  CONMC9999 " },
+    });
+    expect(onSearchChange).toHaveBeenCalledWith("  CONMC9999 ");
+    // The BE owns matching in this mode, so the row stays visible.
+    expect(screen.getByText("Civil and Foundations Installation")).toBeInTheDocument();
+  });
+});

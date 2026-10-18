@@ -307,6 +307,9 @@ type ContractsTableProps = {
   setPagination?: React.Dispatch<React.SetStateAction<PaginationState>>;
   statusFilter?: string;
   onStatusFilterChange?: (status: string) => void;
+  /** When set, the parent owns the search and sends it to the BE; rows are not filtered locally. */
+  search?: string;
+  onSearchChange?: (search: string) => void;
 };
 
 const applyDateFilter = (rows: ContractRow[], dateFilter: string): ContractRow[] => {
@@ -334,8 +337,11 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
   setPagination: setPaginationProp,
   statusFilter = "all",
   onStatusFilterChange,
+  search: searchProp,
+  onSearchChange,
 }) => {
-  const [search, setSearch] = React.useState("");
+  const [localSearch, setLocalSearch] = React.useState("");
+  const search = searchProp ?? localSearch;
   const [dateFilter, setDateFilter] = React.useState("all");
   const [openRowId, setOpenRowId] = React.useState<string | null>(null);
   const openRowMenuContextValue = React.useMemo(
@@ -377,10 +383,12 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
   const filteredRows = React.useMemo(() => {
     let result = rows;
 
-    if (search) {
+    // Server-driven search (searchProp set) already returns matching rows.
+    if (search && searchProp === undefined) {
       const query = search.toLowerCase();
       result = result.filter((row) =>
         row.title.toLowerCase().includes(query) ||
+        row.id.toLowerCase().includes(query) ||
         row.code.toLowerCase().includes(query),
       );
     }
@@ -404,7 +412,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
     result = applyDateFilter(result, dateFilter);
 
     return result;
-  }, [rows, search, statusFilter, dateFilter, normalizeStatus]);
+  }, [rows, search, searchProp, statusFilter, dateFilter, normalizeStatus]);
 
   const selectedFilterValues: Record<string, string> = {
     Status: statusFilter ?? "all",
@@ -435,7 +443,8 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                   placeholder="Search contract"
                   value={search}
                   onChange={(e) => {
-                    setSearch(e.target.value);
+                    setLocalSearch(e.target.value);
+                    onSearchChange?.(e.target.value);
                     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
                   }}
                   data-testid="search-input"
