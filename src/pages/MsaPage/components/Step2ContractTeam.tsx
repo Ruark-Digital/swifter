@@ -2,7 +2,6 @@ import React from "react";
 import { Forger } from "@adexdsamson/forge";
 import {
   TextInput,
-  TextSelect,
   TextTagInput,
   TextMultiSelect,
 } from "@/components/layouts/FormInputs";
@@ -223,16 +222,6 @@ const Step2ContractTeam: React.FC<Props> = ({ defaultPmLabel }) => {
         inputClassName="border-0"
         inlineTagsContainerClassName="border-0 outline-0 hover:border-0 focus:border-0 focus-within:ring-0"
         helperText="Add with email address, name"
-      />
-      <Forger
-        name="visibility"
-        label="Visibility"
-        placeholder="Select visibility"
-        component={TextSelect}
-        options={[
-          { label: "Private", value: "private" },
-          { label: "Public", value: "public" },
-        ]}
       />
     </div>
   );
