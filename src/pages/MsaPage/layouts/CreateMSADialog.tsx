@@ -69,7 +69,6 @@ const schema = yup.object({
   vendor: yup.string().optional(),
   personnel: yup.array().optional(),
   internalTeam: yup.array().optional(),
-  visibility: yup.string().optional(),
   effectiveDate: yup.date().optional(),
   endDate: yup.date().optional(),
   duration: yup.string().optional(),
@@ -162,7 +161,6 @@ const defaultValues: CreateMsaFormData = {
   vendor: "",
   personnel: [],
   internalTeam: [],
-  visibility: "",
   effectiveDate: undefined,
   endDate: undefined,
   duration: "",
@@ -481,7 +479,6 @@ const CreateMSADialog: React.FC<Props> = ({
           ? (iv.vendor?.email ?? iv.vendor?._id ?? "")
           : (iv.vendor ?? ""),
       projectManager: idOf(iv.projectManager?.user ?? iv.projectManager),
-      visibility: iv.visibility ?? defaultValues.visibility,
       personnel: personnelArr.length ? personnelArr : defaultValues.personnel,
       internalTeam: internalTeamArr.length
         ? internalTeamArr
@@ -953,7 +950,6 @@ const CreateMSADialog: React.FC<Props> = ({
         milestone,
         personnel,
         internalTeam,
-        visibility: data.visibility,
         insurance: insurancePayload,
         contractFormationStage,
         approvers,
