@@ -283,14 +283,6 @@ const LemSummaryContent: React.FC<{
       {comparison && (
         <div className="divide-y divide-[#E5E7EB] rounded-xl border border-[#E5E7EB] dark:divide-slate-800 dark:border-slate-800">
           <SummaryTotalRow label="Total" value={money(comparison.total)} />
-          <SummaryTotalRow
-            label="Rate Sheet Total"
-            value={money(comparison.rateSheetTotal)}
-          />
-          <SummaryTotalRow
-            label="Total Variance"
-            value={money(comparison.totalVariance)}
-          />
           <div className="flex items-center justify-between px-4 py-3">
             <span className="text-sm text-[#6B7280] dark:text-slate-400">
               Compliance Status
