@@ -9,7 +9,10 @@ import { cn, formatDateTZ, formatCalendarDate } from "@/lib/utils";
 import EditContract from "../components/EditContract";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import { useToastHandler } from "@/hooks/useToaster";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getRequest } from "@/lib/axiosInstance";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import { formatContractType } from "../lib/contractType";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
 import { differenceInDays, parseISO } from "date-fns";
@@ -58,6 +61,8 @@ type ViewProps = {
   reviewDuration: string;
   approvalDuration: string;
   executionDuration: string;
+  /** Display label for `contract.contractType` (handles Combination). */
+  contractTypeLabel?: string;
   /** Durations are hidden on the vendor side (Vendor/PM). */
   showDurations?: boolean;
 };
@@ -78,6 +83,7 @@ const ManagerView: React.FC<ViewProps> = ({
   reviewDuration,
   approvalDuration,
   executionDuration,
+  contractTypeLabel,
 }) => (
   <>
     <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
@@ -114,9 +120,7 @@ const ManagerView: React.FC<ViewProps> = ({
           </span>
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Type</span>
           <span className="text-slate-900 dark:text-slate-100">
-            {typeof contract.contractType === "string"
-              ? contract.contractType
-              : contract.contractType?.name || "N/A"}
+            {contractTypeLabel || "N/A"}
           </span>
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Project Relationship</span>
           <span className="text-slate-900 dark:text-slate-100">{relationshipLabel}</span>
@@ -236,6 +240,7 @@ const VendorView: React.FC<ViewProps> = ({
   reviewDuration,
   approvalDuration,
   executionDuration,
+  contractTypeLabel,
   vendorName,
   vendorPersonnel,
   internalTeam,
@@ -281,9 +286,7 @@ const VendorView: React.FC<ViewProps> = ({
         <div className="flex flex-col gap-1">
           <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Type</span>
           <span className="text-slate-900 dark:text-slate-100">
-            {typeof contract.contractType === "string"
-              ? contract.contractType
-              : contract.contractType?.name || "Fixed Price"}
+            {contractTypeLabel || "Fixed Price"}
           </span>
         </div>
         <div className="flex flex-col gap-1">
@@ -433,6 +436,7 @@ const ApproverView: React.FC<ViewProps> = ({
   reviewDuration,
   approvalDuration,
   executionDuration,
+  contractTypeLabel,
   vendorName,
   vendorPersonnel,
   internalTeam,
@@ -485,9 +489,7 @@ const ApproverView: React.FC<ViewProps> = ({
             <LabelItem
               label="Contract Type"
               value={
-                typeof contract.contractType === "string"
-                  ? contract.contractType
-                  : contract.contractType?.name || "Fixed Price"
+                contractTypeLabel || "Fixed Price"
               }
             />
 
@@ -643,9 +645,7 @@ const ApproverView: React.FC<ViewProps> = ({
           <div className="flex flex-col gap-1">
             <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Type</span>
             <span className="text-slate-900 dark:text-slate-100">
-              {typeof contract.contractType === "string"
-                ? contract.contractType
-                : contract.contractType?.name || "Fixed Price"}
+              {contractTypeLabel || "Fixed Price"}
             </span>
           </div>
           <div className="flex flex-col gap-1">
@@ -813,6 +813,38 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
             currentUser._id === contract.creator._id,
         );
 
+  // A Combination contract stores its sub-type ids (comma-separated) in
+  // `contractType`, which the BE can't populate to a name, so resolve labels
+  // from the contract-type list (manager/company-admin endpoint only) (#33).
+  const rawContractType = contract.contractType as unknown;
+  const needsTypeOptions =
+    typeof rawContractType === "string" ||
+    Array.isArray(rawContractType) ||
+    (!!rawContractType && !(rawContractType as { name?: string }).name);
+  const typesQuery = useQuery({
+    queryKey: useUserQueryKey(["contract-types"]),
+    queryFn: async () => {
+      const res = await getRequest({ url: "/contract/manager/types" });
+      return res.data as { data: { _id: string; name: string }[] };
+    },
+    staleTime: 60_000,
+    enabled:
+      needsTypeOptions &&
+      !isContractVendorLike &&
+      !isApprover &&
+      !isViewOnly,
+  });
+  const contractTypeLabel = React.useMemo(
+    () =>
+      formatContractType(
+        rawContractType,
+        Array.isArray(typesQuery.data?.data)
+          ? typesQuery.data.data.map((t) => ({ label: t.name, value: t._id }))
+          : [],
+      ),
+    [rawContractType, typesQuery.data?.data],
+  );
+
   const projectName =
     typeof contract.project === "string"
       ? contract.project
@@ -900,6 +932,7 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
     reviewDuration,
     approvalDuration,
     executionDuration,
+    contractTypeLabel,
   };
 
   const renderView = () => {

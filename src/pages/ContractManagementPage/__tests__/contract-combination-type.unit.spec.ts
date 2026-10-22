@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   findCombinationTypeId,
+  formatContractType,
   resolveContractTypePayload,
 } from "../lib/contractType";
 
@@ -65,5 +66,47 @@ describe("resolveContractTypePayload (QA #33)", () => {
   it("returns empty string when no type is selected", () => {
     expect(resolveContractTypePayload("", "id-combo", [])).toBe("");
     expect(resolveContractTypePayload(undefined, "id-combo", [])).toBe("");
+  });
+});
+
+describe("formatContractType (Combination display)", () => {
+  it("shows a populated single type by name", () => {
+    expect(
+      formatContractType({ _id: "id-fixed", name: "Fixed Price" }, TYPE_OPTIONS),
+    ).toBe("Fixed Price");
+  });
+
+  it("resolves a single type id to its label", () => {
+    expect(formatContractType("id-tm", TYPE_OPTIONS)).toBe("Time & Material");
+  });
+
+  it("shows a comma-joined id list as Combination with sub-type names", () => {
+    expect(formatContractType("id-fixed,id-tm", TYPE_OPTIONS)).toBe(
+      "Combination (Fixed Price, Time & Material)",
+    );
+  });
+
+  it("shows an array of ids or objects as Combination", () => {
+    expect(formatContractType(["id-fixed", "id-ms"], TYPE_OPTIONS)).toBe(
+      "Combination (Fixed Price, Milestone)",
+    );
+    expect(
+      formatContractType(
+        [{ _id: "id-fixed", name: "Fixed Price" }, { _id: "id-tm" }],
+        TYPE_OPTIONS,
+      ),
+    ).toBe("Combination (Fixed Price, Time & Material)");
+  });
+
+  it("skips unknown ids, falling back to plain Combination", () => {
+    expect(formatContractType("id-fixed,id-gone", TYPE_OPTIONS)).toBe(
+      "Combination (Fixed Price)",
+    );
+    expect(formatContractType("x,y", [])).toBe("Combination");
+  });
+
+  it("returns undefined when there is no type", () => {
+    expect(formatContractType(null, TYPE_OPTIONS)).toBeUndefined();
+    expect(formatContractType("", TYPE_OPTIONS)).toBeUndefined();
   });
 });
