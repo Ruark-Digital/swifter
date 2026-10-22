@@ -16,6 +16,35 @@ export type FileCommentRich = {
   /** SuperDoc document-comment id this comment is anchored to (click-to-scroll). */
   anchorCommentId?: string | null;
   mentions?: Mentionable[];
+  /**
+   * True for comments imported from the .docx (`comment:<id>` location, no
+   * sentinel JSON). Word writes `w:date` as the author's local wall-clock time
+   * with a misleading `Z` suffix, so `createdAt` must be shown as-is in UTC
+   * rather than converted to the viewer's zone.
+   */
+  wallClock?: boolean;
+};
+
+/**
+ * Format a comment timestamp for the feed. Wall-clock (docx-imported) dates
+ * are rendered in UTC so they match the clock time Word shows; true-UTC
+ * in-app dates are converted to the viewer's zone.
+ */
+export const formatCommentTimestamp = (
+  value?: string | Date,
+  wallClock?: boolean,
+) => {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    ...(wallClock ? { timeZone: "UTC" } : {}),
+  }).format(date);
 };
 
 /**
@@ -73,7 +102,7 @@ const encodeRichToWire = (rich: FileCommentRich): FileCommentWire => {
   };
 };
 
-const decodeWireToRich = (
+export const decodeWireToRich = (
   wire: FileCommentWire,
   index: number,
 ): FileCommentRich => {
@@ -90,6 +119,7 @@ const decodeWireToRich = (
     createdAt: wire.date || new Date().toISOString(),
     content: wire.text ?? "",
     anchorCommentId: locationAnchor,
+    wallClock: locationAnchor !== null,
   };
 
   if (typeof wire.text !== "string" || !wire.text.startsWith("{")) return base;
