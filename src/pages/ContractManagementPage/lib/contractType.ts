@@ -35,3 +35,39 @@ export const resolveContractTypePayload = (
     : [];
   return ids.length ? ids.join(",") : type;
 };
+
+/** Display label for a contract's stored `contractType`. A populated object
+ *  shows its name; a single id resolves via the type options; a combination
+ *  (comma-separated id string, or an array of ids/objects) shows as
+ *  "Combination (A, B)" with unknown ids skipped, or just "Combination" when
+ *  none resolve. Returns undefined when there is nothing to show. */
+export const formatContractType = (
+  contractType: unknown,
+  typeOptions: TypeOption[],
+): string | undefined => {
+  const labelFor = (item: unknown): string | undefined => {
+    if (typeof item === "string") {
+      const id = item.trim();
+      return typeOptions.find((o) => o.value === id)?.label;
+    }
+    const obj = item as { _id?: string; name?: string } | null;
+    return obj?.name || (obj?._id ? labelFor(obj._id) : undefined);
+  };
+
+  const items = Array.isArray(contractType)
+    ? contractType
+    : typeof contractType === "string" && contractType.includes(",")
+      ? contractType.split(",").filter((s) => s.trim())
+      : [contractType];
+
+  if (items.length < 2) {
+    const single = items[0];
+    if (typeof single === "string") return labelFor(single) ?? (single.trim() || undefined);
+    return labelFor(single);
+  }
+
+  const names = items
+    .map(labelFor)
+    .filter((n): n is string => !!n);
+  return names.length ? `Combination (${names.join(", ")})` : "Combination";
+};
