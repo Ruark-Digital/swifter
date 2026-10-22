@@ -752,17 +752,6 @@ const CreateMSADialog: React.FC<Props> = ({
               ? "Progress Draw"
               : undefined;
 
-      const deliverables = Array.isArray(data.deliverables)
-        ? data.deliverables
-            .filter((d) => d?.name)
-            .map((d) => ({
-              name: d.name,
-              dueDate: d.dueDate
-                ? format(d.dueDate, "yyyy-MM-dd'T'HH:mm:ss'Z'")
-                : undefined,
-            }))
-        : undefined;
-
       const milestone =
         data.paymentStructure === "milestone" && Array.isArray(data.milestones)
           ? data.milestones
@@ -946,7 +935,6 @@ const CreateMSADialog: React.FC<Props> = ({
           ? Number(String(data.duration).replace(/[^0-9.]/g, ""))
           : undefined,
         termType: data.termType || undefined,
-        deliverables,
         milestone,
         personnel,
         internalTeam,
