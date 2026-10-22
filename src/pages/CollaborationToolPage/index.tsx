@@ -15,6 +15,7 @@ import {
   type Mentionable,
 } from "./collab/useContractMentionables";
 import {
+  formatCommentTimestamp,
   useAddFileComment,
   useFileComments,
   type FileCommentRich,
@@ -103,6 +104,7 @@ type LocalComment = {
   redlineKind?: "insertion" | "deletion" | null;
   anchorCommentId?: string | null;
   mentions?: Mentionable[];
+  wallClock?: boolean;
 };
 
 // Legacy editors, kept as escape hatches: `?editor=yoopta` (Yoopta) and
@@ -114,24 +116,11 @@ const TipTapEditorPane = lazyWithRetry(() => import("./components/TipTapEditorPa
 // deployed at VITE_SUPERDOC_APP_URL).
 const IframeEditorPane = lazyWithRetry(() => import("./components/IframeEditorPane"));
 
-const toTimestamp = (value?: string | Date) => {
-  if (!value) return "";
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(date);
-};
-
 const mapLocalCommentsToFeed = (comments: LocalComment[]): SidebarFeed[] =>
   comments.map((comment) => ({
     id: comment.id,
     name: comment.author || "Unknown User",
-    timestamp: toTimestamp(comment.createdAt),
+    timestamp: formatCommentTimestamp(comment.createdAt, comment.wallClock),
     message: comment.content,
     redlineId: comment.redlineId ?? null,
     anchorCommentId: comment.anchorCommentId ?? null,
@@ -303,6 +292,7 @@ const CollaborationToolPage: React.FC = () => {
         redlineKind: c.redlineKind ?? null,
         anchorCommentId: c.anchorCommentId ?? null,
         mentions: c.mentions,
+        wallClock: c.wallClock,
       }));
     }
     return localComments;
