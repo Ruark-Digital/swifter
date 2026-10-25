@@ -10,6 +10,7 @@ import {
 import type { RedlineSpan } from "../collab/redlineScan";
 import {
   acceptanceActor,
+  countBothAccepted,
   deriveProgressCounts,
   effectiveApprovalPhase,
   redlineHolderLabel,
@@ -328,8 +329,18 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
         <div className="font-semibold text-slate-500 dark:text-slate-400">
           Original
         </div>
-        <div className="mt-1 line-clamp-3">{item.redline.text}</div>
+        <div className="mt-1 line-clamp-3">
+          {item.redline.originalText ?? item.redline.text}
+        </div>
       </div>
+      {item.redline.originalText && (
+        <div className="mb-2 rounded-md bg-slate-100 px-3 py-2 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+          <div className="font-semibold text-slate-500 dark:text-slate-400">
+            Redline
+          </div>
+          <div className="mt-1 line-clamp-3">{item.redline.text}</div>
+        </div>
+      )}
 
       {suggestion ? (
         <>
@@ -590,9 +601,16 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
 
   const remaining = items.filter((i) => i.state === "pending").length;
   // Per-side "addressed" — who has accepted a recommendation, shown for the
-  // contract manager (CM) and the vendor PM independently — plus the
-  // both-accepted "resolved" total. All three come from the BE progress.
-  const { cmAddressed, pmAddressed, resolved } = deriveProgressCounts(progress);
+  // contract manager (CM) and the vendor PM independently — from the BE
+  // progress. "Resolved" is counted from the cards' both-accepted state: the
+  // BE total also counts one-sided actions still awaiting the other side
+  // (QA #185), so it is only a fallback when there are no cards.
+  const counts = deriveProgressCounts(progress);
+  const { cmAddressed, pmAddressed } = counts;
+  const resolved =
+    items.length > 0
+      ? countBothAccepted(items.map((i) => i.accepted))
+      : counts.resolved;
   const hasProgress =
     typeof cmAddressed === "number" ||
     typeof pmAddressed === "number" ||

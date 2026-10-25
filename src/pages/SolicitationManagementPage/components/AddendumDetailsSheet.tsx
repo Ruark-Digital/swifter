@@ -10,7 +10,7 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils.tsx";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { DeadlineUpdates } from "../SolicitationDetailPage";
-import { formatDateTZ } from "@/lib/utils";
+import { formatDateTZ, formatQuestionDeadline } from "@/lib/utils";
 
 // Safe date formatting utility with timezone
 const safeFormatDate = (
@@ -204,9 +204,8 @@ const AddendumDetailsSheet: React.FC<AddendumDetailsSheetProps> = ({
                     Question Acceptance Deadline
                   </h4>
                   <p className="text-sm font-medium text-gray-900">
-                    {safeFormatDate(
+                    {formatQuestionDeadline(
                       addendumDetail.questionDeadline,
-                      "MMMM d, yyyy hh:mm a",
                       timezone
                     )}
                   </p>

@@ -48,6 +48,7 @@ import type {
   ContractLemDTO,
 } from "../api/contractManagerApi";
 import { deriveLemRateSheetComparison } from "../api/contractManagerApi";
+import { canResubmitLem } from "../lib/lemStatus";
 
 const formatDateValue = (value: unknown) => {
   if (!value) return "—";
@@ -692,17 +693,15 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
             </Tabs>
           </div>
 
-          {/* Vendor/PM edit (pending) or resubmit (rejected) — bottom footer,
-              matching the Deliverables detail layout. */}
+          {/* Vendor/PM resubmit (rejected only) — bottom footer, matching the
+              Deliverables detail layout. A pending LEM is under approval and
+              is not editable (QA #174). */}
           {isProjectManager &&
-            (lemDetail?.status?.toLowerCase?.() === "pending" ||
-              lemDetail?.status?.toLowerCase?.() === "rejected") && (
+            canResubmitLem(lemDetail?.status) && (
               <div className="flex gap-3 pt-6 justify-end">
                 <SubmitLemDialog
                   mode="edit"
-                  isResubmit={
-                    lemDetail?.status?.toLowerCase?.() === "rejected"
-                  }
+                  isResubmit
                   lemId={lemId}
                   contractId={contractId}
                   currency={currencyCode}
@@ -717,9 +716,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                       data-testid="edit-lem-trigger"
                       className="h-11 w-64 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
                     >
-                      {lemDetail?.status?.toLowerCase?.() === "rejected"
-                        ? "Resubmit"
-                        : "Edit"}
+                      Resubmit
                     </Button>
                   }
                 />

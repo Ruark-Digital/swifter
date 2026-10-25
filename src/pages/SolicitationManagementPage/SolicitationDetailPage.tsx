@@ -46,7 +46,11 @@ import {
   getStatusLabel,
   getStatusColorClass,
 } from "@/lib/solicitationStatusUtils";
-import { formatDateTZ, formatWallClockWithZone } from "@/lib/utils";
+import {
+  formatDateTZ,
+  formatQuestionDeadline,
+  formatWallClockWithZone,
+} from "@/lib/utils";
 import { formatEventType } from "@/lib/solicitationEventUtils";
 
 // Vendor proposal type definition
@@ -1568,9 +1572,8 @@ export const SolicitationDetailPage = () => {
                       Questions Acceptance Deadline
                     </label>
                     <p className="text-gray-900 dark:text-gray-200 font-medium">
-                      {formatWallClockWithZone(
+                      {formatQuestionDeadline(
                         solicitation.questionDeadline,
-                        "MMM d, yyyy hh:mm aaa",
                         solicitation.timezone
                       )}
                     </p>
