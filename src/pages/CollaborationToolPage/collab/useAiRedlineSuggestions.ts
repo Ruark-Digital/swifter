@@ -172,6 +172,20 @@ export const withDocumentPositions = (redlines: RedlineSpan[]): RedlineSpan[] =>
     documentPosition: r.documentPosition ?? index,
   }));
 
+/**
+ * The span as sent to the BE. RedlineAnalysisItem is strict and has no
+ * `originalText`, so a replacement folds its struck text into `text` — the AI
+ * then assesses the change from the original to the redline, not the inserted
+ * text alone as if it were the original (QA #186).
+ */
+export const toAnalysisRedline = ({
+  originalText,
+  ...span
+}: RedlineSpan): RedlineSpan =>
+  originalText
+    ? { ...span, text: `Replace "${originalText}" with "${span.text}"` }
+    : span;
+
 /** Parse one BE response body into an `AiRedlineAnalysis`. */
 const parseAnalysisBody = (body: ApiResponseBody): AiRedlineAnalysis => {
   const data = body?.data ?? {};
@@ -295,7 +309,7 @@ export function useAiRedlineSuggestions({
       )) {
         const res = await postRequest({
           url,
-          payload: { documentId: fileId, redlines: batch },
+          payload: { documentId: fileId, redlines: batch.map(toAnalysisRedline) },
         });
         parts.push(parseAnalysisBody(res.data as ApiResponseBody));
       }
@@ -552,6 +566,21 @@ export const deriveProgressCounts = (
   pmAddressed: maxNumber(progress?.resolvedByVendor, progress?.pm_accept),
   resolved: firstNumber(progress?.resolvedCount, progress?.resolved),
 });
+
+/**
+ * Redlines accepted by BOTH sides — the only ones that are resolved in the
+ * dual-approval flow (QA #185). The BE `resolved`/`resolvedCount` also counts
+ * a one-sided action (swagger: "resolved status or both-accepted"), so it reads
+ * CM addressed + PM addressed while items still await the other side.
+ */
+export const countBothAccepted = (
+  acceptances: Array<RedlineAcceptance | undefined>,
+): number =>
+  acceptances.filter(
+    (a) =>
+      a?.status === "both_accepted" ||
+      (Boolean(a?.cmAccepted) && Boolean(a?.vendorAccepted)),
+  ).length;
 
 export type PersistedSuggestionsResponse = {
   suggestions: PersistedSuggestion[];

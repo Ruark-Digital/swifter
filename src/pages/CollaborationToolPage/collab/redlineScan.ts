@@ -14,6 +14,9 @@ export type RedlineSpan = {
   redlineId: string;
   kind: RedlineKind;
   text: string;
+  /** For a replacement (delete+insert pair, SuperDoc only): the struck text
+   *  that `text` replaces. `text` is then the inserted (redline) text. */
+  originalText?: string;
   author?: string;
   createdAt?: string;
   /** Offset of the redline in the source document. The BE orders the
