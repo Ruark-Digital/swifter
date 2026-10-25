@@ -40,7 +40,7 @@ import {
   getStatusColorClass,
   normalizeStatus,
 } from "@/lib/solicitationStatusUtils";
-import { cn, formatDateTZ } from "@/lib/utils";
+import { cn, formatDateTZ, formatQuestionDeadline } from "@/lib/utils";
 import { applySolicitationCompanyFilter } from "./lib/solicitationCompanyFilter";
 // import ExportReportSheet from "@/components/layouts/ExportReportSheet";
 
@@ -1136,9 +1136,8 @@ export const SolicitationManagementPage = () => {
           header: "Question Deadline",
           cell: ({ row }) => (
             <span>
-              {safeFormatDate(
+              {formatQuestionDeadline(
                 row.original.questionDeadline,
-                "MMM d, yyyy KK:mm a",
                 row.original.timezone
               )}
             </span>

@@ -396,6 +396,44 @@ export function formatWallClockWithZone(
   }
 }
 
+// One format for the question acceptance deadline, so the Timeline tab and the
+// Questions tab banner render it identically (QA #190).
+export const QUESTION_DEADLINE_FORMAT = "MMM d, yyyy h:mm a";
+
+/** The question acceptance deadline as entered, with the solicitation's zone. */
+export function formatQuestionDeadline(
+  dateInput: string | Date | undefined | null,
+  zoneAbbrev?: string
+): string {
+  return formatWallClockWithZone(dateInput, QUESTION_DEADLINE_FORMAT, zoneAbbrev);
+}
+
+/**
+ * The real instant of a solicitation wall-clock datetime (see
+ * `formatWallClockWithZone`): the stored UTC digits are read as a wall clock in
+ * `zoneAbbrev` and converted to UTC — e.g. `2026-10-09T09:00:00.000Z` with "CST"
+ * is 9 AM Chicago time (14:00Z in October). Use this for deadline comparisons
+ * against `Date.now()`. An unknown/absent zone falls back to the stored instant.
+ */
+export function wallClockInZoneToInstant(
+  dateInput: string | Date | undefined | null,
+  zoneAbbrev?: string
+): Date | null {
+  if (!dateInput) return null;
+  const normalized =
+    typeof dateInput === "string" ? ensureUtcInstant(dateInput) : dateInput;
+  const wall =
+    typeof normalized === "string" ? new Date(normalized) : normalized;
+  if (!(wall instanceof Date) || isNaN(wall.getTime())) return null;
+
+  const abbr = (zoneAbbrev ?? "").trim().toUpperCase();
+  const iana = ZONE_ABBREV_IANA[abbr];
+  const offsetMin = iana
+    ? getTimeZoneOffset(wall, iana)
+    : ZONE_ABBREV_OFFSET_MINUTES[abbr] ?? 0;
+  return new Date(wall.getTime() - offsetMin * 60000);
+}
+
 // Fixed UTC offsets (minutes east of UTC) for the timezone abbreviations in
 // `src/assets/timezones.json` — the same labels the app's timezone pickers store
 // and the BE returns on the dashboard activity feeds. Used only for zones that
