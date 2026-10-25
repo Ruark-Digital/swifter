@@ -12,7 +12,7 @@ import MessageThread from "./MessageThread";
 import MessageComposer from "./MessageComposer";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import CreateAddendumDialog from "./CreateAddendumDialog";
-import { formatDateTZ, zonedTimeToUtc } from "@/lib/utils";
+import { formatQuestionDeadline, wallClockInZoneToInstant } from "@/lib/utils";
 
 // Question type definition
 export interface Question {
@@ -85,14 +85,12 @@ const QuestionsTab: React.FC<QuestionsTabProps> = ({
     useState(false);
   const [questionDraftClearSignal, setQuestionDraftClearSignal] = useState(0);
 
-  const questionDeadlineDate = useMemo(() => {
-    if (!questionDeadline) return null;
-    const hasOffset = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(questionDeadline);
-    const parsed = hasOffset
-      ? new Date(questionDeadline)
-      : zonedTimeToUtc(questionDeadline, timezone || "UTC");
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }, [questionDeadline, timezone]);
+  // The deadline is a wall clock in the solicitation's timezone (stored stamped
+  // UTC), so resolve it in that zone before comparing against now (QA #190).
+  const questionDeadlineDate = useMemo(
+    () => wallClockInZoneToInstant(questionDeadline, timezone),
+    [questionDeadline, timezone],
+  );
   const questionDeadlinePassed = Boolean(
     questionDeadlineDate && Date.now() >= questionDeadlineDate.getTime(),
   );
@@ -354,7 +352,7 @@ const QuestionsTab: React.FC<QuestionsTabProps> = ({
 
       {isVendor && questionDeadlinePassed && (
         <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          Questions closed on {formatDateTZ(questionDeadlineDate, "MMM d, yyyy h:mm a")}.
+          Questions closed on {formatQuestionDeadline(questionDeadline, timezone)}.
         </div>
       )}
 

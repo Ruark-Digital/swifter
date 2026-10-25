@@ -17,7 +17,7 @@ import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { useToastHandler } from "@/hooks/useToaster";
 // import { useUser } from "@/store/authSlice";
 
-import { formatDateTZ } from "@/lib/utils";
+import { formatDateTZ, formatQuestionDeadline } from "@/lib/utils";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils.tsx";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
@@ -521,7 +521,10 @@ const SolicitationDetailsSheet: React.FC<SolicitationDetailsSheetProps> = ({
                               Question Acceptance Deadline
                             </h3>
                             <p className="text-sm text-gray-900 dark:text-gray-100">
-                              {formatDate(details.questionDeadline)}
+                              {formatQuestionDeadline(
+                                details.questionDeadline,
+                                details.timezone
+                              )}
                             </p>
                           </div>
                         )}
