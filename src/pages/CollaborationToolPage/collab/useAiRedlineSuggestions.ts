@@ -567,6 +567,21 @@ export const deriveProgressCounts = (
   resolved: firstNumber(progress?.resolvedCount, progress?.resolved),
 });
 
+/**
+ * Redlines accepted by BOTH sides — the only ones that are resolved in the
+ * dual-approval flow (QA #185). The BE `resolved`/`resolvedCount` also counts
+ * a one-sided action (swagger: "resolved status or both-accepted"), so it reads
+ * CM addressed + PM addressed while items still await the other side.
+ */
+export const countBothAccepted = (
+  acceptances: Array<RedlineAcceptance | undefined>,
+): number =>
+  acceptances.filter(
+    (a) =>
+      a?.status === "both_accepted" ||
+      (Boolean(a?.cmAccepted) && Boolean(a?.vendorAccepted)),
+  ).length;
+
 export type PersistedSuggestionsResponse = {
   suggestions: PersistedSuggestion[];
   progress: SuggestionProgress;
