@@ -123,6 +123,7 @@ const DocumentsList: React.FC<Props> = ({
             d={d}
             contractId={contractId}
             canEdit={canEdit}
+            canReviewRedline={canCollaborate}
             navigate={navigate}
             handlePreview={handlePreview}
             handleDownload={handleDownload}

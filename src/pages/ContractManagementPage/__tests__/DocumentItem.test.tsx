@@ -96,6 +96,39 @@ describe('DocumentItem', () => {
     expect(navUrl).toContain('&editor=superdoc');
   });
 
+  // QA #184: on a published record the edit item is hidden, so a redline
+  // participant (e.g. the vendor PM) needs another way into the negotiation.
+  it('offers Review Redline (opening the Redline tab) when the record is not editable', () => {
+    const mockNavigate = vi.fn();
+    const docxDoc: DocType = { ...mockDoc, name: 'Test Document.docx', type: 'docx' };
+
+    render(<DocumentItem d={docxDoc} canEdit={false} canReviewRedline navigate={mockNavigate} />);
+    openMenu();
+
+    expect(screen.queryByText('Edit in Collaboration Tool')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Review Redline'));
+
+    const navUrl = mockNavigate.mock.calls[0][0] as string;
+    expect(navUrl.startsWith('/collaboration-tool?')).toBe(true);
+    expect(navUrl).toContain('&editor=superdoc');
+    expect(navUrl.endsWith('&tab=redline')).toBe(true);
+  });
+
+  it('shows only the edit item (no Review Redline) while the record is editable', () => {
+    const docxDoc: DocType = { ...mockDoc, name: 'Test Document.docx', type: 'docx' };
+    render(<DocumentItem d={docxDoc} canEdit canReviewRedline navigate={vi.fn()} />);
+    openMenu();
+    expect(screen.getByText('Edit in Collaboration Tool')).toBeInTheDocument();
+    expect(screen.queryByText('Review Redline')).not.toBeInTheDocument();
+  });
+
+  it('hides Review Redline from non-participants', () => {
+    const docxDoc: DocType = { ...mockDoc, name: 'Test Document.docx', type: 'docx' };
+    render(<DocumentItem d={docxDoc} canEdit={false} navigate={vi.fn()} />);
+    openMenu();
+    expect(screen.queryByText('Review Redline')).not.toBeInTheDocument();
+  });
+
   it('calls handlePreview when the preview item is clicked', () => {
     const mockPreview = vi.fn();
 
