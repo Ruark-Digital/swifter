@@ -159,13 +159,6 @@ const CollaborationToolPage: React.FC = () => {
   const setActiveTab = useCollaborationStore((state) => state.setActiveTab);
   const setPresenceActive = useCollaborationStore((state) => state.setPresenceActive);
 
-  // `?tab=redline` (the contract's "Review Redline" entry, QA #184) opens
-  // straight on the Redline tab instead of the default Comments tab.
-  const initialTab = searchParams.get("tab");
-  useEffect(() => {
-    if (initialTab === "redline") setActiveTab("redline");
-  }, [initialTab, setActiveTab]);
-
   // Editor adapter is owned by whichever panel is mounted (Yoopta or
   // TipTap) and published up here so the sidebar (Redline + Versions
   // tabs) can drive AI runs and version snapshots without depending on

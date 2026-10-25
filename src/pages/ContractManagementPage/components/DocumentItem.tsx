@@ -6,7 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { Eye, Download, Edit, ScanText, Loader2, MoreVertical, ArrowRightLeft } from "lucide-react";
+import { Eye, Download, Edit, ScanText, Loader2, MoreVertical } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { postRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -38,7 +38,6 @@ const DocumentActionsMenu = ({
   d,
   contractId,
   canEdit,
-  canReviewRedline,
   navigate,
   handlePreview,
   handleDownload,
@@ -47,7 +46,6 @@ const DocumentActionsMenu = ({
   d: DocType;
   contractId?: string;
   canEdit?: boolean;
-  canReviewRedline?: boolean;
   navigate?: (path: string) => void;
   handlePreview?: (d: DocType) => void;
   handleDownload?: (d: DocType) => void;
@@ -77,18 +75,6 @@ const DocumentActionsMenu = ({
             <Edit className="mr-2 h-4 w-4" /> Edit in Collaboration Tool
           </DropdownMenuItem>
         )}
-        {/* QA #184: once the record is published the edit item is hidden, but
-            the redline negotiation continues there — the other side needs a
-            way in. The collaboration tool's turn gate decides what they may do. */}
-        {!canEdit && canReviewRedline && d.type?.toLowerCase() === "docx" && (
-          <DropdownMenuItem
-            onSelect={() =>
-              navigate?.(`${buildCollaborationHref(d, contractId)}&tab=redline`)
-            }
-          >
-            <ArrowRightLeft className="mr-2 h-4 w-4" /> Review Redline
-          </DropdownMenuItem>
-        )}
         <DropdownMenuItem onSelect={() => handleDownload?.(d)}>
           <Download className="mr-2 h-4 w-4" /> Download
         </DropdownMenuItem>
@@ -109,7 +95,6 @@ const AnalyzeCapableActions = ({
   contractType,
   onAnalyzed,
   canEdit,
-  canReviewRedline,
   navigate,
   handlePreview,
   handleDownload,
@@ -119,7 +104,6 @@ const AnalyzeCapableActions = ({
   contractType: "Contract" | "MsaContract";
   onAnalyzed: () => void;
   canEdit?: boolean;
-  canReviewRedline?: boolean;
   navigate?: (path: string) => void;
   handlePreview?: (d: DocType) => void;
   handleDownload?: (d: DocType) => void;
@@ -186,7 +170,6 @@ const AnalyzeCapableActions = ({
       d={d}
       contractId={contractId}
       canEdit={canEdit}
-      canReviewRedline={canReviewRedline}
       navigate={navigate}
       handlePreview={handlePreview}
       handleDownload={handleDownload}
@@ -199,7 +182,6 @@ export const DocumentItem = ({
   d,
   contractId,
   canEdit,
-  canReviewRedline,
   navigate,
   handlePreview,
   handleDownload,
@@ -209,9 +191,6 @@ export const DocumentItem = ({
   d: DocType;
   contractId?: string;
   canEdit?: boolean;
-  /** Redline participant (CM/Procurement/PM): offer "Review Redline" when the
-   *  record is no longer editable. */
-  canReviewRedline?: boolean;
   navigate?: (path: string) => void;
   handlePreview?: (d: DocType) => void;
   handleDownload?: (d: DocType) => void;
@@ -243,7 +222,6 @@ export const DocumentItem = ({
               contractType={contractType}
               onAnalyzed={onAnalyzed}
               canEdit={canEdit}
-              canReviewRedline={canReviewRedline}
               navigate={navigate}
               handlePreview={handlePreview}
               handleDownload={handleDownload}
@@ -253,7 +231,6 @@ export const DocumentItem = ({
               d={d}
               contractId={contractId}
               canEdit={canEdit}
-              canReviewRedline={canReviewRedline}
               navigate={navigate}
               handlePreview={handlePreview}
               handleDownload={handleDownload}
