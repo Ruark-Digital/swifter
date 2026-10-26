@@ -172,18 +172,18 @@ export const buildUndoPayload = (scope: {
  * Build the batch-resolve POST body: the required `resolutions` array plus the
  * shared version-hint fields, each included only when the caller supplied it
  * (so `baseVersionId: null` is preserved but an omitted one is left out).
+ * `documentId` is deliberately absent: RedlineBatchResolutionRequest is
+ * `additionalProperties: false` and does not declare it.
  */
 export const buildBatchResolvePayload = (
   resolutions: RedlineBatchItem[],
   scope: {
-    documentId?: string;
     docName?: string;
     baseVersionId?: string | null;
     documentState?: string;
   },
 ): Record<string, unknown> => {
   const payload: Record<string, unknown> = { resolutions };
-  if (scope.documentId !== undefined) payload.documentId = scope.documentId;
   if (scope.docName !== undefined) payload.docName = scope.docName;
   if (scope.baseVersionId !== undefined)
     payload.baseVersionId = scope.baseVersionId;
@@ -338,7 +338,6 @@ export function useRedlineTurn({ documentId, fileId, isMsa }: RedlineTurnScope) 
       if (!base) throw new Error("Redline turn is not available for this role.");
       if (resolutions.length === 0) return null;
       const payload = buildBatchResolvePayload(resolutions, {
-        documentId: fileId,
         docName,
         baseVersionId,
         documentState,
