@@ -1019,7 +1019,7 @@ const CollaborationToolPage: React.FC = () => {
       // backend applies the bilateral-accepted ones to the document from the
       // submitted `documentState`; the FE no longer mutates the doc itself.
       const resolutions = buildBatchItems(freshSuggestions.data.suggestions, {
-        action,
+        decision: action === "modified" ? "approve" : "reject",
         tier,
         mySide: redlineTurn.mySide,
       });

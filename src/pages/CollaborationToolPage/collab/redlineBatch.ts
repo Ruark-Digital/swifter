@@ -23,17 +23,20 @@ const acceptedBySide = (
 /**
  * Build the batch-resolve items from the server's current suggestions. Skips
  * any suggestion the server already shows as resolved, or as accepted by this
- * side, so a stale or repeated click never resends it (that is what caused the
- * 409 "missing or already resolved").
+ * side, so a stale or repeated click never resends it.
+ *
+ * Approve is sent as `accepted` (V2 guide §3.8): it has no turn check, and the
+ * second acceptance auto-applies the other side's alternative at `appliedTier`.
+ * Reject stays `rejected`, which is turn-gated.
  */
 export const buildBatchItems = (
   suggestions: BatchCandidate[],
   {
-    action,
+    decision,
     tier,
     mySide,
   }: {
-    action: "modified" | "rejected";
+    decision: "approve" | "reject";
     tier: "low" | "medium" | "high";
     mySide: RedlineHolder | null;
   },
@@ -45,7 +48,7 @@ export const buildBatchItems = (
         !acceptedBySide(s.accepted, mySide),
     )
     .map((s) =>
-      action === "modified"
-        ? { redlineId: s.redlineId, action, tier, appliedTier: tier }
-        : { redlineId: s.redlineId, action },
+      decision === "approve"
+        ? { redlineId: s.redlineId, action: "accepted", appliedTier: tier }
+        : { redlineId: s.redlineId, action: "rejected" },
     );
