@@ -647,21 +647,18 @@ const CollaborationToolPage: React.FC = () => {
       // insertion/deletion classification from the live editor redlines
       // (keyed by redlineId) instead of labelling every suggestion an
       // insertion. Falls back to "insertion" only when the redline mark is
-      // no longer present in the document. The live span also carries a
-      // replacement's original/redline pair (QA #186) — `sourceText` holds the
-      // folded request text, so prefer the live text when the mark is present.
-      const liveById = new Map(
+      // no longer present in the document.
+      const kindById = new Map(
         (editorAdapterRef.current?.extractRedlines() ?? []).map(
-          (r) => [r.redlineId, r] as const,
+          (r) => [r.redlineId, r.kind] as const,
         ),
       );
       setAiItems(
         persisted.suggestions.map((s) => ({
           redline: {
             redlineId: s.redlineId,
-            kind: liveById.get(s.redlineId)?.kind ?? ("insertion" as const),
-            text: liveById.get(s.redlineId)?.text ?? s.sourceText ?? "",
-            originalText: liveById.get(s.redlineId)?.originalText,
+            kind: kindById.get(s.redlineId) ?? ("insertion" as const),
+            text: s.sourceText ?? "",
           },
           suggestion: s,
           state: resolutionToState(s.resolution?.action),
