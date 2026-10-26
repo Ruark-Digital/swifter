@@ -172,20 +172,6 @@ export const withDocumentPositions = (redlines: RedlineSpan[]): RedlineSpan[] =>
     documentPosition: r.documentPosition ?? index,
   }));
 
-/**
- * The span as sent to the BE. RedlineAnalysisItem is strict and has no
- * `originalText`, so a replacement folds its struck text into `text` — the AI
- * then assesses the change from the original to the redline, not the inserted
- * text alone as if it were the original (QA #186).
- */
-export const toAnalysisRedline = ({
-  originalText,
-  ...span
-}: RedlineSpan): RedlineSpan =>
-  originalText
-    ? { ...span, text: `Replace "${originalText}" with "${span.text}"` }
-    : span;
-
 /** Parse one BE response body into an `AiRedlineAnalysis`. */
 const parseAnalysisBody = (body: ApiResponseBody): AiRedlineAnalysis => {
   const data = body?.data ?? {};
@@ -309,7 +295,7 @@ export function useAiRedlineSuggestions({
       )) {
         const res = await postRequest({
           url,
-          payload: { documentId: fileId, redlines: batch.map(toAnalysisRedline) },
+          payload: { documentId: fileId, redlines: batch },
         });
         parts.push(parseAnalysisBody(res.data as ApiResponseBody));
       }
