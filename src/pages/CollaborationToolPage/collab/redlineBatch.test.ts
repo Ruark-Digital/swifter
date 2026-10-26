@@ -63,18 +63,20 @@ describe("buildBatchItems", () => {
 });
 
 describe("buildBatchResolvePayload", () => {
-  it("carries the freshly fetched baseVersionId into the body", () => {
+  it("sends documentId as a string when the file has an ID", () => {
     const items = buildBatchItems([open("p")], {
       action: "rejected",
       tier: "medium",
       mySide: "manager",
     });
     const payload = buildBatchResolvePayload(items, {
+      documentId: "file-123",
       docName: "doc",
       baseVersionId: "v-fresh",
     });
+    expect(payload.documentId).toBe("file-123");
+    expect(typeof payload.documentId).toBe("string");
     expect(payload.baseVersionId).toBe("v-fresh");
-    expect(payload).not.toHaveProperty("documentId");
   });
 
   it("keeps a null baseVersionId and omits an undefined one", () => {
@@ -83,10 +85,11 @@ describe("buildBatchResolvePayload", () => {
       tier: "medium",
       mySide: "manager",
     });
-    expect(buildBatchResolvePayload(items, { baseVersionId: null })).toHaveProperty(
-      "baseVersionId",
-      null,
-    );
-    expect(buildBatchResolvePayload(items, {})).not.toHaveProperty("baseVersionId");
+    expect(
+      buildBatchResolvePayload(items, { documentId: "file-123", baseVersionId: null }),
+    ).toHaveProperty("baseVersionId", null);
+    expect(
+      buildBatchResolvePayload(items, { documentId: "file-123" }),
+    ).not.toHaveProperty("baseVersionId");
   });
 });

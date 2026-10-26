@@ -986,6 +986,16 @@ const CollaborationToolPage: React.FC = () => {
         );
         return;
       }
+      // The backend requires the file id in the batch body. Stop here rather
+      // than send a request it will reject.
+      if (!fileId) {
+        toastHandler.error(
+          "Redline",
+          "Cannot approve: the file ID is missing. Reload the page and try again.",
+        );
+        return;
+      }
+
       // Refetch before building the batch. The local cards can be stale (the
       // other side may have resolved or accepted since they loaded), and a batch
       // built from them is what the server rejects with a 409.
@@ -1080,7 +1090,7 @@ const CollaborationToolPage: React.FC = () => {
         submitBatch();
       }
     },
-    [redlineTurn, docName, fileVersionsQuery, toastHandler, persistedQuery],
+    [redlineTurn, docName, fileId, fileVersionsQuery, toastHandler, persistedQuery],
   );
 
   // Clicking a suggestion card scrolls the editor to that redline.
