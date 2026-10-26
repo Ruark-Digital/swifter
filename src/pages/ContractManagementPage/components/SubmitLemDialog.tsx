@@ -14,6 +14,7 @@ import { vendorApi } from "../api/vendorApi";
 import { useToastHandler } from "@/hooks/useToaster";
 import { formatFileSize, getSimpleFileExtension } from "@/lib/fileUtils";
 import Spinner from "@/components/ui/Spinner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type SubmitLemFormValues = {
   title: string;
@@ -405,7 +406,15 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-6 px-8 py-8 mt-auto">
+          <div className="px-8 pb-4 mt-auto">
+            <Alert variant="warning">
+              <AlertDescription className="text-yellow-900 dark:text-yellow-200">
+                Changing decimal places makes the LEM non-compliant
+              </AlertDescription>
+            </Alert>
+          </div>
+
+          <div className="flex items-center gap-6 px-8 py-8">
             <button
               type="button"
               onClick={() => setOpen(false)}
